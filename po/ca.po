@@ -181,7 +181,7 @@ msgstr "Ús: ll-cli enter [OPCIONS] INSTÀNCIA [ORDRE...]"
 #. add sub command kill
 #: ../apps/ll-cli/src/main.cpp:281
 msgid "Stop running applications"
-msgstr "Atura l'execució d'aplicacions"
+msgstr "Atura les aplicacions en execució."
 
 #: ../apps/ll-cli/src/main.cpp:284
 msgid "Usage: ll-cli kill [OPTIONS] APP"
@@ -189,15 +189,15 @@ msgstr "Ús: ll-cli kill [OPCIONS] APLICACIÓ"
 
 #: ../apps/ll-cli/src/main.cpp:288
 msgid "Specify the signal to send to the application"
-msgstr "Especifiqueu el senyal que voleu enviar a l'aplicació"
+msgstr "Especifiqueu el senyal que voleu enviar a l'aplicació."
 
 #: ../apps/ll-cli/src/main.cpp:290
 msgid "Specify the running application"
-msgstr "Especifiqueu l'aplicació en execució"
+msgstr "Especifiqueu l'aplicació en execució."
 
 #: ../apps/ll-cli/src/main.cpp:296
 msgid "Installing an application or runtime"
-msgstr "Instal·lació d'una aplicació o entorns d'execució"
+msgstr "Instal·lació d'una aplicació o d'un entorn d'execució"
 
 #: ../apps/ll-cli/src/main.cpp:299
 msgid ""
@@ -290,16 +290,16 @@ msgid ""
 "Specify the application ID.If it not be specified, all applications will be "
 "upgraded"
 msgstr ""
-"Especifiqueu l'ID de l'aplicació. Si no s'especifica, totes les aplicacions "
-"s'actualitzaran"
+"Especifiqueu l'ID de l'aplicació. Si no s'especifica, s'actualitzaran totes "
+"les aplicacions."
 
 #: ../apps/ll-cli/src/main.cpp:367
 msgid ""
 "Search the applications/runtimes containing the specified text from the "
 "remote repository"
 msgstr ""
-"Cerca les aplicacions/entorns d'execució que contenen el text especificat "
-"des del repositori remot"
+"Cerca les aplicacions / entorns d'execució que contenen el text especificat "
+"del repositori remot."
 
 #: ../apps/ll-cli/src/main.cpp:371
 msgid ""
@@ -322,14 +322,14 @@ msgstr ""
 "ll-cli search org.deepin.demo\n"
 "# cerca l'entorn d'execució de manera remota pel nom\n"
 "ll-cli search org.deepin.base --type=runtime\n"
-"# cerca tota aplicació fora del control remot\n"
+"# cerca tota aplicació fora del remot\n"
 "ll-cli search .\n"
-"# cerca tot entorn d'execució fora del control remot\n"
+"# cerca tot entorn d'execució fora del remot\n"
 "ll-cli search . --type=runtime"
 
 #: ../apps/ll-cli/src/main.cpp:382
 msgid "Specify the Keywords"
-msgstr "Especifiqueu les paraules clau"
+msgstr "Especifiqueu les paraules clau."
 
 #: ../apps/ll-cli/src/main.cpp:388 ../apps/ll-cli/src/main.cpp:413
 msgid "Filter result with specify type. One of \"runtime\", \"app\" or \"all\""
@@ -339,15 +339,15 @@ msgstr ""
 
 #: ../apps/ll-cli/src/main.cpp:392
 msgid "include develop application in result"
-msgstr "inclou aplicacions de desenvolupament en el resultat"
+msgstr "inclou aplicacions de desenvolupament al resultat"
 
 #: ../apps/ll-cli/src/main.cpp:393
 msgid "Show all results"
-msgstr "Mostra tots els resultats"
+msgstr "Mostra tots els resultats."
 
 #: ../apps/ll-cli/src/main.cpp:397
 msgid "List installed applications or runtimes"
-msgstr "Llista les aplicacions o els entorns d'execució instal·lats"
+msgstr "Llista les aplicacions o els entorns d'execució instal·lats."
 
 #: ../apps/ll-cli/src/main.cpp:400
 msgid ""
@@ -381,8 +381,7 @@ msgstr ""
 
 #: ../apps/ll-cli/src/main.cpp:426
 msgid "Display or modify information of the repository currently using"
-msgstr ""
-"Mostra o modifica la informació del repositori que s'utilitza actualment"
+msgstr "Mostra o modifica la informació del repositori que s'usa actualment."
 
 #: ../apps/ll-cli/src/main.cpp:428
 msgid "Usage: ll-cli repo SUBCOMMAND [OPTIONS]"
@@ -391,11 +390,11 @@ msgstr "Ús: ll-cli repo SUBORDRE [OPCIONS]"
 #. add repo sub command add
 #: ../apps/ll-cli/src/main.cpp:432 ../apps/ll-builder/src/main.cpp:372
 msgid "Add a new repository"
-msgstr "Afegiu un repositori nou"
+msgstr "Afegeix un repositori nou."
 
 #: ../apps/ll-cli/src/main.cpp:433
 msgid "Usage: ll-cli repo add [OPTIONS] NAME URL"
-msgstr "Ús: ll-cli repo add [OPCIONS] NOM D'URL"
+msgstr "Ús: ll-cli repo add [OPCIONS] NOM DE L'URL"
 
 #: ../apps/ll-cli/src/main.cpp:434 ../apps/ll-cli/src/main.cpp:447
 #: ../apps/ll-builder/src/main.cpp:374

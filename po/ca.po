@@ -4,8 +4,8 @@
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
 # 
 # Translators:
-# Jaime Muñoz Martín <jmmartin_5@outlook.com>, 2025
 # Davidmp <medipas@gmail.com>, 2025
+# Jaime Muñoz Martín <jmmartin_5@outlook.com>, 2025
 # 
 #, fuzzy
 msgid ""
@@ -14,7 +14,7 @@ msgstr ""
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2025-04-11 10:41+0800\n"
 "PO-Revision-Date: 2025-04-11 01:38+0000\n"
-"Last-Translator: Davidmp <medipas@gmail.com>, 2025\n"
+"Last-Translator: Jaime Muñoz Martín <jmmartin_5@outlook.com>, 2025\n"
 "Language-Team: Catalan (https://app.transifex.com/linuxdeepin/teams/3976/ca/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -795,56 +795,56 @@ msgstr "Camí del fitxer de la capa"
 
 #: ../apps/ll-builder/src/main.cpp:350
 msgid "Import linyaps layer dir to build repo"
-msgstr ""
+msgstr "Importa el directori de la capa linyaps per crear un repositori"
 
 #: ../apps/ll-builder/src/main.cpp:352
 msgid "Usage: ll-builder import-dir PATH"
-msgstr ""
+msgstr "Ús: ll-builder import-dir CAMÍ"
 
 #: ../apps/ll-builder/src/main.cpp:353
 msgid "Layer dir path"
-msgstr ""
+msgstr "Camí del directori de la capa"
 
 #: ../apps/ll-builder/src/main.cpp:359
 msgid "Extract linyaps layer to dir"
-msgstr ""
+msgstr "Extreu la capa linyaps al directori"
 
 #: ../apps/ll-builder/src/main.cpp:360
 msgid "Usage: ll-builder extract [OPTIONS] LAYER DIR"
-msgstr ""
+msgstr "Ús: ll-builder extract [OPCIONS] DIRECTORI DE CAPES"
 
 #: ../apps/ll-builder/src/main.cpp:364
 msgid "Destination directory"
-msgstr ""
+msgstr "Directori de destinació"
 
 #. add build repo
 #: ../apps/ll-builder/src/main.cpp:367
 msgid "Display and manage repositories"
-msgstr ""
+msgstr "Mostra i gestiona els repositoris"
 
 #: ../apps/ll-builder/src/main.cpp:368
 msgid "Usage: ll-builder repo [OPTIONS] SUBCOMMAND"
-msgstr ""
+msgstr "Ús: ll-builder repo [OPCIONS] SUBORDRES"
 
 #: ../apps/ll-builder/src/main.cpp:373
 msgid "Usage: ll-builder repo add [OPTIONS] NAME URL"
-msgstr ""
+msgstr "Ús: ll-builder repo add [OPCIONS] NOM D'URL"
 
 #: ../apps/ll-builder/src/main.cpp:386
 msgid "Usage: ll-builder repo remove [OPTIONS] NAME"
-msgstr ""
+msgstr "Ús: ll-builder repo remove [OPCIONS] NOM"
 
 #: ../apps/ll-builder/src/main.cpp:393
 msgid "Usage: ll-builder repo update [OPTIONS] NAME URL"
-msgstr ""
+msgstr "Ús: ll-builder repo update [OPCIONS] NOM D'URL"
 
 #: ../apps/ll-builder/src/main.cpp:404
 msgid "Usage: ll-builder repo set-default [OPTIONS] NAME"
-msgstr ""
+msgstr "Ús: ll-builder repo set-default [OPCIONS] NOM"
 
 #: ../apps/ll-builder/src/main.cpp:411
 msgid "Usage: ll-builder repo show [OPTIONS]"
-msgstr ""
+msgstr "Ús: ll-builder repo show [OPCIONS]"
 
 #: ../apps/ll-builder/src/main.cpp:416
 msgid "linyaps build tool version "

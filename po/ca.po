@@ -694,31 +694,32 @@ msgstr "Construeix en un entorn de xarxa aïllat."
 
 #: ../apps/ll-builder/src/main.cpp:259
 msgid "Run builded linyaps app"
-msgstr ""
+msgstr "Executa l'aplicació de linyaps creada."
 
 #: ../apps/ll-builder/src/main.cpp:260
 msgid "Usage: ll-builder run [OPTIONS] [COMMAND...]"
-msgstr ""
+msgstr "Ús: ll-builder run [OPCIONS] [ORDRE..]"
 
 #: ../apps/ll-builder/src/main.cpp:265
 msgid "Only use local files"
-msgstr ""
+msgstr "Usa només fitxers locals."
 
 #: ../apps/ll-builder/src/main.cpp:269
 msgid "Run specified module. eg: --modules binary,develop"
-msgstr ""
+msgstr "Executa el mòdul especificat. Ex.: --modules binary,develop"
 
 #: ../apps/ll-builder/src/main.cpp:275 ../apps/ll-builder/src/main.cpp:279
 msgid "Enter the container to execute command instead of running application"
 msgstr ""
+"Entreu al contenidor per executar l'ordre en lloc d'executar l'aplicació."
 
 #: ../apps/ll-builder/src/main.cpp:281
 msgid "Run in debug mode (enable develop module)"
-msgstr ""
+msgstr "Executa en mode de depuració (activa el mòdul de desenvolupament)."
 
 #: ../apps/ll-builder/src/main.cpp:283
 msgid "List builded linyaps app"
-msgstr ""
+msgstr "Llista les aplicacions de linyaps creades."
 
 #: ../apps/ll-builder/src/main.cpp:284
 msgid "Usage: ll-builder list [OPTIONS]"

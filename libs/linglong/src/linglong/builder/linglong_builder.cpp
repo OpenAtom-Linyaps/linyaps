@@ -569,7 +569,7 @@ utils::error::Result<package::Reference> Builder::clearDependency(const std::str
     auto res =
       repo.clearReference(*fuzzyRef, { .forceRemote = !onlyLocal, .fallbackToRemote = false });
     if (!res) {
-        return LINGLONG_ERR("ref doesn't exist", fuzzyRef);
+        return LINGLONG_ERR(QString{"ref doesn't exist %1"}.arg(fuzzyRef->toString()));
     }
 
     return res;

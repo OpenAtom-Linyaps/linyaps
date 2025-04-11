@@ -755,43 +755,43 @@ msgstr "Exporta al fitxer de capa linyaps."
 
 #: ../apps/ll-builder/src/main.cpp:313
 msgid "Use custom loader"
-msgstr ""
+msgstr "Usa un carregador personalitzat."
 
 #: ../apps/ll-builder/src/main.cpp:317
 msgid "Don't export the develop module"
-msgstr ""
+msgstr "No exportis el mòdul de desenvolupament."
 
 #: ../apps/ll-builder/src/main.cpp:323
 msgid "Push linyaps app to remote repo"
-msgstr ""
+msgstr "Envieu l'aplicació linyaps al repositori remot."
 
 #: ../apps/ll-builder/src/main.cpp:324
 msgid "Usage: ll-builder push [OPTIONS]"
-msgstr ""
+msgstr "Ús: ll-builder push [OPCIONS]"
 
 #: ../apps/ll-builder/src/main.cpp:329
 msgid "Remote repo url"
-msgstr ""
+msgstr "URL del repositori remot"
 
 #: ../apps/ll-builder/src/main.cpp:332
 msgid "Remote repo name"
-msgstr ""
+msgstr "Nom del repositori remot"
 
 #: ../apps/ll-builder/src/main.cpp:335
 msgid "Push single module"
-msgstr ""
+msgstr "Envia un mòdul únic."
 
 #: ../apps/ll-builder/src/main.cpp:340
 msgid "Import linyaps layer to build repo"
-msgstr ""
+msgstr "Importa la capa de linyaps al repositori de construcció."
 
 #: ../apps/ll-builder/src/main.cpp:341
 msgid "Usage: ll-builder import [OPTIONS] LAYER"
-msgstr ""
+msgstr "Ús: ll-builder import [OPCIONS] CAPA"
 
 #: ../apps/ll-builder/src/main.cpp:342 ../apps/ll-builder/src/main.cpp:361
 msgid "Layer file path"
-msgstr ""
+msgstr "Camí del fitxer de la capa"
 
 #: ../apps/ll-builder/src/main.cpp:350
 msgid "Import linyaps layer dir to build repo"

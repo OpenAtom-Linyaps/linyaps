@@ -5,6 +5,7 @@
 # 
 # Translators:
 # Gary Wang <wzc782970009@gmail.com>, 2025
+# Zaraza, 2025
 # 
 #, fuzzy
 msgid ""
@@ -13,7 +14,7 @@ msgstr ""
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2025-04-11 10:41+0800\n"
 "PO-Revision-Date: 2025-04-11 01:38+0000\n"
-"Last-Translator: Gary Wang <wzc782970009@gmail.com>, 2025\n"
+"Last-Translator: Zaraza, 2025\n"
 "Language-Team: Spanish (https://app.transifex.com/linuxdeepin/teams/3976/es/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -272,11 +273,11 @@ msgstr "Desinstalar un módulo especificado"
 #. below options are used for compatibility with old ll-cli
 #: ../apps/ll-cli/src/main.cpp:343
 msgid "Remove all unused modules"
-msgstr ""
+msgstr "Eliminar todos los módulos no utilizados"
 
 #: ../apps/ll-cli/src/main.cpp:347
 msgid "Uninstall all modules"
-msgstr ""
+msgstr "Desinstalar todos los módulos"
 
 #: ../apps/ll-cli/src/main.cpp:353
 msgid "Upgrade the application or runtimes"
@@ -342,7 +343,7 @@ msgstr "incluir aplicación en desarrollo en el resultado"
 
 #: ../apps/ll-cli/src/main.cpp:393
 msgid "Show all results"
-msgstr ""
+msgstr "Mostrar todos los resultados"
 
 #: ../apps/ll-cli/src/main.cpp:397
 msgid "List installed applications or runtimes"
@@ -457,7 +458,7 @@ msgstr "Uso: ll-cli repo show [OPCIONES]"
 
 #: ../apps/ll-cli/src/main.cpp:486
 msgid "Set the priority of the repo"
-msgstr ""
+msgstr "Establecer prioridad del repositorio"
 
 #: ../apps/ll-cli/src/main.cpp:487
 msgid "Usage: ll-cli repo set-priority ALIAS PRIORITY"
@@ -465,7 +466,7 @@ msgstr ""
 
 #: ../apps/ll-cli/src/main.cpp:492
 msgid "Priority of the repo"
-msgstr ""
+msgstr "Prioridad del repositorio"
 
 #: ../apps/ll-cli/src/main.cpp:499
 msgid "Display information about installed apps or runtimes"
@@ -524,7 +525,7 @@ msgstr "Formato de PID no válido"
 
 #: ../apps/ll-cli/src/main.cpp:555
 msgid "Specify the installed app(base or runtime)"
-msgstr ""
+msgstr "Especifique la aplicación instalada (base o tiempo de ejecución)"
 
 #: ../apps/ll-cli/src/main.cpp:566
 msgid "linyaps CLI version "
@@ -558,7 +559,7 @@ msgstr "Descripción"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:106
 msgid "No containers are running."
-msgstr ""
+msgstr "No hay ningún contenedor en ejecución."
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:110
 msgid "App"
@@ -574,19 +575,19 @@ msgstr "Pid"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:177
 msgid "Url"
-msgstr ""
+msgstr "Url"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:178
 msgid "Alias"
-msgstr ""
+msgstr "Alias"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:179
 msgid "Priority"
-msgstr ""
+msgstr "Prioridad"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:237
 msgid "No apps available for update."
-msgstr ""
+msgstr "No hay aplicaciones para actualizar."
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:250
 msgid "Installed"
@@ -691,7 +692,7 @@ msgstr "Omitir el despojo de los símbolos de depuración"
 
 #: ../apps/ll-builder/src/main.cpp:254
 msgid "Build in an isolated network environment"
-msgstr ""
+msgstr "Construir en un entorno de red aislado"
 
 #: ../apps/ll-builder/src/main.cpp:259
 msgid "Run builded linyaps app"

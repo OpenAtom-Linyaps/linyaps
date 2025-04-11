@@ -5,6 +5,7 @@
 # 
 # Translators:
 # Gary Wang <wzc782970009@gmail.com>, 2025
+# chang Gao, 2025
 # 
 #, fuzzy
 msgid ""
@@ -13,7 +14,7 @@ msgstr ""
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2025-04-11 10:41+0800\n"
 "PO-Revision-Date: 2025-04-11 01:38+0000\n"
-"Last-Translator: Gary Wang <wzc782970009@gmail.com>, 2025\n"
+"Last-Translator: chang Gao, 2025\n"
 "Language-Team: Chinese (China) (https://app.transifex.com/linuxdeepin/teams/3976/zh_CN/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -261,11 +262,11 @@ msgstr "卸载指定模块"
 #. below options are used for compatibility with old ll-cli
 #: ../apps/ll-cli/src/main.cpp:343
 msgid "Remove all unused modules"
-msgstr ""
+msgstr "移除所有不使用的模块"
 
 #: ../apps/ll-cli/src/main.cpp:347
 msgid "Uninstall all modules"
-msgstr ""
+msgstr "卸载所有模块"
 
 #: ../apps/ll-cli/src/main.cpp:353
 msgid "Upgrade the application or runtimes"
@@ -327,7 +328,7 @@ msgstr "搜索结果中包括应用调试包"
 
 #: ../apps/ll-cli/src/main.cpp:393
 msgid "Show all results"
-msgstr ""
+msgstr "显示所有结果"
 
 #: ../apps/ll-cli/src/main.cpp:397
 msgid "List installed applications or runtimes"
@@ -440,15 +441,15 @@ msgstr "用法: ll-cli repo show [选项]"
 
 #: ../apps/ll-cli/src/main.cpp:486
 msgid "Set the priority of the repo"
-msgstr ""
+msgstr "设置仓库优先级"
 
 #: ../apps/ll-cli/src/main.cpp:487
 msgid "Usage: ll-cli repo set-priority ALIAS PRIORITY"
-msgstr ""
+msgstr "用法：ll-cli repo set-priority ALIAS PRIORITY"
 
 #: ../apps/ll-cli/src/main.cpp:492
 msgid "Priority of the repo"
-msgstr ""
+msgstr "仓库优先级"
 
 #: ../apps/ll-cli/src/main.cpp:499
 msgid "Display information about installed apps or runtimes"
@@ -505,7 +506,7 @@ msgstr "无效的pid格式"
 
 #: ../apps/ll-cli/src/main.cpp:555
 msgid "Specify the installed app(base or runtime)"
-msgstr ""
+msgstr "指定已安装的应用（base或runtime）"
 
 #: ../apps/ll-cli/src/main.cpp:566
 msgid "linyaps CLI version "
@@ -539,7 +540,7 @@ msgstr "描述"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:106
 msgid "No containers are running."
-msgstr ""
+msgstr "没有正在运行的容器"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:110
 msgid "App"

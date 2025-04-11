@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 # SPDX-FileCopyrightText: 2024 UnionTech Software Technology Co., Ltd.
 #
@@ -6,13 +6,11 @@
 
 set -e
 
-ld_so_conf_generator()
-{
-	local ld_so_conf="$1/ld.so.conf"
-	local app_id="$2"
-	local gnu_arch_triplet=$3
-
-cat << EOF > ${ld_so_conf}
+ld_so_conf_generator() {
+    local ld_so_conf="$1/ld.so.conf"
+    local app_id="$2"
+    local gnu_arch_triplet=$3
+    cat <<EOF >"${ld_so_conf}"
 /runtime/lib
 /runtime/lib/${gnu_arch_triplet}
 include /runtime/etc/ld.so.conf
@@ -22,20 +20,18 @@ include /opt/apps/${app_id}/files/etc/ld.so.conf
 EOF
 }
 
-ld_so_cache_generator()
-{
-	local ld_so_cache="$1/ld.so.cache"
-	ldconfig -C ${ld_so_cache}
+ld_so_cache_generator() {
+    local ld_so_cache="$1/ld.so.cache"
+    ldconfig -C "${ld_so_cache}"
 }
 
-main()
-{
-	local cache_root=$1
-	local id=$2
-	local triplet=$3
-	# conf should be generated before cache
-	ld_so_conf_generator ${cache_root} ${id} ${triplet}
-	ld_so_cache_generator ${cache_root}
+main() {
+    local cache_root=$1
+    local id=$2
+    local triplet=$3
+    # conf should be generated before cache
+    ld_so_conf_generator "${cache_root}" "${id}" "${triplet}"
+    ld_so_cache_generator "${cache_root}"
 }
 
-main $@
+main "$@"

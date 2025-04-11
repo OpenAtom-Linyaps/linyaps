@@ -1395,8 +1395,6 @@ bool ContainerCfgBuilder::selfAdjustingMount(std::vector<Mount> &mounts) noexcep
     }
     config.root = { .path = "rootfs", .readonly = true };
 
-    config.linux_->rootfsPropagation = RootfsPropagation::Unbindable;
-
     for (size_t i = 0; i < mounts.size(); ++i) {
         auto &mount = mounts[i];
 

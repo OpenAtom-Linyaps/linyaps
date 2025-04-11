@@ -2301,15 +2301,15 @@ utils::error::Result<void> PackageManager::generateCache(const package::Referenc
     }
     // Usage: ld-cache-generator [cacheRoot] [id] [gnu_arch_triplet]
     //        font-cache-generator [cacheRoot] [id]
-    const auto ldGenerateCmd = std::string{ "exec" } + " " + ldGenerator + " " + appCacheDest + " "
-      + ref.id.toStdString() + " " + currentArch->getTriplet().toStdString();
+    const auto ldGenerateCmd = ldGenerator + " " + appCacheDest + " " + ref.id.toStdString() + " "
+      + currentArch->getTriplet().toStdString();
 #ifdef LINGLONG_FONT_CACHE_GENERATOR
     const std::string fontGenerateCmd =
       fontGenerator + " " + appCacheDest + " " + ref.id.toStdString();
     process.args = std::vector<std::string>{ "bash", "-c", ldGenerateCmd + ";" + fontGenerateCmd };
 #endif
 
-    process.args = std::vector<std::string>{ "bash", "-c", ldGenerateCmd };
+    process.args = std::vector<std::string>{ ldGenerateCmd };
 
     // Note: XDG_RUNTIME_DIR is not set in PM, the ll-box will finally fallback to /run/ll-box.
     //       But PM has no write permission in that place, so we should specific the root path.

@@ -767,60 +767,60 @@ msgstr "Tason tiedostopolku"
 
 #: ../apps/ll-builder/src/main.cpp:350
 msgid "Import linyaps layer dir to build repo"
-msgstr ""
+msgstr "Tuo linyaps kerroshakemisto rakennus-arkistoon"
 
 #: ../apps/ll-builder/src/main.cpp:352
 msgid "Usage: ll-builder import-dir PATH"
-msgstr ""
+msgstr "Käyttö: ll-builder import-dir PATH"
 
 #: ../apps/ll-builder/src/main.cpp:353
 msgid "Layer dir path"
-msgstr ""
+msgstr "Tason hakemistopolku"
 
 #: ../apps/ll-builder/src/main.cpp:359
 msgid "Extract linyaps layer to dir"
-msgstr ""
+msgstr "Pura linyaps kerros hakemistoon"
 
 #: ../apps/ll-builder/src/main.cpp:360
 msgid "Usage: ll-builder extract [OPTIONS] LAYER DIR"
-msgstr ""
+msgstr "Käyttö: ll-builder extract [OPTIONS] LAYER DIR"
 
 #: ../apps/ll-builder/src/main.cpp:364
 msgid "Destination directory"
-msgstr ""
+msgstr "Kohdehakemisto"
 
 #. add build repo
 #: ../apps/ll-builder/src/main.cpp:367
 msgid "Display and manage repositories"
-msgstr ""
+msgstr "Näytä ja hallitse ohjelma-arkistoja"
 
 #: ../apps/ll-builder/src/main.cpp:368
 msgid "Usage: ll-builder repo [OPTIONS] SUBCOMMAND"
-msgstr ""
+msgstr "Käyttö: ll-builder repo [OPTIONS] SUBCOMMAND"
 
 #: ../apps/ll-builder/src/main.cpp:373
 msgid "Usage: ll-builder repo add [OPTIONS] NAME URL"
-msgstr ""
+msgstr "Käyttö: ll-builder repo add [OPTIONS] NAME URL"
 
 #: ../apps/ll-builder/src/main.cpp:386
 msgid "Usage: ll-builder repo remove [OPTIONS] NAME"
-msgstr ""
+msgstr "Käyttö: ll-builder repo remove [OPTIONS] NAME"
 
 #: ../apps/ll-builder/src/main.cpp:393
 msgid "Usage: ll-builder repo update [OPTIONS] NAME URL"
-msgstr ""
+msgstr "Käyttö: ll-builder repo update [OPTIONS] NAME URL"
 
 #: ../apps/ll-builder/src/main.cpp:404
 msgid "Usage: ll-builder repo set-default [OPTIONS] NAME"
-msgstr ""
+msgstr "Käyttö: ll-builder repo set-default [OPTIONS] NAME"
 
 #: ../apps/ll-builder/src/main.cpp:411
 msgid "Usage: ll-builder repo show [OPTIONS]"
-msgstr ""
+msgstr "Käyttö: ll-builder repo show [OPTIONS]"
 
 #: ../apps/ll-builder/src/main.cpp:416
 msgid "linyaps build tool version "
-msgstr ""
+msgstr "linyaps build tool versio "
 
 #: ../apps/ll-dialog/src/permissionDialog.cpp:34
 msgid "Whether to allow %1 to access %2?"

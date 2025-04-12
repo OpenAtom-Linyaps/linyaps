@@ -92,7 +92,7 @@ msgstr "Käynnissä olevien sovellusten hallinta"
 
 #: ../apps/ll-cli/src/main.cpp:210
 msgid "Finding applications and runtimes"
-msgstr "Sovellusten ja suoritusaikojen etsiminen"
+msgstr "Sovellusten ja ajoympäristön etsiminen"
 
 #: ../apps/ll-cli/src/main.cpp:211
 msgid "Managing remote repositories"
@@ -191,7 +191,7 @@ msgstr "Määritä käynnissä oleva sovellus"
 
 #: ../apps/ll-cli/src/main.cpp:296
 msgid "Installing an application or runtime"
-msgstr "Sovelluksen tai ympäristön asentaminen"
+msgstr "Sovelluksen tai ajoympäristön asentaminen"
 
 #: ../apps/ll-cli/src/main.cpp:299
 msgid ""
@@ -248,7 +248,7 @@ msgstr "Vastaa kyllä ​​kaikkiin kysymyksiin"
 
 #: ../apps/ll-cli/src/main.cpp:331
 msgid "Uninstall the application or runtimes"
-msgstr "Poista sovellus tai ympäristö"
+msgstr "Poista sovellus tai ajoympäristö"
 
 #: ../apps/ll-cli/src/main.cpp:334
 msgid "Usage: ll-cli uninstall [OPTIONS] APP"
@@ -273,7 +273,7 @@ msgstr "Poista kaikki moduulit"
 
 #: ../apps/ll-cli/src/main.cpp:353
 msgid "Upgrade the application or runtimes"
-msgstr "Päivitä sovellus tai ajonaikainen ympäristö"
+msgstr "Päivitä sovellus tai ajoympäristö"
 
 #: ../apps/ll-cli/src/main.cpp:356
 msgid "Usage: ll-cli upgrade [OPTIONS] [APP]"
@@ -292,7 +292,8 @@ msgid ""
 "Search the applications/runtimes containing the specified text from the "
 "remote repository"
 msgstr ""
-"Etsi ohjelmistoarkistosta tietyn tekstin sisältävät sovellukset/ympäristöt"
+"Etsi ohjelmistoarkistosta tietyn tekstin sisältävät "
+"sovellukset/ajoympäristöt"
 
 #: ../apps/ll-cli/src/main.cpp:371
 msgid ""
@@ -329,7 +330,7 @@ msgstr "Näytä kaikki tulokset"
 
 #: ../apps/ll-cli/src/main.cpp:397
 msgid "List installed applications or runtimes"
-msgstr "Luettele asennetut sovellukset tai ympäristöt"
+msgstr "Luettele asennetut sovellukset tai ajoympäristöt"
 
 #: ../apps/ll-cli/src/main.cpp:400
 msgid ""
@@ -443,7 +444,7 @@ msgstr "Arkiston prioriteetti"
 
 #: ../apps/ll-cli/src/main.cpp:499
 msgid "Display information about installed apps or runtimes"
-msgstr "Näytä tiedot sovelluksista tai ympäristöistä"
+msgstr "Näytä tiedot sovelluksista tai ajoympäristöistä"
 
 #: ../apps/ll-cli/src/main.cpp:502
 msgid "Usage: ll-cli info [OPTIONS] APP"
@@ -468,7 +469,7 @@ msgstr "Määritä sovelluksen id-tunnus"
 #. add sub command prune
 #: ../apps/ll-cli/src/main.cpp:522
 msgid "Remove the unused base or runtime"
-msgstr "Poista käyttämätön alusta tai ympäristö"
+msgstr "Poista käyttämätön alusta tai ajoympäristö"
 
 #: ../apps/ll-cli/src/main.cpp:524
 msgid "Usage: ll-cli prune [OPTIONS]"
@@ -633,7 +634,7 @@ msgstr ""
 
 #: ../apps/ll-builder/src/main.cpp:238
 msgid "Build full develop packages, runtime requires"
-msgstr "Rakenna kehityspaketteja kokonaan, pitkä suoritusaika"
+msgstr "Rakenna kehityspaketteja kokonaan, ajoympäristö tarvitaan"
 
 #: ../apps/ll-builder/src/main.cpp:240
 msgid "Skip fetch sources"
@@ -742,15 +743,15 @@ msgstr "Käyttö: ll-builder push [OPTIONS]"
 
 #: ../apps/ll-builder/src/main.cpp:329
 msgid "Remote repo url"
-msgstr ""
+msgstr "Ulkoisen arkiston verkko-osoite"
 
 #: ../apps/ll-builder/src/main.cpp:332
 msgid "Remote repo name"
-msgstr ""
+msgstr "Ulkoisen arkiston nimi"
 
 #: ../apps/ll-builder/src/main.cpp:335
 msgid "Push single module"
-msgstr ""
+msgstr "Lähetä yksittäinen moduuli"
 
 #: ../apps/ll-builder/src/main.cpp:340
 msgid "Import linyaps layer to build repo"

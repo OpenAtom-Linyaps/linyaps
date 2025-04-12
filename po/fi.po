@@ -682,6 +682,7 @@ msgstr "Suorita tiettyjä moduuleja, kuten: --modules binary,develop"
 #: ../apps/ll-builder/src/main.cpp:275 ../apps/ll-builder/src/main.cpp:279
 msgid "Enter the container to execute command instead of running application"
 msgstr ""
+"Kirjoita kontin nimi, suorittaaksesi komento sovelluksen suorittamiseksi"
 
 #: ../apps/ll-builder/src/main.cpp:281
 msgid "Run in debug mode (enable develop module)"

@@ -637,47 +637,47 @@ msgstr "Rakenna kehityspaketteja kokonaan, pitkä suoritusaika"
 
 #: ../apps/ll-builder/src/main.cpp:240
 msgid "Skip fetch sources"
-msgstr "Ohita fetch-lähteet"
+msgstr "Ohita fetch sources"
 
 #: ../apps/ll-builder/src/main.cpp:241
 msgid "Skip pull dependency"
-msgstr "Ohita pull-riippuvuudet"
+msgstr "Ohita pull dependency"
 
 #: ../apps/ll-builder/src/main.cpp:244
 msgid "Skip run container"
-msgstr ""
+msgstr "Ohita run container"
 
 #: ../apps/ll-builder/src/main.cpp:247
 msgid "Skip commit build output"
-msgstr ""
+msgstr "Ohita commit build output"
 
 #: ../apps/ll-builder/src/main.cpp:248
 msgid "Skip output check"
-msgstr ""
+msgstr "Ohita output check"
 
 #: ../apps/ll-builder/src/main.cpp:251
 msgid "Skip strip debug symbols"
-msgstr ""
+msgstr "Ohita strip debug symbols"
 
 #: ../apps/ll-builder/src/main.cpp:254
 msgid "Build in an isolated network environment"
-msgstr ""
+msgstr "Rakenna eristettyyn verkkoympäristöön"
 
 #: ../apps/ll-builder/src/main.cpp:259
 msgid "Run builded linyaps app"
-msgstr ""
+msgstr "Suorita rakennettu linyaps sovellus"
 
 #: ../apps/ll-builder/src/main.cpp:260
 msgid "Usage: ll-builder run [OPTIONS] [COMMAND...]"
-msgstr ""
+msgstr "Käyttö: ll-builder run [OPTIONS] [COMMAND...]"
 
 #: ../apps/ll-builder/src/main.cpp:265
 msgid "Only use local files"
-msgstr ""
+msgstr "Käytä vain paikallisia tiedostoja"
 
 #: ../apps/ll-builder/src/main.cpp:269
 msgid "Run specified module. eg: --modules binary,develop"
-msgstr ""
+msgstr "Suorita tiettyjä moduuleja, kuten: --modules binary,develop"
 
 #: ../apps/ll-builder/src/main.cpp:275 ../apps/ll-builder/src/main.cpp:279
 msgid "Enter the container to execute command instead of running application"

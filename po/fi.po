@@ -37,7 +37,7 @@ msgid ""
 "A CLI program to run application and manage application and runtime\n"
 msgstr ""
 "linyaps CLI\n"
-"Ohjelma sovellusten suorittamiseen ja suoritusajan hallintaan\n"
+"Ohjelma sovellusten suorittamiseen ja ajoympäristön hallintaan\n"
 
 #: ../apps/ll-cli/src/main.cpp:160 ../apps/ll-builder/src/main.cpp:172
 msgid "Print this help message and exit"
@@ -726,19 +726,19 @@ msgstr "Vie linyaps tiedosto-kerrokseen"
 
 #: ../apps/ll-builder/src/main.cpp:313
 msgid "Use custom loader"
-msgstr ""
+msgstr "Käytä mukautettua lataajaa"
 
 #: ../apps/ll-builder/src/main.cpp:317
 msgid "Don't export the develop module"
-msgstr ""
+msgstr "Älä vie kehitysmoduulia"
 
 #: ../apps/ll-builder/src/main.cpp:323
 msgid "Push linyaps app to remote repo"
-msgstr ""
+msgstr "Siirrä linyaps sovellus ulkoiseen ohjelma-arkistoon"
 
 #: ../apps/ll-builder/src/main.cpp:324
 msgid "Usage: ll-builder push [OPTIONS]"
-msgstr ""
+msgstr "Käyttö: ll-builder push [OPTIONS]"
 
 #: ../apps/ll-builder/src/main.cpp:329
 msgid "Remote repo url"

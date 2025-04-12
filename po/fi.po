@@ -96,7 +96,7 @@ msgstr "Sovellusten ja ajoympäristön etsiminen"
 
 #: ../apps/ll-cli/src/main.cpp:211
 msgid "Managing remote repositories"
-msgstr "Sovellusarkiston hallinta"
+msgstr "Arkistojen hallinta palvelimelta"
 
 #. add sub command run
 #: ../apps/ll-cli/src/main.cpp:214
@@ -292,7 +292,7 @@ msgid ""
 "Search the applications/runtimes containing the specified text from the "
 "remote repository"
 msgstr ""
-"Etsi ohjelmistoarkistosta tietyn tekstin sisältävät "
+"Etsi palvelimen arkistosta tietyn tekstin sisältävät "
 "sovellukset/ajoympäristöt"
 
 #: ../apps/ll-cli/src/main.cpp:371
@@ -755,7 +755,7 @@ msgstr "Älä vie kehitysmoduulia"
 
 #: ../apps/ll-builder/src/main.cpp:323
 msgid "Push linyaps app to remote repo"
-msgstr "Siirrä linyaps sovellus ulkoiseen ohjelma-arkistoon"
+msgstr "Siirrä linyaps sovellus palvelimen arkistoon"
 
 #: ../apps/ll-builder/src/main.cpp:324
 msgid "Usage: ll-builder push [OPTIONS]"
@@ -763,11 +763,11 @@ msgstr "Käyttö: ll-builder push [OPTIONS]"
 
 #: ../apps/ll-builder/src/main.cpp:329
 msgid "Remote repo url"
-msgstr "Ulkoisen arkiston verkko-osoite"
+msgstr "Arkiston verkko-osoite"
 
 #: ../apps/ll-builder/src/main.cpp:332
 msgid "Remote repo name"
-msgstr "Ulkoisen arkiston nimi"
+msgstr "Arkiston nimi"
 
 #: ../apps/ll-builder/src/main.cpp:335
 msgid "Push single module"

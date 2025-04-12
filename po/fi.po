@@ -514,69 +514,71 @@ msgstr "Nimi"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:73
 msgid "Version"
-msgstr ""
+msgstr "versio"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:74
 msgid "Channel"
-msgstr ""
+msgstr "Kanava"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:75
 msgid "Module"
-msgstr ""
+msgstr "Moduuli"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:76
 msgid "Description"
-msgstr ""
+msgstr "Kuvaus"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:106
 msgid "No containers are running."
-msgstr ""
+msgstr "Kontteja ei ole käynnissä."
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:110
 msgid "App"
-msgstr ""
+msgstr "Sovellus"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:111
 msgid "ContainerID"
-msgstr ""
+msgstr "Kontti-id"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:112
 msgid "Pid"
-msgstr ""
+msgstr "Pid"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:177
 msgid "Url"
-msgstr ""
+msgstr "Osoite"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:178
 msgid "Alias"
-msgstr ""
+msgstr "Alias"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:179
 msgid "Priority"
-msgstr ""
+msgstr "Prioriteetti"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:237
 msgid "No apps available for update."
-msgstr ""
+msgstr "Päivitettäviä sovelluksia ei ole."
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:250
 msgid "Installed"
-msgstr ""
+msgstr "Asennettu"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:251
 msgid "New"
-msgstr ""
+msgstr "Uusi"
 
 #: ../apps/ll-builder/src/main.cpp:170
 msgid ""
 "linyaps builder CLI \n"
 "A CLI program to build linyaps application\n"
 msgstr ""
+"linyaps builder CLI \n"
+"Ohjelma jolla linyaps-sovellukset käännetään\n"
 
 #: ../apps/ll-builder/src/main.cpp:175
 msgid "Usage: ll-builder [OPTIONS] [SUBCOMMAND]"
-msgstr ""
+msgstr "Käyttö: ll-builder [OPTIONS] [SUBCOMMAND]"
 
 #: ../apps/ll-builder/src/main.cpp:177
 msgid ""

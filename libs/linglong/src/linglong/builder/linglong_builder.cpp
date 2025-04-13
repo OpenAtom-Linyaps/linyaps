@@ -731,6 +731,7 @@ utils::error::Result<void> Builder::processBuildDepends() noexcept
       .addGIdMapping(gid, gid, 1)
       .bindSys()
       .bindProc()
+      .bindHostStatics()
       .setExtraMounts(std::vector<ocppi::runtime::config::types::Mount>{
         ocppi::runtime::config::types::Mount{ .destination = "/project",
                                               .options = { { "rbind", "ro" } },
@@ -873,6 +874,7 @@ include /opt/apps/@id@/files/etc/ld.so.conf)";
       .addGIdMapping(gid, gid, 1)
       .bindSys()
       .bindProc()
+      .bindHostStatics()
       .setExtraMounts(std::vector<ocppi::runtime::config::types::Mount>{
         ocppi::runtime::config::types::Mount{ .destination = LINGLONG_BUILDER_HELPER,
                                               .options = { { "rbind", "ro" } },
@@ -1001,6 +1003,7 @@ utils::error::Result<void> Builder::buildStagePreCommit() noexcept
       .addGIdMapping(gid, gid, 1)
       .bindSys()
       .bindProc()
+      .bindHostStatics()
       .setExtraMounts(std::vector<ocppi::runtime::config::types::Mount>{
         ocppi::runtime::config::types::Mount{ .destination = "/project",
                                               .options = { { "rbind", "rw" } },

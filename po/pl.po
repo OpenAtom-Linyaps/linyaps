@@ -38,7 +38,7 @@ msgid ""
 "A CLI program to run application and manage application and runtime\n"
 msgstr ""
 "linyaps CLI\n"
-"Aplikacja wiersza poleceń do uruchamiania i zarządzania aplikacjami i środowiskami wykonawczymi\n"
+"Aplikacja wiersza poleceń do uruchamiania i zarządzania aplikacjami oraz środowiskami wykonawczymi\n"
 
 #: ../apps/ll-cli/src/main.cpp:160 ../apps/ll-builder/src/main.cpp:172
 msgid "Print this help message and exit"

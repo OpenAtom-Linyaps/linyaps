@@ -318,8 +318,12 @@ ContainerCfgBuilder &ContainerCfgBuilder::bindHostStatics() noexcept
         "/usr/share/fonts",
         "/usr/share/icons",
         "/usr/share/themes",
-        "/usr/share/zoneinfo"
+        "/usr/share/zoneinfo",
         "/var/cache/fontconfig",
+        // TODO It's better to move to volatileMount
+        "/etc/localtime",
+        "/etc/resolv.conf",
+        "/etc/timezone",
     };
 
     hostStaticsMount = std::vector<Mount>{};

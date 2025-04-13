@@ -1505,17 +1505,11 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
     return LINGLONG_OK;
 }
 
-utils::error::Result<void> Builder::exportUAB(const QString &destination,
-                                              const ExportOption &option)
+utils::error::Result<void> Builder::exportUAB(const ExportOption &option)
 {
     LINGLONG_TRACE("export uab file");
 
-    QDir destDir(destination);
-    if (!destDir.mkpath(".")) {
-        return LINGLONG_ERR("mkpath " + destination + ": failed");
-    }
-
-    package::UABPackager packager{ destDir };
+    package::UABPackager packager{ workingDir };
 
     if (!option.iconPath.empty()) {
         if (auto ret = packager.setIcon(QFileInfo{ option.iconPath.c_str() }); !ret) {
@@ -1612,18 +1606,10 @@ utils::error::Result<void> Builder::exportUAB(const QString &destination,
     return LINGLONG_OK;
 }
 
-utils::error::Result<void> Builder::exportLayer(const QString &destination,
-                                                const QString &compressor,
+utils::error::Result<void> Builder::exportLayer(const QString &compressor,
                                                 const bool &noExportDevelop)
 {
     LINGLONG_TRACE("export layer file");
-
-    QDir destDir(destination);
-    destDir.mkpath(".");
-
-    if (!destDir.exists()) {
-        return LINGLONG_ERR("mkpath " + destination + ": failed");
-    }
 
     auto ref = currentReference(this->project);
     if (!ref) {
@@ -1649,7 +1635,7 @@ utils::error::Result<void> Builder::exportLayer(const QString &destination,
         }
 
         auto layerFile = QString("%1/%2_%3_%4_%5.layer")
-                           .arg(destDir.absolutePath(),
+                           .arg(workingDir.absolutePath(),
                                 ref->id,
                                 ref->version.toString(),
                                 ref->arch.toString(),

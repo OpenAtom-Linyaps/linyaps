@@ -580,20 +580,28 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     auto *containerBuilder = new linglong::runtime::ContainerBuilder(**ociRuntime);
     containerBuilder->setParent(QCoreApplication::instance());
 
+    std::error_code ec;
+    std::filesystem::path yamlFile = std::filesystem::canonical(filePath, ec);
+    if (ec) {
+        qCritical() << "invalid yaml path: " << QString::fromStdString(filePath);
+        return -1;
+    }
+
+    QDir projectDir(QString::fromStdString(yamlFile.parent_path().string()));
+
     if (buildBuilder->parsed()) {
-        auto yamlFile = QString::fromStdString(filePath);
-        auto project = parseProjectConfig(QDir().absoluteFilePath(yamlFile));
+        auto project = parseProjectConfig(QString::fromStdString(yamlFile.string()));
         if (!project) {
             qCritical() << project.error();
             return -1;
         }
 
         linglong::builder::Builder builder(*project,
-                                           QDir::current(),
+                                           projectDir,
                                            repo,
                                            *containerBuilder,
                                            *builderCfg);
-        builder.projectYamlFile = QDir().absoluteFilePath(yamlFile).toStdString();
+        builder.projectYamlFile = yamlFile;
         auto cfg = builder.getConfig();
 
         std::string buildArch;
@@ -767,15 +775,14 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     }
 
     if (buildRun->parsed()) {
-        auto project =
-          parseProjectConfig(QDir().absoluteFilePath(QString::fromStdString(filePath)));
+        auto project = parseProjectConfig(QString::fromStdString(yamlFile.string()));
         if (!project) {
             qCritical() << project.error();
             return -1;
         }
 
         linglong::builder::Builder builder(*project,
-                                           QDir::current(),
+                                           projectDir,
                                            repo,
                                            *containerBuilder,
                                            *builderCfg);
@@ -815,15 +822,14 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     }
 
     if (buildExport->parsed()) {
-        auto project =
-          parseProjectConfig(QDir().absoluteFilePath(QString::fromStdString(filePath)));
+        auto project = parseProjectConfig(QString::fromStdString(yamlFile.string()));
         if (!project) {
             qCritical() << project.error();
             return -1;
         }
 
         linglong::builder::Builder builder(*project,
-                                           QDir::current(),
+                                           projectDir,
                                            repo,
                                            *containerBuilder,
                                            *builderCfg);
@@ -834,7 +840,7 @@ You can report bugs to the linyaps team under this project: https://github.com/O
             if (!ExportOption.compressor.empty()) {
                 compressor = ExportOption.compressor.c_str();
             }
-            auto result = builder.exportLayer(QDir::currentPath(), compressor, ExportOption.noExportDevelop);
+            auto result = builder.exportLayer(compressor, ExportOption.noExportDevelop);
             if (!result) {
                 qCritical() << result.error();
                 return -1;
@@ -851,7 +857,7 @@ You can report bugs to the linyaps team under this project: https://github.com/O
         if (!ExportOption.compressor.empty()) {
             compressor = ExportOption.compressor.c_str();
         }
-        auto result = builder.exportUAB(QDir::currentPath(), ExportOption);
+        auto result = builder.exportUAB(ExportOption);
         if (!result) {
             qCritical() << result.error();
             return -1;
@@ -892,15 +898,14 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     }
 
     if (buildPush->parsed()) {
-        auto project =
-          parseProjectConfig(QDir().absoluteFilePath(QString::fromStdString(filePath)));
+        auto project = parseProjectConfig(QString::fromStdString(yamlFile.string()));
         if (!project) {
             qCritical() << project.error();
             return -1;
         }
 
         linglong::builder::Builder builder(*project,
-                                           QDir::current(),
+                                           projectDir,
                                            repo,
                                            *containerBuilder,
                                            *builderCfg);

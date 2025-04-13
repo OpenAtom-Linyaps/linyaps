@@ -38,7 +38,7 @@ msgid ""
 "A CLI program to run application and manage application and runtime\n"
 msgstr ""
 "linyaps CLI\n"
-"Aplikacja wiersza poleceń do uruchamiania i zarządzania aplikacjami i środowiskiem wykonawczym\n"
+"Aplikacja wiersza poleceń do uruchamiania i zarządzania aplikacjami i środowiskami wykonawczymi\n"
 
 #: ../apps/ll-cli/src/main.cpp:160 ../apps/ll-builder/src/main.cpp:172
 msgid "Print this help message and exit"
@@ -595,7 +595,7 @@ msgid ""
 "A CLI program to build linyaps application\n"
 msgstr ""
 "linyaps builder CLI \n"
-"Aplikacja wiersza polecenie do budowania aplikacji\n"
+"Aplikacja wiersza poleceń do budowania aplikacji\n"
 
 #: ../apps/ll-builder/src/main.cpp:175
 msgid "Usage: ll-builder [OPTIONS] [SUBCOMMAND]"
@@ -616,28 +616,28 @@ msgstr "Utwórz szablon budowania projektu linyaps"
 
 #: ../apps/ll-builder/src/main.cpp:200
 msgid "Usage: ll-builder create [OPTIONS] NAME"
-msgstr ""
+msgstr "Polecenie: ll-builder create [OPCJE] NAZWA"
 
 #: ../apps/ll-builder/src/main.cpp:201
 msgid "Project name"
-msgstr ""
+msgstr "Nazwa projektu"
 
 #: ../apps/ll-builder/src/main.cpp:213
 msgid "Build a linyaps project"
-msgstr ""
+msgstr "Zbuduj projekt linyaps"
 
 #: ../apps/ll-builder/src/main.cpp:214
 msgid "Usage: ll-builder build [OPTIONS] [COMMAND...]"
-msgstr ""
+msgstr "Polecenie: ll-builder build [OPCJE] [KOMENDA...]"
 
 #: ../apps/ll-builder/src/main.cpp:215 ../apps/ll-builder/src/main.cpp:261
 #: ../apps/ll-builder/src/main.cpp:296 ../apps/ll-builder/src/main.cpp:325
 msgid "File path of the linglong.yaml"
-msgstr ""
+msgstr "Ścieżka pliku linglong.yaml"
 
 #: ../apps/ll-builder/src/main.cpp:219
 msgid "Set the build arch"
-msgstr ""
+msgstr "Ustaw architekturę budowania"
 
 #: ../apps/ll-builder/src/main.cpp:225 ../apps/ll-builder/src/main.cpp:229
 msgid ""
@@ -846,17 +846,17 @@ msgstr ""
 #. button
 #: ../apps/ll-dialog/src/permissionDialog.cpp:43
 msgid "Allow"
-msgstr ""
+msgstr "Zezwól"
 
 #: ../apps/ll-dialog/src/permissionDialog.cpp:48
 #, c-format
 msgid "Deny (%1s)"
-msgstr ""
+msgstr "Odrzuć (%1s)"
 
 #: ../apps/ll-dialog/src/cache_dialog.cpp:53
 msgid "Linglong Package Manager"
-msgstr ""
+msgstr "Menedżer pakietów Linglong"
 
 #: ../apps/ll-dialog/src/cache_dialog.cpp:54
 msgid "is starting"
-msgstr ""
+msgstr "w trakcie uruchamiania"

@@ -63,10 +63,9 @@ public:
     auto build(const QStringList &args = { "/project/linglong/entry.sh" }) noexcept
       -> utils::error::Result<void>;
 
-    auto exportUAB(const QString &destination, const ExportOption &option)
-      -> utils::error::Result<void>;
-    auto exportLayer(const QString &destination, const QString &compressor, const bool &noExportDevelop)
-      -> utils::error::Result<void>;
+    auto exportUAB(const ExportOption &option) -> utils::error::Result<void>;
+    auto exportLayer(const QString &compressor,
+                     const bool &noExportDevelop) -> utils::error::Result<void>;
 
     static auto extractLayer(const QString &layerPath, const QString &destination)
       -> utils::error::Result<void>;

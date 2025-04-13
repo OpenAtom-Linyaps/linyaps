@@ -6,6 +6,7 @@
 # Translators:
 # Gary Wang <wzc782970009@gmail.com>, 2025
 # Zaraza, 2025
+# Isaías Gätjens M <igatjens@gmail.com>, 2025
 # 
 #, fuzzy
 msgid ""
@@ -14,7 +15,7 @@ msgstr ""
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2025-04-11 10:41+0800\n"
 "PO-Revision-Date: 2025-04-11 01:38+0000\n"
-"Last-Translator: Zaraza, 2025\n"
+"Last-Translator: Isaías Gätjens M <igatjens@gmail.com>, 2025\n"
 "Language-Team: Spanish (https://app.transifex.com/linuxdeepin/teams/3976/es/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -24,7 +25,7 @@ msgstr ""
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:58
 msgid "Permission deny, please check whether you are running as root."
-msgstr "Permiso denegado, por favor verifica si estás ejecutando como root."
+msgstr "Permiso denegado, por favor verifique si está ejecutando como root."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2592
 msgid ""

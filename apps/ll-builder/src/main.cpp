@@ -256,7 +256,7 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     // add builder run
     bool debugMode = false;
     std::vector<std::string> execModules;
-    auto buildRun = commandParser.add_subcommand("run", _("Run builded linyaps app"));
+    auto buildRun = commandParser.add_subcommand("run", _("Run built linyaps app"));
     buildRun->usage(_("Usage: ll-builder run [OPTIONS] [COMMAND...]"));
     buildRun->add_option("-f, --file", filePath, _("File path of the linglong.yaml"))
       ->type_name("FILE")
@@ -280,10 +280,10 @@ You can report bugs to the linyaps team under this project: https://github.com/O
       ->group(hiddenGroup);
     buildRun->add_flag("--debug", debugMode, _("Run in debug mode (enable develop module)"));
 
-    auto buildList = commandParser.add_subcommand("list", _("List builded linyaps app"));
+    auto buildList = commandParser.add_subcommand("list", _("List built linyaps app"));
     buildList->usage(_("Usage: ll-builder list [OPTIONS]"));
     std::vector<std::string> removeList;
-    auto buildRemove = commandParser.add_subcommand("remove", _("Remove builded linyaps app"));
+    auto buildRemove = commandParser.add_subcommand("remove", _("Remove built linyaps app"));
     buildRemove->usage(_("Usage: ll-builder remove [OPTIONS] [APP...]"));
     buildRemove->add_option("APP", removeList);
 

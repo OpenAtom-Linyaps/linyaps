@@ -357,7 +357,7 @@ ll-cli install stable:org.deepin.demo/0.0.0.1/x86_64
     cliUpgrade
       ->add_option("APP",
                    options.appid,
-                   _("Specify the application ID.If it not be specified, all "
+                   _("Specify the application ID. If it not be specified, all "
                      "applications will be upgraded"))
       ->check(validatorString);
 
@@ -375,9 +375,9 @@ Example:
 ll-cli search org.deepin.demo
 # find remotely runtime by name
 ll-cli search org.deepin.base --type=runtime
-# find all off app of remote
+# find all of app of remote
 ll-cli search .
-# find all off runtime of remote
+# find all of runtime of remote
 ll-cli search . --type=runtime)"));
     cliSearch->add_option("KEYWORDS", options.appid, _("Specify the Keywords"))
       ->required()

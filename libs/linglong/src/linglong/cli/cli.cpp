@@ -55,7 +55,7 @@
 using namespace linglong::utils::error;
 
 static const std::string permissionNotifyMsg =
-  _("Permission deny, please check whether you are running as root.");
+  _("Permission denied, please check whether you are running as root.");
 
 namespace {
 

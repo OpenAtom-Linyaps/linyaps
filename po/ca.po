@@ -12,7 +12,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-04-11 10:41+0800\n"
+"POT-Creation-Date: 2025-04-14 10:18+0800\n"
 "PO-Revision-Date: 2025-04-11 01:38+0000\n"
 "Last-Translator: Davidmp <medipas@gmail.com>, 2025\n"
 "Language-Team: Catalan (https://app.transifex.com/linuxdeepin/teams/3976/ca/)\n"
@@ -23,8 +23,8 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:58
-msgid "Permission deny, please check whether you are running as root."
-msgstr "Se'n denega el permís. Comproveu si s'executa com a arrel."
+msgid "Permission denied, please check whether you are running as root."
+msgstr ""
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2592
 msgid ""
@@ -287,11 +287,9 @@ msgstr "Ús: ll-cli upgrade [OPCIONS] [APLICACIÓ]"
 
 #: ../apps/ll-cli/src/main.cpp:360
 msgid ""
-"Specify the application ID.If it not be specified, all applications will be "
-"upgraded"
+"Specify the application ID. If it not be specified, all applications will be"
+" upgraded"
 msgstr ""
-"Especifiqueu l'ID de l'aplicació. Si no s'especifica, s'actualitzaran totes "
-"les aplicacions."
 
 #: ../apps/ll-cli/src/main.cpp:367
 msgid ""
@@ -310,22 +308,11 @@ msgid ""
 "ll-cli search org.deepin.demo\n"
 "# find remotely runtime by name\n"
 "ll-cli search org.deepin.base --type=runtime\n"
-"# find all off app of remote\n"
+"# find all of app of remote\n"
 "ll-cli search .\n"
-"# find all off runtime of remote\n"
+"# find all of runtime of remote\n"
 "ll-cli search . --type=runtime"
 msgstr ""
-"Ús: ll-cli search [OPCIONS] PARAULES CLAU\n"
-"\n"
-"Exemple:\n"
-"# cerca l'aplicació de forma remota pel nom\n"
-"ll-cli search org.deepin.demo\n"
-"# cerca l'entorn d'execució de manera remota pel nom\n"
-"ll-cli search org.deepin.base --type=runtime\n"
-"# cerca tota aplicació fora del remot\n"
-"ll-cli search .\n"
-"# cerca tot entorn d'execució fora del remot\n"
-"ll-cli search . --type=runtime"
 
 #: ../apps/ll-cli/src/main.cpp:382
 msgid "Specify the Keywords"
@@ -693,8 +680,8 @@ msgid "Build in an isolated network environment"
 msgstr "Construeix en un entorn de xarxa aïllat."
 
 #: ../apps/ll-builder/src/main.cpp:259
-msgid "Run builded linyaps app"
-msgstr "Executa l'aplicació de linyaps creada."
+msgid "Run built linyaps app"
+msgstr ""
 
 #: ../apps/ll-builder/src/main.cpp:260
 msgid "Usage: ll-builder run [OPTIONS] [COMMAND...]"
@@ -718,16 +705,16 @@ msgid "Run in debug mode (enable develop module)"
 msgstr "Executa en mode de depuració (activa el mòdul de desenvolupament)."
 
 #: ../apps/ll-builder/src/main.cpp:283
-msgid "List builded linyaps app"
-msgstr "Llista les aplicacions de linyaps creades."
+msgid "List built linyaps app"
+msgstr ""
 
 #: ../apps/ll-builder/src/main.cpp:284
 msgid "Usage: ll-builder list [OPTIONS]"
 msgstr "Ús: ll-builder list [OPCIONS]"
 
 #: ../apps/ll-builder/src/main.cpp:286
-msgid "Remove builded linyaps app"
-msgstr "Elimina l'aplicació linyaps creada."
+msgid "Remove built linyaps app"
+msgstr ""
 
 #: ../apps/ll-builder/src/main.cpp:287
 msgid "Usage: ll-builder remove [OPTIONS] [APP...]"

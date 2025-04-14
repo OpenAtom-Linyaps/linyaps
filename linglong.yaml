@@ -1,0 +1,54 @@
+# SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+#
+# SPDX-License-Identifier: LGPL-3.0-or-later
+
+version: "1"
+
+package:
+  id: cn.org.linyaps.builder.utils
+  name: ll-builder-utils
+  version: 0.0.1.0
+  kind: app
+  description: |
+    Utils for ll-builder
+
+command: [/opt/apps/cn.org.linyaps.builder.utils/files/bin/ll-builder-export]
+
+base: org.deepin.base/25.2.0
+
+sources:
+  - kind: archive
+    url:  https://github.com/erofs/erofs-utils/archive/refs/tags/v1.8.6.tar.gz
+    digest: 5b221dc3fd6d151425b30534ede46fb7a90dc233a8659cba0372796b0a066547
+  - kind: archive
+    url:  https://github.com/libfuse/libfuse/releases/download/fuse-3.17.1/fuse-3.17.1.tar.gz
+    digest: 2d8ae87a4525fbfa1db5e5eb010ff6f38140627a7004554ed88411c1843d51b2
+
+build: |
+  echo "$PREFIX"
+
+  # build libfuse static library
+  cd /project/linglong/sources/fuse-3.17.1.tar.gz/fuse-3.17.1
+  patch lib/mount.c /project/apps/ll-builder-utils/patch/libfuse.patch
+  mkdir build
+  cd build
+  meson setup ../
+  meson configure --default-library static -D utils=false -D examples=false -D tests=false -D disable-libc-symbol-version=false
+  ninja && ninja install
+
+  # build erofsfuse static library
+  cd /project/linglong/sources/v1.8.6.tar.gz/erofs-utils-1.8.6
+  ./autogen.sh
+  ./configure -with-libzstd --enable-fuse --enable-static-fuse --with-libdeflate --without-xxhash libdeflate_LIBS=-ldeflate libdeflate_CFLAGS=-ldeflate
+  make -j4
+  make install
+
+  cd /project
+  cmake -B build-linglong -DCPM_LOCAL_PACKAGES_ONLY=true -DENABLE_TESTING=false -DBUILD_LINGLONG_BUILDER_UTILS_IN_BOX=true
+  cmake --build build-linglong -j8
+  cmake --install build-linglong --prefix=$PREFIX
+  install /usr/local/bin/mkfs.erofs $PREFIX/bin/
+
+buildext:
+  apt:
+    build_depends: [patch, meson, libtool, pkg-config, uuid-dev, libdeflate-dev, libzstd-dev, nlohmann-json3-dev, libyaml-cpp-dev, liblz4-dev, liblzma-dev, libselinux1-dev, libpcre2-dev, libelf-dev]

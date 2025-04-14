@@ -200,3 +200,9 @@ path = "apps/dumb-init/src/*"
 precedence = "aggregate"
 SPDX-FileCopyrightText = "Yelp Inc."
 SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = "apps/ll-builder-utils/patch/libfuse.patch"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "UnionTech Software Technology Co., Ltd."
+SPDX-License-Identifier = "LGPL-3.0-or-later"

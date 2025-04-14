@@ -4,9 +4,8 @@
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
 # 
 # Translators:
-# Gary Wang <wzc782970009@gmail.com>, 2025
-# Zaraza, 2025
-# Isaías Gätjens M <igatjens@gmail.com>, 2025
+# Jaime Muñoz Martín <jmmartin_5@outlook.com>, 2025
+# Davidmp <medipas@gmail.com>, 2025
 # 
 #, fuzzy
 msgid ""
@@ -15,102 +14,102 @@ msgstr ""
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2025-04-11 10:41+0800\n"
 "PO-Revision-Date: 2025-04-11 01:38+0000\n"
-"Last-Translator: Isaías Gätjens M <igatjens@gmail.com>, 2025\n"
-"Language-Team: Spanish (https://app.transifex.com/linuxdeepin/teams/3976/es/)\n"
+"Last-Translator: Davidmp <medipas@gmail.com>, 2025\n"
+"Language-Team: Catalan (https://app.transifex.com/linuxdeepin/teams/3976/ca/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Language: es\n"
-"Plural-Forms: nplurals=3; plural=n == 1 ? 0 : n != 0 && n % 1000000 == 0 ? 1 : 2;\n"
+"Language: ca\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:58
 msgid "Permission deny, please check whether you are running as root."
-msgstr "Permiso denegado, por favor verifique si está ejecutando como root."
+msgstr "Se'n denega el permís. Comproveu si s'executa com a arrel."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2592
 msgid ""
 "The cache generation failed, please uninstall and reinstall the application."
 msgstr ""
-"La generación de la caché falló, por favor desinstala y reinstala la "
-"aplicación."
+"La generació de la memòria cau ha fallat, desinstal·leu i torneu a "
+"instal·lar l'aplicació."
 
 #: ../apps/ll-cli/src/main.cpp:148
 msgid ""
 "linyaps CLI\n"
 "A CLI program to run application and manage application and runtime\n"
 msgstr ""
-"linyaps CLI\n"
-"Un programa CLI para ejecutar aplicaciones y gestionar aplicaciones y entornos de ejecución\n"
+"CLI de linyaps\n"
+"Un programa de línia d'ordres per executar aplicacions i gestionar l'aplicació i el temps d'execució\n"
 
 #: ../apps/ll-cli/src/main.cpp:160 ../apps/ll-builder/src/main.cpp:172
 msgid "Print this help message and exit"
-msgstr "Imprimir este mensaje de ayuda y salir"
+msgstr "Imprimeix aquest missatge d'ajuda i surt."
 
 #: ../apps/ll-cli/src/main.cpp:161 ../apps/ll-builder/src/main.cpp:173
 msgid "Expand all help"
-msgstr "Expandir toda la ayuda"
+msgstr "Expandeix tota l'ajuda."
 
 #: ../apps/ll-cli/src/main.cpp:162
 msgid "Usage: ll-cli [OPTIONS] [SUBCOMMAND]"
-msgstr "Uso: ll-cli [OPCIONES] [SUBCOMANDO]"
+msgstr "Ús: ll-cli [OPCIONS] [SUBORDRE]"
 
 #: ../apps/ll-cli/src/main.cpp:163
 msgid ""
 "If you found any problems during use,\n"
 "You can report bugs to the linyaps team under this project: https://github.com/OpenAtom-Linyaps/linyaps/issues"
 msgstr ""
-"Si encuentras algún problema durante el uso,\n"
-"puedes reportar errores al equipo de linyaps en este proyecto: https://github.com/OpenAtom-Linyaps/linyaps/issues"
+"Si heu trobat algun problema durant l'ús,\n"
+"podeu informar d'errors a l'equip de linyaps en aquest projecte: \n"
+"https://github.com/OpenAtom-Linyaps/linyaps/issues"
 
 #. add flags
 #: ../apps/ll-cli/src/main.cpp:170 ../apps/ll-builder/src/main.cpp:194
 msgid "Show version"
-msgstr "Mostrar versión"
+msgstr "Mostra'n la versió."
 
 #: ../apps/ll-cli/src/main.cpp:174
 msgid ""
 "Use peer to peer DBus, this is used only in case that DBus daemon is not "
 "available"
 msgstr ""
-"Usar DBus de igual a igual, esto solo se usa en caso de que el demonio de "
-"DBus no esté disponible"
+"Usa DBus d'igual a igual. Només s'usa en cas que el dimoni de DBus no "
+"estigui disponible."
 
 #: ../apps/ll-cli/src/main.cpp:178
 msgid "Use json format to output result"
-msgstr "Usar formato json para mostrar el resultado"
+msgstr "Usa el format json per generar el resultat."
 
 #: ../apps/ll-cli/src/main.cpp:185 ../apps/ll-cli/src/main.cpp:536
 #: ../apps/ll-builder/src/main.cpp:185
 msgid "Input parameter is empty, please input valid parameter instead"
-msgstr ""
-"El parámetro de entrada está vacío, por favor ingrese un parámetro válido."
+msgstr "El paràmetre d'entrada és buit; introduïu un paràmetre vàlid."
 
 #. groups
 #: ../apps/ll-cli/src/main.cpp:208
 msgid "Managing installed applications and runtimes"
-msgstr "Gestionar aplicaciones instaladas y tiempos de ejecución"
+msgstr "Gestió d'aplicacions instal·lades i entorns d'execució"
 
 #: ../apps/ll-cli/src/main.cpp:209
 msgid "Managing running applications"
-msgstr "Gestionar aplicaciones en ejecución"
+msgstr "Gestió d'aplicacions en execució"
 
 #: ../apps/ll-cli/src/main.cpp:210
 msgid "Finding applications and runtimes"
-msgstr "Buscar aplicaciones y tiempos de ejecución"
+msgstr "Trobar aplicacions i entorns d'execució"
 
 #: ../apps/ll-cli/src/main.cpp:211
 msgid "Managing remote repositories"
-msgstr "Gestionar repositorios remotos"
+msgstr "Gestió de repositoris remots"
 
 #. add sub command run
 #: ../apps/ll-cli/src/main.cpp:214
 msgid "Run an application"
-msgstr "Ejecutar una aplicación"
+msgstr "Executa una aplicació"
 
 #. add sub command run options
 #: ../apps/ll-cli/src/main.cpp:219
 msgid "Specify the application ID"
-msgstr "Especificar el ID de la aplicación"
+msgstr "Especifiqueu l'ID de l'aplicació."
 
 #: ../apps/ll-cli/src/main.cpp:222
 msgid ""
@@ -124,82 +123,81 @@ msgid ""
 "ll-cli run org.deepin.demo -- bash\n"
 "ll-cli run org.deepin.demo -- bash -x /path/to/bash/script"
 msgstr ""
-"Uso: ll-cli run [OPCIONES] APP [COMANDO...]\n"
+"Ús: ll-cli run [OPCIONS] APP [COMMAND...]\n"
 "\n"
-"Ejemplo:\n"
-"# ejecutar la aplicación por appid\n"
-"ll-cli run org.deepin.demo\n"
-"# ejecutar comandos en el contenedor en lugar de ejecutar la aplicación\n"
-"ll-cli run org.deepin.demo bash\n"
-"ll-cli run org.deepin.demo -- bash\n"
-"ll-cli run org.deepin.demo -- bash -x /path/to/bash/script"
+"Exemple:\n"
+"# executa l'aplicació per appid\n"
+"ll-cli executa org.deepin.demo\n"
+"# executa les ordres al contenidor en lloc d'executar l'aplicació\n"
+"ll-cli executa org.deepin.demo bash\n"
+"ll-cli executa org.deepin.demo -- bash\n"
+"ll-cli executa org.deepin.demo -- bash -x /path/to/bash/script"
 
 #: ../apps/ll-cli/src/main.cpp:232
 msgid "Pass file to applications running in a sandbox"
 msgstr ""
-"Pasar archivo a las aplicaciones que se ejecutan en un entorno aislado"
+"Passa el fitxer a les aplicacions que s'executen en un entorn de prova."
 
 #: ../apps/ll-cli/src/main.cpp:236
 msgid "Pass url to applications running in a sandbox"
-msgstr "Pasar URL a las aplicaciones que se ejecutan en un entorno aislado"
+msgstr "Passa l'URL a les aplicacions que s'executen en un entorn de prova."
 
 #: ../apps/ll-cli/src/main.cpp:239 ../apps/ll-cli/src/main.cpp:261
 #: ../apps/ll-cli/src/main.cpp:278
 msgid "Run commands in a running sandbox"
-msgstr "Ejecutar comandos en un entorno aislado en ejecución"
+msgstr "Executa ordres en un entorn de prova en execució."
 
 #. add sub command ps
 #: ../apps/ll-cli/src/main.cpp:242
 msgid "List running applications"
-msgstr "Listar aplicaciones en ejecución"
+msgstr "Llista les aplicacions en execució."
 
 #: ../apps/ll-cli/src/main.cpp:245
 msgid "Usage: ll-cli ps [OPTIONS]"
-msgstr "Uso: ll-cli ps [OPCIONES]"
+msgstr "Ús: ll-cli ps [OPCIONS]"
 
 #: ../apps/ll-cli/src/main.cpp:249
 msgid "Execute commands in the currently running sandbox"
-msgstr "Ejecutar comandos en el entorno aislado actualmente en ejecución"
+msgstr "Executa les ordres a l'entorn de prova que s'executa actualment."
 
 #: ../apps/ll-cli/src/main.cpp:255 ../apps/ll-cli/src/main.cpp:273
 msgid "Specify the application running instance(you can get it by ps command)"
 msgstr ""
-"Especifique la instancia de la aplicación en ejecución (puede obtenerla con "
-"el comando ps)"
+"Especifiqueu la instància de l'aplicació que s'executa (la podeu obtenir "
+"mitjançant l'ordre ps)."
 
 #: ../apps/ll-cli/src/main.cpp:258 ../apps/ll-cli/src/main.cpp:275
 msgid "Specify working directory"
-msgstr "Especificar el directorio de trabajo"
+msgstr "Especifiqueu el directori de treball"
 
 #: ../apps/ll-cli/src/main.cpp:266
 msgid "Enter the namespace where the application is running"
-msgstr ""
-"Entrar en el espacio de nombres donde se está ejecutando la aplicación"
+msgstr "Introduïu l'espai de noms on s'executa l'aplicació."
 
 #: ../apps/ll-cli/src/main.cpp:269
 msgid "Usage: ll-cli enter [OPTIONS] INSTANCE [COMMAND...]"
-msgstr "Uso: ll-cli enter [OPCIONES] INSTANCE [COMANDO...]"
+msgstr "Ús: ll-cli enter [OPCIONS] INSTÀNCIA [ORDRE...]"
 
 #. add sub command kill
 #: ../apps/ll-cli/src/main.cpp:281
 msgid "Stop running applications"
-msgstr "Detener aplicaciones en ejecución"
+msgstr "Atura les aplicacions en execució."
 
 #: ../apps/ll-cli/src/main.cpp:284
 msgid "Usage: ll-cli kill [OPTIONS] APP"
-msgstr "Uso: ll-cli kill [OPCIONES] APP"
+msgstr "Ús: ll-cli kill [OPCIONS] APLICACIÓ"
 
 #: ../apps/ll-cli/src/main.cpp:288
 msgid "Specify the signal to send to the application"
-msgstr "Especificar el ID de la aplicación instalada"
+msgstr "Especifiqueu el senyal que voleu enviar a l'aplicació."
 
 #: ../apps/ll-cli/src/main.cpp:290
 msgid "Specify the running application"
-msgstr "Especifique la aplicación en ejecución"
+msgstr "Especifiqueu l'aplicació en execució."
 
 #: ../apps/ll-cli/src/main.cpp:296
 msgid "Installing an application or runtime"
-msgstr "Instalando una aplicación o tiempo de ejecución"
+msgstr "Instal·lació d'una aplicació o d'un entorn d'execució"
 
 #: ../apps/ll-cli/src/main.cpp:299
 msgid ""
@@ -220,89 +218,88 @@ msgid ""
 "ll-cli install stable:org.deepin.demo/0.0.0.1/x86_64\n"
 "    "
 msgstr ""
-"Uso: ll-cli install [OPCIONES] APP\n"
+"Ús: ll-cli install [OPCIONS] APLICACIÓ\n"
 "\n"
-"Ejemplo:\n"
-"# instalar aplicación por appid\n"
+"Exemple:\n"
+"# instal·la l'aplicació mitjançant l'appid\n"
 "ll-cli install org.deepin.demo\n"
-"# instalar aplicación por capa linyaps\n"
+"# instal·la l'aplicació mitjançant la capa de linyaps\n"
 "ll-cli install demo_0.0.0.1_x86_64_binary.layer\n"
-"# instalar aplicación por linyaps uab\n"
+"# instal·la l'aplicació per linyaps uab\n"
 "ll-cli install demo_x86_64_0.0.0.1_main.uab\n"
-"# instalar módulo especificado del appid\n"
+"# instal·la el mòdul especificat de l'appid\n"
 "ll-cli install org.deepin.demo --module=binary\n"
-"# instalar versión especificada del appid\n"
+"# instal·la la versió especificada de l'appid\n"
 "ll-cli install org.deepin.demo/0.0.0.1\n"
-"# instalar aplicación por referencia detallada\n"
+"# instal·la l'aplicació per referència detallada\n"
 "ll-cli install stable:org.deepin.demo/0.0.0.1/x86_64\n"
 "    "
 
 #: ../apps/ll-cli/src/main.cpp:318
 msgid "Specify the application ID, and it can also be a .uab or .layer file"
 msgstr ""
-"Especificar el ID de la aplicación, también puede ser un archivo .uab o "
-".layer"
+"Especifiqueu l'ID de l'aplicació. També pot ser un fitxer .uab o .layer."
 
 #: ../apps/ll-cli/src/main.cpp:321
 msgid "Install a specify module"
-msgstr "Instalar un módulo especificado"
+msgstr "Instal·la un mòdul específic."
 
 #: ../apps/ll-cli/src/main.cpp:324
 msgid "Force install the application"
-msgstr "Forzar la instalación de la aplicación"
+msgstr "Força la instal·lació de l'aplicació."
 
 #: ../apps/ll-cli/src/main.cpp:325
 msgid "Automatically answer yes to all questions"
-msgstr "Responder automáticamente sí a todas las preguntas"
+msgstr "Respon automàticament sí a totes les preguntes."
 
 #: ../apps/ll-cli/src/main.cpp:331
 msgid "Uninstall the application or runtimes"
-msgstr "Desinstalar la aplicación o entornos de ejecución"
+msgstr "Desinstal·la l'aplicació o els entorns d'execució."
 
 #: ../apps/ll-cli/src/main.cpp:334
 msgid "Usage: ll-cli uninstall [OPTIONS] APP"
-msgstr "Uso: ll-cli uninstall [OPCIONES] APP"
+msgstr "Ús: ll-cli uninstall [OPCIONS] APLICACIÓ"
 
 #: ../apps/ll-cli/src/main.cpp:335
 msgid "Specify the applications ID"
-msgstr "Especificar el ID de las aplicaciones"
+msgstr "Especifiqueu els ID de les aplicacions."
 
 #: ../apps/ll-cli/src/main.cpp:338
 msgid "Uninstall a specify module"
-msgstr "Desinstalar un módulo especificado"
+msgstr "Desinstal·la un mòdul específic."
 
 #. below options are used for compatibility with old ll-cli
 #: ../apps/ll-cli/src/main.cpp:343
 msgid "Remove all unused modules"
-msgstr "Eliminar todos los módulos no utilizados"
+msgstr "Elimina tots els mòduls no usats."
 
 #: ../apps/ll-cli/src/main.cpp:347
 msgid "Uninstall all modules"
-msgstr "Desinstalar todos los módulos"
+msgstr "Desinstal·la tots els mòduls."
 
 #: ../apps/ll-cli/src/main.cpp:353
 msgid "Upgrade the application or runtimes"
-msgstr "Actualizar la aplicación o entornos de ejecución"
+msgstr "Actualitza l'aplicació o els entorns d'execució."
 
 #: ../apps/ll-cli/src/main.cpp:356
 msgid "Usage: ll-cli upgrade [OPTIONS] [APP]"
-msgstr "Uso: ll-cli upgrade [OPCIONES] [APP]"
+msgstr "Ús: ll-cli upgrade [OPCIONS] [APLICACIÓ]"
 
 #: ../apps/ll-cli/src/main.cpp:360
 msgid ""
 "Specify the application ID.If it not be specified, all applications will be "
 "upgraded"
 msgstr ""
-"Especificar el ID de la aplicación. Si no se especifica, se actualizarán "
-"todas las aplicaciones"
+"Especifiqueu l'ID de l'aplicació. Si no s'especifica, s'actualitzaran totes "
+"les aplicacions."
 
 #: ../apps/ll-cli/src/main.cpp:367
 msgid ""
 "Search the applications/runtimes containing the specified text from the "
 "remote repository"
 msgstr ""
-"Buscar las aplicaciones/entornos de ejecución que contengan el texto "
-"especificado desde el repositorio remoto"
+"Cerca les aplicacions / entorns d'execució que contenen el text especificat "
+"del repositori remot."
 
 #: ../apps/ll-cli/src/main.cpp:371
 msgid ""
@@ -318,37 +315,39 @@ msgid ""
 "# find all off runtime of remote\n"
 "ll-cli search . --type=runtime"
 msgstr ""
-"Uso: ll-cli search [OPCIONES] PALABRAS CLAVE\n"
+"Ús: ll-cli search [OPCIONS] PARAULES CLAU\n"
 "\n"
-"Ejemplo:\n"
-"# encontrar aplicación remotamente por nombre\n"
+"Exemple:\n"
+"# cerca l'aplicació de forma remota pel nom\n"
 "ll-cli search org.deepin.demo\n"
-"# encontrar entorno de ejecución remotamente por nombre\n"
+"# cerca l'entorn d'execució de manera remota pel nom\n"
 "ll-cli search org.deepin.base --type=runtime\n"
-"# encontrar todas las aplicaciones remotas\n"
+"# cerca tota aplicació fora del remot\n"
 "ll-cli search .\n"
-"# encontrar todos los entornos de ejecución remotos\n"
+"# cerca tot entorn d'execució fora del remot\n"
 "ll-cli search . --type=runtime"
 
 #: ../apps/ll-cli/src/main.cpp:382
 msgid "Specify the Keywords"
-msgstr "Especificar las Palabras Clave"
+msgstr "Especifiqueu les paraules clau."
 
 #: ../apps/ll-cli/src/main.cpp:388 ../apps/ll-cli/src/main.cpp:413
 msgid "Filter result with specify type. One of \"runtime\", \"app\" or \"all\""
-msgstr "Filtrar resultado con tipo especificado. Uno de \"runtime\", \"app\" o \"all\""
+msgstr ""
+"Filtreu el resultat amb el tipus especificat: \"entorn d'execució\", "
+"\"aplicació\" o \"tots\"."
 
 #: ../apps/ll-cli/src/main.cpp:392
 msgid "include develop application in result"
-msgstr "incluir aplicación en desarrollo en el resultado"
+msgstr "inclou aplicacions de desenvolupament al resultat"
 
 #: ../apps/ll-cli/src/main.cpp:393
 msgid "Show all results"
-msgstr "Mostrar todos los resultados"
+msgstr "Mostra tots els resultats."
 
 #: ../apps/ll-cli/src/main.cpp:397
 msgid "List installed applications or runtimes"
-msgstr "Listar aplicaciones o entornos de ejecución instalados"
+msgstr "Llista les aplicacions o els entorns d'execució instal·lats."
 
 #: ../apps/ll-cli/src/main.cpp:400
 msgid ""
@@ -362,14 +361,14 @@ msgid ""
 "# show the latest version list of the currently installed application(s)\n"
 "ll-cli list --upgradable\n"
 msgstr ""
-"Uso: ll-cli list [OPCIONES]\n"
+"Ús: ll-cli list [OPCIONS]\n"
 "\n"
-"Ejemplo:\n"
-"# mostrar aplicación(es) instalada(s)\n"
+"Exemple:\n"
+"# mostra les aplicacions instal·lades\n"
 "ll-cli list\n"
-"# mostrar entorno(s) de ejecución instalado(s)\n"
+"# mostra els entorns d'execució instal·lats\n"
 "ll-cli list --type=runtime\n"
-"# mostrar la lista de la última versión de las aplicaciones actualmente instaladas\n"
+"# mostra la llista de versions més recents de les aplicacions instal·lades actualment\n"
 "ll-cli list --upgradable\n"
 
 #: ../apps/ll-cli/src/main.cpp:419
@@ -377,36 +376,36 @@ msgid ""
 "Show the list of latest version of the currently installed applications, it "
 "only works for app"
 msgstr ""
-"Mostrar la lista de la última versión de las aplicaciones actualmente "
-"instaladas, solo funciona para aplicaciones"
+"Mostra la llista de la darrera versió de les aplicacions instal·lades "
+"actualment, només funciona per a l'aplicació"
 
 #: ../apps/ll-cli/src/main.cpp:426
 msgid "Display or modify information of the repository currently using"
-msgstr "Mostrar o modificar la información del repositorio actualmente en uso"
+msgstr "Mostra o modifica la informació del repositori que s'usa actualment."
 
 #: ../apps/ll-cli/src/main.cpp:428
 msgid "Usage: ll-cli repo SUBCOMMAND [OPTIONS]"
-msgstr "Uso: ll-cli repo SUBCOMANDO [OPCIONES]"
+msgstr "Ús: ll-cli repo SUBORDRE [OPCIONS]"
 
 #. add repo sub command add
 #: ../apps/ll-cli/src/main.cpp:432 ../apps/ll-builder/src/main.cpp:372
 msgid "Add a new repository"
-msgstr "Agregar un nuevo repositorio"
+msgstr "Afegeix un repositori nou."
 
 #: ../apps/ll-cli/src/main.cpp:433
 msgid "Usage: ll-cli repo add [OPTIONS] NAME URL"
-msgstr "Uso: ll-cli repo add [OPCIONES] NOMBRE URL"
+msgstr "Ús: ll-cli repo add [OPCIONS] NOM DE L'URL"
 
 #: ../apps/ll-cli/src/main.cpp:434 ../apps/ll-cli/src/main.cpp:447
 #: ../apps/ll-builder/src/main.cpp:374
 msgid "Specify the repo name"
-msgstr "Especificar el nombre del repositorio"
+msgstr "Especifiqueu el nom del repositori."
 
 #: ../apps/ll-cli/src/main.cpp:437 ../apps/ll-cli/src/main.cpp:450
 #: ../apps/ll-cli/src/main.cpp:468 ../apps/ll-builder/src/main.cpp:377
 #: ../apps/ll-builder/src/main.cpp:397
 msgid "Url of the repository"
-msgstr "URL del repositorio"
+msgstr "URL del repositori"
 
 #: ../apps/ll-cli/src/main.cpp:440 ../apps/ll-cli/src/main.cpp:457
 #: ../apps/ll-cli/src/main.cpp:465 ../apps/ll-cli/src/main.cpp:476
@@ -414,123 +413,122 @@ msgstr "URL del repositorio"
 #: ../apps/ll-builder/src/main.cpp:387 ../apps/ll-builder/src/main.cpp:394
 #: ../apps/ll-builder/src/main.cpp:405
 msgid "Alias of the repo name"
-msgstr "Especificar el nombre del repositorio"
+msgstr "Àlies del nom del repositori"
 
 #: ../apps/ll-cli/src/main.cpp:446
 msgid "Modify repository URL"
-msgstr "Modificar la URL del repositorio"
+msgstr "Modifica l'URL del repositori"
 
 #. add repo sub command remove
 #: ../apps/ll-cli/src/main.cpp:455 ../apps/ll-builder/src/main.cpp:385
 msgid "Remove a repository"
-msgstr "Eliminar un repositorio"
+msgstr "Elimina un repositori"
 
 #: ../apps/ll-cli/src/main.cpp:456
 msgid "Usage: ll-cli repo remove [OPTIONS] NAME"
-msgstr "Uso: ll-cli repo remove [OPCIONES] NOMBRE"
+msgstr "Ús: ll-cli repo remove [OPCIONS] NOM"
 
 #. add repo sub command update
 #. TODO: add --repo and --url options
 #. add repo sub command update
 #: ../apps/ll-cli/src/main.cpp:463 ../apps/ll-builder/src/main.cpp:392
 msgid "Update the repository URL"
-msgstr "Actualizar la URL del repositorio"
+msgstr "Actualitza l'URL del repositori."
 
 #: ../apps/ll-cli/src/main.cpp:464
 msgid "Usage: ll-cli repo update [OPTIONS] NAME URL"
-msgstr "Uso: ll-cli repo update [OPCIONES] NOMBRE URL"
+msgstr "Ús: ll-cli repo update [OPCIONS] NOM D'URL"
 
 #: ../apps/ll-cli/src/main.cpp:474 ../apps/ll-builder/src/main.cpp:403
 msgid "Set a default repository name"
-msgstr "Establecer un nombre de repositorio predeterminado"
+msgstr "Estableix un nom de repositori per defecte."
 
 #: ../apps/ll-cli/src/main.cpp:475
 msgid "Usage: ll-cli repo set-default [OPTIONS] NAME"
-msgstr "Uso: ll-cli repo set-default [OPCIONES] NOMBRE"
+msgstr "Ús: ll-cli repo set-default [OPCIONS] NOM"
 
 #. add repo sub command show
 #: ../apps/ll-cli/src/main.cpp:481 ../apps/ll-builder/src/main.cpp:410
 msgid "Show repository information"
-msgstr "Mostrar información del repositorio"
+msgstr "Mostra la informació del repositori."
 
 #: ../apps/ll-cli/src/main.cpp:482
 msgid "Usage: ll-cli repo show [OPTIONS]"
-msgstr "Uso: ll-cli repo show [OPCIONES]"
+msgstr "Ús: ll-cli repo show [OPCIONS]"
 
 #: ../apps/ll-cli/src/main.cpp:486
 msgid "Set the priority of the repo"
-msgstr "Establecer prioridad del repositorio"
+msgstr "Estableix la prioritat del repositori."
 
 #: ../apps/ll-cli/src/main.cpp:487
 msgid "Usage: ll-cli repo set-priority ALIAS PRIORITY"
-msgstr "Usage: ll-cli repo set-priority ALIAS PRIORITY"
+msgstr "Ús: ll-cli repo set-priority PRIORITAT DE L'ÀLIES"
 
 #: ../apps/ll-cli/src/main.cpp:492
 msgid "Priority of the repo"
-msgstr "Prioridad del repositorio"
+msgstr "Prioritat del repositori"
 
 #: ../apps/ll-cli/src/main.cpp:499
 msgid "Display information about installed apps or runtimes"
 msgstr ""
-"Mostrar información sobre aplicaciones o entornos de ejecución instalados"
+"Mostra informació sobre aplicacions instal·lades o entorns d'execució."
 
 #: ../apps/ll-cli/src/main.cpp:502
 msgid "Usage: ll-cli info [OPTIONS] APP"
-msgstr "Uso: ll-cli info [OPCIONES] APP"
+msgstr "Ús: ll-cli info [OPCIONS] APLICACIÓ"
 
 #: ../apps/ll-cli/src/main.cpp:506
 msgid "Specify the application ID, and it can also be a .layer file"
-msgstr ""
-"Especificar el ID de la aplicación, también puede ser un archivo .layer"
+msgstr "Especifiqueu l'ID de l'aplicació. També pot ser un fitxer .layer."
 
 #: ../apps/ll-cli/src/main.cpp:513
 msgid "Display the exported files of installed application"
-msgstr "Mostrar los archivos exportados de la aplicación instalada"
+msgstr "Mostra els fitxers exportats de l'aplicació instal·lada."
 
 #: ../apps/ll-cli/src/main.cpp:516
 msgid "Usage: ll-cli content [OPTIONS] APP"
-msgstr "Uso: ll-cli content [OPCIONES] APP"
+msgstr "Ús: ll-cli content [OPCIONS] APLICACIÓ"
 
 #: ../apps/ll-cli/src/main.cpp:517
 msgid "Specify the installed application ID"
-msgstr "Especificar el ID de la aplicación instalada"
+msgstr "Especifiqueu l'ID de l'aplicació instal·lada."
 
 #. add sub command prune
 #: ../apps/ll-cli/src/main.cpp:522
 msgid "Remove the unused base or runtime"
-msgstr "Eliminar la base o el entorno de ejecución no utilizado"
+msgstr "Elimina la base o l'entorn d'execució no usat."
 
 #: ../apps/ll-cli/src/main.cpp:524
 msgid "Usage: ll-cli prune [OPTIONS]"
-msgstr "Uso: ll-cli prune [OPCIONES]"
+msgstr "Ús: ll-cli prune [OPCIONS]"
 
 #: ../apps/ll-cli/src/main.cpp:529
 msgid "Display the information of installed application"
-msgstr "Mostrar la información de la aplicación instalada."
+msgstr "Mostra la informació de l'aplicació instal·lada."
 
 #: ../apps/ll-cli/src/main.cpp:531
 msgid "Usage: ll-cli inspect [OPTIONS]"
-msgstr "Uso: ll-cli inspect [OPCIONES]"
+msgstr "Ús: ll-cli inspect [OPCIONS]"
 
 #: ../apps/ll-cli/src/main.cpp:533
 msgid "Specify the process id"
-msgstr "Especifica el ID del proceso"
+msgstr "Especifiqueu l'identificador del procés."
 
 #: ../apps/ll-cli/src/main.cpp:542
 msgid "Invalid process id"
-msgstr "ID de proceso no válido"
+msgstr "Identificador de procés no vàlid"
 
 #: ../apps/ll-cli/src/main.cpp:545
 msgid "Invalid pid format"
-msgstr "Formato de PID no válido"
+msgstr "Format pid no vàlid"
 
 #: ../apps/ll-cli/src/main.cpp:555
 msgid "Specify the installed app(base or runtime)"
-msgstr "Especifique la aplicación instalada (base o tiempo de ejecución)"
+msgstr "Especifiqueu l'aplicació instal·lada (base o entorn d'execució)."
 
 #: ../apps/ll-cli/src/main.cpp:566
 msgid "linyaps CLI version "
-msgstr "versión de linyaps CLI "
+msgstr "Versió CLI de linyaps"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:71
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:249
@@ -540,11 +538,11 @@ msgstr "ID"
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:72
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:176
 msgid "Name"
-msgstr "Nombre"
+msgstr "Nom"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:73
 msgid "Version"
-msgstr "Versión"
+msgstr "versió"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:74
 msgid "Channel"
@@ -552,326 +550,325 @@ msgstr "Canal"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:75
 msgid "Module"
-msgstr "Módulo"
+msgstr "Mòdul"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:76
 msgid "Description"
-msgstr "Descripción"
+msgstr "Descripció"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:106
 msgid "No containers are running."
-msgstr "No hay ningún contenedor en ejecución."
+msgstr "No hi ha contenidors en execució."
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:110
 msgid "App"
-msgstr "App"
+msgstr "Aplicació"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:111
 msgid "ContainerID"
-msgstr "ContainerID"
+msgstr "ID del contenidor"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:112
 msgid "Pid"
-msgstr "Pid"
+msgstr "PID"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:177
 msgid "Url"
-msgstr "Url"
+msgstr "URL"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:178
 msgid "Alias"
-msgstr "Alias"
+msgstr "Àlies"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:179
 msgid "Priority"
-msgstr "Prioridad"
+msgstr "Prioritat"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:237
 msgid "No apps available for update."
-msgstr "No hay aplicaciones para actualizar."
+msgstr "No hi ha cap aplicació disponible per actualitzar."
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:250
 msgid "Installed"
-msgstr "Instalado"
+msgstr "Instal·lada"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:251
 msgid "New"
-msgstr "Nuevo"
+msgstr "Nova"
 
 #: ../apps/ll-builder/src/main.cpp:170
 msgid ""
 "linyaps builder CLI \n"
 "A CLI program to build linyaps application\n"
 msgstr ""
-"linyaps builder CLI \n"
-"Un programa CLI para construir aplicaciones linyaps\n"
+"CLI del constructor de linyaps \n"
+"Un programa CLI per crear una aplicació de linyaps.\n"
 
 #: ../apps/ll-builder/src/main.cpp:175
 msgid "Usage: ll-builder [OPTIONS] [SUBCOMMAND]"
-msgstr "Uso: ll-builder [OPCIONES] [SUBCOMANDO]"
+msgstr "Ús: ll-builder [OPCIONS] [SUBORDRE]"
 
 #: ../apps/ll-builder/src/main.cpp:177
 msgid ""
 "If you found any problems during use\n"
 "You can report bugs to the linyaps team under this project: https://github.com/OpenAtom-Linyaps/linyaps/issues"
 msgstr ""
-"Si encuentras algún problema durante el uso\n"
-"Puedes reportar errores al equipo de linyaps en este proyecto: https://github.com/OpenAtom-Linyaps/linyaps/issues"
+"Si heu trobat algun problema durant l'ús,\n"
+"podeu informar d'errors a l'equip de linyaps en aquest projecte: \n"
+"https://github.com/OpenAtom-Linyaps/linyaps/issues"
 
 #: ../apps/ll-builder/src/main.cpp:199
 msgid "Create linyaps build template project"
-msgstr "Crear proyecto de plantilla de compilación de linyaps"
+msgstr "Crea un projecte de plantilla de compilació de linyaps."
 
 #: ../apps/ll-builder/src/main.cpp:200
 msgid "Usage: ll-builder create [OPTIONS] NAME"
-msgstr "Uso: ll-builder create [OPCIONES] NOMBRE"
+msgstr "Ús: ll-builder create [OPCIONS] NOM"
 
 #: ../apps/ll-builder/src/main.cpp:201
 msgid "Project name"
-msgstr "Nombre del proyecto"
+msgstr "Nom del projecte"
 
 #: ../apps/ll-builder/src/main.cpp:213
 msgid "Build a linyaps project"
-msgstr "Construir un proyecto de linyaps"
+msgstr "Construeix un projecte de linyaps."
 
 #: ../apps/ll-builder/src/main.cpp:214
 msgid "Usage: ll-builder build [OPTIONS] [COMMAND...]"
-msgstr "Uso: ll-builder build [OPCIONES] [COMANDO...]"
+msgstr "Ús: ll-builder build [OPCIONS] [ORDRE...]"
 
 #: ../apps/ll-builder/src/main.cpp:215 ../apps/ll-builder/src/main.cpp:261
 #: ../apps/ll-builder/src/main.cpp:296 ../apps/ll-builder/src/main.cpp:325
 msgid "File path of the linglong.yaml"
-msgstr "Ruta del archivo de linglong.yaml"
+msgstr "Camí del fitxer linglong.yaml"
 
 #: ../apps/ll-builder/src/main.cpp:219
 msgid "Set the build arch"
-msgstr "Establecer la arquitectura de construcción"
+msgstr "Estableix l'arc de construcció."
 
 #: ../apps/ll-builder/src/main.cpp:225 ../apps/ll-builder/src/main.cpp:229
 msgid ""
 "Enter the container to execute command instead of building applications"
 msgstr ""
-"Entrar en el contenedor para ejecutar comandos en lugar de construir "
-"aplicaciones"
+"Entreu al contenidor per executar l'ordre en lloc de construir aplicacions."
 
 #: ../apps/ll-builder/src/main.cpp:233
 msgid ""
 "Only use local files. This implies --skip-fetch-source and --skip-pull-"
 "depend will be set"
 msgstr ""
-"Usar solo archivos locales. Esto implica que se configurarán --skip-fetch-"
-"source y --skip-pull-depend"
+"Usa només fitxers locals. Això implica que s'establiran --skip-fetch-source "
+"i --skip-pull-depend."
 
 #: ../apps/ll-builder/src/main.cpp:238
 msgid "Build full develop packages, runtime requires"
-msgstr ""
-"Construir paquetes de desarrollo completos, se requiere tiempo de ejecución"
+msgstr "Crea paquets de desenvolupament complets, cal entorn d'execució."
 
 #: ../apps/ll-builder/src/main.cpp:240
 msgid "Skip fetch sources"
-msgstr "Omitir la obtención de fuentes"
+msgstr "Omet fonts d'obtenció."
 
 #: ../apps/ll-builder/src/main.cpp:241
 msgid "Skip pull dependency"
-msgstr "Omitir la dependencia de extracción"
+msgstr "Omet la dependència de l'ordre pull."
 
 #: ../apps/ll-builder/src/main.cpp:244
 msgid "Skip run container"
-msgstr "Omitir la ejecución del contenedor"
+msgstr "Omet el contenidor d'execució."
 
 #: ../apps/ll-builder/src/main.cpp:247
 msgid "Skip commit build output"
-msgstr "Omitir la confirmación de la salida de la compilación"
+msgstr "Omet la sortida d'enviament de la compilació."
 
 #: ../apps/ll-builder/src/main.cpp:248
 msgid "Skip output check"
-msgstr "Omitir la comprobación de la salida"
+msgstr "Omet la comprovació de sortida."
 
 #: ../apps/ll-builder/src/main.cpp:251
 msgid "Skip strip debug symbols"
-msgstr "Omitir el despojo de los símbolos de depuración"
+msgstr "Omet els símbols de depuració."
 
 #: ../apps/ll-builder/src/main.cpp:254
 msgid "Build in an isolated network environment"
-msgstr "Construir en un entorno de red aislado"
+msgstr "Construeix en un entorn de xarxa aïllat."
 
 #: ../apps/ll-builder/src/main.cpp:259
 msgid "Run builded linyaps app"
-msgstr "Ejecutar la aplicación linyaps construida"
+msgstr "Executa l'aplicació de linyaps creada."
 
 #: ../apps/ll-builder/src/main.cpp:260
 msgid "Usage: ll-builder run [OPTIONS] [COMMAND...]"
-msgstr "Uso: ll-builder run [OPCIONES] [COMANDO...]"
+msgstr "Ús: ll-builder run [OPCIONS] [ORDRE..]"
 
 #: ../apps/ll-builder/src/main.cpp:265
 msgid "Only use local files"
-msgstr "Usar solo archivos locales"
+msgstr "Usa només fitxers locals."
 
 #: ../apps/ll-builder/src/main.cpp:269
 msgid "Run specified module. eg: --modules binary,develop"
-msgstr "Ejecutar módulo especificado. ej: --modules binary,develop"
+msgstr "Executa el mòdul especificat. Ex.: --modules binary,develop"
 
 #: ../apps/ll-builder/src/main.cpp:275 ../apps/ll-builder/src/main.cpp:279
 msgid "Enter the container to execute command instead of running application"
 msgstr ""
-"Entrar en el contenedor para ejecutar comandos en lugar de ejecutar la "
-"aplicación"
+"Entreu al contenidor per executar l'ordre en lloc d'executar l'aplicació."
 
 #: ../apps/ll-builder/src/main.cpp:281
 msgid "Run in debug mode (enable develop module)"
-msgstr "Ejecutar en modo depuración (habilitar módulo de desarrollo)"
+msgstr "Executa en mode de depuració (activa el mòdul de desenvolupament)."
 
 #: ../apps/ll-builder/src/main.cpp:283
 msgid "List builded linyaps app"
-msgstr "Listar las aplicaciones Linyaps construidas"
+msgstr "Llista les aplicacions de linyaps creades."
 
 #: ../apps/ll-builder/src/main.cpp:284
 msgid "Usage: ll-builder list [OPTIONS]"
-msgstr "Uso: ll-builder list [OPCIONES]"
+msgstr "Ús: ll-builder list [OPCIONS]"
 
 #: ../apps/ll-builder/src/main.cpp:286
 msgid "Remove builded linyaps app"
-msgstr "Eliminar las aplicaciones Linyaps construidas"
+msgstr "Elimina l'aplicació linyaps creada."
 
 #: ../apps/ll-builder/src/main.cpp:287
 msgid "Usage: ll-builder remove [OPTIONS] [APP...]"
-msgstr "Uso: ll-builder remove [OPCIONES] [APP...]"
+msgstr "Ús: ll-builder remove [OPCIONS] [APLICACIÓ...]"
 
 #: ../apps/ll-builder/src/main.cpp:293
 msgid "Export to linyaps layer or uab"
-msgstr "Exportar a la capa o uab de linyaps"
+msgstr "Exporta a la capa linyaps o uab."
 
 #: ../apps/ll-builder/src/main.cpp:294
 msgid "Usage: ll-builder export [OPTIONS]"
-msgstr "Uso: ll-builder export [OPCIONES]"
+msgstr "Ús: ll-builder export [OPCIONS]"
 
 #: ../apps/ll-builder/src/main.cpp:306
 msgid "Uab icon (optional)"
-msgstr "Icono de uab (opcional)"
+msgstr "Icona d'uab (opcional)"
 
 #: ../apps/ll-builder/src/main.cpp:309
 msgid "Export uab fully"
-msgstr "UAB de exportación"
+msgstr "Exporta uab completament."
 
 #: ../apps/ll-builder/src/main.cpp:310
 msgid "Export to linyaps layer file"
-msgstr "Exportar al archivo de capa de linyaps"
+msgstr "Exporta al fitxer de capa linyaps."
 
 #: ../apps/ll-builder/src/main.cpp:313
 msgid "Use custom loader"
-msgstr "Utilice un cargador personalizado"
+msgstr "Usa un carregador personalitzat."
 
 #: ../apps/ll-builder/src/main.cpp:317
 msgid "Don't export the develop module"
-msgstr "No exportar el módulo de desarrollo"
+msgstr "No exportis el mòdul de desenvolupament."
 
 #: ../apps/ll-builder/src/main.cpp:323
 msgid "Push linyaps app to remote repo"
-msgstr "Enviar la aplicación linyaps al repositorio remoto"
+msgstr "Envieu l'aplicació linyaps al repositori remot."
 
 #: ../apps/ll-builder/src/main.cpp:324
 msgid "Usage: ll-builder push [OPTIONS]"
-msgstr "Uso: ll-builder push [OPCIONES]"
+msgstr "Ús: ll-builder push [OPCIONS]"
 
 #: ../apps/ll-builder/src/main.cpp:329
 msgid "Remote repo url"
-msgstr "URL del repositorio remoto"
+msgstr "URL del repositori remot"
 
 #: ../apps/ll-builder/src/main.cpp:332
 msgid "Remote repo name"
-msgstr "Nombre del repositorio remoto"
+msgstr "Nom del repositori remot"
 
 #: ../apps/ll-builder/src/main.cpp:335
 msgid "Push single module"
-msgstr "Enviar módulo único"
+msgstr "Envia un mòdul únic."
 
 #: ../apps/ll-builder/src/main.cpp:340
 msgid "Import linyaps layer to build repo"
-msgstr "Importar la capa de linyaps para construir el repositorio"
+msgstr "Importa la capa de linyaps al repositori de construcció."
 
 #: ../apps/ll-builder/src/main.cpp:341
 msgid "Usage: ll-builder import [OPTIONS] LAYER"
-msgstr "Uso: ll-builder import [OPCIONES] CAPA"
+msgstr "Ús: ll-builder import [OPCIONS] CAPA"
 
 #: ../apps/ll-builder/src/main.cpp:342 ../apps/ll-builder/src/main.cpp:361
 msgid "Layer file path"
-msgstr "Ruta del archivo de la capa"
+msgstr "Camí del fitxer de la capa"
 
 #: ../apps/ll-builder/src/main.cpp:350
 msgid "Import linyaps layer dir to build repo"
-msgstr "Importar directorio de capa linyaps al repositorio de compilación"
+msgstr ""
+"Importa el directori de la capa de linyaps al repositori de construcció."
 
 #: ../apps/ll-builder/src/main.cpp:352
 msgid "Usage: ll-builder import-dir PATH"
-msgstr "Uso: ll-builder import-dir PATH"
+msgstr "Usage: ll-builder import-dir PATH"
 
 #: ../apps/ll-builder/src/main.cpp:353
 msgid "Layer dir path"
-msgstr "Ruta del directorio de capa"
+msgstr "Camí del directori de la capa"
 
 #: ../apps/ll-builder/src/main.cpp:359
 msgid "Extract linyaps layer to dir"
-msgstr "Extraer la capa de linyaps al directorio"
+msgstr "Extreu la capa de linyaps al directori."
 
 #: ../apps/ll-builder/src/main.cpp:360
 msgid "Usage: ll-builder extract [OPTIONS] LAYER DIR"
-msgstr "Uso: ll-builder extract [OPCIONES] CAPA DIR"
+msgstr "Ús: ll-builder extract [OPCIONS] DIRECTORI DE CAPES"
 
 #: ../apps/ll-builder/src/main.cpp:364
 msgid "Destination directory"
-msgstr "Directorio de destino"
+msgstr "Directori de destinació"
 
 #. add build repo
 #: ../apps/ll-builder/src/main.cpp:367
 msgid "Display and manage repositories"
-msgstr "Mostrar y gestionar repositorios"
+msgstr "Mostra i gestiona els repositoris."
 
 #: ../apps/ll-builder/src/main.cpp:368
 msgid "Usage: ll-builder repo [OPTIONS] SUBCOMMAND"
-msgstr "Uso: ll-builder repo [OPCIONES] SUBCOMANDO"
+msgstr "Ús: ll-builder repo [OPCIONS] SUBORDRES"
 
 #: ../apps/ll-builder/src/main.cpp:373
 msgid "Usage: ll-builder repo add [OPTIONS] NAME URL"
-msgstr "Uso: ll-builder repo add [OPCIONES] NOMBRE URL"
+msgstr "Ús: ll-builder repo add [OPCIONS] NOM D'URL"
 
 #: ../apps/ll-builder/src/main.cpp:386
 msgid "Usage: ll-builder repo remove [OPTIONS] NAME"
-msgstr "Uso: ll-builder repo remove [OPCIONES] NOMBRE"
+msgstr "Ús: ll-builder repo remove [OPCIONS] NOM"
 
 #: ../apps/ll-builder/src/main.cpp:393
 msgid "Usage: ll-builder repo update [OPTIONS] NAME URL"
-msgstr "Uso: ll-builder repo update [OPCIONES] NOMBRE URL"
+msgstr "Ús: ll-builder repo update [OPCIONS] NOM D'URL"
 
 #: ../apps/ll-builder/src/main.cpp:404
 msgid "Usage: ll-builder repo set-default [OPTIONS] NAME"
-msgstr "Uso: ll-builder repo set-default [OPCIONES] NOMBRE"
+msgstr "Ús: ll-builder repo set-default [OPCIONS] NOM"
 
 #: ../apps/ll-builder/src/main.cpp:411
 msgid "Usage: ll-builder repo show [OPTIONS]"
-msgstr "Uso: ll-builder repo show [OPCIONES]"
+msgstr "Ús: ll-builder repo show [OPCIONS]"
 
 #: ../apps/ll-builder/src/main.cpp:416
 msgid "linyaps build tool version "
-msgstr "versión de la herramienta de construcción de linyaps "
+msgstr "Versió de l'eina de construcció de linyaps"
 
 #: ../apps/ll-dialog/src/permissionDialog.cpp:34
 msgid "Whether to allow %1 to access %2?"
-msgstr "¿Permitir que %1 acceda a %2?"
+msgstr "Voleu permetre que %1 accedeixi a %2?"
 
 #. button
 #: ../apps/ll-dialog/src/permissionDialog.cpp:43
 msgid "Allow"
-msgstr "Permitir"
+msgstr "Permet-ho"
 
 #: ../apps/ll-dialog/src/permissionDialog.cpp:48
 #, c-format
 msgid "Deny (%1s)"
-msgstr "Denegar (%1s)"
+msgstr "Denega-ho (%1s)"
 
 #: ../apps/ll-dialog/src/cache_dialog.cpp:53
 msgid "Linglong Package Manager"
-msgstr "Administrador de paquetes Linglong"
+msgstr "Gestor de paquets Linglong"
 
 #: ../apps/ll-dialog/src/cache_dialog.cpp:54
 msgid "is starting"
-msgstr "A partir de"
+msgstr "s'inicia"

@@ -757,59 +757,59 @@ msgstr "Nie eksportuj modułu develop"
 
 #: ../apps/ll-builder/src/main.cpp:323
 msgid "Push linyaps app to remote repo"
-msgstr ""
+msgstr "Wyślij aplikację linyaps do zdalnego repozytorium"
 
 #: ../apps/ll-builder/src/main.cpp:324
 msgid "Usage: ll-builder push [OPTIONS]"
-msgstr ""
+msgstr "Polecenie: ll-builder push [OPCJE]"
 
 #: ../apps/ll-builder/src/main.cpp:329
 msgid "Remote repo url"
-msgstr ""
+msgstr "Adres URL zdalnego repozytorium"
 
 #: ../apps/ll-builder/src/main.cpp:332
 msgid "Remote repo name"
-msgstr ""
+msgstr "Nazwa zdalnego repozytorium"
 
 #: ../apps/ll-builder/src/main.cpp:335
 msgid "Push single module"
-msgstr ""
+msgstr "Wyślij pojedynczy moduł"
 
 #: ../apps/ll-builder/src/main.cpp:340
 msgid "Import linyaps layer to build repo"
-msgstr ""
+msgstr "Importuj warstwę linyaps do repozytorium build"
 
 #: ../apps/ll-builder/src/main.cpp:341
 msgid "Usage: ll-builder import [OPTIONS] LAYER"
-msgstr ""
+msgstr "Polecenie: ll-builder import [OPCJE] WARSTWA"
 
 #: ../apps/ll-builder/src/main.cpp:342 ../apps/ll-builder/src/main.cpp:361
 msgid "Layer file path"
-msgstr ""
+msgstr "Ścieżka pliku layer"
 
 #: ../apps/ll-builder/src/main.cpp:350
 msgid "Import linyaps layer dir to build repo"
-msgstr ""
+msgstr "Importuj katalog warstw linyaps do repozytorium build"
 
 #: ../apps/ll-builder/src/main.cpp:352
 msgid "Usage: ll-builder import-dir PATH"
-msgstr ""
+msgstr "Polecenie: ll-builder import-dir ŚCIEŻKA"
 
 #: ../apps/ll-builder/src/main.cpp:353
 msgid "Layer dir path"
-msgstr ""
+msgstr "Ścieżka katalogu layer"
 
 #: ../apps/ll-builder/src/main.cpp:359
 msgid "Extract linyaps layer to dir"
-msgstr ""
+msgstr "Wypakuj warstwy linyaps do katalogu"
 
 #: ../apps/ll-builder/src/main.cpp:360
 msgid "Usage: ll-builder extract [OPTIONS] LAYER DIR"
-msgstr ""
+msgstr "Polecenie: ll-builder extract [OPCJE] WARSTWA KATALOG"
 
 #: ../apps/ll-builder/src/main.cpp:364
 msgid "Destination directory"
-msgstr ""
+msgstr "Katalog docelowy"
 
 #. add build repo
 #: ../apps/ll-builder/src/main.cpp:367

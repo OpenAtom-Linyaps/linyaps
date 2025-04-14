@@ -6,16 +6,15 @@
 # Translators:
 # Gary Wang <wzc782970009@gmail.com>, 2025
 # Zaraza, 2025
-# Isaías Gätjens M <igatjens@gmail.com>, 2025
 # 
 #, fuzzy
 msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-04-11 10:41+0800\n"
+"POT-Creation-Date: 2025-04-14 10:18+0800\n"
 "PO-Revision-Date: 2025-04-11 01:38+0000\n"
-"Last-Translator: Isaías Gätjens M <igatjens@gmail.com>, 2025\n"
+"Last-Translator: Zaraza, 2025\n"
 "Language-Team: Spanish (https://app.transifex.com/linuxdeepin/teams/3976/es/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -24,8 +23,8 @@ msgstr ""
 "Plural-Forms: nplurals=3; plural=n == 1 ? 0 : n != 0 && n % 1000000 == 0 ? 1 : 2;\n"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:58
-msgid "Permission deny, please check whether you are running as root."
-msgstr "Permiso denegado, por favor verifique si está ejecutando como root."
+msgid "Permission denied, please check whether you are running as root."
+msgstr ""
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2592
 msgid ""
@@ -290,11 +289,9 @@ msgstr "Uso: ll-cli upgrade [OPCIONES] [APP]"
 
 #: ../apps/ll-cli/src/main.cpp:360
 msgid ""
-"Specify the application ID.If it not be specified, all applications will be "
-"upgraded"
+"Specify the application ID. If it not be specified, all applications will be"
+" upgraded"
 msgstr ""
-"Especificar el ID de la aplicación. Si no se especifica, se actualizarán "
-"todas las aplicaciones"
 
 #: ../apps/ll-cli/src/main.cpp:367
 msgid ""
@@ -313,22 +310,11 @@ msgid ""
 "ll-cli search org.deepin.demo\n"
 "# find remotely runtime by name\n"
 "ll-cli search org.deepin.base --type=runtime\n"
-"# find all off app of remote\n"
+"# find all of app of remote\n"
 "ll-cli search .\n"
-"# find all off runtime of remote\n"
+"# find all of runtime of remote\n"
 "ll-cli search . --type=runtime"
 msgstr ""
-"Uso: ll-cli search [OPCIONES] PALABRAS CLAVE\n"
-"\n"
-"Ejemplo:\n"
-"# encontrar aplicación remotamente por nombre\n"
-"ll-cli search org.deepin.demo\n"
-"# encontrar entorno de ejecución remotamente por nombre\n"
-"ll-cli search org.deepin.base --type=runtime\n"
-"# encontrar todas las aplicaciones remotas\n"
-"ll-cli search .\n"
-"# encontrar todos los entornos de ejecución remotos\n"
-"ll-cli search . --type=runtime"
 
 #: ../apps/ll-cli/src/main.cpp:382
 msgid "Specify the Keywords"
@@ -696,8 +682,8 @@ msgid "Build in an isolated network environment"
 msgstr "Construir en un entorno de red aislado"
 
 #: ../apps/ll-builder/src/main.cpp:259
-msgid "Run builded linyaps app"
-msgstr "Ejecutar la aplicación linyaps construida"
+msgid "Run built linyaps app"
+msgstr ""
 
 #: ../apps/ll-builder/src/main.cpp:260
 msgid "Usage: ll-builder run [OPTIONS] [COMMAND...]"
@@ -722,16 +708,16 @@ msgid "Run in debug mode (enable develop module)"
 msgstr "Ejecutar en modo depuración (habilitar módulo de desarrollo)"
 
 #: ../apps/ll-builder/src/main.cpp:283
-msgid "List builded linyaps app"
-msgstr "Listar las aplicaciones Linyaps construidas"
+msgid "List built linyaps app"
+msgstr ""
 
 #: ../apps/ll-builder/src/main.cpp:284
 msgid "Usage: ll-builder list [OPTIONS]"
 msgstr "Uso: ll-builder list [OPCIONES]"
 
 #: ../apps/ll-builder/src/main.cpp:286
-msgid "Remove builded linyaps app"
-msgstr "Eliminar las aplicaciones Linyaps construidas"
+msgid "Remove built linyaps app"
+msgstr ""
 
 #: ../apps/ll-builder/src/main.cpp:287
 msgid "Usage: ll-builder remove [OPTIONS] [APP...]"

@@ -680,7 +680,12 @@ utils::error::Result<void> Builder::buildStagePullDependency() noexcept
 
         auto ref = clearDependency(layerItem->info.base, false, false);
         if (!ref || *ref != *baseRef) {
-            return LINGLONG_ERR("base is not compatible with runtime ");
+            return LINGLONG_ERR(
+              QString{ "Base is not compatible with runtime. \n"
+                       "- Current base: %1\n"
+                       "- Current runtime: %2\n"
+                       "- Base required by runtime: %3" }
+                .arg(baseRef->toString(), runtimeRef->toString(), layerItem->info.base.c_str()));
         }
 
         runtimeLayerDir = *layerDir;

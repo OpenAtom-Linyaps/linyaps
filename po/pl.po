@@ -673,11 +673,11 @@ msgstr "Pomiń uruchamianie kontenera"
 
 #: ../apps/ll-builder/src/main.cpp:247
 msgid "Skip commit build output"
-msgstr ""
+msgstr "Pomiń dane commitów buildu"
 
 #: ../apps/ll-builder/src/main.cpp:248
 msgid "Skip output check"
-msgstr ""
+msgstr "Pomiń kontrolę danych wyjściowych"
 
 #: ../apps/ll-builder/src/main.cpp:251
 msgid "Skip strip debug symbols"
@@ -814,39 +814,39 @@ msgstr "Katalog docelowy"
 #. add build repo
 #: ../apps/ll-builder/src/main.cpp:367
 msgid "Display and manage repositories"
-msgstr ""
+msgstr "Wyświetl i zarządzaj repozytoriami"
 
 #: ../apps/ll-builder/src/main.cpp:368
 msgid "Usage: ll-builder repo [OPTIONS] SUBCOMMAND"
-msgstr ""
+msgstr "Polecenie: ll-builder repo [OPCJE] PODKOMENDA"
 
 #: ../apps/ll-builder/src/main.cpp:373
 msgid "Usage: ll-builder repo add [OPTIONS] NAME URL"
-msgstr ""
+msgstr "Polecenie: ll-builder repo add [OPCJE] NAZWA URL"
 
 #: ../apps/ll-builder/src/main.cpp:386
 msgid "Usage: ll-builder repo remove [OPTIONS] NAME"
-msgstr ""
+msgstr "Polecenie: ll-builder repo remove [OPCJE] NAZWA"
 
 #: ../apps/ll-builder/src/main.cpp:393
 msgid "Usage: ll-builder repo update [OPTIONS] NAME URL"
-msgstr ""
+msgstr "Polecenie: ll-builder repo update [OPCJE] NAZWA URL"
 
 #: ../apps/ll-builder/src/main.cpp:404
 msgid "Usage: ll-builder repo set-default [OPTIONS] NAME"
-msgstr ""
+msgstr "Polecenie: ll-builder repo set-default [OPCJE] NAZWA"
 
 #: ../apps/ll-builder/src/main.cpp:411
 msgid "Usage: ll-builder repo show [OPTIONS]"
-msgstr ""
+msgstr "Polecenie: ll-builder repo show [OPCJE]"
 
 #: ../apps/ll-builder/src/main.cpp:416
 msgid "linyaps build tool version "
-msgstr ""
+msgstr "Wersja narzędzia budowania linyaps "
 
 #: ../apps/ll-dialog/src/permissionDialog.cpp:34
 msgid "Whether to allow %1 to access %2?"
-msgstr ""
+msgstr "Zezwolić %1 na dostęp do %2?"
 
 #. button
 #: ../apps/ll-dialog/src/permissionDialog.cpp:43

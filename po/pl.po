@@ -23,7 +23,7 @@ msgstr ""
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:58
 msgid "Permission denied, please check whether you are running as root."
-msgstr ""
+msgstr "Odmowa dostępu, sprawdź, czy uruchamiasz jako root."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2592
 msgid ""
@@ -285,6 +285,8 @@ msgid ""
 "Specify the application ID. If it not be specified, all applications will be"
 " upgraded"
 msgstr ""
+"Podaj ID aplikacji. Jeśli nie podasz, wszystkie aplikacje zostaną "
+"zaktualizowane."
 
 #: ../apps/ll-cli/src/main.cpp:367
 msgid ""
@@ -308,6 +310,17 @@ msgid ""
 "# find all of runtime of remote\n"
 "ll-cli search . --type=runtime"
 msgstr ""
+"Polecenie: ll-cli search [OPCJE] SŁOWA KLUCZOWE\n"
+"\n"
+"Przykład:\n"
+"# znajdź zdalnie aplikację po nazwie\n"
+"ll-cli search org.deepin.demo\n"
+"# znajdź zdalnie środowisko wykonawcze po nazwie\n"
+"ll-cli search org.deepin.base --type=runtime\n"
+"# wyświetl wszystkie aplikacje repozytorium\n"
+"ll-cli search .\n"
+"# wyświetl wszystkie środowiska wykonawcze repozytorium\n"
+"ll-cli search . --type=runtime"
 
 #: ../apps/ll-cli/src/main.cpp:382
 msgid "Specify the Keywords"

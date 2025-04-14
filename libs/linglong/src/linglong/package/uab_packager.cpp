@@ -214,16 +214,18 @@ utils::error::Result<void> UABPackager::include(const std::vector<std::string> &
     return LINGLONG_OK;
 }
 
-utils::error::Result<void> UABPackager::pack(const QString &uabFilename, bool onlyApp) noexcept
+utils::error::Result<void> UABPackager::pack(const QString &uabFilePath, bool onlyApp) noexcept
 {
     LINGLONG_TRACE("package uab")
 
-    auto uabHeader = QDir{ LINGLONG_UAB_DATA_LOCATION }.filePath("uab-header");
+    QString uabHeader = !defaultHeader.isEmpty()
+      ? defaultHeader
+      : QDir{ LINGLONG_UAB_DATA_LOCATION }.filePath("uab-header");
     if (!QFileInfo::exists(uabHeader)) {
         return LINGLONG_ERR("uab-header is missing");
     }
 
-    auto uabApp = buildDir.filePath(uabFilename);
+    auto uabApp = buildDir.filePath(".exported.uab");
     if (QFileInfo::exists(uabApp) && !QFile::remove(uabApp)) {
         return LINGLONG_ERR("couldn't remove uab cache");
     }
@@ -253,19 +255,13 @@ utils::error::Result<void> UABPackager::pack(const QString &uabFilename, bool on
         return ret;
     }
 
-    auto exportPath =
-      QFileInfo{ this->buildDir.absolutePath() }.dir().absoluteFilePath(uabFilename);
+    auto exportPath = uabFilePath;
 
     if (QFileInfo::exists(exportPath) && !QFile::remove(exportPath)) {
         return LINGLONG_ERR("couldn't remove previous uab file");
     }
 
-    if (QFileInfo::exists(exportPath) && QFile::remove(exportPath)) {
-        return LINGLONG_ERR(
-          QString{ "file %1 already exist and could't remove it" }.arg(exportPath));
-    }
-
-    if (!QFile::copy(this->uab.elfPath(), exportPath)) {
+    if (!QFile::rename(this->uab.elfPath(), exportPath)) {
         return LINGLONG_ERR(QString{ "export uab from %1 to %2 failed" }
                               .arg(QString{ this->uab.elfPath() })
                               .arg(exportPath));
@@ -275,10 +271,6 @@ utils::error::Result<void> UABPackager::pack(const QString &uabFilename, bool on
                                QFile::permissions(exportPath) | QFile::ExeOwner | QFile::ExeGroup
                                  | QFile::ExeOther)) {
         return LINGLONG_ERR("couldn't set executable permission to uab");
-    }
-
-    if (!QFile::remove(this->uab.elfPath())) {
-        qWarning() << "couldn't remove" << this->uab.elfPath() << ", please remove it manually";
     }
 
     return LINGLONG_OK;
@@ -630,8 +622,10 @@ utils::error::Result<void> UABPackager::prepareBundle(const QDir &bundleDir, boo
 
     if (srcLoader.fileName().isEmpty()) {
         // default loader
-        auto uabDataDir = QDir{ LINGLONG_UAB_DATA_LOCATION };
-        srcLoader.setFileName(uabDataDir.absoluteFilePath("uab-loader"));
+        auto uabLoader = !defaultLoader.isEmpty()
+          ? defaultLoader
+          : QDir{ LINGLONG_UAB_DATA_LOCATION }.absoluteFilePath("uab-loader");
+        srcLoader.setFileName(uabLoader);
         if (!srcLoader.exists()) {
             return LINGLONG_ERR("the loader of uab application doesn't exist.");
         }
@@ -719,17 +713,24 @@ utils::error::Result<void> UABPackager::packBundle(bool onlyApp) noexcept
             return ret;
         }
 
-        // https://github.com/erofs/erofs-utils/blob/b526c0d7da46b14f1328594cf1d1b2401770f59b/README#L171-L183
-        if (auto ret =
-              utils::command::Exec("mkfs.erofs",
-                                   { "-z" + compressor,
-                                     "-Efragments,dedupe,ztailpacking",
-                                     "-C1048576",
-                                     "-b4096", // force 4096 block size, default is page size
-                                     bundleFile,
-                                     bundleDir.absolutePath() });
-            !ret) {
-            return LINGLONG_ERR(ret);
+        if (bundleCB) {
+            ret = bundleCB(bundleFile, bundleDir.absolutePath());
+            if (!ret) {
+                return LINGLONG_ERR("bundle error", ret);
+            }
+        } else {
+            // https://github.com/erofs/erofs-utils/blob/b526c0d7da46b14f1328594cf1d1b2401770f59b/README#L171-L183
+            if (auto ret =
+                  utils::command::Exec("mkfs.erofs",
+                                       { "-z" + compressor,
+                                         "-Efragments,dedupe,ztailpacking",
+                                         "-C1048576",
+                                         "-b4096", // force 4096 block size, default is page size
+                                         bundleFile,
+                                         bundleDir.absolutePath() });
+                !ret) {
+                return LINGLONG_ERR(ret);
+            }
         }
     }
 
@@ -976,6 +977,25 @@ utils::error::Result<void> UABPackager::setLoader(const QString &loader) noexcep
 utils::error::Result<void> UABPackager::setCompressor(const QString &compressor) noexcept
 {
     this->compressor = compressor;
+    return LINGLONG_OK;
+}
+
+utils::error::Result<void> UABPackager::setDefaultHeader(const QString &header) noexcept
+{
+    this->defaultHeader = header;
+    return LINGLONG_OK;
+}
+
+utils::error::Result<void> UABPackager::setDefaultLoader(const QString &loader) noexcept
+{
+    this->defaultLoader = loader;
+    return LINGLONG_OK;
+}
+
+utils::error::Result<void> UABPackager::setBundleCB(
+  std::function<utils::error::Result<void>(const QString &, const QString &)> bundleCB) noexcept
+{
+    this->bundleCB = std::move(bundleCB);
     return LINGLONG_OK;
 }
 

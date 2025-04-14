@@ -24,6 +24,8 @@ msgstr ""
 #: ../libs/linglong/src/linglong/cli/cli.cpp:58
 msgid "Permission denied, please check whether you are running as root."
 msgstr ""
+"Відмовлено у доступі. Будь ласка, перевірте, чи запущено програму від імені "
+"користувача root."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2592
 msgid ""
@@ -288,6 +290,7 @@ msgid ""
 "Specify the application ID. If it not be specified, all applications will be"
 " upgraded"
 msgstr ""
+"Вказати ідентифікатор програми. Якщо не вказано, буде оновлено усі програми"
 
 #: ../apps/ll-cli/src/main.cpp:367
 msgid ""
@@ -311,6 +314,17 @@ msgid ""
 "# find all of runtime of remote\n"
 "ll-cli search . --type=runtime"
 msgstr ""
+"Користування: ll-cli search [ПАРАМЕТРИ] КЛЮЧОВІ СЛОВА\n"
+"\n"
+"Приклад:\n"
+"# знайти віддалену програму за назвою\n"
+"ll-cli search org.deepin.demo\n"
+"# знайти віддалене середовище виконання за назвою\n"
+"ll-cli search org.deepin.base --type=runtime\n"
+"# знайти усі програми у віддаленому сховищі\n"
+"ll-cli search .\n"
+"# знайти усі середовища виконання у віддаленому сховищі\n"
+"ll-cli search . --type=runtime"
 
 #: ../apps/ll-cli/src/main.cpp:382
 msgid "Specify the Keywords"
@@ -674,7 +688,7 @@ msgstr "Зібрати у ізольованому середовищі у ме�
 
 #: ../apps/ll-builder/src/main.cpp:259
 msgid "Run built linyaps app"
-msgstr ""
+msgstr "Запустити зібрану програму linyaps"
 
 #: ../apps/ll-builder/src/main.cpp:260
 msgid "Usage: ll-builder run [OPTIONS] [COMMAND...]"
@@ -698,7 +712,7 @@ msgstr "Запустити у діагностичному режимі (уві�
 
 #: ../apps/ll-builder/src/main.cpp:283
 msgid "List built linyaps app"
-msgstr ""
+msgstr "Вивести список зібраних програм linyaps"
 
 #: ../apps/ll-builder/src/main.cpp:284
 msgid "Usage: ll-builder list [OPTIONS]"
@@ -706,7 +720,7 @@ msgstr "Користування: ll-builder list [ПАРАМЕТРИ]"
 
 #: ../apps/ll-builder/src/main.cpp:286
 msgid "Remove built linyaps app"
-msgstr ""
+msgstr "Вилучити зібрану програму linyaps"
 
 #: ../apps/ll-builder/src/main.cpp:287
 msgid "Usage: ll-builder remove [OPTIONS] [APP...]"

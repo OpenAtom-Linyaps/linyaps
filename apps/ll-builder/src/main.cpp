@@ -316,6 +316,8 @@ You can report bugs to the linyaps team under this project: https://github.com/O
       ->excludes(layerFlag, fullOpt);
     buildExport->add_flag("--no-develop", ExportOption.noExportDevelop, _("Don't export the develop module"))
         ->needs(layerFlag);
+    std::filesystem::path outputFile;
+    buildExport->add_option("-o, --output", outputFile, _("Output file"))->type_name("FILE");
 
     // build push
     std::string pushModule;
@@ -836,11 +838,10 @@ You can report bugs to the linyaps team under this project: https://github.com/O
 
         if (layerMode) {
             // layer 默认使用lzma有更高压缩率
-            QString compressor = "lzma";
-            if (!ExportOption.compressor.empty()) {
-                compressor = ExportOption.compressor.c_str();
+            if (ExportOption.compressor.empty()) {
+                ExportOption.compressor = "lzma";
             }
-            auto result = builder.exportLayer(compressor, ExportOption.noExportDevelop);
+            auto result = builder.exportLayer(ExportOption);
             if (!result) {
                 qCritical() << result.error();
                 return -1;
@@ -853,11 +854,10 @@ You can report bugs to the linyaps team under this project: https://github.com/O
             ExportOption.loader = appLoader;
         }
         // uab 默认使用lz4可以更快解压速度，避免影响应用自运行
-        QString compressor = "lz4";
-        if (!ExportOption.compressor.empty()) {
-            compressor = ExportOption.compressor.c_str();
+        if (ExportOption.compressor.empty()) {
+            ExportOption.compressor = "lz4";
         }
-        auto result = builder.exportUAB(ExportOption);
+        auto result = builder.exportUAB(ExportOption, outputFile);
         if (!result) {
             qCritical() << result.error();
             return -1;

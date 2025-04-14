@@ -6,6 +6,7 @@
 # Translators:
 # Gary Wang <wzc782970009@gmail.com>, 2025
 # Zaraza, 2025
+# Isaías Gätjens M <igatjens@gmail.com>, 2025
 # 
 #, fuzzy
 msgid ""
@@ -14,7 +15,7 @@ msgstr ""
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2025-04-14 10:18+0800\n"
 "PO-Revision-Date: 2025-04-11 01:38+0000\n"
-"Last-Translator: Zaraza, 2025\n"
+"Last-Translator: Isaías Gätjens M <igatjens@gmail.com>, 2025\n"
 "Language-Team: Spanish (https://app.transifex.com/linuxdeepin/teams/3976/es/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -59,7 +60,7 @@ msgid ""
 "You can report bugs to the linyaps team under this project: https://github.com/OpenAtom-Linyaps/linyaps/issues"
 msgstr ""
 "Si encuentras algún problema durante el uso,\n"
-"puedes reportar errores al equipo de linyaps en este proyecto: https://github.com/OpenAtom-Linyaps/linyaps/issues"
+"puede reportar errores al equipo de linyaps en este proyecto: https://github.com/OpenAtom-Linyaps/linyaps/issues"
 
 #. add flags
 #: ../apps/ll-cli/src/main.cpp:170 ../apps/ll-builder/src/main.cpp:194
@@ -609,7 +610,7 @@ msgid ""
 "You can report bugs to the linyaps team under this project: https://github.com/OpenAtom-Linyaps/linyaps/issues"
 msgstr ""
 "Si encuentras algún problema durante el uso\n"
-"Puedes reportar errores al equipo de linyaps en este proyecto: https://github.com/OpenAtom-Linyaps/linyaps/issues"
+"Puede reportar errores al equipo de linyaps en este proyecto: https://github.com/OpenAtom-Linyaps/linyaps/issues"
 
 #: ../apps/ll-builder/src/main.cpp:199
 msgid "Create linyaps build template project"

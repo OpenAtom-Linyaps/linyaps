@@ -24,7 +24,7 @@ msgstr ""
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:58
 msgid "Permission denied, please check whether you are running as root."
-msgstr ""
+msgstr "Permiso denegado, verifique si está ejecutando como root."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2592
 msgid ""
@@ -292,6 +292,8 @@ msgid ""
 "Specify the application ID. If it not be specified, all applications will be"
 " upgraded"
 msgstr ""
+"Especificar el ID de la aplicación. Si no se especifica, se actualizarán "
+"todas las aplicaciones"
 
 #: ../apps/ll-cli/src/main.cpp:367
 msgid ""
@@ -315,6 +317,11 @@ msgid ""
 "# find all of runtime of remote\n"
 "ll-cli search . --type=runtime"
 msgstr ""
+"Uso: ll-cli search [OPCIONES] PALABRAS CLAVEEjemplo:# buscar aplicación "
+"remota por nombrell-cli search org.deepin.demo# buscar tiempo de ejecución "
+"remota por nombrell-cli search org.deepin.base --type=runtime# buscar todas "
+"las aplicaciones del control remotoll-cli search .# buscar todo el tiempo de"
+" ejecución del control remotoll-cli search . --type=runtime"
 
 #: ../apps/ll-cli/src/main.cpp:382
 msgid "Specify the Keywords"
@@ -683,7 +690,7 @@ msgstr "Construir en un entorno de red aislado"
 
 #: ../apps/ll-builder/src/main.cpp:259
 msgid "Run built linyaps app"
-msgstr ""
+msgstr "Ejecutar la aplicación Linyaps creada"
 
 #: ../apps/ll-builder/src/main.cpp:260
 msgid "Usage: ll-builder run [OPTIONS] [COMMAND...]"
@@ -709,7 +716,7 @@ msgstr "Ejecutar en modo depuración (habilitar módulo de desarrollo)"
 
 #: ../apps/ll-builder/src/main.cpp:283
 msgid "List built linyaps app"
-msgstr ""
+msgstr "Lista de aplicaciones de Linyaps creadas"
 
 #: ../apps/ll-builder/src/main.cpp:284
 msgid "Usage: ll-builder list [OPTIONS]"
@@ -717,7 +724,7 @@ msgstr "Uso: ll-builder list [OPCIONES]"
 
 #: ../apps/ll-builder/src/main.cpp:286
 msgid "Remove built linyaps app"
-msgstr ""
+msgstr "Eliminar la aplicación Linyaps creada"
 
 #: ../apps/ll-builder/src/main.cpp:287
 msgid "Usage: ll-builder remove [OPTIONS] [APP...]"

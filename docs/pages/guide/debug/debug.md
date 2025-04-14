@@ -24,7 +24,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ### 在运行环境调试应用
 
-调试环境和用户正常使用的运行环境是存在小部分差异的，如果需要直接在运行环境中调试应用，可以使用 `ll-builder run --exec /bin/bash` 进入容器，然后执行 `gdbserver 127.0.0.1:12345 /opt/apps/org.deepin.demo/binary/demo` ，gdbserver 会使用 tcp 协议监听 12345 端口并等待 gdb 连接。
+调试环境和用户正常使用的运行环境是存在小部分差异的，如果需要直接在运行环境中调试应用，可以使用 `ll-builder run --exec /bin/bash` 进入容器，然后执行 `gdbserver 127.0.0.1:12345 /opt/apps/org.deepin.demo/bin/demo` ，gdbserver 会使用 tcp 协议监听 12345 端口并等待 gdb 连接。
 
 再打开一个宿主机终端，在项目目录执行 `gdb`，按行输入以下指令：
 
@@ -34,7 +34,7 @@ set debug-file-directory /tmp/org.deepin.demo/linglong/output/develop/files/lib/
 target remote 127.0.0.1:12345
 ```
 
-即可使用 gdb 通过 tcp 协议连接到运行环境中的 gdbserver 调试应用。使用`ll-cli run $appid --exec /bin/bash` 也可使用 gdbserver
+即可使用 gdb 通过 tcp 协议连接到运行环境中的 gdbserver 调试应用。
 
 _如果运行环境没有 gdbserver 命令，请检查应用是否使用 org.deepin.base 作为 base，尝试升级到最新版本的 org.deepin.base。_
 

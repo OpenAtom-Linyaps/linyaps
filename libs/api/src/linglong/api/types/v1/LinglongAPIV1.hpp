@@ -36,11 +36,13 @@
 #include "linglong/api/types/v1/OciConfigurationPatch.hpp"
 #include "linglong/api/types/v1/PackageInfo.hpp"
 #include "linglong/api/types/v1/PackageInfoV2.hpp"
+#include "linglong/api/types/v1/PackageManager1ExportParameters.hpp"
 #include "linglong/api/types/v1/PackageManager1GetRepoInfoResult.hpp"
 #include "linglong/api/types/v1/PackageManager1InstallParameters.hpp"
 #include "linglong/api/types/v1/PackageManager1JobInfo.hpp"
 #include "linglong/api/types/v1/PackageManager1ModifyRepoParameters.hpp"
 #include "linglong/api/types/v1/PackageManager1Package.hpp"
+#include "linglong/api/types/v1/PackageManager1PackageExportTaskResult.hpp"
 #include "linglong/api/types/v1/PackageManager1PackageTaskResult.hpp"
 #include "linglong/api/types/v1/PackageManager1RequestInteractionAdditionalMessage.hpp"
 #include "linglong/api/types/v1/PackageManager1SearchParameters.hpp"
@@ -103,6 +105,7 @@ std::optional<LayerInfo> layerInfo;
 std::optional<OciConfigurationPatch> ociConfigurationPatch;
 std::optional<PackageInfo> packageInfo;
 std::optional<PackageInfoV2> packageInfoV2;
+std::optional<PackageManager1ExportParameters> packageManager1ExportParameters;
 std::optional<PackageManager1GetRepoInfoResult> packageManager1GetRepoInfoResult;
 std::optional<CommonResult> packageManager1InstallLayerFDResult;
 std::optional<PackageManager1InstallParameters> packageManager1InstallParameters;
@@ -110,6 +113,7 @@ std::optional<PackageManager1JobInfo> packageManager1JobInfo;
 std::optional<PackageManager1ModifyRepoParameters> packageManager1ModifyRepoParameters;
 std::optional<CommonResult> packageManager1ModifyRepoResult;
 std::optional<PackageManager1Package> packageManager1Package;
+std::optional<PackageManager1PackageExportTaskResult> packageManager1PackageExportTaskResult;
 std::optional<PackageManager1PackageTaskResult> packageManager1PackageTaskResult;
 std::optional<PackageManager1RequestInteractionAdditionalMessage> packageManager1RequestInteractionAdditionalMessage;
 std::optional<PackageManager1SearchParameters> packageManager1SearchParameters;

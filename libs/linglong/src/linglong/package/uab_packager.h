@@ -76,6 +76,11 @@ public:
     utils::error::Result<void> loadNeededFiles() noexcept;
     utils::error::Result<void> setLoader(const QString &loader) noexcept;
     utils::error::Result<void> setCompressor(const QString &compressor) noexcept;
+    utils::error::Result<void> setDefaultHeader(const QString &header) noexcept;
+    utils::error::Result<void> setDefaultLoader(const QString &loader) noexcept;
+    utils::error::Result<void>
+    setBundleCB(std::function<utils::error::Result<void>(const QString &, const QString &)>
+                  bundleCB) noexcept;
 
 private:
     [[nodiscard]] utils::error::Result<void> packIcon() noexcept;
@@ -98,5 +103,8 @@ private:
     std::filesystem::path workDir;
     QString loader;
     QString compressor = "lz4";
+    QString defaultHeader;
+    QString defaultLoader;
+    std::function<utils::error::Result<void>(const QString &, const QString &)> bundleCB;
 };
 } // namespace linglong::package

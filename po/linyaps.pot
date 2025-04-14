@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-04-11 10:41+0800\n"
+"POT-Creation-Date: 2025-04-14 10:18+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -18,7 +18,7 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:58
-msgid "Permission deny, please check whether you are running as root."
+msgid "Permission denied, please check whether you are running as root."
 msgstr ""
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2592
@@ -245,7 +245,7 @@ msgstr ""
 
 #: ../apps/ll-cli/src/main.cpp:360
 msgid ""
-"Specify the application ID.If it not be specified, all applications will be "
+"Specify the application ID. If it not be specified, all applications will be "
 "upgraded"
 msgstr ""
 
@@ -264,9 +264,9 @@ msgid ""
 "ll-cli search org.deepin.demo\n"
 "# find remotely runtime by name\n"
 "ll-cli search org.deepin.base --type=runtime\n"
-"# find all off app of remote\n"
+"# find all of app of remote\n"
 "ll-cli search .\n"
-"# find all off runtime of remote\n"
+"# find all of runtime of remote\n"
 "ll-cli search . --type=runtime"
 msgstr ""
 
@@ -614,7 +614,7 @@ msgid "Build in an isolated network environment"
 msgstr ""
 
 #: ../apps/ll-builder/src/main.cpp:259
-msgid "Run builded linyaps app"
+msgid "Run built linyaps app"
 msgstr ""
 
 #: ../apps/ll-builder/src/main.cpp:260
@@ -638,7 +638,7 @@ msgid "Run in debug mode (enable develop module)"
 msgstr ""
 
 #: ../apps/ll-builder/src/main.cpp:283
-msgid "List builded linyaps app"
+msgid "List built linyaps app"
 msgstr ""
 
 #: ../apps/ll-builder/src/main.cpp:284
@@ -646,7 +646,7 @@ msgid "Usage: ll-builder list [OPTIONS]"
 msgstr ""
 
 #: ../apps/ll-builder/src/main.cpp:286
-msgid "Remove builded linyaps app"
+msgid "Remove built linyaps app"
 msgstr ""
 
 #: ../apps/ll-builder/src/main.cpp:287

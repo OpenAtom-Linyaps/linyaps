@@ -643,12 +643,15 @@ msgstr "Ustaw architekturę budowania"
 msgid ""
 "Enter the container to execute command instead of building applications"
 msgstr ""
+"Wykonuj polecenia wewnątrz kontenera, zamiast ciągle przebudowywać aplikacje"
 
 #: ../apps/ll-builder/src/main.cpp:233
 msgid ""
 "Only use local files. This implies --skip-fetch-source and --skip-pull-"
 "depend will be set"
 msgstr ""
+"Korzystaj tylko z plików lokalnych. To oznacza, że flagi --skip-fetch-source"
+" i --skip-pull-depend będą ustawione"
 
 #: ../apps/ll-builder/src/main.cpp:238
 msgid "Build full develop packages, runtime requires"

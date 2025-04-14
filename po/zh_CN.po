@@ -12,7 +12,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-04-11 10:41+0800\n"
+"POT-Creation-Date: 2025-04-14 10:18+0800\n"
 "PO-Revision-Date: 2025-04-11 01:38+0000\n"
 "Last-Translator: chang Gao, 2025\n"
 "Language-Team: Chinese (China) (https://app.transifex.com/linuxdeepin/teams/3976/zh_CN/)\n"
@@ -23,8 +23,8 @@ msgstr ""
 "Plural-Forms: nplurals=1; plural=0;\n"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:58
-msgid "Permission deny, please check whether you are running as root."
-msgstr "权限被拒绝，请检查是否以 root 身份运行。"
+msgid "Permission denied, please check whether you are running as root."
+msgstr ""
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2592
 msgid ""
@@ -278,9 +278,9 @@ msgstr "用法: ll-cli upgrade [选项] [应用]"
 
 #: ../apps/ll-cli/src/main.cpp:360
 msgid ""
-"Specify the application ID.If it not be specified, all applications will be "
-"upgraded"
-msgstr "指定应用程序名。如果未指定，将升级所有可升级的应用程序"
+"Specify the application ID. If it not be specified, all applications will be"
+" upgraded"
+msgstr ""
 
 #: ../apps/ll-cli/src/main.cpp:367
 msgid ""
@@ -297,22 +297,11 @@ msgid ""
 "ll-cli search org.deepin.demo\n"
 "# find remotely runtime by name\n"
 "ll-cli search org.deepin.base --type=runtime\n"
-"# find all off app of remote\n"
+"# find all of app of remote\n"
 "ll-cli search .\n"
-"# find all off runtime of remote\n"
+"# find all of runtime of remote\n"
 "ll-cli search . --type=runtime"
 msgstr ""
-"用法: ll-cli search [选项] 关键词\n"
-"\n"
-"示例:\n"
-"# 通过应用名从远程仓库搜索应用程序\n"
-"ll-cli search org.deepin.demo\n"
-"# 从远程仓库里搜索指定类型的应用程序\n"
-"ll-cli search org.deepin.base --type=runtime\n"
-"# 从远程仓库搜索所有应用程序\n"
-"ll-cli search .\n"
-"# 从远程仓库搜索所有运行时\n"
-"ll-cli search . --type=runtime"
 
 #: ../apps/ll-cli/src/main.cpp:382
 msgid "Specify the Keywords"
@@ -671,8 +660,8 @@ msgid "Build in an isolated network environment"
 msgstr "在隔离网络的环境中构建"
 
 #: ../apps/ll-builder/src/main.cpp:259
-msgid "Run builded linyaps app"
-msgstr "运行构建好的应用程序"
+msgid "Run built linyaps app"
+msgstr ""
 
 #: ../apps/ll-builder/src/main.cpp:260
 msgid "Usage: ll-builder run [OPTIONS] [COMMAND...]"
@@ -695,16 +684,16 @@ msgid "Run in debug mode (enable develop module)"
 msgstr "在调试模式下运行（启用开发模块）"
 
 #: ../apps/ll-builder/src/main.cpp:283
-msgid "List builded linyaps app"
-msgstr "列出已构建的应用程序"
+msgid "List built linyaps app"
+msgstr ""
 
 #: ../apps/ll-builder/src/main.cpp:284
 msgid "Usage: ll-builder list [OPTIONS]"
 msgstr "用法: ll-builder list [选项]"
 
 #: ../apps/ll-builder/src/main.cpp:286
-msgid "Remove builded linyaps app"
-msgstr "删除已构建的应用程序"
+msgid "Remove built linyaps app"
+msgstr ""
 
 #: ../apps/ll-builder/src/main.cpp:287
 msgid "Usage: ll-builder remove [OPTIONS] [APP...]"

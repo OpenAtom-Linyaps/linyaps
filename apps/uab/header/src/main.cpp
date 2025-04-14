@@ -102,6 +102,72 @@ std::string calculateDigest(int fd, std::size_t bundleOffset, std::size_t bundle
     return stream.str();
 }
 
+std::string find_fusermount()
+{
+    std::string res;
+
+    const char *path = getenv("PATH");
+    if (!path) {
+        return res;
+    }
+
+    auto search_dir = [](std::filesystem::path dir, std::string &res) {
+        std::error_code ec;
+        auto iter = std::filesystem::directory_iterator{dir, ec};
+        if (ec) {
+            std::cerr << "failed to open directory " << dir << ": " << ec.message() << std::endl;
+            return false;
+        }
+        for (auto const & entry : iter) {
+            std::string filename = entry.path().filename();
+            if (filename.rfind("fusermount", 0) != 0) {
+                continue;
+            }
+
+            if (filename.substr(10).find_first_not_of("0123456789") != std::string::npos) {
+                continue;
+            }
+
+            struct stat sb;
+            if (stat(entry.path().c_str(), &sb) == -1) {
+                std::cerr << "stat error: " << strerror(errno) << std::endl;
+                continue;
+            }
+
+            if (sb.st_uid != 0 || (sb.st_mode & S_ISUID) == 0) {
+                std::cerr << "skip " << entry.path() << std::endl;;
+                continue;
+            }
+
+            res = entry.path();
+            return true;
+        }
+
+        return false;
+    };
+
+    const char *begin = path;
+    const char *end = path + strlen(path);
+
+    while (begin < end) {
+        const char *colon = std::strchr(begin, ':');
+        if (!colon) {
+            colon = end;
+        }
+
+        std::string dir(begin, colon);
+        if (!dir.empty()) {
+            if (search_dir(dir, res)) {
+                return res;
+            }
+        }
+
+        begin = colon + 1;
+    }
+
+    return res;
+}
+
 int mountSelfBundle(const lightElf::native_elf &elf,
                     const linglong::api::types::v1::UabMetaInfo &meta) noexcept
 {
@@ -139,6 +205,16 @@ int mountSelfBundle(const lightElf::native_elf &elf,
             if (tmpfd != -1) {
                 ::dup2(tmpfd, STDOUT_FILENO);
                 ::dup2(tmpfd, STDERR_FILENO);
+            }
+        }
+
+        if (!getenv("FUSERMOUNT_PROG")) {
+            auto fuserMountProg = find_fusermount();
+            if (!fuserMountProg.empty()) {
+                setenv("FUSERMOUNT_PROG", fuserMountProg.c_str(), 1);
+                std::cerr << "use fusermount:" << fuserMountProg << std::endl;
+            } else {
+                std::cerr << "fusermount not found" << std::endl;
             }
         }
 

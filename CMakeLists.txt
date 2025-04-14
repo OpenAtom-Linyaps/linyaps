@@ -20,9 +20,14 @@ if(NOT ("${LINGLONG_VERSION}" STREQUAL ""))
   set(PROJECT_VERSION ${LINGLONG_VERSION})
 endif()
 
-set(ENABLE_UAB
+set(ENABLE_LINGLONG_APP_BUILDER_UTILS
     OFF
-    CACHE BOOL "enable building UAB")
+    CACHE BOOL "enable build ll-builder-utils to linglong app")
+
+set(BUILD_LINGLONG_BUILDER_UTILS_IN_BOX
+    OFF
+    CACHE BOOL "build ll-builder-utils in box")
+
 set(ENABLE_LINGLONG_INSTALLER
     OFF
     CACHE BOOL "enable linglong installer")
@@ -163,6 +168,20 @@ endfunction()
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# build ll-build-utils only
+if(BUILD_LINGLONG_BUILDER_UTILS_IN_BOX)
+    pfl_init(AUTO)
+    pfl_add_libraries(
+        LIBS
+        api
+        ocppi
+        oci-cfg-generators
+        APPS
+        ll-builder-utils
+        uab)
+    return()
+endif()
+
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
@@ -250,8 +269,11 @@ pfl_add_libraries(
   ll-cli
   ll-package-manager
   llpkg
-  uab
   ll-session-helper)
+
+if(ENABLE_LINGLONG_APP_BUILDER_UTILS)
+    add_subdirectory(apps/ll-builder-utils)
+endif()
 
 add_subdirectory(misc)
 add_subdirectory(po)

@@ -1,0 +1,134 @@
+diff --git a/lib/mount.c b/lib/mount.c
+index 6ed4444..b592ade 100644
+--- a/lib/mount.c
++++ b/lib/mount.c
+@@ -46,7 +46,6 @@
+ #define umount2(mnt, flags) unmount(mnt, (flags == 2) ? MNT_FORCE : 0)
+ #endif
+ 
+-#define FUSERMOUNT_PROG		"fusermount3"
+ #define FUSE_COMMFD_ENV		"_FUSE_COMMFD"
+ #define FUSE_COMMFD2_ENV	"_FUSE_COMMFD2"
+ 
+@@ -121,6 +120,34 @@ static const struct fuse_opt fuse_mount_opts[] = {
+ 	FUSE_OPT_END
+ };
+ 
++/**
++ * Returns FUSERMOUNT_PROG path from environment variable.
++ *
++ * If $FUSERMOUNT_PROG is not set, the program exits.
++ *
++ * Call with FUSERMOUNT_PROG_DEBUG=nonzerovalue to make the code print the value before evaluation.
++ */
++static const char *fusermountProg(void)
++{
++	static const char envVar[] = "FUSERMOUNT_PROG";
++	char *fusermountProg = getenv(envVar);
++
++	static const char debugEnvVarSuffix[] = "_DEBUG";
++	char debugEnvVar[sizeof(envVar) + sizeof(debugEnvVarSuffix) + 1];
++	sprintf(debugEnvVar, "%s%s", envVar, debugEnvVarSuffix);
++
++	if (fusermountProg == NULL) {
++		fprintf(stderr, "Error: $%s not set\n", envVar);
++		exit(1);
++	}
++
++	if (getenv(debugEnvVar) != NULL) {
++		fprintf(stderr, "$%s: %s\n", envVar, fusermountProg);
++	}
++
++	return fusermountProg;
++}
++
+ /*
+  * Running fusermount by calling 'posix_spawn'
+  *
+@@ -129,19 +156,12 @@ static const struct fuse_opt fuse_mount_opts[] = {
+ static int fusermount_posix_spawn(posix_spawn_file_actions_t *action,
+ 				  char const * const argv[], pid_t *out_pid)
+ {
+-	const char *full_path = FUSERMOUNT_DIR "/" FUSERMOUNT_PROG;
+ 	pid_t pid;
+ 
+ 	/* See man 7 environ for the global environ pointer */
+ 
+-	/* first try the install path */
+-	int status = posix_spawn(&pid, full_path,  action, NULL,
++	int status = posix_spawn(&pid, fusermountProg(),  action, NULL,
+ 				 (char * const *) argv, environ);
+-	if (status != 0) {
+-		/* if that fails, try a system install */
+-		status = posix_spawnp(&pid, FUSERMOUNT_PROG, action, NULL,
+-				      (char * const *) argv, environ);
+-	}
+ 
+ 	if (status != 0) {
+ 		fuse_log(FUSE_LOG_ERR,
+@@ -160,12 +180,12 @@ static int fusermount_posix_spawn(posix_spawn_file_actions_t *action,
+ 
+ void fuse_mount_version(void)
+ {
+-	char const *const argv[] = {FUSERMOUNT_PROG, "--version", NULL};
++	char const *const argv[] = {fusermountProg(), "--version", NULL};
+ 	int status = fusermount_posix_spawn(NULL, argv, NULL);
+ 
+ 	if(status != 0)
+ 		fuse_log(FUSE_LOG_ERR, "Running '%s --version' failed",
+-			 FUSERMOUNT_PROG);
++			 fusermountProg());
+ }
+ 
+ struct mount_flags {
+@@ -337,12 +357,12 @@ void fuse_kern_unmount(const char *mountpoint, int fd)
+ 		return;
+ 
+ 	char const * const argv[] =
+-		{ FUSERMOUNT_PROG, "--unmount", "--quiet", "--lazy",
++		{ fusermountProg(), "--unmount", "--quiet", "--lazy",
+ 				"--", mountpoint, NULL };
+ 	int status = fusermount_posix_spawn(NULL, argv, NULL);
+ 	if(status != 0) {
+ 		fuse_log(FUSE_LOG_ERR, "Spawning %s to unmount failed: %s",
+-			 FUSERMOUNT_PROG, strerror(-status));
++			 fusermountProg(), strerror(-status));
+ 		return;
+ 	}
+ }
+@@ -378,7 +398,7 @@ static int setup_auto_unmount(const char *mountpoint, int quiet)
+ 	setenv(FUSE_COMMFD2_ENV, arg_fd_entry, 1);
+ 
+ 	char const *const argv[] = {
+-		FUSERMOUNT_PROG,
++		fusermountProg(),
+ 		"--auto-unmount",
+ 		"--",
+ 		mountpoint,
+@@ -434,7 +454,7 @@ static int fuse_mount_fusermount(const char *mountpoint, struct mount_opts *mo,
+ 	res = socketpair(PF_UNIX, SOCK_STREAM, 0, fds);
+ 	if(res == -1) {
+ 		fuse_log(FUSE_LOG_ERR, "Running %s: socketpair() failed: %s\n",
+-			 FUSERMOUNT_PROG, strerror(errno));
++			 fusermountProg(), strerror(errno));
+ 		return -1;
+ 	}
+ 
+@@ -451,7 +471,7 @@ static int fuse_mount_fusermount(const char *mountpoint, struct mount_opts *mo,
+ 	setenv(FUSE_COMMFD2_ENV, arg_fd_entry, 1);
+ 
+ 	char const *const argv[] = {
+-		FUSERMOUNT_PROG,
++		fusermountProg(),
+ 		"-o", opts ? opts : "",
+ 		"--",
+ 		mountpoint,
+@@ -476,7 +496,7 @@ static int fuse_mount_fusermount(const char *mountpoint, struct mount_opts *mo,
+ 		close(fds[0]);
+ 		close(fds[1]);
+ 		fuse_log(FUSE_LOG_ERR, "posix_spawn(p)() for %s failed: %s",
+-			 FUSERMOUNT_PROG, strerror(-status));
++			 fusermountProg(), strerror(-status));
+ 		return -1;
+ 	}
+ 

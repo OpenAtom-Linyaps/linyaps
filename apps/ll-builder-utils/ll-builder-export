@@ -1,0 +1,101 @@
+# SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+#
+# SPDX-License-Identifier: LGPL-3.0-or-later
+
+#!/bin/bash
+
+# Usage: $0 [OPTIONS]
+# Options:
+# --get-header <target_path>   拷贝预置头文件到指定路径
+# --get-loader <target_path>  拷贝预置加载器到指定路径
+# --packdir <dir:output_path> 打包目录到压缩文件
+
+if [ $# -eq 0 ]; then
+    exit 0
+fi
+
+echo $PWD
+
+APPID="cn.org.linyaps.builder.utils"
+UAB_HEADER="/opt/apps/${APPID}/files/lib/linglong/builder/uab/uab-header"
+UAB_LOADER="/opt/apps/${APPID}/files/lib/linglong/builder/uab/uab-loader"
+
+# 参数解析
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --get-header)
+            if [ -z "$2" ]; then
+                echo "--get-header need output path" >&2
+                exit 1
+            fi
+            TARGET_HEADER="$2"
+            shift 2
+            ;;
+        --get-loader)
+            if [ -z "$2" ]; then
+                echo "-get-loader need output path" >&2
+                exit 1
+            fi
+            TARGET_LOADER="$2"
+            shift 2
+            ;;
+        --packdir)
+            if [ -z "$2" ]; then
+                echo "--packdir 需要打包参数" >&2
+                exit 1
+            fi
+            IFS=':' read -r PACK_DIR OUTPUT_FILE <<< "$2"
+            shift 2
+            ;;
+        -z)
+            if [ -n "$2" ]; then
+                COMPRESSOR=$2
+                shift 2
+            else
+                shift 1
+            fi
+            ;;
+        *)
+            exit 1
+            ;;
+    esac
+done
+
+# copy uab-header
+if [ -n "$TARGET_HEADER" ]; then
+    mkdir -p "$(dirname "$TARGET_HEADER")"
+    if ! cp -v "$UAB_HEADER" "$TARGET_HEADER"; then
+        echo "copy failed" >&2
+        exit 1
+    fi
+fi
+
+# copy uab-loader
+if [ -n "$TARGET_LOADER" ]; then
+    mkdir -p "$(dirname "$TARGET_LOADER")"
+    if ! cp -v "$UAB_LOADER" "$TARGET_LOADER"; then
+        echo "copy failed" >&2
+        exit 1
+    fi
+fi
+
+# make erofs image
+if [ -n "$PACK_DIR" ] && [ -n "$OUTPUT_FILE" ]; then
+    if [ ! -d "$PACK_DIR" ]; then
+        echo "$PACK_DIR not exist" >&2
+        exit 1
+    fi
+    mkdir -p "$(dirname "$OUTPUT_FILE")"
+    if [ -z ${COMPRESSOR} ]; then
+        mkfs.erofs -Efragments,dedupe,ztailpacking -C1048576 -b4096 ${OUTPUT_FILE} ${PACK_DIR}
+    else
+        mkfs.erofs -z ${COMPRESSOR} -Efragments,dedupe,ztailpacking -C1048576 -b4096 ${OUTPUT_FILE} ${PACK_DIR}
+    fi
+
+    if [ $? -ne 0 ]; then
+        echo "packdir failed"
+        exit 1
+    fi
+fi
+
+exit 0

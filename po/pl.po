@@ -656,18 +656,20 @@ msgstr ""
 #: ../apps/ll-builder/src/main.cpp:238
 msgid "Build full develop packages, runtime requires"
 msgstr ""
+"Zbuduj ze wszystkimi pakietami dewelopera, wymagane przez środowisko "
+"wykonawcze"
 
 #: ../apps/ll-builder/src/main.cpp:240
 msgid "Skip fetch sources"
-msgstr ""
+msgstr "Pomiń pobieranie źródeł"
 
 #: ../apps/ll-builder/src/main.cpp:241
 msgid "Skip pull dependency"
-msgstr ""
+msgstr "Pomiń pobieranie zależności"
 
 #: ../apps/ll-builder/src/main.cpp:244
 msgid "Skip run container"
-msgstr ""
+msgstr "Pomiń uruchamianie kontenera"
 
 #: ../apps/ll-builder/src/main.cpp:247
 msgid "Skip commit build output"
@@ -679,27 +681,27 @@ msgstr ""
 
 #: ../apps/ll-builder/src/main.cpp:251
 msgid "Skip strip debug symbols"
-msgstr ""
+msgstr "Pomiń usuwanie symboli debug"
 
 #: ../apps/ll-builder/src/main.cpp:254
 msgid "Build in an isolated network environment"
-msgstr ""
+msgstr "Zbuduj w izolowanym środowisku sieciowym"
 
 #: ../apps/ll-builder/src/main.cpp:259
 msgid "Run built linyaps app"
-msgstr ""
+msgstr "Uruchom zbudowaną aplikację linyaps"
 
 #: ../apps/ll-builder/src/main.cpp:260
 msgid "Usage: ll-builder run [OPTIONS] [COMMAND...]"
-msgstr ""
+msgstr "Polecenie: ll-builder run [OPCJE] [KOMENDA...]"
 
 #: ../apps/ll-builder/src/main.cpp:265
 msgid "Only use local files"
-msgstr ""
+msgstr "Korzystaj tylko z plików lokalnych"
 
 #: ../apps/ll-builder/src/main.cpp:269
 msgid "Run specified module. eg: --modules binary,develop"
-msgstr ""
+msgstr "Uruchom określony moduł. np. --modules binary,develop"
 
 #: ../apps/ll-builder/src/main.cpp:275 ../apps/ll-builder/src/main.cpp:279
 msgid "Enter the container to execute command instead of running application"

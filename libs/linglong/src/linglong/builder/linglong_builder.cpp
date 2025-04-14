@@ -1508,7 +1508,8 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
     return LINGLONG_OK;
 }
 
-utils::error::Result<void> Builder::exportUAB(const ExportOption &option)
+utils::error::Result<void> Builder::exportUAB(const ExportOption &option,
+                                              const std::filesystem::path outputFile)
 {
     LINGLONG_TRACE("export uab file");
 
@@ -1598,10 +1599,20 @@ utils::error::Result<void> Builder::exportUAB(const ExportOption &option)
         packager.setLoader(option.loader.c_str());
     }
 
-    auto uabFile = QString{ "%1_%2_%3_%4.uab" }.arg(curRef->id,
-                                                    curRef->arch.toString(),
-                                                    curRef->version.toString(),
-                                                    curRef->channel);
+    QString uabFile;
+    if (!outputFile.empty()) {
+        if (outputFile.is_absolute()) {
+            uabFile = QString::fromStdString(outputFile);
+        } else {
+            uabFile = QDir::current().absoluteFilePath(QString::fromStdString(outputFile));
+        }
+    } else {
+        uabFile =
+          workingDir.absoluteFilePath(QString{ "%1_%2_%3_%4.uab" }.arg(curRef->id,
+                                                                       curRef->arch.toString(),
+                                                                       curRef->version.toString(),
+                                                                       curRef->channel));
+    }
     if (auto ret = packager.pack(uabFile, !option.full); !ret) {
         return LINGLONG_ERR(ret);
     }
@@ -1609,8 +1620,7 @@ utils::error::Result<void> Builder::exportUAB(const ExportOption &option)
     return LINGLONG_OK;
 }
 
-utils::error::Result<void> Builder::exportLayer(const QString &compressor,
-                                                const bool &noExportDevelop)
+utils::error::Result<void> Builder::exportLayer(const ExportOption &option)
 {
     LINGLONG_TRACE("export layer file");
 
@@ -1622,11 +1632,11 @@ utils::error::Result<void> Builder::exportLayer(const QString &compressor,
     auto modules = this->repo.getModuleList(*ref);
 
     package::LayerPackager pkger;
-    if (!compressor.isEmpty()) {
-        pkger.setCompressor(compressor);
+    if (!option.compressor.empty()) {
+        pkger.setCompressor(option.compressor.c_str());
     }
     for (const auto &module : modules) {
-        if (noExportDevelop && module == "develop") {
+        if (option.noExportDevelop && module == "develop") {
             continue;
         }
 

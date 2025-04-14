@@ -705,55 +705,55 @@ msgstr "Uruchom określony moduł. np. --modules binary,develop"
 
 #: ../apps/ll-builder/src/main.cpp:275 ../apps/ll-builder/src/main.cpp:279
 msgid "Enter the container to execute command instead of running application"
-msgstr ""
+msgstr "Wykonuj polecenia wewnątrz kontenera, zamiast włączać aplikację"
 
 #: ../apps/ll-builder/src/main.cpp:281
 msgid "Run in debug mode (enable develop module)"
-msgstr ""
+msgstr "Uruchom w trybie debug (włącz moduł dewelopera)"
 
 #: ../apps/ll-builder/src/main.cpp:283
 msgid "List built linyaps app"
-msgstr ""
+msgstr "Wyświetl listę zbudowanych aplikacji linyaps"
 
 #: ../apps/ll-builder/src/main.cpp:284
 msgid "Usage: ll-builder list [OPTIONS]"
-msgstr ""
+msgstr "Polecenie: ll-builder list [OPCJE]"
 
 #: ../apps/ll-builder/src/main.cpp:286
 msgid "Remove built linyaps app"
-msgstr ""
+msgstr "Usuń zbudowaną aplikację linyaps"
 
 #: ../apps/ll-builder/src/main.cpp:287
 msgid "Usage: ll-builder remove [OPTIONS] [APP...]"
-msgstr ""
+msgstr "Polecenie: ll-builder remove [OPCJE] [APLIKACJA...]"
 
 #: ../apps/ll-builder/src/main.cpp:293
 msgid "Export to linyaps layer or uab"
-msgstr ""
+msgstr "Eksportuj do warstwy linyaps lub uab"
 
 #: ../apps/ll-builder/src/main.cpp:294
 msgid "Usage: ll-builder export [OPTIONS]"
-msgstr ""
+msgstr "Polecenie: ll-builder export [OPCJE]"
 
 #: ../apps/ll-builder/src/main.cpp:306
 msgid "Uab icon (optional)"
-msgstr ""
+msgstr "Ikona uab (opcjonalne)"
 
 #: ../apps/ll-builder/src/main.cpp:309
 msgid "Export uab fully"
-msgstr ""
+msgstr "Eksportuj uab całkowicie"
 
 #: ../apps/ll-builder/src/main.cpp:310
 msgid "Export to linyaps layer file"
-msgstr ""
+msgstr "Eksportuj do pliku warstwy linyaps"
 
 #: ../apps/ll-builder/src/main.cpp:313
 msgid "Use custom loader"
-msgstr ""
+msgstr "Użyj własnego loadera"
 
 #: ../apps/ll-builder/src/main.cpp:317
 msgid "Don't export the develop module"
-msgstr ""
+msgstr "Nie eksportuj modułu develop"
 
 #: ../apps/ll-builder/src/main.cpp:323
 msgid "Push linyaps app to remote repo"

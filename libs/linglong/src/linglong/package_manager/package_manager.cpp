@@ -2386,6 +2386,25 @@ auto PackageManager::GenerateCache(const QString &reference) noexcept -> QVarian
     auto jobID = QUuid::createUuid().toString();
     m_generator_queue.runTask([this, jobID, ref]() {
         qInfo() << "Generate cache for:" << ref.toString();
+
+        const auto &appLayerItem = this->repo.getLayerItem(ref);
+        if (!appLayerItem) {
+            qWarning() << "failed to get app layer item" << appLayerItem.error();
+            return;
+        }
+        auto appCache = std::filesystem::path(LINGLONG_ROOT) / "cache" / appLayerItem->commit;
+
+        std::error_code ec;
+        if (std::filesystem::exists(appCache, ec)) {
+            qInfo() << "The cache has been generated.";
+            return;
+        }
+
+        if (ec) {
+            qCritical() << "failed to get app cache" << ec.message().c_str() << ec.value();
+            return;
+        }
+
         auto ret = this->generateCache(ref);
         if (!ret) {
             qCritical() << "failed to generate cache for:" << ref.toString();

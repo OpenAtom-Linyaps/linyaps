@@ -1683,6 +1683,9 @@ utils::error::Result<void> Builder::exportLayer(const ExportOption &option)
     }
 
     auto modules = this->repo.getModuleList(*ref);
+    if (modules.empty()) {
+        return LINGLONG_ERR(QString("no %1 found").arg(ref->toString()));
+    }
 
     package::LayerPackager pkger;
     if (!option.compressor.empty()) {

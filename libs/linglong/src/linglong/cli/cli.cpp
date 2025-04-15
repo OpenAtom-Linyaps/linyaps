@@ -2649,73 +2649,17 @@ Cli::ensureCache(const package::Reference &ref,
 {
     LINGLONG_TRACE("ensure cache for: " + QString::fromStdString(appLayerItem.info.id));
 
-    int lockfd{ -1 };
     std::error_code ec;
+    // TODO: Here we need to judge the validity of the cache. The directory may be an empty directory.
     auto appCache = std::filesystem::path(LINGLONG_ROOT) / "cache" / appLayerItem.commit;
-    const auto fileLock = std::filesystem::path("/run/linglong/") / appLayerItem.commit / ".lock";
 
-    struct flock locker{ .l_type = F_WRLCK, .l_whence = SEEK_SET, .l_start = 0, .l_len = 0 };
-
-    // Note: If the cache directory exists, check if there is a file lock.
-    //       If the lock file is not exist, it means that the cache has been generated.
     if (std::filesystem::exists(appCache, ec)) {
-        if (!std::filesystem::exists(fileLock, ec)) {
-            if (ec) {
-                return LINGLONG_ERR(QString::fromStdString(ec.message()), ec.value());
-            }
-            return appCache;
-        }
-
-        lockfd = open(fileLock.c_str(), O_CREAT | O_RDWR, 0644);
-        if (lockfd < 0) {
-            return LINGLONG_ERR("failed to open file lock " % QString::fromStdString(fileLock), -1);
-        }
-        auto closefd = utils::finally::finally([&lockfd] {
-            close(lockfd);
-        });
-
-        while (true) {
-            // Block here until the write lock is successfully set
-            using namespace std::chrono_literals;
-            if (::fcntl(lockfd, F_SETLK, &locker) == 0) {
-                break;
-            }
-            if (errno == EACCES || errno == EAGAIN || errno == EINTR) {
-                std::this_thread::sleep_for(100ms);
-            } else {
-                return LINGLONG_ERR(QString("failed to set lock ") % ::strerror(errno), -1);
-            }
-        }
-        locker.l_type = F_UNLCK;
-        if (::fcntl(lockfd, F_SETLK, &locker)) {
-            return LINGLONG_ERR("failed to unlock" % QString::fromStdString(appCache), -1);
-        }
-
+        qDebug() << "The cache has been generated.";
         return appCache;
     }
 
     if (ec) {
         return LINGLONG_ERR(QString::fromStdString(ec.message()), ec.value());
-    }
-
-    if (!std::filesystem::create_directories(fileLock.parent_path(), ec) && ec) {
-        return LINGLONG_ERR(
-          QString{ "failed to create runtime directory %1: %2" }.arg(fileLock.parent_path().c_str(),
-                                                                     ec.message().c_str()));
-    }
-
-    lockfd = open(fileLock.c_str(), O_CREAT | O_RDWR, 0644);
-    if (lockfd < 0) {
-        return LINGLONG_ERR(
-          QString{ "failed to open file lock %1: %2" }.arg(fileLock.c_str(), ::strerror(errno)));
-    }
-
-    auto closefd = utils::finally::finally([&lockfd] {
-        close(lockfd);
-    });
-
-    if (::fcntl(lockfd, F_SETLK, &locker) == -1) {
-        return LINGLONG_ERR("failed to lock" + QString::fromStdString(appCache), -1);
     }
 
     // Try to generate cache here
@@ -2732,11 +2676,6 @@ Cli::ensureCache(const package::Reference &ref,
             _("The cache generation failed, please uninstall and reinstall the application.") });
     }
     process.close();
-
-    locker.l_type = F_UNLCK;
-    if (::fcntl(lockfd, F_SETLK, &locker)) {
-        return LINGLONG_ERR("failed to unlock" + QString::fromStdString(appCache), -1);
-    }
 
     return appCache;
 }

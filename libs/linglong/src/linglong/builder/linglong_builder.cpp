@@ -571,7 +571,7 @@ utils::error::Result<package::Reference> Builder::clearDependency(const std::str
       repo.clearReference(*fuzzyRef,
                           { .forceRemote = forceRemote, .fallbackToRemote = fallbackToRemote });
     if (!res) {
-        return LINGLONG_ERR(QString{"ref doesn't exist %1"}.arg(fuzzyRef->toString()));
+        return LINGLONG_ERR(QString{ "ref doesn't exist %1" }.arg(fuzzyRef->toString()));
     }
 
     return res;
@@ -898,11 +898,10 @@ include /opt/apps/@id@/files/etc/ld.so.conf)";
           .source = appCache.absoluteFilePath("ld.so.conf").toStdString(),
           .type = "bind" },
       })
-      .setStartContainerHooks(std::vector<ocppi::runtime::config::types::Hook>{
-        ocppi::runtime::config::types::Hook{ .args = std::vector<std::string>{ "ldconfig" },
-                                             .env = {},
-                                             .path = "/sbin/ldconfig",
-                                             .timeout = {} } })
+      .setStartContainerHooks(
+        std::vector<ocppi::runtime::config::types::Hook>{ ocppi::runtime::config::types::Hook{
+          .path = "/sbin/ldconfig",
+        } })
       .forwordDefaultEnv()
       .addMask({
         "/project/linglong/output",
@@ -1255,8 +1254,8 @@ utils::error::Result<void> Builder::generateEntries() noexcept
     // 仅导出名单中的目录，以避免意外文件影响系统功能
     const std::filesystem::path exportDirConfigPath = LINGLONG_DATA_DIR "/export-dirs.json";
     if (!std::filesystem::exists(exportDirConfigPath)) {
-        return LINGLONG_ERR(QString{ "this export config file doesn't exist: %1" }.arg(
-          exportDirConfigPath.c_str()));
+        return LINGLONG_ERR(
+          QString{ "this export config file doesn't exist: %1" }.arg(exportDirConfigPath.c_str()));
     }
     auto exportDirConfig =
       linglong::utils::serialize::LoadJSONFile<linglong::api::types::v1::ExportDirs>(
@@ -1286,8 +1285,8 @@ utils::error::Result<void> Builder::generateEntries() noexcept
         }
         // appdata是旧版本的metainfo
         if (path == "share/appdata") {
-            auto ret = copyDir(binaryFiles.absoluteFilePath(path),
-                               binaryEntries.filePath("share/metainfo"));
+            auto ret =
+              copyDir(binaryFiles.absoluteFilePath(path), binaryEntries.filePath("share/metainfo"));
             if (!ret.has_value()) {
                 qWarning() << "link binary entries share to files share/" << path << "failed";
             }
@@ -1983,12 +1982,10 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
     });
 
     std::vector<ocppi::runtime::config::types::Hook> startContainer{
-        {
+        ocppi::runtime::config::types::Hook{
           .args =
             std::vector<std::string>{ "/sbin/ldconfig", "-C", "/run/linglong/cache/ld.so.cache" },
-          .env = {},
           .path = "/sbin/ldconfig",
-          .timeout = {},
         },
     };
 

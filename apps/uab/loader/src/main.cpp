@@ -268,9 +268,7 @@ bool processCaches(ocppi::runtime::config::types::Config &config,
                                         "/run/linglong/cache/ld.so.conf",
                                         "-C",
                                         "/run/linglong/cache/ld.so.cache" },
-      .env = {},
       .path = "/sbin/ldconfig",
-      .timeout = {},
     });
 
     if (!onlyApp) {
@@ -288,10 +286,8 @@ bool processCaches(ocppi::runtime::config::types::Config &config,
         });
 
         startHooks.push_back(ocppi::runtime::config::types::Hook{
-          .args = std::vector<std::string>{ "fc-cache", "-f" },
-          .env = {},
+          .args = std::vector<std::string>{ "/bin/fc-cache", "-f" },
           .path = "/bin/fc-cache",
-          .timeout = {},
         });
     }
 

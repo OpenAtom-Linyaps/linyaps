@@ -11,7 +11,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-04-14 10:18+0800\n"
+"POT-Creation-Date: 2025-04-16 13:06+0800\n"
 "PO-Revision-Date: 2025-04-11 01:38+0000\n"
 "Last-Translator: Besnik Bleta <besnik@programeshqip.org>, 2025\n"
 "Language-Team: Albanian (https://app.transifex.com/linuxdeepin/teams/3976/sq/)\n"
@@ -25,7 +25,67 @@ msgstr ""
 msgid "Permission denied, please check whether you are running as root."
 msgstr ""
 
-#: ../libs/linglong/src/linglong/cli/cli.cpp:2592
+#: ../libs/linglong/src/linglong/cli/cli.cpp:437
+msgid "To install the module, one must first install the app."
+msgstr ""
+
+#: ../libs/linglong/src/linglong/cli/cli.cpp:440
+msgid "Module is already installed."
+msgstr ""
+
+#: ../libs/linglong/src/linglong/cli/cli.cpp:443
+#: ../libs/linglong/src/linglong/cli/cli.cpp:1295
+msgid "Install failed"
+msgstr ""
+
+#: ../libs/linglong/src/linglong/cli/cli.cpp:446
+#: ../libs/linglong/src/linglong/cli/cli.cpp:1733
+msgid "Uninstall failed"
+msgstr ""
+
+#: ../libs/linglong/src/linglong/cli/cli.cpp:449
+msgid "Upgrade failed"
+msgstr ""
+
+#: ../libs/linglong/src/linglong/cli/cli.cpp:452
+#: ../libs/linglong/src/linglong/cli/cli.cpp:1656
+#: ../libs/linglong/src/linglong/cli/cli.cpp:1729
+msgid "Application is not installed."
+msgstr ""
+
+#: ../libs/linglong/src/linglong/cli/cli.cpp:455
+msgid "Latest version is already installed."
+msgstr ""
+
+#: ../libs/linglong/src/linglong/cli/cli.cpp:1269
+#: ../libs/linglong/src/linglong/cli/cli.cpp:1518
+msgid ""
+"Network connection failed. Please:\n"
+"1. Check your internet connection\n"
+"2. Verify network proxy settings if used"
+msgstr ""
+
+#: ../libs/linglong/src/linglong/cli/cli.cpp:1275
+msgid ""
+"Application already installed, If you want to replace it, try using 'll-cli "
+"install %1 --force'"
+msgstr ""
+
+#: ../libs/linglong/src/linglong/cli/cli.cpp:1281
+msgid "Application %1 is not found in remote repo."
+msgstr ""
+
+#: ../libs/linglong/src/linglong/cli/cli.cpp:1285
+msgid "Cannot specify a version when installing a module."
+msgstr ""
+
+#: ../libs/linglong/src/linglong/cli/cli.cpp:1289
+msgid ""
+"The latest version has been installed. If you want to replace it, try using "
+"'ll-cli install %1/version --force'"
+msgstr ""
+
+#: ../libs/linglong/src/linglong/cli/cli.cpp:2732
 msgid ""
 "The cache generation failed, please uninstall and reinstall the application."
 msgstr ""
@@ -75,41 +135,45 @@ msgstr ""
 msgid "Use json format to output result"
 msgstr "Përdor formatin json për të dhënë përfundimin"
 
-#: ../apps/ll-cli/src/main.cpp:185 ../apps/ll-cli/src/main.cpp:536
+#: ../apps/ll-cli/src/main.cpp:185 ../apps/ll-cli/src/main.cpp:541
 #: ../apps/ll-builder/src/main.cpp:185
 msgid "Input parameter is empty, please input valid parameter instead"
 msgstr ""
 "Parametri që u dha është i zbrazët, ju lutemi, në vend të tij, jepni një "
 "parametër të vlefshëm"
 
+#: ../apps/ll-cli/src/main.cpp:210
+msgid "Show debug info (verbose logs)"
+msgstr ""
+
 #. groups
-#: ../apps/ll-cli/src/main.cpp:208
+#: ../apps/ll-cli/src/main.cpp:213
 msgid "Managing installed applications and runtimes"
 msgstr "Po administrohen aplikacionesh të instaluar dhe “runtimes”"
 
-#: ../apps/ll-cli/src/main.cpp:209
+#: ../apps/ll-cli/src/main.cpp:214
 msgid "Managing running applications"
 msgstr "Po përditësohen aplikacione që xhirojnë"
 
-#: ../apps/ll-cli/src/main.cpp:210
+#: ../apps/ll-cli/src/main.cpp:215
 msgid "Finding applications and runtimes"
 msgstr "Po gjenden aplikacione dhe “runtimes”"
 
-#: ../apps/ll-cli/src/main.cpp:211
+#: ../apps/ll-cli/src/main.cpp:216
 msgid "Managing remote repositories"
 msgstr "Po administrohen depo të largëta"
 
 #. add sub command run
-#: ../apps/ll-cli/src/main.cpp:214
+#: ../apps/ll-cli/src/main.cpp:219
 msgid "Run an application"
 msgstr "Xhironi një aplikacion"
 
 #. add sub command run options
-#: ../apps/ll-cli/src/main.cpp:219
+#: ../apps/ll-cli/src/main.cpp:224
 msgid "Specify the application ID"
 msgstr "Jepni ID-në e aplikacionit"
 
-#: ../apps/ll-cli/src/main.cpp:222
+#: ../apps/ll-cli/src/main.cpp:227
 msgid ""
 "Usage: ll-cli run [OPTIONS] APP [COMMAND...]\n"
 "\n"
@@ -131,72 +195,72 @@ msgstr ""
 "ll-cli run org.deepin.demo -- bash\n"
 "ll-cli run org.deepin.demo -- bash -x /shteg/për/te/programth/bash-i"
 
-#: ../apps/ll-cli/src/main.cpp:232
+#: ../apps/ll-cli/src/main.cpp:237
 msgid "Pass file to applications running in a sandbox"
 msgstr "Kalojuni kartelë aplikacioneve që xhirojnë nën bankëprovë"
 
-#: ../apps/ll-cli/src/main.cpp:236
+#: ../apps/ll-cli/src/main.cpp:241
 msgid "Pass url to applications running in a sandbox"
 msgstr "Kalojuni URL aplikacioneve që xhirojnë nën bankëprovë"
 
-#: ../apps/ll-cli/src/main.cpp:239 ../apps/ll-cli/src/main.cpp:261
-#: ../apps/ll-cli/src/main.cpp:278
+#: ../apps/ll-cli/src/main.cpp:244 ../apps/ll-cli/src/main.cpp:266
+#: ../apps/ll-cli/src/main.cpp:283
 msgid "Run commands in a running sandbox"
 msgstr "Ekzekutoni urdhra në një bankëprovë në funksionim"
 
 #. add sub command ps
-#: ../apps/ll-cli/src/main.cpp:242
+#: ../apps/ll-cli/src/main.cpp:247
 msgid "List running applications"
 msgstr "Shfaq aplikacione që xhirojnë"
 
-#: ../apps/ll-cli/src/main.cpp:245
+#: ../apps/ll-cli/src/main.cpp:250
 msgid "Usage: ll-cli ps [OPTIONS]"
 msgstr "Përdorimi: ll-cli ps [MUNDËSI]"
 
-#: ../apps/ll-cli/src/main.cpp:249
+#: ../apps/ll-cli/src/main.cpp:254
 msgid "Execute commands in the currently running sandbox"
 msgstr "Ekzekutoni urdhra te bankëprova e tanishme funksionale"
 
-#: ../apps/ll-cli/src/main.cpp:255 ../apps/ll-cli/src/main.cpp:273
+#: ../apps/ll-cli/src/main.cpp:260 ../apps/ll-cli/src/main.cpp:278
 msgid "Specify the application running instance(you can get it by ps command)"
 msgstr ""
 "Specifikoni instancën e xhirimit të aplikacionit (mund ta merrni përmes "
 "urdhrit ps)"
 
-#: ../apps/ll-cli/src/main.cpp:258 ../apps/ll-cli/src/main.cpp:275
+#: ../apps/ll-cli/src/main.cpp:263 ../apps/ll-cli/src/main.cpp:280
 msgid "Specify working directory"
 msgstr "Jepni drejtori pune"
 
-#: ../apps/ll-cli/src/main.cpp:266
+#: ../apps/ll-cli/src/main.cpp:271
 msgid "Enter the namespace where the application is running"
 msgstr ""
 
-#: ../apps/ll-cli/src/main.cpp:269
+#: ../apps/ll-cli/src/main.cpp:274
 msgid "Usage: ll-cli enter [OPTIONS] INSTANCE [COMMAND...]"
 msgstr "Përdorimi: ll-cli enter [MUNDËSI] INSTANCË [URDHËR…]"
 
 #. add sub command kill
-#: ../apps/ll-cli/src/main.cpp:281
+#: ../apps/ll-cli/src/main.cpp:286
 msgid "Stop running applications"
 msgstr "Ndal aplikacione që janë duke xhiruar"
 
-#: ../apps/ll-cli/src/main.cpp:284
+#: ../apps/ll-cli/src/main.cpp:289
 msgid "Usage: ll-cli kill [OPTIONS] APP"
 msgstr "Përdorimi: ll-cli kill [MUNDËSI] APLIKACION"
 
-#: ../apps/ll-cli/src/main.cpp:288
+#: ../apps/ll-cli/src/main.cpp:293
 msgid "Specify the signal to send to the application"
 msgstr "Specifikoni sinjalin për t’u dërguar te aplikacioni"
 
-#: ../apps/ll-cli/src/main.cpp:290
+#: ../apps/ll-cli/src/main.cpp:295
 msgid "Specify the running application"
 msgstr "Përcaktoni aplikacionin në xhirim e sipër"
 
-#: ../apps/ll-cli/src/main.cpp:296
+#: ../apps/ll-cli/src/main.cpp:301
 msgid "Installing an application or runtime"
 msgstr "Po instalohet një aplikacione ose “runtime”"
 
-#: ../apps/ll-cli/src/main.cpp:299
+#: ../apps/ll-cli/src/main.cpp:304
 msgid ""
 "Usage: ll-cli install [OPTIONS] APP\n"
 "\n"
@@ -232,69 +296,69 @@ msgstr ""
 "ll-cli install stable:org.deepin.demo/0.0.0.1/x86_64\n"
 "    "
 
-#: ../apps/ll-cli/src/main.cpp:318
+#: ../apps/ll-cli/src/main.cpp:323
 msgid "Specify the application ID, and it can also be a .uab or .layer file"
 msgstr ""
 "Jepni ID-në e aplikacionit dhe mund të jetë edhe një kartelë .uab ose .layer"
 
-#: ../apps/ll-cli/src/main.cpp:321
+#: ../apps/ll-cli/src/main.cpp:326
 msgid "Install a specify module"
 msgstr ""
 
-#: ../apps/ll-cli/src/main.cpp:324
+#: ../apps/ll-cli/src/main.cpp:329
 msgid "Force install the application"
 msgstr "Instaloje me detyrim aplikacionin"
 
-#: ../apps/ll-cli/src/main.cpp:325
+#: ../apps/ll-cli/src/main.cpp:330
 msgid "Automatically answer yes to all questions"
 msgstr "Përgjigju automatikisht po për krejt pyetjet"
 
-#: ../apps/ll-cli/src/main.cpp:331
+#: ../apps/ll-cli/src/main.cpp:336
 msgid "Uninstall the application or runtimes"
 msgstr "Çinstalo aplikacionin ose “runtimes”"
 
-#: ../apps/ll-cli/src/main.cpp:334
+#: ../apps/ll-cli/src/main.cpp:339
 msgid "Usage: ll-cli uninstall [OPTIONS] APP"
 msgstr "Përdorimi: ll-cli uninstall [MUNDËSI] APLIKACION"
 
-#: ../apps/ll-cli/src/main.cpp:335
+#: ../apps/ll-cli/src/main.cpp:340
 msgid "Specify the applications ID"
 msgstr "Specifikoni ID aplikacioni"
 
-#: ../apps/ll-cli/src/main.cpp:338
+#: ../apps/ll-cli/src/main.cpp:343
 msgid "Uninstall a specify module"
 msgstr ""
 
 #. below options are used for compatibility with old ll-cli
-#: ../apps/ll-cli/src/main.cpp:343
+#: ../apps/ll-cli/src/main.cpp:348
 msgid "Remove all unused modules"
 msgstr "Hiq krejt modulet e papërdorur"
 
-#: ../apps/ll-cli/src/main.cpp:347
+#: ../apps/ll-cli/src/main.cpp:352
 msgid "Uninstall all modules"
 msgstr "Çinstalo krejt modulet"
 
-#: ../apps/ll-cli/src/main.cpp:353
+#: ../apps/ll-cli/src/main.cpp:358
 msgid "Upgrade the application or runtimes"
 msgstr "Përmirësoni aplikacionin ose “runtimes”"
 
-#: ../apps/ll-cli/src/main.cpp:356
+#: ../apps/ll-cli/src/main.cpp:361
 msgid "Usage: ll-cli upgrade [OPTIONS] [APP]"
 msgstr "Përdorimi: ll-cli upgrade [MUNDËSI] [APLIKACION]"
 
-#: ../apps/ll-cli/src/main.cpp:360
+#: ../apps/ll-cli/src/main.cpp:365
 msgid ""
 "Specify the application ID. If it not be specified, all applications will be"
 " upgraded"
 msgstr ""
 
-#: ../apps/ll-cli/src/main.cpp:367
+#: ../apps/ll-cli/src/main.cpp:372
 msgid ""
 "Search the applications/runtimes containing the specified text from the "
 "remote repository"
 msgstr ""
 
-#: ../apps/ll-cli/src/main.cpp:371
+#: ../apps/ll-cli/src/main.cpp:376
 msgid ""
 "Usage: ll-cli search [OPTIONS] KEYWORDS\n"
 "\n"
@@ -309,28 +373,28 @@ msgid ""
 "ll-cli search . --type=runtime"
 msgstr ""
 
-#: ../apps/ll-cli/src/main.cpp:382
+#: ../apps/ll-cli/src/main.cpp:387
 msgid "Specify the Keywords"
 msgstr "Jepni Fjalëkyçet"
 
-#: ../apps/ll-cli/src/main.cpp:388 ../apps/ll-cli/src/main.cpp:413
+#: ../apps/ll-cli/src/main.cpp:393 ../apps/ll-cli/src/main.cpp:418
 msgid "Filter result with specify type. One of \"runtime\", \"app\" or \"all\""
 msgstr ""
 "Filtro përfundimet me llojin e dhënë. Një nga “runtime”, “app”, ose “all”"
 
-#: ../apps/ll-cli/src/main.cpp:392
+#: ../apps/ll-cli/src/main.cpp:397
 msgid "include develop application in result"
 msgstr ""
 
-#: ../apps/ll-cli/src/main.cpp:393
+#: ../apps/ll-cli/src/main.cpp:398
 msgid "Show all results"
 msgstr "Shfaqi krejt përfundimet"
 
-#: ../apps/ll-cli/src/main.cpp:397
+#: ../apps/ll-cli/src/main.cpp:402
 msgid "List installed applications or runtimes"
 msgstr "Shfaq aplikacione të instaluar ose “runtimes”"
 
-#: ../apps/ll-cli/src/main.cpp:400
+#: ../apps/ll-cli/src/main.cpp:405
 msgid ""
 "Usage: ll-cli list [OPTIONS]\n"
 "\n"
@@ -352,7 +416,7 @@ msgstr ""
 "# shfaq listë versionesh më të rinj të aplikacionit(eve) të instaluar aktualisht\n"
 "ll-cli list --upgradable\n"
 
-#: ../apps/ll-cli/src/main.cpp:419
+#: ../apps/ll-cli/src/main.cpp:424
 msgid ""
 "Show the list of latest version of the currently installed applications, it "
 "only works for app"
@@ -360,153 +424,153 @@ msgstr ""
 "Shfaq listën e versionit më të ri të aplikacioneve aktualisht të instaluara,"
 " funksionon vetëm për aplikacion"
 
-#: ../apps/ll-cli/src/main.cpp:426
+#: ../apps/ll-cli/src/main.cpp:431
 msgid "Display or modify information of the repository currently using"
 msgstr "Shfaqni ose ndryshoni hollësi të depos aktualisht në përdorim"
 
-#: ../apps/ll-cli/src/main.cpp:428
+#: ../apps/ll-cli/src/main.cpp:433
 msgid "Usage: ll-cli repo SUBCOMMAND [OPTIONS]"
 msgstr "Përdorimi: ll-cli repo NËNURDHËR [MUNDËSI]"
 
 #. add repo sub command add
-#: ../apps/ll-cli/src/main.cpp:432 ../apps/ll-builder/src/main.cpp:372
+#: ../apps/ll-cli/src/main.cpp:437 ../apps/ll-builder/src/main.cpp:374
 msgid "Add a new repository"
 msgstr "Shtoni depo të re"
 
-#: ../apps/ll-cli/src/main.cpp:433
+#: ../apps/ll-cli/src/main.cpp:438
 msgid "Usage: ll-cli repo add [OPTIONS] NAME URL"
 msgstr "Përdorimi: ll-cli repo add [MUNDËSI] EMËR URL"
 
-#: ../apps/ll-cli/src/main.cpp:434 ../apps/ll-cli/src/main.cpp:447
-#: ../apps/ll-builder/src/main.cpp:374
+#: ../apps/ll-cli/src/main.cpp:439 ../apps/ll-cli/src/main.cpp:452
+#: ../apps/ll-builder/src/main.cpp:376
 msgid "Specify the repo name"
 msgstr "Jepni emrin e depos"
 
-#: ../apps/ll-cli/src/main.cpp:437 ../apps/ll-cli/src/main.cpp:450
-#: ../apps/ll-cli/src/main.cpp:468 ../apps/ll-builder/src/main.cpp:377
-#: ../apps/ll-builder/src/main.cpp:397
+#: ../apps/ll-cli/src/main.cpp:442 ../apps/ll-cli/src/main.cpp:455
+#: ../apps/ll-cli/src/main.cpp:473 ../apps/ll-builder/src/main.cpp:379
+#: ../apps/ll-builder/src/main.cpp:399
 msgid "Url of the repository"
 msgstr "URL e depos"
 
-#: ../apps/ll-cli/src/main.cpp:440 ../apps/ll-cli/src/main.cpp:457
-#: ../apps/ll-cli/src/main.cpp:465 ../apps/ll-cli/src/main.cpp:476
-#: ../apps/ll-cli/src/main.cpp:488 ../apps/ll-builder/src/main.cpp:380
-#: ../apps/ll-builder/src/main.cpp:387 ../apps/ll-builder/src/main.cpp:394
-#: ../apps/ll-builder/src/main.cpp:405
+#: ../apps/ll-cli/src/main.cpp:445 ../apps/ll-cli/src/main.cpp:462
+#: ../apps/ll-cli/src/main.cpp:470 ../apps/ll-cli/src/main.cpp:481
+#: ../apps/ll-cli/src/main.cpp:493 ../apps/ll-builder/src/main.cpp:382
+#: ../apps/ll-builder/src/main.cpp:389 ../apps/ll-builder/src/main.cpp:396
+#: ../apps/ll-builder/src/main.cpp:407
 msgid "Alias of the repo name"
 msgstr "Alias i emrit të depos"
 
-#: ../apps/ll-cli/src/main.cpp:446
+#: ../apps/ll-cli/src/main.cpp:451
 msgid "Modify repository URL"
 msgstr "Ndryshoni URL depo"
 
 #. add repo sub command remove
-#: ../apps/ll-cli/src/main.cpp:455 ../apps/ll-builder/src/main.cpp:385
+#: ../apps/ll-cli/src/main.cpp:460 ../apps/ll-builder/src/main.cpp:387
 msgid "Remove a repository"
 msgstr "Hiqni një depo"
 
-#: ../apps/ll-cli/src/main.cpp:456
+#: ../apps/ll-cli/src/main.cpp:461
 msgid "Usage: ll-cli repo remove [OPTIONS] NAME"
 msgstr "Përdorimi: ll-cli repo remove [MUNDËSI] EMËR"
 
 #. add repo sub command update
 #. TODO: add --repo and --url options
 #. add repo sub command update
-#: ../apps/ll-cli/src/main.cpp:463 ../apps/ll-builder/src/main.cpp:392
+#: ../apps/ll-cli/src/main.cpp:468 ../apps/ll-builder/src/main.cpp:394
 msgid "Update the repository URL"
 msgstr "Përditësoni URL-në e depos"
 
-#: ../apps/ll-cli/src/main.cpp:464
+#: ../apps/ll-cli/src/main.cpp:469
 msgid "Usage: ll-cli repo update [OPTIONS] NAME URL"
 msgstr "Përdorimi: ll-cli repo update [MUNDËSI] EMËR URL"
 
-#: ../apps/ll-cli/src/main.cpp:474 ../apps/ll-builder/src/main.cpp:403
+#: ../apps/ll-cli/src/main.cpp:479 ../apps/ll-builder/src/main.cpp:405
 msgid "Set a default repository name"
 msgstr "Caktoni një emër depoje parazgjedhje"
 
-#: ../apps/ll-cli/src/main.cpp:475
+#: ../apps/ll-cli/src/main.cpp:480
 msgid "Usage: ll-cli repo set-default [OPTIONS] NAME"
 msgstr "Përdorimi: ll-cli repo set-default [MUNDËSI] EMËR"
 
 #. add repo sub command show
-#: ../apps/ll-cli/src/main.cpp:481 ../apps/ll-builder/src/main.cpp:410
+#: ../apps/ll-cli/src/main.cpp:486 ../apps/ll-builder/src/main.cpp:412
 msgid "Show repository information"
 msgstr "Shfaq hollësi depoje"
 
-#: ../apps/ll-cli/src/main.cpp:482
+#: ../apps/ll-cli/src/main.cpp:487
 msgid "Usage: ll-cli repo show [OPTIONS]"
 msgstr "Përdorimi: ll-cli repo show [MUNDËSI]"
 
-#: ../apps/ll-cli/src/main.cpp:486
+#: ../apps/ll-cli/src/main.cpp:491
 msgid "Set the priority of the repo"
 msgstr "Caktoni përparësinë e depos"
 
-#: ../apps/ll-cli/src/main.cpp:487
+#: ../apps/ll-cli/src/main.cpp:492
 msgid "Usage: ll-cli repo set-priority ALIAS PRIORITY"
 msgstr "Përdorimi: ll-cli repo set-priority ALIAS PËRPARËSI"
 
-#: ../apps/ll-cli/src/main.cpp:492
+#: ../apps/ll-cli/src/main.cpp:497
 msgid "Priority of the repo"
 msgstr "Përparësi e depos"
 
-#: ../apps/ll-cli/src/main.cpp:499
+#: ../apps/ll-cli/src/main.cpp:504
 msgid "Display information about installed apps or runtimes"
 msgstr "Shfaq hollësi rreth aplikacionesh të instaluar ose runtime-sh"
 
-#: ../apps/ll-cli/src/main.cpp:502
+#: ../apps/ll-cli/src/main.cpp:507
 msgid "Usage: ll-cli info [OPTIONS] APP"
 msgstr "Përdorimi: ll-cli info [MUNDËSI] APLIKACION"
 
-#: ../apps/ll-cli/src/main.cpp:506
+#: ../apps/ll-cli/src/main.cpp:511
 msgid "Specify the application ID, and it can also be a .layer file"
 msgstr "Specifikoni ID-në e aplikacionit dhe mund të jetë një kartelë .layer"
 
-#: ../apps/ll-cli/src/main.cpp:513
+#: ../apps/ll-cli/src/main.cpp:518
 msgid "Display the exported files of installed application"
 msgstr "Shfaq kartelat e eksportuara të aplikacionit të instaluar"
 
-#: ../apps/ll-cli/src/main.cpp:516
+#: ../apps/ll-cli/src/main.cpp:521
 msgid "Usage: ll-cli content [OPTIONS] APP"
 msgstr "Përdorimi: ll-cli content [MUNDËSI] APLIKACION"
 
-#: ../apps/ll-cli/src/main.cpp:517
+#: ../apps/ll-cli/src/main.cpp:522
 msgid "Specify the installed application ID"
 msgstr "Specifikoni ID aplikacioni të instaluar"
 
 #. add sub command prune
-#: ../apps/ll-cli/src/main.cpp:522
+#: ../apps/ll-cli/src/main.cpp:527
 msgid "Remove the unused base or runtime"
 msgstr "Hiq bazën ose runtime-n e papërdorur"
 
-#: ../apps/ll-cli/src/main.cpp:524
+#: ../apps/ll-cli/src/main.cpp:529
 msgid "Usage: ll-cli prune [OPTIONS]"
 msgstr "Përdorimi: ll-cli prune [MUNDËSI]"
 
-#: ../apps/ll-cli/src/main.cpp:529
+#: ../apps/ll-cli/src/main.cpp:534
 msgid "Display the information of installed application"
 msgstr "Shfaq hollësitë e aplikacionit të instaluar"
 
-#: ../apps/ll-cli/src/main.cpp:531
+#: ../apps/ll-cli/src/main.cpp:536
 msgid "Usage: ll-cli inspect [OPTIONS]"
 msgstr "Përdorimi: ll-cli inspect [MUNDËSI]"
 
-#: ../apps/ll-cli/src/main.cpp:533
+#: ../apps/ll-cli/src/main.cpp:538
 msgid "Specify the process id"
 msgstr "Jepni ID procesi"
 
-#: ../apps/ll-cli/src/main.cpp:542
+#: ../apps/ll-cli/src/main.cpp:547
 msgid "Invalid process id"
 msgstr "ID e pavlefshme procesi"
 
-#: ../apps/ll-cli/src/main.cpp:545
+#: ../apps/ll-cli/src/main.cpp:550
 msgid "Invalid pid format"
 msgstr "Format i pavlefshëm PID"
 
-#: ../apps/ll-cli/src/main.cpp:555
+#: ../apps/ll-cli/src/main.cpp:560
 msgid "Specify the installed app(base or runtime)"
 msgstr "Specifikoni aplikacionin e instaluar (bazë ose “runtime”)"
 
-#: ../apps/ll-cli/src/main.cpp:566
+#: ../apps/ll-cli/src/main.cpp:571
 msgid "linyaps CLI version "
 msgstr "Version CLI linyaps "
 
@@ -617,7 +681,7 @@ msgid "Usage: ll-builder build [OPTIONS] [COMMAND...]"
 msgstr "Përdorimi: ll-builder build [MUNDËSI] [URDHËR…]"
 
 #: ../apps/ll-builder/src/main.cpp:215 ../apps/ll-builder/src/main.cpp:261
-#: ../apps/ll-builder/src/main.cpp:296 ../apps/ll-builder/src/main.cpp:325
+#: ../apps/ll-builder/src/main.cpp:296 ../apps/ll-builder/src/main.cpp:327
 msgid "File path of the linglong.yaml"
 msgstr "Shteg kartele linglong.yaml"
 
@@ -742,92 +806,96 @@ msgstr "Përdor ngarkues vetjak"
 msgid "Don't export the develop module"
 msgstr "Mos eksporto modulin e zhvillimit"
 
-#: ../apps/ll-builder/src/main.cpp:323
+#: ../apps/ll-builder/src/main.cpp:320
+msgid "Output file"
+msgstr ""
+
+#: ../apps/ll-builder/src/main.cpp:325
 msgid "Push linyaps app to remote repo"
 msgstr "Kaloje aplikacionin linyaps te depoja e largët"
 
-#: ../apps/ll-builder/src/main.cpp:324
+#: ../apps/ll-builder/src/main.cpp:326
 msgid "Usage: ll-builder push [OPTIONS]"
 msgstr "Përdorimi: ll-builder push [MUNDËSI]"
 
-#: ../apps/ll-builder/src/main.cpp:329
+#: ../apps/ll-builder/src/main.cpp:331
 msgid "Remote repo url"
 msgstr "URL depoje të largët"
 
-#: ../apps/ll-builder/src/main.cpp:332
+#: ../apps/ll-builder/src/main.cpp:334
 msgid "Remote repo name"
 msgstr "Emër depoje të largët"
 
-#: ../apps/ll-builder/src/main.cpp:335
+#: ../apps/ll-builder/src/main.cpp:337
 msgid "Push single module"
 msgstr ""
 
-#: ../apps/ll-builder/src/main.cpp:340
+#: ../apps/ll-builder/src/main.cpp:342
 msgid "Import linyaps layer to build repo"
 msgstr ""
 
-#: ../apps/ll-builder/src/main.cpp:341
+#: ../apps/ll-builder/src/main.cpp:343
 msgid "Usage: ll-builder import [OPTIONS] LAYER"
 msgstr "Përdorimi: ll-builder import [MUNDËSI] SHTRESË"
 
-#: ../apps/ll-builder/src/main.cpp:342 ../apps/ll-builder/src/main.cpp:361
+#: ../apps/ll-builder/src/main.cpp:344 ../apps/ll-builder/src/main.cpp:363
 msgid "Layer file path"
 msgstr "Shteg kartele shtrese"
 
-#: ../apps/ll-builder/src/main.cpp:350
+#: ../apps/ll-builder/src/main.cpp:352
 msgid "Import linyaps layer dir to build repo"
 msgstr ""
 
-#: ../apps/ll-builder/src/main.cpp:352
+#: ../apps/ll-builder/src/main.cpp:354
 msgid "Usage: ll-builder import-dir PATH"
 msgstr "Përdorimi: ll-builder import-dir SHTEG"
 
-#: ../apps/ll-builder/src/main.cpp:353
+#: ../apps/ll-builder/src/main.cpp:355
 msgid "Layer dir path"
 msgstr "Shteg drejtorie shtrese"
 
-#: ../apps/ll-builder/src/main.cpp:359
+#: ../apps/ll-builder/src/main.cpp:361
 msgid "Extract linyaps layer to dir"
 msgstr "Përfto shtresë linyaps te drejtoria"
 
-#: ../apps/ll-builder/src/main.cpp:360
+#: ../apps/ll-builder/src/main.cpp:362
 msgid "Usage: ll-builder extract [OPTIONS] LAYER DIR"
 msgstr "Përdorimi: ll-builder extract [MUNDËSI] SHTRESË DREJTORI"
 
-#: ../apps/ll-builder/src/main.cpp:364
+#: ../apps/ll-builder/src/main.cpp:366
 msgid "Destination directory"
 msgstr "Drejtori vendmbërritje"
 
 #. add build repo
-#: ../apps/ll-builder/src/main.cpp:367
+#: ../apps/ll-builder/src/main.cpp:369
 msgid "Display and manage repositories"
 msgstr "Shfaqni dhe administroni depo"
 
-#: ../apps/ll-builder/src/main.cpp:368
+#: ../apps/ll-builder/src/main.cpp:370
 msgid "Usage: ll-builder repo [OPTIONS] SUBCOMMAND"
 msgstr "Përdorimi: ll-builder repo [MUNDËSI] NËNURDHËR"
 
-#: ../apps/ll-builder/src/main.cpp:373
+#: ../apps/ll-builder/src/main.cpp:375
 msgid "Usage: ll-builder repo add [OPTIONS] NAME URL"
 msgstr "Përdorimi: ll-builder repo add [MUNDËSI] EMËR URL"
 
-#: ../apps/ll-builder/src/main.cpp:386
+#: ../apps/ll-builder/src/main.cpp:388
 msgid "Usage: ll-builder repo remove [OPTIONS] NAME"
 msgstr "Përdorimi: ll-builder repo remove [MUNDËSI] EMËR"
 
-#: ../apps/ll-builder/src/main.cpp:393
+#: ../apps/ll-builder/src/main.cpp:395
 msgid "Usage: ll-builder repo update [OPTIONS] NAME URL"
 msgstr "Përdorimi: ll-builder repo update [MUNDËSI] EMËR URL"
 
-#: ../apps/ll-builder/src/main.cpp:404
+#: ../apps/ll-builder/src/main.cpp:406
 msgid "Usage: ll-builder repo set-default [OPTIONS] NAME"
 msgstr "Përdorimi: ll-builder repo set-default [MUNDËSI] EMËR"
 
-#: ../apps/ll-builder/src/main.cpp:411
+#: ../apps/ll-builder/src/main.cpp:413
 msgid "Usage: ll-builder repo show [OPTIONS]"
 msgstr "Përdorimi: ll-builder repo show [MUNDËSI]"
 
-#: ../apps/ll-builder/src/main.cpp:416
+#: ../apps/ll-builder/src/main.cpp:418
 msgid "linyaps build tool version "
 msgstr "version mjeti montimesh linyaps"
 

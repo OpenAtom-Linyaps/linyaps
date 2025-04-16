@@ -11,7 +11,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-04-11 10:41+0800\n"
+"POT-Creation-Date: 2025-04-14 10:18+0800\n"
 "PO-Revision-Date: 2025-04-11 01:38+0000\n"
 "Last-Translator: Yuri Chornoivan <yurchor@ukr.net>, 2025\n"
 "Language-Team: Ukrainian (https://app.transifex.com/linuxdeepin/teams/3976/uk/)\n"
@@ -22,7 +22,7 @@ msgstr ""
 "Plural-Forms: nplurals=4; plural=(n % 1 == 0 && n % 10 == 1 && n % 100 != 11 ? 0 : n % 1 == 0 && n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? 1 : n % 1 == 0 && (n % 10 ==0 || (n % 10 >=5 && n % 10 <=9) || (n % 100 >=11 && n % 100 <=14 )) ? 2: 3);\n"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:58
-msgid "Permission deny, please check whether you are running as root."
+msgid "Permission denied, please check whether you are running as root."
 msgstr ""
 "Відмовлено у доступі. Будь ласка, перевірте, чи запущено програму від імені "
 "користувача root."
@@ -287,8 +287,8 @@ msgstr "Користування: ll-cli upgrade [ПАРАМЕТРИ] [ПРОГ�
 
 #: ../apps/ll-cli/src/main.cpp:360
 msgid ""
-"Specify the application ID.If it not be specified, all applications will be "
-"upgraded"
+"Specify the application ID. If it not be specified, all applications will be"
+" upgraded"
 msgstr ""
 "Вказати ідентифікатор програми. Якщо не вказано, буде оновлено усі програми"
 
@@ -309,9 +309,9 @@ msgid ""
 "ll-cli search org.deepin.demo\n"
 "# find remotely runtime by name\n"
 "ll-cli search org.deepin.base --type=runtime\n"
-"# find all off app of remote\n"
+"# find all of app of remote\n"
 "ll-cli search .\n"
-"# find all off runtime of remote\n"
+"# find all of runtime of remote\n"
 "ll-cli search . --type=runtime"
 msgstr ""
 "Користування: ll-cli search [ПАРАМЕТРИ] КЛЮЧОВІ СЛОВА\n"
@@ -687,7 +687,7 @@ msgid "Build in an isolated network environment"
 msgstr "Зібрати у ізольованому середовищі у мережі"
 
 #: ../apps/ll-builder/src/main.cpp:259
-msgid "Run builded linyaps app"
+msgid "Run built linyaps app"
 msgstr "Запустити зібрану програму linyaps"
 
 #: ../apps/ll-builder/src/main.cpp:260
@@ -711,7 +711,7 @@ msgid "Run in debug mode (enable develop module)"
 msgstr "Запустити у діагностичному режимі (увімкнути модуль розробки)"
 
 #: ../apps/ll-builder/src/main.cpp:283
-msgid "List builded linyaps app"
+msgid "List built linyaps app"
 msgstr "Вивести список зібраних програм linyaps"
 
 #: ../apps/ll-builder/src/main.cpp:284
@@ -719,7 +719,7 @@ msgid "Usage: ll-builder list [OPTIONS]"
 msgstr "Користування: ll-builder list [ПАРАМЕТРИ]"
 
 #: ../apps/ll-builder/src/main.cpp:286
-msgid "Remove builded linyaps app"
+msgid "Remove built linyaps app"
 msgstr "Вилучити зібрану програму linyaps"
 
 #: ../apps/ll-builder/src/main.cpp:287

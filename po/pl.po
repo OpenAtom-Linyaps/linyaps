@@ -11,7 +11,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-04-11 10:41+0800\n"
+"POT-Creation-Date: 2025-04-14 10:18+0800\n"
 "PO-Revision-Date: 2025-04-11 01:38+0000\n"
 "Last-Translator: Janusz Ruchała, 2025\n"
 "Language-Team: Polish (https://app.transifex.com/linuxdeepin/teams/3976/pl/)\n"
@@ -22,7 +22,7 @@ msgstr ""
 "Plural-Forms: nplurals=4; plural=(n==1 ? 0 : (n%10>=2 && n%10<=4) && (n%100<12 || n%100>14) ? 1 : n!=1 && (n%10>=0 && n%10<=1) || (n%10>=5 && n%10<=9) || (n%100>=12 && n%100<=14) ? 2 : 3);\n"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:58
-msgid "Permission deny, please check whether you are running as root."
+msgid "Permission denied, please check whether you are running as root."
 msgstr "Odmowa dostępu, sprawdź, czy uruchamiasz jako root."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2592
@@ -125,7 +125,7 @@ msgstr ""
 "Polecenie: ll-cli run [OPCJE] APLIKACJA [KOMENDA...]\n"
 "\n"
 "Przykład:\n"
-"# uruchom aplikacje po appid\n"
+"# uruchom aplikację po appid\n"
 "ll-cli run org.deepin.demo\n"
 "# uruchamiaj komendy wewnątrz kontenera zamiast obok aplikacji\n"
 "ll-cli run org.deepin.demo bash\n"
@@ -217,11 +217,11 @@ msgstr ""
 "Polecenie: ll-cli install [OPCJE] APLIKACJA\n"
 "\n"
 "Przykład:\n"
-"# zainstaluj aplikacje po appid\n"
+"# zainstaluj aplikację po appid\n"
 "ll-cli install org.deepin.demo\n"
-"# zainstaluj aplikacje po warstwie linyaps\n"
+"# zainstaluj aplikację po warstwie linyaps\n"
 "ll-cli install demo_0.0.0.1_x86_64_binary.layer\n"
-"# zainstaluj aplikacje linyaps uab\n"
+"# zainstaluj aplikację linyaps uab\n"
 "ll-cli install demo_x86_64_0.0.0.1_main.uab\n"
 "# zainstaluj moduł po appid\n"
 "ll-cli install org.deepin.demo --module=binary\n"
@@ -282,8 +282,8 @@ msgstr "Polecenie: ll-cli upgrade [OPCJE] [APLIKACJA]"
 
 #: ../apps/ll-cli/src/main.cpp:360
 msgid ""
-"Specify the application ID.If it not be specified, all applications will be "
-"upgraded"
+"Specify the application ID. If it not be specified, all applications will be"
+" upgraded"
 msgstr ""
 "Podaj ID aplikacji. Jeśli nie podasz, wszystkie aplikacje zostaną "
 "zaktualizowane."
@@ -305,9 +305,9 @@ msgid ""
 "ll-cli search org.deepin.demo\n"
 "# find remotely runtime by name\n"
 "ll-cli search org.deepin.base --type=runtime\n"
-"# find all off app of remote\n"
+"# find all of app of remote\n"
 "ll-cli search .\n"
-"# find all off runtime of remote\n"
+"# find all of runtime of remote\n"
 "ll-cli search . --type=runtime"
 msgstr ""
 "Polecenie: ll-cli search [OPCJE] SŁOWA KLUCZOWE\n"
@@ -643,205 +643,210 @@ msgstr "Ustaw architekturę budowania"
 msgid ""
 "Enter the container to execute command instead of building applications"
 msgstr ""
+"Wykonuj polecenia wewnątrz kontenera, zamiast ciągle przebudowywać aplikacje"
 
 #: ../apps/ll-builder/src/main.cpp:233
 msgid ""
 "Only use local files. This implies --skip-fetch-source and --skip-pull-"
 "depend will be set"
 msgstr ""
+"Korzystaj tylko z plików lokalnych. To oznacza, że flagi --skip-fetch-source"
+" i --skip-pull-depend będą ustawione"
 
 #: ../apps/ll-builder/src/main.cpp:238
 msgid "Build full develop packages, runtime requires"
 msgstr ""
+"Zbuduj ze wszystkimi pakietami dewelopera, wymagane przez środowisko "
+"wykonawcze"
 
 #: ../apps/ll-builder/src/main.cpp:240
 msgid "Skip fetch sources"
-msgstr ""
+msgstr "Pomiń pobieranie źródeł"
 
 #: ../apps/ll-builder/src/main.cpp:241
 msgid "Skip pull dependency"
-msgstr ""
+msgstr "Pomiń pobieranie zależności"
 
 #: ../apps/ll-builder/src/main.cpp:244
 msgid "Skip run container"
-msgstr ""
+msgstr "Pomiń uruchamianie kontenera"
 
 #: ../apps/ll-builder/src/main.cpp:247
 msgid "Skip commit build output"
-msgstr ""
+msgstr "Pomiń dane commitów buildu"
 
 #: ../apps/ll-builder/src/main.cpp:248
 msgid "Skip output check"
-msgstr ""
+msgstr "Pomiń kontrolę danych wyjściowych"
 
 #: ../apps/ll-builder/src/main.cpp:251
 msgid "Skip strip debug symbols"
-msgstr ""
+msgstr "Pomiń usuwanie symboli debug"
 
 #: ../apps/ll-builder/src/main.cpp:254
 msgid "Build in an isolated network environment"
-msgstr ""
+msgstr "Zbuduj w izolowanym środowisku sieciowym"
 
 #: ../apps/ll-builder/src/main.cpp:259
-msgid "Run builded linyaps app"
-msgstr ""
+msgid "Run built linyaps app"
+msgstr "Uruchom zbudowaną aplikację linyaps"
 
 #: ../apps/ll-builder/src/main.cpp:260
 msgid "Usage: ll-builder run [OPTIONS] [COMMAND...]"
-msgstr ""
+msgstr "Polecenie: ll-builder run [OPCJE] [KOMENDA...]"
 
 #: ../apps/ll-builder/src/main.cpp:265
 msgid "Only use local files"
-msgstr ""
+msgstr "Korzystaj tylko z plików lokalnych"
 
 #: ../apps/ll-builder/src/main.cpp:269
 msgid "Run specified module. eg: --modules binary,develop"
-msgstr ""
+msgstr "Uruchom określony moduł. np. --modules binary,develop"
 
 #: ../apps/ll-builder/src/main.cpp:275 ../apps/ll-builder/src/main.cpp:279
 msgid "Enter the container to execute command instead of running application"
-msgstr ""
+msgstr "Wykonuj polecenia wewnątrz kontenera, zamiast włączać aplikację"
 
 #: ../apps/ll-builder/src/main.cpp:281
 msgid "Run in debug mode (enable develop module)"
-msgstr ""
+msgstr "Uruchom w trybie debug (włącz moduł develop)"
 
 #: ../apps/ll-builder/src/main.cpp:283
-msgid "List builded linyaps app"
-msgstr ""
+msgid "List built linyaps app"
+msgstr "Wyświetl listę zbudowanych aplikacji linyaps"
 
 #: ../apps/ll-builder/src/main.cpp:284
 msgid "Usage: ll-builder list [OPTIONS]"
-msgstr ""
+msgstr "Polecenie: ll-builder list [OPCJE]"
 
 #: ../apps/ll-builder/src/main.cpp:286
-msgid "Remove builded linyaps app"
-msgstr ""
+msgid "Remove built linyaps app"
+msgstr "Usuń zbudowaną aplikację linyaps"
 
 #: ../apps/ll-builder/src/main.cpp:287
 msgid "Usage: ll-builder remove [OPTIONS] [APP...]"
-msgstr ""
+msgstr "Polecenie: ll-builder remove [OPCJE] [APLIKACJA...]"
 
 #: ../apps/ll-builder/src/main.cpp:293
 msgid "Export to linyaps layer or uab"
-msgstr ""
+msgstr "Eksportuj do warstwy linyaps lub uab"
 
 #: ../apps/ll-builder/src/main.cpp:294
 msgid "Usage: ll-builder export [OPTIONS]"
-msgstr ""
+msgstr "Polecenie: ll-builder export [OPCJE]"
 
 #: ../apps/ll-builder/src/main.cpp:306
 msgid "Uab icon (optional)"
-msgstr ""
+msgstr "Ikona uab (opcjonalne)"
 
 #: ../apps/ll-builder/src/main.cpp:309
 msgid "Export uab fully"
-msgstr ""
+msgstr "Eksportuj uab całkowicie"
 
 #: ../apps/ll-builder/src/main.cpp:310
 msgid "Export to linyaps layer file"
-msgstr ""
+msgstr "Eksportuj do pliku warstwy linyaps"
 
 #: ../apps/ll-builder/src/main.cpp:313
 msgid "Use custom loader"
-msgstr ""
+msgstr "Użyj własnego loadera"
 
 #: ../apps/ll-builder/src/main.cpp:317
 msgid "Don't export the develop module"
-msgstr ""
+msgstr "Nie eksportuj modułu develop"
 
 #: ../apps/ll-builder/src/main.cpp:323
 msgid "Push linyaps app to remote repo"
-msgstr ""
+msgstr "Wyślij aplikację linyaps do zdalnego repozytorium"
 
 #: ../apps/ll-builder/src/main.cpp:324
 msgid "Usage: ll-builder push [OPTIONS]"
-msgstr ""
+msgstr "Polecenie: ll-builder push [OPCJE]"
 
 #: ../apps/ll-builder/src/main.cpp:329
 msgid "Remote repo url"
-msgstr ""
+msgstr "Adres URL zdalnego repozytorium"
 
 #: ../apps/ll-builder/src/main.cpp:332
 msgid "Remote repo name"
-msgstr ""
+msgstr "Nazwa zdalnego repozytorium"
 
 #: ../apps/ll-builder/src/main.cpp:335
 msgid "Push single module"
-msgstr ""
+msgstr "Wyślij pojedynczy moduł"
 
 #: ../apps/ll-builder/src/main.cpp:340
 msgid "Import linyaps layer to build repo"
-msgstr ""
+msgstr "Importuj warstwę linyaps do repozytorium build"
 
 #: ../apps/ll-builder/src/main.cpp:341
 msgid "Usage: ll-builder import [OPTIONS] LAYER"
-msgstr ""
+msgstr "Polecenie: ll-builder import [OPCJE] WARSTWA"
 
 #: ../apps/ll-builder/src/main.cpp:342 ../apps/ll-builder/src/main.cpp:361
 msgid "Layer file path"
-msgstr ""
+msgstr "Ścieżka pliku layer"
 
 #: ../apps/ll-builder/src/main.cpp:350
 msgid "Import linyaps layer dir to build repo"
-msgstr ""
+msgstr "Importuj katalog warstw linyaps do repozytorium build"
 
 #: ../apps/ll-builder/src/main.cpp:352
 msgid "Usage: ll-builder import-dir PATH"
-msgstr ""
+msgstr "Polecenie: ll-builder import-dir ŚCIEŻKA"
 
 #: ../apps/ll-builder/src/main.cpp:353
 msgid "Layer dir path"
-msgstr ""
+msgstr "Ścieżka katalogu layer"
 
 #: ../apps/ll-builder/src/main.cpp:359
 msgid "Extract linyaps layer to dir"
-msgstr ""
+msgstr "Wypakuj warstwy linyaps do katalogu"
 
 #: ../apps/ll-builder/src/main.cpp:360
 msgid "Usage: ll-builder extract [OPTIONS] LAYER DIR"
-msgstr ""
+msgstr "Polecenie: ll-builder extract [OPCJE] WARSTWA KATALOG"
 
 #: ../apps/ll-builder/src/main.cpp:364
 msgid "Destination directory"
-msgstr ""
+msgstr "Katalog docelowy"
 
 #. add build repo
 #: ../apps/ll-builder/src/main.cpp:367
 msgid "Display and manage repositories"
-msgstr ""
+msgstr "Wyświetl i zarządzaj repozytoriami"
 
 #: ../apps/ll-builder/src/main.cpp:368
 msgid "Usage: ll-builder repo [OPTIONS] SUBCOMMAND"
-msgstr ""
+msgstr "Polecenie: ll-builder repo [OPCJE] PODKOMENDA"
 
 #: ../apps/ll-builder/src/main.cpp:373
 msgid "Usage: ll-builder repo add [OPTIONS] NAME URL"
-msgstr ""
+msgstr "Polecenie: ll-builder repo add [OPCJE] NAZWA URL"
 
 #: ../apps/ll-builder/src/main.cpp:386
 msgid "Usage: ll-builder repo remove [OPTIONS] NAME"
-msgstr ""
+msgstr "Polecenie: ll-builder repo remove [OPCJE] NAZWA"
 
 #: ../apps/ll-builder/src/main.cpp:393
 msgid "Usage: ll-builder repo update [OPTIONS] NAME URL"
-msgstr ""
+msgstr "Polecenie: ll-builder repo update [OPCJE] NAZWA URL"
 
 #: ../apps/ll-builder/src/main.cpp:404
 msgid "Usage: ll-builder repo set-default [OPTIONS] NAME"
-msgstr ""
+msgstr "Polecenie: ll-builder repo set-default [OPCJE] NAZWA"
 
 #: ../apps/ll-builder/src/main.cpp:411
 msgid "Usage: ll-builder repo show [OPTIONS]"
-msgstr ""
+msgstr "Polecenie: ll-builder repo show [OPCJE]"
 
 #: ../apps/ll-builder/src/main.cpp:416
 msgid "linyaps build tool version "
-msgstr ""
+msgstr "Wersja narzędzia budowania linyaps "
 
 #: ../apps/ll-dialog/src/permissionDialog.cpp:34
 msgid "Whether to allow %1 to access %2?"
-msgstr ""
+msgstr "Zezwolić %1 na dostęp do %2?"
 
 #. button
 #: ../apps/ll-dialog/src/permissionDialog.cpp:43

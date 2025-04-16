@@ -67,7 +67,7 @@ msgid ""
 msgstr ""
 "网络连接失败。请：\n"
 "1. 检查您的互联网连接\n"
-"2. 如使用代理，请确认网络代理设置\""
+"2. 如使用代理，请确认网络代理设置"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1275
 msgid ""
@@ -87,7 +87,7 @@ msgstr "安装模块时不允许指定版本。"
 msgid ""
 "The latest version has been installed. If you want to replace it, try using "
 "'ll-cli install %1/version --force'"
-msgstr ""
+msgstr "当前已安装最新版本。如需覆盖安装，请尝试使用命令：ll-cli install %1/version --force"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2732
 msgid ""
@@ -144,7 +144,7 @@ msgstr "输入参数为空，请输入有效参数"
 
 #: ../apps/ll-cli/src/main.cpp:210
 msgid "Show debug info (verbose logs)"
-msgstr ""
+msgstr "显示调试信息（详细日志）"
 
 #. groups
 #: ../apps/ll-cli/src/main.cpp:213
@@ -806,7 +806,7 @@ msgstr "不导出develop模块"
 
 #: ../apps/ll-builder/src/main.cpp:320
 msgid "Output file"
-msgstr ""
+msgstr "输出文件"
 
 #: ../apps/ll-builder/src/main.cpp:325
 msgid "Push linyaps app to remote repo"

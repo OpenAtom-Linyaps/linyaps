@@ -81,7 +81,7 @@ msgstr "远程仓库中未找到应用 %1"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1285
 msgid "Cannot specify a version when installing a module."
-msgstr ""
+msgstr "安装模块时不允许指定版本。"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1289
 msgid ""

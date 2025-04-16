@@ -1999,7 +1999,7 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
     cfgBuilder.setAppId(curRef->id.toStdString())
       .setAppPath(curDir->absoluteFilePath("files").toStdString())
       .setBasePath(baseDir->absoluteFilePath("files").toStdString())
-      .setAppCache(appCache.absolutePath().toStdString(), false)
+      .setAppCache(appCache.absolutePath().toStdString())
       .enableLDCache()
       .setBundlePath(std::move(bundle).value())
       .addUIdMapping(uid, uid, 1)

@@ -12,7 +12,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-04-14 10:18+0800\n"
+"POT-Creation-Date: 2025-04-16 13:06+0800\n"
 "PO-Revision-Date: 2025-04-11 01:38+0000\n"
 "Last-Translator: chang Gao, 2025\n"
 "Language-Team: Chinese (China) (https://app.transifex.com/linuxdeepin/teams/3976/zh_CN/)\n"
@@ -26,7 +26,70 @@ msgstr ""
 msgid "Permission denied, please check whether you are running as root."
 msgstr "权限被拒绝，请检查是否以 root 身份运行。"
 
-#: ../libs/linglong/src/linglong/cli/cli.cpp:2592
+#: ../libs/linglong/src/linglong/cli/cli.cpp:437
+msgid "To install the module, one must first install the app."
+msgstr "要安装该模块，必须先安装此应用程序。"
+
+#: ../libs/linglong/src/linglong/cli/cli.cpp:440
+msgid "Module is already installed."
+msgstr "模块已经安装"
+
+#: ../libs/linglong/src/linglong/cli/cli.cpp:443
+#: ../libs/linglong/src/linglong/cli/cli.cpp:1295
+msgid "Install failed"
+msgstr "安装失败"
+
+#: ../libs/linglong/src/linglong/cli/cli.cpp:446
+#: ../libs/linglong/src/linglong/cli/cli.cpp:1733
+msgid "Uninstall failed"
+msgstr "卸载失败"
+
+#: ../libs/linglong/src/linglong/cli/cli.cpp:449
+msgid "Upgrade failed"
+msgstr "升级失败"
+
+#: ../libs/linglong/src/linglong/cli/cli.cpp:452
+#: ../libs/linglong/src/linglong/cli/cli.cpp:1656
+#: ../libs/linglong/src/linglong/cli/cli.cpp:1729
+msgid "Application is not installed."
+msgstr "应用未安装。"
+
+#: ../libs/linglong/src/linglong/cli/cli.cpp:455
+msgid "Latest version is already installed."
+msgstr "已安装最新版本。"
+
+#: ../libs/linglong/src/linglong/cli/cli.cpp:1269
+#: ../libs/linglong/src/linglong/cli/cli.cpp:1518
+msgid ""
+"Network connection failed. Please:\n"
+"1. Check your internet connection\n"
+"2. Verify network proxy settings if used"
+msgstr ""
+"网络连接失败。请：\n"
+"1. 检查您的互联网连接\n"
+"2. 如使用代理，请确认网络代理设置\""
+
+#: ../libs/linglong/src/linglong/cli/cli.cpp:1275
+msgid ""
+"Application already installed, If you want to replace it, try using 'll-cli "
+"install %1 --force'"
+msgstr "应用已安装。如需覆盖安装，请尝试使用命令：ll-cli install %1 --force"
+
+#: ../libs/linglong/src/linglong/cli/cli.cpp:1281
+msgid "Application %1 is not found in remote repo."
+msgstr "远程仓库中未找到应用 %1"
+
+#: ../libs/linglong/src/linglong/cli/cli.cpp:1285
+msgid "Cannot specify a version when installing a module."
+msgstr ""
+
+#: ../libs/linglong/src/linglong/cli/cli.cpp:1289
+msgid ""
+"The latest version has been installed. If you want to replace it, try using "
+"'ll-cli install %1/version --force'"
+msgstr ""
+
+#: ../libs/linglong/src/linglong/cli/cli.cpp:2732
 msgid ""
 "The cache generation failed, please uninstall and reinstall the application."
 msgstr "缓存生成失败，请卸载并重新安装该应用程序。"
@@ -74,39 +137,43 @@ msgstr "使用点对点 DBus，仅在 DBus 守护程序不可用时使用"
 msgid "Use json format to output result"
 msgstr "使用json格式输出结果"
 
-#: ../apps/ll-cli/src/main.cpp:185 ../apps/ll-cli/src/main.cpp:536
+#: ../apps/ll-cli/src/main.cpp:185 ../apps/ll-cli/src/main.cpp:541
 #: ../apps/ll-builder/src/main.cpp:185
 msgid "Input parameter is empty, please input valid parameter instead"
 msgstr "输入参数为空，请输入有效参数"
 
+#: ../apps/ll-cli/src/main.cpp:210
+msgid "Show debug info (verbose logs)"
+msgstr ""
+
 #. groups
-#: ../apps/ll-cli/src/main.cpp:208
+#: ../apps/ll-cli/src/main.cpp:213
 msgid "Managing installed applications and runtimes"
 msgstr "管理已安装的应用程序和运行时"
 
-#: ../apps/ll-cli/src/main.cpp:209
+#: ../apps/ll-cli/src/main.cpp:214
 msgid "Managing running applications"
 msgstr "管理正在运行的应用程序"
 
-#: ../apps/ll-cli/src/main.cpp:210
+#: ../apps/ll-cli/src/main.cpp:215
 msgid "Finding applications and runtimes"
 msgstr "查找应用程序和运行时"
 
-#: ../apps/ll-cli/src/main.cpp:211
+#: ../apps/ll-cli/src/main.cpp:216
 msgid "Managing remote repositories"
 msgstr "管理仓库"
 
 #. add sub command run
-#: ../apps/ll-cli/src/main.cpp:214
+#: ../apps/ll-cli/src/main.cpp:219
 msgid "Run an application"
 msgstr "运行应用程序"
 
 #. add sub command run options
-#: ../apps/ll-cli/src/main.cpp:219
+#: ../apps/ll-cli/src/main.cpp:224
 msgid "Specify the application ID"
 msgstr "指定应用程序名"
 
-#: ../apps/ll-cli/src/main.cpp:222
+#: ../apps/ll-cli/src/main.cpp:227
 msgid ""
 "Usage: ll-cli run [OPTIONS] APP [COMMAND...]\n"
 "\n"
@@ -128,70 +195,70 @@ msgstr ""
 "ll-cli run org.deepin.demo -- bash\n"
 "ll-cli run org.deepin.demo -- bash -x /path/to/bash/script"
 
-#: ../apps/ll-cli/src/main.cpp:232
+#: ../apps/ll-cli/src/main.cpp:237
 msgid "Pass file to applications running in a sandbox"
 msgstr "将文件传递到沙盒中运行的应用程序"
 
-#: ../apps/ll-cli/src/main.cpp:236
+#: ../apps/ll-cli/src/main.cpp:241
 msgid "Pass url to applications running in a sandbox"
 msgstr "将URL传递到沙盒中运行的应用程序"
 
-#: ../apps/ll-cli/src/main.cpp:239 ../apps/ll-cli/src/main.cpp:261
-#: ../apps/ll-cli/src/main.cpp:278
+#: ../apps/ll-cli/src/main.cpp:244 ../apps/ll-cli/src/main.cpp:266
+#: ../apps/ll-cli/src/main.cpp:283
 msgid "Run commands in a running sandbox"
 msgstr "在正在运行的沙盒中运行命令"
 
 #. add sub command ps
-#: ../apps/ll-cli/src/main.cpp:242
+#: ../apps/ll-cli/src/main.cpp:247
 msgid "List running applications"
 msgstr "列出正在运行的应用程序"
 
-#: ../apps/ll-cli/src/main.cpp:245
+#: ../apps/ll-cli/src/main.cpp:250
 msgid "Usage: ll-cli ps [OPTIONS]"
 msgstr "用法: ll-cli ps [选项]"
 
-#: ../apps/ll-cli/src/main.cpp:249
+#: ../apps/ll-cli/src/main.cpp:254
 msgid "Execute commands in the currently running sandbox"
 msgstr "在当前运行的沙盒中执行命令。"
 
-#: ../apps/ll-cli/src/main.cpp:255 ../apps/ll-cli/src/main.cpp:273
+#: ../apps/ll-cli/src/main.cpp:260 ../apps/ll-cli/src/main.cpp:278
 msgid "Specify the application running instance(you can get it by ps command)"
 msgstr "指定正在运行的应用程序实例（可以通过 ps 命令获取）"
 
-#: ../apps/ll-cli/src/main.cpp:258 ../apps/ll-cli/src/main.cpp:275
+#: ../apps/ll-cli/src/main.cpp:263 ../apps/ll-cli/src/main.cpp:280
 msgid "Specify working directory"
 msgstr "指定工作目录"
 
-#: ../apps/ll-cli/src/main.cpp:266
+#: ../apps/ll-cli/src/main.cpp:271
 msgid "Enter the namespace where the application is running"
 msgstr "进入应用程序正在运行的命名空间"
 
-#: ../apps/ll-cli/src/main.cpp:269
+#: ../apps/ll-cli/src/main.cpp:274
 msgid "Usage: ll-cli enter [OPTIONS] INSTANCE [COMMAND...]"
 msgstr "用法: ll-cli enter [选项] 实例 [命令...]"
 
 #. add sub command kill
-#: ../apps/ll-cli/src/main.cpp:281
+#: ../apps/ll-cli/src/main.cpp:286
 msgid "Stop running applications"
 msgstr "停止运行的应用程序"
 
-#: ../apps/ll-cli/src/main.cpp:284
+#: ../apps/ll-cli/src/main.cpp:289
 msgid "Usage: ll-cli kill [OPTIONS] APP"
 msgstr "用法: ll-cli kill [选项] 应用"
 
-#: ../apps/ll-cli/src/main.cpp:288
+#: ../apps/ll-cli/src/main.cpp:293
 msgid "Specify the signal to send to the application"
 msgstr "指定已安装应用程序名"
 
-#: ../apps/ll-cli/src/main.cpp:290
+#: ../apps/ll-cli/src/main.cpp:295
 msgid "Specify the running application"
 msgstr "指定正在运行的应用程序名"
 
-#: ../apps/ll-cli/src/main.cpp:296
+#: ../apps/ll-cli/src/main.cpp:301
 msgid "Installing an application or runtime"
 msgstr "安装应用程序或运行时"
 
-#: ../apps/ll-cli/src/main.cpp:299
+#: ../apps/ll-cli/src/main.cpp:304
 msgid ""
 "Usage: ll-cli install [OPTIONS] APP\n"
 "\n"
@@ -227,68 +294,68 @@ msgstr ""
 "ll-cli install stable:org.deepin.demo/0.0.0.1/x86_64\n"
 "    "
 
-#: ../apps/ll-cli/src/main.cpp:318
+#: ../apps/ll-cli/src/main.cpp:323
 msgid "Specify the application ID, and it can also be a .uab or .layer file"
 msgstr "指定应用名，也可以是 .uab 或 .layer 文件"
 
-#: ../apps/ll-cli/src/main.cpp:321
+#: ../apps/ll-cli/src/main.cpp:326
 msgid "Install a specify module"
 msgstr "安装指定模块"
 
-#: ../apps/ll-cli/src/main.cpp:324
+#: ../apps/ll-cli/src/main.cpp:329
 msgid "Force install the application"
 msgstr "强制安装指定版本的应用程序"
 
-#: ../apps/ll-cli/src/main.cpp:325
+#: ../apps/ll-cli/src/main.cpp:330
 msgid "Automatically answer yes to all questions"
 msgstr "自动对所有问题回答是"
 
-#: ../apps/ll-cli/src/main.cpp:331
+#: ../apps/ll-cli/src/main.cpp:336
 msgid "Uninstall the application or runtimes"
 msgstr "卸载应用程序或运行时"
 
-#: ../apps/ll-cli/src/main.cpp:334
+#: ../apps/ll-cli/src/main.cpp:339
 msgid "Usage: ll-cli uninstall [OPTIONS] APP"
 msgstr "用法: ll-cli uninstall [选项] 应用"
 
-#: ../apps/ll-cli/src/main.cpp:335
+#: ../apps/ll-cli/src/main.cpp:340
 msgid "Specify the applications ID"
 msgstr "指定应用程序名"
 
-#: ../apps/ll-cli/src/main.cpp:338
+#: ../apps/ll-cli/src/main.cpp:343
 msgid "Uninstall a specify module"
 msgstr "卸载指定模块"
 
 #. below options are used for compatibility with old ll-cli
-#: ../apps/ll-cli/src/main.cpp:343
+#: ../apps/ll-cli/src/main.cpp:348
 msgid "Remove all unused modules"
 msgstr "移除所有不使用的模块"
 
-#: ../apps/ll-cli/src/main.cpp:347
+#: ../apps/ll-cli/src/main.cpp:352
 msgid "Uninstall all modules"
 msgstr "卸载所有模块"
 
-#: ../apps/ll-cli/src/main.cpp:353
+#: ../apps/ll-cli/src/main.cpp:358
 msgid "Upgrade the application or runtimes"
 msgstr "升级应用程序或运行时"
 
-#: ../apps/ll-cli/src/main.cpp:356
+#: ../apps/ll-cli/src/main.cpp:361
 msgid "Usage: ll-cli upgrade [OPTIONS] [APP]"
 msgstr "用法: ll-cli upgrade [选项] [应用]"
 
-#: ../apps/ll-cli/src/main.cpp:360
+#: ../apps/ll-cli/src/main.cpp:365
 msgid ""
 "Specify the application ID. If it not be specified, all applications will be"
 " upgraded"
 msgstr "指定应用程序名。如果未指定，将升级所有可升级的应用程序"
 
-#: ../apps/ll-cli/src/main.cpp:367
+#: ../apps/ll-cli/src/main.cpp:372
 msgid ""
 "Search the applications/runtimes containing the specified text from the "
 "remote repository"
 msgstr "从远程仓库中搜索包含指定关键词的应用程序/运行时"
 
-#: ../apps/ll-cli/src/main.cpp:371
+#: ../apps/ll-cli/src/main.cpp:376
 msgid ""
 "Usage: ll-cli search [OPTIONS] KEYWORDS\n"
 "\n"
@@ -313,27 +380,27 @@ msgstr ""
 "# 从远程仓库搜索所有运行时\n"
 "ll-cli search . --type=runtime"
 
-#: ../apps/ll-cli/src/main.cpp:382
+#: ../apps/ll-cli/src/main.cpp:387
 msgid "Specify the Keywords"
 msgstr "指定搜索关键词"
 
-#: ../apps/ll-cli/src/main.cpp:388 ../apps/ll-cli/src/main.cpp:413
+#: ../apps/ll-cli/src/main.cpp:393 ../apps/ll-cli/src/main.cpp:418
 msgid "Filter result with specify type. One of \"runtime\", \"app\" or \"all\""
 msgstr "使用指定类型过滤结果。“runtime”、“app”或“all”之一"
 
-#: ../apps/ll-cli/src/main.cpp:392
+#: ../apps/ll-cli/src/main.cpp:397
 msgid "include develop application in result"
 msgstr "搜索结果中包括应用调试包"
 
-#: ../apps/ll-cli/src/main.cpp:393
+#: ../apps/ll-cli/src/main.cpp:398
 msgid "Show all results"
 msgstr "显示所有结果"
 
-#: ../apps/ll-cli/src/main.cpp:397
+#: ../apps/ll-cli/src/main.cpp:402
 msgid "List installed applications or runtimes"
 msgstr "列出已安装的应用程序或运行时"
 
-#: ../apps/ll-cli/src/main.cpp:400
+#: ../apps/ll-cli/src/main.cpp:405
 msgid ""
 "Usage: ll-cli list [OPTIONS]\n"
 "\n"
@@ -355,159 +422,159 @@ msgstr ""
 "# 显示当前已安装应用程序的最新版本列表\n"
 "ll-cli list --upgradable\n"
 
-#: ../apps/ll-cli/src/main.cpp:419
+#: ../apps/ll-cli/src/main.cpp:424
 msgid ""
 "Show the list of latest version of the currently installed applications, it "
 "only works for app"
 msgstr "显示当前已安装应用程序的最新版本列表，仅适用于应用程序"
 
-#: ../apps/ll-cli/src/main.cpp:426
+#: ../apps/ll-cli/src/main.cpp:431
 msgid "Display or modify information of the repository currently using"
 msgstr "显示或修改当前使用的仓库信息"
 
-#: ../apps/ll-cli/src/main.cpp:428
+#: ../apps/ll-cli/src/main.cpp:433
 msgid "Usage: ll-cli repo SUBCOMMAND [OPTIONS]"
 msgstr "用法: ll-cli repo [选项] 子命令"
 
 #. add repo sub command add
-#: ../apps/ll-cli/src/main.cpp:432 ../apps/ll-builder/src/main.cpp:372
+#: ../apps/ll-cli/src/main.cpp:437 ../apps/ll-builder/src/main.cpp:374
 msgid "Add a new repository"
 msgstr "添加新的仓库"
 
-#: ../apps/ll-cli/src/main.cpp:433
+#: ../apps/ll-cli/src/main.cpp:438
 msgid "Usage: ll-cli repo add [OPTIONS] NAME URL"
 msgstr "用法: ll-cli repo add [选项] 名称 URL"
 
-#: ../apps/ll-cli/src/main.cpp:434 ../apps/ll-cli/src/main.cpp:447
-#: ../apps/ll-builder/src/main.cpp:374
+#: ../apps/ll-cli/src/main.cpp:439 ../apps/ll-cli/src/main.cpp:452
+#: ../apps/ll-builder/src/main.cpp:376
 msgid "Specify the repo name"
 msgstr "指定仓库名称"
 
-#: ../apps/ll-cli/src/main.cpp:437 ../apps/ll-cli/src/main.cpp:450
-#: ../apps/ll-cli/src/main.cpp:468 ../apps/ll-builder/src/main.cpp:377
-#: ../apps/ll-builder/src/main.cpp:397
+#: ../apps/ll-cli/src/main.cpp:442 ../apps/ll-cli/src/main.cpp:455
+#: ../apps/ll-cli/src/main.cpp:473 ../apps/ll-builder/src/main.cpp:379
+#: ../apps/ll-builder/src/main.cpp:399
 msgid "Url of the repository"
 msgstr "仓库URL"
 
-#: ../apps/ll-cli/src/main.cpp:440 ../apps/ll-cli/src/main.cpp:457
-#: ../apps/ll-cli/src/main.cpp:465 ../apps/ll-cli/src/main.cpp:476
-#: ../apps/ll-cli/src/main.cpp:488 ../apps/ll-builder/src/main.cpp:380
-#: ../apps/ll-builder/src/main.cpp:387 ../apps/ll-builder/src/main.cpp:394
-#: ../apps/ll-builder/src/main.cpp:405
+#: ../apps/ll-cli/src/main.cpp:445 ../apps/ll-cli/src/main.cpp:462
+#: ../apps/ll-cli/src/main.cpp:470 ../apps/ll-cli/src/main.cpp:481
+#: ../apps/ll-cli/src/main.cpp:493 ../apps/ll-builder/src/main.cpp:382
+#: ../apps/ll-builder/src/main.cpp:389 ../apps/ll-builder/src/main.cpp:396
+#: ../apps/ll-builder/src/main.cpp:407
 msgid "Alias of the repo name"
 msgstr "仓库别名"
 
-#: ../apps/ll-cli/src/main.cpp:446
+#: ../apps/ll-cli/src/main.cpp:451
 msgid "Modify repository URL"
 msgstr "修改仓库URL"
 
 #. add repo sub command remove
-#: ../apps/ll-cli/src/main.cpp:455 ../apps/ll-builder/src/main.cpp:385
+#: ../apps/ll-cli/src/main.cpp:460 ../apps/ll-builder/src/main.cpp:387
 msgid "Remove a repository"
 msgstr "移除仓库"
 
-#: ../apps/ll-cli/src/main.cpp:456
+#: ../apps/ll-cli/src/main.cpp:461
 msgid "Usage: ll-cli repo remove [OPTIONS] NAME"
 msgstr "用法: ll-cli repo remove [选项] 名称"
 
 #. add repo sub command update
 #. TODO: add --repo and --url options
 #. add repo sub command update
-#: ../apps/ll-cli/src/main.cpp:463 ../apps/ll-builder/src/main.cpp:392
+#: ../apps/ll-cli/src/main.cpp:468 ../apps/ll-builder/src/main.cpp:394
 msgid "Update the repository URL"
 msgstr "更新仓库URL"
 
-#: ../apps/ll-cli/src/main.cpp:464
+#: ../apps/ll-cli/src/main.cpp:469
 msgid "Usage: ll-cli repo update [OPTIONS] NAME URL"
 msgstr "用法: ll-cli repo update [选项] 名称 URL"
 
-#: ../apps/ll-cli/src/main.cpp:474 ../apps/ll-builder/src/main.cpp:403
+#: ../apps/ll-cli/src/main.cpp:479 ../apps/ll-builder/src/main.cpp:405
 msgid "Set a default repository name"
 msgstr "设置默认仓库名称"
 
-#: ../apps/ll-cli/src/main.cpp:475
+#: ../apps/ll-cli/src/main.cpp:480
 msgid "Usage: ll-cli repo set-default [OPTIONS] NAME"
 msgstr "用法: ll-cli repo set-default [选项] 名称"
 
 #. add repo sub command show
-#: ../apps/ll-cli/src/main.cpp:481 ../apps/ll-builder/src/main.cpp:410
+#: ../apps/ll-cli/src/main.cpp:486 ../apps/ll-builder/src/main.cpp:412
 msgid "Show repository information"
 msgstr "显示仓库信息"
 
-#: ../apps/ll-cli/src/main.cpp:482
+#: ../apps/ll-cli/src/main.cpp:487
 msgid "Usage: ll-cli repo show [OPTIONS]"
 msgstr "用法: ll-cli repo show [选项]"
 
-#: ../apps/ll-cli/src/main.cpp:486
+#: ../apps/ll-cli/src/main.cpp:491
 msgid "Set the priority of the repo"
 msgstr "设置仓库优先级"
 
-#: ../apps/ll-cli/src/main.cpp:487
+#: ../apps/ll-cli/src/main.cpp:492
 msgid "Usage: ll-cli repo set-priority ALIAS PRIORITY"
 msgstr "用法：ll-cli repo set-priority ALIAS PRIORITY"
 
-#: ../apps/ll-cli/src/main.cpp:492
+#: ../apps/ll-cli/src/main.cpp:497
 msgid "Priority of the repo"
 msgstr "仓库优先级"
 
-#: ../apps/ll-cli/src/main.cpp:499
+#: ../apps/ll-cli/src/main.cpp:504
 msgid "Display information about installed apps or runtimes"
 msgstr "显示已安装的应用程序或运行时的信息"
 
-#: ../apps/ll-cli/src/main.cpp:502
+#: ../apps/ll-cli/src/main.cpp:507
 msgid "Usage: ll-cli info [OPTIONS] APP"
 msgstr "用法: ll-cli info [选项] 应用"
 
-#: ../apps/ll-cli/src/main.cpp:506
+#: ../apps/ll-cli/src/main.cpp:511
 msgid "Specify the application ID, and it can also be a .layer file"
 msgstr "指定应用程序名，也可以是如意玲珑.layer文件"
 
-#: ../apps/ll-cli/src/main.cpp:513
+#: ../apps/ll-cli/src/main.cpp:518
 msgid "Display the exported files of installed application"
 msgstr "显示已安装应用导出的文件"
 
-#: ../apps/ll-cli/src/main.cpp:516
+#: ../apps/ll-cli/src/main.cpp:521
 msgid "Usage: ll-cli content [OPTIONS] APP"
 msgstr "用法: ll-cli content [选项] 应用"
 
-#: ../apps/ll-cli/src/main.cpp:517
+#: ../apps/ll-cli/src/main.cpp:522
 msgid "Specify the installed application ID"
 msgstr "指定已安装应用程序名"
 
 #. add sub command prune
-#: ../apps/ll-cli/src/main.cpp:522
+#: ../apps/ll-cli/src/main.cpp:527
 msgid "Remove the unused base or runtime"
 msgstr "移除未使用的最小系统或运行时"
 
-#: ../apps/ll-cli/src/main.cpp:524
+#: ../apps/ll-cli/src/main.cpp:529
 msgid "Usage: ll-cli prune [OPTIONS]"
 msgstr "用法: ll-cli prune [选项]"
 
-#: ../apps/ll-cli/src/main.cpp:529
+#: ../apps/ll-cli/src/main.cpp:534
 msgid "Display the information of installed application"
 msgstr "显示已安装应用导出的文件"
 
-#: ../apps/ll-cli/src/main.cpp:531
+#: ../apps/ll-cli/src/main.cpp:536
 msgid "Usage: ll-cli inspect [OPTIONS]"
 msgstr "用法: ll-cli inspect [选项]"
 
-#: ../apps/ll-cli/src/main.cpp:533
+#: ../apps/ll-cli/src/main.cpp:538
 msgid "Specify the process id"
 msgstr "指定进程id"
 
-#: ../apps/ll-cli/src/main.cpp:542
+#: ../apps/ll-cli/src/main.cpp:547
 msgid "Invalid process id"
 msgstr "无效的进程id"
 
-#: ../apps/ll-cli/src/main.cpp:545
+#: ../apps/ll-cli/src/main.cpp:550
 msgid "Invalid pid format"
 msgstr "无效的pid格式"
 
-#: ../apps/ll-cli/src/main.cpp:555
+#: ../apps/ll-cli/src/main.cpp:560
 msgid "Specify the installed app(base or runtime)"
 msgstr "指定已安装的应用（base或runtime）"
 
-#: ../apps/ll-cli/src/main.cpp:566
+#: ../apps/ll-cli/src/main.cpp:571
 msgid "linyaps CLI version "
 msgstr "如意玲珑CLI版本 "
 
@@ -618,7 +685,7 @@ msgid "Usage: ll-builder build [OPTIONS] [COMMAND...]"
 msgstr "用法: ll-builder build [选项] [命令...]"
 
 #: ../apps/ll-builder/src/main.cpp:215 ../apps/ll-builder/src/main.cpp:261
-#: ../apps/ll-builder/src/main.cpp:296 ../apps/ll-builder/src/main.cpp:325
+#: ../apps/ll-builder/src/main.cpp:296 ../apps/ll-builder/src/main.cpp:327
 msgid "File path of the linglong.yaml"
 msgstr "linglong.yaml的文件路径"
 
@@ -737,92 +804,96 @@ msgstr "使用自定义的loader"
 msgid "Don't export the develop module"
 msgstr "不导出develop模块"
 
-#: ../apps/ll-builder/src/main.cpp:323
+#: ../apps/ll-builder/src/main.cpp:320
+msgid "Output file"
+msgstr ""
+
+#: ../apps/ll-builder/src/main.cpp:325
 msgid "Push linyaps app to remote repo"
 msgstr "推送如意玲珑应用到远程仓库"
 
-#: ../apps/ll-builder/src/main.cpp:324
+#: ../apps/ll-builder/src/main.cpp:326
 msgid "Usage: ll-builder push [OPTIONS]"
 msgstr "用法: ll-builder push [选项]"
 
-#: ../apps/ll-builder/src/main.cpp:329
+#: ../apps/ll-builder/src/main.cpp:331
 msgid "Remote repo url"
 msgstr "远程仓库URL"
 
-#: ../apps/ll-builder/src/main.cpp:332
+#: ../apps/ll-builder/src/main.cpp:334
 msgid "Remote repo name"
 msgstr "远程仓库名"
 
-#: ../apps/ll-builder/src/main.cpp:335
+#: ../apps/ll-builder/src/main.cpp:337
 msgid "Push single module"
 msgstr "推送单个模块"
 
-#: ../apps/ll-builder/src/main.cpp:340
+#: ../apps/ll-builder/src/main.cpp:342
 msgid "Import linyaps layer to build repo"
 msgstr "导入如意玲珑layer文件到构建仓库"
 
-#: ../apps/ll-builder/src/main.cpp:341
+#: ../apps/ll-builder/src/main.cpp:343
 msgid "Usage: ll-builder import [OPTIONS] LAYER"
 msgstr "用法: ll-builder import [选项] LAYER文件"
 
-#: ../apps/ll-builder/src/main.cpp:342 ../apps/ll-builder/src/main.cpp:361
+#: ../apps/ll-builder/src/main.cpp:344 ../apps/ll-builder/src/main.cpp:363
 msgid "Layer file path"
 msgstr "layer文件路径"
 
-#: ../apps/ll-builder/src/main.cpp:350
+#: ../apps/ll-builder/src/main.cpp:352
 msgid "Import linyaps layer dir to build repo"
 msgstr "导入如意玲珑layer目录到构建仓库"
 
-#: ../apps/ll-builder/src/main.cpp:352
+#: ../apps/ll-builder/src/main.cpp:354
 msgid "Usage: ll-builder import-dir PATH"
 msgstr "用法: ll-builder import-dir PATH"
 
-#: ../apps/ll-builder/src/main.cpp:353
+#: ../apps/ll-builder/src/main.cpp:355
 msgid "Layer dir path"
 msgstr "layer目录路径"
 
-#: ../apps/ll-builder/src/main.cpp:359
+#: ../apps/ll-builder/src/main.cpp:361
 msgid "Extract linyaps layer to dir"
 msgstr "将如意玲珑layer文件解压到目录"
 
-#: ../apps/ll-builder/src/main.cpp:360
+#: ../apps/ll-builder/src/main.cpp:362
 msgid "Usage: ll-builder extract [OPTIONS] LAYER DIR"
 msgstr "用法: ll-builder extract [选项] LAYER文件 目录"
 
-#: ../apps/ll-builder/src/main.cpp:364
+#: ../apps/ll-builder/src/main.cpp:366
 msgid "Destination directory"
 msgstr "目标目录"
 
 #. add build repo
-#: ../apps/ll-builder/src/main.cpp:367
+#: ../apps/ll-builder/src/main.cpp:369
 msgid "Display and manage repositories"
 msgstr "显示和管理仓库"
 
-#: ../apps/ll-builder/src/main.cpp:368
+#: ../apps/ll-builder/src/main.cpp:370
 msgid "Usage: ll-builder repo [OPTIONS] SUBCOMMAND"
 msgstr "用法: ll-builder repo [选项] 子命令"
 
-#: ../apps/ll-builder/src/main.cpp:373
+#: ../apps/ll-builder/src/main.cpp:375
 msgid "Usage: ll-builder repo add [OPTIONS] NAME URL"
 msgstr "用法: ll-builder repo add [选项] 名称 URL"
 
-#: ../apps/ll-builder/src/main.cpp:386
+#: ../apps/ll-builder/src/main.cpp:388
 msgid "Usage: ll-builder repo remove [OPTIONS] NAME"
 msgstr "用法: ll-builder repo remove [选项] 名称"
 
-#: ../apps/ll-builder/src/main.cpp:393
+#: ../apps/ll-builder/src/main.cpp:395
 msgid "Usage: ll-builder repo update [OPTIONS] NAME URL"
 msgstr "用法: ll-builder repo update [选项] 名称 URL"
 
-#: ../apps/ll-builder/src/main.cpp:404
+#: ../apps/ll-builder/src/main.cpp:406
 msgid "Usage: ll-builder repo set-default [OPTIONS] NAME"
 msgstr "用法: ll-builder repo set-default [选项] 名称"
 
-#: ../apps/ll-builder/src/main.cpp:411
+#: ../apps/ll-builder/src/main.cpp:413
 msgid "Usage: ll-builder repo show [OPTIONS]"
 msgstr "用法: ll-builder repo show [选项]"
 
-#: ../apps/ll-builder/src/main.cpp:416
+#: ../apps/ll-builder/src/main.cpp:418
 msgid "linyaps build tool version "
 msgstr "如意玲珑构建工具版本"
 

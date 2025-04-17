@@ -2360,6 +2360,8 @@ void Builder::mergeOutput(const QList<QDir> &src, const QDir &dest, const QStrin
 
 void Builder::printBasicInfo()
 {
+    printMessage("[Builder info]");
+    printMessage(std::string("Linglong Builder Version: ") + LINGLONG_VERSION, 2);
     printMessage("[Build Target]");
     printMessage(this->project.package.id, 2);
     printMessage("[Project Info]");

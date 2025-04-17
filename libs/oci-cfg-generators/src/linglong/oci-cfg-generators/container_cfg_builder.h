@@ -96,10 +96,9 @@ public:
         return *this;
     }
 
-    ContainerCfgBuilder &setAppCache(std::filesystem::path path, bool isRo = true) noexcept
+    ContainerCfgBuilder &setAppCache(std::filesystem::path path) noexcept
     {
         appCache = path;
-        appCacheRo = isRo;
         return *this;
     }
 
@@ -203,7 +202,6 @@ private:
     bool runtimePathRo = true;
     bool appPathRo = true;
     bool basePathRo = true;
-    bool appCacheRo = true;
 
     // id mappings
     std::optional<std::vector<ocppi::runtime::config::types::IdMapping>> uidMappings;

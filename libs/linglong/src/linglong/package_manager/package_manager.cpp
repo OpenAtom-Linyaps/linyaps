@@ -2266,7 +2266,7 @@ utils::error::Result<void> PackageManager::generateCache(const package::Referenc
     cfgBuilder.setAppId(ref.id.toStdString())
       .setAppPath(appLayerDir.absoluteFilePath("files").toStdString())
       .setBasePath(baseLayerDir.absoluteFilePath("files").toStdString())
-      .setAppCache(appCache, false)
+      .setAppCache(appCache)
       .setBundlePath(*bundle)
       .addUIdMapping(uid, uid, 1)
       .addGIdMapping(gid, gid, 1)

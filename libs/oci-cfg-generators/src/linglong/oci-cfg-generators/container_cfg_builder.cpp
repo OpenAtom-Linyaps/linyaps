@@ -1016,7 +1016,7 @@ bool ContainerCfgBuilder::buildMountCache() noexcept
     }
 
     cacheMount = { Mount{ .destination = "/run/linglong/cache",
-                          .options = string_list{ "rbind", appCacheRo ? "ro" : "rw" },
+                          .options = string_list{ "rbind", "rw" },
                           .source = *appCache,
                           .type = "bind" } };
 
@@ -1035,9 +1035,18 @@ bool ContainerCfgBuilder::buildLDCache() noexcept
         return false;
     }
 
+    std::filesystem::path ldCacheFile{ *appCache / "ld.so.cache" };
+    std::ofstream file(ldCacheFile.string());
+    if (!file.is_open()) {
+        error_.reason = "can't open ld.so.cache file";
+        error_.code = BUILD_LDCACHE_ERROR;
+        return false;
+    }
+    file.close();
+
     ldCacheMount->emplace_back(Mount{ .destination = "/etc/ld.so.cache",
-                                      .options = string_list{ "rbind", "ro" },
-                                      .source = *appCache / "ld.so.cache",
+                                      .options = string_list{ "rbind", "rw" },
+                                      .source = ldCacheFile,
                                       .type = "bind" });
 
     return true;

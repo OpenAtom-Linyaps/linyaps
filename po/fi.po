@@ -27,35 +27,35 @@ msgstr "Lupa evätty. Tarkista oletko root-käyttäjänä."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:437
 msgid "To install the module, one must first install the app."
-msgstr ""
+msgstr "Moduulin asentamiseksi on ensin asennettava sovellus."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:440
 msgid "Module is already installed."
-msgstr ""
+msgstr "Moduuli on jo asennettu."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:443
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1295
 msgid "Install failed"
-msgstr ""
+msgstr "Asennus epäonnistui"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:446
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1733
 msgid "Uninstall failed"
-msgstr ""
+msgstr "Poistaminen epäonnistui"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:449
 msgid "Upgrade failed"
-msgstr ""
+msgstr "Päivitys epäonnistui"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:452
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1656
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1729
 msgid "Application is not installed."
-msgstr ""
+msgstr "Sovellusta ei ole asennettu."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:455
 msgid "Latest version is already installed."
-msgstr ""
+msgstr "Uusin versio on jo asennettu."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1269
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1518
@@ -64,26 +64,33 @@ msgid ""
 "1. Check your internet connection\n"
 "2. Verify network proxy settings if used"
 msgstr ""
+"Ei verkkoyhteyttä:\n"
+"1. Tarkista internetyhteys\n"
+"2. Tarkista välityspalvelimen asetukset, jos niitä käytetään"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1275
 msgid ""
 "Application already installed, If you want to replace it, try using 'll-cli "
 "install %1 --force'"
 msgstr ""
+"Sovellus on jo asennettu. Jos haluat vaihtaa sen, kokeile \"ll-cli install "
+"%1 --force\""
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1281
 msgid "Application %1 is not found in remote repo."
-msgstr ""
+msgstr "Sovellusta %1 ei löydy palvelimelta."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1285
 msgid "Cannot specify a version when installing a module."
-msgstr ""
+msgstr "Moduulia asennettaessa ei voitu määrittää versiota."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1289
 msgid ""
 "The latest version has been installed. If you want to replace it, try using "
 "'ll-cli install %1/version --force'"
 msgstr ""
+"Uusin versio on asennettu. Jos haluat vaihtaa sen, kokeile \"ll-cli install "
+"%1/version --force\""
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2732
 msgid ""
@@ -143,7 +150,7 @@ msgstr "Parametri on tyhjä, anna kelvollinen parametri"
 
 #: ../apps/ll-cli/src/main.cpp:210
 msgid "Show debug info (verbose logs)"
-msgstr ""
+msgstr "Näytä virhesanomat (sanalliset lokit)"
 
 #. groups
 #: ../apps/ll-cli/src/main.cpp:213
@@ -819,7 +826,7 @@ msgstr "Älä vie kehitysmoduulia"
 
 #: ../apps/ll-builder/src/main.cpp:320
 msgid "Output file"
-msgstr ""
+msgstr "Tulostustiedosto"
 
 #: ../apps/ll-builder/src/main.cpp:325
 msgid "Push linyaps app to remote repo"

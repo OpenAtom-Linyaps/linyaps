@@ -27,35 +27,35 @@ msgstr "Odmowa dostępu, sprawdź, czy uruchamiasz jako root."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:437
 msgid "To install the module, one must first install the app."
-msgstr ""
+msgstr "Aby zainstalować moduł, najpierw zainstaluj aplikację."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:440
 msgid "Module is already installed."
-msgstr ""
+msgstr "Moduł jest już zainstalowany."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:443
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1295
 msgid "Install failed"
-msgstr ""
+msgstr "Nie udało się zainstalować"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:446
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1733
 msgid "Uninstall failed"
-msgstr ""
+msgstr "Nie udało się odinstalować"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:449
 msgid "Upgrade failed"
-msgstr ""
+msgstr "Nie udało się zaktualizować"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:452
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1656
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1729
 msgid "Application is not installed."
-msgstr ""
+msgstr "Aplikacja nie jest zainstalowana."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:455
 msgid "Latest version is already installed."
-msgstr ""
+msgstr "Najnowsza wersja jest już zainstalowana."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1269
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1518
@@ -64,26 +64,33 @@ msgid ""
 "1. Check your internet connection\n"
 "2. Verify network proxy settings if used"
 msgstr ""
+"Błąd połączenia z siecią. Spróbuj:\n"
+"1. Sprawdzić swoje połączenie sieciowe\n"
+"2. Jeśli korzystasz, sprawdzić ustawienia proxy"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1275
 msgid ""
 "Application already installed, If you want to replace it, try using 'll-cli "
 "install %1 --force'"
 msgstr ""
+"Aplikacja jest już zainstalowana. Jeśli chcesz ją zastąpić, spróbuj 'll-cli "
+"install %1 --force'"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1281
 msgid "Application %1 is not found in remote repo."
-msgstr ""
+msgstr "Aplikacja %1 nie została znaleziona w zdalnym repozytorium"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1285
 msgid "Cannot specify a version when installing a module."
-msgstr ""
+msgstr "Nie można ustawić wersji podczas instalowania modułu."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1289
 msgid ""
 "The latest version has been installed. If you want to replace it, try using "
 "'ll-cli install %1/version --force'"
 msgstr ""
+"Najnowsza wersja jest już zainstalowana. Jeśli chcesz ją zastąpić, spróbuj "
+"'ll-cli install %1/version --force'"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2732
 msgid ""
@@ -145,7 +152,7 @@ msgstr "Parametr wejściowy jest pusty, wprowadź prawidłowy parametr"
 
 #: ../apps/ll-cli/src/main.cpp:210
 msgid "Show debug info (verbose logs)"
-msgstr ""
+msgstr "Wyświetl informacje debug (poszerzone logi)"
 
 #. groups
 #: ../apps/ll-cli/src/main.cpp:213
@@ -821,7 +828,7 @@ msgstr "Nie eksportuj modułu develop"
 
 #: ../apps/ll-builder/src/main.cpp:320
 msgid "Output file"
-msgstr ""
+msgstr "Plik wyjściowy"
 
 #: ../apps/ll-builder/src/main.cpp:325
 msgid "Push linyaps app to remote repo"

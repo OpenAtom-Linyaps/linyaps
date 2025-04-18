@@ -4,10 +4,13 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 #include "linglong/package/version.h"
+#include "linglong/package/fallback_version.h"
+#include "linglong/package/versionv2.h"
 
 #include <QRegularExpression>
 #include <QString>
 #include <QStringBuilder>
+#include <variant>
 
 #if QT_VERSION < QT_VERSION_CHECK(5, 14, 0)
 namespace Qt {
@@ -16,6 +19,8 @@ static auto SkipEmptyParts = QString::SkipEmptyParts;
 #endif
 
 namespace linglong::package {
+
+// TODO: This class has no practical use and can be removed
 namespace {
 
 struct PreRelease
@@ -100,15 +105,117 @@ struct PreRelease
 
 } // namespace
 
-utils::error::Result<Version> Version::parse(const QString &raw) noexcept
+utils::error::Result<Version> Version::parse(const QString &raw, const bool &fallback) noexcept
+{
+    LINGLONG_TRACE(QString("parse version %1").arg(raw));
+
+    auto versionV2 = VersionV2::parse(raw);
+    if (versionV2) {
+        return Version(*versionV2);
+    }
+
+    if (!fallback) {
+        return LINGLONG_ERR("parse version failed");
+    }
+
+    auto versionV1 = VersionV1::parse(raw);
+    if (versionV1) {
+        return Version(*versionV1);
+    }
+
+    auto fallbackVersion = FallbackVersion::parse(raw);
+    if (fallbackVersion) {
+        return Version(*fallbackVersion);
+    }
+    return LINGLONG_ERR("parse version failed");
+}
+
+void Version::ignoreTweak() noexcept
+{
+    if (std::holds_alternative<VersionV1>(version)) {
+        std::get<VersionV1>(version).tweak = std::nullopt;
+    }
+}
+
+bool Version::isVersionV1() noexcept
+{
+    return std::holds_alternative<VersionV1>(version);
+}
+
+bool Version::hasTweak() noexcept
+{
+    if (std::holds_alternative<VersionV1>(version)) {
+        return std::get<VersionV1>(version).tweak.has_value();
+    }
+    return false;
+}
+
+bool Version::operator==(const Version &that) const noexcept
+{
+    return std::visit(
+      [&](const auto &thisVersion, const auto &thatVersion) {
+          return thisVersion == thatVersion;
+      },
+      this->version,
+      that.version);
+}
+
+bool Version::operator!=(const Version &that) const noexcept
+{
+    return !(*this == that);
+}
+
+bool Version::operator<(const Version &that) const noexcept
+{
+    return std::visit(
+      [&](const auto &thisVersion, const auto &thatVersion) {
+          return thisVersion < thatVersion;
+      },
+      this->version,
+      that.version);
+}
+
+bool Version::operator>(const Version &that) const noexcept
+{
+    return !(*this == that) && !(*this < that);
+}
+
+bool Version::operator<=(const Version &that) const noexcept
+{
+    return (*this == that) || (*this < that);
+}
+
+bool Version::operator>=(const Version &that) const noexcept
+{
+    return !(*this < that);
+}
+
+QString Version::toString() const noexcept
+{
+    if (std::holds_alternative<VersionV1>(version)) {
+        return std::get<VersionV1>(version).toString();
+    }
+
+    if (std::holds_alternative<VersionV2>(version)) {
+        return std::get<VersionV2>(version).toString();
+    }
+
+    if (std::holds_alternative<FallbackVersion>(version)) {
+        return std::get<FallbackVersion>(version).toString();
+    }
+
+    return QString("unknown version type");
+}
+
+utils::error::Result<VersionV1> VersionV1::parse(const QString &raw) noexcept
 try {
-    return Version(raw);
+    return VersionV1(raw);
 } catch (const std::exception &e) {
     LINGLONG_TRACE("parse version " + raw);
     return LINGLONG_ERR(e);
 }
 
-Version::Version(const QString &raw)
+VersionV1::VersionV1(const QString &raw)
 {
     // modified from https://regex101.com/r/vkijKf/1/
     static auto regexExp = []() noexcept {
@@ -146,7 +253,7 @@ Version::Version(const QString &raw)
     }
 }
 
-bool Version::operator==(const Version &that) const noexcept
+bool VersionV1::operator==(const VersionV1 &that) const noexcept
 {
     if (this->tweak.has_value() != that.tweak.has_value()) {
         return false;
@@ -159,12 +266,12 @@ bool Version::operator==(const Version &that) const noexcept
       == std::tie(that.major, that.minor, that.patch, thattweak);
 }
 
-bool Version::operator!=(const Version &that) const noexcept
+bool VersionV1::operator!=(const VersionV1 &that) const noexcept
 {
     return !(*this == that);
 }
 
-bool Version::operator<(const Version &that) const noexcept
+bool VersionV1::operator<(const VersionV1 &that) const noexcept
 {
     auto thistweak = this->tweak.value_or(0);
     auto thattweak = that.tweak.value_or(0);
@@ -175,7 +282,7 @@ bool Version::operator<(const Version &that) const noexcept
     return thisAsNumber < thatAsNumber;
 }
 
-bool Version::operator>(const Version &that) const noexcept
+bool VersionV1::operator>(const VersionV1 &that) const noexcept
 {
     auto thistweak = this->tweak.value_or(0);
     auto thattweak = that.tweak.value_or(0);
@@ -186,17 +293,103 @@ bool Version::operator>(const Version &that) const noexcept
     return thisAsNumber > thatAsNumber;
 }
 
-bool Version::operator<=(const Version &that) const noexcept
+bool VersionV1::operator<=(const VersionV1 &that) const noexcept
 {
     return (*this == that) || (*this < that);
 }
 
-bool Version::operator>=(const Version &that) const noexcept
+bool VersionV1::operator>=(const VersionV1 &that) const noexcept
 {
     return (*this == that) || (*this > that);
 }
 
-QString Version::toString() const noexcept
+bool VersionV1::operator==(const VersionV2 &that) const noexcept
+{
+    if (std::tie(major, minor, patch) != std::tie(that.major, that.minor, that.patch)) {
+        return false;
+    }
+
+    // 2. V1 不能有非零 tweak
+    bool v1HasNoTweak = !tweak.has_value() || tweak.value() == 0;
+    // 3. V2 不能有预发布标识
+    bool v2HasNoPrerelease = that.prerelease.empty();
+    // 4. V2 不能有安全更新
+    bool v2HasNoSecurity = that.security == 0;
+
+    return v1HasNoTweak && v2HasNoPrerelease && v2HasNoSecurity;
+}
+
+bool VersionV1::operator!=(const VersionV2 &that) const noexcept
+{
+    return !(*this == that);
+}
+
+bool VersionV1::operator<(const VersionV2 &that) const noexcept
+{
+    if (std::tie(major, minor, patch) < std::tie(that.major, that.minor, that.patch)) {
+        return true;
+    }
+
+    if (std::tie(major, minor, patch) == std::tie(that.major, that.minor, that.patch)) {
+        // V1 不能有非零 tweak
+        bool v1HasNoTweak = !tweak.has_value() || tweak.value() == 0;
+        // V2 不能有预发布标识
+        bool v2HasNoPrerelease = that.prerelease.empty();
+        // V2 必须有安全更新
+        bool v2HasSecurity = that.security != 0;
+
+        return v1HasNoTweak && v2HasNoPrerelease && v2HasSecurity;
+    }
+
+    return false;
+}
+
+bool VersionV1::operator>(const VersionV2 &that) const noexcept
+{
+    return !(*this == that) && !(*this < that);
+}
+
+bool VersionV1::operator<=(const VersionV2 &that) const noexcept
+{
+    return (*this == that) || (*this < that);
+}
+
+bool VersionV1::operator>=(const VersionV2 &that) const noexcept
+{
+    return !(*this < that);
+}
+
+bool VersionV1::operator==(const FallbackVersion &that) const noexcept
+{
+    return that.compareWithOtherVersion(toString()) == 0;
+}
+
+bool VersionV1::operator!=(const FallbackVersion &that) const noexcept
+{
+    return !(*this == that);
+}
+
+bool VersionV1::operator<(const FallbackVersion &that) const noexcept
+{
+    return that.compareWithOtherVersion(toString()) > 0;
+}
+
+bool VersionV1::operator>(const FallbackVersion &that) const noexcept
+{
+    return that.compareWithOtherVersion(toString()) < 0;
+}
+
+bool VersionV1::operator<=(const FallbackVersion &that) const noexcept
+{
+    return *this == that || *this < that;
+}
+
+bool VersionV1::operator>=(const FallbackVersion &that) const noexcept
+{
+    return *this == that || *this > that;
+}
+
+QString VersionV1::toString() const noexcept
 {
     return QString("%1.%2.%3%4")
       .arg(this->major)

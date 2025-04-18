@@ -1223,7 +1223,7 @@ int Cli::install([[maybe_unused]] CLI::App *subcommand)
         params.package.channel = fuzzyRef->channel->toStdString();
     }
     if (fuzzyRef->version) {
-        params.package.version = fuzzyRef->version->toString().toStdString();
+        params.package.version = fuzzyRef->version->toStdString();
     }
 
     if (!options.module.empty()) {
@@ -1386,7 +1386,7 @@ int Cli::upgrade([[maybe_unused]] CLI::App *subcommand)
             package.channel = fuzzyRef.channel->toStdString();
         }
         if (fuzzyRef.version) {
-            package.version = fuzzyRef.version->toString().toStdString();
+            package.version = fuzzyRef.version->toStdString();
         }
         params.packages.emplace_back(std::move(package));
     }
@@ -1688,7 +1688,7 @@ int Cli::uninstall([[maybe_unused]] CLI::App *subcommand)
         params.package.channel = fuzzyRef->channel->toStdString();
     }
     if (fuzzyRef->version) {
-        params.package.version = fuzzyRef->version->toString().toStdString();
+        params.package.version = fuzzyRef->version->toStdString();
     }
 
     auto pendingReply = this->pkgMan.Uninstall(utils::serialize::toQVariantMap(params));

@@ -41,7 +41,7 @@ package:
 | description | Detailed description of the build product                                     |
 | id          | Unique name of the build product                                              |
 | kind        | The type of build product: app, runtime, representing Application and Runtime |
-| version     | version of the build product, require a four-digit number.                    |
+| version     | version of the build product, follows [SemVer](./semver.md) specification.    |
 
 ### Base
 

@@ -24,39 +24,39 @@ msgstr ""
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:58
 msgid "Permission denied, please check whether you are running as root."
-msgstr ""
+msgstr "Se n'ha denegat el permís. Comproveu si s'executa com a arrel."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:437
 msgid "To install the module, one must first install the app."
-msgstr ""
+msgstr "Per instal·lar el mòdul, primer cal instal·lar l'aplicació."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:440
 msgid "Module is already installed."
-msgstr ""
+msgstr "El mòdul ja està instal·lat.."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:443
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1295
 msgid "Install failed"
-msgstr ""
+msgstr "Ha fallat la instal·lació."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:446
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1733
 msgid "Uninstall failed"
-msgstr ""
+msgstr "Ha fallat la desinstal·lació."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:449
 msgid "Upgrade failed"
-msgstr ""
+msgstr "Ha fallat l'actualització."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:452
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1656
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1729
 msgid "Application is not installed."
-msgstr ""
+msgstr "L'aplicació no està instal·lada."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:455
 msgid "Latest version is already installed."
-msgstr ""
+msgstr "La darrera versió ja està instal·lada."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1269
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1518
@@ -65,26 +65,33 @@ msgid ""
 "1. Check your internet connection\n"
 "2. Verify network proxy settings if used"
 msgstr ""
+"Ha fallat la connexió a la xarxa. Si us plau:\n"
+"1. Comproveu la connexió a Internet.\n"
+"2. Verifiqueu la configuració del servidor intermediari de xarxa, si n'hi ha."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1275
 msgid ""
 "Application already installed, If you want to replace it, try using 'll-cli "
 "install %1 --force'"
 msgstr ""
+"L'aplicació ja està instal·lada, si la voleu substituir, proveu d'usar \"ll-"
+"cli install %1 --force\"."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1281
 msgid "Application %1 is not found in remote repo."
-msgstr ""
+msgstr "L'aplicació %1 no es troba al repositori remot."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1285
 msgid "Cannot specify a version when installing a module."
-msgstr ""
+msgstr "No es pot especificar una versió en instal·lar un mòdul."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1289
 msgid ""
 "The latest version has been installed. If you want to replace it, try using "
 "'ll-cli install %1/version --force'"
 msgstr ""
+"Se n'ha instal·lat la darrera versió. Si la voleu substituir, proveu d'usar "
+"'ll-cli install %1/version --force'."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2732
 msgid ""

@@ -153,7 +153,7 @@ msgstr "El paràmetre d'entrada és buit; introduïu un paràmetre vàlid."
 
 #: ../apps/ll-cli/src/main.cpp:210
 msgid "Show debug info (verbose logs)"
-msgstr ""
+msgstr "Mostra la informació de depuració (registres detallats)"
 
 #. groups
 #: ../apps/ll-cli/src/main.cpp:213
@@ -361,6 +361,8 @@ msgid ""
 "Specify the application ID. If it not be specified, all applications will be"
 " upgraded"
 msgstr ""
+"Especifiqueu l'ID de l'aplicació. Si no s'especifica, s'actualitzaran totes "
+"les aplicacions."
 
 #: ../apps/ll-cli/src/main.cpp:372
 msgid ""
@@ -384,6 +386,17 @@ msgid ""
 "# find all of runtime of remote\n"
 "ll-cli search . --type=runtime"
 msgstr ""
+"Ús: ll-cli search [OPCIONS] PARAULES CLAU\n"
+"\n"
+"Exemple:\n"
+"# cerca l'aplicació de forma remota pel nom\n"
+"ll-cli search org.deepin.demo\n"
+"# cerca l'entorn d'execució de manera remota pel nom\n"
+"ll-cli search org.deepin.base --type=runtime\n"
+"# cerca tota aplicació fora del remot\n"
+"ll-cli search .\n"
+"# cerca tot entorn d'execució fora del remot\n"
+"ll-cli search . --type=runtime"
 
 #: ../apps/ll-cli/src/main.cpp:387
 msgid "Specify the Keywords"
@@ -752,7 +765,7 @@ msgstr "Construeix en un entorn de xarxa aïllat."
 
 #: ../apps/ll-builder/src/main.cpp:259
 msgid "Run built linyaps app"
-msgstr ""
+msgstr "Executa l'aplicació de linyaps creada."
 
 #: ../apps/ll-builder/src/main.cpp:260
 msgid "Usage: ll-builder run [OPTIONS] [COMMAND...]"
@@ -777,7 +790,7 @@ msgstr "Executa en mode de depuració (activa el mòdul de desenvolupament)."
 
 #: ../apps/ll-builder/src/main.cpp:283
 msgid "List built linyaps app"
-msgstr ""
+msgstr "Llista les aplicacions de linyaps creades."
 
 #: ../apps/ll-builder/src/main.cpp:284
 msgid "Usage: ll-builder list [OPTIONS]"
@@ -785,7 +798,7 @@ msgstr "Ús: ll-builder list [OPCIONS]"
 
 #: ../apps/ll-builder/src/main.cpp:286
 msgid "Remove built linyaps app"
-msgstr ""
+msgstr "Elimina l'aplicació de linyaps creada."
 
 #: ../apps/ll-builder/src/main.cpp:287
 msgid "Usage: ll-builder remove [OPTIONS] [APP...]"
@@ -821,7 +834,7 @@ msgstr "No exportis el mòdul de desenvolupament."
 
 #: ../apps/ll-builder/src/main.cpp:320
 msgid "Output file"
-msgstr ""
+msgstr "Fitxer de sortida"
 
 #: ../apps/ll-builder/src/main.cpp:325
 msgid "Push linyaps app to remote repo"

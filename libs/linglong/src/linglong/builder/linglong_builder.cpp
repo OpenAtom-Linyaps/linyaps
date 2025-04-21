@@ -1997,7 +1997,17 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
       .setAppPath(curDir->absoluteFilePath("files").toStdString())
       .setBasePath(baseDir->absoluteFilePath("files").toStdString())
       .setAppCache(appCache.absolutePath().toStdString(), false)
-      .enableLDCache()
+      .enableSelfAdjustingMount()
+      // builder run ldconfig in startContainer hook, some base contains file
+      // /etc/ld.so.cache and /etc/ld.so.cache~, we make a workaround by mount
+      // /etc as tmpfs, and mask those files.
+      .adjustToTmpfs("/etc", [](const std::string &name) {
+              if (name == "ld.so.cache" ||
+                  name == "ld.so.cache~") {
+                  return false;
+              }
+              return true;
+              })
       .setBundlePath(std::move(bundle).value())
       .addUIdMapping(uid, uid, 1)
       .addGIdMapping(gid, gid, 1)
@@ -2019,8 +2029,7 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
       .bindIPC()
       .forwordDefaultEnv()
       .setExtraMounts(applicationMounts)
-      .setStartContainerHooks(std::move(startContainer))
-      .enableSelfAdjustingMount();
+      .setStartContainerHooks(std::move(startContainer));
     if (this->project.runtime) {
         cfgBuilder.setRuntimePath(runtimeDir->absoluteFilePath("files").toStdString());
     }

@@ -401,6 +401,21 @@ ContainerCfgBuilder &ContainerCfgBuilder::setStartContainerHooks(std::vector<Hoo
     return *this;
 }
 
+ContainerCfgBuilder &ContainerCfgBuilder::adjustToTmpfs(
+  std::string path, std::function<bool(const std::string &)> ifBind) noexcept
+{
+    if (path.empty() || path[0] != '/') {
+        std::cerr << "Warning: adjustToTmpfs called with invalid path: " << path << std::endl;
+        return *this;
+    }
+    if (path.length() > 1 && path.back() == '/') {
+        path.pop_back();
+    }
+
+    forcedAdjustments.emplace_back(ForcedAdjustment{ std::move(path), std::move(ifBind) });
+    return *this;
+}
+
 ContainerCfgBuilder &ContainerCfgBuilder::addMask(const std::vector<std::string> &masks) noexcept
 {
     maskedPaths.insert(maskedPaths.end(), masks.begin(), masks.end());
@@ -1111,8 +1126,6 @@ bool ContainerCfgBuilder::buildEnv() noexcept
 bool ContainerCfgBuilder::mergeMount() noexcept
 {
     // merge all mounts here, the order of mounts is relevant
-    auto mounts = std::vector<Mount>{};
-
     if (runtimeMount) {
         mounts.insert(mounts.end(), std::move(*runtimeMount));
     }
@@ -1194,7 +1207,7 @@ bool ContainerCfgBuilder::mergeMount() noexcept
     }
 
     if (selfAdjustingMountEnabled) {
-        if (!selfAdjustingMount(mounts)) {
+        if (!selfAdjustingMount()) {
             return false;
         }
     }
@@ -1204,8 +1217,7 @@ bool ContainerCfgBuilder::mergeMount() noexcept
     return true;
 }
 
-std::vector<Mount> ContainerCfgBuilder::generateMounts(const std::vector<MountNode> &mountpoints,
-                                                       std::vector<Mount> &mounts) noexcept
+void ContainerCfgBuilder::generateMounts() noexcept
 {
     std::vector<Mount> generated;
     std::vector<int> nodes = { 0 };
@@ -1222,10 +1234,223 @@ std::vector<Mount> ContainerCfgBuilder::generateMounts(const std::vector<MountNo
         ++idx;
     }
 
-    return generated;
+    mounts = std::move(generated);
 }
 
-bool ContainerCfgBuilder::selfAdjustingMount(std::vector<Mount> &mounts) noexcept
+int ContainerCfgBuilder::findChild(int parent, const std::string &name) noexcept
+{
+    for (auto idx : mountpoints[parent].childs_idx) {
+        if (mountpoints[idx].name == name) {
+            return idx;
+        }
+    }
+
+    return -1;
+}
+
+int ContainerCfgBuilder::insertChild(int parent, MountNode node) noexcept
+{
+    node.parent_idx = parent;
+    mountpoints.emplace_back(std::move(node));
+    int child = mountpoints.size() - 1;
+    mountpoints[parent].childs_idx.push_back(child);
+    return child;
+}
+
+int ContainerCfgBuilder::insertChildRecursively(const std::string &path, bool &inserted) noexcept
+{
+    int currentNodeIndex = 0; // start from root (index 0)
+    inserted = false;
+
+    if (path == "/") {
+        return 0;
+    }
+
+    std::filesystem::path p(path);
+    p = p.lexically_normal();
+
+    for (const auto &part : p) {
+        std::string component = part.string();
+        if (component.empty() || component == "/") {
+            continue;
+        }
+
+        int childIndex = findChild(currentNodeIndex, component);
+        if (childIndex == -1) {
+            childIndex = insertChild(
+              currentNodeIndex,
+              MountNode{ .name = component, .ro = false, .fix = false, .mount_idx = -1 });
+            inserted = true;
+        } else {
+            if (inserted) {
+                std::cerr << "Error: path " << path << " is prefix of an already mount "
+                          << std::endl;
+            }
+        }
+        currentNodeIndex = childIndex;
+    }
+
+    return currentNodeIndex;
+}
+
+void ContainerCfgBuilder::adjustNode(int node,
+                                     const std::filesystem::path &path,
+                                     std::function<bool(const std::string &)> bindFilter) noexcept
+{
+    auto destination = getRelativePath(0, node);
+
+    // root will create in bundlePath/rootfs
+    if (node != 0) {
+        auto &mp = mountpoints[node];
+        if (mp.mount_idx >= 0) {
+            auto &fixMount = mounts[mp.mount_idx];
+            fixMount.options = string_list{ "nodev", "nosuid", "mode=700" };
+            fixMount.source = "tmpfs";
+            fixMount.type = "tmpfs";
+        } else {
+            mounts.emplace_back(Mount{ .destination = "/" + destination,
+                                       .options = string_list{ "nodev", "nosuid", "mode=700" },
+                                       .source = "tmpfs",
+                                       .type = "tmpfs" });
+            mp.mount_idx = mounts.size() - 1;
+        }
+        mp.ro = false;
+    }
+
+    for (auto const &entry : std::filesystem::directory_iterator{ path }) {
+        auto filename = entry.path().filename();
+        if (bindFilter && !bindFilter(filename)) {
+            continue;
+        }
+        // if not bind, bind it and mark with fix flag
+        if (findChild(node, filename) < 0) {
+            auto mount = Mount{ .destination = "/" + destination + "/" + filename.string(),
+                                .options = string_list{ "rbind" },
+                                .source = path / filename,
+                                .type = "bind" };
+            if (entry.is_symlink()) {
+                mount.options->emplace_back("copy-symlink");
+            }
+            mounts.emplace_back(std::move(mount));
+            insertChild(
+              node,
+              ContainerCfgBuilder::MountNode{ .name = filename,
+                                              .ro = true,
+                                              .fix = true,
+                                              .mount_idx = static_cast<int>(mounts.size() - 1) });
+        }
+    }
+}
+
+int ContainerCfgBuilder::findNearestMountNode(int node) noexcept
+{
+    while (node > 0) {
+        if (mountpoints[node].mount_idx >= 0) {
+            return node;
+        }
+
+        node = mountpoints[node].parent_idx;
+    }
+
+    return node;
+}
+
+int ContainerCfgBuilder::findMostDeepNode(std::string &path) noexcept
+{
+    if (path == "/") {
+        return 0;
+    }
+
+    int currentNodeIndex = 0;
+
+    std::filesystem::path p(path);
+    p = p.lexically_normal();
+
+    auto iter = p.begin();
+    for (; iter != p.end(); ++iter) {
+        std::string component = iter->string();
+        if (component.empty() || component == "/") {
+            continue;
+        }
+
+        int childIndex = findChild(currentNodeIndex, component);
+        if (childIndex == -1) {
+            break;
+        }
+
+        currentNodeIndex = childIndex;
+    }
+
+    std::filesystem::path remain;
+    while (iter != p.end()) {
+        remain = remain / *iter;
+        ++iter;
+    }
+    path = remain.string();
+
+    return currentNodeIndex;
+}
+
+std::string ContainerCfgBuilder::getRelativePath(int parent, int node) noexcept
+{
+    std::filesystem::path path;
+    while (node != parent) {
+        if (node < 0) {
+            break;
+        }
+        const auto &mp = mountpoints[node];
+        if (path.empty())
+            path = mp.name;
+        else
+            path = mp.name / path;
+        node = mp.parent_idx;
+    }
+    return path.string();
+}
+
+std::filesystem::path ContainerCfgBuilder::getHostPath(const std::string &containerPath) noexcept
+{
+    std::string path = containerPath;
+    int node = findMostDeepNode(path);
+    int mounted = findNearestMountNode(node);
+
+    std::filesystem::path root;
+    if (mounted == 0) {
+        root = *bundlePath / config.root->path;
+    } else {
+        root = mounts[mountpoints[mounted].mount_idx].source.value();
+    }
+
+    return root / getRelativePath(mounted, node) / path;
+}
+
+bool ContainerCfgBuilder::applyForcedAdjustment() noexcept
+{
+    for (auto &items : forcedAdjustments) {
+        std::string &path = items.containerPath;
+        if (path.empty() || path[0] != '/') {
+            error_.reason = " invalid adjustToTmpfs path: " + path;
+            error_.code = BUILD_MOUNT_ERROR;
+            return false;
+        }
+
+        std::filesystem::path hostPath = getHostPath(path);
+        std::error_code ec;
+        // if adjust path is not exist on host, ingore it
+        if (!std::filesystem::exists(hostPath, ec)
+            || !std::filesystem::is_directory(hostPath, ec)) {
+            continue;
+        }
+
+        bool inserted = false;
+        int child = insertChildRecursively(path, inserted);
+        adjustNode(child, hostPath, items.bindFilter);
+    }
+
+    return true;
+}
+
+bool ContainerCfgBuilder::selfAdjustingMount() noexcept
 {
     // Some apps depends on files which doesn't exist in runtime layer or base layer, we have to
     // mount host files to container, or create the file on demand, but the layer is readonly. We
@@ -1234,27 +1459,9 @@ bool ContainerCfgBuilder::selfAdjustingMount(std::vector<Mount> &mounts) noexcep
     // mountpoints is a prefix tree of all mounts path
     // .mount_idx > 0 represents the path is a mount point, and it's the subscript of the array
     // mounts
-    std::vector<MountNode> mountpoints;
+    mountpoints.clear();
     mountpoints.emplace_back(
       MountNode{ .name = "", .ro = false, .mount_idx = -1, .parent_idx = -1 });
-
-    auto findChild = [&mountpoints](int parent, const std::string &name) {
-        for (auto idx : mountpoints[parent].childs_idx) {
-            if (mountpoints[idx].name == name) {
-                return idx;
-            }
-        }
-
-        return -1;
-    };
-
-    auto insertChild = [&mountpoints](int parent, MountNode &&node) -> int {
-        node.parent_idx = parent;
-        mountpoints.emplace_back(node);
-        int child = mountpoints.size() - 1;
-        mountpoints[parent].childs_idx.push_back(child);
-        return child;
-    };
 
     auto isRo = [](const Mount &mount) {
         // only try to adjust bind mount
@@ -1274,26 +1481,8 @@ bool ContainerCfgBuilder::selfAdjustingMount(std::vector<Mount> &mounts) noexcep
         return true;
     };
 
-    auto findMountedParent = [&mountpoints](int child) {
-        do {
-            int parent = mountpoints[child].parent_idx;
-            // root always hash mount point
-            if (parent < 0) {
-                return 0;
-            }
-
-            if (mountpoints[parent].mount_idx >= 0) {
-                return parent;
-            }
-            child = parent;
-        } while (true);
-
-        return 0;
-    };
-
-    auto canBind = [&mountpoints, &mounts, findMountedParent, isRo, this](int node,
-                                                                          std::string &failedPath) {
-        int parent = findMountedParent(node);
+    auto canBind = [isRo, this](int node, std::string &failedPath) {
+        int parent = findNearestMountNode(mountpoints[node].parent_idx);
 
         std::string root;
         if (parent == 0) {
@@ -1327,65 +1516,6 @@ bool ContainerCfgBuilder::selfAdjustingMount(std::vector<Mount> &mounts) noexcep
         return false;
     };
 
-    auto getPath = [&mountpoints](int parent, int node) -> std::string {
-        std::string path;
-        while (node != 0) {
-            const auto &mp = mountpoints[node];
-            path = "/" + mp.name + path;
-            if (node == parent) {
-                break;
-            }
-            node = mp.parent_idx;
-        }
-
-        return path;
-    };
-
-    auto adjustNode = [&mountpoints, &mounts, getPath, findChild, insertChild](
-                        int node,
-                        std::filesystem::path path) {
-        auto destination = getPath(0, node);
-
-        // root will create in bundlePath/rootfs
-        if (node != 0) {
-            auto &mp = mountpoints[node];
-            if (mp.mount_idx >= 0) {
-                auto &fixMount = mounts[mp.mount_idx];
-                fixMount.options = string_list{ "nodev", "nosuid", "mode=700" };
-                fixMount.source = "tmpfs";
-                fixMount.type = "tmpfs";
-            } else {
-                mounts.emplace_back(Mount{ .destination = destination,
-                                           .options = string_list{ "nodev", "nosuid", "mode=700" },
-                                           .source = "tmpfs",
-                                           .type = "tmpfs" });
-                mp.mount_idx = mounts.size() - 1;
-            }
-            mp.ro = false;
-        }
-
-        for (auto const &entry : std::filesystem::directory_iterator{ path }) {
-            auto filename = entry.path().filename();
-            // if not bind, bind it and mark with fix flag
-            if (findChild(node, filename) < 0) {
-                auto source = path / filename;
-                auto mount = Mount{ .destination = destination + "/" + filename.string(),
-                                    .options = string_list{ "rbind" },
-                                    .source = source,
-                                    .type = "bind" };
-                if (entry.is_symlink()) {
-                    mount.options->emplace_back("copy-symlink");
-                }
-                mounts.emplace_back(std::move(mount));
-                insertChild(node,
-                            MountNode{ .name = filename,
-                                       .ro = true,
-                                       .fix = true,
-                                       .mount_idx = static_cast<int>(mounts.size() - 1 )});
-            }
-        }
-    };
-
     // adjust root first
     adjustNode(0, config.root->path);
 
@@ -1414,57 +1544,21 @@ bool ContainerCfgBuilder::selfAdjustingMount(std::vector<Mount> &mounts) noexcep
             return false;
         }
 
-        if (destination[destination.size() - 1] == '/') {
-            destination.pop_back();
-        }
+        bool inserted = false;
+        int child = insertChildRecursively(destination, inserted);
+        auto &mp = mountpoints[child];
 
-        auto begin = destination.begin();
-        auto it = ++begin;
-        int find = 0;
-
-        for (; it != destination.end();) {
-            if (*it == '/') {
-                auto name = std::string(begin, it);
-                auto child = findChild(find, name);
-                if (child >= 0) {
-                    find = child;
-                } else {
-                    // insert path to mountpoints tree
-                    find = insertChild(find,
-                                       MountNode{
-                                         .name = std::move(name),
-                                         .ro = false,
-                                         .fix = false,
-                                         .mount_idx = -1,
-                                       });
-                }
-                begin = ++it;
-            } else {
-                ++it;
-            }
-        }
-
-        auto name = std::string(begin, it);
-        auto child = findChild(find, name);
-        // leaf node is a mount point
-        if (child < 0) {
-            child = insertChild(find,
-                                MountNode{
-                                  .name = std::move(name),
-                                  .ro = isRo(mount),
-                                  .fix = false,
-                                  .mount_idx = static_cast<int>(i),
-                                });
+        if (inserted) {
+            // leaf node is a mount point
+            mp.ro = isRo(mount);
+            mp.mount_idx = static_cast<int>(i);
         } else {
-            auto &mp = mountpoints[child];
             // if the mount point is created by adjustNode
-            if (mp.fix) {
-                if (mp.mount_idx != static_cast<int>(i)) {
-                    // override the mount point created by adjustNode
-                    // we also mask the mount point by set type to empty
-                    mounts[mp.mount_idx].type = "";
-                    mp.mount_idx = i;
-                }
+            if (mp.fix && mp.mount_idx != static_cast<int>(i)) {
+                // override the mount point created by adjustNode
+                // we also mask the mount point by set type to empty
+                mounts[mp.mount_idx].type = "";
+                mp.mount_idx = i;
             }
         }
 
@@ -1487,9 +1581,10 @@ bool ContainerCfgBuilder::selfAdjustingMount(std::vector<Mount> &mounts) noexcep
         }
     }
 
+    applyForcedAdjustment();
+
     // use BFS to travel mountpoints tree to generate the mounts
-    auto generated = generateMounts(mountpoints, mounts);
-    mounts = std::move(generated);
+    generateMounts();
 
     return true;
 }

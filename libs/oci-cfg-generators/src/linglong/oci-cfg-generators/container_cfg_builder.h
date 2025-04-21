@@ -147,6 +147,9 @@ public:
         return *this;
     }
 
+    ContainerCfgBuilder &adjustToTmpfs(
+      std::string path, std::function<bool(const std::string &)> ifBind = nullptr) noexcept;
+
     ContainerCfgBuilder &addMask(const std::vector<std::string> &masks) noexcept;
 
     ContainerCfgBuilder &isolateNetWork() noexcept
@@ -171,6 +174,12 @@ public:
     // utils::error::Result<void> addEnv(std::map<std::string, std::string> env) noexcept;
 
 private:
+    struct ForcedAdjustment
+    {
+        std::string containerPath;
+        std::function<bool(const std::string &)> bindFilter;
+    };
+
     bool checkValid() noexcept;
     bool prepare() noexcept;
     bool buildIdMappings() noexcept;
@@ -187,10 +196,21 @@ private:
     bool buildEnv() noexcept;
     bool mergeMount() noexcept;
     bool finalize() noexcept;
-    bool selfAdjustingMount(std::vector<ocppi::runtime::config::types::Mount> &mounts) noexcept;
-    std::vector<ocppi::runtime::config::types::Mount>
-    generateMounts(const std::vector<MountNode> &mountpoints,
-                   std::vector<ocppi::runtime::config::types::Mount> &mounts) noexcept;
+
+    // adjust mount
+    int findChild(int parent, const std::string &name) noexcept;
+    int insertChild(int parent, MountNode node) noexcept;
+    int insertChildRecursively(const std::string &path, bool &inserted) noexcept;
+    int findNearestMountNode(int child) noexcept;
+    int findMostDeepNode(std::string &path) noexcept;
+    std::string getRelativePath(int parent, int node) noexcept;
+    std::filesystem::path getHostPath(const std::string &path) noexcept;
+    void adjustNode(int node,
+                    const std::filesystem::path &path,
+                    std::function<bool(const std::string &)> bindFilter = nullptr) noexcept;
+    bool applyForcedAdjustment() noexcept;
+    bool selfAdjustingMount() noexcept;
+    void generateMounts() noexcept;
 
     // path settings
     std::string appId;
@@ -253,6 +273,9 @@ private:
 
     // self-adjusting mount
     bool selfAdjustingMountEnabled = false;
+    std::vector<MountNode> mountpoints;
+    std::vector<ForcedAdjustment> forcedAdjustments;
+    std::vector<ocppi::runtime::config::types::Mount> mounts;
 
     bool isolateNetWorkEnabled = false;
 

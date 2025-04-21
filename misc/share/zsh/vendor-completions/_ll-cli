@@ -94,17 +94,25 @@ _ll-cli() {
                 '-y'
             )
 
-            local search_target="."
-            if [[ -n "${cur}" ]]; then
-                search_target="${cur}"
+            # 判断是否是本地路径补全
+            local cur="${words[CURRENT]}"
+            if [[ "${cur}" == ./* ]]; then
+                _arguments \
+                    '1: :_files -g "*.layer" -g "*.uab"' \
+                    "${install_options[@]}" \
+                    "${command_options[@]}"
+            else
+                local search_target="."
+                if [[ -n "${cur}" ]]; then
+                    search_target="${cur}"
+                fi
+
+                local app_list=(${(f)"$(__ll_cli_get_app_list ${search_target})"})
+                _arguments \
+                    '1: :{_values "${app_list[@]}"}' \
+                    "${install_options[@]}" \
+                    "${command_options[@]}"
             fi
-
-            local app_list=(${(f)"$(__ll_cli_get_app_list ${search_target})"} ${(f)"$(__ll_cli_get_layer_list ${cur})"})
-
-            _arguments \
-                '1: :{_values "available applications" "${app_list[@]}"}' \
-                "${install_options[@]}" \
-                "${command_options[@]}"
             ;;
         uninstall)
             local uninstall_options=(
@@ -168,7 +176,7 @@ _ll-cli() {
                 "${command_options[@]}"
             ;;
         repo)
-            local -a repo_subcommands=(add remove update set-default show)
+            local -a repo_subcommands=(add remove update set-default show set-priority)
             local -a repo_options=(
                 '--alias:alias'
                 '-f'

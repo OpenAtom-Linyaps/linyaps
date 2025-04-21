@@ -1,6 +1,6 @@
 #!/bin/env bash
 
-# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
+# SPDX-FileCopyrightText: 2023 - 2025 UnionTech Software Technology Co., Ltd.
 #
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -26,6 +26,14 @@ __ll_cli_get_layer_list() {
 
 __ll_cli_get_repo_alias_list() {
         ll-cli repo show | tail -n+3 | awk '{print $3}' | tr "\n" " "
+}
+
+# 只补全当前目录下的 .layer 和 .uab 文件，不包括目录
+__ll_cli_get_layer_uab_files_bash() {
+    local cur="$1"
+    local dir="${cur%/*}"
+    [[ "$cur" == */* ]] || dir="."
+    find "$dir" -maxdepth 1 -type f \( -name '*.layer' -o -name '*.uab' \) -printf '%P\n'
 }
 
 __filter_exist_options() {
@@ -102,16 +110,33 @@ _ll_cli_complete() {
                 ;;
         install)
                 install_options="--module --force -y"
-                search_target="."
-                local app_list
-                if [[ x${cur} != x ]]; then
+                # 判断当前补全文本是否以 ./ 开头，若是则只补全本地layer/uab文件且不补全目录
+                if [[ "$cur" == ./* ]]; then
+                    local dir prefix files
+                    if [[ "$cur" == */* ]]; then
+                        dir="${cur%/*}"
+                        prefix="${dir}/"
+                    else
+                        dir="."
+                        prefix=""
+                    fi
+                    # 列出目录下 .layer 和 .uab 文件，只要文件不要目录
+                    files=$(find "$dir" -maxdepth 1 -type f \( -name '*.layer' -o -name '*.uab' \) -printf '%f\n')
+                    # 拼回补全前缀
+                    files=$(printf "%s\n" $files | sed "s|^|$prefix|")
+                    COMPREPLY=( $(compgen -W "$files" -- "$cur") )
+                    return 0
+                else
+                    search_target="."
+                    if [[ -n "${cur}" ]]; then
                         search_target=${cur}
+                    fi
+                    local app_list
+                    if [[ "${prev}" == "install" ]]; then
+                        app_list="$(__ll_cli_get_app_list "${search_target}")"
+                    fi
+                    output_options="${output_options} ${install_options} ${app_list}"
                 fi
-
-                if [[ "${prev}" == "install" ]]; then
-                        app_list="$(__ll_cli_get_app_list ${search_target}) $(__ll_cli_get_layer_list ${cur})"
-                fi
-                output_options="${output_options} ${install_options} ${app_list}"
                 ;;
         uninstall)
                 local uninstall_options

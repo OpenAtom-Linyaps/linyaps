@@ -12,7 +12,7 @@ namespace linglong::api::types::v1 {
 
 inline bool operator==(const Repo &cfg1, const Repo &cfg2) noexcept
 {
-    return cfg1.alias == cfg2.alias && cfg1.name == cfg2.name && cfg1.url == cfg2.url;
+    return cfg1.alias == cfg2.alias && cfg1.name == cfg2.name && cfg1.url == cfg2.url && cfg1.priority == cfg2.priority;
 }
 
 inline bool operator!=(const Repo &cfg1, const Repo &cfg2) noexcept

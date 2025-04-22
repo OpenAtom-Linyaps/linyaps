@@ -123,15 +123,17 @@ utils::error::Result<void> elfHelper::addNewSection(const QByteArray &sectionNam
     return LINGLONG_OK;
 }
 
-UABPackager::UABPackager(const QDir &workingDir)
+UABPackager::UABPackager(const QDir &projectDir, QDir workingDir)
 {
-    auto buildDir = QDir{ workingDir.absoluteFilePath(".uabBuild") };
-    if (!buildDir.mkpath(".")) {
-        qFatal("working directory of uab packager doesn't exists.");
+    if (!workingDir.mkpath(".")) {
+        qFatal(QString("can't create working directory: %1")
+                 .arg(workingDir.absolutePath())
+                 .toStdString()
+                 .c_str());
     }
 
-    this->buildDir = std::move(buildDir);
-    this->workDir = workingDir.absolutePath().toStdString();
+    this->buildDir = std::move(workingDir);
+    this->workDir = projectDir.absolutePath().toStdString();
 
     meta.version = api::types::v1::Version::The1;
     meta.uuid = QUuid::createUuid().toString(QUuid::WithoutBraces).toStdString();
@@ -681,7 +683,7 @@ utils::error::Result<void> UABPackager::prepareBundle(const QDir &bundleDir, boo
     stream.flush();
 
     // copy ll-box
-    auto boxBin = QStandardPaths::findExecutable("ll-box");
+    auto boxBin = !defaultBox.isEmpty() ? defaultBox : QStandardPaths::findExecutable("ll-box");
     if (boxBin.isEmpty()) {
         return LINGLONG_ERR("couldn't find ll-box");
     }
@@ -990,6 +992,12 @@ utils::error::Result<void> UABPackager::setDefaultHeader(const QString &header) 
 utils::error::Result<void> UABPackager::setDefaultLoader(const QString &loader) noexcept
 {
     this->defaultLoader = loader;
+    return LINGLONG_OK;
+}
+
+utils::error::Result<void> UABPackager::setDefaultBox(const QString &box) noexcept
+{
+    this->defaultBox = box;
     return LINGLONG_OK;
 }
 

@@ -25,3 +25,5 @@
 /debian/tmp/
 /debian/tmp/usr
 /obj-x86_64-linux-gnu
+
+/linglong/

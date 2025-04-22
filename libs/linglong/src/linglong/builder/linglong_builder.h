@@ -82,9 +82,10 @@ public:
     auto
     run(const QStringList &modules,
         const QStringList &args,
-        bool debug = false,
-        std::optional<package::Reference> runWith = std::nullopt) -> utils::error::Result<void>;
+        bool debug = false) -> utils::error::Result<void>;
     auto runtimeCheck() -> utils::error::Result<void>;
+    auto runFromRepo(const package::Reference &ref,
+                     std::vector<std::string> args) -> utils::error::Result<void>;
 
     void setBuildOptions(const BuilderBuildOptions &options) noexcept { buildOptions = options; }
 
@@ -103,6 +104,7 @@ private:
     utils::error::Result<void> processBuildDepends() noexcept;
     utils::error::Result<void> commitToLocalRepo() noexcept;
     std::unique_ptr<utils::OverlayFS> makeOverlay(QString lowerdir, QString overlayDir) noexcept;
+    utils::error::Result<package::Reference> ensureUtils(const std::string &id) noexcept;
     utils::error::Result<package::Reference> clearDependency(const std::string &ref,
                                                              bool forceRemote,
                                                              bool fallbackToRemote) noexcept;

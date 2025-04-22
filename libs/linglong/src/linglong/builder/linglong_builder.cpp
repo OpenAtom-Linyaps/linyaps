@@ -552,6 +552,53 @@ utils::error::Result<void> Builder::buildStageFetchSource() noexcept
     return LINGLONG_OK;
 }
 
+utils::error::Result<package::Reference> Builder::ensureUtils(const std::string &id) noexcept
+{
+    LINGLONG_TRACE("ensureUtils");
+
+    // always try to get newest version from remote
+    auto ref = clearDependency(id, true, true);
+    if (!ref) {
+        ref = clearDependency(id, false, false);
+    }
+    if (ref && pullDependency(*ref, this->repo, "binary")) {
+        auto appLayerDir = this->repo.getMergedModuleDir(*ref);
+        if (!appLayerDir) {
+            return LINGLONG_ERR("failed to get layer dir of " + ref->toString());
+        }
+
+        auto layerItem = this->repo.getLayerItem(*ref);
+        if (!layerItem) {
+            return LINGLONG_ERR("failed to get layer item of " + ref->toString());
+        }
+        const auto &info = layerItem->info;
+
+        auto baseRef = clearDependency(info.base, false, true);
+        if (!baseRef) {
+            return LINGLONG_ERR("base not exist: " + QString::fromStdString(info.base));
+        }
+        if (!pullDependency(*baseRef, this->repo, "binary")) {
+            return LINGLONG_ERR("failed to pull base binary " + QString::fromStdString(info.base));
+        }
+
+        if (info.runtime) {
+            auto runtimeRef = clearDependency(info.runtime.value(), false, true);
+            if (!runtimeRef) {
+                return LINGLONG_ERR("runtime not exist: "
+                                    + QString::fromStdString(info.runtime.value()));
+            }
+            if (!pullDependency(*runtimeRef, this->repo, "binary")) {
+                return LINGLONG_ERR("failed to pull runtime binary "
+                                    + QString::fromStdString(info.runtime.value()));
+            }
+        }
+
+        return ref;
+    }
+
+    return LINGLONG_ERR("failed to get utils " + QString::fromStdString(id));
+}
+
 utils::error::Result<package::Reference> Builder::clearDependency(const std::string &ref,
                                                                   bool forceRemote,
                                                                   bool fallbackToRemote) noexcept
@@ -1513,27 +1560,38 @@ utils::error::Result<void> Builder::exportUAB(const ExportOption &option,
 {
     LINGLONG_TRACE("export uab file");
 
-    package::UABPackager packager{ workingDir };
+    package::UABPackager packager{ workingDir, workingDir.absoluteFilePath(".uabBuild") };
 
-    // Try to use uab-header, uab-loader, and bundling logic from ll-builder-utils if available.
-    // Fallback to defaults if ll-builder-utils is not found or fails.
-    auto ref = clearDependency("cn.org.linyaps.builder.utils", false, true);
-    if (ref && pullDependency(*ref, this->repo, "binary")) {
-        auto res = run({ "binary" },
-                       { "/opt/apps/cn.org.linyaps.builder.utils/files/bin/ll-builder-export",
-                         "--get-header",
-                         "/project/uab-header",
-                         "--get-loader",
-                         "/project/uab-loader" },
-                       false,
-                       *ref);
+    // Try to use uab-header, uab-loader, ll-box and bundling logic from ll-builder-utils if
+    // available. Fallback to defaults if ll-builder-utils is not found or fails.
+    auto ref = ensureUtils("cn.org.linyaps.builder.utils");
+    if (ref) {
+        qDebug() << "using cn.org.linyaps.builder.utils";
+        auto res =
+          runFromRepo(*ref,
+                      { "/opt/apps/cn.org.linyaps.builder.utils/files/bin/ll-builder-export",
+                        "--get-header",
+                        "/project/.uabBuild/uab-header",
+                        "--get-loader",
+                        "/project/.uabBuild/uab-loader",
+                        "--get-box",
+                        "/project/.uabBuild/ll-box" });
         if (res) {
             std::error_code ec;
-            if (std::filesystem::exists(workingDir.absoluteFilePath("uab-header").toStdString(), ec)
-                && std::filesystem::exists(workingDir.absoluteFilePath("uab-loader").toStdString(),
-                                           ec)) {
-                packager.setDefaultHeader(workingDir.absoluteFilePath("uab-header"));
-                packager.setDefaultLoader(workingDir.absoluteFilePath("uab-loader"));
+            if (std::filesystem::exists(
+                  workingDir.absoluteFilePath(".uabBuild/uab-header").toStdString(),
+                  ec)
+                && std::filesystem::exists(
+                  workingDir.absoluteFilePath(".uabBuild/uab-loader").toStdString(),
+                  ec)) {
+                packager.setDefaultHeader(workingDir.absoluteFilePath(".uabBuild/uab-header"));
+                packager.setDefaultLoader(workingDir.absoluteFilePath(".uabBuild/uab-loader"));
+            }
+
+            if (std::filesystem::exists(
+                  workingDir.absoluteFilePath(".uabBuild/ll-box").toStdString(),
+                  ec)) {
+                packager.setDefaultBox(workingDir.absoluteFilePath(".uabBuild/ll-box"));
             }
         } else {
             qWarning() << "run builder utils error: " << res.error();
@@ -1548,18 +1606,23 @@ utils::error::Result<void> Builder::exportUAB(const ExportOption &option,
             if (relativeBundleFile.startsWith("../") || relativeBundleDir.startsWith("../")) {
                 return LINGLONG_ERR("file must be in project directory");
             }
-            QStringList args = {
+            std::vector<std::string> args{
                 "/opt/apps/cn.org.linyaps.builder.utils/files/bin/ll-builder-export",
                 "--packdir",
-                QString("%1:%2").arg(QDir("/project").absoluteFilePath(relativeBundleDir),
-                                     QDir("/project").absoluteFilePath(relativeBundleFile))
+                QString("%1:%2")
+                  .arg(QDir("/project").absoluteFilePath(relativeBundleDir),
+                       QDir("/project").absoluteFilePath(relativeBundleFile))
+                  .toStdString()
             };
             if (!option.compressor.empty()) {
-                args << "-z" << QString::fromStdString(option.compressor);
+                args.emplace_back("-z");
+                args.emplace_back(option.compressor);
             }
-            return run({ "binary" }, args, false, ref);
+            return runFromRepo(ref, args);
         };
         packager.setBundleCB(utilsBundler);
+    } else {
+        qDebug() << "cn.org.linyaps.builder.utils not found, using system tools";
     }
 
     if (!option.iconPath.empty()) {
@@ -1589,18 +1652,10 @@ utils::error::Result<void> Builder::exportUAB(const ExportOption &option,
         }
     }
 
-    auto baseFuzzyRef = package::FuzzyReference::parse(QString::fromStdString(this->project.base));
-    if (!baseFuzzyRef) {
-        return LINGLONG_ERR(baseFuzzyRef);
-    }
-
-    auto baseRef =
-      this->repo.clearReference(*baseFuzzyRef,
-                                linglong::repo::clearReferenceOption{ .fallbackToRemote = false });
+    auto baseRef = clearDependency(this->project.base, false, false);
     if (!baseRef) {
         return LINGLONG_ERR(baseRef);
     }
-
     auto baseDir = this->repo.getLayerDir(*baseRef);
     if (!baseDir) {
         return LINGLONG_ERR(baseDir);
@@ -1611,19 +1666,10 @@ utils::error::Result<void> Builder::exportUAB(const ExportOption &option,
         packager.setCompressor(option.compressor.c_str());
     }
     if (this->project.runtime) {
-        auto runtimeFuzzyRef =
-          package::FuzzyReference::parse(QString::fromStdString(this->project.runtime.value()));
-        if (!runtimeFuzzyRef) {
-            return LINGLONG_ERR(runtimeFuzzyRef);
-        }
-
-        auto runtimeRef = this->repo.clearReference(
-          *runtimeFuzzyRef,
-          linglong::repo::clearReferenceOption{ .fallbackToRemote = false });
+        auto runtimeRef = clearDependency(this->project.runtime.value(), false, false);
         if (!runtimeRef) {
             return LINGLONG_ERR(runtimeRef);
         }
-
         auto runtimeDir = this->repo.getLayerDir(*runtimeRef);
         if (!runtimeDir) {
             return LINGLONG_ERR(runtimeDir);
@@ -1798,20 +1844,13 @@ utils::error::Result<void> Builder::importLayer(repo::OSTreeRepo &ostree, const 
 
 utils::error::Result<void> Builder::run(const QStringList &modules,
                                         const QStringList &args,
-                                        bool debug,
-                                        std::optional<package::Reference> runWith)
+                                        bool debug)
 {
     LINGLONG_TRACE("run application");
 
-    std::optional<package::Reference> curRef;
-    if (runWith) {
-        curRef = std::move(runWith).value();
-    } else {
-        auto ref = currentReference(this->project);
-        if (!ref) {
-            return LINGLONG_ERR(ref);
-        }
-        curRef = std::move(ref).value();
+    auto curRef = currentReference(this->project);
+    if (!curRef) {
+        return LINGLONG_ERR(curRef);
     }
 
     auto containerID = runtime::genContainerID(*curRef);
@@ -1820,12 +1859,7 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
         return LINGLONG_ERR(bundle);
     }
 
-    auto fuzzyBase = package::FuzzyReference::parse(QString::fromStdString(this->project.base));
-    if (!fuzzyBase) {
-        return LINGLONG_ERR(fuzzyBase);
-    }
-    auto baseRef =
-      this->repo.clearReference(*fuzzyBase, { .forceRemote = false, .fallbackToRemote = false });
+    auto baseRef = clearDependency(this->project.base, false, false);
     if (!baseRef) {
         return LINGLONG_ERR(baseRef);
     }
@@ -1837,14 +1871,7 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
 
     utils::error::Result<package::LayerDir> runtimeDir;
     if (this->project.runtime) {
-        auto fuzzyRuntime =
-          package::FuzzyReference::parse(QString::fromStdString(this->project.runtime.value()));
-        if (!fuzzyRuntime) {
-            return LINGLONG_ERR(fuzzyRuntime);
-        }
-        auto runtimeRef =
-          this->repo.clearReference(*fuzzyRuntime,
-                                    { .forceRemote = false, .fallbackToRemote = false });
+        auto runtimeRef = clearDependency(this->project.runtime.value(), false, false);
         if (!runtimeRef) {
             return LINGLONG_ERR(runtimeRef);
         }
@@ -1978,8 +2005,8 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
       .type = "bind",
     });
 
-    int64_t uid = getuid();
-    int64_t gid = getgid();
+    uid = getuid();
+    gid = getgid();
 
     {
         // Since ldconfig removes and regenerates the cache file, the cache directory must be
@@ -1998,7 +2025,8 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
           .setBundlePath(std::move(bundle).value())
           .addUIdMapping(uid, uid, 1)
           .addGIdMapping(gid, gid, 1)
-          .bindProc();
+          .bindProc()
+          .setExtraMounts(applicationMounts);
         if (this->project.runtime) {
             cfgBuilder.setRuntimePath(runtimeDir->absoluteFilePath("files").toStdString());
         }
@@ -2029,7 +2057,7 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
     cfgBuilder.setAppId(curRef->id.toStdString())
       .setAppPath(curDir->absoluteFilePath("files").toStdString())
       .setBasePath(baseDir->absoluteFilePath("files").toStdString())
-      .setAppCache(appCache.absolutePath().toStdString(), false)
+      .setAppCache(appCache.absolutePath().toStdString())
       .enableLDCache()
       .setBundlePath(std::move(bundle).value())
       .addUIdMapping(uid, uid, 1)
@@ -2089,6 +2117,177 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
     auto result = (*container)->run(process, opt);
     if (!result) {
         return LINGLONG_ERR(result);
+    }
+
+    return LINGLONG_OK;
+}
+
+utils::error::Result<void> Builder::runFromRepo(const package::Reference &ref,
+                                                std::vector<std::string> args)
+{
+    LINGLONG_TRACE("run with ref " + ref.toString());
+
+    auto appLayerDir = this->repo.getMergedModuleDir(ref);
+    if (!appLayerDir) {
+        return LINGLONG_ERR("failed to get layer dir of " + ref.toString());
+    }
+
+    auto layerItem = this->repo.getLayerItem(ref);
+    if (!layerItem) {
+        return LINGLONG_ERR("failed to get layer item of " + ref.toString());
+    }
+    const auto &info = layerItem->info;
+
+    // only clear ref from local
+    auto baseRef = clearDependency(info.base, false, false);
+    if (!baseRef) {
+        return LINGLONG_ERR("base not exist: " + QString::fromStdString(info.base));
+    }
+    auto baseLayerDir = this->repo.getMergedModuleDir(*baseRef);
+    if (!baseLayerDir) {
+        return LINGLONG_ERR(baseLayerDir);
+    }
+
+    std::optional<package::LayerDir> runtimeLayerDir;
+    if (info.runtime) {
+        auto runtimeRef = clearDependency(info.runtime.value(), false, false);
+        if (!runtimeRef) {
+            return LINGLONG_ERR("runtime not exist: "
+                                + QString::fromStdString(info.runtime.value()));
+        }
+        auto layerDir = this->repo.getMergedModuleDir(*runtimeRef);
+        if (!layerDir) {
+            return LINGLONG_ERR(layerDir);
+        }
+        runtimeLayerDir = std::move(layerDir).value();
+    }
+
+    uid = getuid();
+    gid = getgid();
+
+    auto appCache = std::filesystem::path{ workingDir.absolutePath().toStdString() } / "linglong"
+      / "cache" / ref.id.toStdString();
+    std::error_code ec;
+    if (!std::filesystem::create_directories(appCache, ec) && ec) {
+        return LINGLONG_ERR("failed to create temp cache directory");
+    }
+
+    {
+        // write ld.so.conf
+        QFile ldsoconf{ (appCache / "ld.so.conf").c_str() };
+        if (!ldsoconf.open(QIODevice::WriteOnly)) {
+            return LINGLONG_ERR(ldsoconf);
+        }
+
+        std::string ldRawConf;
+        std::string triplet = ref.arch.getTriplet().toStdString();
+        auto appendLdConf = [&ldRawConf, &triplet](const std::string &prefix) {
+            ldRawConf.append(prefix + "/lib\n");
+            ldRawConf.append(prefix + "/lib/" + triplet);
+            ldRawConf.append("\ninclude " + prefix + "/etc/ld.so.conf");
+        };
+
+        if (runtimeLayerDir) {
+            appendLdConf("/runtime");
+        }
+        appendLdConf("/opt/apps/" + ref.id.toStdString() + "/files");
+
+        ldsoconf.write(ldRawConf.c_str());
+        // must be closed here, this conf will be used later.
+        ldsoconf.close();
+
+        // generate ld cache
+        auto containerID = runtime::genContainerID(ref);
+        auto bundle = runtime::getBundleDir(containerID);
+        if (!bundle) {
+            return LINGLONG_ERR(bundle);
+        }
+
+        linglong::generator::ContainerCfgBuilder cfgBuilder;
+        cfgBuilder.setAppId(ref.id.toStdString())
+          .setAppPath(appLayerDir->absoluteFilePath("files").toStdString())
+          .setBasePath(baseLayerDir->absoluteFilePath("files").toStdString())
+          .setAppCache(appCache, false)
+          .setBundlePath(std::move(bundle).value())
+          .addUIdMapping(uid, uid, 1)
+          .addGIdMapping(gid, gid, 1)
+          .bindProc()
+          .setExtraMounts(
+            std::vector<ocppi::runtime::config::types::Mount>{ ocppi::runtime::config::types::Mount{
+              .destination = "/etc/ld.so.conf.d/zz_deepin-linglong-app.conf",
+              .options = { { "rbind", "ro" } },
+              .source = appCache / "ld.so.conf",
+              .type = "bind" } });
+        if (info.runtime) {
+            cfgBuilder.setRuntimePath(runtimeLayerDir->absoluteFilePath("files").toStdString());
+        }
+
+        if (!cfgBuilder.build()) {
+            auto err = cfgBuilder.getError();
+            return LINGLONG_ERR("build cfg error: " + QString::fromStdString(err.reason));
+        }
+
+        auto container =
+          this->containerBuilder.create(cfgBuilder, QString::fromStdString(containerID));
+        if (!container) {
+            return LINGLONG_ERR(container);
+        }
+
+        ocppi::runtime::config::types::Process process{
+            .args =
+              std::vector<std::string>{ "/sbin/ldconfig", "-C", "/run/linglong/cache/ld.so.cache" }
+        };
+        ocppi::runtime::RunOption opt{};
+        auto result = (*container)->run(process, opt);
+        if (!result) {
+            return LINGLONG_ERR("failed to generate ld cache", result);
+        }
+    }
+
+    auto newContainerID = runtime::genContainerID(ref);
+    auto bundle = runtime::getBundleDir(newContainerID);
+    if (!bundle) {
+        return LINGLONG_ERR(bundle);
+    }
+
+    linglong::generator::ContainerCfgBuilder cfgBuilder;
+    cfgBuilder.setAppId(ref.id.toStdString())
+      .setAppPath(appLayerDir->absoluteFilePath("files").toStdString())
+      .setBasePath(baseLayerDir->absoluteFilePath("files").toStdString())
+      .setBundlePath(std::move(bundle).value())
+      .setAppCache(appCache)
+      .enableLDCache()
+      .bindProc()
+      .addUIdMapping(uid, uid, 1)
+      .addGIdMapping(gid, gid, 1)
+      .setExtraMounts(std::vector<ocppi::runtime::config::types::Mount>{
+        ocppi::runtime::config::types::Mount{ .destination = "/project",
+                                              .options = { { "rbind", "rw" } },
+                                              .source =
+                                                this->workingDir.absolutePath().toStdString(),
+                                              .type = "bind" },
+      })
+      .enableSelfAdjustingMount();
+    if (info.runtime) {
+        cfgBuilder.setRuntimePath(runtimeLayerDir->absoluteFilePath("files").toStdString());
+    }
+
+    if (!cfgBuilder.build()) {
+        auto err = cfgBuilder.getError();
+        return LINGLONG_ERR("build cfg error: " + QString::fromStdString(err.reason));
+    }
+
+    auto container =
+      this->containerBuilder.create(cfgBuilder, QString::fromStdString(newContainerID));
+    if (!container) {
+        return LINGLONG_ERR(container);
+    }
+
+    ocppi::runtime::RunOption opt{};
+    auto result =
+      (*container)->run(ocppi::runtime::config::types::Process{ .args = std::move(args) }, opt);
+    if (!result) {
+        return LINGLONG_ERR("failed to run with " + ref.toString());
     }
 
     return LINGLONG_OK;
@@ -2253,7 +2452,8 @@ utils::error::Result<bool> Builder::generateDependsScript() noexcept
 
 void Builder::takeTerminalForeground()
 {
-    struct sigaction sa{};
+    struct sigaction sa {};
+
     sa.sa_handler = SIG_IGN;
     sigaction(SIGTTOU, &sa, NULL);
 

@@ -8,6 +8,7 @@
 # Options:
 # --get-header <target_path>   拷贝预置头文件到指定路径
 # --get-loader <target_path>  拷贝预置加载器到指定路径
+# --get-box <target_path>  拷贝预置 ll-box 到指定路径
 # --packdir <dir:output_path> 打包目录到压缩文件
 
 if [ $# -eq 0 ]; then
@@ -19,6 +20,7 @@ echo $PWD
 APPID="cn.org.linyaps.builder.utils"
 UAB_HEADER="/opt/apps/${APPID}/files/lib/linglong/builder/uab/uab-header"
 UAB_LOADER="/opt/apps/${APPID}/files/lib/linglong/builder/uab/uab-loader"
+LL_BOX="/opt/apps/${APPID}/files/bin/ll-box"
 
 # 参数解析
 while [[ $# -gt 0 ]]; do
@@ -33,10 +35,18 @@ while [[ $# -gt 0 ]]; do
             ;;
         --get-loader)
             if [ -z "$2" ]; then
-                echo "-get-loader need output path" >&2
+                echo "--get-loader need output path" >&2
                 exit 1
             fi
             TARGET_LOADER="$2"
+            shift 2
+            ;;
+        --get-box)
+            if [ -z "$2" ]; then
+                echo "--get-box need output path" >&2
+                exit 1
+            fi
+            TARGET_BOX="$2"
             shift 2
             ;;
         --packdir)
@@ -74,6 +84,15 @@ fi
 if [ -n "$TARGET_LOADER" ]; then
     mkdir -p "$(dirname "$TARGET_LOADER")"
     if ! cp -v "$UAB_LOADER" "$TARGET_LOADER"; then
+        echo "copy failed" >&2
+        exit 1
+    fi
+fi
+
+# copy ll-box
+if [ -n "$TARGET_BOX" ]; then
+    mkdir -p "$(dirname "$TARGET_BOX")"
+    if ! cp -v "$LL_BOX" "$TARGET_BOX"; then
         echo "copy failed" >&2
         exit 1
     fi

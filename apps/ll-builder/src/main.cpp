@@ -106,8 +106,8 @@ parseProjectConfig(const QString &filename)
     if (!project) {
         return project;
     }
-    auto version = linglong::package::Version(QString::fromStdString(project->package.version));
-    if (!version.tweak) {
+    auto version = linglong::package::Version::parse(QString::fromStdString(project->package.version));
+    if (!version || !version->tweak) {
         return LINGLONG_ERR("Please ensure the package.version number has three parts formatted as "
                             "'MAJOR.MINOR.PATCH.TWEAK'");
     }

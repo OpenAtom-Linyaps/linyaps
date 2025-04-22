@@ -561,6 +561,22 @@ ll-cli list --upgradable
       ->required()
       ->check(validatorString);
 
+    // add sub command export
+    auto *cliExport =
+      commandParser.add_subcommand("export", _("Exported to the uab for installed app"));
+    cliExport->add_option("APP", options.appid, _("Specify the installed app"))
+      ->required()
+      ->check(validatorString);
+    cliExport->add_option("--loader", options.loader, _("Specify the loader for the uab"))
+      ->type_name("FILE")
+      ->check(CLI::ExistingFile);
+    cliExport->add_option("--icon", options.iconPath, _("Specify the icon path for the uab"))
+      ->type_name("FILE")
+      ->check(CLI::ExistingFile);
+    cliExport->add_option("--file", options.filePath, _("Specify the file path for the uab"))
+      ->type_name("FILE")
+      ->check(validatorString);
+
     auto res = transformOldExec(argc, argv);
     CLI11_PARSE(commandParser, std::move(res));
 
@@ -746,7 +762,8 @@ ll-cli list --upgradable
               { "prune", &Cli::prune },
               { "inspect", &Cli::inspect },
               { "repo", &Cli::repo },
-              { "dir", &Cli::dir }
+              { "dir", &Cli::dir },
+              { "export", &Cli::exportUab },
           };
 
           if (QObject::connect(QCoreApplication::instance(),

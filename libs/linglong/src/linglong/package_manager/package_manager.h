@@ -8,9 +8,13 @@
 
 #include "linglong/api/types/v1/CommonOptions.hpp"
 #include "linglong/api/types/v1/ContainerProcessStateInfo.hpp"
+#include "linglong/api/types/v1/PackageManager1ExportParameters.hpp"
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/runtime/container_builder.h"
 #include "package_task.h"
+
+#include <qjsonobject.h>
+#include <qvariant.h>
 
 #include <QDBusArgument>
 #include <QDBusContext>
@@ -93,6 +97,7 @@ public
     auto Update(const QVariantMap &parameters) noexcept -> QVariantMap;
     auto Search(const QVariantMap &parameters) noexcept -> QVariantMap;
     auto Prune() noexcept -> QVariantMap;
+    auto Export(const QVariantMap &parameters) noexcept -> QVariantMap;
     auto GenerateCache(const QString &reference) noexcept -> QVariantMap;
     void ReplyInteraction(QDBusObjectPath object_path, const QVariantMap &replies);
 
@@ -148,6 +153,10 @@ private:
     utils::error::Result<void> generateCache(const package::Reference &ref) noexcept;
     utils::error::Result<void> tryGenerateCache(const package::Reference &ref) noexcept;
     utils::error::Result<void> removeCache(const package::Reference &ref) noexcept;
+    void ExportUab(PackageTask &taskContext,
+                   const package::Reference &ref,
+                   const std::filesystem::path &exportPath,
+                   const api::types::v1::PackageManager1ExportParameters &params) noexcept;
     linglong::repo::OSTreeRepo &repo; // NOLINT
     PackageTaskQueue tasks;
 

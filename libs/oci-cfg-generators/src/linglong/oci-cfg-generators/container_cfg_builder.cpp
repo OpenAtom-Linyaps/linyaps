@@ -702,8 +702,8 @@ bool ContainerCfgBuilder::buildTmp() noexcept
     }
 
     std::srand(std::time(0));
-    auto tmpPath = std::filesystem::temp_directory_path() / "linglong"
-      / (appId + "-" + std::to_string(std::rand()));
+    auto tmpPath = std::filesystem::temp_directory_path()
+      / ("linglong_" + std::to_string(::getuid())) / (appId + "-" + std::to_string(std::rand()));
     std::error_code ec;
     if (!std::filesystem::create_directories(tmpPath, ec) && ec) {
         error_.reason = tmpPath.string() + "can't be created";
@@ -1387,7 +1387,7 @@ bool ContainerCfgBuilder::selfAdjustingMount(std::vector<Mount> &mounts) noexcep
                             MountNode{ .name = filename,
                                        .ro = true,
                                        .fix = true,
-                                       .mount_idx = static_cast<int>(mounts.size() - 1 )});
+                                       .mount_idx = static_cast<int>(mounts.size() - 1) });
             }
         }
     };

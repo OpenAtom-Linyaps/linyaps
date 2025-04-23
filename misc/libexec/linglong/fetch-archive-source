@@ -40,7 +40,7 @@ if [ "X$actual_hash" != "X$digest" ]; then
 fi
 # Extract the archive
 mkdir -p "$cachedir/tmp_$digest"
-tar -xvf "$name" -C "$cachedir/tmp_$digest"
+tar --no-same-owner -xvf "$name" -C "$cachedir/tmp_$digest"
 mv "$cachedir/tmp_$digest" "$cachedir/archive_$digest"
 cp -r "$cachedir/archive_$digest" "$outputdir"
 # Clean temporary directory

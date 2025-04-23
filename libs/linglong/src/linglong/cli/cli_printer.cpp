@@ -9,6 +9,7 @@
 #include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/api/types/v1/State.hpp"
 #include "linglong/package/reference.h"
+#include "linglong/package/version.h"
 #include "linglong/utils/gettext.h"
 
 #include <QJsonArray>
@@ -100,12 +101,37 @@ void CLIPrinter::printPackages(const std::vector<api::types::v1::PackageInfoV2> 
     }
 }
 
-void CLIPrinter::printSearchResult(const std::map<std::string, std::vector<api::types::v1::PackageInfoV2>> &list)
+void CLIPrinter::printSearchResult(
+  std::map<std::string, std::vector<api::types::v1::PackageInfoV2>> list)
 {
     if (list.empty()) {
-        std::cout << _("No packages found in the remote repo.") << std::endl;
+        std::cerr << _("No packages found in the remote repo.") << std::endl;
         return;
     }
+
+    // 搜索结果排序, 优先级为 repo > id > channel > module > version, 高版本在前
+    for (auto &[repo, packages] : list) {
+        std::sort(packages.begin(), packages.end(), [](const auto &lhs, const auto &rhs) {
+            if (lhs.id != rhs.id)
+                return lhs.id < rhs.id;
+            if (lhs.channel != rhs.channel)
+                return lhs.channel < rhs.channel;
+            if (lhs.packageInfoV2Module != rhs.packageInfoV2Module)
+                return lhs.packageInfoV2Module < rhs.packageInfoV2Module;
+
+            auto lhsVer = package::Version::parse(lhs.version.c_str());
+            if (!lhsVer) {
+                return false;
+            }
+            auto rhsVer = package::Version::parse(rhs.version.c_str());
+            if (!rhsVer) {
+                return false;
+            }
+
+            return *lhsVer > *rhsVer;
+        });
+    }
+
     std::cout << "\033[38;5;214m" << std::left << adjustDisplayWidth(qUtf8Printable(_("ID")), 43)
               << adjustDisplayWidth(qUtf8Printable(_("Name")), 33)
               << adjustDisplayWidth(qUtf8Printable(_("Version")), 16)
@@ -115,7 +141,8 @@ void CLIPrinter::printSearchResult(const std::map<std::string, std::vector<api::
               << qUtf8Printable(_("Description")) << "\033[0m" << std::endl;
     for (const auto &[pkgRepo, packages] : list) {
         for (const auto &pkg : packages) {
-            auto simpleDescription = QString::fromStdString(pkg.description.value_or("")).simplified();
+            auto simpleDescription =
+              QString::fromStdString(pkg.description.value_or("")).simplified();
             auto simpleDescriptionWStr = simpleDescription.toStdWString();
             auto simpleDescriptionWcswidth = wcswidth(simpleDescriptionWStr.c_str(), -1);
             if (simpleDescriptionWcswidth > 56) {
@@ -133,10 +160,11 @@ void CLIPrinter::printSearchResult(const std::map<std::string, std::vector<api::
             }
             auto nameStr = name.toStdString();
             auto nameOffset = nameStr.size() - nameWcswidth;
-            std::cout << std::setw(43) << pkg.id + " " << std::setw(33 + nameOffset) << nameStr + " "
-                    << std::setw(16) << pkg.version + " " << std::setw(16) << pkg.channel + " "
-                    << std::setw(12) << pkg.packageInfoV2Module + " " << std::setw(10) << pkgRepo + " "
-                    << simpleDescription.toStdString() << std::endl;
+            std::cout << std::setw(43) << pkg.id + " " << std::setw(33 + nameOffset)
+                      << nameStr + " " << std::setw(16) << pkg.version + " " << std::setw(16)
+                      << pkg.channel + " " << std::setw(12) << pkg.packageInfoV2Module + " "
+                      << std::setw(10) << pkgRepo + " " << simpleDescription.toStdString()
+                      << std::endl;
         }
     }
 }

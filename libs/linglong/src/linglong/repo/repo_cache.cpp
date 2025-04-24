@@ -313,7 +313,6 @@ utils::error::Result<void> RepoCache::writeToDisk()
     }
 
     auto dumpStatus = [](const std::filesystem::path &p, std::error_code &ec) {
-        LINGLONG_TRACE("dump status")
         auto status = std::filesystem::status(p, ec);
         if (ec) {
             return;

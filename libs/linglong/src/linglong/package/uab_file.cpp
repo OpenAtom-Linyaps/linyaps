@@ -173,8 +173,14 @@ utils::error::Result<bool> UABFile::verify() noexcept
         if (bytesRead == -1) {
             return LINGLONG_ERR(QString{ "read error: %1" }.arg(errorString()));
         }
-
-        cryptor.addData(buf.data(), bytesRead);
+        cryptor.addData(
+#if QT_VERSION >= QT_VERSION_CHECK(6, 4, 0)
+          QByteArrayView{ buf.data(), bytesRead }
+#else
+          buf.data(),
+          bytesRead
+#endif
+        );
         bundleLength -= bytesRead;
         if (bundleLength <= 0) {
             digest = cryptor.result().toHex().toStdString();

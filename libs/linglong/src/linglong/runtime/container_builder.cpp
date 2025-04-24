@@ -278,7 +278,7 @@ auto fixMount(ocppi::runtime::config::types::Config config) noexcept
     }
 
     using MountType = std::remove_reference_t<decltype(mounts)>::value_type;
-    auto rootBinds =
+    const auto rootBinds =
       originalRoot.entryInfoList(QDir::Dirs | QDir::Files | QDir::System | QDir::NoDotAndDotDot);
     auto pos = mounts.begin();
     for (const auto &bind : rootBinds) {
@@ -356,8 +356,6 @@ auto ContainerBuilder::create(const linglong::generator::ContainerCfgBuilder &cf
                               const QString &containerID) noexcept
   -> utils::error::Result<std::unique_ptr<Container>>
 {
-    LINGLONG_TRACE("create container use cfg builder");
-
     const auto &config = cfgBuilder.getConfig();
 
     return std::make_unique<Container>(config,

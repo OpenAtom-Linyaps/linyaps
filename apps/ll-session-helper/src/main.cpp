@@ -47,7 +47,7 @@ int main(int argc, char *argv[])
         QFileInfo fileInfo(path);
         QString filePath = fileInfo.absolutePath();
 
-        qDebug() << QString("The file %1 at path %2 is updated").arg(fileInfo.fileName()).arg(filePath);
+        qDebug() << QString("The file %1 at path %2 is updated").arg(fileInfo.fileName(), filePath);
 
         copyFileToTargetPath(fileInfo, monitorPath.path());
 
@@ -86,11 +86,13 @@ void copyDirToTargetPath(const QFileInfo &fileInfo, const QString &path, QMap<QS
 
     QMap<QString, QDateTime> &fileTimeMap = directoryFileTimes[fileInfo.path()];
 
-    for (const QFileInfo &file: fileList) {
+    for (const QFileInfo &file : std::as_const(fileList)) {
         QDateTime lastModified = file.lastModified().toLocalTime();
 
         // .swp, ~ 是编辑过程中产生的临时文件，不要触发修改文件的操作。
-        if (file.fileName().endsWith(".swp") || file.fileName().endsWith("~")) continue;
+        if (file.fileName().endsWith(".swp") || file.fileName().endsWith("~")) {
+            continue;
+        }
 
         // 在 fileTimeMap 找到对应的文件的时间戳，并且修改时间大于记录的时间说明被修改了，或者没有被记录的文件（第一次初始化）
         if ((fileTimeMap.contains(file.fileName()) && lastModified > fileTimeMap[file.fileName()]) || !fileTimeMap.contains(file.fileName())) {

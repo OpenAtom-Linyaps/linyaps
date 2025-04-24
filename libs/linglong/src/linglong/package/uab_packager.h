@@ -47,9 +47,10 @@ struct elfHelper
 
     [[nodiscard]] auto ElfPtr() const { return e; }
 
-    [[nodiscard]] utils::error::Result<void> addNewSection(const QByteArray &sectionName,
-                                                           const QFileInfo &dataFile,
-                                                           QStringList flags = {}) const noexcept;
+    [[nodiscard]] utils::error::Result<void>
+    addNewSection(const QByteArray &sectionName,
+                  const QFileInfo &dataFile,
+                  const QStringList &flags = {}) const noexcept;
 
 private:
     elfHelper(QByteArray path, int fd, Elf *ptr);

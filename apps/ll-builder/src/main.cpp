@@ -59,7 +59,7 @@ QStringList nonProjectBuildConfigPaths()
     auto configLocations = QStandardPaths::standardLocations(QStandardPaths::GenericConfigLocation);
     configLocations.append(SYSCONFDIR);
 
-    for (const auto &configLocation : configLocations) {
+    for (const auto &configLocation : std::as_const(configLocations)) {
         result << QStringList{ configLocation, "linglong", "builder", "config.yaml" }.join(
           QDir::separator());
     }

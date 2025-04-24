@@ -132,7 +132,7 @@ public:
 
     auto hasKey(const QString &key, const GroupName &group) -> error::Result<bool>
     {
-        LINGLONG_TRACE(QString("check %1 is in %2 or not").arg(key).arg(group));
+        LINGLONG_TRACE(QString("check %1 is in %2 or not").arg(key, group));
 
         g_autoptr(GError) gErr = nullptr;
         if (g_key_file_has_key(this->gKeyFile.get(),

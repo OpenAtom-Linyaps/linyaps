@@ -38,15 +38,15 @@ TEST(UtilsXDGDesktopEntry, GetString)
         ASSERT_EQ(value->toStdString(), expectedValue.toStdString());
     };
 
-    auto testGetStringValueCases = QMap<QString, QString>{
+    const auto testGetStringValueCases = QMap<QString, QString>{
         { "Name", "Calculator" },
         { "Exec", "/opt/apps/org.deepin.calculator/files/bin/deepin-calculator" },
         { "TryExec", "/opt/apps/org.deepin.calculator/files/bin/deepin-calculator" },
         { "Terminal", "false" },
     };
 
-    for (const auto &testCase : testGetStringValueCases.keys()) {
-        testGetStringValue(testCase, testGetStringValueCases[testCase]);
+    for (auto it = testGetStringValueCases.cbegin(); it != testGetStringValueCases.cend(); ++it) {
+        testGetStringValue(it.key(), it.value());
     }
 }
 
@@ -63,15 +63,15 @@ TEST(UtilsXDGDesktopEntry, SetString)
         ASSERT_EQ(value->toStdString(), expectedValue.toStdString());
     };
 
-    auto testGetStringValueCases = QMap<QString, QString>{
+    const auto testGetStringValueCases = QMap<QString, QString>{
         { "Name", "Calculator1" },
         { "Exec", "/opt/apps/org.deepin.calculator/files/bin/deepin-calculator1" },
         { "TryExec", "/opt/apps/org.deepin.calculator/files/bin/deepin-calculator1j" },
         { "Terminal", "false1" },
     };
 
-    for (const auto &testCase : testGetStringValueCases.keys()) {
-        testSetStringValue(testCase, testGetStringValueCases[testCase]);
+    for (auto it = testGetStringValueCases.cbegin(); it != testGetStringValueCases.cend(); ++it) {
+        testSetStringValue(it.key(), it.value());
     }
 }
 
@@ -94,7 +94,7 @@ TEST(UtilsXDGDesktopEntry, SaveToFile)
     entry = DesktopEntry::New(tmpFile.fileName());
     ASSERT_EQ(entry.has_value(), true) << entry.error().message().toStdString();
 
-    auto testGetStringValueCases = QMap<QString, QString>{
+    const auto testGetStringValueCases = QMap<QString, QString>{
         { "Name", "Calculator" },
         { "Exec", "/opt/apps/org.deepin.calculator/files/bin/deepin-calculator" },
         { "TryExec", "/opt/apps/org.deepin.calculator/files/bin/deepin-calculator" },
@@ -107,7 +107,7 @@ TEST(UtilsXDGDesktopEntry, SaveToFile)
         ASSERT_EQ(value->toStdString(), expectedValue.toStdString());
     };
 
-    for (const auto &testCase : testGetStringValueCases.keys()) {
-        testGetStringValue(testCase, testGetStringValueCases[testCase]);
+    for (auto it = testGetStringValueCases.cbegin(); it != testGetStringValueCases.cend(); ++it) {
+        testGetStringValue(it.key(), it.value());
     }
 }

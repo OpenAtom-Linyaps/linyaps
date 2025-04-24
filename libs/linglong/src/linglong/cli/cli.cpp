@@ -237,8 +237,6 @@ void Cli::onTaskPropertiesChanged(QString interface,                            
                                   QVariantMap changed_properties,                      // NOLINT
                                   [[maybe_unused]] QStringList invalidated_properties) // NOLINT
 {
-    LINGLONG_TRACE("update task properties")
-
     if (interface != task->interface()) {
         return;
     }
@@ -327,10 +325,10 @@ void Cli::interaction(QDBusObjectPath object_path, int messageID, QVariantMap ad
 
     switch (messageType) {
     case api::types::v1::InteractionMessageType::Upgrade: {
-        auto tips = QString("The lower version %1 is currently installed. Do you "
-                            "want to continue installing the latest version %2?")
-                      .arg(QString::fromStdString(msg->localRef))
-                      .arg(QString::fromStdString(msg->remoteRef));
+        auto tips =
+          QString("The lower version %1 is currently installed. Do you "
+                  "want to continue installing the latest version %2?")
+            .arg(QString::fromStdString(msg->localRef), QString::fromStdString(msg->remoteRef));
         req.body = tips.toStdString();
     } break;
     case api::types::v1::InteractionMessageType::Downgrade:
@@ -425,7 +423,6 @@ void Cli::onTaskRemoved(QDBusObjectPath object_path,
 
 void Cli::printProgress() noexcept
 {
-    LINGLONG_TRACE("print progress")
     if (this->lastState == api::types::v1::State::Unknown) {
         qInfo() << "task is invalid";
         return;
@@ -996,8 +993,6 @@ Cli::getCurrentContainers() const noexcept
 
 int Cli::ps([[maybe_unused]] CLI::App *subcommand)
 {
-    LINGLONG_TRACE("command ps");
-
     auto myContainers = getCurrentContainers();
     if (!myContainers) {
         this->printer.printErr(myContainers.error());
@@ -1361,10 +1356,9 @@ int Cli::upgrade([[maybe_unused]] CLI::App *subcommand)
             return -1;
         }
         for (const auto &item : *list) {
-            auto fuzzyRef =
-              package::FuzzyReference::parse(QString("%1/%2")
-                                               .arg(QString::fromStdString(item.id))
-                                               .arg(QString::fromStdString(item.oldVersion)));
+            auto fuzzyRef = package::FuzzyReference::parse(
+              QString("%1/%2").arg(QString::fromStdString(item.id),
+                                   QString::fromStdString(item.oldVersion)));
             if (!fuzzyRef) {
                 this->printer.printErr(fuzzyRef.error());
                 return -1;
@@ -1489,74 +1483,74 @@ int Cli::search([[maybe_unused]] CLI::App *subcommand)
 
     QEventLoop loop;
 
-    connect(&this->pkgMan,
-            &api::dbus::v1::PackageManager::SearchFinished,
-            [&](const QString &jobID, const QVariantMap &data) {
-                // Note: once an error occurs, remember to return after exiting the loop.
-                if (result->id->c_str() != jobID) {
-                    return;
-                }
-                auto result =
-                  utils::serialize::fromQVariantMap<api::types::v1::PackageManager1SearchResult>(
-                    data);
-                if (!result) {
-                    this->printer.printErr(result.error());
-                    loop.exit(-1);
-                    return;
-                }
-                // Note: should check return code of PackageManager1SearchResult
-                auto resultCode = static_cast<utils::error::ErrorCode>(result->code);
-                if (resultCode != utils::error::ErrorCode::Success) {
-                    if (resultCode == utils::error::ErrorCode::Failed) {
-                        this->printer.printErr(
-                            LINGLONG_ERRV("\n" + QString::fromStdString(result->message), result->code));
-                        loop.exit(result->code);
-                        return;
-                    }
+    connect(
+      &this->pkgMan,
+      &api::dbus::v1::PackageManager::SearchFinished,
+      [&](const QString &jobID, const QVariantMap &data) {
+          // Note: once an error occurs, remember to return after exiting the loop.
+          if (result->id->c_str() != jobID) {
+              return;
+          }
+          auto result =
+            utils::serialize::fromQVariantMap<api::types::v1::PackageManager1SearchResult>(data);
+          if (!result) {
+              this->printer.printErr(result.error());
+              loop.exit(-1);
+              return;
+          }
+          // Note: should check return code of PackageManager1SearchResult
+          auto resultCode = static_cast<utils::error::ErrorCode>(result->code);
+          if (resultCode != utils::error::ErrorCode::Success) {
+              if (resultCode == utils::error::ErrorCode::Failed) {
+                  this->printer.printErr(
+                    LINGLONG_ERRV("\n" + QString::fromStdString(result->message), result->code));
+                  loop.exit(result->code);
+                  return;
+              }
 
-                    if (resultCode == utils::error::ErrorCode::NetworkError) {
-                        this->printer.printMessage(_("Network connection failed. Please:"
-                                                    "\n1. Check your internet connection"
-                                                    "\n2. Verify network proxy settings if used"));
-                    }
+              if (resultCode == utils::error::ErrorCode::NetworkError) {
+                  this->printer.printMessage(_("Network connection failed. Please:"
+                                               "\n1. Check your internet connection"
+                                               "\n2. Verify network proxy settings if used"));
+              }
 
-                    if (options.verbose) {
-                        this->printer.printErr(
-                            LINGLONG_ERRV("\n" + QString::fromStdString(result->message), result->code));
-                    }
+              if (options.verbose) {
+                  this->printer.printErr(
+                    LINGLONG_ERRV("\n" + QString::fromStdString(result->message), result->code));
+              }
 
-                    loop.exit(result->code);
-                    return;
-                }
+              loop.exit(result->code);
+              return;
+          }
 
-                if (!result->packages) {
-                    this->printer.printPackages({});
-                    loop.exit(0);
-                    return;
-                }
+          if (!result->packages) {
+              this->printer.printPackages({});
+              loop.exit(0);
+              return;
+          }
 
-                auto pkgs = std::move(result->packages).value();
-                if (!options.showDevel) {
-                    auto it = std::remove_if(pkgs.begin(),
-                                             pkgs.end(),
-                                             [](const api::types::v1::PackageInfoV2 &info) {
-                                                 return info.packageInfoV2Module == "develop";
-                                             });
-                    pkgs.erase(it, pkgs.end());
-                }
+          auto pkgs = std::move(result->packages).value();
+          if (!options.showDevel) {
+              auto it = std::remove_if(pkgs.begin(),
+                                       pkgs.end(),
+                                       [](const api::types::v1::PackageInfoV2 &info) {
+                                           return info.packageInfoV2Module == "develop";
+                                       });
+              pkgs.erase(it, pkgs.end());
+          }
 
-                if (!options.type.empty()) {
-                    filterPackageInfosFromType(pkgs, options.type);
-                }
+          if (!options.type.empty()) {
+              filterPackageInfosFromType(pkgs, options.type);
+          }
 
-                // default only the latest version is displayed
-                if (!options.showAll) {
-                    filterPackageInfosFromVersion(pkgs);
-                }
+          // default only the latest version is displayed
+          if (!options.showAll) {
+              filterPackageInfosFromVersion(pkgs);
+          }
 
-                this->printer.printPackages(pkgs);
-                loop.exit(0);
-            });
+          this->printer.printPackages(pkgs);
+          loop.exit(0);
+      });
     return loop.exec();
 }
 
@@ -1724,7 +1718,7 @@ int Cli::uninstall([[maybe_unused]] CLI::App *subcommand)
             return -1;
         }
 
-        switch(resultCode) {
+        switch (resultCode) {
         case utils::error::ErrorCode::AppUninstallNotFoundFromLocal:
             this->printer.printMessage(_("Application is not installed."));
             break;
@@ -1773,8 +1767,6 @@ int Cli::uninstall([[maybe_unused]] CLI::App *subcommand)
 
 int Cli::list([[maybe_unused]] CLI::App *subcommand)
 {
-    LINGLONG_TRACE("command list");
-
     if (!options.showUpgradeList) {
         auto pkgs = this->repository.listLocal();
         if (!pkgs) {
@@ -2338,10 +2330,10 @@ Cli::filterPackageInfosFromVersion(std::vector<api::types::v1::PackageInfoV2> &l
     std::unordered_map<std::string, api::types::v1::PackageInfoV2> temp;
 
     for (const auto &info : list) {
-        auto key = QString("%1-%2")
-                     .arg(QString::fromStdString(info.id))
-                     .arg(QString::fromStdString(info.packageInfoV2Module))
-                     .toStdString();
+        auto key =
+          QString("%1-%2")
+            .arg(QString::fromStdString(info.id), QString::fromStdString(info.packageInfoV2Module))
+            .toStdString();
         auto it = temp.find(key);
         if (it == temp.end()) {
             temp[key] = info;
@@ -2650,7 +2642,8 @@ Cli::ensureCache(const package::Reference &ref,
     LINGLONG_TRACE("ensure cache for: " + QString::fromStdString(appLayerItem.info.id));
 
     std::error_code ec;
-    // TODO: Here we need to judge the validity of the cache. The directory may be an empty directory.
+    // TODO: Here we need to judge the validity of the cache. The directory may be an empty
+    // directory.
     auto appCache = std::filesystem::path(LINGLONG_ROOT) / "cache" / appLayerItem.commit;
 
     if (std::filesystem::exists(appCache, ec)) {

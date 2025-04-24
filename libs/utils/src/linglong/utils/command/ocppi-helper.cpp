@@ -21,7 +21,7 @@ void AddMount(ocppi::runtime::config::types::Config &config,
     m.destination = destination.toStdString();
 
     std::vector<std::string> opts;
-    for (auto opt : options) {
+    for (const auto &opt : options) {
         opts.push_back(opt.toStdString());
     }
     m.options = opts;

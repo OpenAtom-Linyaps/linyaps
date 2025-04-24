@@ -4,17 +4,17 @@
 
 #include "overlayfs.h"
 
-#include <QDir>
-
 #include "linglong/utils/command/env.h"
+
+#include <QDir>
 
 namespace linglong::utils {
 
-OverlayFS::OverlayFS(QString lowerdir, QString upperdir, QString workdir, QString merged) :
-    lowerdir_(lowerdir),
-    upperdir_(upperdir),
-    workdir_(workdir),
-    merged_(merged)
+OverlayFS::OverlayFS(QString lowerdir, QString upperdir, QString workdir, QString merged)
+    : lowerdir_(lowerdir)
+    , upperdir_(upperdir)
+    , workdir_(workdir)
+    , merged_(merged)
 {
 }
 
@@ -45,12 +45,12 @@ bool OverlayFS::mount()
 
     utils::command::Exec("fusermount", { "-z", "-u", merged_ });
 
-    auto ret = utils::command::Exec("fuse-overlayfs",
-            QStringList() <<
-            "fuse-overlayfs" << "-o" << QString("lowerdir=%1,upperdir=%2,workdir=%3")
-            .arg(lowerdir_)
-            .arg(upperdir_)
-            .arg(workdir_) << merged_);
+    auto ret = utils::command::Exec(
+      "fuse-overlayfs",
+      { "fuse-overlayfs",
+        "-o",
+        QString("lowerdir=%1,upperdir=%2,workdir=%3").arg(lowerdir_, upperdir_, workdir_),
+        merged_ });
     if (!ret) {
         qWarning() << "failed to mount " << ret.error();
     }
@@ -71,4 +71,4 @@ void OverlayFS::unmount(bool clean)
     }
 }
 
-}
+} // namespace linglong::utils

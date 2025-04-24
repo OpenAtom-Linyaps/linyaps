@@ -149,7 +149,7 @@ utils::error::Result<void> Container::run(const ocppi::runtime::config::types::P
     auto _ = // NOLINT
       utils::finally::finally([&]() {
           std::error_code ec;
-          while (!qgetenv("LINGLONG_DEBUG").isEmpty()) {
+          while (!qEnvironmentVariableIsEmpty("LINGLONG_DEBUG")) {
               if (!std::filesystem::create_directories(runtimeDir / "linglong/debug", ec) && ec) {
                   qCritical() << "failed to create debug directory:" << ec.message().c_str();
                   break;

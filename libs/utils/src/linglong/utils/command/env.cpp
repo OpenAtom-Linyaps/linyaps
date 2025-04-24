@@ -60,9 +60,10 @@ QStringList getUserEnv(const QStringList &filters)
     return ret.toStringList();
 }
 
-linglong::utils::error::Result<QString> Exec(QString command, QStringList args)
+linglong::utils::error::Result<QString> Exec(const QString &command,
+                                             const QStringList &args) noexcept
 {
-    LINGLONG_TRACE(QString("exec %1 %2").arg(command).arg(args.join(" ")));
+    LINGLONG_TRACE(QString("exec %1 %2").arg(command, args.join(" ")));
     qDebug() << "exec" << command << args;
     QProcess process;
     process.setProgram(command);

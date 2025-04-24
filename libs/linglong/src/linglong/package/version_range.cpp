@@ -39,7 +39,7 @@ VersionRange::VersionRange(const std::tuple<QString, QString> &raw)
 
 QString VersionRange::toString() const noexcept
 {
-    return QString("[%1,%2)").arg(this->begin.toString()).arg(this->end.toString());
+    return QString("[%1,%2)").arg(this->begin.toString(), this->end.toString());
 }
 
 bool VersionRange::contains(const Version &ver) const noexcept

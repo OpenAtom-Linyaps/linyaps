@@ -949,8 +949,8 @@ utils::error::Result<void> OSTreeRepo::pushToRemote(const std::string &remoteRep
     }
     auto signRes = std::shared_ptr<sign_in_200_response_t>(signResRaw, sign_in_200_response_free);
     if (signRes->code != 200) {
-        auto msg = signRes->msg ? signRes->msg : "cannot send request to remote server";
-        return LINGLONG_ERR(QString("sign error(%1): %2").arg(auth.username).arg(msg));
+        const auto *msg = signRes->msg ? signRes->msg : "cannot send request to remote server";
+        return LINGLONG_ERR(QString("sign error(%1): %2").arg(auth.username, msg));
     }
     auto *token = signRes->data->token;
     // 创建上传任务
@@ -1000,8 +1000,9 @@ utils::error::Result<void> OSTreeRepo::pushToRemote(const std::string &remoteRep
       std::shared_ptr<api_upload_task_file_resp_t>(uploadTaskResRaw,
                                                    api_upload_task_file_resp_free);
     if (uploadTaskRes->code != 200) {
-        auto msg = uploadTaskRes->msg ? uploadTaskRes->msg : "cannot send request to remote server";
-        return LINGLONG_ERR(QString("upload file error(%1): %2").arg(taskID).arg(msg));
+        const auto *msg =
+          uploadTaskRes->msg ? uploadTaskRes->msg : "cannot send request to remote server";
+        return LINGLONG_ERR(QString("upload file error(%1): %2").arg(taskID, msg));
     }
     // 查询任务状态
     while (true) {
@@ -1015,7 +1016,7 @@ utils::error::Result<void> OSTreeRepo::pushToRemote(const std::string &remoteRep
                                                            upload_task_info_200_response_free);
         if (uploadInfo->code != 200) {
             auto msg = uploadInfo->msg ? uploadInfo->msg : "cannot send request to remote server";
-            return LINGLONG_ERR(QString("get upload info error(%1): %2").arg(taskID).arg(msg));
+            return LINGLONG_ERR(QString("get upload info error(%1): %2").arg(taskID, msg));
         }
         qInfo() << "pushing" << reference.toString() << module.c_str()
                 << "status:" << uploadInfo->data->status;
@@ -1317,8 +1318,7 @@ OSTreeRepo::clearReference(const package::FuzzyReference &fuzzy,
 
     if (!reference) {
         auto msg = QString("not found ref:%1 module:%2 from remote repo")
-                     .arg(fuzzy.toString())
-                     .arg(module.c_str());
+                     .arg(fuzzy.toString(), module.c_str());
         return LINGLONG_ERR(msg, utils::error::ErrorCode::AppNotFoundFromRemote);
     }
 
@@ -1494,7 +1494,8 @@ OSTreeRepo::listRemote(const package::FuzzyReference &fuzzyRef) const noexcept
           ? response->msg
           : QString{ "cannot send request to remote server: %1\nIf the network is slow, "
                      "set a longer timeout via the LINGLONG_CONNECT_TIMEOUT environment "
-                     "variable (current default: 5 seconds)." }.arg(response->code);
+                     "variable (current default: 5 seconds)." }
+              .arg(response->code);
 
         return LINGLONG_ERR(msg,
                             (response->msg != nullptr ? utils::error::ErrorCode::Failed
@@ -1601,7 +1602,7 @@ void OSTreeRepo::unexportReference(const package::Reference &ref) noexcept
           QDir dir(path);
 
           // 获取目录下的所有子目录
-          QFileInfoList entries = dir.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot);
+          const QFileInfoList entries = dir.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot);
 
           // 遍历子目录
           for (const QFileInfo &entry : entries) {
@@ -1739,10 +1740,10 @@ utils::error::Result<void> OSTreeRepo::exportDir(const std::string &appID,
                     // should copy them and then modify.
                     auto timestamp = std::chrono::system_clock::now().time_since_epoch().count();
                     auto sourceNewPath = QString{ "%1/%2_%3.%4" }
-                                           .arg((QFileInfo(source_path.c_str()).absolutePath()))
-                                           .arg(info.completeBaseName())
-                                           .arg(QString::fromStdString(std::to_string(timestamp)))
-                                           .arg(info.suffix())
+                                           .arg(QFileInfo(source_path.c_str()).absolutePath(),
+                                                info.completeBaseName(),
+                                                QString::number(timestamp),
+                                                info.suffix())
                                            .toStdString();
                     std::filesystem::copy(source_path, sourceNewPath, ec);
                     if (ec) {
@@ -1952,8 +1953,6 @@ utils::error::Result<void> OSTreeRepo::exportAllEntries() noexcept
 
 void OSTreeRepo::updateSharedInfo() noexcept
 {
-    LINGLONG_TRACE("update shared info");
-
     auto applicationDir = QDir(this->repoDir.absoluteFilePath("entries/share/applications"));
     auto mimeDataDir = QDir(this->repoDir.absoluteFilePath("entries/share/mime"));
     auto glibSchemasDir = QDir(this->repoDir.absoluteFilePath("entries/share/glib-2.0/schemas"));
@@ -2241,7 +2240,7 @@ utils::error::Result<std::shared_ptr<package::LayerDir>> OSTreeRepo::getMergedMo
     QDir mergedDir = this->repoDir.absoluteFilePath("merged");
     auto layerItems = this->cache->queryExistingLayerItem();
     QCryptographicHash hash(QCryptographicHash::Sha256);
-    std::vector<std::string> commits;
+    QStringList commits;
     std::string findModules;
     // 筛选指定的layer
     for (auto &layer : layerItems) {
@@ -2257,7 +2256,7 @@ utils::error::Result<std::shared_ptr<package::LayerDir>> OSTreeRepo::getMergedMo
         if (!loadModules.contains(layer.info.packageInfoV2Module.c_str())) {
             continue;
         }
-        commits.push_back(layer.commit);
+        commits.push_back(QString::fromStdString(layer.commit));
         findModules += layer.info.packageInfoV2Module + " ";
         hash.addData(QString::fromStdString(layer.commit).toUtf8());
     }
@@ -2271,7 +2270,7 @@ utils::error::Result<std::shared_ptr<package::LayerDir>> OSTreeRepo::getMergedMo
     // 合并layer，生成临时merged目录
     QString mergeID = hash.result().toHex();
     auto mergeTmp = mergedDir.filePath("tmp_" + mergeID);
-    for (auto commit : commits) {
+    for (const auto &commit : commits) {
         int root = open("/", O_DIRECTORY);
         auto _ = utils::finally::finally([root]() {
             close(root);
@@ -2283,14 +2282,14 @@ utils::error::Result<std::shared_ptr<package::LayerDir>> OSTreeRepo::getMergedMo
                                     &opt,
                                     root,
                                     mergeTmp.mid(1).toUtf8(),
-                                    commit.c_str(),
+                                    commit.toStdString().c_str(),
                                     nullptr,
                                     &gErr)
             == FALSE) {
             return LINGLONG_ERR(QString("ostree_repo_checkout_at %1").arg(mergeTmp), gErr);
         }
     }
-    auto ptr = new package::LayerDir(mergeTmp);
+    auto *ptr = new package::LayerDir(mergeTmp);
     return std::shared_ptr<package::LayerDir>(ptr, [](package::LayerDir *ptr) {
         ptr->removeRecursively();
         delete ptr;
@@ -2314,9 +2313,7 @@ utils::error::Result<void> OSTreeRepo::mergeModules() const noexcept
         }
         // 将id、version和arch相同的item合并，不区分repo和channel
         auto groupKey = QString("%1/%2/%3")
-                          .arg(layer.info.id.c_str())
-                          .arg(layer.info.version.c_str())
-                          .arg(arch.c_str())
+                          .arg(layer.info.id.c_str(), layer.info.version.c_str(), arch.c_str())
                           .toStdString();
         layerGroup[groupKey].push_back(layer);
     }
@@ -2640,11 +2637,13 @@ utils::error::Result<void> systemdServiceRewrite(const QString &filePath, const 
         return LINGLONG_ERR(file);
     }
 
-    auto keys = file->getkeys(utils::GKeyFileWrapper::SystemdService);
-    if (!keys) {
-        return LINGLONG_ERR(keys);
+    auto keysRet = file->getkeys(utils::GKeyFileWrapper::SystemdService);
+    if (!keysRet) {
+        return LINGLONG_ERR(keysRet);
     }
-    for (const auto &key : *keys) {
+    const auto &keys = *keysRet;
+
+    for (const auto &key : keys) {
         if (!execKeys.contains(key)) {
             continue;
         }
@@ -2681,7 +2680,7 @@ utils::error::Result<void> contextMenuRewrite(const QString &filePath, const QSt
         return LINGLONG_ERR(file);
     }
 
-    auto groups = file->getGroups();
+    const auto groups = file->getGroups();
     // set Exec
     for (const auto &group : groups) {
         auto hasExecRet = file->hasKey("Exec", group);

@@ -178,7 +178,6 @@ public:
                Func &&job,
                const QDBusConnection &conn = QDBusConnection::sessionBus()) noexcept
     {
-        LINGLONG_TRACE("add new task");
         static_assert(std::is_invocable_r_v<void, Func, PackageTask &>,
                       "mismatch function signature");
 

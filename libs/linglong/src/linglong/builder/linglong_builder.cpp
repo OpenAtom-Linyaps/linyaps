@@ -75,7 +75,7 @@ namespace {
  */
 utils::error::Result<void> inline copyDir(const QString &src, const QString &dst)
 {
-    LINGLONG_TRACE(QString("copy %1 to %2").arg(src).arg(dst));
+    LINGLONG_TRACE(QString("copy %1 to %2").arg(src, dst));
 
     QDir srcDir(src);
     QDir dstDir(dst);
@@ -86,7 +86,7 @@ utils::error::Result<void> inline copyDir(const QString &src, const QString &dst
         };
     }
 
-    QFileInfoList list =
+    const QFileInfoList list =
       srcDir.entryInfoList(QDir::System | QDir::AllEntries | QDir::NoDotAndDotDot);
 
     for (const auto &info : list) {
@@ -228,18 +228,16 @@ utils::error::Result<void> pullDependency(const package::Reference &ref,
                             .arg(ref.id, -35)                         // NOLINT
                             .arg(ref.version.toString(), -15)         // NOLINT
                             .arg(QString::fromStdString(module), -15) // NOLINT
-                            .arg("downloading")
-                            .arg(progress)
+                            .arg("downloading", progress)
                             .toStdString(),
                           2);
     };
     QObject::connect(&tmpTask, &service::PackageTask::PartChanged, partChanged);
-    printReplacedText(QString("%1%2%3%4 %5")
+    printReplacedText(QString("%1%2%3%4")
                         .arg(ref.id, -35)                         // NOLINT
                         .arg(ref.version.toString(), -15)         // NOLINT
                         .arg(QString::fromStdString(module), -15) // NOLINT
-                        .arg("waiting")
-                        .arg("...")
+                        .arg("waiting ...")
                         .toStdString(),
                       2);
     repo.pull(tmpTask, ref, module);
@@ -277,20 +275,21 @@ utils::error::Result<void> installModule(QStringList installRules,
 
             if (ec) {
                 return LINGLONG_ERR(QString("Failed to create symlink: %1 -> %2: %3")
-                                      .arg(info.filePath())
-                                      .arg(target.c_str())
-                                      .arg(ec.message().c_str()));
+                                      .arg(info.filePath(), target.c_str(), ec.message().c_str()));
             }
             return LINGLONG_OK;
-        } else {
-            QDir(dstPath.left(dstPath.lastIndexOf('/'))).mkpath(".");
-            // QDir(dstPath).mkpath("..");
-            QFile::rename(info.filePath(), dstPath);
-            return LINGLONG_OK;
         }
+
+        auto dstDir = QDir{ dstPath.left(dstPath.lastIndexOf('/')) };
+        if (!dstDir.mkpath(".")) {
+            return LINGLONG_ERR(
+              QString("Failed to create directory: %1").arg(dstDir.absolutePath()));
+        }
+
+        QFile::rename(info.filePath(), dstPath);
+        return LINGLONG_OK;
     };
 
-    auto ruleIndex = 0;
     for (auto rule : installRules) {
         rule = rule.simplified();
         // 跳过注释
@@ -298,9 +297,6 @@ utils::error::Result<void> installModule(QStringList installRules,
             continue;
         }
         qDebug() << "install rule" << rule;
-        // 计算进度
-        ruleIndex++;
-        auto percentage = ruleIndex * 100 / installRules.length(); // NOLINT
         // 如果不以^符号开头，当作普通路径使用
         if (!rule.startsWith("^")) {
             // append $PROJECT_ROOT/output/_build/files to prefix
@@ -415,7 +411,6 @@ utils::error::Result<void> cmdListApp(repo::OSTreeRepo &repo)
 
 utils::error::Result<void> cmdRemoveApp(repo::OSTreeRepo &repo, std::vector<std::string> refs)
 {
-    LINGLONG_TRACE("cmd remove app");
     for (const auto &ref : refs) {
         auto r = package::Reference::parse(QString::fromStdString(ref));
         if (!r.has_value()) {
@@ -542,13 +537,14 @@ utils::error::Result<void> Builder::buildStageFetchSource() noexcept
                    .toStdString(),
                  2);
     auto fetchCacheDir = this->workingDir.absoluteFilePath("linglong/cache");
-    if (!qgetenv("LINGLONG_FETCH_CACHE").isEmpty()) {
+    if (!qEnvironmentVariableIsEmpty("LINGLONG_FETCH_CACHE")) {
         fetchCacheDir = qgetenv("LINGLONG_FETCH_CACHE");
     }
     auto result = fetchSources(*this->project.sources,
                                fetchCacheDir,
                                this->workingDir.absoluteFilePath("linglong/sources"),
                                this->cfg);
+
     if (!result) {
         return LINGLONG_ERR(result);
     }
@@ -1062,8 +1058,6 @@ utils::error::Result<void> Builder::buildStagePreCommit() noexcept
 
 utils::error::Result<void> Builder::generateAppConf() noexcept
 {
-    LINGLONG_TRACE("generate application configure");
-
     // generate application's configure file
     auto scriptFile = QString(LINGLONG_LIBEXEC_DIR) + "/app-conf-generator";
     auto useInstalledFile = utils::global::linglongInstalled() && QFile(scriptFile).exists();
@@ -1379,7 +1373,7 @@ utils::error::Result<void> Builder::commitToLocalRepo() noexcept
                    .arg("Status")
                    .toStdString(),
                  2);
-    for (const auto &module : packageModules) {
+    for (const auto &module : std::as_const(packageModules)) {
         QDir moduleOutput = this->workingDir.absoluteFilePath("linglong/output/" + module);
         info.packageInfoV2Module = module.toStdString();
         auto ret =
@@ -2224,7 +2218,7 @@ utils::error::Result<bool> Builder::generateDependsScript() noexcept
 
 void Builder::takeTerminalForeground()
 {
-    struct sigaction sa = { 0 };
+    struct sigaction sa{};
     sa.sa_handler = SIG_IGN;
     sigaction(SIGTTOU, &sa, NULL);
 
@@ -2343,8 +2337,7 @@ void Builder::mergeOutput(const QList<QDir> &src, const QDir &dest, const QStrin
 
             if (!QFile::link(QString::fromUtf8(buf.data()), to.absoluteFilePath())) {
                 qWarning() << QString("failed to link from %1 to %2")
-                                .arg(to.absoluteFilePath())
-                                .arg(QString::fromUtf8(buf.data()));
+                                .arg(to.absoluteFilePath(), QString::fromUtf8(buf.data()));
             }
         } else if (from.isFile()) {
             if (!QDir(to.absolutePath()).mkpath(".")) {
@@ -2354,8 +2347,7 @@ void Builder::mergeOutput(const QList<QDir> &src, const QDir &dest, const QStrin
 
             if (!QFile::copy(from.absoluteFilePath(), to.absoluteFilePath())) {
                 qWarning() << QString("failed to copy %1 to %2")
-                                .arg(from.absoluteFilePath())
-                                .arg(to.absoluteFilePath());
+                                .arg(from.absoluteFilePath(), to.absoluteFilePath());
             }
         }
     }

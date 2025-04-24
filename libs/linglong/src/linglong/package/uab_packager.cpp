@@ -102,14 +102,13 @@ utils::error::Result<elfHelper> elfHelper::create(const QByteArray &filePath) no
 
 utils::error::Result<void> elfHelper::addNewSection(const QByteArray &sectionName,
                                                     const QFileInfo &dataFile,
-                                                    QStringList flags) const noexcept
+                                                    const QStringList &flags) const noexcept
 {
     LINGLONG_TRACE(QString{ "add section:%1" }.arg(QString{ sectionName }))
 
-    auto args = QStringList{
-        QString{ "--add-section" },
-        QString{ "%1=%2" }.arg(QString{ sectionName }).arg(dataFile.absoluteFilePath())
-    };
+    auto args =
+      QStringList{ QString{ "--add-section" },
+                   QString{ "%1=%2" }.arg(QString{ sectionName }, dataFile.absoluteFilePath()) };
 
     if (!flags.empty()) {
         args.append({ "--set-section-flags", flags.join(QString{ "," }) });
@@ -232,7 +231,7 @@ utils::error::Result<void> UABPackager::pack(const QString &uabFilePath, bool on
 
     if (!QFile::copy(uabHeader, uabApp)) {
         return LINGLONG_ERR(
-          QString{ "couldn't copy uab header from %1 to %2" }.arg(uabHeader).arg(uabApp));
+          QString{ "couldn't copy uab header from %1 to %2" }.arg(uabHeader, uabApp));
     }
 
     auto uab = elfHelper::create(uabApp.toLocal8Bit());
@@ -262,9 +261,9 @@ utils::error::Result<void> UABPackager::pack(const QString &uabFilePath, bool on
     }
 
     if (!QFile::rename(this->uab.elfPath(), exportPath)) {
-        return LINGLONG_ERR(QString{ "export uab from %1 to %2 failed" }
-                              .arg(QString{ this->uab.elfPath() })
-                              .arg(exportPath));
+        return LINGLONG_ERR(
+          QString{ "export uab from %1 to %2 failed" }.arg(QString{ this->uab.elfPath() },
+                                                           exportPath));
     }
 
     if (!QFile::setPermissions(exportPath,
@@ -341,7 +340,7 @@ utils::error::Result<void> UABPackager::prepareBundle(const QDir &bundleDir, boo
 
     QFile srcLoader;
     QString appID;
-    for (const auto &layer : this->layers) {
+    for (const auto &layer : std::as_const(this->layers)) {
         auto infoRet = layer.info();
         if (!infoRet) {
             return LINGLONG_ERR(QString{ "failed export layer %1:" }.arg(layer.absolutePath()),
@@ -365,8 +364,9 @@ utils::error::Result<void> UABPackager::prepareBundle(const QDir &bundleDir, boo
 
         // first step, copy files which in layer directory
         std::error_code ec;
-        for (const auto &info :
-             layer.entryInfoList(QDir::Files | QDir::Dirs | QDir::Hidden | QDir::NoDotAndDotDot)) {
+        const auto &infoList =
+          layer.entryInfoList(QDir::Files | QDir::Dirs | QDir::Hidden | QDir::NoDotAndDotDot);
+        for (const auto &info : infoList) {
             const auto &componentName = info.fileName();
 
             // we will apply some filters to files later, skip
@@ -394,15 +394,14 @@ utils::error::Result<void> UABPackager::prepareBundle(const QDir &bundleDir, boo
 
         auto moduleFilesDir = moduleDir.absolutePath().toStdString() / basePath.filename();
         if (!std::filesystem::create_directories(moduleFilesDir, ec) && ec) {
-            return LINGLONG_ERR(QString{ "couldn't create directory: %1, error: %2" }
-                                  .arg(QString::fromStdString(moduleFilesDir.string()))
-                                  .arg(QString::fromStdString(ec.message())));
+            return LINGLONG_ERR(QString{ "couldn't create directory: %1, error: %2" }.arg(
+              QString::fromStdString(moduleFilesDir.string()),
+              QString::fromStdString(ec.message())));
         }
 
         if (!files.empty()) {
-            struct stat moduleFilesDirStat
-            {
-            }, filesStat{};
+            struct stat moduleFilesDirStat{};
+            struct stat filesStat{};
 
             if (stat(moduleFilesDir.c_str(), &moduleFilesDirStat) == -1) {
                 return LINGLONG_ERR("couldn't stat module files directory: "
@@ -445,9 +444,10 @@ utils::error::Result<void> UABPackager::prepareBundle(const QDir &bundleDir, boo
 
                 if (std::filesystem::is_directory(source, ec)) {
                     if (!std::filesystem::create_directories(destination, ec) && ec) {
-                        return LINGLONG_ERR(QString{ "couldn't create directory: %1, error: %2" }
-                                              .arg(QString::fromStdString(destination.string()))
-                                              .arg(QString::fromStdString(ec.message())));
+                        return LINGLONG_ERR(
+                          QString{ "couldn't create directory: %1, error: %2" }.arg(
+                            QString::fromStdString(destination.string()),
+                            QString::fromStdString(ec.message())));
                     }
 
                     continue;
@@ -524,7 +524,8 @@ utils::error::Result<void> UABPackager::prepareBundle(const QDir &bundleDir, boo
                   QString{ "files directory %1 doesn't exist" }.arg(filesDir.absolutePath()));
             }
 
-            for (std::filesystem::path file : this->neededFiles) {
+            for (const auto &fileStr : this->neededFiles) {
+                std::filesystem::path file{ fileStr };
                 std::filesystem::path source =
                   filesDir.absoluteFilePath(QString::fromStdString(file)).toStdString();
                 auto destination = moduleFilesDir / file;
@@ -633,10 +634,10 @@ utils::error::Result<void> UABPackager::prepareBundle(const QDir &bundleDir, boo
 
     auto destLoader = QFile{ bundleDir.absoluteFilePath("loader") };
     if (!srcLoader.copy(destLoader.fileName())) {
-        return LINGLONG_ERR(QString{ "couldn't copy loader %1 to %2: %3" }
-                              .arg(srcLoader.fileName())
-                              .arg(destLoader.fileName())
-                              .arg(srcLoader.errorString()));
+        return LINGLONG_ERR(
+          QString{ "couldn't copy loader %1 to %2: %3" }.arg(srcLoader.fileName(),
+                                                             destLoader.fileName(),
+                                                             srcLoader.errorString()));
     }
 
     if (!destLoader.setPermissions(destLoader.permissions() | QFile::ExeOwner | QFile::ExeGroup
@@ -687,10 +688,8 @@ utils::error::Result<void> UABPackager::prepareBundle(const QDir &bundleDir, boo
     auto srcBoxBin = QFile{ boxBin };
     auto destBoxBin = extraDir.filePath("ll-box");
     if (!srcBoxBin.copy(destBoxBin)) {
-        return LINGLONG_ERR(QString{ "couldn't copy %1 to %2: %3" }
-                              .arg(boxBin)
-                              .arg(destBoxBin)
-                              .arg(srcBoxBin.errorString()));
+        return LINGLONG_ERR(
+          QString{ "couldn't copy %1 to %2: %3" }.arg(boxBin, destBoxBin, srcBoxBin.errorString()));
     }
 
     return LINGLONG_OK;
@@ -861,7 +860,7 @@ UABPackager::filteringFiles(const LayerDir &layer) const noexcept
 
     bool minified{ false };
     std::unordered_set<std::string> allFiles;
-    for (std::filesystem::path file : iterator) {
+    for (const std::filesystem::path &file : iterator) {
         auto fileName = file.filename().string();
         auto it =
           std::find_if(this->blackList.begin(),
@@ -950,7 +949,9 @@ utils::error::Result<void> UABPackager::loadNeededFiles() noexcept
     }
 
     auto libs = node.as<std::vector<std::string>>();
-    for (std::filesystem::path lib : libs) {
+    for (const auto &libStr : libs) {
+        std::filesystem::path lib{ libStr };
+
         if (lib.empty()) {
             continue;
         }

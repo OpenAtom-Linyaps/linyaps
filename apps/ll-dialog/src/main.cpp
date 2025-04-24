@@ -19,6 +19,8 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+namespace {
+
 constexpr std::string_view protocol_version = "1.0";
 
 int writeMessage(const linglong::api::types::v1::DialogMessage &message) noexcept
@@ -28,9 +30,23 @@ int writeMessage(const linglong::api::types::v1::DialogMessage &message) noexcep
     std::string rawData{ reinterpret_cast<char *>(&size), 4 };
     rawData.append(content);
 
-    if (::write(STDOUT_FILENO, rawData.data(), rawData.size()) != rawData.size()) {
-        std::cerr << "write failed:" << ::strerror(errno) << std::endl;
-        return -1;
+    std::string::size_type offset{ 0 };
+    auto expectedWrite = rawData.size();
+    while (true) {
+        auto bytesWrite = ::write(STDOUT_FILENO, rawData.data() + offset, expectedWrite - offset);
+        if (bytesWrite == -1) {
+            if (errno == EINTR) {
+                continue;
+            }
+
+            std::cerr << "write failed:" << ::strerror(errno) << std::endl;
+            return -1;
+        }
+
+        offset += bytesWrite;
+        if (offset == expectedWrite) {
+            break;
+        }
     }
 
     return 0;
@@ -55,7 +71,7 @@ tl::expected<linglong::api::types::v1::DialogMessage, int> readMessage() noexcep
                      &QSocketNotifier::activated,
                      [&loop, &len, &curLen, &timer, &rawData] {
                          int32_t bytes{ 0 };
-                         int32_t bytesRead{ 0 };
+                         ssize_t bytesRead{ 0 };
 
                          if (curLen < 4) {
                              bytes = 4 - curLen; // NOLINT
@@ -158,6 +174,8 @@ int showPermissionDialog()
     return 0;
 }
 
+} // namespace
+
 int main(int argc, char *argv[])
 {
     bindtextdomain(PACKAGE_LOCALE_DOMAIN, PACKAGE_LOCALE_DIR);
@@ -199,7 +217,7 @@ int main(int argc, char *argv[])
             parser.showHelp();
             return -1;
         }
-        CacheDialog *dialog = new CacheDialog(id);
+        auto *dialog = new CacheDialog(id);
         dialog->show();
     }
 

@@ -1978,16 +1978,52 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
       .type = "bind",
     });
 
-    std::vector<ocppi::runtime::config::types::Hook> startContainer{
-        ocppi::runtime::config::types::Hook{
-          .args =
-            std::vector<std::string>{ "/sbin/ldconfig", "-C", "/run/linglong/cache/ld.so.cache" },
-          .path = "/sbin/ldconfig",
-        },
-    };
-
     int64_t uid = getuid();
     int64_t gid = getgid();
+
+    {
+        // Since ldconfig removes and regenerates the cache file, the cache directory must be
+        // writable. Therefore, we must generate the ld cache in a separate running
+        auto containerID = runtime::genContainerID(*curRef);
+        auto bundle = runtime::getBundleDir(containerID);
+        if (!bundle) {
+            return LINGLONG_ERR(bundle);
+        }
+
+        linglong::generator::ContainerCfgBuilder cfgBuilder;
+        cfgBuilder.setAppId(curRef->id.toStdString())
+          .setAppPath(curDir->absoluteFilePath("files").toStdString())
+          .setBasePath(baseDir->absoluteFilePath("files").toStdString())
+          .setAppCache(appCache.absolutePath().toStdString(), false)
+          .setBundlePath(std::move(bundle).value())
+          .addUIdMapping(uid, uid, 1)
+          .addGIdMapping(gid, gid, 1)
+          .bindProc();
+        if (this->project.runtime) {
+            cfgBuilder.setRuntimePath(runtimeDir->absoluteFilePath("files").toStdString());
+        }
+
+        if (!cfgBuilder.build()) {
+            auto err = cfgBuilder.getError();
+            return LINGLONG_ERR("build cfg error: " + QString::fromStdString(err.reason));
+        }
+
+        auto container =
+          this->containerBuilder.create(cfgBuilder, QString::fromStdString(containerID));
+        if (!container) {
+            return LINGLONG_ERR(container);
+        }
+
+        ocppi::runtime::config::types::Process process{
+            .args =
+              std::vector<std::string>{ "/sbin/ldconfig", "-C", "/run/linglong/cache/ld.so.cache" }
+        };
+        ocppi::runtime::RunOption opt{};
+        auto result = (*container)->run(process, opt);
+        if (!result) {
+            return LINGLONG_ERR("failed to generate ld cache", result);
+        }
+    }
 
     linglong::generator::ContainerCfgBuilder cfgBuilder;
     cfgBuilder.setAppId(curRef->id.toStdString())
@@ -2016,7 +2052,6 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
       .bindIPC()
       .forwordDefaultEnv()
       .setExtraMounts(applicationMounts)
-      .setStartContainerHooks(std::move(startContainer))
       .enableSelfAdjustingMount();
     if (this->project.runtime) {
         cfgBuilder.setRuntimePath(runtimeDir->absoluteFilePath("files").toStdString());

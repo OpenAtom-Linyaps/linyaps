@@ -102,7 +102,7 @@ bool Devices::generate(ocppi::runtime::config::types::Config &config) const noex
 
         mounts.push_back(ocppi::runtime::config::types::Mount{
           .destination = "/media",
-          .options = string_list{ "rbind", "ro", "nosymfollow", "copy-symlink" },
+          .options = string_list{ "rbind", "ro", "copy-symlink" },
           .source = "/media",
           .type = "bind",
         });

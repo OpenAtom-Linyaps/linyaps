@@ -328,7 +328,7 @@ bool HostIPC::generate(ocppi::runtime::config::types::Config &config) const noex
 
         mounts.push_back(ocppi::runtime::config::types::Mount{
           .destination = std::string{ destination },
-          .options = string_list{ "rbind", "ro", "nosymfollow", "copy-symlink" },
+          .options = string_list{ "rbind", "ro", "copy-symlink" },
           .source = linkfile,
           .type = "bind",
         });
@@ -345,7 +345,7 @@ bool HostIPC::generate(ocppi::runtime::config::types::Config &config) const noex
 
     mounts.push_back(ocppi::runtime::config::types::Mount{
       .destination = "/etc/ld.so.cache",
-      .options = string_list{ "rbind", "ro", "nosymfollow", "copy-symlink" },
+      .options = string_list{ "rbind", "ro", "copy-symlink" },
       .source = ldLink,
       .type = "bind",
     });

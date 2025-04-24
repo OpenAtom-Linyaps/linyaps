@@ -225,7 +225,7 @@ ContainerCfgBuilder &ContainerCfgBuilder::bindMedia() noexcept
                        .source = destinationDir,
                        .type = "bind" },
                 Mount{ .destination = "/media",
-                       .options = string_list{ "rbind", "ro", "nosymfollow", "copy-symlink" },
+                       .options = string_list{ "rbind", "ro", "copy-symlink" },
                        .source = "/media",
                        .type = "bind" },
             };

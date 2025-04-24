@@ -986,7 +986,13 @@ bool ContainerCfgBuilder::buildMountIPC() noexcept
             hostXauthFile = std::filesystem::path{ xauthFileEnv };
         }
 
-        if (!std::filesystem::exists(hostXauthFile, ec) && ec) {
+        if (!std::filesystem::exists(hostXauthFile, ec)) {
+            if (ec) {
+                std::cerr << "failed to check XAUTHORITY file " << hostXauthFile << ":"
+                          << ec.message() << std::endl;
+                return;
+            }
+
             std::cerr << "XAUTHORITY file not found at " << hostXauthFile << ":" << ec.message()
                       << std::endl;
             return;

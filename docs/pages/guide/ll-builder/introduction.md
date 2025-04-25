@@ -41,6 +41,8 @@ Subcommands:
   create                      创建如意玲珑构建模板
   build                       构建如意玲珑项目
   run                         运行构建好的应用程序
+  list                        列出已构建的应用程序
+  remove                      删除已构建的应用程序
   export                      导出如意玲珑layer或uab
   push                        推送如意玲珑应用到远程仓库
   import                      导入如意玲珑layer文件到构建仓库

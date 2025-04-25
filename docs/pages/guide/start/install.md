@@ -12,89 +12,97 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 - ll-box 沙箱容器，由 linglong-box 提供。
 - ll-cli 管理和运行如意玲珑应用，由 linglong-bin 提供。
 
-## deepin v23
+## 仓库使用说明
 
-```bash
-sudo apt install linglong-builder linglong-box linglong-bin
-```
+### release 仓库
 
-## UOS 1070
+   基于最新tag自动构建
 
-添加如意玲珑仓库源。
+   1. 仓库地址 <https://ci.deepin.com/repo/obs/linglong:/CI:/release>
+   2. 构建地址 <https://build.deepin.com/project/show/linglong:CI:release>
 
-```bash
-echo "deb [trusted=yes] https://ci.deepin.com/repo/deepin/deepin-community/linglong-repo/ unstable main" | sudo tee -a /etc/apt/sources.list
-```
+### latest 仓库
 
-更新仓库并安装如意玲珑。
+   基于最新提交自动构建
 
-```bash
+   1. 仓库地址 <https://ci.deepin.com/repo/obs/linglong:/CI:/latest>
+   2. 构建地址 <https://build.deepin.com/project/show/linglong:CI:latest>
+
+:::tip
+
+以下安装步骤均使用基于release仓库，如果想体验还未发布的功能，将仓库地址中的release更改为latest，即可安装基于master分支构建的预览版
+
+:::
+
+## deepin 25
+
+```sh
+echo "deb [trusted=yes] https://ci.deepin.com/repo/obs/linglong:/CI:/release/Deepin_25/ ./" | sudo tee /etc/apt/sources.list.d/linglong.list
 sudo apt update
 sudo apt install linglong-builder linglong-box linglong-bin
 ```
 
-## OpenEuler 24.03
+## deepin 23
 
-添加如意玲珑仓库源。
-
-```bash
-sudo curl -o /etc/yum.repos.d/linglong.repo -L https://eur.openeuler.openatom.cn/coprs/kamiyadm/linglong/repo/openeuler-24.03_LTS/kamiyadm-linglong-openeuler-24.03_LTS.repo
+```sh
+echo "deb [trusted=yes] https://ci.deepin.com/repo/obs/linglong:/CI:/release/Deepin_23/ ./" | sudo tee /etc/apt/sources.list.d/linglong.list
+sudo apt update
+sudo apt install linglong-builder linglong-box linglong-bin
 ```
 
-更新仓库并安装如意玲珑。
+## Fedora 41
 
-```bash
+```sh
+sudo dnf config-manager addrepo --from-repofile "https://ci.deepin.com/repo/obs/linglong:/CI:/release/Fedora_41/linglong%3ACI%3Arelease.repo"
 sudo dnf update
 sudo dnf install linglong-builder linglong-box linglong-bin
 ```
 
 ## Ubuntu 24.04
 
-添加如意玲珑仓库源。
-
-```bash
-sudo apt install -y apt-transport-https ca-certificates curl gpg xdg-utils
-sudo mkdir -p /etc/apt/keyrings/
-curl -fsSL https://download.opensuse.org/repositories/home:/kamiyadm/xUbuntu_24.04/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/linglong-apt-keyring.gpg
-echo "deb [signed-by=/etc/apt/keyrings/linglong-apt-keyring.gpg] https://download.opensuse.org/repositories/home:/kamiyadm/xUbuntu_24.04/ ./" | sudo tee /etc/apt/sources.list.d/linglong.list
-```
-
-更新仓库并安装如意玲珑。
-
-```bash
+```sh
+echo "deb [trusted=yes] https://ci.deepin.com/repo/obs/linglong:/CI:/release/xUbuntu_24.04/ ./" | sudo tee /etc/apt/sources.list.d/linglong.list
 sudo apt update
 sudo apt install linglong-builder linglong-box linglong-bin
 ```
 
-## debian 12
+## Debian 12
 
-添加如意玲珑仓库源。
-
-```bash
-sudo apt install -y apt-transport-https ca-certificates curl gpg xdg-utils
-sudo mkdir -p /etc/apt/keyrings/
-curl -fsSL https://download.opensuse.org/repositories/home:/kamiyadm/Debian_12/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/linglong-apt-keyring.gpg
-echo "deb [signed-by=/etc/apt/keyrings/linglong-apt-keyring.gpg] https://download.opensuse.org/repositories/home:/kamiyadm/Debian_12/ ./" | sudo tee /etc/apt/sources.list.d/linglong.list
-```
-
-更新仓库并安装如意玲珑。
-
-```bash
+```sh
+echo "deb [trusted=yes] https://ci.deepin.com/repo/obs/linglong:/CI:/release/Debian_12/ ./" | sudo tee /etc/apt/sources.list.d/linglong.list
 sudo apt update
 sudo apt install linglong-builder linglong-box linglong-bin
 ```
 
-## openkylin 2.0rc
+## openEuler 23.09
 
-添加如意玲珑仓库源。
-
-```bash
-sudo bash -c "echo 'deb [trusted=yes] https://ci.deepin.com/repo/obs/linglong:/multi_distro/openkylin2.0_repo/ ./' > /etc/apt/sources.list.d/linglong.list"
+```sh
+sudo dnf config-manager --add-repo "https://ci.deepin.com/repo/obs/linglong:/CI:/release/openEuler_23.09/linglong%3ACI%3Arelease.repo"
+sudo sh -c "echo gpgcheck=0 >> /etc/yum.repos.d/linglong%3ACI%3Arelease.repo"
+sudo dnf update
+sudo dnf install linglong-builder linglong-box linglong-bin
 ```
 
-更新仓库并安装如意玲珑。
+## uos 1070
 
-```bash
+```sh
+echo "deb [trusted=yes] https://ci.deepin.com/repo/obs/linglong:/CI:/release/uos_1070/ ./" | sudo tee /etc/apt/sources.list.d/linglong.list
+sudo apt update
+sudo apt install linglong-builder linglong-box linglong-bin
+```
+
+## AnolisOS 8
+
+```sh
+sudo dnf config-manager addrepo --from-repofile "https://ci.deepin.com/repo/obs/linglong:/CI:/release/AnolisOS_8/linglong%3ACI%3Arelease.repo"
+sudo dnf update
+sudo dnf install linglong-builder linglong-box linglong-bin
+```
+
+## openkylin 2.0
+
+```sh
+echo "deb [trusted=yes] https://ci.deepin.com/repo/obs/linglong:/CI:/release/openkylin_2.0/ ./" | sudo tee /etc/apt/sources.list.d/linglong.list
 sudo apt update
 sudo apt install linglong-builder linglong-box linglong-bin
 ```

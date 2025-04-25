@@ -117,7 +117,7 @@ Init Commands: `set substitute-path /project /tmp/org.deepin.demo`
 
 如意玲珑在构建应用后会自动剥离二进制的调试符号，并存放到 `$PREFIX/lib/debug` 目录，但是一些工具链会在构建时提前将调试符号剥离，这会导致如意玲珑无法在二进制文件中找到这些符号，如果你的项目是使用 qmake，需要在 pro 文件中添加以下配置
 
-```
+```bash
 # 如意玲珑在CFLAGS和CXXFLAGS环境变量里设置了-g选项，这里需要qmake继承这个环境变量
 QMAKE_CFLAGS += $$(CFLAGS)
 QMAKE_CXXFLAGS += $$(CXXFLAGS)

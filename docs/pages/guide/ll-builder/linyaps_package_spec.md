@@ -346,6 +346,7 @@ desktop文件的文件名中**不推荐**带有`-`，去掉.desktop后缀后，�
 
 这里以desktop文件为例，给出几个常见构建系统下生成最终配置文件的例子。
 假设最终产物`org.deepin.demo.desktop`内容如下：
+
 ```ini
 [Desktop Entry]
 Name=demo
@@ -365,7 +366,9 @@ Terminal=false
   Type=Application
   Terminal=false
   ```
+
   2、编写对应的makefile规则。
+
   ```makefile
   DESKTOP_TEMPLATE = org.deepin.demo.desktop.in
   DESKTOP_FILE = org.deepin.demo.desktop
@@ -387,6 +390,7 @@ Terminal=false
 
 - 如果使用CMake作为构建系统。
   1、编写desktop模板文件。
+
   ```desktop
   [Desktop Entry]
   Name=demo
@@ -394,7 +398,9 @@ Terminal=false
   Type=Application
   Terminal=false
   ```
+
   2、编写对应的cmake规则。
+
   ```cmake
   set(DESKTOP_FILE "org.deepin.demo.desktop")
   # 使用 configure_file 进行占位符替换
@@ -406,6 +412,7 @@ Terminal=false
   install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${DESKTOP_FILE}
           DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
   ```
+
 ### 头文件以及链接库
 
 玲珑的环境最多有三部分组成，以在`x86_64`架构下编译`org.deepin.demo`为例，其头文件以及库文件默认搜索路径包含以下部分：
@@ -425,6 +432,7 @@ Terminal=false
 #### Makefile
 
 ##### 使用`.pc`文件
+
 ```makefile
 # 常用变量, 继承环境变量CXXFLAGS并追加内容
 CXX = g++
@@ -442,10 +450,10 @@ all: $(TARGET)
 
 # 构建时将.pc提供的信息提供给编译器
 $(TARGET): $(SRCS)
-	$(CXX) $(CXXFLAGS) $(LIBS) -o $@ $^
+ $(CXX) $(CXXFLAGS) $(LIBS) -o $@ $^
 
 clean:
-	rm -f $(TARGET)
+ rm -f $(TARGET)
 ```
 
 #### CMake
@@ -527,6 +535,7 @@ build:
 5. 按 Ctrl+Shift+P 搜索执行 linglong: Gen deb sources 命令
 
 执行后的yaml文件将自动写入如下内容：
+
 ```yaml
 build:
   # 解压导入deb，install_dep文件由插件自动下载
@@ -618,7 +627,6 @@ cd path/to/source && make prefix="$PREFIX"
 ```bash
 cd path/to/source && meson configure --prefix="$PREFIX" path/to/build
 ```
-
 
 ## 构建产物
 
@@ -781,6 +789,7 @@ Name=demo
 TryExec=/usr/bin/ll-cli
 Type=Application
 ```
+
 应用可以有多个desktop文件。
 
 **路径对应关系：**
@@ -856,11 +865,9 @@ WantedBy=user-session.target
 | ------------------------------------------------------------- | -------------------------------------------------------------- |
 | $PREFIX/lib/systemd/user/org.deepin.demo.service | $XDG_DATA_DIRS/systemd/user/org.deepin.demo.service |
 
-
 ##### icons 目录
 
 应用图标存放目录，结构与系统 icons 目录结构保持一致即可。
-
 
 **路径对应关系：**
 

@@ -45,7 +45,7 @@ org.deepin.demo/
 
 ### linglong.yaml 文件语法的版本
 
-```
+```text
 version: "1"
 ```
 

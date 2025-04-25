@@ -4,7 +4,7 @@ SPDX-FileCopyrightText: 2024 UnionTech Software Technology Co., Ltd.
 SPDX-License-Identifier: LGPL-3.0-or-later
 -->
 
-## 转换appimage应用
+# 转换appimage应用
 
 转换 `appimage` 包格式( `.appimage` 或 `.AppImage` ) 到如意玲珑包格式( `.layer` 或 `.uab` )
 
@@ -62,6 +62,7 @@ ll-appimage-convert convert -f ~/Downloads/BrainWaves-0.15.1.AppImage --name "io
 ```
 
 转换完成的目录结构如下:
+
 ```text
 ├── io.github.brainwaves_x86_64_0.15.1.0_main.uab
 ├── linglong
@@ -69,11 +70,13 @@ ll-appimage-convert convert -f ~/Downloads/BrainWaves-0.15.1.AppImage --name "io
 ```
 
 以通过 `--file` 选项将 `BrainWaves-0.15.1.AppImage` 转换为如意玲珑 `.layer` 为例，主要步骤如下：
+
 ```bash
 ll-appimage-convert convert -f ~/Downloads/BrainWaves-0.15.1.AppImage --name "io.github.brainwaves" --id "io.github.brainwaves" --version "0.15.1.0" --description "io.github.brainwaves" -b --layer
 ```
 
 转换完成的目录结构如下:
+
 ```text
 ├── io.github.brainwaves_0.15.1.0_x86_64_binary.layer
 ├── io.github.brainwaves_0.15.1.0_x86_64_develop.layer

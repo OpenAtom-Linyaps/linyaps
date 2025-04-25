@@ -37,7 +37,6 @@ ll-cli ps
 `ll-cli ps`命令输出如下：
 
 ```text
-App                                        ContainerID      Pid
-main:org.dde.calendar/5.14.5.0/x86_64      9f3690279d38     218513
-main:org.deepin.browser/6.5.5.4/x86_64     876f27bc1bd6     529194
+应用              容器ID        进程ID
+org.dde.calendar  4e3407a8a052  1279610
 ```

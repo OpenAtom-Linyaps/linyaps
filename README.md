@@ -73,10 +73,26 @@ sudo dnf update
 sudo dnf install linglong-bin
 ```
 
-### UOS 1070 (Latest repository only)
+### uos 1070
 
 ```sh
-echo "deb [trusted=yes] https://ci.deepin.com/repo/obs/linglong:/CI:/latest/uos_1070/ ./" | sudo tee /etc/apt/sources.list.d/linglong.list
+echo "deb [trusted=yes] https://ci.deepin.com/repo/obs/linglong:/CI:/release/uos_1070/ ./" | sudo tee /etc/apt/sources.list.d/linglong.list
+sudo apt update
+sudo apt install linglong-bin
+```
+
+### AnolisOS 8
+
+```sh
+sudo dnf config-manager addrepo --from-repofile "https://ci.deepin.com/repo/obs/linglong:/CI:/release/AnolisOS_8/linglong%3ACI%3Arelease.repo"
+sudo dnf update
+sudo dnf install linglong-bin
+```
+
+### openkylin 2.0
+
+```sh
+echo "deb [trusted=yes] https://ci.deepin.com/repo/obs/linglong:/CI:/release/openkylin_2.0/ ./" | sudo tee /etc/apt/sources.list.d/linglong.list
 sudo apt update
 sudo apt install linglong-bin
 ```

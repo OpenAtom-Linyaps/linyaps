@@ -73,19 +73,23 @@ Install main:org.deepin.calculator/5.7.21.4/x86_64 success:100%
 
 我们在使用 `ll-builder export` 命令导出的 layer 或者 uab 文件，可以使用 `ll-cli install` 进行安装。
 
-`.layer 文件`
+`.layer` 文件
+
 ```bash
 ll-cli install ./com.baidu.baidunetdisk_4.17.7.0_x86_64_runtime.layer
 ```
 
-`.uab 文件`
+`.uab` 文件
 uab文件有以下两种安装方式
+
 - 通过 `ll-cli install` 进行安装
+
 ```bash
 ll-cli install com.baidu.baidunetdisk_x86_64_4.17.7.0_main.uab
 ```
 
 - 通过直接运行`.uab`的方式进行安装
+
 ```bash
 ./com.baidu.baidunetdisk_x86_64_4.17.7.0_main.uab
 ```

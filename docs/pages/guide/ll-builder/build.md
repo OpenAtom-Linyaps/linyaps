@@ -39,6 +39,7 @@ Options:
 ```
 
 `ll-builder build` 命令可以通过以下两种方式运行：
+
 1. 项目根目录，即 `linglong.yaml` 文件所在目录。
 2. 使用 `--file` 参数指定 linglong.yaml 文件路径。
 

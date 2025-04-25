@@ -53,6 +53,9 @@ set(GETTEXT_DOMAIN_NAME
     "linyaps"
     CACHE STRING "The name of gettext domain.")
 set(QT_VERSION_MAJOR CACHE STRING "The major version of qt.")
+set(LINGLONG_DESKTOP_EXPORT_PATH
+    "share/applications"
+    CACHE STRING "The path to export linglong desktop files.")
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 include(PFL)

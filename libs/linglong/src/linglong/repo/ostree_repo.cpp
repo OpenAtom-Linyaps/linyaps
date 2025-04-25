@@ -1850,6 +1850,7 @@ OSTreeRepo::exportEntries(const std::filesystem::path &rootEntriesDir,
     } else {
         exportDirConfig->exportPaths.push_back("share/systemd/user");
     }
+
     // 导出应用entries目录下的所有文件到玲珑仓库的entries目录下
     for (const auto &path : exportDirConfig->exportPaths) {
         auto source = appEntriesDir / path;
@@ -1858,6 +1859,15 @@ OSTreeRepo::exportEntries(const std::filesystem::path &rootEntriesDir,
         if (path == "share/systemd/user") {
             destination = rootEntriesDir / "lib/systemd/user";
         }
+
+        if (path == "share/applications") {
+            if (strcmp(LINGLONG_DESKTOP_EXPORT_PATH, "share/applications") != 0) {
+                qInfo() << "destination update from " << destination.c_str() << " to "
+                        << QString::fromStdString(rootEntriesDir / LINGLONG_DESKTOP_EXPORT_PATH);
+            }
+            destination = rootEntriesDir / LINGLONG_DESKTOP_EXPORT_PATH;
+        }
+
         // 检查源目录是否存在，跳过不存在的目录
         exists = std::filesystem::exists(source, ec);
         if (ec) {
@@ -1953,16 +1963,33 @@ utils::error::Result<void> OSTreeRepo::exportAllEntries() noexcept
 
 void OSTreeRepo::updateSharedInfo() noexcept
 {
-    auto applicationDir = QDir(this->repoDir.absoluteFilePath("entries/share/applications"));
+    auto defaultApplicationDir = QDir(this->repoDir.absoluteFilePath("entries/share/applications"));
+    // 自定义desktop安装路径
+    QDir customApplicationDir = QDir(
+      this->repoDir.absoluteFilePath(QString{ "entries/%1" }.arg(LINGLONG_DESKTOP_EXPORT_PATH)));
     auto mimeDataDir = QDir(this->repoDir.absoluteFilePath("entries/share/mime"));
     auto glibSchemasDir = QDir(this->repoDir.absoluteFilePath("entries/share/glib-2.0/schemas"));
+
+    QStringList desktopDirs;
+    if (defaultApplicationDir.exists()) {
+        desktopDirs << defaultApplicationDir.absolutePath();
+    }
+
+    if (defaultApplicationDir != customApplicationDir) {
+        if (customApplicationDir.exists()) {
+            desktopDirs << customApplicationDir.absolutePath();
+        } else {
+            qWarning() << "warning: custom application dir " << customApplicationDir.absolutePath()
+                       << " does not exist, ignoring";
+        }
+    }
+
     // 更新 desktop database
-    if (applicationDir.exists()) {
-        auto ret =
-          utils::command::Exec("update-desktop-database", { applicationDir.absolutePath() });
+    if (!desktopDirs.empty()) {
+        auto ret = utils::command::Exec("update-desktop-database", desktopDirs);
         if (!ret) {
-            qWarning() << "warning: failed to update desktop database in "
-                + applicationDir.absolutePath() + ": " + ret.error().message();
+            qWarning() << "warning: failed to update desktop database in " + desktopDirs.join(" ")
+                + ": " + ret.error().message();
         }
     }
 

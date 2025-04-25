@@ -21,6 +21,8 @@
 #define LINGLONG_CONTAINER_INIT LINGLONG_LIBEXEC_DIR "/dumb-init"
 #define LINGLONG_CLIENT_NAME "@LINGLONG_CLI_BIN@"
 #define LINGLONG_CLIENT_PATH "@CMAKE_INSTALL_FULL_BINDIR@/@LINGLONG_CLI_BIN@"
+// The directory where the package install hooks reside.
+#define LINGLONG_INSTALL_HOOKS_DIR "@CMAKE_INSTALL_SYSCONFDIR@/linglong/config.d"
 
 #define LINGLONG_EXPORT_VERSION "1.0.0.1"
 // The package's locale domain.

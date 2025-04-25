@@ -12,107 +12,101 @@ linyaps is composed of three parts.
 - ll-box is a sandbox container, provided by linglong-box.
 - ll-cli manages and runs linyaps applications, provided by linglong-bin.
 
-## deepin v23
+## Repository Usage Instructions
 
-```bash
-sudo apt install linglong-builder linglong-box linglong-bin
-```
+### Release Repository
 
-## UOS 1070
+Automatically built based on the latest tag.
 
-Add linyaps repository source.
+Repository URL: <https://ci.deepin.com/repo/obs/linglong:/CI:/release>
 
-```bash
-echo "deb [trusted=yes] https://ci.deepin.com/repo/deepin/deepin-community/linglong-repo/ unstable main" | sudo tee -a /etc/apt/sources.list
-```
+Build URL: <https://build.deepin.com/project/show/linglong:CI:release>
 
-Update the repository and install linyaps.
+### Latest Repository
 
-```bash
+Automatically built based on the latest commits.
+
+Repository URL: <https://ci.deepin.com/repo/obs/linglong:/CI:/latest>
+
+Build URL: <https://build.deepin.com/project/show/linglong:CI:latest>
+
+:::tip
+
+The installation steps below are based on the release repository. If you'd like to experience unreleased features, you can replace release in the repository URL with latest to install the preview version built from the master branch.
+
+:::
+
+## Installation Instructions
+
+### deepin 25
+
+```sh
+echo "deb [trusted=yes] https://ci.deepin.com/repo/obs/linglong:/CI:/release/Deepin_25/ ./" | sudo tee /etc/apt/sources.list.d/linglong.list
 sudo apt update
 sudo apt install linglong-builder linglong-box linglong-bin
 ```
 
-## OpenEuler 24.03
+### deepin 23
 
-Add linyaps repository source.
-
-```bash
-sudo curl -o /etc/yum.repos.d/linglong.repo -L https://eur.openeuler.openatom.cn/coprs/kamiyadm/linglong/repo/openeuler-24.03_LTS/kamiyadm-linglong-openeuler-24.03_LTS.repo
+```sh
+echo "deb [trusted=yes] https://ci.deepin.com/repo/obs/linglong:/CI:/release/Deepin_23/ ./" | sudo tee /etc/apt/sources.list.d/linglong.list
+sudo apt update
+sudo apt install linglong-builder linglong-box linglong-bin
 ```
 
-Update the repository and install linyaps.
+### Fedora 41
 
-```
+```sh
+sudo dnf config-manager addrepo --from-repofile "https://ci.deepin.com/repo/obs/linglong:/CI:/release/Fedora_41/linglong%3ACI%3Arelease.repo"
 sudo dnf update
 sudo dnf install linglong-builder linglong-box linglong-bin
 ```
 
-## Ubuntu 24.04
+### Ubuntu 24.04
 
-Add linyaps repository source.
-
-```bash
-sudo apt install -y apt-transport-https ca-certificates curl gpg xdg-utils
-sudo mkdir -p /etc/apt/keyrings/
-curl -fsSL https://download.opensuse.org/repositories/home:/kamiyadm/xUbuntu_24.04/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/linglong-apt-keyring.gpg
-echo "deb [signed-by=/etc/apt/keyrings/linglong-apt-keyring.gpg] https://download.opensuse.org/repositories/home:/kamiyadm/xUbuntu_24.04/ ./" | sudo tee /etc/apt/sources.list.d/linglong.list
-```
-
-Update the repository and install linyaps.
-
-```bash
+```sh
+echo "deb [trusted=yes] https://ci.deepin.com/repo/obs/linglong:/CI:/release/xUbuntu_24.04/ ./" | sudo tee /etc/apt/sources.list.d/linglong.list
 sudo apt update
 sudo apt install linglong-builder linglong-box linglong-bin
 ```
 
-## debian 12
+### Debian 12
 
-Add linyaps repository source.
-
-```bash
-sudo apt install -y apt-transport-https ca-certificates curl gpg xdg-utils
-sudo mkdir -p /etc/apt/keyrings/
-curl -fsSL https://download.opensuse.org/repositories/home:/kamiyadm/Debian_12/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/linglong-apt-keyring.gpg
-echo "deb [signed-by=/etc/apt/keyrings/linglong-apt-keyring.gpg] https://download.opensuse.org/repositories/home:/kamiyadm/Debian_12/ ./" | sudo tee /etc/apt/sources.list.d/linglong.list
-```
-
-Update the repository and install linyaps.
-
-```bash
+```sh
+echo "deb [trusted=yes] https://ci.deepin.com/repo/obs/linglong:/CI:/release/Debian_12/ ./" | sudo tee /etc/apt/sources.list.d/linglong.list
 sudo apt update
 sudo apt install linglong-builder linglong-box linglong-bin
 ```
 
-## openkylin 2.0rc
+### openEuler 23.09
 
-Add linyaps repository source.
-
-```bash
-sudo bash -c "echo 'deb [trusted=yes] https://ci.deepin.com/repo/obs/linglong:/multi_distro/openkylin2.0_repo/ ./' > /etc/apt/sources.list.d/linglong.list"
+```sh
+sudo dnf config-manager --add-repo "https://ci.deepin.com/repo/obs/linglong:/CI:/release/openEuler_23.09/linglong%3ACI%3Arelease.repo"
+sudo sh -c "echo gpgcheck=0 >> /etc/yum.repos.d/linglong%3ACI%3Arelease.repo"
+sudo dnf update
+sudo dnf install linglong-builder linglong-box linglong-bin
 ```
 
-Update the repository and install linyaps.
+### UOS 1070
 
-```bash
+```sh
+echo "deb [trusted=yes] https://ci.deepin.com/repo/obs/linglong:/CI:/release/uos_1070/ ./" | sudo tee /etc/apt/sources.list.d/linglong.list
 sudo apt update
 sudo apt install linglong-builder linglong-box linglong-bin
 ```
 
-# Install the Pica tool
+### AnolisOS 8
 
-This tool currently provides the capability to convert DEB packages into linyaps packages. Generate the required `linglong.yaml` file for building linyaps applications and rely on `ll-builder` to implement application build and export.
-
-## deepin v23
-
-```bash
-sudo apt install linglong-pica
+```sh
+sudo dnf config-manager addrepo --from-repofile "https://ci.deepin.com/repo/obs/linglong:/CI:/release/AnolisOS_8/linglong%3ACI%3Arelease.repo"
+sudo dnf update
+sudo dnf install linglong-builder linglong-box linglong-bin
 ```
 
-## UOS 1070
+### openkylin 2.0
 
-The repository source needs to be added, which has been done previously.
-
-```bash
-sudo apt install linglong-pica
+```sh
+echo "deb [trusted=yes] https://ci.deepin.com/repo/obs/linglong:/CI:/release/openkylin_2.0/ ./" | sudo tee /etc/apt/sources.list.d/linglong.list
+sudo apt update
+sudo apt install linglong-builder linglong-box linglong-bin
 ```

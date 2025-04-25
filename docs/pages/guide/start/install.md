@@ -34,7 +34,9 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 :::
 
-## deepin 25
+## 安装说明
+
+### deepin 25
 
 ```sh
 echo "deb [trusted=yes] https://ci.deepin.com/repo/obs/linglong:/CI:/release/Deepin_25/ ./" | sudo tee /etc/apt/sources.list.d/linglong.list
@@ -42,7 +44,7 @@ sudo apt update
 sudo apt install linglong-builder linglong-box linglong-bin
 ```
 
-## deepin 23
+### deepin 23
 
 ```sh
 echo "deb [trusted=yes] https://ci.deepin.com/repo/obs/linglong:/CI:/release/Deepin_23/ ./" | sudo tee /etc/apt/sources.list.d/linglong.list
@@ -50,7 +52,7 @@ sudo apt update
 sudo apt install linglong-builder linglong-box linglong-bin
 ```
 
-## Fedora 41
+### Fedora 41
 
 ```sh
 sudo dnf config-manager addrepo --from-repofile "https://ci.deepin.com/repo/obs/linglong:/CI:/release/Fedora_41/linglong%3ACI%3Arelease.repo"
@@ -58,7 +60,7 @@ sudo dnf update
 sudo dnf install linglong-builder linglong-box linglong-bin
 ```
 
-## Ubuntu 24.04
+### Ubuntu 24.04
 
 ```sh
 echo "deb [trusted=yes] https://ci.deepin.com/repo/obs/linglong:/CI:/release/xUbuntu_24.04/ ./" | sudo tee /etc/apt/sources.list.d/linglong.list
@@ -66,7 +68,7 @@ sudo apt update
 sudo apt install linglong-builder linglong-box linglong-bin
 ```
 
-## Debian 12
+### Debian 12
 
 ```sh
 echo "deb [trusted=yes] https://ci.deepin.com/repo/obs/linglong:/CI:/release/Debian_12/ ./" | sudo tee /etc/apt/sources.list.d/linglong.list
@@ -74,7 +76,7 @@ sudo apt update
 sudo apt install linglong-builder linglong-box linglong-bin
 ```
 
-## openEuler 23.09
+### openEuler 23.09
 
 ```sh
 sudo dnf config-manager --add-repo "https://ci.deepin.com/repo/obs/linglong:/CI:/release/openEuler_23.09/linglong%3ACI%3Arelease.repo"
@@ -83,7 +85,7 @@ sudo dnf update
 sudo dnf install linglong-builder linglong-box linglong-bin
 ```
 
-## uos 1070
+### UOS 1070
 
 ```sh
 echo "deb [trusted=yes] https://ci.deepin.com/repo/obs/linglong:/CI:/release/uos_1070/ ./" | sudo tee /etc/apt/sources.list.d/linglong.list
@@ -91,7 +93,7 @@ sudo apt update
 sudo apt install linglong-builder linglong-box linglong-bin
 ```
 
-## AnolisOS 8
+### AnolisOS 8
 
 ```sh
 sudo dnf config-manager addrepo --from-repofile "https://ci.deepin.com/repo/obs/linglong:/CI:/release/AnolisOS_8/linglong%3ACI%3Arelease.repo"
@@ -99,28 +101,10 @@ sudo dnf update
 sudo dnf install linglong-builder linglong-box linglong-bin
 ```
 
-## openkylin 2.0
+### openkylin 2.0
 
 ```sh
 echo "deb [trusted=yes] https://ci.deepin.com/repo/obs/linglong:/CI:/release/openkylin_2.0/ ./" | sudo tee /etc/apt/sources.list.d/linglong.list
 sudo apt update
 sudo apt install linglong-builder linglong-box linglong-bin
-```
-
-# 安装 pica
-
-本工具目前提供 deb 包转换为如意玲珑包的能力，生成构建如意玲珑应用需要的 linglong.yaml 文件，并依赖 ll-builder 来实现应用构建和导出。
-
-## deepin v23
-
-```bash
-sudo apt install linglong-pica
-```
-
-## UOS 1070
-
-需要添加仓库源，前面已添加。
-
-```bash
-sudo apt install linglong-pica
 ```

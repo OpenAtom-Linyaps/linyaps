@@ -108,10 +108,14 @@ _ll-cli() {
                 fi
 
                 local app_list=(${(f)"$(__ll_cli_get_app_list ${search_target})"})
-                _arguments \
-                    '1: :{_values "${app_list[@]}"}' \
-                    "${install_options[@]}" \
-                    "${command_options[@]}"
+                if [[ ${#app_list[@]} -eq 0 ]]; then
+                    _message "no matching applications"
+                else
+                    _arguments \
+                        '1: :{_values "available applications" "${app_list[@]}"}' \
+                        "${install_options[@]}" \
+                        "${command_options[@]}"
+                fi
             fi
             ;;
         uninstall)

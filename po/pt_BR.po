@@ -66,28 +66,33 @@ msgid ""
 "1. Check your internet connection\n"
 "2. Verify network proxy settings if used"
 msgstr ""
-"Falha na conexão de rede. Por favor: 1. Verifique sua conexão com a "
-"internet. 2. Verifique as configurações de proxy da rede, se utilizadas."
+"Falha na conexão de rede. Por favor:\n"
+"1. Verifique sua conexão com a internet.\n"
+"2. Verifique as configurações de proxy da rede, se utilizadas."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1275
 msgid ""
 "Application already installed, If you want to replace it, try using 'll-cli "
 "install %1 --force'"
 msgstr ""
+"Aplicativo já instalado. Se você quiser substituí-lo, tente usar 'll-cli "
+"install %1 --force'"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1281
 msgid "Application %1 is not found in remote repo."
-msgstr ""
+msgstr "O aplicativo %1 não foi encontrado no repositório remoto."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1285
 msgid "Cannot specify a version when installing a module."
-msgstr ""
+msgstr "Não é possível especificar uma versão ao instalar um módulo."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1289
 msgid ""
 "The latest version has been installed. If you want to replace it, try using "
 "'ll-cli install %1/version --force'"
 msgstr ""
+"A versão mais recente foi instalada. Se quiser substituí-la, tente usar 'll-"
+"cli install %1/version --force'."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2732
 msgid ""
@@ -148,7 +153,7 @@ msgstr ""
 
 #: ../apps/ll-cli/src/main.cpp:210
 msgid "Show debug info (verbose logs)"
-msgstr ""
+msgstr "Mostrar informações de depuração (registros detalhados)"
 
 #. groups
 #: ../apps/ll-cli/src/main.cpp:213

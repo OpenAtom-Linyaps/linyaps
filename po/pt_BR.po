@@ -385,6 +385,17 @@ msgid ""
 "# find all of runtime of remote\n"
 "ll-cli search . --type=runtime"
 msgstr ""
+"Use: ll-cli search [OPÇÕES] PALAVRAS-CHAVE\n"
+"\n"
+"Exemplo:\n"
+"# encontrar aplicativo remotamente pelo nome\n"
+"ll-cli search org.deepin.demo\n"
+"# encontrar tempo de execução remotamente pelo nome\n"
+"ll-cli search org.deepin.base --type=runtime\n"
+"# encontrar todos os aplicativos remotos\n"
+"ll-cli search .\n"
+"# encontrar todo o tempo de execução remoto\n"
+"ll-cli search. --type=runtime"
 
 #: ../apps/ll-cli/src/main.cpp:387
 msgid "Specify the Keywords"
@@ -433,7 +444,7 @@ msgstr "Exibir ou modificar informações do repositório atualmente em uso"
 
 #: ../apps/ll-cli/src/main.cpp:433
 msgid "Usage: ll-cli repo SUBCOMMAND [OPTIONS]"
-msgstr ""
+msgstr "Uso: ll-cli repo SUBCOMANDO [OPÇÕES]"
 
 #. add repo sub command add
 #: ../apps/ll-cli/src/main.cpp:437 ../apps/ll-builder/src/main.cpp:374
@@ -442,7 +453,7 @@ msgstr "Adicionar um novo repositório"
 
 #: ../apps/ll-cli/src/main.cpp:438
 msgid "Usage: ll-cli repo add [OPTIONS] NAME URL"
-msgstr ""
+msgstr "Uso: ll-cli repo add [OPÇÕES] NOME URL"
 
 #: ../apps/ll-cli/src/main.cpp:439 ../apps/ll-cli/src/main.cpp:452
 #: ../apps/ll-builder/src/main.cpp:376
@@ -474,7 +485,7 @@ msgstr " Remover um repositório"
 
 #: ../apps/ll-cli/src/main.cpp:461
 msgid "Usage: ll-cli repo remove [OPTIONS] NAME"
-msgstr ""
+msgstr "Uso: ll-cli repo remove [OPÇÕES] NOME"
 
 #. add repo sub command update
 #. TODO: add --repo and --url options
@@ -485,7 +496,7 @@ msgstr "Atualizar a URL do repositório"
 
 #: ../apps/ll-cli/src/main.cpp:469
 msgid "Usage: ll-cli repo update [OPTIONS] NAME URL"
-msgstr ""
+msgstr "Uso: atualização do repositório ll-cli [OPÇÕES] NOME URL"
 
 #: ../apps/ll-cli/src/main.cpp:479 ../apps/ll-builder/src/main.cpp:405
 msgid "Set a default repository name"

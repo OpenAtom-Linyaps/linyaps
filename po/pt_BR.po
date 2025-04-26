@@ -755,7 +755,7 @@ msgstr "Execute o aplicativo Linyaps criado"
 
 #: ../apps/ll-builder/src/main.cpp:260
 msgid "Usage: ll-builder run [OPTIONS] [COMMAND...]"
-msgstr ""
+msgstr "Uso: ll-builder run [OPÇÕES] [COMANDO...]"
 
 #: ../apps/ll-builder/src/main.cpp:265
 msgid "Only use local files"
@@ -772,23 +772,23 @@ msgstr ""
 
 #: ../apps/ll-builder/src/main.cpp:281
 msgid "Run in debug mode (enable develop module)"
-msgstr ""
+msgstr "Executar em modo de depuração (habilitar módulo de desenvolvimento)"
 
 #: ../apps/ll-builder/src/main.cpp:283
 msgid "List built linyaps app"
-msgstr ""
+msgstr "Lista de aplicativos Linyaps criados"
 
 #: ../apps/ll-builder/src/main.cpp:284
 msgid "Usage: ll-builder list [OPTIONS]"
-msgstr ""
+msgstr "Uso: ll-builder list [OPÇÕES]"
 
 #: ../apps/ll-builder/src/main.cpp:286
 msgid "Remove built linyaps app"
-msgstr ""
+msgstr "Remover aplicativo linyaps construído"
 
 #: ../apps/ll-builder/src/main.cpp:287
 msgid "Usage: ll-builder remove [OPTIONS] [APP...]"
-msgstr ""
+msgstr "Uso: ll-builder remove [OPÇÕES] [APP...]"
 
 #: ../apps/ll-builder/src/main.cpp:293
 msgid "Export to linyaps layer or uab"
@@ -796,7 +796,7 @@ msgstr "Exportar para camada linyaps ou uab"
 
 #: ../apps/ll-builder/src/main.cpp:294
 msgid "Usage: ll-builder export [OPTIONS]"
-msgstr ""
+msgstr "Uso: ll-builder export [OPÇÕES]"
 
 #: ../apps/ll-builder/src/main.cpp:306
 msgid "Uab icon (optional)"
@@ -820,7 +820,7 @@ msgstr "Não exporte o módulo de desenvolvimento"
 
 #: ../apps/ll-builder/src/main.cpp:320
 msgid "Output file"
-msgstr ""
+msgstr "Arquivo de saída"
 
 #: ../apps/ll-builder/src/main.cpp:325
 msgid "Push linyaps app to remote repo"
@@ -828,7 +828,7 @@ msgstr "Enviar aplicativo Linyaps para repositório remoto"
 
 #: ../apps/ll-builder/src/main.cpp:326
 msgid "Usage: ll-builder push [OPTIONS]"
-msgstr ""
+msgstr "Uso: ll-builder push [OPÇÕES]"
 
 #: ../apps/ll-builder/src/main.cpp:331
 msgid "Remote repo url"
@@ -848,7 +848,7 @@ msgstr "Importar camada linyaps para construir repositório"
 
 #: ../apps/ll-builder/src/main.cpp:343
 msgid "Usage: ll-builder import [OPTIONS] LAYER"
-msgstr ""
+msgstr "Uso: ll-builder import [OPÇÕES] CAMADA"
 
 #: ../apps/ll-builder/src/main.cpp:344 ../apps/ll-builder/src/main.cpp:363
 msgid "Layer file path"
@@ -872,7 +872,7 @@ msgstr "Extrair camada linyaps para diretório"
 
 #: ../apps/ll-builder/src/main.cpp:362
 msgid "Usage: ll-builder extract [OPTIONS] LAYER DIR"
-msgstr ""
+msgstr "Uso: ll-builder extract [OPÇÕES] LAYER DIR"
 
 #: ../apps/ll-builder/src/main.cpp:366
 msgid "Destination directory"
@@ -885,11 +885,11 @@ msgstr "Exibir e gerenciar repositórios"
 
 #: ../apps/ll-builder/src/main.cpp:370
 msgid "Usage: ll-builder repo [OPTIONS] SUBCOMMAND"
-msgstr ""
+msgstr "Uso: ll-builder repo [OPÇÕES] SUBCOMANDO"
 
 #: ../apps/ll-builder/src/main.cpp:375
 msgid "Usage: ll-builder repo add [OPTIONS] NAME URL"
-msgstr ""
+msgstr "Uso: ll-builder repo add [OPÇÕES] NOME URL"
 
 #: ../apps/ll-builder/src/main.cpp:388
 msgid "Usage: ll-builder repo remove [OPTIONS] NAME"

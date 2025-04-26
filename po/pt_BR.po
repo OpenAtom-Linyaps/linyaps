@@ -496,7 +496,7 @@ msgstr "Atualizar a URL do repositório"
 
 #: ../apps/ll-cli/src/main.cpp:469
 msgid "Usage: ll-cli repo update [OPTIONS] NAME URL"
-msgstr "Uso: atualização do repositório ll-cli [OPÇÕES] NOME URL"
+msgstr "Uso: ll-cli repo update [OPÇÕES] NOME URL"
 
 #: ../apps/ll-cli/src/main.cpp:479 ../apps/ll-builder/src/main.cpp:405
 msgid "Set a default repository name"
@@ -504,7 +504,7 @@ msgstr "Defina um nome padrão para o repositório"
 
 #: ../apps/ll-cli/src/main.cpp:480
 msgid "Usage: ll-cli repo set-default [OPTIONS] NAME"
-msgstr ""
+msgstr "Uso: ll-cli repo set-default [OPÇÕES] NOME"
 
 #. add repo sub command show
 #: ../apps/ll-cli/src/main.cpp:486 ../apps/ll-builder/src/main.cpp:412
@@ -513,7 +513,7 @@ msgstr "Mostrar informações do repositório"
 
 #: ../apps/ll-cli/src/main.cpp:487
 msgid "Usage: ll-cli repo show [OPTIONS]"
-msgstr ""
+msgstr "Uso: ll-cli repo show [OPÇÕES]"
 
 #: ../apps/ll-cli/src/main.cpp:491
 msgid "Set the priority of the repo"
@@ -521,7 +521,7 @@ msgstr "Defina a prioridade do repositório"
 
 #: ../apps/ll-cli/src/main.cpp:492
 msgid "Usage: ll-cli repo set-priority ALIAS PRIORITY"
-msgstr ""
+msgstr "Uso: ll-cli repo set-priority ALIAS PRIORITY"
 
 #: ../apps/ll-cli/src/main.cpp:497
 msgid "Priority of the repo"
@@ -533,7 +533,7 @@ msgstr "Exibir informações sobre aplicativos instalados ou tempos de execuçã
 
 #: ../apps/ll-cli/src/main.cpp:507
 msgid "Usage: ll-cli info [OPTIONS] APP"
-msgstr ""
+msgstr "Uso: ll-cli info [OPÇÕES] APP"
 
 #: ../apps/ll-cli/src/main.cpp:511
 msgid "Specify the application ID, and it can also be a .layer file"
@@ -545,7 +545,7 @@ msgstr "Exibir os arquivos exportados do aplicativo instalado"
 
 #: ../apps/ll-cli/src/main.cpp:521
 msgid "Usage: ll-cli content [OPTIONS] APP"
-msgstr ""
+msgstr "Uso: ll-cli content [OPÇÕES] APP"
 
 #: ../apps/ll-cli/src/main.cpp:522
 msgid "Specify the installed application ID"
@@ -558,7 +558,7 @@ msgstr "Remova a base ou o tempo de execução não utilizado"
 
 #: ../apps/ll-cli/src/main.cpp:529
 msgid "Usage: ll-cli prune [OPTIONS]"
-msgstr ""
+msgstr "Uso: ll-cli prune [OPÇÕES]"
 
 #: ../apps/ll-cli/src/main.cpp:534
 msgid "Display the information of installed application"
@@ -566,7 +566,7 @@ msgstr "Exibir as informações do aplicativo instalado"
 
 #: ../apps/ll-cli/src/main.cpp:536
 msgid "Usage: ll-cli inspect [OPTIONS]"
-msgstr ""
+msgstr "Uso: ll-cli inspect [OPÇÕES]"
 
 #: ../apps/ll-cli/src/main.cpp:538
 msgid "Specify the process id"
@@ -664,7 +664,7 @@ msgstr ""
 
 #: ../apps/ll-builder/src/main.cpp:175
 msgid "Usage: ll-builder [OPTIONS] [SUBCOMMAND]"
-msgstr ""
+msgstr "Uso: ll-builder [OPÇÕES] [SUBCOMANDO]"
 
 #: ../apps/ll-builder/src/main.cpp:177
 msgid ""
@@ -680,7 +680,7 @@ msgstr "Criar projeto de modelo de construção linyaps"
 
 #: ../apps/ll-builder/src/main.cpp:200
 msgid "Usage: ll-builder create [OPTIONS] NAME"
-msgstr ""
+msgstr "Uso: ll-builder create [OPÇÕES] NOME"
 
 #: ../apps/ll-builder/src/main.cpp:201
 msgid "Project name"
@@ -692,7 +692,7 @@ msgstr "Crie um projeto linyaps"
 
 #: ../apps/ll-builder/src/main.cpp:214
 msgid "Usage: ll-builder build [OPTIONS] [COMMAND...]"
-msgstr ""
+msgstr "Uso: ll-builder build [OPÇÕES] [COMANDO...]"
 
 #: ../apps/ll-builder/src/main.cpp:215 ../apps/ll-builder/src/main.cpp:261
 #: ../apps/ll-builder/src/main.cpp:296 ../apps/ll-builder/src/main.cpp:327
@@ -751,7 +751,7 @@ msgstr "Construir em um ambiente de rede isolado"
 
 #: ../apps/ll-builder/src/main.cpp:259
 msgid "Run built linyaps app"
-msgstr ""
+msgstr "Execute o aplicativo Linyaps criado"
 
 #: ../apps/ll-builder/src/main.cpp:260
 msgid "Usage: ll-builder run [OPTIONS] [COMMAND...]"

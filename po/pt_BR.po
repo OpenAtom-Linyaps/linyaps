@@ -288,6 +288,21 @@ msgid ""
 "ll-cli install stable:org.deepin.demo/0.0.0.1/x86_64\n"
 "    "
 msgstr ""
+"Uso: ll-cli install [OPÇÕES] APP\n"
+"\n"
+"Exemplo:\n"
+"# instalar aplicativo por appid\n"
+"ll-cli install org.deepin.demo\n"
+"# instalar aplicativo por linyaps layer\n"
+"ll-cli install demo_0.0.0.1_x86_64_binary.layer\n"
+"# instalar aplicativo por linyaps uab\n"
+"ll-cli install demo_x86_64_0.0.0.1_main.uab\n"
+"# instalar módulo especificado do appid\n"
+"ll-cli install org.deepin.demo --module=binary\n"
+"# instalar versão especificada do appid\n"
+"ll-cli install org.deepin.demo/0.0.0.1\n"
+"# instalar aplicativo por referência detalhada\n"
+"ll-cli install stable:org.deepin.demo/0.0.0.1/x86_64"
 
 #: ../apps/ll-cli/src/main.cpp:323
 msgid "Specify the application ID, and it can also be a .uab or .layer file"
@@ -313,7 +328,7 @@ msgstr "Desinstale o aplicativo ou os tempos de execução"
 
 #: ../apps/ll-cli/src/main.cpp:339
 msgid "Usage: ll-cli uninstall [OPTIONS] APP"
-msgstr ""
+msgstr "Uso: ll-cli uninstall [OPÇÕES] APP"
 
 #: ../apps/ll-cli/src/main.cpp:340
 msgid "Specify the applications ID"
@@ -338,13 +353,15 @@ msgstr "Atualizar o aplicativo ou os tempos de execução"
 
 #: ../apps/ll-cli/src/main.cpp:361
 msgid "Usage: ll-cli upgrade [OPTIONS] [APP]"
-msgstr ""
+msgstr "Uso: ll-cli upgrade [OPÇÕES] [APP]"
 
 #: ../apps/ll-cli/src/main.cpp:365
 msgid ""
 "Specify the application ID. If it not be specified, all applications will be"
 " upgraded"
 msgstr ""
+"Especifique o ID do aplicativo. Caso não seja especificado, todos os "
+"aplicativos serão atualizados."
 
 #: ../apps/ll-cli/src/main.cpp:372
 msgid ""

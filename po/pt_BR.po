@@ -893,19 +893,19 @@ msgstr "Uso: ll-builder repo add [OPÇÕES] NOME URL"
 
 #: ../apps/ll-builder/src/main.cpp:388
 msgid "Usage: ll-builder repo remove [OPTIONS] NAME"
-msgstr ""
+msgstr "Uso: ll-builder repo remove [OPÇÕES] NOME"
 
 #: ../apps/ll-builder/src/main.cpp:395
 msgid "Usage: ll-builder repo update [OPTIONS] NAME URL"
-msgstr ""
+msgstr "Uso: ll-builder repo update [OPÇÕES] NOME URL"
 
 #: ../apps/ll-builder/src/main.cpp:406
 msgid "Usage: ll-builder repo set-default [OPTIONS] NAME"
-msgstr ""
+msgstr "Uso: ll-builder repo set-default [OPÇÕES] NOME"
 
 #: ../apps/ll-builder/src/main.cpp:413
 msgid "Usage: ll-builder repo show [OPTIONS]"
-msgstr ""
+msgstr "Uso: ll-builder repo show [OPÇÕES]"
 
 #: ../apps/ll-builder/src/main.cpp:418
 msgid "linyaps build tool version "

@@ -248,7 +248,7 @@ msgstr "用法: ll-cli kill [选项] 应用"
 
 #: ../apps/ll-cli/src/main.cpp:293
 msgid "Specify the signal to send to the application"
-msgstr "指定已安装应用程序名"
+msgstr "指定要发送到应用程序的信号"
 
 #: ../apps/ll-cli/src/main.cpp:295
 msgid "Specify the running application"

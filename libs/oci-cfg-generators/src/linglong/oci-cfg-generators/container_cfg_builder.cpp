@@ -313,7 +313,7 @@ ContainerCfgBuilder &ContainerCfgBuilder::bindHostStatics() noexcept
     std::vector<std::string> statics{
         "/etc/machine-id",
         "/etc/resolvconf",
-        "/etc/ssl/certs",
+        // FIXME: support for host /etc/ssl, ref https://github.com/p11-glue/p11-kit
         "/usr/lib/locale",
         "/usr/share/fonts",
         "/usr/share/icons",

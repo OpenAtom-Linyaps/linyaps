@@ -126,10 +126,7 @@ utils::error::Result<void> elfHelper::addNewSection(const QByteArray &sectionNam
 UABPackager::UABPackager(const QDir &projectDir, QDir workingDir)
 {
     if (!workingDir.mkpath(".")) {
-        qFatal(QString("can't create working directory: %1")
-                 .arg(workingDir.absolutePath())
-                 .toStdString()
-                 .c_str());
+        qFatal("can't create working directory: %s", qPrintable(workingDir.absolutePath()));
     }
 
     this->buildDir = std::move(workingDir);

@@ -2240,7 +2240,7 @@ int Cli::content([[maybe_unused]] CLI::App *subcommand)
     if (url.rfind(filePrefix, 0) == 0) {
         std::filesystem::path nativePath = url.substr(filePrefix.size());
         std::filesystem::path target = mappingFile(nativePath);
-        return std::string{ filePrefix } + target.lexically_relative("/").string();
+        return std::string{ filePrefix } + target.string();
     }
 
     return std::string{ url };

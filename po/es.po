@@ -5,8 +5,8 @@
 # 
 # Translators:
 # Gary Wang <wzc782970009@gmail.com>, 2025
-# Isaías Gätjens M <igatjens@gmail.com>, 2025
 # Zaraza, 2025
+# Isaías Gätjens M <igatjens@gmail.com>, 2025
 # 
 #, fuzzy
 msgid ""
@@ -15,7 +15,7 @@ msgstr ""
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2025-04-16 13:06+0800\n"
 "PO-Revision-Date: 2025-04-11 01:38+0000\n"
-"Last-Translator: Zaraza, 2025\n"
+"Last-Translator: Isaías Gätjens M <igatjens@gmail.com>, 2025\n"
 "Language-Team: Spanish (https://app.transifex.com/linuxdeepin/teams/3976/es/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -456,7 +456,7 @@ msgstr "Uso: ll-cli repo SUBCOMANDO [OPCIONES]"
 #. add repo sub command add
 #: ../apps/ll-cli/src/main.cpp:437 ../apps/ll-builder/src/main.cpp:374
 msgid "Add a new repository"
-msgstr "Agregar un nuevo repositorio"
+msgstr "Añadir un nuevo repositorio"
 
 #: ../apps/ll-cli/src/main.cpp:438
 msgid "Usage: ll-cli repo add [OPTIONS] NAME URL"

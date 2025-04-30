@@ -2258,6 +2258,7 @@ utils::error::Result<void> Builder::runFromRepo(const package::Reference &ref,
       .setAppCache(appCache)
       .enableLDCache()
       .bindProc()
+      .bindTmp()
       .addUIdMapping(uid, uid, 1)
       .addGIdMapping(gid, gid, 1)
       .setExtraMounts(std::vector<ocppi::runtime::config::types::Mount>{

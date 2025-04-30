@@ -2161,6 +2161,17 @@ int Cli::content([[maybe_unused]] CLI::App *subcommand)
         return -1;
     }
 
+    auto layerItem = this->repository.getLayerItem(*ref);
+    if (!layerItem) {
+        this->printer.printErr(layerItem.error());
+        return -1;
+    }
+
+    if (layerItem->info.kind != "app") {
+        this->printer.printErr(LINGLONG_ERRV("Only supports viewing app content"));
+        return -1;
+    }
+
     auto layer = this->repository.getLayerDir(*ref, "binary");
     if (!layer) {
         this->printer.printErr(layer.error());

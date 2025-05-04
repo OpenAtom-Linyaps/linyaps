@@ -240,7 +240,7 @@ msgstr ""
 
 #: ../apps/ll-cli/src/main.cpp:263 ../apps/ll-cli/src/main.cpp:280
 msgid "Specify working directory"
-msgstr "Especificar el directorio de trabajo"
+msgstr "Especificar la carpeta de trabajo"
 
 #: ../apps/ll-cli/src/main.cpp:271
 msgid "Enter the namespace where the application is running"
@@ -888,7 +888,7 @@ msgstr "Uso: ll-builder extract [OPCIONES] CAPA DIR"
 
 #: ../apps/ll-builder/src/main.cpp:366
 msgid "Destination directory"
-msgstr "Directorio de destino"
+msgstr "Carpeta de destino"
 
 #. add build repo
 #: ../apps/ll-builder/src/main.cpp:369

@@ -868,7 +868,7 @@ msgstr "Ruta del archivo de la capa"
 
 #: ../apps/ll-builder/src/main.cpp:352
 msgid "Import linyaps layer dir to build repo"
-msgstr "Importar directorio de capa linyaps al repositorio de compilación"
+msgstr "Importar carpeta de capa linyaps al repositorio de compilación"
 
 #: ../apps/ll-builder/src/main.cpp:354
 msgid "Usage: ll-builder import-dir PATH"
@@ -876,11 +876,11 @@ msgstr "Uso: ll-builder import-dir PATH"
 
 #: ../apps/ll-builder/src/main.cpp:355
 msgid "Layer dir path"
-msgstr "Ruta del directorio de capa"
+msgstr "Ruta de la carpeta de capa"
 
 #: ../apps/ll-builder/src/main.cpp:361
 msgid "Extract linyaps layer to dir"
-msgstr "Extraer la capa de linyaps al directorio"
+msgstr "Extraer la capa de linyaps a la carpeta"
 
 #: ../apps/ll-builder/src/main.cpp:362
 msgid "Usage: ll-builder extract [OPTIONS] LAYER DIR"

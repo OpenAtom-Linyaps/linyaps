@@ -816,7 +816,7 @@ msgstr "Icono de uab (opcional)"
 
 #: ../apps/ll-builder/src/main.cpp:309
 msgid "Export uab fully"
-msgstr "UAB de exportación"
+msgstr "Exportar uab completamente"
 
 #: ../apps/ll-builder/src/main.cpp:310
 msgid "Export to linyaps layer file"

@@ -28,6 +28,7 @@ struct clearReferenceOption
 {
     bool forceRemote = false;
     bool fallbackToRemote = true;
+    bool semanticMatching = false;
 };
 
 class OSTreeRepo : public QObject
@@ -70,7 +71,7 @@ public:
               const std::string &module = "binary") noexcept;
 
     [[nodiscard]] utils::error::Result<package::Reference>
-    clearReference(const package::FuzzyReference &fuzz,
+    clearReference(const package::FuzzyReference &fuzzy,
                    const clearReferenceOption &opts,
                    const std::string &module = "binary") const noexcept;
 

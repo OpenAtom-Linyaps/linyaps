@@ -9,20 +9,36 @@
 #include "linglong/package/version.h"
 #include "linglong/package/versionv2.h"
 
+#if QT_VERSION < QT_VERSION_CHECK(5, 14, 0)
+namespace Qt {
+static auto SkipEmptyParts = QString::SkipEmptyParts;
+} // namespace Qt
+#endif
+
 namespace linglong::package {
 
 utils::error::Result<FallbackVersion> FallbackVersion::parse(const QString &raw) noexcept
 {
     LINGLONG_TRACE(QString("parse fallback version %1").arg(raw));
-#if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
     QStringList list = raw.split('.', Qt::SkipEmptyParts);
-#else
-    QStringList list = raw.split('.', QString::SkipEmptyParts);
-#endif
     if (list.isEmpty()) {
         return LINGLONG_ERR("parse fallback version failed");
     }
     return FallbackVersion(list);
+}
+
+bool FallbackVersion::semanticMatch(const QString &versionStr) const noexcept
+{
+    QStringList versionParts = versionStr.split('.', Qt::SkipEmptyParts);
+    if (versionParts.isEmpty() || versionParts.size() > list.size()) {
+        return false;
+    }
+    for (int i = 0; i < versionParts.size(); ++i) {
+        if (list[i] != versionParts[i]) {
+            return false;
+        }
+    }
+    return true;
 }
 
 bool FallbackVersion::operator==(const FallbackVersion &that) const

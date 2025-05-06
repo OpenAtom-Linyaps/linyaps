@@ -59,6 +59,31 @@ VersionV1::VersionV1(const QString &raw)
     }
 }
 
+bool VersionV1::semanticMatch(const QString &versionStr) const noexcept
+{
+    auto fuzzyVerRet = parse(versionStr);
+    if (!fuzzyVerRet) {
+        return false;
+    }
+    auto fuzzyVer = std::move(fuzzyVerRet).value();
+    if (fuzzyVer.major != major) {
+        return false;
+    }
+    if (fuzzyVer.minor != minor) {
+        return false;
+    }
+    if (fuzzyVer.patch != patch) {
+        return false;
+    }
+
+    if (fuzzyVer.tweak && tweak) {
+        if (*fuzzyVer.tweak != *tweak) {
+            return false;
+        }
+    }
+    return true;
+}
+
 bool VersionV1::operator==(const VersionV1 &that) const noexcept
 {
     if (this->tweak.has_value() != that.tweak.has_value()) {

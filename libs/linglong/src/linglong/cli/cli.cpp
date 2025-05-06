@@ -595,6 +595,7 @@ int Cli::run([[maybe_unused]] CLI::App *subcommand)
                                                              {
                                                                .forceRemote = false,
                                                                .fallbackToRemote = false,
+                                                               .semanticMatching = true,
                                                              });
         if (!runtimeRefRet) {
             this->printer.printErr(runtimeRefRet.error());
@@ -631,6 +632,7 @@ int Cli::run([[maybe_unused]] CLI::App *subcommand)
                                                    {
                                                      .forceRemote = false,
                                                      .fallbackToRemote = false,
+                                                     .semanticMatching = true,
                                                    });
     if (!baseRef) {
         this->printer.printErr(LINGLONG_ERRV(baseRef));

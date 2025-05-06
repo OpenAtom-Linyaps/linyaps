@@ -31,6 +31,8 @@ public:
     qlonglong security = 0;
     bool hasPatch = false;
 
+    bool semanticMatch(const QString &versionStr) const noexcept;
+
     bool operator==(const VersionV2 &that) const noexcept;
     bool operator!=(const VersionV2 &that) const noexcept;
     bool operator<(const VersionV2 &that) const noexcept;

@@ -10,6 +10,7 @@
 #include "linglong/package/versionv1.h"
 #include "linglong/package/versionv2.h"
 #include "linglong/utils/error/error.h"
+#include "linglong/api/types/v1/PackageInfoV2.hpp"
 
 #include <QString>
 
@@ -28,6 +29,10 @@ public:
     static utils::error::Result<Version> parse(const QString &raw,
                                                const ParseOptions parseOpt = {
                                                  .strict = true, .fallback = true }) noexcept;
+
+    static std::vector<linglong::api::types::v1::PackageInfoV2> filterByFuzzyVersion(std::vector<linglong::api::types::v1::PackageInfoV2> list,const QString &fuzzyVersion);
+    bool semanticMatch(const QString &versionStr);
+
     static utils::error::Result<void> validateDependVersion(const QString &raw) noexcept;
     explicit Version(const QString &raw) = delete;
 

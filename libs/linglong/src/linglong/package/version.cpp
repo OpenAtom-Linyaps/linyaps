@@ -4,12 +4,12 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 #include "linglong/package/version.h"
+
 #include "linglong/package/fallback_version.h"
 #include "linglong/package/versionv2.h"
 
 #include <QRegularExpression>
 #include <QString>
-#include <QStringBuilder>
 #include <variant>
 
 #if QT_VERSION < QT_VERSION_CHECK(5, 14, 0)
@@ -133,19 +133,56 @@ utils::error::Result<Version> Version::parse(const QString &raw,
 
 utils::error::Result<void> Version::validateDependVersion(const QString &raw) noexcept
 {
-    LINGLONG_TRACE(QString{"validate depend version %1"}.arg(raw));
+    LINGLONG_TRACE(QString{ "validate depend version %1" }.arg(raw));
     static auto regexExp = []() noexcept {
-        QRegularExpression regexExp(
-          R"(^(0|[1-9]\d*)\.(0|[1-9]\d*)(?:\.(0|[1-9]\d*))?$)");
+        QRegularExpression regexExp(R"(^(0|[1-9]\d*)\.(0|[1-9]\d*)(?:\.(0|[1-9]\d*))?$)");
         regexExp.optimize();
         return regexExp;
     }();
 
     QRegularExpressionMatch matched = regexExp.match(raw);
     if (!matched.hasMatch()) {
-        return LINGLONG_ERR("version regex mismatched, please use three digits version like MAJOR.MINOR[.PATCH]");
+        return LINGLONG_ERR(
+          "version regex mismatched, please use three digits version like MAJOR.MINOR[.PATCH]");
     }
     return LINGLONG_OK;
+}
+
+std::vector<linglong::api::types::v1::PackageInfoV2> Version::filterByFuzzyVersion(
+    std::vector<linglong::api::types::v1::PackageInfoV2> list, const QString &fuzzyVersion)
+  {
+      for (auto it = list.begin(); it != list.end(); ) {
+          auto packageVerRet = package::Version::parse(it->version.c_str());
+          if (!packageVerRet) {
+              qWarning() << "Ignore invalid package record " << packageVerRet.error();
+              it = list.erase(it);
+              continue;
+          }
+
+          if (!packageVerRet->semanticMatch(fuzzyVersion)) {
+              it = list.erase(it);
+              continue;
+          }
+          ++it;
+      }
+      return list;
+  }
+
+bool Version::semanticMatch(const QString &versionStr)
+{
+    if (std::holds_alternative<VersionV1>(version)) {
+        return std::get<VersionV1>(version).semanticMatch(versionStr);
+    }
+
+    if (std::holds_alternative<VersionV2>(version)) {
+        return std::get<VersionV2>(version).semanticMatch(versionStr);
+    }
+
+    if (std::holds_alternative<FallbackVersion>(version)) {
+        return std::get<FallbackVersion>(version).semanticMatch(versionStr);
+    }
+
+    return false;
 }
 
 void Version::ignoreTweak() noexcept

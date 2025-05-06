@@ -21,6 +21,8 @@ public:
     explicit FallbackVersion(const QStringList &list)
         : list(list) { };
 
+    bool semanticMatch(const QString &versionStr) const noexcept;
+
     QString toString() const noexcept;
 
     bool operator==(const FallbackVersion &that) const;

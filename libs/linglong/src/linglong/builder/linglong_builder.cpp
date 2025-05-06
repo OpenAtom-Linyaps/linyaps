@@ -612,7 +612,7 @@ utils::error::Result<package::Reference> Builder::clearDependency(const std::str
 
     auto res =
       repo.clearReference(*fuzzyRef,
-                          { .forceRemote = forceRemote, .fallbackToRemote = fallbackToRemote });
+                          { .forceRemote = forceRemote, .fallbackToRemote = fallbackToRemote, .semanticMatching = true });
     if (!res) {
         return LINGLONG_ERR(QString{ "ref doesn't exist %1" }.arg(fuzzyRef->toString()));
     }
@@ -1384,16 +1384,8 @@ utils::error::Result<void> Builder::commitToLocalRepo() noexcept
     };
 
     auto fuzzyBase = package::FuzzyReference::parse(QString::fromStdString(this->project.base));
-    // when the base version is likes 20.0.0.1, warning that it is a full version
-    // if the base version is likes 20.0.0, we should also write 20.0.0 to info.json
-
-    baseRef->version.ignoreTweak();
     info.base = baseRef->toString().toStdString();
     if (runtimeRef) {
-        auto fuzzyRuntime =
-          package::FuzzyReference::parse(QString::fromStdString(*this->project.runtime));
-        // the runtime version is same as base.
-        runtimeRef->version.ignoreTweak();
         info.runtime = runtimeRef->toString().toStdString();
     }
     // 从本地仓库清理旧的ref

@@ -1691,7 +1691,8 @@ utils::error::Result<package::Reference> PackageManager::latestRemoteReference(
     }
     auto ref = this->repo.clearReference(fuzzyRef,
                                          {
-                                           .forceRemote = true // NOLINT
+                                           .forceRemote = true, // NOLINT
+                                           .semanticMatching = true,
                                          });
     if (!ref) {
         return LINGLONG_ERR(ref);
@@ -1716,6 +1717,8 @@ auto PackageManager::Update(const QVariantMap &parameters) noexcept -> QVariantM
                                installedAppFuzzyRef.error().message());
         }
 
+        qInfo() << "installedApp Info: " << installedAppFuzzyRef->toString();
+
         auto ref = this->repo.clearReference(*installedAppFuzzyRef,
                                              {
                                                .fallbackToRemote = false // NOLINT
@@ -1729,6 +1732,8 @@ auto PackageManager::Update(const QVariantMap &parameters) noexcept -> QVariantM
             return toDBusReply(ref.error().code(),
                                installedAppFuzzyRef->toString() + " not installed.");
         }
+
+        qInfo() << "localRef Info: " << ref->toString();
 
         auto layerItem = this->repo.getLayerItem(*ref);
         if (!layerItem) {
@@ -1921,6 +1926,7 @@ void PackageManager::pullDependency(PackageTask &taskContext,
                                                  {
                                                    .forceRemote = false,
                                                    .fallbackToRemote = true,
+                                                   .semanticMatching = true,
                                                  });
         if (!runtime) {
             taskContext.updateState(linglong::api::types::v1::State::Failed,
@@ -1964,6 +1970,7 @@ void PackageManager::pullDependency(PackageTask &taskContext,
                                           {
                                             .forceRemote = false,
                                             .fallbackToRemote = true,
+                                            .semanticMatching = true,
                                           });
     if (!base) {
         taskContext.updateState(linglong::api::types::v1::State::Failed,
@@ -2052,6 +2059,7 @@ PackageManager::Prune(std::vector<api::types::v1::PackageInfoV2> &removed) noexc
                                                         {
                                                           .forceRemote = false,
                                                           .fallbackToRemote = false,
+                                                          .semanticMatching = true,
                                                         });
             if (!runtimeRef) {
                 qWarning() << runtimeRef.error().message();
@@ -2070,6 +2078,7 @@ PackageManager::Prune(std::vector<api::types::v1::PackageInfoV2> &removed) noexc
                                                  {
                                                    .forceRemote = false,
                                                    .fallbackToRemote = false,
+                                                   .semanticMatching = true,
                                                  });
         if (!baseRef) {
             qWarning() << baseRef.error().message();
@@ -2154,6 +2163,7 @@ utils::error::Result<void> prepareLayerDir(const repo::OSTreeRepo &repo,
                                                  {
                                                    .forceRemote = false,
                                                    .fallbackToRemote = false,
+                                                   .semanticMatching = true,
                                                  });
         if (!runtimeRefRet) {
             return LINGLONG_ERR(runtimeRefRet);
@@ -2185,6 +2195,7 @@ utils::error::Result<void> prepareLayerDir(const repo::OSTreeRepo &repo,
                                        {
                                          .forceRemote = false,
                                          .fallbackToRemote = false,
+                                         .semanticMatching = true,
                                        });
     if (!baseRef) {
         return LINGLONG_ERR(baseRef);

@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "linglong/package/fallback_version.h"
 #include "linglong/utils/error/error.h"
 
 #include <QString>
@@ -15,7 +16,6 @@
 namespace linglong::package {
 class VersionV2;
 class FallbackVersion;
-
 // This is a 4 number semver
 class VersionV1 final
 {
@@ -26,6 +26,7 @@ public:
     qlonglong minor = 0;
     qlonglong patch = 0;
     std::optional<qlonglong> tweak = {};
+    bool semanticMatch(const QString &versionStr) const noexcept;
 
     bool operator==(const VersionV1 &that) const noexcept;
     bool operator!=(const VersionV1 &that) const noexcept;

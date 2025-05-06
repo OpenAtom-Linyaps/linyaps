@@ -48,6 +48,25 @@ VersionV2::VersionV2(uint64_t major,
 {
 }
 
+bool VersionV2::semanticMatch(const QString &versionStr) const noexcept
+{
+    auto fuzzyVerRet = parse(versionStr, false);
+    if (!fuzzyVerRet) {
+        return false;
+    }
+    auto fuzzyVer = std::move(fuzzyVerRet).value();
+    if (fuzzyVer.major != major) {
+        return false;
+    }
+    if (fuzzyVer.minor != minor) {
+        return false;
+    }
+    if (fuzzyVer.hasPatch && fuzzyVer.patch != patch) {
+        return false;
+    }
+    return true;
+}
+
 bool VersionV2::operator==(const VersionV2 &that) const noexcept
 {
     return semver::version(major, minor, patch, prerelease, buildMeta, security)

@@ -5,8 +5,8 @@
 # 
 # Translators:
 # Gary Wang <wzc782970009@gmail.com>, 2025
-# Isaías Gätjens M <igatjens@gmail.com>, 2025
 # Zaraza, 2025
+# Isaías Gätjens M <igatjens@gmail.com>, 2025
 # 
 #, fuzzy
 msgid ""
@@ -15,7 +15,7 @@ msgstr ""
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2025-04-16 13:06+0800\n"
 "PO-Revision-Date: 2025-04-11 01:38+0000\n"
-"Last-Translator: Zaraza, 2025\n"
+"Last-Translator: Isaías Gätjens M <igatjens@gmail.com>, 2025\n"
 "Language-Team: Spanish (https://app.transifex.com/linuxdeepin/teams/3976/es/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -240,7 +240,7 @@ msgstr ""
 
 #: ../apps/ll-cli/src/main.cpp:263 ../apps/ll-cli/src/main.cpp:280
 msgid "Specify working directory"
-msgstr "Especificar el directorio de trabajo"
+msgstr "Especificar la carpeta de trabajo"
 
 #: ../apps/ll-cli/src/main.cpp:271
 msgid "Enter the namespace where the application is running"
@@ -456,7 +456,7 @@ msgstr "Uso: ll-cli repo SUBCOMANDO [OPCIONES]"
 #. add repo sub command add
 #: ../apps/ll-cli/src/main.cpp:437 ../apps/ll-builder/src/main.cpp:374
 msgid "Add a new repository"
-msgstr "Agregar un nuevo repositorio"
+msgstr "Añadir un nuevo repositorio"
 
 #: ../apps/ll-cli/src/main.cpp:438
 msgid "Usage: ll-cli repo add [OPTIONS] NAME URL"
@@ -816,7 +816,7 @@ msgstr "Icono de uab (opcional)"
 
 #: ../apps/ll-builder/src/main.cpp:309
 msgid "Export uab fully"
-msgstr "UAB de exportación"
+msgstr "Exportar uab completamente"
 
 #: ../apps/ll-builder/src/main.cpp:310
 msgid "Export to linyaps layer file"
@@ -868,7 +868,7 @@ msgstr "Ruta del archivo de la capa"
 
 #: ../apps/ll-builder/src/main.cpp:352
 msgid "Import linyaps layer dir to build repo"
-msgstr "Importar directorio de capa linyaps al repositorio de compilación"
+msgstr "Importar carpeta de capa linyaps al repositorio de compilación"
 
 #: ../apps/ll-builder/src/main.cpp:354
 msgid "Usage: ll-builder import-dir PATH"
@@ -876,11 +876,11 @@ msgstr "Uso: ll-builder import-dir PATH"
 
 #: ../apps/ll-builder/src/main.cpp:355
 msgid "Layer dir path"
-msgstr "Ruta del directorio de capa"
+msgstr "Ruta de la carpeta de capa"
 
 #: ../apps/ll-builder/src/main.cpp:361
 msgid "Extract linyaps layer to dir"
-msgstr "Extraer la capa de linyaps al directorio"
+msgstr "Extraer la capa de linyaps a la carpeta"
 
 #: ../apps/ll-builder/src/main.cpp:362
 msgid "Usage: ll-builder extract [OPTIONS] LAYER DIR"
@@ -888,7 +888,7 @@ msgstr "Uso: ll-builder extract [OPCIONES] CAPA DIR"
 
 #: ../apps/ll-builder/src/main.cpp:366
 msgid "Destination directory"
-msgstr "Directorio de destino"
+msgstr "Carpeta de destino"
 
 #. add build repo
 #: ../apps/ll-builder/src/main.cpp:369

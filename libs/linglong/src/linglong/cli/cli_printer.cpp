@@ -9,6 +9,7 @@
 #include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/api/types/v1/State.hpp"
 #include "linglong/package/reference.h"
+#include "linglong/package/version.h"
 #include "linglong/utils/gettext.h"
 
 #include <QJsonArray>
@@ -68,13 +69,35 @@ std::string adjustDisplayWidth(const QString &str, int targetWidth)
 
 void CLIPrinter::printPackages(const std::vector<api::types::v1::PackageInfoV2> &list)
 {
+    std::vector<api::types::v1::PackageInfoV2> sortedList = list;
+    std::sort(sortedList.begin(), sortedList.end(), [](const auto &a, const auto &b) {
+        if (a.id != b.id) {
+            return a.id < b.id;
+        }
+        if (a.version != b.version) {
+            auto versionA = linglong::package::Version::parse(QString::fromStdString(a.version));
+            if (!versionA) {
+                return false;
+            }
+            auto versionB = linglong::package::Version::parse(QString::fromStdString(b.version));
+            if (!versionB) {
+                return false;
+            }
+            return *versionA > *versionB;
+        }
+        if (a.channel != b.channel) {
+            return a.channel > b.channel;
+        }
+        return a.packageInfoV2Module < b.packageInfoV2Module;
+    });
+
     std::cout << "\033[38;5;214m" << std::left << adjustDisplayWidth(qUtf8Printable(_("ID")), 43)
               << adjustDisplayWidth(qUtf8Printable(_("Name")), 33)
               << adjustDisplayWidth(qUtf8Printable(_("Version")), 16)
               << adjustDisplayWidth(qUtf8Printable(_("Channel")), 16)
               << adjustDisplayWidth(qUtf8Printable(_("Module")), 12)
               << qUtf8Printable(_("Description")) << "\033[0m" << std::endl;
-    for (const auto &info : list) {
+    for (const auto &info : sortedList) {
         auto simpleDescription = QString::fromStdString(info.description.value_or("")).simplified();
         auto simpleDescriptionWStr = simpleDescription.toStdWString();
         auto simpleDescriptionWcswidth = wcswidth(simpleDescriptionWStr.c_str(), -1);

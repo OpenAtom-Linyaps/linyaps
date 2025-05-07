@@ -1969,11 +1969,10 @@ int Cli::repo(CLI::App *app)
               LINGLONG_ERRV(QString{ "repo " } + alias.c_str() + " already exist."));
             return -1;
         }
-        auto minPriority = linglong::repo::getRepoMinPriority(cfgRef);
         cfgRef.repos.push_back(api::types::v1::Repo{
           .alias = options.repoOptions.repoAlias,
           .name = name,
-          .priority = minPriority - 100,
+          .priority = 0,
           .url = url,
         });
         return this->setRepoConfig(utils::serialize::toQVariantMap(cfgRef));
@@ -2014,14 +2013,7 @@ int Cli::repo(CLI::App *app)
 
     if (argsParseFunc("set-default")) {
         if (cfgRef.defaultRepo != alias) {
-            auto maxPriority = linglong::repo::getRepoMaxPriority(cfgRef);
             cfgRef.defaultRepo = alias;
-            for (auto &repo : cfgRef.repos) {
-                if (repo.alias.value_or(repo.name) == alias) {
-                    repo.priority = maxPriority + 100;
-                    break;
-                }
-            }
             return this->setRepoConfig(utils::serialize::toQVariantMap(cfgRef));
         }
 
@@ -2029,15 +2021,6 @@ int Cli::repo(CLI::App *app)
     }
 
     if (argsParseFunc("set-priority")) {
-        auto isExist =
-          std::any_of(cfgRef.repos.begin(), cfgRef.repos.end(), [this](const auto &repo) {
-              return repo.priority == this->options.repoOptions.repoPriority;
-          });
-        if (isExist) {
-            this->printer.printErr(LINGLONG_ERRV(
-              QString("priority %1 already exist.").arg(this->options.repoOptions.repoPriority)));
-            return -1;
-        }
         existingRepo->priority = options.repoOptions.repoPriority;
         return this->setRepoConfig(utils::serialize::toQVariantMap(cfgRef));
     }

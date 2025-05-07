@@ -189,11 +189,11 @@ void CLIPrinter::printRepoConfig(const api::types::v1::RepoConfigV2 &repoInfo)
 
     auto repos = repoInfo.repos;
     // 按照优先级从高到低排序
-    std::sort(repos.begin(),
-              repos.end(),
-              [](const api::types::v1::Repo &a, const api::types::v1::Repo &b) {
-                  return a.priority > b.priority;
-              });
+    std::stable_sort(repos.begin(),
+                     repos.end(),
+                     [](const api::types::v1::Repo &a, const api::types::v1::Repo &b) {
+                         return a.priority > b.priority;
+                     });
     for (const auto &repo : repos) {
         // url 超长省略
         const std::string &url =

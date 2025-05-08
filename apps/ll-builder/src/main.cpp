@@ -126,12 +126,20 @@ parseProjectConfig(const QString &filename)
     }
 
     // 校验bese和runtime版本是否合法
-    auto ret = linglong::package::Version::validateDependVersion(project->base.c_str());
+    auto baseFuzzyRef = linglong::package::FuzzyReference::parse(project->base.c_str());
+    if (!baseFuzzyRef) {
+        return LINGLONG_ERR("failed to parse base field", baseFuzzyRef);
+    }
+    auto ret = linglong::package::Version::validateDependVersion(baseFuzzyRef->version.value());
     if (!ret) {
         return LINGLONG_ERR("base version is not valid", ret);
     }
     if (project->runtime) {
-        ret = linglong::package::Version::validateDependVersion(project->runtime.value().c_str());
+        auto runtimeFuzzyRef = linglong::package::FuzzyReference::parse(project->runtime.value().c_str());
+        if (!runtimeFuzzyRef) {
+            return LINGLONG_ERR("failed to parse runtime field", runtimeFuzzyRef);
+        }
+        ret = linglong::package::Version::validateDependVersion(runtimeFuzzyRef->version.value());
         if (!ret) {
             return LINGLONG_ERR("runtime version is not valid", ret);
         }

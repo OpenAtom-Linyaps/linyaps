@@ -107,6 +107,7 @@ public:
     ContainerCfgBuilder &addUIdMapping(int64_t containerID, int64_t hostID, int64_t size) noexcept;
     ContainerCfgBuilder &addGIdMapping(int64_t containerID, int64_t hostID, int64_t size) noexcept;
 
+    ContainerCfgBuilder &bindDefault() noexcept;
     ContainerCfgBuilder &bindSys() noexcept;
     ContainerCfgBuilder &bindProc() noexcept;
     ContainerCfgBuilder &bindDev() noexcept;

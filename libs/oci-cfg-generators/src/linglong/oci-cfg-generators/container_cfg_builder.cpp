@@ -61,6 +61,16 @@ ContainerCfgBuilder &ContainerCfgBuilder::addGIdMapping(int64_t containerID,
     return *this;
 }
 
+ContainerCfgBuilder &ContainerCfgBuilder::bindDefault() noexcept
+{
+    bindSys();
+    bindProc();
+    bindDev();
+    bindTmp();
+
+    return *this;
+}
+
 ContainerCfgBuilder &ContainerCfgBuilder::bindSys() noexcept
 {
     sysMount = Mount{ .destination = "/sys",

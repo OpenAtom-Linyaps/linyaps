@@ -779,8 +779,7 @@ utils::error::Result<void> Builder::processBuildDepends() noexcept
       .setBundlePath(*bundle)
       .addUIdMapping(uid, uid, 1)
       .addGIdMapping(gid, gid, 1)
-      .bindSys()
-      .bindProc()
+      .bindDefault()
       .bindHostStatics()
       .setExtraMounts(std::vector<ocppi::runtime::config::types::Mount>{
         ocppi::runtime::config::types::Mount{ .destination = "/project",
@@ -922,8 +921,7 @@ include /opt/apps/@id@/files/etc/ld.so.conf)";
       .setBundlePath(*bundle)
       .addUIdMapping(uid, uid, 1)
       .addGIdMapping(gid, gid, 1)
-      .bindSys()
-      .bindProc()
+      .bindDefault()
       .bindHostStatics()
       .setExtraMounts(std::vector<ocppi::runtime::config::types::Mount>{
         ocppi::runtime::config::types::Mount{ .destination = LINGLONG_BUILDER_HELPER,
@@ -1050,8 +1048,7 @@ utils::error::Result<void> Builder::buildStagePreCommit() noexcept
       .setBundlePath(*bundle)
       .addUIdMapping(uid, uid, 1)
       .addGIdMapping(gid, gid, 1)
-      .bindSys()
-      .bindProc()
+      .bindDefault()
       .bindHostStatics()
       .setExtraMounts(std::vector<ocppi::runtime::config::types::Mount>{
         ocppi::runtime::config::types::Mount{ .destination = "/project",
@@ -2010,7 +2007,7 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
           .setBundlePath(std::move(bundle).value())
           .addUIdMapping(uid, uid, 1)
           .addGIdMapping(gid, gid, 1)
-          .bindProc()
+          .bindDefault()
           .setExtraMounts(applicationMounts);
         if (this->project.runtime) {
             cfgBuilder.setRuntimePath(runtimeDir->absoluteFilePath("files").toStdString());
@@ -2047,13 +2044,10 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
       .setBundlePath(std::move(bundle).value())
       .addUIdMapping(uid, uid, 1)
       .addGIdMapping(gid, gid, 1)
-      .bindSys()
-      .bindProc()
-      .bindDev()
+      .bindDefault()
       .bindDevNode()
       .bindCgroup()
       .bindRun()
-      .bindTmp()
       .bindUserGroup()
       .bindMedia()
       .bindHostRoot()
@@ -2196,7 +2190,7 @@ utils::error::Result<void> Builder::runFromRepo(const package::Reference &ref,
           .setBundlePath(std::move(bundle).value())
           .addUIdMapping(uid, uid, 1)
           .addGIdMapping(gid, gid, 1)
-          .bindProc()
+          .bindDefault()
           .setExtraMounts(
             std::vector<ocppi::runtime::config::types::Mount>{ ocppi::runtime::config::types::Mount{
               .destination = "/etc/ld.so.conf.d/zz_deepin-linglong-app.conf",
@@ -2242,8 +2236,7 @@ utils::error::Result<void> Builder::runFromRepo(const package::Reference &ref,
       .setBundlePath(std::move(bundle).value())
       .setAppCache(appCache)
       .enableLDCache()
-      .bindProc()
-      .bindTmp()
+      .bindDefault()
       .addUIdMapping(uid, uid, 1)
       .addGIdMapping(gid, gid, 1)
       .setExtraMounts(std::vector<ocppi::runtime::config::types::Mount>{

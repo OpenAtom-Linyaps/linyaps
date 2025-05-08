@@ -42,7 +42,7 @@ struct CliOptions
     RepoOptions repoOptions;
     std::vector<std::string> commands;
     bool showDevel;
-    bool showAll;
+    bool showAllVersion;
     bool showUpgradeList;
     bool forceOpt;
     bool confirmOpt;

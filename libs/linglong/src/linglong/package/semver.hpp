@@ -23,39 +23,24 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#ifndef Z4KN4FEIN_SEMVER_H
-#define Z4KN4FEIN_SEMVER_H
+#pragma once
 
-#ifndef SEMVER_MODULE
-#  include "linglong/package/versionv2.h"
+#include <QRegularExpression>
 
-#  include <QRegularExpression>
-
-#  include <iostream>
-#  include <ostream>
-#  include <regex>
-#  include <string>
-#  include <utility>
-#  include <vector>
-
-// conditionally include <format> and its dependency <string_view> for C++20
-#  ifdef __cpp_lib_format
-#    if __cpp_lib_format >= 201907L
-#      include <format>
-#      include <string_view>
-#    endif
-#  endif
-#endif
+#include <iostream>
+#include <ostream>
+#include <string>
+#include <utility>
+#include <vector>
 
 namespace semver {
-const std::string default_prerelease_part = "0";
-const std::string numbers = "0123456789";
-const std::string prerelease_allowed_chars =
-  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-";
-const QRegularExpression version_pattern(
-  R"(^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$)");
-const QRegularExpression loose_version_pattern(
-  R"(^v?(0|[1-9]\d*)\.(0|[1-9]\d*)(?:\.(0|[1-9]\d*))?(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$)");
+constexpr auto default_prerelease_part = "0";
+const auto numbers = "0123456789";
+const auto prerelease_allowed_chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-";
+const auto version_pattern =
+  (R"(^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$)");
+const auto loose_version_pattern =
+  (R"(^v?(0|[1-9]\d*)\.(0|[1-9]\d*)(?:\.(0|[1-9]\d*))?(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$)");
 
 struct semver_exception : public std::runtime_error
 {
@@ -93,7 +78,8 @@ inline bool is_numeric(const std::string &text)
 
 inline bool is_valid_prerelease(const std::string &text)
 {
-    return text.find_first_not_of(numbers + prerelease_allowed_chars) == std::string::npos;
+    return text.find_first_not_of(std::string{ numbers } + prerelease_allowed_chars)
+      == std::string::npos;
 }
 
 class prerelease_part
@@ -381,7 +367,7 @@ public:
                 build_meta += ".security.1";
             }
         } else {
-            build_meta = build_meta.substr(0, build_meta.find_last_of(".") + 1)
+            build_meta = build_meta.substr(0, build_meta.find_last_of('.') + 1)
               + std::to_string(m_security + 1);
         }
         return version(m_major,
@@ -421,15 +407,6 @@ public:
     bool operator==(const version &other) const { return compare(other) == 0; }
 
     bool operator!=(const version &other) const { return compare(other) != 0; }
-
-// conditionally provide three-way operator for C++20
-#ifdef __cpp_impl_three_way_comparison
-#  if __cpp_impl_three_way_comparison >= 201907L
-
-    auto operator<=>(const version &other) const { return compare(other); }
-
-#  endif
-#endif
 
     static version parse(const std::string &version_str, bool strict = true)
     {
@@ -502,7 +479,13 @@ public:
                 }
             }
 
-            return version(major, minor, patch, prerelease, build_meta, security, !match.captured(3).isNull());
+            return version(major,
+                           minor,
+                           patch,
+                           prerelease,
+                           build_meta,
+                           security,
+                           !match.captured(3).isNull());
         } catch (std::exception &exception) {
             throw semver_exception("Version parse error: " + std::string(exception.what()));
         }
@@ -528,22 +511,3 @@ inline version operator""_lv(const char *text, std::size_t length)
 }
 } // namespace literals
 } // namespace semver
-
-// conditionally provide formatter for C++20
-#ifdef __cpp_lib_format
-#  if __cpp_lib_format >= 201907L
-
-template<class CharT>
-struct std::formatter<semver::version, CharT> : std::formatter<std::string_view>
-{
-    template<class FormatContext>
-    auto format(const semver::version &version, FormatContext &ctx) const
-    {
-        return std::formatter<std::string_view>::format(version.str(), ctx);
-    }
-};
-
-#  endif
-#endif
-
-#endif // Z4KN4FEIN_SEMVER_H

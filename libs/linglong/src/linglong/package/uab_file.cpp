@@ -33,22 +33,20 @@ namespace linglong::package {
  * std::shared_pointer<UABFile>, if linglong depends on a minimal version of Qt above 5.11, change
  * the type of returned value to std::unique_ptr<UABFile>.
  **/
-utils::error::Result<std::shared_ptr<UABFile>> UABFile::loadFromFile(const QString &input)
+utils::error::Result<std::shared_ptr<UABFile>> UABFile::loadFromFile(int fd) noexcept
 {
+    LINGLONG_TRACE("load uab file from fd")
+
     struct EnableMaker : public UABFile
     {
         using UABFile::UABFile;
     };
 
-    LINGLONG_TRACE("load uab file")
     auto file = std::make_shared<EnableMaker>();
 
-    file->setFileName(input);
-    if (!file->open(QIODevice::ReadOnly | QIODevice::ExistingOnly)) {
+    if (!file->open(fd, QIODevice::ReadOnly, FileHandleFlag::AutoCloseHandle)) {
         return LINGLONG_ERR(QString{ "open uab failed: %1" }.arg(file->errorString()));
     }
-
-    auto fd = file->handle();
 
     elf_version(EV_CURRENT);
     auto *elf = elf_begin(fd, ELF_C_READ, nullptr);
@@ -57,7 +55,6 @@ utils::error::Result<std::shared_ptr<UABFile>> UABFile::loadFromFile(const QStri
     }
 
     file->e = elf;
-
     return file;
 }
 
@@ -219,9 +216,11 @@ utils::error::Result<std::filesystem::path> UABFile::mountUab() noexcept
                             % ec.message().c_str());
     }
 
-    auto ret = utils::command::Exec(
-      "erofsfuse",
-      QStringList{ QString{ "--offset=%1" }.arg(bundleOffset), fileName(), uabDir.c_str() });
+    auto ret =
+      utils::command::Exec("erofsfuse",
+                           QStringList{ QString{ "--offset=%1" }.arg(bundleOffset),
+                                        QString{ "/proc/%1/fd/%2" }.arg(::getpid()).arg(handle()),
+                                        uabDir.c_str() });
     if (!ret) {
         return LINGLONG_ERR(ret.error());
     }

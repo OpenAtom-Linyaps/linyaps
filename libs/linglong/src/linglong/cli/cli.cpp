@@ -1582,7 +1582,7 @@ int Cli::search([[maybe_unused]] CLI::App *subcommand)
           }
 
           // default only the latest version is displayed
-          if (!options.showAll) {
+          if (!options.showAllVersion) {
               filterPackageInfosByVersion(allPackages);
           }
           this->printer.printSearchResult(allPackages);
@@ -1845,7 +1845,7 @@ Cli::listUpgradable(const std::string &type)
         { "local", std::move(pkgs).value() }
     };
     if (!type.empty()) {
-        filterPackageInfosByType(localPkgs, options.type);
+        filterPackageInfosByType(localPkgs, type);
     }
 
     std::vector<api::types::v1::UpgradeListResult> upgradeList;

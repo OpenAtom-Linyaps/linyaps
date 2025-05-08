@@ -64,8 +64,6 @@ pfl_add_library(
   src/linglong/package/versionv1.h
   src/linglong/package/versionv2.cpp
   src/linglong/package/versionv2.h
-  src/linglong/package/version_range.cpp
-  src/linglong/package/version_range.h
   src/linglong/repo/client_factory.cpp
   src/linglong/repo/client_factory.h
   src/linglong/repo/config.cpp

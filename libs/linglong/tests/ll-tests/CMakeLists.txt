@@ -14,7 +14,6 @@ pfl_add_executable(
   # find -regex '\./src/.+\.[ch]\(pp\)?' -type f -printf '%P\n'| sort
   src/linglong/package/fallback_version_test.cpp
   src/linglong/package/reference_test.cpp
-  src/linglong/package/version_range_test.cpp
   src/linglong/package/version_test.cpp
   src/linglong/package/versionv2_test.cpp
   src/linglong/package/semver_compare_test.cpp

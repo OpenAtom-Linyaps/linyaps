@@ -121,17 +121,16 @@ utils::error::Result<LayerDir> LayerPackager::unpack(LayerFile &file)
     auto unpackDir = QDir(this->workDir.absoluteFilePath("unpack"));
     unpackDir.mkpath(".");
 
-    QFileInfo fileInfo(file);
-
     auto offset = file.binaryDataOffset();
     if (!offset) {
         return LINGLONG_ERR(offset);
     }
 
-    auto ret = utils::command::Exec("erofsfuse",
-                                    { QString("--offset=%1").arg(*offset),
-                                      fileInfo.absoluteFilePath(),
-                                      unpackDir.absolutePath() });
+    auto ret =
+      utils::command::Exec("erofsfuse",
+                           { QString("--offset=%1").arg(*offset),
+                             QString{ "/proc/%1/fd/%2" }.arg(::getpid()).arg(file.handle()),
+                             unpackDir.absolutePath() });
     if (!ret) {
         return LINGLONG_ERR(ret);
     }

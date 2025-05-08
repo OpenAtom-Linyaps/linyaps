@@ -503,8 +503,7 @@ void PackageManager::setConfiguration(const QVariantMap &parameters) noexcept
 QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
                                              const api::types::v1::CommonOptions &options) noexcept
 {
-    auto layerFileRet =
-      package::LayerFile::New(QString("/proc/%1/fd/%2").arg(getpid()).arg(fd.fileDescriptor()));
+    auto layerFileRet = package::LayerFile::New(fd.fileDescriptor());
     if (!layerFileRet) {
         return toDBusReply(layerFileRet);
     }
@@ -758,8 +757,11 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
 QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd,
                                            const api::types::v1::CommonOptions &options) noexcept
 {
-    auto uabRet = package::UABFile::loadFromFile(
-      QString("/proc/%1/fd/%2").arg(getpid()).arg(fd.fileDescriptor()));
+    if (!fd.isValid()) {
+        return toDBusReply(-1, "invalid file descriptor");
+    }
+
+    auto uabRet = package::UABFile::loadFromFile(fd.fileDescriptor());
     if (!uabRet) {
         return toDBusReply(uabRet);
     }

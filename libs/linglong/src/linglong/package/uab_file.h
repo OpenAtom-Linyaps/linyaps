@@ -20,7 +20,7 @@ namespace linglong::package {
 class UABFile : public QFile
 {
 public:
-    static utils::error::Result<std::shared_ptr<UABFile>> loadFromFile(const QString &input);
+    static utils::error::Result<std::shared_ptr<UABFile>> loadFromFile(int fd) noexcept;
     UABFile(UABFile &&) = delete;
     UABFile &operator=(UABFile &&) = delete;
     ~UABFile() override;

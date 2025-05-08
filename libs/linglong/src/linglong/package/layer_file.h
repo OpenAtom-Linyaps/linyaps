@@ -41,10 +41,11 @@ public:
     // NOTE: Maybe should be removed. and use QTemporaryFile
     void setCleanStatus(bool status) noexcept;
 
+    static utils::error::Result<QSharedPointer<LayerFile>> New(int fd) noexcept;
     static utils::error::Result<QSharedPointer<LayerFile>> New(const QString &path) noexcept;
 
 private:
-    explicit LayerFile(const QString &path);
+    LayerFile() = default;
     utils::error::Result<quint32> metaInfoLength();
 
     bool cleanup = false;

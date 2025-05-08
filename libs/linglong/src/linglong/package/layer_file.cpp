@@ -6,28 +6,18 @@
 
 #include "linglong/package/layer_file.h"
 
-#include "linglong/api/types/v1/LayerInfo.hpp"
 #include "linglong/api/types/v1/Generators.hpp"
+#include "linglong/api/types/v1/LayerInfo.hpp"
 #include "linglong/utils/serialize/json.h"
 
 #include <QDataStream>
 #include <QFileInfo>
 
+#include <fcntl.h>
+
 namespace linglong::package {
 
 using nlohmann::json;
-
-LayerFile::LayerFile(const QString &path)
-    : QFile(path)
-{
-    if (!this->open(QIODevice::ReadOnly)) {
-        throw std::runtime_error("open layer failed");
-    }
-
-    if (this->read(magicNumber.size()) != magicNumber) {
-        throw std::runtime_error("invalid magic number, this is not a layer");
-    }
-}
 
 LayerFile::~LayerFile()
 {
@@ -37,13 +27,39 @@ LayerFile::~LayerFile()
 }
 
 utils::error::Result<QSharedPointer<LayerFile>> LayerFile::New(const QString &path) noexcept
+{
+    LINGLONG_TRACE("install layer file from path")
+    auto fd = ::open(path.toLocal8Bit(), O_RDONLY);
+    if (fd < 0) {
+        return LINGLONG_ERR("failed to open " + path + ":" + ::strerror(errno));
+    }
 
-try {
-    QSharedPointer<LayerFile> layerFile(new LayerFile(path));
-    return layerFile;
-} catch (const std::exception &e) {
-    LINGLONG_TRACE("open layer");
-    return LINGLONG_ERR(e);
+    return New(fd);
+}
+
+utils::error::Result<QSharedPointer<LayerFile>> LayerFile::New(int fd) noexcept
+{
+    LINGLONG_TRACE("install layer file from file descriptor")
+
+    struct enableMaker : public LayerFile
+    {
+        using LayerFile::LayerFile;
+    };
+
+    auto file = QSharedPointer<enableMaker>::create();
+    if (!file) {
+        return LINGLONG_ERR("failed to create LayerFile object");
+    }
+
+    if (!file->open(fd, QIODevice::ReadOnly, FileHandleFlag::AutoCloseHandle)) {
+        return LINGLONG_ERR("open layer failed");
+    }
+
+    if (file->read(magicNumber.size()) != magicNumber) {
+        return LINGLONG_ERR("invalid magic number, this is not a layer");
+    }
+
+    return file;
 }
 
 void LayerFile::setCleanStatus(bool status) noexcept

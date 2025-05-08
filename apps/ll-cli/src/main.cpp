@@ -195,11 +195,11 @@ You can report bugs to the linyaps team under this project: https://github.com/O
                         .appid = "",
                         .instance = "",
                         .module = "",
-                        .type = "app",
+                        .type = "all",
                         .repoOptions = {},
                         .commands = {},
                         .showDevel = false,
-                        .showAll = false,
+                        .showAllVersion = false,
                         .showUpgradeList = false,
                         .forceOpt = false,
                         .confirmOpt = false,
@@ -376,56 +376,63 @@ ll-cli install stable:org.deepin.demo/0.0.0.1/x86_64
     cliSearch->usage(_(R"(Usage: ll-cli search [OPTIONS] KEYWORDS
 
 Example:
-# find remotely app by name
+# find remotely application(s), base(s) or runtime(s) by keywords
 ll-cli search org.deepin.demo
-# find remotely runtime by name
-ll-cli search org.deepin.base --type=runtime
 # find all of app of remote
 ll-cli search .
-# find all of runtime of remote
+# find all of base(s) of remote
+ll-cli search . --type=base
+# find all of runtime(s) of remote
 ll-cli search . --type=runtime)"));
     cliSearch->add_option("KEYWORDS", options.appid, _("Specify the Keywords"))
       ->required()
       ->check(validatorString);
     cliSearch
-      ->add_option("--type",
-                   options.type,
-                   _(R"(Filter result with specify type. One of "runtime", "app" or "all")"))
+      ->add_option(
+        "--type",
+        options.type,
+        _(R"(Filter result with specify type. One of "runtime", "base", "app" or "all")"))
       ->type_name("TYPE")
       ->capture_default_str()
       ->check(validatorString);
     cliSearch->add_option("--repo", options.repo, _("Specify the repo"))
       ->type_name("REPO")
       ->check(validatorString);
-    cliSearch->add_flag("--dev", options.showDevel, _("include develop application in result"));
-    cliSearch->add_flag("--all", options.showAll, _("Show all results"));
+    cliSearch->add_flag("--dev", options.showDevel, _("Include develop application in result"));
+    cliSearch->add_flag("--show-all-version",
+                        options.showAllVersion,
+                        _("Show all versions of an application(s), base(s) or runtime(s)"));
 
     // add sub command list
     auto *cliList =
-      commandParser.add_subcommand("list", _("List installed applications or runtimes"))
+      commandParser
+        .add_subcommand("list", _("List installed application(s), base(s) or runtime(s)"))
         ->fallthrough()
         ->group(CliBuildInGroup);
     cliList->usage(_(R"(Usage: ll-cli list [OPTIONS]
 
 Example:
-# show installed application(s)
+# show installed application(s), base(s) or runtime(s)
 ll-cli list
+# show installed base(s)
+ll-cli list --type=base
 # show installed runtime(s)
 ll-cli list --type=runtime
 # show the latest version list of the currently installed application(s)
 ll-cli list --upgradable
 )"));
     cliList
-      ->add_option("--type",
-                   options.type,
-                   _(R"(Filter result with specify type. One of "runtime", "app" or "all")"))
+      ->add_option(
+        "--type",
+        options.type,
+        _(R"(Filter result with specify type. One of "runtime", "base", "app" or "all")"))
       ->type_name("TYPE")
       ->capture_default_str()
       ->check(validatorString);
     cliList->add_flag("--upgradable",
                       options.showUpgradeList,
-                      _("Show the list of latest version of the currently installed applications, "
-                        "it only works for app"));
+                      _("Show the list of latest version of the currently installed "
+                        "application(s), base(s) or runtime(s)"));
 
     // add sub command repo
     auto *cliRepo =

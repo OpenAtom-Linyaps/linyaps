@@ -1874,7 +1874,8 @@ auto PackageManager::Search(const QVariantMap &parameters) noexcept -> QVariantM
         return toDBusReply(paras);
     }
 
-    auto fuzzyRef = package::FuzzyReference::parse(QString::fromStdString(paras->id));
+    auto fuzzyRef =
+      package::FuzzyReference::create(std::nullopt, paras->id.c_str(), std::nullopt, std::nullopt);
     if (!fuzzyRef) {
         return toDBusReply(fuzzyRef);
     }

@@ -394,6 +394,9 @@ ll-cli search . --type=runtime)"));
       ->type_name("TYPE")
       ->capture_default_str()
       ->check(validatorString);
+    cliSearch->add_option("--repo", options.repo, _("Specify the repo"))
+      ->type_name("REPO")
+      ->check(validatorString);
     cliSearch->add_flag("--dev", options.showDevel, _("include develop application in result"));
     cliSearch->add_flag("--all", options.showAll, _("Show all results"));
 

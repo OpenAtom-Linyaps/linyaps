@@ -42,6 +42,7 @@
 #include "linglong/api/types/v1/PackageManager1ModifyRepoParameters.hpp"
 #include "linglong/api/types/v1/PackageManager1Package.hpp"
 #include "linglong/api/types/v1/PackageManager1PackageTaskResult.hpp"
+#include "linglong/api/types/v1/PackageManager1PruneResult.hpp"
 #include "linglong/api/types/v1/PackageManager1RequestInteractionAdditionalMessage.hpp"
 #include "linglong/api/types/v1/PackageManager1SearchParameters.hpp"
 #include "linglong/api/types/v1/PackageManager1SearchResult.hpp"
@@ -111,6 +112,7 @@ std::optional<PackageManager1ModifyRepoParameters> packageManager1ModifyRepoPara
 std::optional<CommonResult> packageManager1ModifyRepoResult;
 std::optional<PackageManager1Package> packageManager1Package;
 std::optional<PackageManager1PackageTaskResult> packageManager1PackageTaskResult;
+std::optional<PackageManager1PruneResult> packageManager1PruneResult;
 std::optional<PackageManager1RequestInteractionAdditionalMessage> packageManager1RequestInteractionAdditionalMessage;
 std::optional<PackageManager1SearchParameters> packageManager1SearchParameters;
 std::optional<PackageManager1SearchResult> packageManager1SearchResult;

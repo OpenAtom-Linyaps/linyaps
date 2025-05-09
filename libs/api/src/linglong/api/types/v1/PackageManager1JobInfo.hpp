@@ -38,7 +38,7 @@ struct PackageManager1JobInfo {
 /**
 * id of job info
 */
-std::optional<std::string> id;
+std::string id;
 /**
 * We do not use DBus error. We return an error code instead. Non-zero code indicated errors
 * occurs and message should be displayed to user.

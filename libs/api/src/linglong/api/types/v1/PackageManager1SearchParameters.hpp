@@ -35,6 +35,10 @@ struct PackageManager1SearchParameters {
 * id of package manager search
 */
 std::string id;
+/**
+* repo of package manager search
+*/
+std::vector<std::string> repos;
 };
 }
 }

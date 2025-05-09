@@ -8,7 +8,10 @@
 
 #include "linglong/api/types/helper.h"
 #include "linglong/api/types/v1/Generators.hpp"
+#include "linglong/api/types/v1/PackageInfoV2.hpp"
 #include "linglong/api/types/v1/PackageManager1JobInfo.hpp"
+#include "linglong/api/types/v1/PackageManager1PruneResult.hpp"
+#include "linglong/api/types/v1/Repo.hpp"
 #include "linglong/api/types/v1/State.hpp"
 #include "linglong/package/layer_file.h"
 #include "linglong/package/layer_packager.h"
@@ -1874,27 +1877,54 @@ auto PackageManager::Search(const QVariantMap &parameters) noexcept -> QVariantM
         return toDBusReply(fuzzyRef);
     }
     auto jobID = QUuid::createUuid().toString();
-    auto ref = *fuzzyRef;
-    m_search_queue.runTask([this, jobID, ref]() {
-        auto pkgInfos = this->repo.listRemote(ref);
-        if (!pkgInfos.has_value()) {
-            qWarning() << "list remote failed: " << pkgInfos.error().message();
-            Q_EMIT this->SearchFinished(
-              jobID,
-              toDBusReply(pkgInfos.error().code(), pkgInfos.error().message()));
-            return;
+    auto repoConfig = this->repo.getConfig();
+
+    m_search_queue.runTask([this,
+                            jobID,
+                            params = std::move(paras).value(),
+                            ref = std::move(*fuzzyRef),
+                            repo = std::move(repoConfig)]() {
+        std::map<std::string, std::vector<api::types::v1::PackageInfoV2>> pkgs;
+        for (const auto &repoAlias : params.repos) {
+            auto it =
+              std::find_if(repo.repos.begin(), repo.repos.end(), [&repoAlias](const auto &r) {
+                  return r.alias.value_or(r.name) == repoAlias;
+              });
+            if (it == repo.repos.end()) {
+                qWarning() << "repo" << repoAlias.c_str() << "not found";
+                continue;
+            }
+
+            auto pkgInfosRet = this->repo.listRemote(ref, *it);
+            if (!pkgInfosRet) {
+                qWarning() << "list remote failed: " << pkgInfosRet.error().message();
+                Q_EMIT this->SearchFinished(
+                  jobID,
+                  toDBusReply(pkgInfosRet.error().code(), pkgInfosRet.error().message()));
+                return;
+            }
+
+            if (pkgInfosRet->empty()) {
+                continue;
+            }
+
+            pkgs.emplace(it->alias.value_or(it->name), std::move(*pkgInfosRet));
         }
-        auto result = api::types::v1::PackageManager1SearchResult{
-            .packages = *pkgInfos,
+
+        Q_EMIT this->SearchFinished(
+          jobID,
+          utils::serialize::toQVariantMap(api::types::v1::PackageManager1SearchResult{
+            .packages = std::move(pkgs),
             .code = 0,
             .message = "",
-        };
-        Q_EMIT this->SearchFinished(jobID, utils::serialize::toQVariantMap(result));
+            .type = "",
+          }));
     });
     auto result = utils::serialize::toQVariantMap(api::types::v1::PackageManager1JobInfo{
       .id = jobID.toStdString(),
       .code = 0,
       .message = "",
+      .type = "",
     });
     return result;
 }
@@ -2006,7 +2036,7 @@ auto PackageManager::Prune() noexcept -> QVariantMap
             Q_EMIT this->PruneFinished(jobID, toDBusReply(ret));
             return;
         }
-        auto result = api::types::v1::PackageManager1SearchResult{
+        auto result = api::types::v1::PackageManager1PruneResult{
             .packages = pkgs,
             .code = 0,
             .message = "",

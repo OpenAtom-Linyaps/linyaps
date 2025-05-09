@@ -25,12 +25,16 @@ namespace types {
 namespace v1 {
 /**
 * this is the each item output of ll-cli list --json
+*
+* package info of package manager search
 */
 
 using nlohmann::json;
 
 /**
 * this is the each item output of ll-cli list --json
+*
+* package info of package manager search
 */
 struct PackageInfoV2 {
 /**

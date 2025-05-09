@@ -779,20 +779,41 @@ $defs:
     description: package manager search parameters
     required:
       - id
+      - repos
     properties:
       id:
         type: string
         description: id of package manager search
+      repos:
+        type: array
+        description: repo of package manager search
+        items:
+          type: string
   PackageManager1JobInfo:
     type: object
     description: Get the job result using an ID
     allOf:
       - $ref: '#/$defs/CommonResult'
+    required:
+      - id
     properties:
       id:
         type: string
         description: id of job info
   PackageManager1SearchResult:
+    type: object
+    description: result of package manager search
+    allOf:
+      - $ref: '#/$defs/CommonResult'
+    properties:
+      packages:
+        type: object
+        additionalProperties:
+          type: array
+          items:
+            $ref: '#/$defs/PackageInfoV2'
+          description: package info of package manager search
+  PackageManager1PruneResult:
     type: object
     description: result of package manager search
     allOf:

@@ -76,6 +76,7 @@ public:
     virtual void printErr(const utils::error::Error &) = 0;
     virtual void printPackage(const api::types::v1::PackageInfoV2 &) = 0;
     virtual void printPackages(const std::vector<api::types::v1::PackageInfoV2> &) = 0;
+    virtual void printSearchResult(const std::map<std::string, std::vector<api::types::v1::PackageInfoV2>> &) = 0;
     virtual void printPruneResult(const std::vector<api::types::v1::PackageInfoV2> &) = 0;
     virtual void printContainers(const std::vector<api::types::v1::CliContainer> &) = 0;
     virtual void printReply(const api::types::v1::CommonResult &) = 0;

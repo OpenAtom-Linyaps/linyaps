@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "linglong/api/types/v1/Repo.hpp"
 #include "linglong/api/types/v1/RepoConfigV2.hpp"
 #include "linglong/package/fuzzy_reference.h"
 #include "linglong/package/layer_dir.h"
@@ -46,6 +47,7 @@ public:
     ~OSTreeRepo() override;
 
     [[nodiscard]] const api::types::v1::RepoConfigV2 &getConfig() const noexcept;
+    [[nodiscard]] api::types::v1::RepoConfigV2 getOrderedConfig() noexcept;
     utils::error::Result<void> setConfig(const api::types::v1::RepoConfigV2 &cfg) noexcept;
 
     utils::error::Result<package::LayerDir>
@@ -79,7 +81,7 @@ public:
     utils::error::Result<std::vector<api::types::v1::PackageInfoV2>>
     listLocalLatest() const noexcept;
     utils::error::Result<std::vector<api::types::v1::PackageInfoV2>>
-    listRemote(const package::FuzzyReference &fuzzyRef) const noexcept;
+    listRemote(const package::FuzzyReference &fuzzyRef, const std::optional<api::types::v1::Repo> &repo = std::nullopt) const noexcept;
     [[nodiscard]] utils::error::Result<std::vector<api::types::v1::RepositoryCacheLayersItem>>
     listLocalBy(const linglong::repo::repoCacheQuery &query) const noexcept;
 

@@ -100,6 +100,47 @@ void CLIPrinter::printPackages(const std::vector<api::types::v1::PackageInfoV2> 
     }
 }
 
+void CLIPrinter::printSearchResult(const std::map<std::string, std::vector<api::types::v1::PackageInfoV2>> &list)
+{
+    if (list.empty()) {
+        std::cout << _("No packages found in the remote repo.") << std::endl;
+        return;
+    }
+    std::cout << "\033[38;5;214m" << std::left << adjustDisplayWidth(qUtf8Printable(_("ID")), 43)
+              << adjustDisplayWidth(qUtf8Printable(_("Name")), 33)
+              << adjustDisplayWidth(qUtf8Printable(_("Version")), 16)
+              << adjustDisplayWidth(qUtf8Printable(_("Channel")), 16)
+              << adjustDisplayWidth(qUtf8Printable(_("Module")), 12)
+              << adjustDisplayWidth(qUtf8Printable(_("Repo")), 10)
+              << qUtf8Printable(_("Description")) << "\033[0m" << std::endl;
+    for (const auto &[pkgRepo, packages] : list) {
+        for (const auto &pkg : packages) {
+            auto simpleDescription = QString::fromStdString(pkg.description.value_or("")).simplified();
+            auto simpleDescriptionWStr = simpleDescription.toStdWString();
+            auto simpleDescriptionWcswidth = wcswidth(simpleDescriptionWStr.c_str(), -1);
+            if (simpleDescriptionWcswidth > 56) {
+                simpleDescriptionWStr = subwstr(simpleDescriptionWStr, 53) + L"...";
+                simpleDescription = QString::fromStdWString(simpleDescriptionWStr);
+            }
+
+            auto name = QString::fromStdString(pkg.name).simplified();
+            auto nameWStr = name.toStdWString();
+            auto nameWcswidth = wcswidth(nameWStr.c_str(), -1);
+            if (nameWcswidth > 33) {
+                nameWStr = subwstr(nameWStr, 29) + L"...";
+                nameWcswidth = wcswidth(nameWStr.c_str(), -1);
+                name = QString::fromStdWString(nameWStr);
+            }
+            auto nameStr = name.toStdString();
+            auto nameOffset = nameStr.size() - nameWcswidth;
+            std::cout << std::setw(43) << pkg.id + " " << std::setw(33 + nameOffset) << nameStr + " "
+                    << std::setw(16) << pkg.version + " " << std::setw(16) << pkg.channel + " "
+                    << std::setw(12) << pkg.packageInfoV2Module + " " << std::setw(10) << pkgRepo + " "
+                    << simpleDescription.toStdString() << std::endl;
+        }
+    }
+}
+
 void CLIPrinter::printContainers(const std::vector<api::types::v1::CliContainer> &list)
 {
     if (list.empty()) {

@@ -1543,7 +1543,7 @@ int Cli::search([[maybe_unused]] CLI::App *subcommand)
           }
 
           // default only the latest version is displayed
-          if (!options.showAll) {
+          if (!options.showAllVersion) {
               filterPackageInfosFromVersion(pkgs);
           }
 
@@ -1800,7 +1800,7 @@ Cli::listUpgradable(const std::string &type)
     }
 
     if (!type.empty()) {
-        filterPackageInfosFromType(*pkgs, options.type);
+        filterPackageInfosFromType(*pkgs, type);
     }
 
     std::vector<api::types::v1::UpgradeListResult> upgradeList;

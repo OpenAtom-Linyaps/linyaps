@@ -9,7 +9,7 @@
 //
 //  Then include this file, and then do
 //
-//     PackageManager1SearchResult.hpp data = nlohmann::json::parse(jsonString);
+//     PackageManager1PruneResult.hpp data = nlohmann::json::parse(jsonString);
 
 #pragma once
 
@@ -36,8 +36,8 @@ using nlohmann::json;
 *
 * this is common error result of ll-cli command --json
 */
-struct PackageManager1SearchResult {
-std::optional<std::map<std::string, std::vector<PackageInfoV2>>> packages;
+struct PackageManager1PruneResult {
+std::optional<std::vector<PackageInfoV2>> packages;
 /**
 * We do not use DBus error. We return an error code instead. Non-zero code indicated errors
 * occurs and message should be displayed to user.

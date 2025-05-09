@@ -510,8 +510,6 @@ utils::error::Result<package::Reference> clearReferenceLocal(const linglong::rep
 
         qDebug() << "available layer found:" << fuzzy.toString() << ver;
         if (version) {
-            qInfo() << semanticMatching << "pkgVer: " << pkgVer->toString()
-                    << "version: " << version->toString() << "ret: " << pkgVer->semanticMatch(version->toString());
             if (semanticMatching && pkgVer->semanticMatch(version->toString())) {
                 foundRef = ref;
                 break;
@@ -813,6 +811,16 @@ const api::types::v1::RepoConfigV2 &OSTreeRepo::getConfig() const noexcept
 {
     return cfg;
 }
+
+api::types::v1::RepoConfigV2 OSTreeRepo::getOrderedConfig() noexcept
+{
+    auto orderCfg = this->cfg;
+    std::sort(orderCfg.repos.begin(), orderCfg.repos.end(), [](const auto &repo1, const auto &repo2) {
+        return repo1.priority > repo2.priority;
+    });
+    return orderCfg;
+}
+
 
 utils::error::Result<void>
 OSTreeRepo::updateConfig(const api::types::v1::RepoConfigV2 &newCfg) noexcept
@@ -1442,13 +1450,19 @@ OSTreeRepo::listLocalLatest() const noexcept
 }
 
 utils::error::Result<std::vector<api::types::v1::PackageInfoV2>>
-OSTreeRepo::listRemote(const package::FuzzyReference &fuzzyRef) const noexcept
+OSTreeRepo::listRemote(const package::FuzzyReference &fuzzyRef, const std::optional<api::types::v1::Repo> &repo) const noexcept
 {
     LINGLONG_TRACE("list remote references");
 
+    if (repo) {
+        m_clientFactory.setServer(repo->url);
+    }
+
+    const auto defaultRepo = getDefaultRepo(this->cfg);
+
     auto client = m_clientFactory.createClientV2();
     request_fuzzy_search_req_t req{ nullptr, nullptr, nullptr, nullptr, nullptr };
-    auto freeIfNotNull = utils::finally::finally([&req] {
+    auto freeIfNotNull = utils::finally::finally([&req,this, &defaultRepo] {
         if (req.app_id != nullptr) {
             free(req.app_id); // NOLINT
         }
@@ -1464,6 +1478,7 @@ OSTreeRepo::listRemote(const package::FuzzyReference &fuzzyRef) const noexcept
         if (req.repo_name != nullptr) {
             free(req.repo_name); // NOLINT
         }
+        m_clientFactory.setServer(defaultRepo.url);
     });
 
     auto id = fuzzyRef.id.toLatin1();
@@ -1471,8 +1486,11 @@ OSTreeRepo::listRemote(const package::FuzzyReference &fuzzyRef) const noexcept
     if (req.app_id == nullptr) {
         return LINGLONG_ERR(QString{ "strndup app_id failed: %1" }.arg(fuzzyRef.id));
     }
-    const auto defaultRepo = getDefaultRepo(this->cfg);
-    req.repo_name = ::strndup(defaultRepo.name.data(), defaultRepo.name.size());
+    if (!repo) {
+        req.repo_name = ::strndup(defaultRepo.name.data(), defaultRepo.name.size());
+    }else {
+        req.repo_name = ::strndup(repo->name.data(), repo->name.size());
+    }
     if (req.repo_name == nullptr) {
         return LINGLONG_ERR(
           QString{ "strndup repo_name failed: %1" }.arg(defaultRepo.name.c_str()));
@@ -1551,6 +1569,10 @@ OSTreeRepo::listRemote(const package::FuzzyReference &fuzzyRef) const noexcept
     }
 
     if (response->data == nullptr) {
+        return {};
+    }
+
+    if (response->data->count == 0) {
         return {};
     }
 

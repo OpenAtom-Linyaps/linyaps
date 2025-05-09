@@ -36,6 +36,7 @@
 #include "linglong/api/types/v1/PackageManager1SearchResult.hpp"
 #include "linglong/api/types/v1/PackageManager1SearchParameters.hpp"
 #include "linglong/api/types/v1/PackageManager1RequestInteractionAdditionalMessage.hpp"
+#include "linglong/api/types/v1/PackageManager1PruneResult.hpp"
 #include "linglong/api/types/v1/PackageManager1PackageTaskResult.hpp"
 #include "linglong/api/types/v1/PackageManager1Package.hpp"
 #include "linglong/api/types/v1/PackageManager1ModifyRepoParameters.hpp"
@@ -181,6 +182,9 @@ void to_json(json & j, const PackageManager1Package & x);
 
 void from_json(const json & j, PackageManager1PackageTaskResult & x);
 void to_json(json & j, const PackageManager1PackageTaskResult & x);
+
+void from_json(const json & j, PackageManager1PruneResult & x);
+void to_json(json & j, const PackageManager1PruneResult & x);
 
 void from_json(const json & j, PackageManager1RequestInteractionAdditionalMessage & x);
 void to_json(json & j, const PackageManager1RequestInteractionAdditionalMessage & x);
@@ -784,7 +788,7 @@ j["package"] = x.package;
 }
 
 inline void from_json(const json & j, PackageManager1JobInfo& x) {
-x.id = get_stack_optional<std::string>(j, "id");
+x.id = j.at("id").get<std::string>();
 x.code = j.at("code").get<int64_t>();
 x.message = j.at("message").get<std::string>();
 x.type = j.at("type").get<std::string>();
@@ -792,9 +796,7 @@ x.type = j.at("type").get<std::string>();
 
 inline void to_json(json & j, const PackageManager1JobInfo & x) {
 j = json::object();
-if (x.id) {
 j["id"] = x.id;
-}
 j["code"] = x.code;
 j["message"] = x.message;
 j["type"] = x.type;
@@ -849,6 +851,23 @@ j["message"] = x.message;
 j["type"] = x.type;
 }
 
+inline void from_json(const json & j, PackageManager1PruneResult& x) {
+x.packages = get_stack_optional<std::vector<PackageInfoV2>>(j, "packages");
+x.code = j.at("code").get<int64_t>();
+x.message = j.at("message").get<std::string>();
+x.type = j.at("type").get<std::string>();
+}
+
+inline void to_json(json & j, const PackageManager1PruneResult & x) {
+j = json::object();
+if (x.packages) {
+j["packages"] = x.packages;
+}
+j["code"] = x.code;
+j["message"] = x.message;
+j["type"] = x.type;
+}
+
 inline void from_json(const json & j, PackageManager1RequestInteractionAdditionalMessage& x) {
 x.localRef = j.at("LocalRef").get<std::string>();
 x.remoteRef = j.at("RemoteRef").get<std::string>();
@@ -862,15 +881,17 @@ j["RemoteRef"] = x.remoteRef;
 
 inline void from_json(const json & j, PackageManager1SearchParameters& x) {
 x.id = j.at("id").get<std::string>();
+x.repos = j.at("repos").get<std::vector<std::string>>();
 }
 
 inline void to_json(json & j, const PackageManager1SearchParameters & x) {
 j = json::object();
 j["id"] = x.id;
+j["repos"] = x.repos;
 }
 
 inline void from_json(const json & j, PackageManager1SearchResult& x) {
-x.packages = get_stack_optional<std::vector<PackageInfoV2>>(j, "packages");
+x.packages = get_stack_optional<std::map<std::string, std::vector<PackageInfoV2>>>(j, "packages");
 x.code = j.at("code").get<int64_t>();
 x.message = j.at("message").get<std::string>();
 x.type = j.at("type").get<std::string>();
@@ -1091,6 +1112,7 @@ x.packageManager1ModifyRepoParameters = get_stack_optional<PackageManager1Modify
 x.packageManager1ModifyRepoResult = get_stack_optional<CommonResult>(j, "PackageManager1ModifyRepoResult");
 x.packageManager1Package = get_stack_optional<PackageManager1Package>(j, "PackageManager1Package");
 x.packageManager1PackageTaskResult = get_stack_optional<PackageManager1PackageTaskResult>(j, "PackageManager1PackageTaskResult");
+x.packageManager1PruneResult = get_stack_optional<PackageManager1PruneResult>(j, "PackageManager1PruneResult");
 x.packageManager1RequestInteractionAdditionalMessage = get_stack_optional<PackageManager1RequestInteractionAdditionalMessage>(j, "PackageManager1RequestInteractionAdditionalMessage");
 x.packageManager1SearchParameters = get_stack_optional<PackageManager1SearchParameters>(j, "PackageManager1SearchParameters");
 x.packageManager1SearchResult = get_stack_optional<PackageManager1SearchResult>(j, "PackageManager1SearchResult");
@@ -1192,6 +1214,9 @@ j["PackageManager1Package"] = x.packageManager1Package;
 }
 if (x.packageManager1PackageTaskResult) {
 j["PackageManager1PackageTaskResult"] = x.packageManager1PackageTaskResult;
+}
+if (x.packageManager1PruneResult) {
+j["PackageManager1PruneResult"] = x.packageManager1PruneResult;
 }
 if (x.packageManager1RequestInteractionAdditionalMessage) {
 j["PackageManager1RequestInteractionAdditionalMessage"] = x.packageManager1RequestInteractionAdditionalMessage;

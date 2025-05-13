@@ -12,6 +12,10 @@ __ll_cli_get_container_list() {
         ll-cli ps | tail -n+2 | awk '{print $1}' | tr '\n' ' '
 }
 
+__ll_cli_get_installed_app_list() {
+        ll-cli list --type=app | tail -n+2 | awk '{print $1}' | tr '\n' ' '
+}
+
 __ll_cli_get_installed_list() {
         ll-cli list | tail -n+2 | awk '{print $1}' | tr '\n' ' '
 }
@@ -87,7 +91,7 @@ _ll_cli_complete() {
                 local run_options="--file --url"
                 local installed_list
                 if [[ "${prev}" == "run" ]]; then
-                        installed_list="$(__ll_cli_get_installed_list)"
+                        installed_list="$(__ll_cli_get_installed_app_list)"
                 fi
                 output_options="${output_options} ${run_options} ${installed_list}"
                 ;;
@@ -142,7 +146,7 @@ _ll_cli_complete() {
                 local uninstall_options
                 local installed_list
                 if [[ "${prev}" == "uninstall" ]]; then
-                        installed_list="$(__ll_cli_get_installed_list)"
+                        installed_list="$(__ll_cli_get_installed_app_list)"
                 fi
                 output_options="${output_options} ${uninstall_options} ${installed_list}"
                 ;;
@@ -157,7 +161,7 @@ _ll_cli_complete() {
                 output_options="${output_options} $(__ll_cli_get_installed_list) $(__ll_cli_get_layer_list ${cur}))"
                 ;;
         content)
-                output_options="${output_options} $(__ll_cli_get_installed_list)"
+                output_options="${output_options} $(__ll_cli_get_installed_app_list)"
                 ;;
         search)
                 search_target="."

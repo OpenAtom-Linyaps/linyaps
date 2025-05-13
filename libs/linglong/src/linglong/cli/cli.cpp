@@ -2387,14 +2387,14 @@ utils::error::Result<void> Cli::filterPackageInfosByVersion(
                 continue;
             }
 
-            auto oldVersion = package::Version::parse(QString::fromStdString(it->second.version));
+            auto oldVersion = package::Version::parse(it->second.version.c_str());
             if (!oldVersion) {
                 qWarning() << "failed to parse old version:"
                            << oldVersion.error().message().toStdString();
                 continue;
             }
 
-            auto newVersion = package::Version::parse(QString::fromStdString(pkgInfo.version));
+            auto newVersion = package::Version::parse(pkgInfo.version.c_str());
             if (!newVersion) {
                 qWarning() << "failed to parse new version:"
                            << newVersion.error().message().toStdString();
@@ -2402,7 +2402,7 @@ utils::error::Result<void> Cli::filterPackageInfosByVersion(
             }
 
             if (*oldVersion < *newVersion) {
-                temp.emplace(key, pkgInfo);
+                it->second = pkgInfo;
             }
         }
 
@@ -2417,7 +2417,12 @@ utils::error::Result<void> Cli::filterPackageInfosByVersion(
             filteredPackages.emplace_back(std::move(pkgInfo));
         }
 
-        list.emplace(pkgRepo, std::move(filteredPackages));
+        auto it = list.find(pkgRepo);
+        if (it != list.end()) {
+            it->second = std::move(filteredPackages);
+        } else {
+            list.emplace(pkgRepo, std::move(filteredPackages));
+        }
     }
 
     return LINGLONG_OK;

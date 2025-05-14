@@ -113,12 +113,12 @@ std::string find_fusermount()
 
     auto search_dir = [](std::filesystem::path dir, std::string &res) {
         std::error_code ec;
-        auto iter = std::filesystem::directory_iterator{dir, ec};
+        auto iter = std::filesystem::directory_iterator{ dir, ec };
         if (ec) {
             std::cerr << "failed to open directory " << dir << ": " << ec.message() << std::endl;
             return false;
         }
-        for (auto const & entry : iter) {
+        for (auto const &entry : iter) {
             std::string filename = entry.path().filename();
             if (filename.rfind("fusermount", 0) != 0) {
                 continue;
@@ -135,7 +135,8 @@ std::string find_fusermount()
             }
 
             if (sb.st_uid != 0 || (sb.st_mode & S_ISUID) == 0) {
-                std::cerr << "skip " << entry.path() << std::endl;;
+                std::cerr << "skip " << entry.path() << std::endl;
+                ;
                 continue;
             }
 

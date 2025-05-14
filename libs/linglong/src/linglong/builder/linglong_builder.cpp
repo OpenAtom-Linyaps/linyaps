@@ -610,9 +610,10 @@ utils::error::Result<package::Reference> Builder::clearDependency(const std::str
         return LINGLONG_ERR(QString::fromStdString("invalid ref ") + ref.c_str());
     }
 
-    auto res =
-      repo.clearReference(*fuzzyRef,
-                          { .forceRemote = forceRemote, .fallbackToRemote = fallbackToRemote, .semanticMatching = true });
+    auto res = repo.clearReference(*fuzzyRef,
+                                   { .forceRemote = forceRemote,
+                                     .fallbackToRemote = fallbackToRemote,
+                                     .semanticMatching = true });
     if (!res) {
         return LINGLONG_ERR(QString{ "ref doesn't exist %1" }.arg(fuzzyRef->toString()));
     }
@@ -2431,7 +2432,7 @@ utils::error::Result<bool> Builder::generateDependsScript() noexcept
 
 void Builder::takeTerminalForeground()
 {
-    struct sigaction sa {};
+    struct sigaction sa{};
 
     sa.sa_handler = SIG_IGN;
     sigaction(SIGTTOU, &sa, NULL);

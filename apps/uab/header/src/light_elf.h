@@ -20,10 +20,10 @@
 namespace lightElf {
 
 constexpr std::size_t machine_type = sizeof(void *) == 8 ? 64 : 32;
-template<std::size_t Bit>
+template <std::size_t Bit>
 struct Elf_trait;
 
-template<>
+template <>
 struct Elf_trait<64> // NOLINT
 {
     using elf_header = Elf64_Ehdr;
@@ -31,7 +31,7 @@ struct Elf_trait<64> // NOLINT
     using section_header = Elf64_Shdr;
 };
 
-template<>
+template <>
 struct Elf_trait<32> // NOLINT
 {
     using elf_header = Elf32_Ehdr;
@@ -39,7 +39,7 @@ struct Elf_trait<32> // NOLINT
     using section_header = Elf32_Shdr;
 };
 
-template<std::size_t Bit>
+template <std::size_t Bit>
 class Elf
 {
 public:

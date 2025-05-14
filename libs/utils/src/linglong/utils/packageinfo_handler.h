@@ -9,9 +9,11 @@
 #include "linglong/utils/error/error.h"
 
 #include <gio/gio.h>
+
 #include <QString>
 
 #define PACKAGE_INFO_VERSION "1.0"
+
 namespace linglong::utils {
 
 api::types::v1::PackageInfoV2 toPackageInfoV2(const api::types::v1::PackageInfo &oldInfo);

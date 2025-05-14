@@ -10,6 +10,7 @@
 
 #include <QRegularExpression>
 #include <QString>
+
 #include <variant>
 
 #if QT_VERSION < QT_VERSION_CHECK(5, 14, 0)
@@ -64,24 +65,24 @@ utils::error::Result<void> Version::validateDependVersion(const QString &raw) no
 }
 
 std::vector<linglong::api::types::v1::PackageInfoV2> Version::filterByFuzzyVersion(
-    std::vector<linglong::api::types::v1::PackageInfoV2> list, const QString &fuzzyVersion)
-  {
-      for (auto it = list.begin(); it != list.end(); ) {
-          auto packageVerRet = package::Version::parse(it->version.c_str());
-          if (!packageVerRet) {
-              qWarning() << "Ignore invalid package record " << packageVerRet.error();
-              it = list.erase(it);
-              continue;
-          }
+  std::vector<linglong::api::types::v1::PackageInfoV2> list, const QString &fuzzyVersion)
+{
+    for (auto it = list.begin(); it != list.end();) {
+        auto packageVerRet = package::Version::parse(it->version.c_str());
+        if (!packageVerRet) {
+            qWarning() << "Ignore invalid package record " << packageVerRet.error();
+            it = list.erase(it);
+            continue;
+        }
 
-          if (!packageVerRet->semanticMatch(fuzzyVersion)) {
-              it = list.erase(it);
-              continue;
-          }
-          ++it;
-      }
-      return list;
-  }
+        if (!packageVerRet->semanticMatch(fuzzyVersion)) {
+            it = list.erase(it);
+            continue;
+        }
+        ++it;
+    }
+    return list;
+}
 
 bool Version::semanticMatch(const QString &versionStr)
 {

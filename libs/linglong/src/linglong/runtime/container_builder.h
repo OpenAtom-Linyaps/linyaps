@@ -62,9 +62,9 @@ class ContainerBuilder : public QObject
 public:
     explicit ContainerBuilder(ocppi::cli::CLI &cli);
 
-    auto
-    create(const linglong::generator::ContainerCfgBuilder &cfgBuilder,
-           const QString &containerID) noexcept -> utils::error::Result<std::unique_ptr<Container>>;
+    auto create(const linglong::generator::ContainerCfgBuilder &cfgBuilder,
+                const QString &containerID) noexcept
+      -> utils::error::Result<std::unique_ptr<Container>>;
 
 private:
     ocppi::cli::CLI &cli;

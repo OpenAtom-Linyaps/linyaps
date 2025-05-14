@@ -16,6 +16,7 @@
 namespace linglong::package {
 class VersionV2;
 class FallbackVersion;
+
 // This is a 4 number semver
 class VersionV1 final
 {

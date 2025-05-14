@@ -18,7 +18,7 @@
 
 namespace linglong::utils::serialize {
 
-template<typename T, typename Source>
+template <typename T, typename Source>
 error::Result<T> LoadYAML(Source &content)
 {
     LINGLONG_TRACE("load yaml");
@@ -31,7 +31,7 @@ error::Result<T> LoadYAML(Source &content)
     }
 }
 
-template<typename T>
+template <typename T>
 error::Result<T> LoadYAMLFile(const QString &filename) noexcept
 {
     LINGLONG_TRACE("load yaml from file");

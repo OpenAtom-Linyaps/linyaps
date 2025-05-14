@@ -59,8 +59,8 @@ auto loadConfig(const QStringList &files) noexcept
     return LINGLONG_ERR("all failed");
 }
 
-auto saveConfig(const api::types::v1::BuilderConfig &cfg,
-                const QString &path) noexcept -> utils::error::Result<void>
+auto saveConfig(const api::types::v1::BuilderConfig &cfg, const QString &path) noexcept
+  -> utils::error::Result<void>
 {
     LINGLONG_TRACE(QString("save config to %1").arg(path));
 

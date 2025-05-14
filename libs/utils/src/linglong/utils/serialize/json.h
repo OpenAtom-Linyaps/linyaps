@@ -24,14 +24,14 @@ namespace linglong::utils::serialize {
 
 QJsonObject QJsonObjectfromVariantMap(const QVariantMap &vmap) noexcept;
 
-template<typename T>
+template <typename T>
 QJsonDocument toQJsonDocument(const T &x) noexcept
 {
     nlohmann::json json = x;
     return QJsonDocument::fromJson(json.dump().data());
 }
 
-template<typename T>
+template <typename T>
 QVariantMap toQVariantMap(const T &x) noexcept
 {
     QJsonDocument doc = toQJsonDocument(x);
@@ -39,7 +39,7 @@ QVariantMap toQVariantMap(const T &x) noexcept
     return doc.object().toVariantMap();
 }
 
-template<typename T, typename Source>
+template <typename T, typename Source>
 error::Result<T> LoadJSON(const Source &content) noexcept
 {
     LINGLONG_TRACE("load json");
@@ -56,7 +56,7 @@ error::Result<T> LoadJSON(const Source &content) noexcept
     }
 }
 
-template<typename T>
+template <typename T>
 error::Result<T> LoadJSONFile(GFile *file) noexcept
 {
     LINGLONG_TRACE("load json from " + QString::fromStdString(g_file_get_path(file)));
@@ -72,7 +72,7 @@ error::Result<T> LoadJSONFile(GFile *file) noexcept
     return LoadJSON<T>(content);
 }
 
-template<typename T>
+template <typename T>
 error::Result<T> LoadJSONFile(const std::filesystem::path &filePath) noexcept
 {
     LINGLONG_TRACE("load json from " + QString::fromStdString(filePath.string()));
@@ -84,7 +84,7 @@ error::Result<T> LoadJSONFile(const std::filesystem::path &filePath) noexcept
     return LoadJSON<T>(file);
 }
 
-template<typename T>
+template <typename T>
 error::Result<T> LoadJSONFile(QFile &file) noexcept
 {
     LINGLONG_TRACE("load json from file" + QFileInfo(file).absoluteFilePath());
@@ -104,26 +104,26 @@ error::Result<T> LoadJSONFile(QFile &file) noexcept
     return LoadJSON<T>(content);
 }
 
-template<typename T>
+template <typename T>
 error::Result<T> LoadJSONFile(const QString &filename) noexcept
 {
     QFile file{ filename };
     return LoadJSONFile<T>(file);
 }
 
-template<typename T>
+template <typename T>
 error::Result<T> fromQJsonDocument(const QJsonDocument &doc) noexcept
 {
     return LoadJSON<T>(doc.toJson(QJsonDocument::Compact).toStdString());
 }
 
-template<typename T>
+template <typename T>
 error::Result<T> fromQJsonObject(const QJsonObject &obj) noexcept
 {
     return fromQJsonDocument<T>(QJsonDocument(obj));
 }
 
-template<typename T>
+template <typename T>
 error::Result<T> fromQJsonValue(const QJsonValue &v) noexcept
 {
     if (v.isArray()) {
@@ -137,7 +137,7 @@ error::Result<T> fromQJsonValue(const QJsonValue &v) noexcept
     abort();
 }
 
-template<typename T>
+template <typename T>
 error::Result<T> fromQVariantMap(const QVariantMap &vmap)
 {
     return fromQJsonObject<T>(QJsonObjectfromVariantMap(vmap));

@@ -26,12 +26,12 @@
 namespace linglong::utils::error {
 
 enum class ErrorCode : int {
-    Failed = -1,                            // 通用失败错误码
-    Success = 0,                            // 成功
+    Failed = -1, // 通用失败错误码
+    Success = 0, // 成功
     /* 通用错误层 */
-    Unknown = 1000,                         // 未知错误
-    AppNotFoundFromRemote = 1001,           // 从远程找不到对应应用
-    AppNotFoundFromLocal = 1002,            // 从本地找不到对应应用
+    Unknown = 1000,               // 未知错误
+    AppNotFoundFromRemote = 1001, // 从远程找不到对应应用
+    AppNotFoundFromLocal = 1002,  // 从本地找不到对应应用
 
     /* 安装 */
     AppInstallFailed = 2001,                // 安装失败
@@ -43,17 +43,17 @@ enum class ErrorCode : int {
     AppInstallModuleAlreadyExists = 2007,   // 安装模块时已存在相同版本的模块
     AppInstallArchNotMatch = 2008,          // 安装app的架构不匹配
     /* 卸载 */
-    AppUninstallFailed = 2101,              // 卸载失败
-    AppUninstallNotFoundFromLocal = 2102,   // 本地不存在对应应用
-    AppUninstallAppIsRunning = 2103,        // 卸载的app正在运行
-    LayerCompatibilityError = 2104,         // 找不到兼容的layer
+    AppUninstallFailed = 2101,            // 卸载失败
+    AppUninstallNotFoundFromLocal = 2102, // 本地不存在对应应用
+    AppUninstallAppIsRunning = 2103,      // 卸载的app正在运行
+    LayerCompatibilityError = 2104,       // 找不到兼容的layer
     /* 升级 */
-    AppUpgradeFailed = 2201,                // 升级失败
-    AppUpgradeNotFound = 2202,              // 本地不存在对应应用
-    AppUpgradeLatestInstalled = 2203,       // 已安装最新版本
+    AppUpgradeFailed = 2201,          // 升级失败
+    AppUpgradeNotFound = 2202,        // 本地不存在对应应用
+    AppUpgradeLatestInstalled = 2203, // 已安装最新版本
 
     /* 网络 */
-    NetworkError = 3001,                    // 网络错误
+    NetworkError = 3001, // 网络错误
 };
 
 class Error
@@ -225,7 +225,7 @@ public:
         return Err(file, line, trace_msg, msg.c_str(), e, e.code().value());
     }
 
-    template<typename Value>
+    template <typename Value>
     static auto Err(const char *file,
                     int line,
                     const QString &trace_msg,
@@ -242,7 +242,7 @@ public:
                                                           std::move(cause.error().pImpl)));
     }
 
-    template<typename Value>
+    template <typename Value>
     static auto Err(const char *file,
                     int line,
                     const QString &trace_msg,
@@ -281,7 +281,7 @@ public:
                                                           std::move(cause.pImpl)));
     }
 
-    template<typename Value>
+    template <typename Value>
     static auto Err(const char *file,
                     int line,
                     const QString &trace_msg,
@@ -293,7 +293,7 @@ public:
         return Err(file, line, trace_msg, cause.error(), code);
     }
 
-    template<typename Value>
+    template <typename Value>
     static auto Err(const char *file,
                     int line,
                     const QString &trace_msg,
@@ -314,7 +314,7 @@ private:
     std::unique_ptr<details::ErrorImpl> pImpl;
 };
 
-template<typename Value>
+template <typename Value>
 using Result = tl::expected<Value, Error>;
 
 } // namespace linglong::utils::error

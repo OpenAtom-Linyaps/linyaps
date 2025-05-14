@@ -50,7 +50,7 @@ namespace {
 
 constexpr auto repoLockPath = "/run/linglong/lock";
 
-template<typename T>
+template <typename T>
 QVariantMap toDBusReply(const utils::error::Result<T> &x, std::string type = "display") noexcept
 {
     Q_ASSERT(!x.has_value());

@@ -47,7 +47,7 @@ private:
 } // namespace linglong::package
 
 // Note: declare here, so we can use std::unordered_map<Reference, ...> in other place
-template<>
+template <>
 struct std::hash<linglong::package::Reference>
 {
     size_t operator()(const linglong::package::Reference &ref) const noexcept

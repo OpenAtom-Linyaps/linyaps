@@ -61,7 +61,7 @@ public:
                               value.toLocal8Bit().constData());
     }
 
-    template<typename Value>
+    template <typename Value>
     auto getValue(const QString &key, const GroupName &group) const -> error::Result<Value>
     {
         LINGLONG_TRACE(QString("get %1 from %2").arg(key, group));
@@ -151,7 +151,7 @@ public:
 private:
     GKeyFileWrapper()
         : gKeyFile(std::unique_ptr<GKeyFile, decltype(&g_key_file_free)>(g_key_file_new(),
-                                                                         g_key_file_free)) {};
+                                                                         g_key_file_free)) { };
     std::unique_ptr<GKeyFile, decltype(&g_key_file_free)> gKeyFile;
 };
 

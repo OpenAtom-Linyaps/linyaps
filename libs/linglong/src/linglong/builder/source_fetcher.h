@@ -10,10 +10,10 @@
 #include "linglong/api/types/v1/BuilderProjectSource.hpp"
 #include "linglong/utils/error/error.h"
 
+#include <QDir>
 #include <QFileInfo>
 #include <QObject>
 #include <QUrl>
-#include <QDir>
 
 namespace linglong::builder {
 

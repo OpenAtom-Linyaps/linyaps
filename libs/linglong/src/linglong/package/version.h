@@ -6,11 +6,11 @@
 
 #pragma once
 
+#include "linglong/api/types/v1/PackageInfoV2.hpp"
 #include "linglong/package/fallback_version.h"
 #include "linglong/package/versionv1.h"
 #include "linglong/package/versionv2.h"
 #include "linglong/utils/error/error.h"
-#include "linglong/api/types/v1/PackageInfoV2.hpp"
 
 #include <QString>
 
@@ -23,6 +23,7 @@ struct ParseOptions
     bool strict = true;   // 是否严格解析
     bool fallback = true; // 是否允许回退到 V1 解析
 };
+
 class Version final
 {
 public:
@@ -30,7 +31,8 @@ public:
                                                const ParseOptions parseOpt = {
                                                  .strict = true, .fallback = true }) noexcept;
 
-    static std::vector<linglong::api::types::v1::PackageInfoV2> filterByFuzzyVersion(std::vector<linglong::api::types::v1::PackageInfoV2> list,const QString &fuzzyVersion);
+    static std::vector<linglong::api::types::v1::PackageInfoV2> filterByFuzzyVersion(
+      std::vector<linglong::api::types::v1::PackageInfoV2> list, const QString &fuzzyVersion);
     bool semanticMatch(const QString &versionStr);
 
     static utils::error::Result<void> validateDependVersion(const QString &raw) noexcept;

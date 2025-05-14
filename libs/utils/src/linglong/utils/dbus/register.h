@@ -34,8 +34,8 @@ inline void unregisterDBusObject(QDBusConnection conn, const QString &path)
     qCDebug(linglong_utils_dbus) << "unregister object to dbus on" << path;
 }
 
-[[nodiscard]] inline auto registerDBusService(QDBusConnection conn,
-                                              const QString &serviceName) -> error::Result<void>
+[[nodiscard]] inline auto registerDBusService(QDBusConnection conn, const QString &serviceName)
+  -> error::Result<void>
 {
     LINGLONG_TRACE("register D-Bus service");
 

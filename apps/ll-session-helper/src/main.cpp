@@ -5,32 +5,37 @@
  */
 
 #include <QCoreApplication>
-#include <QObject>
-#include <QDebug>
-#include <QFileInfo>
-#include <QDir>
-#include <QFileSystemWatcher>
 #include <QDateTime>
+#include <QDebug>
+#include <QDir>
+#include <QFileInfo>
+#include <QFileSystemWatcher>
+#include <QObject>
 #include <QTimer>
+
 #include <unistd.h>
 
 void copyFileToTargetPath(const QFileInfo &fileInfo, const QString &path);
-void copyDirToTargetPath(const QFileInfo &fileInfo, const QString &path, QMap<QString, QMap<QString, QDateTime>> &directoryFileTimes);
+void copyDirToTargetPath(const QFileInfo &fileInfo,
+                         const QString &path,
+                         QMap<QString, QMap<QString, QDateTime>> &directoryFileTimes);
 
 int main(int argc, char *argv[])
 {
     QCoreApplication a(argc, argv);
 
     QFileSystemWatcher *qFileSystemWatcher = new QFileSystemWatcher();
-    QStringList watchFilesPaths = {"/etc/localtime", "/etc/resolv.conf", "/etc/timezone"};
-    QMap<QString, QMap<QString, QDateTime>> directoryFileTimes;;  // 存储每个目录及其目录下对应的文件修改时间映射
+    QStringList watchFilesPaths = { "/etc/localtime", "/etc/resolv.conf", "/etc/timezone" };
+    QMap<QString, QMap<QString, QDateTime>> directoryFileTimes;
+    ; // 存储每个目录及其目录下对应的文件修改时间映射
     QString uidString = QString::number(getuid());
-    QDir monitorPath = QStringLiteral("/run/user/") + uidString + QStringLiteral("/linglong/monitor");
+    QDir monitorPath =
+      QStringLiteral("/run/user/") + uidString + QStringLiteral("/linglong/monitor");
 
     if (!monitorPath.exists())
         monitorPath.mkpath(monitorPath.absolutePath());
 
-    for(QString &filePath: watchFilesPaths) {
+    for (QString &filePath : watchFilesPaths) {
         qDebug() << QString("Add to watch: %1").arg(filePath);
         qFileSystemWatcher->addPath(filePath);
 
@@ -43,29 +48,34 @@ int main(int argc, char *argv[])
         }
     }
 
-    QObject::connect(qFileSystemWatcher, &QFileSystemWatcher::fileChanged, [&](const QString &path){
-        QFileInfo fileInfo(path);
-        QString filePath = fileInfo.absolutePath();
+    QObject::connect(qFileSystemWatcher,
+                     &QFileSystemWatcher::fileChanged,
+                     [&](const QString &path) {
+                         QFileInfo fileInfo(path);
+                         QString filePath = fileInfo.absolutePath();
 
-        qDebug() << QString("The file %1 at path %2 is updated").arg(fileInfo.fileName(), filePath);
+                         qDebug() << QString("The file %1 at path %2 is updated")
+                                       .arg(fileInfo.fileName(), filePath);
 
-        copyFileToTargetPath(fileInfo, monitorPath.path());
+                         copyFileToTargetPath(fileInfo, monitorPath.path());
 
-        // 移动或者重命名都会被移除监听，需要重新加回
-        qFileSystemWatcher->addPath(path);
+                         // 移动或者重命名都会被移除监听，需要重新加回
+                         qFileSystemWatcher->addPath(path);
+                     });
 
-    });
-
-    QObject::connect(qFileSystemWatcher, &QFileSystemWatcher::directoryChanged, [&](const QString &path){
-        QFileInfo fileInfo(path);
-        copyDirToTargetPath(fileInfo, monitorPath.path(), directoryFileTimes);
-    });
+    QObject::connect(qFileSystemWatcher,
+                     &QFileSystemWatcher::directoryChanged,
+                     [&](const QString &path) {
+                         QFileInfo fileInfo(path);
+                         copyDirToTargetPath(fileInfo, monitorPath.path(), directoryFileTimes);
+                     });
 
     return a.exec();
 }
 
 // 拷贝修改的文件到目标路径
-void copyFileToTargetPath(const QFileInfo &fileInfo, const QString &path) {
+void copyFileToTargetPath(const QFileInfo &fileInfo, const QString &path)
+{
     QString targetFilePath = path + "/" + fileInfo.fileName();
 
     if (QFile::exists(targetFilePath)) {
@@ -81,8 +91,12 @@ void copyFileToTargetPath(const QFileInfo &fileInfo, const QString &path) {
 }
 
 // 拷贝当前目录及目录下的文件，不包括子目录
-void copyDirToTargetPath(const QFileInfo &fileInfo, const QString &path, QMap<QString, QMap<QString, QDateTime>> &directoryFileTimes) {
-    QFileInfoList fileList = QDir(fileInfo.filePath()).entryInfoList(QDir::Files | QDir::NoDotAndDotDot | QDir::Hidden);
+void copyDirToTargetPath(const QFileInfo &fileInfo,
+                         const QString &path,
+                         QMap<QString, QMap<QString, QDateTime>> &directoryFileTimes)
+{
+    QFileInfoList fileList =
+      QDir(fileInfo.filePath()).entryInfoList(QDir::Files | QDir::NoDotAndDotDot | QDir::Hidden);
 
     QMap<QString, QDateTime> &fileTimeMap = directoryFileTimes[fileInfo.path()];
 
@@ -94,8 +108,10 @@ void copyDirToTargetPath(const QFileInfo &fileInfo, const QString &path, QMap<QS
             continue;
         }
 
-        // 在 fileTimeMap 找到对应的文件的时间戳，并且修改时间大于记录的时间说明被修改了，或者没有被记录的文件（第一次初始化）
-        if ((fileTimeMap.contains(file.fileName()) && lastModified > fileTimeMap[file.fileName()]) || !fileTimeMap.contains(file.fileName())) {
+        // 在 fileTimeMap
+        // 找到对应的文件的时间戳，并且修改时间大于记录的时间说明被修改了，或者没有被记录的文件（第一次初始化）
+        if ((fileTimeMap.contains(file.fileName()) && lastModified > fileTimeMap[file.fileName()])
+            || !fileTimeMap.contains(file.fileName())) {
             qDebug() << file.fileName() << "in directory" << path << "was modified or add";
 
             copyFileToTargetPath(file, path);

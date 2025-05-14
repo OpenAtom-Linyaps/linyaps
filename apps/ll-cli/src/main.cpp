@@ -119,10 +119,11 @@ int lockCheck() noexcept
         ::close(fd);
     });
 
-    struct flock lock_info
-    {
-        .l_type = F_RDLCK, .l_whence = SEEK_SET, .l_start = 0, .l_len = 0, .l_pid = 0
-    };
+    struct flock lock_info{ .l_type = F_RDLCK,
+                            .l_whence = SEEK_SET,
+                            .l_start = 0,
+                            .l_len = 0,
+                            .l_pid = 0 };
 
     if (::fcntl(fd, F_GETLK, &lock_info) == -1) {
         qCritical() << "failed to get lock" << lock;
@@ -205,9 +206,7 @@ You can report bugs to the linyaps team under this project: https://github.com/O
                         .confirmOpt = false,
                         .verbose = false };
 
-    commandParser.add_flag("-v,--verbose",
-                           options.verbose,
-                           _("Show debug info (verbose logs)"));
+    commandParser.add_flag("-v,--verbose", options.verbose, _("Show debug info (verbose logs)"));
 
     // groups
     auto *CliBuildInGroup = _("Managing installed applications and runtimes");

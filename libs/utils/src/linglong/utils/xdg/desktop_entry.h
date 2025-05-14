@@ -14,7 +14,6 @@
 #include <QFile>
 #include <QString>
 
-
 namespace linglong::utils::xdg {
 
 class DesktopEntry final
@@ -52,7 +51,7 @@ public:
 private:
     DesktopEntry()
         : gKeyFile(std::unique_ptr<GKeyFile, decltype(&g_key_file_free)>(g_key_file_new(),
-                                                                         g_key_file_free)){};
+                                                                         g_key_file_free)) { };
 
     // types
 public:
@@ -67,12 +66,12 @@ private:
 
     // methods
 public:
-    template<typename Value>
+    template <typename Value>
     void setValue(const QString &key, const Value &value, const SectionName &section = MainSection);
 
-    template<typename Value>
-    auto getValue(const QString &key,
-                  const SectionName &section = MainSection) const -> error::Result<Value>;
+    template <typename Value>
+    auto getValue(const QString &key, const SectionName &section = MainSection) const
+      -> error::Result<Value>;
 
     auto groups() -> QStringList
     {
@@ -103,7 +102,7 @@ public:
     }
 };
 
-template<>
+template <>
 inline void DesktopEntry::setValue(const QString &key,
                                    const QString &value,
                                    const SectionName &section)
@@ -114,9 +113,10 @@ inline void DesktopEntry::setValue(const QString &key,
                           value.toLocal8Bit().constData());
 }
 
-template<>
-[[nodiscard]] inline auto DesktopEntry::getValue(
-  const QString &key, const SectionName &section) const -> error::Result<QString>
+template <>
+[[nodiscard]] inline auto DesktopEntry::getValue(const QString &key,
+                                                 const SectionName &section) const
+  -> error::Result<QString>
 {
     LINGLONG_TRACE(QString("get %1 from %2").arg(key, section));
 

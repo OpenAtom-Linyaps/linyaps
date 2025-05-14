@@ -6,7 +6,7 @@
 
 #include <utility>
 
-template<typename Func>
+template <typename Func>
 struct defer
 {
     defer(defer &&newF) = delete;

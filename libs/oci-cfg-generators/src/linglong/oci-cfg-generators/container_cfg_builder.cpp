@@ -286,7 +286,7 @@ ContainerCfgBuilder &ContainerCfgBuilder::forwordDefaultEnv() noexcept
       "GDMSESSION",
       "QT_WAYLAND_FORCE_DPI",
       "GIO_LAUNCHED_DESKTOP_FILE", // 系统监视器
-      "GNOME_DESKTOP_SESSION_ID", // gnome 桌面标识，有些应用会读取此变量以使用gsettings配置,
+      "GNOME_DESKTOP_SESSION_ID",  // gnome 桌面标识，有些应用会读取此变量以使用gsettings配置,
       // 如chrome
       "TERM" });
 }

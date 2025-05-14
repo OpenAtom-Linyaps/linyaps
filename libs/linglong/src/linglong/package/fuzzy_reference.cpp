@@ -5,6 +5,7 @@
  */
 
 #include "linglong/package/fuzzy_reference.h"
+
 #include "linglong/utils/error/error.h"
 
 #include <QRegularExpression>
@@ -25,7 +26,7 @@ utils::error::Result<FuzzyReference> FuzzyReference::parse(const QString &raw) n
 
     auto matches = regexp.match(raw);
     if (not(matches.isValid() and matches.hasMatch())) {
-        return LINGLONG_ERR("regexp mismatched.",utils::error::ErrorCode::Unknown);
+        return LINGLONG_ERR("regexp mismatched.", utils::error::ErrorCode::Unknown);
     }
 
     std::optional<QString> channel = matches.captured("channel");
@@ -46,7 +47,8 @@ utils::error::Result<FuzzyReference> FuzzyReference::parse(const QString &raw) n
     if ((!architectureStr.isEmpty()) && architectureStr != "unknown") {
         auto tmpArchitecture = Architecture::parse(architectureStr.toStdString());
         if (!tmpArchitecture) {
-            return LINGLONG_ERR(tmpArchitecture.error().message(),utils::error::ErrorCode::Unknown);
+            return LINGLONG_ERR(tmpArchitecture.error().message(),
+                                utils::error::ErrorCode::Unknown);
         }
         architecture = std::move(tmpArchitecture).value();
     }
@@ -63,7 +65,7 @@ try {
     return FuzzyReference(channel, id, version, arch);
 } catch (const std::exception &e) {
     LINGLONG_TRACE("create fuzzy reference");
-    return LINGLONG_ERR(e.what(),utils::error::ErrorCode::Unknown);
+    return LINGLONG_ERR(e.what(), utils::error::ErrorCode::Unknown);
 }
 
 FuzzyReference::FuzzyReference(const std::optional<QString> &channel,

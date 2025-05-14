@@ -23,7 +23,8 @@ TEST(Packge, Version)
     EXPECT_LT(Version::parse("1.0.0-alpha").value(), Version::parse("1.0.0").value());
     EXPECT_LT(Version::parse("1.0.0-beta").value(), Version::parse("1.0.0").value());
     EXPECT_LT(Version::parse("1.0.0+zbuild").value(), Version::parse("1.0.0+security.1").value());
-    EXPECT_LT(Version::parse("1.0.0+security.1").value(), Version::parse("1.0.0+security.2").value());
+    EXPECT_LT(Version::parse("1.0.0+security.1").value(),
+              Version::parse("1.0.0+security.2").value());
 }
 
 TEST(Package, VersionRegex101)

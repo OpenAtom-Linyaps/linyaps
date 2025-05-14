@@ -172,7 +172,7 @@ class PackageTaskQueue : public QObject
 public:
     explicit PackageTaskQueue(QObject *parent);
 
-    template<typename Func>
+    template <typename Func>
     utils::error::Result<std::reference_wrapper<PackageTask>>
     addNewTask(const QStringList &refs,
                Func &&job,

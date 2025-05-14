@@ -537,10 +537,9 @@ utils::error::Result<package::Reference> clearReferenceLocal(const linglong::rep
                                       *arch);
 };
 
-std::optional<package::Reference>
-matchReference(const api::types::v1::PackageInfoV2 &record,
-               const package::FuzzyReference &fuzzy,
-               const std::string &module) noexcept
+std::optional<package::Reference> matchReference(const api::types::v1::PackageInfoV2 &record,
+                                                 const package::FuzzyReference &fuzzy,
+                                                 const std::string &module) noexcept
 {
     qInfo() << "record: " << nlohmann::json(record).dump().c_str();
     qInfo() << "fuzzy: " << fuzzy.toString();
@@ -815,12 +814,13 @@ const api::types::v1::RepoConfigV2 &OSTreeRepo::getConfig() const noexcept
 api::types::v1::RepoConfigV2 OSTreeRepo::getOrderedConfig() noexcept
 {
     auto orderCfg = this->cfg;
-    std::sort(orderCfg.repos.begin(), orderCfg.repos.end(), [](const auto &repo1, const auto &repo2) {
-        return repo1.priority > repo2.priority;
-    });
+    std::sort(orderCfg.repos.begin(),
+              orderCfg.repos.end(),
+              [](const auto &repo1, const auto &repo2) {
+                  return repo1.priority > repo2.priority;
+              });
     return orderCfg;
 }
-
 
 utils::error::Result<void>
 OSTreeRepo::updateConfig(const api::types::v1::RepoConfigV2 &newCfg) noexcept
@@ -1450,7 +1450,8 @@ OSTreeRepo::listLocalLatest() const noexcept
 }
 
 utils::error::Result<std::vector<api::types::v1::PackageInfoV2>>
-OSTreeRepo::listRemote(const package::FuzzyReference &fuzzyRef, const std::optional<api::types::v1::Repo> &repo) const noexcept
+OSTreeRepo::listRemote(const package::FuzzyReference &fuzzyRef,
+                       const std::optional<api::types::v1::Repo> &repo) const noexcept
 {
     LINGLONG_TRACE("list remote references");
 
@@ -1462,7 +1463,7 @@ OSTreeRepo::listRemote(const package::FuzzyReference &fuzzyRef, const std::optio
 
     auto client = m_clientFactory.createClientV2();
     request_fuzzy_search_req_t req{ nullptr, nullptr, nullptr, nullptr, nullptr };
-    auto freeIfNotNull = utils::finally::finally([&req,this, &defaultRepo] {
+    auto freeIfNotNull = utils::finally::finally([&req, this, &defaultRepo] {
         if (req.app_id != nullptr) {
             free(req.app_id); // NOLINT
         }
@@ -1488,7 +1489,7 @@ OSTreeRepo::listRemote(const package::FuzzyReference &fuzzyRef, const std::optio
     }
     if (!repo) {
         req.repo_name = ::strndup(defaultRepo.name.data(), defaultRepo.name.size());
-    }else {
+    } else {
         req.repo_name = ::strndup(repo->name.data(), repo->name.size());
     }
     if (req.repo_name == nullptr) {

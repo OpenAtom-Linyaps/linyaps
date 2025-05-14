@@ -29,7 +29,7 @@
 
 static std::filesystem::path containerBundle;
 
-template<typename Func>
+template <typename Func>
 struct defer
 {
     explicit defer(Func newF)

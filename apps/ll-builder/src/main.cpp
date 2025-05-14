@@ -106,7 +106,8 @@ parseProjectConfig(const QString &filename)
     if (!project) {
         return project;
     }
-    auto version = linglong::package::VersionV1::parse(QString::fromStdString(project->package.version));
+    auto version =
+      linglong::package::VersionV1::parse(QString::fromStdString(project->package.version));
     if (!version || !version->tweak) {
         return LINGLONG_ERR("Please ensure the package.version number has three parts formatted as "
                             "'MAJOR.MINOR.PATCH.TWEAK'");
@@ -135,7 +136,8 @@ parseProjectConfig(const QString &filename)
         return LINGLONG_ERR("base version is not valid", ret);
     }
     if (project->runtime) {
-        auto runtimeFuzzyRef = linglong::package::FuzzyReference::parse(project->runtime.value().c_str());
+        auto runtimeFuzzyRef =
+          linglong::package::FuzzyReference::parse(project->runtime.value().c_str());
         if (!runtimeFuzzyRef) {
             return LINGLONG_ERR("failed to parse runtime field", runtimeFuzzyRef);
         }

@@ -33,7 +33,7 @@ namespace linglong::utils::finally {
 using index = std::ptrdiff_t;
 
 // final_action allows you to ensure something gets run at the end of a scope
-template<class F>
+template <class F>
 class final_action
 {
 public:
@@ -69,7 +69,7 @@ private:
 };
 
 // finally() - convenience function to generate a final_action
-template<class F>
+template <class F>
 [[nodiscard]] auto finally(F &&f) noexcept
 {
     return final_action<std::decay_t<F>>{ std::forward<F>(f) };

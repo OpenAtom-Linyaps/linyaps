@@ -58,7 +58,7 @@ struct TransactionRollBackBase
 };
 } // namespace _internal
 
-template<typename F, typename... Args>
+template <typename F, typename... Args>
 class TransactionRollback final : public _internal::TransactionRollBackBase
 {
     static_assert(std::is_nothrow_invocable_v<F, Args...>, "rollback function must be noexcept");
@@ -82,7 +82,7 @@ public:
     }
 
 private:
-    template<std::size_t... I>
+    template <std::size_t... I>
     void func_with_args(std::index_sequence<I...> /*unused*/)
     {
         func(std::get<I>(m_args)...);
@@ -110,7 +110,7 @@ public:
 
     void commit() noexcept { m_rollbacks.clear(); }
 
-    template<typename Fn, typename... Args>
+    template <typename Fn, typename... Args>
     void addRollBack(Fn func, Args... args) noexcept
     {
         m_rollbacks.emplace_back(std::make_unique<TransactionRollback<Fn, Args...>>(func, args...));

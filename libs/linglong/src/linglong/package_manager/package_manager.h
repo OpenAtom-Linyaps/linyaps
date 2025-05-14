@@ -8,6 +8,8 @@
 
 #include "linglong/api/types/v1/CommonOptions.hpp"
 #include "linglong/api/types/v1/ContainerProcessStateInfo.hpp"
+#include "linglong/api/types/v1/Repo.hpp"
+#include "linglong/package/reference.h"
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/runtime/container_builder.h"
 #include "package_task.h"
@@ -16,6 +18,8 @@
 #include <QDBusContext>
 #include <QList>
 #include <QObject>
+
+#include <optional>
 
 namespace linglong::service {
 
@@ -75,9 +79,6 @@ public:
     PackageManager(PackageManager &&) = delete;
     auto operator=(const PackageManager &) -> PackageManager & = delete;
     auto operator=(PackageManager &&) -> PackageManager & = delete;
-    void Update(PackageTask &taskContext,
-                const package::Reference &ref,
-                const package::Reference &newRef) noexcept;
 
 public
     Q_SLOT : [[nodiscard]] auto getConfiguration() const noexcept -> QVariantMap;
@@ -121,10 +122,15 @@ private:
     void Install(PackageTask &taskContext,
                  const package::Reference &newRef,
                  std::optional<package::Reference> oldRef,
-                 const std::vector<std::string> &modules) noexcept;
+                 const std::vector<std::string> &modules,
+                 const std::optional<api::types::v1::Repo> &repo) noexcept;
     void InstallRef(PackageTask &taskContext,
                     const package::Reference &ref,
-                    std::vector<std::string> modules) noexcept;
+                    std::vector<std::string> modules,
+                    const api::types::v1::Repo &repo) noexcept;
+    void Update(PackageTask &taskContext,
+                const package::Reference &ref,
+                const package::ReferenceWithRepo &newRef) noexcept;
     void UninstallRef(PackageTask &taskContext,
                       const package::Reference &ref,
                       const std::vector<std::string> &modules) noexcept;
@@ -145,8 +151,6 @@ private:
     utils::error::Result<void> removeAfterInstall(const package::Reference &oldRef,
                                                   const package::Reference &newRef,
                                                   const std::vector<std::string> &modules) noexcept;
-    utils::error::Result<package::Reference>
-    latestRemoteReference(const std::string &kind, package::FuzzyReference &fuzzyRef) noexcept;
     utils::error::Result<void>
     Prune(std::vector<api::types::v1::PackageInfoV2> &removedInfo) noexcept;
     utils::error::Result<void> generateCache(const package::Reference &ref) noexcept;

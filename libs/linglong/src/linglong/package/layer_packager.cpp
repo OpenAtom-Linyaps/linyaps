@@ -15,6 +15,8 @@
 
 #include <string>
 
+#include <unistd.h>
+
 namespace linglong::package {
 
 LayerPackager::LayerPackager(const QDir &workDir)

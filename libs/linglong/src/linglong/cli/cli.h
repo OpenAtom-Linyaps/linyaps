@@ -114,7 +114,7 @@ private:
     utils::error::Result<std::vector<api::types::v1::UpgradeListResult>>
     listUpgradable(const std::vector<api::types::v1::PackageInfoV2> &pkgs);
     utils::error::Result<std::vector<api::types::v1::UpgradeListResult>>
-    listUpgradable(const std::string &type);
+    listUpgradable(const std::string &type = "app");
     int generateCache(const package::Reference &ref);
     utils::error::Result<std::string>
     ensureCache(const package::Reference &ref,

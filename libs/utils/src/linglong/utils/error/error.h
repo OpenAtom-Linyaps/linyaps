@@ -42,6 +42,7 @@ enum class ErrorCode : int {
     AppInstallModuleRequireAppFirst = 2006, // 安装模块时需要先安装应用
     AppInstallModuleAlreadyExists = 2007,   // 安装模块时已存在相同版本的模块
     AppInstallArchNotMatch = 2008,          // 安装app的架构不匹配
+    AppInstallModuleNotFound = 2009,        // 远程不存在对应模块
     /* 卸载 */
     AppUninstallFailed = 2101,            // 卸载失败
     AppUninstallNotFoundFromLocal = 2102, // 本地不存在对应应用

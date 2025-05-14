@@ -24,7 +24,7 @@
 #include "linglong/cli/printer.h"
 #include "linglong/oci-cfg-generators/container_cfg_builder.h"
 #include "linglong/package/layer_file.h"
-#include "linglong/repo/config.h"
+#include "linglong/package/reference.h"
 #include "linglong/runtime/container_builder.h"
 #include "linglong/utils/configure.h"
 #include "linglong/utils/error/error.h"
@@ -445,6 +445,9 @@ void Cli::printProgress() noexcept
             break;
         case utils::error::ErrorCode::AppInstallFailed:
             this->printer.printMessage(_("Install failed"));
+            break;
+        case utils::error::ErrorCode::AppInstallModuleNotFound:
+            this->printer.printMessage(_("The module could not be found remotely."));
             break;
         case utils::error::ErrorCode::AppUninstallFailed:
             this->printer.printMessage(_("Uninstall failed"));
@@ -1183,6 +1186,7 @@ int Cli::install([[maybe_unused]] CLI::App *subcommand)
                                                                      .skipInteraction = false } };
     params.options.force = options.forceOpt;
     params.options.skipInteraction = options.confirmOpt;
+    params.repo = options.repo;
 
     auto app = QString::fromStdString(options.appid);
     QFileInfo info(app);
@@ -1353,10 +1357,31 @@ int Cli::upgrade([[maybe_unused]] CLI::App *subcommand)
             this->printer.printErr(fuzzyRef.error());
             return -1;
         }
+
+        auto localRefRet = this->repository.clearReference(*fuzzyRef,
+                                                           {
+                                                             .forceRemote = false,
+                                                             .fallbackToRemote = false,
+                                                           });
+        if (!localRefRet) {
+            this->printer.printErr(localRefRet.error());
+            return -1;
+        }
+
+        auto layerItemRet = this->repository.getLayerItem(*localRefRet);
+        if (!layerItemRet) {
+            this->printer.printErr(layerItemRet.error());
+            return -1;
+        }
+        if (layerItemRet->info.kind != "app") {
+            this->printer.printErr(
+              LINGLONG_ERRV(std::string{ "package " + options.appid + " is not an app" }.c_str()));
+            return -1;
+        }
         fuzzyRefs.emplace_back(std::move(*fuzzyRef));
     } else {
         // Note: upgrade all apps for now.
-        auto list = this->listUpgradable("app");
+        auto list = this->listUpgradable();
         if (!list) {
             this->printer.printErr(list.error());
             return -1;
@@ -1822,7 +1847,7 @@ int Cli::list([[maybe_unused]] CLI::App *subcommand)
         return 0;
     }
 
-    auto upgradeList = this->listUpgradable(options.type);
+    auto upgradeList = this->listUpgradable();
     if (!upgradeList) {
         this->printer.printErr(upgradeList.error());
         return -1;
@@ -1842,11 +1867,10 @@ Cli::listUpgradable(const std::string &type)
     }
 
     auto localPkgs = std::map<std::string, std::vector<api::types::v1::PackageInfoV2>>{
-        { "local", std::move(pkgs).value() }
+        { "all", std::move(pkgs).value() }
     };
-    if (!type.empty()) {
-        filterPackageInfosByType(localPkgs, type);
-    }
+
+    filterPackageInfosByType(localPkgs, type);
 
     std::vector<api::types::v1::UpgradeListResult> upgradeList;
     auto fullFuzzyRef = package::FuzzyReference::parse(QString::fromStdString("."));
@@ -1854,80 +1878,49 @@ Cli::listUpgradable(const std::string &type)
         return LINGLONG_ERR(fullFuzzyRef);
     }
 
-    auto remotePkgs = this->repository.listRemote(*fullFuzzyRef);
-    if (!remotePkgs) {
-        return LINGLONG_ERR(remotePkgs);
+    auto remoteRepos = this->repository.getHighestPriorityRepos();
+    if (remoteRepos.empty()) {
+        return LINGLONG_ERR("No remote repository found.");
     }
 
-    utils::error::Result<package::Reference> reference = LINGLONG_ERR("reference not exists");
-    for (const auto &pkg : localPkgs["local"]) {
-        auto fuzzy = package::FuzzyReference::parse(QString::fromStdString(pkg.id));
+    auto archRet = package::Architecture::currentCPUArchitecture();
+    if (!archRet) {
+        return LINGLONG_ERR(archRet);
+    }
+
+    std::optional<package::Reference> reference;
+    for (const auto &pkg : localPkgs["all"]) {
+        auto fuzzy = package::FuzzyReference::create(pkg.channel.c_str(),
+                                                     pkg.id.c_str(),
+                                                     std::nullopt,
+                                                     *archRet);
         if (!fuzzy) {
             this->printer.printErr(fuzzy.error());
             continue;
         }
 
-        reference = LINGLONG_ERR("reference not exists");
+        reference.reset();
 
-        for (auto record : *remotePkgs) {
-            auto recordStr = nlohmann::json(record).dump();
-            if (fuzzy->channel && fuzzy->channel->toStdString() != record.channel) {
-                continue;
-            }
-            if (fuzzy->id.toStdString() != record.id) {
-                continue;
-            }
-            auto version = package::Version::parse(QString::fromStdString(record.version));
-            if (!version) {
-                qWarning() << "Ignore invalid package record" << recordStr.c_str()
-                           << version.error();
-                continue;
-            }
-            if (record.arch.empty()) {
-                qWarning() << "Ignore invalid package record";
-                continue;
-            }
+        auto newRef = this->repository.latestRemoteReference(*fuzzy);
 
-            auto arch = package::Architecture::parse(record.arch[0]);
-            if (!arch) {
-                qWarning() << "Ignore invalid package record" << recordStr.c_str() << arch.error();
-                continue;
-            }
-            auto channel = QString::fromStdString(record.channel);
-            auto currentRef = package::Reference::create(channel, fuzzy->id, *version, *arch);
-            if (!currentRef) {
-                qWarning() << "Ignore invalid package record" << recordStr.c_str()
-                           << currentRef.error();
-                continue;
-            }
-            if (!reference) {
-                reference = *currentRef;
-                continue;
-            }
-
-            if (reference->version >= currentRef->version) {
-                continue;
-            }
-
-            reference = *currentRef;
-        }
-
-        if (!reference) {
-            qDebug() << "Failed to find the package: "
-                     << QString::fromStdString(fuzzy->id.toStdString())
-                     << ", maybe it is local package, skip it.";
+        if (!newRef) {
+            qDebug() << "Failed to find remote latest reference:" << newRef.error().message();
             continue;
         }
 
-        auto oldVersion = package::Version::parse(QString::fromStdString(pkg.version));
+        auto oldVersion = package::Version::parse(pkg.version.c_str());
         if (!oldVersion) {
-            std::cerr << "failed to parse old version:"
-                      << oldVersion.error().message().toStdString() << std::endl;
+            qDebug() << "failed to parse old version:" << oldVersion.error().message();
+            continue;
         }
 
-        if (reference->version <= *oldVersion) {
-            qDebug() << "The local package" << QString::fromStdString(pkg.id)
-                     << "version is higher than the remote repository version, skip it.";
+        if (newRef->reference.version > *oldVersion) {
+            reference = newRef->reference;
+        }
+
+        if (!reference) {
+            qDebug() << "Failed to find the package: " << fuzzy->id
+                     << ", maybe it is local package, skip it.";
             continue;
         }
 
@@ -2389,15 +2382,13 @@ utils::error::Result<void> Cli::filterPackageInfosByVersion(
 
             auto oldVersion = package::Version::parse(it->second.version.c_str());
             if (!oldVersion) {
-                qWarning() << "failed to parse old version:"
-                           << oldVersion.error().message().toStdString();
+                qWarning() << "failed to parse old version:" << oldVersion.error().message();
                 continue;
             }
 
             auto newVersion = package::Version::parse(pkgInfo.version.c_str());
             if (!newVersion) {
-                qWarning() << "failed to parse new version:"
-                           << newVersion.error().message().toStdString();
+                qWarning() << "failed to parse new version:" << newVersion.error().message();
                 continue;
             }
 

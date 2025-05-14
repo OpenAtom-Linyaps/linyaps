@@ -729,6 +729,9 @@ $defs:
             type: array
             items:
               type: string
+      repo:
+        type: string
+        description: repo alias of package manager install parameters
       options:
         $ref: '#/$defs/CommonOptions'
   PackageManager1PackageTaskResult:

@@ -118,4 +118,9 @@ void JSONPrinter::printInspect(const api::types::v1::InspectResult &result)
     std::cout << nlohmann::json(result).dump(4) << std::endl;
 }
 
+void JSONPrinter::printMessage(const QString &message)
+{
+    std::cout << nlohmann::json{ { "message", message.toStdString() } }.dump() << std::endl;
+}
+
 } // namespace linglong::cli

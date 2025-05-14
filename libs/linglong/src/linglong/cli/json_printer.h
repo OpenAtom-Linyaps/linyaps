@@ -30,7 +30,7 @@ public:
     void printContent(const QStringList &desktopPaths) override;
     void printUpgradeList(std::vector<api::types::v1::UpgradeListResult> &) override;
     void printInspect(const api::types::v1::InspectResult &) override;
-    void printMessage([[maybe_unused]] const QString &message) override { };
+    void printMessage(const QString &message) override;
 };
 
 } // namespace linglong::cli

@@ -282,10 +282,10 @@ int handleExport(linglong::builder::Builder &builder, const ExportCommandOptions
 
     if (options.layerMode) {
         qInfo() << "Exporting as layer file...";
-        // layer 默认使用lzma有更高压缩率
+        // layer 默认使用lz4, 保持和之前版本的兼容
         if (exportOpts.compressor.empty()) {
-            qInfo() << "Compressor not specified, defaulting to lzma for layer export.";
-            exportOpts.compressor = "lzma";
+            qInfo() << "Compressor not specified, defaulting to lz4 for layer export.";
+            exportOpts.compressor = "lz4";
         }
 
         auto result = builder.exportLayer(exportOpts);
@@ -789,7 +789,7 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     buildExport
       ->add_option("-z, --compressor",
                    exportOpts.exportSpecificOptions.compressor,
-                   "supported compressors are: lz4(uab default), lzam(layer default), zstd")
+                   "supported compressors are: lz4(default), lzma, zstd")
       ->type_name("X");
     auto *iconOpt =
       buildExport

@@ -325,6 +325,9 @@ ll-cli install stable:org.deepin.demo/0.0.0.1/x86_64
     cliInstall->add_option("--module", options.module, _("Install a specify module"))
       ->type_name("MODULE")
       ->check(validatorString);
+    cliInstall->add_option("--repo", options.repo, _("Install from a specific repo"))
+      ->type_name("REPO")
+      ->check(validatorString);
     cliInstall->add_flag("--force", options.forceOpt, _("Force install the application"));
     cliInstall->add_flag("-y", options.confirmOpt, _("Automatically answer yes to all questions"));
 

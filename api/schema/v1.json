@@ -934,6 +934,10 @@
             }
           }
         },
+        "repo": {
+          "type": "string",
+          "description": "repo alias of package manager install parameters"
+        },
         "options": {
           "$ref": "#/$defs/CommonOptions"
         }

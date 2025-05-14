@@ -10,6 +10,7 @@
 #include "linglong/api/types/v1/ExportDirs.hpp"
 #include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/api/types/v1/PackageInfoV2.hpp"
+#include "linglong/api/types/v1/Repo.hpp"
 #include "linglong/api/types/v1/RepositoryCacheLayersItem.hpp"
 #include "linglong/api/types/v1/RepositoryCacheMergedItem.hpp"
 #include "linglong/package/fuzzy_reference.h"
@@ -49,6 +50,7 @@
 #include <filesystem>
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <system_error>
 #include <thread>
@@ -541,8 +543,6 @@ std::optional<package::Reference> matchReference(const api::types::v1::PackageIn
                                                  const package::FuzzyReference &fuzzy,
                                                  const std::string &module) noexcept
 {
-    qInfo() << "record: " << nlohmann::json(record).dump().c_str();
-    qInfo() << "fuzzy: " << fuzzy.toString();
     auto recordStr = nlohmann::json(record).dump();
     if (fuzzy.channel && fuzzy.channel->toStdString() != record.channel) {
         return std::nullopt;
@@ -814,12 +814,93 @@ const api::types::v1::RepoConfigV2 &OSTreeRepo::getConfig() const noexcept
 api::types::v1::RepoConfigV2 OSTreeRepo::getOrderedConfig() noexcept
 {
     auto orderCfg = this->cfg;
-    std::sort(orderCfg.repos.begin(),
-              orderCfg.repos.end(),
-              [](const auto &repo1, const auto &repo2) {
-                  return repo1.priority > repo2.priority;
-              });
+    std::stable_sort(orderCfg.repos.begin(),
+                     orderCfg.repos.end(),
+                     [](const auto &repo1, const auto &repo2) {
+                         return repo1.priority > repo2.priority;
+                     });
     return orderCfg;
+}
+
+/*
+ * @brief Get the highest priority repos.
+ * @return The highest priority repos, one or more.
+ */
+std::vector<api::types::v1::Repo> OSTreeRepo::getHighestPriorityRepos() noexcept
+{
+    auto orderCfg = this->getOrderedConfig();
+    const auto highestPriority = orderCfg.repos.front().priority;
+    std::vector<api::types::v1::Repo> repos;
+    std::copy_if(orderCfg.repos.begin(),
+                 orderCfg.repos.end(),
+                 std::back_inserter(repos),
+                 [&highestPriority](const auto &repo) {
+                     return repo.priority == highestPriority;
+                 });
+    return repos;
+}
+
+/*
+ * @brief Get the repo by repo alias.
+ * @param alias the alias of the repo
+ * @return repo
+ */
+utils::error::Result<api::types::v1::Repo>
+OSTreeRepo::getRepoByAlias(const std::string &alias) const noexcept
+{
+    LINGLONG_TRACE("get repo by alias")
+    auto repo = this->cfg.repos;
+    if (repo.empty()) {
+        return LINGLONG_ERR("no repo found");
+    }
+    auto it = std::find_if(repo.begin(), repo.end(), [&alias](const api::types::v1::Repo &repo) {
+        return repo.alias.value_or(repo.name) == alias;
+    });
+    if (it == repo.end()) {
+        return LINGLONG_ERR("no repo found");
+    }
+    return *it;
+}
+
+/**
+ * @brief Promote the priority of the repo, for user install of a specified repo.
+ * @param alias the alias of the repo
+ * @return the original priority of the repo
+ * @note After the call, recoverPriority must be invoked at an appropriate time to restore the
+ * priority.
+ */
+OSTreeRepo::repoPriority_t OSTreeRepo::promotePriority(const std::string &alias) noexcept
+{
+    LINGLONG_TRACE("promote priority of repo " + QString::fromStdString(alias));
+
+    auto it =
+      std::find_if(this->cfg.repos.begin(), this->cfg.repos.end(), [&alias](const auto &repo) {
+          return repo.alias.value_or(repo.name) == alias;
+      });
+    assert(it != this->cfg.repos.end());
+
+    auto originalPriority = it->priority;
+    it->priority = std::numeric_limits<OSTreeRepo::repoPriority_t>::max();
+    return originalPriority;
+}
+
+/**
+ * @brief Recover the priority of the repo.
+ * @param alias the alias of the repo
+ * @param priority the original priority of the repo
+ */
+void OSTreeRepo::recoverPriority(const std::string &alias,
+                                 const OSTreeRepo::repoPriority_t &priority) noexcept
+{
+    LINGLONG_TRACE("recover priority of repo " + QString::fromStdString(alias));
+
+    auto it =
+      std::find_if(this->cfg.repos.begin(), this->cfg.repos.end(), [&alias](const auto &repo) {
+          return repo.alias.value_or(repo.name) == alias;
+      });
+    assert(it != this->cfg.repos.end());
+
+    it->priority = priority;
 }
 
 utils::error::Result<void>
@@ -1171,12 +1252,17 @@ utils::error::Result<void> OSTreeRepo::prune()
 
 void OSTreeRepo::pull(service::PackageTask &taskContext,
                       const package::Reference &reference,
-                      const std::string &module) noexcept
+                      const std::string &module,
+                      const std::optional<api::types::v1::Repo> &repo) noexcept
 {
     // Note: if module is runtime, refString will be channel:id/version/binary.
     // because we need considering update channel:id/version/runtime to channel:id/version/binary.
     auto refString = ostreeSpecFromReferenceV2(reference, std::nullopt, module);
-    LINGLONG_TRACE("pull " + QString::fromStdString(refString));
+    api::types::v1::Repo pullRepo = getDefaultRepo(this->cfg);
+    if (repo) {
+        pullRepo = repo.value();
+    }
+    LINGLONG_TRACE(std::string{ "pull " + refString + " from " + pullRepo.name }.c_str());
 
     utils::Transaction transaction;
     auto *cancellable = taskContext.cancellable();
@@ -1203,14 +1289,13 @@ void OSTreeRepo::pull(service::PackageTask &taskContext,
 
     g_autoptr(GVariant) pull_options = g_variant_ref_sink(g_variant_builder_end(&builder));
     // 这里不能使用g_main_context_push_thread_default，因为会阻塞Qt的事件循环
-    const auto defaultRepo = getDefaultRepo(this->cfg);
-    auto status =
-      ostree_repo_pull_with_options(this->ostreeRepo.get(),
-                                    defaultRepo.alias.value_or(defaultRepo.name).c_str(),
-                                    pull_options,
-                                    progress,
-                                    cancellable,
-                                    &gErr);
+
+    auto status = ostree_repo_pull_with_options(this->ostreeRepo.get(),
+                                                pullRepo.alias.value_or(pullRepo.name).c_str(),
+                                                pull_options,
+                                                progress,
+                                                cancellable,
+                                                &gErr);
     ostree_async_progress_finish(progress);
     auto shouldFallback = false;
     if (status == FALSE) {
@@ -1248,7 +1333,7 @@ void OSTreeRepo::pull(service::PackageTask &taskContext,
         g_autoptr(GVariant) pull_options = g_variant_ref_sink(g_variant_builder_end(&builder));
 
         status = ostree_repo_pull_with_options(this->ostreeRepo.get(),
-                                               defaultRepo.alias.value_or(defaultRepo.name).c_str(),
+                                               pullRepo.alias.value_or(pullRepo.name).c_str(),
                                                pull_options,
                                                progress,
                                                cancellable,
@@ -1285,7 +1370,7 @@ void OSTreeRepo::pull(service::PackageTask &taskContext,
 
     item.commit = commit;
     item.info = *info;
-    item.repo = defaultRepo.alias.value_or(defaultRepo.name);
+    item.repo = pullRepo.alias.value_or(pullRepo.name);
 
     auto layerDir = this->ensureEmptyLayerDir(item.commit);
     if (!layerDir) {
@@ -1305,7 +1390,8 @@ void OSTreeRepo::pull(service::PackageTask &taskContext,
 utils::error::Result<package::Reference>
 OSTreeRepo::clearReference(const package::FuzzyReference &fuzzy,
                            const clearReferenceOption &opts,
-                           const std::string &module) const noexcept
+                           const std::string &module,
+                           const std::optional<std::string> &repo) const noexcept
 {
     LINGLONG_TRACE("clear fuzzy reference " + fuzzy.toString());
 
@@ -1325,7 +1411,17 @@ OSTreeRepo::clearReference(const package::FuzzyReference &fuzzy,
         qInfo() << "fallback to Remote";
     }
 
-    auto listRet = this->listRemote(fuzzy);
+    api::types::v1::Repo remoteRepo = getDefaultRepo(this->cfg);
+
+    if (repo) {
+        auto repoRet = this->getRepoByAlias(*repo);
+        if (!repoRet) {
+            return LINGLONG_ERR(repoRet);
+        }
+        remoteRepo = *repoRet;
+    }
+
+    auto listRet = this->listRemote(fuzzy, remoteRepo);
     if (!listRet.has_value()) {
         return LINGLONG_ERR("get ref list from remote " + listRet.error().message(),
                             listRet.error().code());
@@ -1343,7 +1439,7 @@ OSTreeRepo::clearReference(const package::FuzzyReference &fuzzy,
         fuzzyVersion = std::move(fuzzyVerRet).value();
     }
 
-    for (auto record : list) {
+    for (const auto &record : list) {
         auto currentRefRet = matchReference(record, fuzzy, module);
         if (!currentRefRet) {
             continue;
@@ -1354,21 +1450,21 @@ OSTreeRepo::clearReference(const package::FuzzyReference &fuzzy,
             if (opts.semanticMatching) {
                 if (!reference || currentRefRet->version > reference->version) {
                     reference = *currentRefRet;
-                    continue;
                 }
-            } else {
-                // 精确匹配版本
-                if (currentRefRet->version == *fuzzyVersion) {
-                    reference = *currentRefRet;
-                    break;
-                }
-            }
-        } else {
-            // 匹配最新版本
-            if (!reference || currentRefRet->version > reference->version) {
-                reference = *currentRefRet;
                 continue;
             }
+
+            // 精确匹配版本
+            if (currentRefRet->version == *fuzzyVersion) {
+                reference = *currentRefRet;
+                break;
+            }
+            continue;
+        }
+
+        // 匹配最新版本
+        if (!reference || currentRefRet->version > reference->version) {
+            reference = *currentRefRet;
         }
     }
 
@@ -1379,6 +1475,67 @@ OSTreeRepo::clearReference(const package::FuzzyReference &fuzzy,
     }
 
     return reference;
+}
+
+utils::error::Result<linglong::package::ReferenceWithRepo>
+OSTreeRepo::getRemoteReferenceByPriority(const package::FuzzyReference &fuzzy,
+                                         const getRemoteReferenceByPriorityOption &opts,
+                                         const std::string &module) noexcept
+{
+    LINGLONG_TRACE("get remote reference by priority")
+    auto repos = this->getHighestPriorityRepos();
+
+    // 指定了repo，则不需要按照优先级来查找
+    if (opts.onlyClearHighestPriority) {
+        if (repos.empty()) {
+            return LINGLONG_ERR("No repositories available",
+                                utils::error::ErrorCode::AppInstallNotFoundFromRemote);
+        }
+
+        // 找到优先级最高的第一个仓库
+        const auto &highestPriorityRepo = repos.front();
+        auto refRet =
+          this->clearReference(fuzzy,
+                               { .forceRemote = true, .semanticMatching = opts.semanticMatching },
+                               module,
+                               highestPriorityRepo.alias.value_or(highestPriorityRepo.name));
+
+        if (!refRet) {
+            return LINGLONG_ERR(refRet);
+        }
+        return linglong::package::ReferenceWithRepo{ .repo = highestPriorityRepo,
+                                                     .reference = *refRet };
+    }
+
+    // 未指定repo，则只找优先级最高的仓库，可以有多个
+    std::vector<linglong::package::ReferenceWithRepo> results;
+    for (const auto &repo : repos) {
+        auto refRet =
+          this->clearReference(fuzzy,
+                               { .forceRemote = true, .semanticMatching = opts.semanticMatching },
+                               module,
+                               repo.alias.value_or(repo.name));
+        if (!refRet) {
+            if (static_cast<utils::error::ErrorCode>(refRet.error().code())
+                == utils::error::ErrorCode::AppNotFoundFromRemote) {
+                continue;
+            }
+            return LINGLONG_ERR(refRet);
+        }
+
+        results.emplace_back(
+          linglong::package::ReferenceWithRepo{ .repo = repo, .reference = *refRet });
+    }
+
+    // 寻找最新的版本
+    auto it = std::max_element(results.begin(), results.end(), [](const auto &a, const auto &b) {
+        return a.reference.version < b.reference.version;
+    });
+    if (it != results.end()) {
+        return *it;
+    }
+    return LINGLONG_ERR(QString{ "not found %1 in all repos" }.arg(fuzzy.toString()),
+                        utils::error::ErrorCode::AppInstallNotFoundFromRemote);
 }
 
 utils::error::Result<std::vector<api::types::v1::PackageInfoV2>>
@@ -2206,9 +2363,10 @@ auto OSTreeRepo::getLayerDir(const package::Reference &ref,
 }
 
 // get all module list
-utils::error::Result<std::vector<std::string>> OSTreeRepo::getRemoteModuleList(
-  const package::Reference &ref,
-  const std::optional<std::vector<std::string>> &filter) const noexcept
+utils::error::Result<std::vector<std::string>>
+OSTreeRepo::getRemoteModuleList(const package::Reference &ref,
+                                const std::optional<std::vector<std::string>> &filter,
+                                const api::types::v1::Repo &repo) const noexcept
 {
     LINGLONG_TRACE("get remote module list");
     auto fuzzy =
@@ -2216,7 +2374,7 @@ utils::error::Result<std::vector<std::string>> OSTreeRepo::getRemoteModuleList(
     if (!fuzzy.has_value()) {
         return LINGLONG_ERR("create fuzzy reference", fuzzy);
     }
-    auto list = this->listRemote(*fuzzy);
+    auto list = this->listRemote(*fuzzy, repo);
     if (!list.has_value()) {
         return LINGLONG_ERR("list remote reference", fuzzy);
     }
@@ -2256,6 +2414,45 @@ utils::error::Result<std::vector<std::string>> OSTreeRepo::getRemoteModuleList(
     auto it = std::unique(modules.begin(), modules.end());
     modules.erase(it, modules.end());
     return modules;
+}
+
+[[nodiscard]] utils::error::Result<std::pair<api::types::v1::Repo, std::vector<std::string>>>
+OSTreeRepo::getRemoteModuleListByPriority(const package::Reference &ref,
+                                          const std::optional<std::vector<std::string>> &filter,
+                                          bool onlyClearHighestPriority,
+                                          const std::optional<api::types::v1::Repo> &repo) noexcept
+{
+    LINGLONG_TRACE("get remote module list by priority");
+
+    if (repo) {
+        auto ret = this->getRemoteModuleList(ref, filter, *repo);
+        if (!ret) {
+            return LINGLONG_ERR(ret);
+        }
+        return std::pair{ *repo, *ret };
+    }
+
+    auto repos = this->getHighestPriorityRepos();
+    if (onlyClearHighestPriority) {
+        const auto highestPriorityRepo = repos.front();
+        auto ret = this->getRemoteModuleList(ref, filter, highestPriorityRepo);
+        if (!ret) {
+            return LINGLONG_ERR(ret);
+        }
+        return std::pair{ highestPriorityRepo, *ret };
+    }
+
+    for (const auto &repo : repos) {
+        auto ret = this->getRemoteModuleList(ref, filter, repo);
+        if (!ret) {
+            return LINGLONG_ERR(ret);
+        }
+        if (!ret->empty()) {
+            return std::pair{ api::types::v1::Repo{ repo }, *ret };
+        }
+    }
+
+    return LINGLONG_ERR("no module found from remote repo");
 }
 
 // get all module list
@@ -2844,6 +3041,19 @@ utils::error::Result<void> OSTreeRepo::IniLikeFileRewrite(const QFileInfo &info,
     }
 
     return LINGLONG_OK;
+}
+
+utils::error::Result<package::ReferenceWithRepo>
+OSTreeRepo::latestRemoteReference(package::FuzzyReference &fuzzyRef) noexcept
+{
+    LINGLONG_TRACE("get latest reference");
+
+    fuzzyRef.version.reset();
+    auto ref = this->getRemoteReferenceByPriority(fuzzyRef, { .semanticMatching = false });
+    if (!ref) {
+        return LINGLONG_ERR(ref);
+    }
+    return ref;
 }
 
 OSTreeRepo::~OSTreeRepo() = default;

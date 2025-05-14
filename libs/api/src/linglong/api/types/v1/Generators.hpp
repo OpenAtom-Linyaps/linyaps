@@ -779,12 +779,16 @@ j["version"] = x.version;
 inline void from_json(const json & j, PackageManager1InstallParameters& x) {
 x.options = j.at("options").get<CommonOptions>();
 x.package = j.at("package").get<PackageManager1InstallParametersPacakge>();
+x.repo = get_stack_optional<std::string>(j, "repo");
 }
 
 inline void to_json(json & j, const PackageManager1InstallParameters & x) {
 j = json::object();
 j["options"] = x.options;
 j["package"] = x.package;
+if (x.repo) {
+j["repo"] = x.repo;
+}
 }
 
 inline void from_json(const json & j, PackageManager1JobInfo& x) {

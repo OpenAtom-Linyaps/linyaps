@@ -7,6 +7,7 @@
 #pragma once
 
 #include "linglong/api/types/v1/PackageInfoV2.hpp"
+#include "linglong/api/types/v1/Repo.hpp"
 #include "linglong/package/architecture.h"
 #include "linglong/package/version.h"
 
@@ -42,6 +43,12 @@ private:
               const QString &id,
               const Version &version,
               const Architecture &architecture);
+};
+
+struct ReferenceWithRepo
+{
+    api::types::v1::Repo repo;
+    Reference reference;
 };
 
 } // namespace linglong::package

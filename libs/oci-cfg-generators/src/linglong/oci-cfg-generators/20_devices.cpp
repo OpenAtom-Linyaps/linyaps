@@ -29,7 +29,14 @@ bool Devices::generate(ocppi::runtime::config::types::Config &config) const noex
     auto mounts = config.mounts.value_or(std::vector<ocppi::runtime::config::types::Mount>{});
 
     auto bindIfExist = [&mounts](std::string_view source, std::string_view destination) mutable {
-        if (!std::filesystem::exists(source)) {
+        std::error_code ec;
+        if (!std::filesystem::exists(source, ec)) {
+            if (ec) {
+                std::cerr << "Failed to check existence of " << source << ": " << ec.message()
+                          << std::endl;
+                return;
+            }
+
             return;
         }
 

@@ -65,8 +65,15 @@ bool Legacy::generate(ocppi::runtime::config::types::Config &config) const noexc
         { "/etc/resolvconf", "/etc/resolvconf" },
     };
 
+    std::error_code ec;
     for (const auto [source, destination] : roMountMap) {
-        if (!std::filesystem::exists(source)) {
+        if (!std::filesystem::exists(source, ec)) {
+            if (ec) {
+                std::cerr << "Failed to check existence of " << source << ": " << ec.message()
+                          << std::endl;
+                continue;
+            }
+
             std::cerr << source << " not exists on host." << std::endl;
             continue;
         }
@@ -144,7 +151,7 @@ bool Legacy::generate(ocppi::runtime::config::types::Config &config) const noexc
         env.push_back("XDG_DATA_DIRS=" + shareDir.string());
     }
 
-    std::error_code ec;
+    ec.clear();
     // mount for dtk
     if (std::filesystem::exists("/usr/share/deepin/distribution.info", ec)) {
         mounts.push_back(ocppi::runtime::config::types::Mount{

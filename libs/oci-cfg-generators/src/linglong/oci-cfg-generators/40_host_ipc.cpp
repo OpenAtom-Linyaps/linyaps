@@ -50,7 +50,15 @@ bool HostIPC::generate(ocppi::runtime::config::types::Config &config) const noex
     auto env = process.env.value_or(std::vector<std::string>{});
 
     auto bindIfExist = [&mounts](std::string_view source, std::string_view destination) mutable {
-        if (!std::filesystem::exists(source)) {
+        std::error_code ec;
+
+        if (!std::filesystem::exists(source, ec)) {
+            if (ec) {
+                std::cerr << "Failed to check existence of " << source << ": " << ec.message()
+                          << std::endl;
+                return;
+            }
+
             return;
         }
 
@@ -93,7 +101,14 @@ bool HostIPC::generate(ocppi::runtime::config::types::Config &config) const noex
         }
 
         auto socketPath = std::filesystem::path(systemBus.substr(suffix.size()));
-        if (!std::filesystem::exists(socketPath)) {
+        std::error_code ec;
+        if (!std::filesystem::exists(socketPath, ec)) {
+            if (ec) {
+                std::cerr << "Failed to check existence of " << socketPath << ": " << ec.message()
+                          << std::endl;
+                return;
+            }
+
             std::cerr << "D-Bus session bus socket not found at " << socketPath << std::endl;
             return;
         }
@@ -164,11 +179,19 @@ bool HostIPC::generate(ocppi::runtime::config::types::Config &config) const noex
             }
 
             auto socketPath = std::filesystem::path(hostXDGRuntimeDir) / waylandDisplayEnv;
-            if (!std::filesystem::exists(socketPath)) {
+            std::error_code ec;
+            if (!std::filesystem::exists(socketPath, ec)) {
+                if (ec) {
+                    std::cerr << "Failed to check existence of " << socketPath << ": "
+                              << ec.message() << std::endl;
+                    return;
+                }
+
                 std::cerr << "Wayland display socket not found at " << socketPath << "."
                           << std::endl;
                 return;
             }
+
             mounts.emplace_back(ocppi::runtime::config::types::Mount{
               .destination = cognitiveXDGRuntimeDir / waylandDisplayEnv,
               .options = string_list{ "rbind" },

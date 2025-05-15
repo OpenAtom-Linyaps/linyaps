@@ -717,8 +717,11 @@ utils::error::Result<QDir> OSTreeRepo::ensureEmptyLayerDir(const std::string &co
     }
 
     if (!std::filesystem::create_directories(dir, ec)) {
-        return LINGLONG_ERR(
-          QString{ "failed to create layer dir %1: %2" }.arg(dir.c_str(), ec.message().c_str()));
+        if (ec) {
+            return LINGLONG_ERR(
+              QString{ "failed to create layer dir %1: %2" }.arg(dir.c_str(),
+                                                                 ec.message().c_str()));
+        }
     }
 
     return QDir{ dir.c_str() };

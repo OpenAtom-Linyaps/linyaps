@@ -35,6 +35,7 @@ pfl_add_library(
   src/linglong/cli/printer.h
   src/linglong/cli/terminal_notifier.cpp
   src/linglong/cli/terminal_notifier.h
+  src/linglong/extension/extension.cpp
   src/linglong/package/architecture.cpp
   src/linglong/package/architecture.h
   src/linglong/package/fallback_version.cpp

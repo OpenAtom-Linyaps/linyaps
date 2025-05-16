@@ -44,6 +44,14 @@ std::optional<std::string> channel;
 */
 std::string description;
 /**
+* Predefined environment variables when the extension is applied
+*/
+std::optional<std::map<std::string, std::string>> env;
+/**
+* extension of whom
+*/
+std::optional<std::string> extensionOf;
+/**
 * id of package
 */
 std::string id;
@@ -51,6 +59,10 @@ std::string id;
 * kind of package
 */
 std::string kind;
+/**
+* extra ld search path
+*/
+std::optional<std::vector<std::string>> libs;
 /**
 * name of package
 */

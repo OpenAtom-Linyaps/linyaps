@@ -53,6 +53,8 @@
 #include "linglong/api/types/v1/InteractionReply.hpp"
 #include "linglong/api/types/v1/InteractionMessageType.hpp"
 #include "linglong/api/types/v1/InspectResult.hpp"
+#include "linglong/api/types/v1/ExtensionImpl.hpp"
+#include "linglong/api/types/v1/ExtensionDefine.hpp"
 #include "linglong/api/types/v1/ExportDirs.hpp"
 #include "linglong/api/types/v1/DialogMessage.hpp"
 #include "linglong/api/types/v1/DialogHandShakePayload.hpp"
@@ -137,6 +139,12 @@ void to_json(json & j, const DialogMessage & x);
 
 void from_json(const json & j, ExportDirs & x);
 void to_json(json & j, const ExportDirs & x);
+
+void from_json(const json & j, ExtensionDefine & x);
+void to_json(json & j, const ExtensionDefine & x);
+
+void from_json(const json & j, ExtensionImpl & x);
+void to_json(json & j, const ExtensionImpl & x);
 
 void from_json(const json & j, InspectResult & x);
 void to_json(json & j, const InspectResult & x);
@@ -386,8 +394,11 @@ inline void from_json(const json & j, BuilderProjectPackage& x) {
 x.architecture = get_stack_optional<std::string>(j, "architecture");
 x.channel = get_stack_optional<std::string>(j, "channel");
 x.description = j.at("description").get<std::string>();
+x.env = get_stack_optional<std::map<std::string, std::string>>(j, "env");
+x.extensionOf = get_stack_optional<std::string>(j, "extension_of");
 x.id = j.at("id").get<std::string>();
 x.kind = j.at("kind").get<std::string>();
+x.libs = get_stack_optional<std::vector<std::string>>(j, "libs");
 x.name = j.at("name").get<std::string>();
 x.version = j.at("version").get<std::string>();
 }
@@ -401,8 +412,17 @@ if (x.channel) {
 j["channel"] = x.channel;
 }
 j["description"] = x.description;
+if (x.env) {
+j["env"] = x.env;
+}
+if (x.extensionOf) {
+j["extension_of"] = x.extensionOf;
+}
 j["id"] = x.id;
 j["kind"] = x.kind;
+if (x.libs) {
+j["libs"] = x.libs;
+}
 j["name"] = x.name;
 j["version"] = x.version;
 }
@@ -570,6 +590,38 @@ j = json::object();
 j["export-paths"] = x.exportPaths;
 }
 
+inline void from_json(const json & j, ExtensionDefine& x) {
+x.allowEnv = get_stack_optional<std::map<std::string, std::string>>(j, "allow_env");
+x.directory = j.at("directory").get<std::string>();
+x.name = j.at("name").get<std::string>();
+x.version = j.at("version").get<std::string>();
+}
+
+inline void to_json(json & j, const ExtensionDefine & x) {
+j = json::object();
+if (x.allowEnv) {
+j["allow_env"] = x.allowEnv;
+}
+j["directory"] = x.directory;
+j["name"] = x.name;
+j["version"] = x.version;
+}
+
+inline void from_json(const json & j, ExtensionImpl& x) {
+x.env = get_stack_optional<std::map<std::string, std::string>>(j, "env");
+x.libs = get_stack_optional<std::vector<std::string>>(j, "libs");
+}
+
+inline void to_json(json & j, const ExtensionImpl & x) {
+j = json::object();
+if (x.env) {
+j["env"] = x.env;
+}
+if (x.libs) {
+j["libs"] = x.libs;
+}
+}
+
 inline void from_json(const json & j, InspectResult& x) {
 x.appID = get_stack_optional<std::string>(j, "appID");
 }
@@ -685,6 +737,8 @@ x.channel = j.at("channel").get<std::string>();
 x.command = get_stack_optional<std::vector<std::string>>(j, "command");
 x.compatibleVersion = get_stack_optional<std::string>(j, "compatible_version");
 x.description = get_stack_optional<std::string>(j, "description");
+x.extImpl = get_stack_optional<ExtensionImpl>(j, "ext_impl");
+x.extensions = get_stack_optional<std::vector<ExtensionDefine>>(j, "extensions");
 x.id = j.at("id").get<std::string>();
 x.kind = j.at("kind").get<std::string>();
 x.packageInfoV2Module = j.at("module").get<std::string>();
@@ -710,6 +764,12 @@ j["compatible_version"] = x.compatibleVersion;
 }
 if (x.description) {
 j["description"] = x.description;
+}
+if (x.extImpl) {
+j["ext_impl"] = x.extImpl;
+}
+if (x.extensions) {
+j["extensions"] = x.extensions;
 }
 j["id"] = x.id;
 j["kind"] = x.kind;
@@ -1100,6 +1160,8 @@ x.containerProcessStateInfo = get_stack_optional<ContainerProcessStateInfo>(j, "
 x.dialogHandShakePayload = get_stack_optional<DialogHandShakePayload>(j, "DialogHandShakePayload");
 x.dialogMessage = get_stack_optional<DialogMessage>(j, "DialogMessage");
 x.exportDirs = get_stack_optional<ExportDirs>(j, "ExportDirs");
+x.extensionDefine = get_stack_optional<ExtensionDefine>(j, "ExtensionDefine");
+x.extensionImpl = get_stack_optional<ExtensionImpl>(j, "ExtensionImpl");
 x.inspectResult = get_stack_optional<InspectResult>(j, "InspectResult");
 x.interactionMessageType = get_stack_optional<InteractionMessageType>(j, "InteractionMessageType");
 x.interactionReply = get_stack_optional<InteractionReply>(j, "InteractionReply");
@@ -1170,6 +1232,12 @@ j["DialogMessage"] = x.dialogMessage;
 }
 if (x.exportDirs) {
 j["ExportDirs"] = x.exportDirs;
+}
+if (x.extensionDefine) {
+j["ExtensionDefine"] = x.extensionDefine;
+}
+if (x.extensionImpl) {
+j["ExtensionImpl"] = x.extensionImpl;
 }
 if (x.inspectResult) {
 j["InspectResult"] = x.inspectResult;

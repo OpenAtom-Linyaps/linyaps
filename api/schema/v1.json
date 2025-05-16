@@ -348,6 +348,24 @@
             "channel": {
               "type": "string",
               "description": "channel of package"
+            },
+            "extension_of": {
+              "type": "string",
+              "description": "extension of whom"
+            },
+            "libs": {
+              "description": "extra ld search path",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "env": {
+              "description": "Predefined environment variables when the extension is applied",
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
             }
           }
         },
@@ -711,6 +729,16 @@
         "compatible_version": {
           "type": "string",
           "description": "record linyaps package is compatible with linyaps component version"
+        },
+        "extensions": {
+          "type": "array",
+          "description": "description of extension",
+          "items": {
+            "$ref": "#/$defs/ExtensionDefine"
+          }
+        },
+        "ext_impl": {
+          "$ref": "#/$defs/ExtensionImpl"
         }
       }
     },
@@ -1285,6 +1313,55 @@
           }
         }
       }
+    },
+    "ExtensionDefine": {
+      "type": "object",
+      "required": [
+        "name",
+        "version",
+        "directory"
+      ],
+      "properties": {
+        "name": {
+          "description": "extension name",
+          "type": "string"
+        },
+        "version": {
+          "description": "extension version",
+          "type": "string"
+        },
+        "directory": {
+          "description": "where extension to be mount",
+          "type": "string"
+        },
+        "allow_env": {
+          "description": "the environment variables allow extension to modify",
+          "type": "object",
+          "additionalProperties": {
+            "description": "default environment variable",
+            "type": "string"
+          }
+        }
+      }
+    },
+    "ExtensionImpl": {
+      "type": "object",
+      "properties": {
+        "libs": {
+          "description": "extra ld search path",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "env": {
+          "description": "environment variables to set when extension effects",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
     }
   },
   "type": "object",
@@ -1417,6 +1494,12 @@
     },
     "ExportDirs": {
       "$ref": "#/$defs/ExportDirs"
+    },
+    "ExtensionDefine": {
+      "$ref": "#/$defs/ExtensionDefine"
+    },
+    "ExtensionImpl": {
+      "$ref": "#/$defs/ExtensionImpl"
     }
   }
 }

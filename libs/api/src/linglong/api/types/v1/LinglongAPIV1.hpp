@@ -29,6 +29,8 @@
 #include "linglong/api/types/v1/DialogHandShakePayload.hpp"
 #include "linglong/api/types/v1/DialogMessage.hpp"
 #include "linglong/api/types/v1/ExportDirs.hpp"
+#include "linglong/api/types/v1/ExtensionDefine.hpp"
+#include "linglong/api/types/v1/ExtensionImpl.hpp"
 #include "linglong/api/types/v1/InspectResult.hpp"
 #include "linglong/api/types/v1/InteractionReply.hpp"
 #include "linglong/api/types/v1/InteractionRequest.hpp"
@@ -96,6 +98,8 @@ std::optional<ContainerProcessStateInfo> containerProcessStateInfo;
 std::optional<DialogHandShakePayload> dialogHandShakePayload;
 std::optional<DialogMessage> dialogMessage;
 std::optional<ExportDirs> exportDirs;
+std::optional<ExtensionDefine> extensionDefine;
+std::optional<ExtensionImpl> extensionImpl;
 std::optional<InspectResult> inspectResult;
 std::optional<InteractionMessageType> interactionMessageType;
 std::optional<InteractionReply> interactionReply;

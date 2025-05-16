@@ -10,6 +10,7 @@
 #include "linglong/api/types/v1/BuilderProject.hpp"
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/runtime/container_builder.h"
+#include "linglong/runtime/run_context.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/overlayfs.h"
 
@@ -110,7 +111,6 @@ private:
     auto generateBuildDependsScript() noexcept -> utils::error::Result<bool>;
     auto generateDependsScript() noexcept -> utils::error::Result<bool>;
     void takeTerminalForeground();
-    void patchBuildPhaseConfig(ocppi::runtime::config::types::Config &config);
     void mergeOutput(const QList<QDir> &src, const QDir &dest, const QStringList &target);
     void printBasicInfo();
     void printRepo();
@@ -128,14 +128,11 @@ private:
 
     std::optional<package::Reference> projectRef;
     QStringList packageModules;
-    std::optional<package::Reference> baseRef;
-    std::optional<package::LayerDir> baseLayerDir;
-    std::optional<package::Reference> runtimeRef;
-    std::optional<package::LayerDir> runtimeLayerDir;
     std::unique_ptr<utils::OverlayFS> baseOverlay;
     std::unique_ptr<utils::OverlayFS> runtimeOverlay;
     QDir buildOutput;
-    QString installPrefix;
+    std::string installPrefix;
+    runtime::RunContext buildContext;
 };
 
 } // namespace linglong::builder

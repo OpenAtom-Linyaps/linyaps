@@ -397,9 +397,27 @@ ContainerCfgBuilder &ContainerCfgBuilder::enableQuirkVolatile() noexcept
     return *this;
 }
 
-ContainerCfgBuilder &ContainerCfgBuilder::setExtraMounts(std::vector<Mount> extra) noexcept
+ContainerCfgBuilder &ContainerCfgBuilder::setExtensionMounts(std::vector<Mount> extensions) noexcept
 {
-    extraMount = extra;
+    extensionMount = std::move(extensions);
+    return *this;
+}
+
+ContainerCfgBuilder &ContainerCfgBuilder::addExtraMount(Mount extra) noexcept
+{
+    if (!extraMount) {
+        extraMount = std::vector<Mount>{};
+    }
+    extraMount->emplace_back(std::move(extra));
+    return *this;
+}
+
+ContainerCfgBuilder &ContainerCfgBuilder::addExtraMounts(std::vector<Mount> extra) noexcept
+{
+    if (!extraMount) {
+        extraMount = std::vector<Mount>{};
+    }
+    std::move(extra.begin(), extra.end(), std::back_inserter(*extraMount));
     return *this;
 }
 
@@ -416,6 +434,32 @@ ContainerCfgBuilder &ContainerCfgBuilder::addMask(const std::vector<std::string>
     maskedPaths.insert(maskedPaths.end(), masks.begin(), masks.end());
 
     return *this;
+}
+
+std::string ContainerCfgBuilder::ldConf(const std::string &triplet)
+{
+    std::string ldRawConf;
+    auto appendLdConf = [&ldRawConf, &triplet](const std::string &prefix) {
+        ldRawConf.append(prefix + "/lib\n");
+        ldRawConf.append(prefix + "/lib/" + triplet + "\n");
+        ldRawConf.append("include " + prefix + "/etc/ld.so.conf\n");
+    };
+
+    if (runtimePath) {
+        appendLdConf(runtimeMountPoint);
+    }
+
+    if (appPath) {
+        appendLdConf(std::filesystem::path{ "/opt/apps" } / appId / "files");
+    }
+
+    if (extensionMount) {
+        for (const auto &extension : *extensionMount) {
+            appendLdConf(extension.destination);
+        }
+    }
+
+    return ldRawConf;
 }
 
 bool ContainerCfgBuilder::checkValid() noexcept
@@ -487,7 +531,7 @@ bool ContainerCfgBuilder::buildMountRuntime() noexcept
         return false;
     }
 
-    runtimeMount = Mount{ .destination = "/runtime",
+    runtimeMount = Mount{ .destination = runtimeMountPoint,
                           .options = string_list{ "rbind", runtimePathRo ? "ro" : "rw" },
                           .source = *runtimePath,
                           .type = "bind" };
@@ -512,7 +556,7 @@ bool ContainerCfgBuilder::buildMountApp() noexcept
                         .options = string_list{ "nodev", "nosuid", "mode=700" },
                         .source = "tmpfs",
                         .type = "tmpfs" },
-                 Mount{ .destination = std::filesystem::path("/opt/apps") / appId / "files",
+                 Mount{ .destination = std::filesystem::path{ "/opt/apps" } / appId / "files",
                         .options = string_list{ "rbind", appPathRo ? "ro" : "rw" },
                         .source = *appPath,
                         .type = "bind" } };
@@ -1086,7 +1130,9 @@ bool ContainerCfgBuilder::buildEnv() noexcept
         }
     }
 
-    environment["LINGLONG_APPID"] = appId;
+    if (appPath) {
+        environment["LINGLONG_APPID"] = appId;
+    }
 
     auto envShFile = *bundlePath / "00env.sh";
     std::ofstream ofs(envShFile);
@@ -1133,6 +1179,10 @@ bool ContainerCfgBuilder::mergeMount() noexcept
 
     if (appMount) {
         std::move(appMount->begin(), appMount->end(), std::back_inserter(mounts));
+    }
+
+    if (extensionMount) {
+        std::move(extensionMount->begin(), extensionMount->end(), std::back_inserter(mounts));
     }
 
     if (sysMount) {

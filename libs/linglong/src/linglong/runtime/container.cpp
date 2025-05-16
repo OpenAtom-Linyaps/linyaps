@@ -136,11 +136,8 @@ utils::error::Result<void> Container::run(const ocppi::runtime::config::types::P
     std::filesystem::path runtimeDir =
       QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation).toStdString();
 
-    // bundle dir is already created in ContainerBuilder::create
+    // bundle dir should created before container run
     auto bundle = runtimeDir / "linglong" / this->id.toStdString();
-    if (!std::filesystem::create_directories(bundle, ec) && ec) {
-        return LINGLONG_ERR("make rootfs directory", ec);
-    }
 #ifdef LINGLONG_FONT_CACHE_GENERATOR
     if (!bundle.mkpath("conf.d")) {
         return LINGLONG_ERR("make conf.d directory");
@@ -163,10 +160,6 @@ utils::error::Result<void> Container::run(const ocppi::runtime::config::types::P
               }
 
               return;
-          }
-
-          if (std::filesystem::remove_all(bundle, ec) == static_cast<std::uintmax_t>(-1)) {
-              qCritical() << "failed to remove " << bundle.c_str() << ": " << ec.message().c_str();
           }
       });
 

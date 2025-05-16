@@ -26,6 +26,7 @@
 #include "linglong/package/layer_file.h"
 #include "linglong/package/reference.h"
 #include "linglong/runtime/container_builder.h"
+#include "linglong/runtime/run_context.h"
 #include "linglong/utils/configure.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/finally/finally.h"
@@ -572,16 +573,15 @@ int Cli::run([[maybe_unused]] CLI::App *subcommand)
         this->printer.printErr(curAppRef.error());
         return -1;
     }
-    auto appLayerDir = this->repository.getMergedModuleDir(*curAppRef);
-    if (!appLayerDir) {
-        this->printer.printErr(appLayerDir.error());
-        return -1;
+
+    runtime::RunContext runContext(this->repository);
+    auto res = runContext.resolve(*curAppRef);
+    if (!res) {
+        this->printer.printErr(res.error());
     }
 
-    // Note: we should use the info.json which from states.json instead of layer dir
-    const auto &appLayerItem = this->repository.getLayerItem(*curAppRef);
+    const auto &appLayerItem = runContext.getCachedAppItem();
     if (!appLayerItem) {
-        this->printer.printErr(appLayerItem.error());
         return -1;
     }
     const auto &info = appLayerItem->info;
@@ -589,78 +589,6 @@ int Cli::run([[maybe_unused]] CLI::App *subcommand)
     auto ret = RequestDirectories(info);
     if (!ret) {
         qWarning() << ret.error().message();
-    }
-
-    std::optional<std::string> runtimeLayerRef;
-    std::optional<package::LayerDir> runtimeLayerDir;
-    if (info.runtime) {
-        auto runtimeFuzzyRef =
-          package::FuzzyReference::parse(QString::fromStdString(info.runtime.value()));
-        if (!runtimeFuzzyRef) {
-            this->printer.printErr(runtimeFuzzyRef.error());
-            return -1;
-        }
-
-        auto runtimeRefRet = this->repository.clearReference(*runtimeFuzzyRef,
-                                                             {
-                                                               .forceRemote = false,
-                                                               .fallbackToRemote = false,
-                                                               .semanticMatching = true,
-                                                             });
-        if (!runtimeRefRet) {
-            this->printer.printErr(runtimeRefRet.error());
-            return -1;
-        }
-        const auto &runtimeRef = *runtimeRefRet;
-
-        if (!info.uuid.has_value()) {
-            auto runtimeLayerDirRet = this->repository.getMergedModuleDir(runtimeRef);
-            if (!runtimeLayerDirRet) {
-                this->printer.printErr(runtimeLayerDirRet.error());
-                return -1;
-            }
-            runtimeLayerDir = std::move(runtimeLayerDirRet).value();
-        } else {
-            auto runtimeLayerDirRet =
-              this->repository.getLayerDir(*runtimeRefRet, "binary", info.uuid);
-            if (!runtimeLayerDirRet) {
-                this->printer.printErr(runtimeLayerDirRet.error());
-                return -1;
-            }
-            runtimeLayerRef = runtimeRefRet->toString().toStdString();
-            runtimeLayerDir = std::move(runtimeLayerDirRet).value();
-        }
-    }
-
-    auto baseFuzzyRef = package::FuzzyReference::parse(QString::fromStdString(info.base));
-    if (!baseFuzzyRef) {
-        this->printer.printErr(baseFuzzyRef.error());
-        return -1;
-    }
-
-    auto baseRef = this->repository.clearReference(*baseFuzzyRef,
-                                                   {
-                                                     .forceRemote = false,
-                                                     .fallbackToRemote = false,
-                                                     .semanticMatching = true,
-                                                   });
-    if (!baseRef) {
-        this->printer.printErr(LINGLONG_ERRV(baseRef));
-        return -1;
-    }
-
-    utils::error::Result<package::LayerDir> baseLayerDir;
-    if (!info.uuid.has_value()) {
-        qDebug() << "getMergedModuleDir base";
-        baseLayerDir = this->repository.getMergedModuleDir(*baseRef);
-    } else {
-        qDebug() << "getLayerDir base" << info.uuid.value().c_str();
-        baseLayerDir = this->repository.getLayerDir(*baseRef, "binary", info.uuid);
-    }
-
-    if (!baseLayerDir) {
-        this->printer.printErr(LINGLONG_ERRV(baseLayerDir));
-        return -1;
     }
 
     auto appCache = this->ensureCache(*curAppRef, *appLayerItem);
@@ -675,21 +603,9 @@ int Cli::run([[maybe_unused]] CLI::App *subcommand)
     }
     commands = filePathMapping(commands);
 
-    auto newContainerID = runtime::genContainerID(*curAppRef);
-    auto bundle = runtime::getBundleDir(newContainerID);
-    if (!bundle) {
-        this->printer.printErr(LINGLONG_ERRV(bundle));
-        return -1;
-    }
-
     // this lambda will dump reference of containerID, app, base and runtime to
     // /run/linglong/getuid()/getpid() to store these needed infomation
-    auto dumpContainerInfo = [app = curAppRef->toString().toStdString(),
-                              base = baseRef->toString().toStdString(),
-                              &newContainerID,
-                              &runtimeLayerRef,
-                              uid,
-                              this]() -> bool {
+    auto dumpContainerInfo = [uid, &runContext, this]() -> bool {
         LINGLONG_TRACE("dump info")
         std::error_code ec;
         auto pidFile = std::filesystem::path{ "/run/linglong" } / std::to_string(uid)
@@ -711,12 +627,7 @@ int Cli::run([[maybe_unused]] CLI::App *subcommand)
             this->printer.printErr(LINGLONG_ERRV(msg));
             return false;
         }
-        stream << nlohmann::json(linglong::api::types::v1::ContainerProcessStateInfo{
-          .app = app,
-          .base = base,
-          .containerID = newContainerID,
-          .runtime = runtimeLayerRef,
-        });
+        stream << nlohmann::json(runContext.stateInfo());
         stream.close();
 
         return true;
@@ -776,47 +687,6 @@ int Cli::run([[maybe_unused]] CLI::App *subcommand)
         return 0;
     }
 
-    std::vector<ocppi::runtime::config::types::Mount> applicationMounts{};
-    auto bindMount =
-      [&applicationMounts](const api::types::v1::ApplicationConfigurationPermissionsBind &bind) {
-          applicationMounts.push_back(ocppi::runtime::config::types::Mount{
-            .destination = bind.destination,
-            .gidMappings = {},
-            .options = { { "rbind" } },
-            .source = bind.source,
-            .type = "bind",
-            .uidMappings = {},
-          });
-      };
-
-    auto bindInnerMount =
-      [&applicationMounts,
-       &bundle](const api::types::v1::ApplicationConfigurationPermissionsInnerBind &bind) {
-          applicationMounts.push_back(ocppi::runtime::config::types::Mount{
-            .destination = bind.destination,
-            .gidMappings = {},
-            .options = { { "rbind" } },
-            .source = bundle->string() + "/rootfs" + bind.source,
-            .type = "bind",
-            .uidMappings = {},
-          });
-      };
-
-    if (info.permissions) {
-        const auto &perm = info.permissions;
-        if (perm->binds) {
-            const auto &binds = perm->binds;
-            std::for_each(binds->cbegin(), binds->cend(), bindMount);
-        }
-
-        if (perm->innerBinds) {
-            const auto &innerBinds = perm->innerBinds;
-            const auto &hostSourceDir =
-              std::filesystem::path{ appLayerDir->absolutePath().toStdString() };
-            std::for_each(innerBinds->cbegin(), innerBinds->cend(), bindInnerMount);
-        }
-    }
-
     auto *homeEnv = ::getenv("HOME");
     auto *userNameEnv = ::getenv("USER");
     if (homeEnv == nullptr || userNameEnv == nullptr) {
@@ -825,12 +695,14 @@ int Cli::run([[maybe_unused]] CLI::App *subcommand)
     }
 
     linglong::generator::ContainerCfgBuilder cfgBuilder;
+    res = runContext.fillContextCfg(cfgBuilder);
+    if (!res) {
+        this->printer.printErr(res.error());
+        return -1;
+    }
     cfgBuilder.setAppId(curAppRef->id.toStdString())
-      .setAppPath(appLayerDir->absoluteFilePath("files").toStdString())
-      .setBasePath(baseLayerDir->absoluteFilePath("files").toStdString())
       .setAppCache(*appCache)
       .enableLDCache()
-      .setBundlePath(std::move(bundle).value())
       .addUIdMapping(uid, uid, 1)
       .addGIdMapping(gid, gid, 1)
       .bindDefault()
@@ -847,11 +719,7 @@ int Cli::run([[maybe_unused]] CLI::App *subcommand)
       .mapPrivate(std::string("/home/") + userNameEnv + "/.gnupg", true)
       .bindIPC()
       .forwordDefaultEnv()
-      .setExtraMounts(applicationMounts)
       .enableSelfAdjustingMount();
-    if (info.runtime) {
-        cfgBuilder.setRuntimePath(runtimeLayerDir->absoluteFilePath("files").toStdString());
-    }
 #ifdef LINGLONG_FONT_CACHE_GENERATOR
     cfgBuilder.enableFontCache();
 #endif
@@ -863,7 +731,8 @@ int Cli::run([[maybe_unused]] CLI::App *subcommand)
     }
 
     auto container =
-      this->containerBuilder.create(cfgBuilder, QString::fromStdString(newContainerID));
+      this->containerBuilder.create(cfgBuilder,
+                                    QString::fromStdString(runContext.getContainerId()));
 
     if (!container) {
         this->printer.printErr(container.error());

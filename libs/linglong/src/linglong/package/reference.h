@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "linglong/api/types/v1/BuilderProject.hpp"
 #include "linglong/api/types/v1/PackageInfoV2.hpp"
 #include "linglong/api/types/v1/Repo.hpp"
 #include "linglong/package/architecture.h"
@@ -28,6 +29,8 @@ public:
     fromPackageInfo(const api::types::v1::PackageInfoV2 &info) noexcept;
     static QVariantMap toVariantMap(const Reference &ref) noexcept;
     static utils::error::Result<Reference> fromVariantMap(const QVariantMap &data) noexcept;
+    static utils::error::Result<Reference>
+    fromBuilderProject(const api::types::v1::BuilderProject &project) noexcept;
 
     QString channel;
     QString id;

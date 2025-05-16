@@ -20,6 +20,7 @@
 #include "linglong/package_manager/package_task.h"
 #include "linglong/repo/config.h"
 #include "linglong/repo/ostree_repo.h"
+#include "linglong/runtime/run_context.h"
 #include "linglong/utils/command/env.h"
 #include "linglong/utils/configure.h"
 #include "linglong/utils/error/error.h"
@@ -2183,91 +2184,6 @@ void PackageManager::ReplyInteraction([[maybe_unused]] QDBusObjectPath object_pa
     Q_EMIT this->ReplyReceived(replies);
 }
 
-utils::error::Result<void> prepareLayerDir(const repo::OSTreeRepo &repo,
-                                           const package::Reference &ref,
-                                           package::LayerDir &appLayerDir,
-                                           std::optional<package::LayerDir> &runtimeLayerDir,
-                                           package::LayerDir &baseLayerDir)
-{
-    LINGLONG_TRACE("prepare layer dir before running");
-    auto appLayerDirRet = repo.getMergedModuleDir(ref);
-    if (!appLayerDirRet) {
-        return LINGLONG_ERR(appLayerDirRet);
-    }
-    appLayerDir = std::move(appLayerDirRet).value();
-
-    auto info = appLayerDir.info();
-    if (!info) {
-        return LINGLONG_ERR(info);
-    }
-    if (info->runtime) {
-        auto runtimeFuzzyRef =
-          package::FuzzyReference::parse(QString::fromStdString(*info->runtime));
-        if (!runtimeFuzzyRef) {
-            return LINGLONG_ERR(runtimeFuzzyRef);
-        }
-
-        auto runtimeRefRet = repo.clearReference(*runtimeFuzzyRef,
-                                                 {
-                                                   .forceRemote = false,
-                                                   .fallbackToRemote = false,
-                                                   .semanticMatching = true,
-                                                 });
-        if (!runtimeRefRet) {
-            return LINGLONG_ERR(runtimeRefRet);
-        }
-        auto &runtimeRef = *runtimeRefRet;
-
-        if (!info->uuid.has_value()) {
-            auto runtimeLayerDirRet = repo.getMergedModuleDir(runtimeRef);
-            if (!runtimeLayerDirRet) {
-                return LINGLONG_ERR(runtimeLayerDirRet);
-            }
-            runtimeLayerDir = std::make_optional(std::move(runtimeLayerDirRet).value());
-        } else {
-            auto runtimeLayerDirRet =
-              repo.getLayerDir(*runtimeRefRet, std::string{ "binary" }, info->uuid);
-            if (!runtimeLayerDirRet) {
-                return LINGLONG_ERR(runtimeLayerDirRet);
-            }
-            runtimeLayerDir = std::make_optional(std::move(runtimeLayerDirRet).value());
-        }
-    }
-
-    auto baseFuzzyRef = package::FuzzyReference::parse(QString::fromStdString(info->base));
-    if (!baseFuzzyRef) {
-        return LINGLONG_ERR(baseFuzzyRef);
-    }
-
-    auto baseRef = repo.clearReference(*baseFuzzyRef,
-                                       {
-                                         .forceRemote = false,
-                                         .fallbackToRemote = false,
-                                         .semanticMatching = true,
-                                       });
-    if (!baseRef) {
-        return LINGLONG_ERR(baseRef);
-    }
-
-    if (!info->uuid.has_value()) {
-        qDebug() << "getMergedModuleDir base";
-        auto baseLayerDirRet = repo.getMergedModuleDir(*baseRef);
-        if (!baseLayerDirRet) {
-            return LINGLONG_ERR(baseLayerDirRet);
-        }
-        baseLayerDir = std::move(baseLayerDirRet).value();
-    } else {
-        qDebug() << "getLayerDir base" << info->uuid.value().c_str();
-        auto baseLayerDirRet = repo.getLayerDir(*baseRef, std::string{ "binary" }, info->uuid);
-        if (!baseLayerDirRet) {
-            return LINGLONG_ERR(baseLayerDirRet);
-        }
-        baseLayerDir = std::move(baseLayerDirRet).value();
-    }
-
-    return LINGLONG_OK;
-}
-
 utils::error::Result<void> PackageManager::generateCache(const package::Reference &ref) noexcept
 {
     LINGLONG_TRACE("generate cache for " + ref.toString());
@@ -2280,7 +2196,6 @@ utils::error::Result<void> PackageManager::generateCache(const package::Referenc
     const auto appCache = std::filesystem::path(LINGLONG_ROOT) / "cache" / layerItem->commit;
     const std::string appCacheDest = "/run/linglong/cache";
     const std::string generatorDest = "/run/linglong/generator";
-    const std::string ldGenerator = generatorDest + "/ld-cache-generator";
 
     utils::Transaction transaction;
 
@@ -2301,52 +2216,24 @@ utils::error::Result<void> PackageManager::generateCache(const package::Referenc
         }
     });
 
-    auto containerID = runtime::genContainerID(ref);
-    auto bundle = runtime::getBundleDir(containerID);
-    if (!bundle) {
-        return LINGLONG_ERR(bundle);
+    runtime::RunContext runContext(this->repo);
+    auto res = runContext.resolve(ref);
+    if (!res) {
+        return LINGLONG_ERR(res);
     }
-
-    // generate ld config
-    {
-        std::ofstream ofs(*bundle / "zz_deepin-linglong-app.ld.so.conf");
-        Q_ASSERT(ofs.is_open());
-        if (!ofs.is_open()) {
-            return LINGLONG_ERR("create ld config in bundle directory");
-        }
-        ofs << "include /run/linglong/cache/ld.so.conf" << std::endl;
-    }
-
-    package::LayerDir appLayerDir;
-    std::optional<package::LayerDir> runtimeLayerDir;
-    package::LayerDir baseLayerDir;
-
-    auto ret = prepareLayerDir(this->repo, ref, appLayerDir, runtimeLayerDir, baseLayerDir);
-    if (!ret) {
-        return LINGLONG_ERR(ret);
-    }
-
-    auto putEnvRet = qputenv("LINGLONG_SKIP_HOME_GENERATE", "1");
-    if (!putEnvRet) {
-        qWarning() << "failed to set env LINGLONG_SKIP_HOME_GENERATE";
-    }
-
-    auto unsetEnv = utils::finally::finally([] {
-        auto ret = qunsetenv("LINGLONG_SKIP_HOME_GENERATE");
-        if (!ret) {
-            qWarning() << "failed to unset env LINGLONG_SKIP_HOME_GENERATE";
-        }
-    });
 
     int64_t uid = getuid();
     int64_t gid = getgid();
 
+    std::filesystem::path ldConfPath{ appCache / "ld.so.conf" };
+
     linglong::generator::ContainerCfgBuilder cfgBuilder;
+    res = runContext.fillContextCfg(cfgBuilder);
+    if (!res) {
+        return LINGLONG_ERR(res);
+    }
     cfgBuilder.setAppId(ref.id.toStdString())
-      .setAppPath(appLayerDir.absoluteFilePath("files").toStdString())
-      .setBasePath(baseLayerDir.absoluteFilePath("files").toStdString())
       .setAppCache(appCache, false)
-      .setBundlePath(*bundle)
       .addUIdMapping(uid, uid, 1)
       .addGIdMapping(gid, gid, 1)
       .bindDefault()
@@ -2354,7 +2241,7 @@ utils::error::Result<void> PackageManager::generateCache(const package::Referenc
       .bindRun()
       .bindUserGroup()
       .forwordDefaultEnv()
-      .setExtraMounts(std::vector<ocppi::runtime::config::types::Mount>{
+      .addExtraMounts(std::vector<ocppi::runtime::config::types::Mount>{
         ocppi::runtime::config::types::Mount{ .destination = generatorDest,
                                               .options = { { "rbind", "ro" } },
                                               .source = LINGLONG_LIBEXEC_DIR,
@@ -2362,24 +2249,32 @@ utils::error::Result<void> PackageManager::generateCache(const package::Referenc
         ocppi::runtime::config::types::Mount{
           .destination = "/etc/ld.so.conf.d/zz_deepin-linglong-app.conf",
           .options = { { "rbind", "ro" } },
-          .source = *bundle / "zz_deepin-linglong-app.ld.so.conf",
+          .source = ldConfPath,
           .type = "bind",
         } })
       .enableSelfAdjustingMount();
-
-    if (runtimeLayerDir) {
-        cfgBuilder.setRuntimePath(runtimeLayerDir->absoluteFilePath("files").toStdString());
-    }
 #ifdef LINGLONG_FONT_CACHE_GENERATOR
     cfgBuilder.enableFontCache();
 #endif
+
+    // generate ld config
+    {
+        std::ofstream ofs(ldConfPath);
+        Q_ASSERT(ofs.is_open());
+        if (!ofs.is_open()) {
+            return LINGLONG_ERR("create ld config in bundle directory");
+        }
+        ofs << cfgBuilder.ldConf(ref.arch.getTriplet().toStdString()) << std::endl;
+    }
 
     if (!cfgBuilder.build()) {
         auto err = cfgBuilder.getError();
         return LINGLONG_ERR("build cfg error: " + QString::fromStdString(err.reason));
     }
 
-    auto container = this->containerBuilder.create(cfgBuilder, QString::fromStdString(containerID));
+    auto container =
+      this->containerBuilder.create(cfgBuilder,
+                                    QString::fromStdString(runContext.getContainerId()));
     if (!container) {
         return LINGLONG_ERR(container);
     }
@@ -2393,11 +2288,9 @@ utils::error::Result<void> PackageManager::generateCache(const package::Referenc
     if (!currentArch) {
         return LINGLONG_ERR(currentArch);
     }
-    // Usage: ld-cache-generator [cacheRoot] [id] [gnu_arch_triplet]
-    //        font-cache-generator [cacheRoot] [id]
-    const auto ldGenerateCmd = ldGenerator + " " + appCacheDest + " " + ref.id.toStdString() + " "
-      + currentArch->getTriplet().toStdString();
+    const auto ldGenerateCmd = "/sbin/ldconfig -C " + appCacheDest + "/ld.so.cache";
 #ifdef LINGLONG_FONT_CACHE_GENERATOR
+    // Usage: font-cache-generator [cacheRoot] [id]
     const std::string fontGenerateCmd =
       fontGenerator + " " + appCacheDest + " " + ref.id.toStdString();
     process.args = std::vector<std::string>{ "bash", "-c", ldGenerateCmd + ";" + fontGenerateCmd };

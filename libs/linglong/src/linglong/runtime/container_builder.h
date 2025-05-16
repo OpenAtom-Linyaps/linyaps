@@ -48,7 +48,7 @@ inline utils::error::Result<std::filesystem::path> getBundleDir(const std::strin
     auto bundle = runtimeDir / "linglong" / containerID;
 
     std::error_code ec;
-    if (!std::filesystem::create_directories(bundle, ec)) {
+    if (!std::filesystem::create_directories(bundle, ec) && ec) {
         return LINGLONG_ERR(QString("failed to create bundle directory %1: %2")
                               .arg(bundle.c_str(), ec.message().c_str()));
     }

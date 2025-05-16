@@ -130,8 +130,8 @@ public:
     [[nodiscard]] utils::error::Result<package::LayerDir>
     getMergedModuleDir(const package::Reference &ref, bool fallbackLayerDir = true) const noexcept;
     // 将指定的modules合并到临时目录，并返回合并后的layerDir，供打包者调试应用
-    // 临时目录会在智能指针释放时删除
-    [[nodiscard]] utils::error::Result<std::shared_ptr<package::LayerDir>>
+    // 临时目录由调用者负责删除
+    [[nodiscard]] utils::error::Result<package::LayerDir>
     getMergedModuleDir(const package::Reference &ref, const QStringList &modules) const noexcept;
     std::vector<std::string> getModuleList(const package::Reference &ref) noexcept;
     [[nodiscard]] utils::error::Result<std::vector<std::string>>

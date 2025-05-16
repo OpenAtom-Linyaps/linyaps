@@ -82,12 +82,16 @@ public:
         return *this;
     }
 
+    std::optional<std::filesystem::path> getRuntimePath() { return runtimePath; }
+
     ContainerCfgBuilder &setBasePath(std::filesystem::path path, bool isRo = true) noexcept
     {
         basePath = path;
         basePathRo = isRo;
         return *this;
     }
+
+    std::optional<std::filesystem::path> getBasePath() { return basePath; }
 
     ContainerCfgBuilder &setBundlePath(std::filesystem::path path) noexcept
     {
@@ -136,7 +140,10 @@ public:
 
     ContainerCfgBuilder &enableQuirkVolatile() noexcept;
 
-    ContainerCfgBuilder &setExtraMounts(std::vector<ocppi::runtime::config::types::Mount>) noexcept;
+    ContainerCfgBuilder &
+      setExtensionMounts(std::vector<ocppi::runtime::config::types::Mount>) noexcept;
+    ContainerCfgBuilder &addExtraMount(ocppi::runtime::config::types::Mount) noexcept;
+    ContainerCfgBuilder &addExtraMounts(std::vector<ocppi::runtime::config::types::Mount>) noexcept;
 
     ContainerCfgBuilder &
       setStartContainerHooks(std::vector<ocppi::runtime::config::types::Hook>) noexcept;
@@ -154,6 +161,8 @@ public:
         isolateNetWorkEnabled = true;
         return *this;
     }
+
+    std::string ldConf(const std::string &triplet);
 
     bool build() noexcept;
 
@@ -259,6 +268,8 @@ private:
     // volatile
     std::optional<std::vector<ocppi::runtime::config::types::Mount>> volatileMount;
 
+    // extension mounts
+    std::optional<std::vector<ocppi::runtime::config::types::Mount>> extensionMount;
     // extra mounts
     std::optional<std::vector<ocppi::runtime::config::types::Mount>> extraMount;
 
@@ -276,6 +287,8 @@ private:
     ocppi::runtime::config::types::Config config;
 
     Error error_;
+
+    const std::string runtimeMountPoint = "/runtime";
 };
 
 }; // namespace linglong::generator

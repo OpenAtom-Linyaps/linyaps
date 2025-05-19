@@ -23,14 +23,14 @@ ll-builder export
 ll-builder run
 
 # 测试dbus环境变量没有问题
-ll-builder run --exec export | grep DBUS_SESSION_BUS_ADDRESS
-ll-builder run --exec export | grep DBUS_SYSTEM_BUS_ADDRESS
+ll-builder run -- bash -c "export" | grep DBUS_SESSION_BUS_ADDRESS
+ll-builder run -- bash -c "export" | grep DBUS_SYSTEM_BUS_ADDRESS
 # 测试session dbus环境变量包含参数时能正常处理
 export DBUS_SESSION_BUS_ADDRESS=$DBUS_SESSION_BUS_ADDRESS,test=1
-ll-builder run --exec export | grep DBUS_SESSION_BUS_ADDRESS | grep test=1
+ll-builder run -- bash -c "export" | grep DBUS_SESSION_BUS_ADDRESS | grep test=1
 # 测试system dbus环境变量包含参数时能正常处理
 export DBUS_SYSTEM_BUS_ADDRESS="unix:path=/var/run/dbus/system_bus_socket,test=2"
-ll-builder run --exec export | grep DBUS_SYSTEM_BUS_ADDRESS | grep test=2
+ll-builder run -- bash -c "export" | grep DBUS_SYSTEM_BUS_ADDRESS | grep test=2
 
 #运行并安装uab
 ll-cli uninstall org.dde.demo || true

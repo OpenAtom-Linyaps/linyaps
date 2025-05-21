@@ -128,6 +128,7 @@ public:
 
     ContainerCfgBuilder &forwardDefaultEnv() noexcept;
     ContainerCfgBuilder &forwardEnv(const std::vector<std::string> &envList = {}) noexcept;
+    ContainerCfgBuilder &appendEnv(const std::map<std::string, std::string> &envMap) noexcept;
 
     ContainerCfgBuilder &bindHostRoot() noexcept;
     ContainerCfgBuilder &bindHostStatics() noexcept;
@@ -255,6 +256,7 @@ private:
     // environment
     std::unordered_set<std::string> envForward;
     std::unordered_map<std::string, std::string> environment;
+    std::unordered_map<std::string, std::string> envAppend;
     std::optional<ocppi::runtime::config::types::Mount> envMount;
 
     // home dir

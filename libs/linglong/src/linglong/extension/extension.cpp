@@ -19,7 +19,7 @@ ExtensionIf *ExtensionFactory::makeExtension(const std::string &name)
         return new ExtensionImplNVIDIADisplayDriver();
     }
 
-    return NULL;
+    return new ExtensionImplDummy();
 }
 
 std::string ExtensionImplNVIDIADisplayDriver::name = "org.deepin.driver.display.nvidia";

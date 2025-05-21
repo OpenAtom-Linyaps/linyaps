@@ -8,11 +8,13 @@
 
 #include "linglong/api/types/v1/BuilderProject.hpp"
 #include "linglong/api/types/v1/ContainerProcessStateInfo.hpp"
+#include "linglong/api/types/v1/ExtensionDefine.hpp"
 #include "linglong/oci-cfg-generators/container_cfg_builder.h"
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/utils/error/error.h"
 
 #include <filesystem>
+#include <list>
 
 namespace linglong::runtime {
 
@@ -24,6 +26,9 @@ public:
     RuntimeLayer(package::Reference ref, RunContext &context);
     ~RuntimeLayer();
 
+    using ExtensionRuntimeLayerInfo =
+      std::pair<api::types::v1::ExtensionDefine, std::reference_wrapper<RuntimeLayer>>;
+
     utils::error::Result<void> resolveLayer(
       const QStringList &modules = {}, const std::optional<std::string> &subRef = std::nullopt);
 
@@ -33,12 +38,17 @@ public:
 
     const std::optional<package::LayerDir> &getLayerDir() const { return layerDir; }
 
+    void setExtensionInfo(ExtensionRuntimeLayerInfo info) { extensionOf = info; }
+
+    const std::optional<ExtensionRuntimeLayerInfo> &getExtensionInfo() const { return extensionOf; }
+
 private:
     package::Reference reference;
     std::reference_wrapper<RunContext> runContext;
     std::optional<package::LayerDir> layerDir;
     std::optional<api::types::v1::RepositoryCacheLayersItem> cachedItem;
     bool temporary;
+    std::optional<ExtensionRuntimeLayerInfo> extensionOf;
 };
 
 class RunContext
@@ -85,7 +95,7 @@ private:
     std::optional<RuntimeLayer> baseLayer;
     std::optional<RuntimeLayer> runtimeLayer;
     std::optional<RuntimeLayer> appLayer;
-    std::vector<RuntimeLayer> extensionLayers;
+    std::list<RuntimeLayer> extensionLayers;
 
     std::string targetId;
     std::optional<std::filesystem::path> appOutput;
@@ -94,6 +104,7 @@ private:
 
     std::string containerID;
     std::filesystem::path bundle;
+    std::map<std::string, std::string> environment;
 };
 
 } // namespace linglong::runtime

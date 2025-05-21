@@ -160,6 +160,7 @@ utils::error::Result<void> RunContext::resolve(const api::types::v1::BuilderProj
         return LINGLONG_ERR(targetRef);
     }
     containerID = runtime::genContainerID(*targetRef);
+    targetId = target.package.id;
 
     if (target.package.kind == "extension") {
         extensionOutput = buildOutput;
@@ -269,10 +270,80 @@ utils::error::Result<void> RunContext::resolveLayer(bool depsBinaryOnly,
         }
     }
 
+    auto replaceSubstring = [](std::string_view str, std::string_view from, std::string_view to) {
+        std::string result;
+        if (from.empty()) {
+            return std::string(str);
+        }
+
+        size_t start = 0;
+        while (true) {
+            size_t pos = str.find(from, start);
+            if (pos == std::string_view::npos) {
+                break;
+            }
+            // Append the part before the match
+            result.append(str.data() + start, pos - start);
+            // Append the replacement
+            result.append(to.data(), to.size());
+            // Move past the matched part
+            start = pos + from.size();
+        }
+        // Append the remaining part of the string
+        result.append(str.data() + start, str.size() - start);
+        return result;
+    };
+
     for (auto &ext : extensionLayers) {
         if (!ext.resolveLayer()) {
             qWarning() << "ignore failed extension layer";
             continue;
+        }
+
+        auto extensionOf = ext.getExtensionInfo();
+        if (!extensionOf) {
+            continue;
+        }
+        const auto &[extensionDefine, layer] = *extensionOf;
+        if (!extensionDefine.allowEnv) {
+            continue;
+        }
+        const auto &allowEnv = *extensionDefine.allowEnv;
+
+        auto extItem = ext.getCachedItem();
+        if (!extItem) {
+            continue;
+        }
+        const auto &extInfo = extItem->info;
+        if (!extInfo.extImpl) {
+            qWarning() << "no ext_impl found for " << ext.getReference().toString();
+            continue;
+        }
+        const auto &extImpl = *extInfo.extImpl;
+        if (!extImpl.env) {
+            continue;
+        }
+        for (const auto &env : *extImpl.env) {
+            auto allowed = allowEnv.find(env.first);
+            if (allowed == allowEnv.end()) {
+                qWarning() << "env " << QString::fromStdString(env.first) << " not allowed in "
+                           << layer.get().getReference().toString();
+                continue;
+            }
+
+            std::string res =
+              replaceSubstring(env.second,
+                               "$PREFIX",
+                               "/opt/extensions/" + ext.getReference().id.toStdString());
+            auto &value = environment[env.first];
+            if (!value.empty()) {
+                res = replaceSubstring(res, "$ORIGIN", value);
+            } else if (!allowed->second.empty()) {
+                res = replaceSubstring(res, "$ORIGIN", allowed->second);
+            }
+            value = res;
+            qDebug() << "environment[" << QString::fromStdString(env.first)
+                     << "]=" << QString::fromStdString(res);
         }
     }
 
@@ -320,7 +391,10 @@ utils::error::Result<void> RunContext::resolveExtension(RuntimeLayer &layer)
                 qDebug() << "extension is not installed: " << fuzzyRef->toString();
                 continue;
             }
-            extensionLayers.emplace_back(RuntimeLayer(*ref, *this));
+
+            auto &extensionLayer = extensionLayers.emplace_back(*ref, *this);
+            extensionLayer.setExtensionInfo(
+              std::make_pair(extension, std::reference_wrapper<RuntimeLayer>(extensionLayer)));
         }
     }
 
@@ -349,7 +423,6 @@ RunContext::fillContextCfg(linglong::generator::ContainerCfgBuilder &builder)
     } else {
         if (appLayer) {
             builder.setAppPath(appLayer->getLayerDir()->absoluteFilePath("files").toStdString());
-            fillExtraAppMounts(builder);
         }
     }
 
@@ -394,6 +467,15 @@ RunContext::fillContextCfg(linglong::generator::ContainerCfgBuilder &builder)
 
     builder.setBundlePath(bundle);
 
+    auto res = fillExtraAppMounts(builder);
+    if (!res) {
+        return res;
+    }
+
+    if (!environment.empty()) {
+        builder.appendEnv(environment);
+    }
+
     return LINGLONG_OK;
 }
 
@@ -401,50 +483,75 @@ utils::error::Result<void> RunContext::fillExtraAppMounts(generator::ContainerCf
 {
     LINGLONG_TRACE("fill extra app mounts");
 
-    auto item = appLayer->getCachedItem();
-    if (!item) {
-        return LINGLONG_ERR(item);
+    auto fillPermissionsBinds = [&builder,
+                                 this](RuntimeLayer &layer) -> utils::error::Result<void> {
+        LINGLONG_TRACE("fill permissions binds");
+
+        auto item = layer.getCachedItem();
+        if (!item) {
+            return LINGLONG_ERR(item);
+        }
+        const auto &info = item->info;
+
+        if (info.permissions) {
+            std::vector<ocppi::runtime::config::types::Mount> applicationMounts{};
+            auto bindMount =
+              [&applicationMounts](
+                const api::types::v1::ApplicationConfigurationPermissionsBind &bind) {
+                  applicationMounts.push_back(ocppi::runtime::config::types::Mount{
+                    .destination = bind.destination,
+                    .gidMappings = {},
+                    .options = { { "rbind" } },
+                    .source = bind.source,
+                    .type = "bind",
+                    .uidMappings = {},
+                  });
+              };
+
+            auto bindInnerMount =
+              [&applicationMounts,
+               this](const api::types::v1::ApplicationConfigurationPermissionsInnerBind &bind) {
+                  applicationMounts.push_back(ocppi::runtime::config::types::Mount{
+                    .destination = bind.destination,
+                    .gidMappings = {},
+                    .options = { { "rbind" } },
+                    .source = bundle.string() + "/rootfs" + bind.source,
+                    .type = "bind",
+                    .uidMappings = {},
+                  });
+              };
+
+            const auto &perm = info.permissions;
+            if (perm->binds) {
+                const auto &binds = perm->binds;
+                std::for_each(binds->cbegin(), binds->cend(), bindMount);
+            }
+
+            if (perm->innerBinds) {
+                const auto &innerBinds = perm->innerBinds;
+                std::for_each(innerBinds->cbegin(), innerBinds->cend(), bindInnerMount);
+            }
+
+            builder.addExtraMounts(applicationMounts);
+        }
+
+        return LINGLONG_OK;
+    };
+
+    if (appLayer) {
+        auto res = fillPermissionsBinds(*appLayer);
+        if (!res) {
+            return LINGLONG_ERR("failed to apply permission binds for "
+                                  + appLayer->getReference().toString(),
+                                res);
+        }
     }
-    const auto &info = item->info;
-    if (info.permissions) {
-        std::vector<ocppi::runtime::config::types::Mount> applicationMounts{};
-        auto bindMount = [&applicationMounts](
-                           const api::types::v1::ApplicationConfigurationPermissionsBind &bind) {
-            applicationMounts.push_back(ocppi::runtime::config::types::Mount{
-              .destination = bind.destination,
-              .gidMappings = {},
-              .options = { { "rbind" } },
-              .source = bind.source,
-              .type = "bind",
-              .uidMappings = {},
-            });
-        };
 
-        auto bindInnerMount =
-          [&applicationMounts,
-           this](const api::types::v1::ApplicationConfigurationPermissionsInnerBind &bind) {
-              applicationMounts.push_back(ocppi::runtime::config::types::Mount{
-                .destination = bind.destination,
-                .gidMappings = {},
-                .options = { { "rbind" } },
-                .source = bundle.string() + "/rootfs" + bind.source,
-                .type = "bind",
-                .uidMappings = {},
-              });
-          };
-
-        const auto &perm = info.permissions;
-        if (perm->binds) {
-            const auto &binds = perm->binds;
-            std::for_each(binds->cbegin(), binds->cend(), bindMount);
+    for (auto &ext : extensionLayers) {
+        if (!fillPermissionsBinds(ext)) {
+            qWarning() << "failed to apply permission binds for " << ext.getReference().toString();
+            continue;
         }
-
-        if (perm->innerBinds) {
-            const auto &innerBinds = perm->innerBinds;
-            std::for_each(innerBinds->cbegin(), innerBinds->cend(), bindInnerMount);
-        }
-
-        builder.addExtraMounts(applicationMounts);
     }
 
     return LINGLONG_OK;

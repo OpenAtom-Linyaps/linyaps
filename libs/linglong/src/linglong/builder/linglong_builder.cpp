@@ -1041,7 +1041,9 @@ utils::error::Result<void> Builder::buildStagePreCommit() noexcept
     // base prefix is /usr, and runtime prefix is /runtime
     QList<QDir> src = { baseOverlay->upperDirPath() + "/usr" };
     if (this->project.package.kind == "app" || this->project.package.kind == "extension") {
-        src.append(runtimeOverlay->upperDirPath());
+        if (runtimeOverlay) {
+            src.append(runtimeOverlay->upperDirPath());
+        }
     }
     mergeOutput(src, buildOutput, QStringList({ "bin/", "lib/" }));
 

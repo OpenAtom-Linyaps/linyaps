@@ -2288,7 +2288,7 @@ utils::error::Result<void> PackageManager::generateCache(const package::Referenc
     if (!currentArch) {
         return LINGLONG_ERR(currentArch);
     }
-    const auto ldGenerateCmd = "/sbin/ldconfig -C " + appCacheDest + "/ld.so.cache";
+    const auto ldGenerateCmd = "/sbin/ldconfig -X -C " + appCacheDest + "/ld.so.cache";
 #ifdef LINGLONG_FONT_CACHE_GENERATOR
     // Usage: font-cache-generator [cacheRoot] [id]
     const std::string fontGenerateCmd =

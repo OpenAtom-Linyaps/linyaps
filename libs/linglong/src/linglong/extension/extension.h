@@ -46,4 +46,14 @@ private:
     std::string driverName;
 };
 
+class ExtensionImplDummy : public ExtensionIf
+{
+public:
+    ExtensionImplDummy() = default;
+
+    ~ExtensionImplDummy() = default;
+
+    bool shouldEnable([[maybe_unused]] std::string &extensionName) override { return true; }
+};
+
 } // namespace linglong::extension

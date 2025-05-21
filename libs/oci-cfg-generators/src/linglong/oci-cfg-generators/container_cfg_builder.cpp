@@ -315,6 +315,20 @@ ContainerCfgBuilder::forwardEnv(const std::vector<std::string> &envList) noexcep
     return *this;
 }
 
+ContainerCfgBuilder &
+ContainerCfgBuilder::appendEnv(const std::map<std::string, std::string> &envMap) noexcept
+{
+    for (const auto &pair : envMap) {
+        if (envAppend.find(pair.first) != envAppend.end()) {
+            std::cerr << "env " << pair.first << " is already exist";
+        } else {
+            envAppend[pair.first] = pair.second;
+        }
+    }
+
+    return *this;
+}
+
 ContainerCfgBuilder &ContainerCfgBuilder::bindHostRoot() noexcept
 {
     hostRootMount = {
@@ -1143,6 +1157,10 @@ bool ContainerCfgBuilder::buildEnv() noexcept
         if (value != nullptr) {
             environment.emplace(key, value);
         }
+    }
+
+    for (const auto &pair : envAppend) {
+        environment[pair.first] = pair.second;
     }
 
     if (appPath) {

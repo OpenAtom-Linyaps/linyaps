@@ -94,11 +94,13 @@ public:
 
     std::optional<std::filesystem::path> getBasePath() { return basePath; }
 
-    ContainerCfgBuilder &setBundlePath(std::filesystem::path path) noexcept
+    ContainerCfgBuilder &setBundlePath(const std::filesystem::path &path) noexcept
     {
         bundlePath = path;
         return *this;
     }
+
+    const std::filesystem::path &getBundlePath() const noexcept { return bundlePath; }
 
     ContainerCfgBuilder &setAppCache(std::filesystem::path path, bool isRo = true) noexcept
     {
@@ -217,8 +219,8 @@ private:
     std::string appId;
     std::optional<std::filesystem::path> runtimePath;
     std::optional<std::filesystem::path> appPath;
-    std::optional<std::filesystem::path> basePath;
-    std::optional<std::filesystem::path> bundlePath;
+    std::filesystem::path basePath;
+    std::filesystem::path bundlePath;
     std::optional<std::filesystem::path> appCache;
 
     bool runtimePathRo = true;

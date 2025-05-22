@@ -11,7 +11,8 @@
 #include "ocppi/runtime/config/types/Mount.hpp"
 
 #include <filesystem>
-#include <map>
+#include <unordered_map>
+#include <unordered_set>
 
 namespace linglong::generator {
 
@@ -123,8 +124,8 @@ public:
     ContainerCfgBuilder &bindUserGroup() noexcept;
     ContainerCfgBuilder &bindMedia() noexcept;
 
-    ContainerCfgBuilder &forwordDefaultEnv() noexcept;
-    ContainerCfgBuilder &forwordEnv(std::vector<std::string> envList) noexcept;
+    ContainerCfgBuilder &forwardDefaultEnv() noexcept;
+    ContainerCfgBuilder &forwardEnv(const std::vector<std::string> &envList = {}) noexcept;
 
     ContainerCfgBuilder &bindHostRoot() noexcept;
     ContainerCfgBuilder &bindHostStatics() noexcept;
@@ -250,8 +251,8 @@ private:
     std::optional<std::vector<ocppi::runtime::config::types::Mount>> ldCacheMount;
 
     // environment
-    std::optional<std::vector<std::string>> envForword;
-    std::map<std::string, std::string> environment;
+    std::unordered_set<std::string> envForward;
+    std::unordered_map<std::string, std::string> environment;
     std::optional<ocppi::runtime::config::types::Mount> envMount;
 
     // home dir

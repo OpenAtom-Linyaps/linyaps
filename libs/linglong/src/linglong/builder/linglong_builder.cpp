@@ -736,7 +736,7 @@ utils::error::Result<void> Builder::processBuildDepends() noexcept
         .options = { { "rbind", "ro" } },
         .source = this->workingDir.absolutePath().toStdString(),
         .type = "bind" })
-      .forwordDefaultEnv();
+      .forwardDefaultEnv();
 
     // overwrite runtime overlay directory
     if (cfgBuilder.getRuntimePath()) {
@@ -866,7 +866,7 @@ utils::error::Result<bool> Builder::buildStageBuild(const QStringList &args) noe
         std::vector<ocppi::runtime::config::types::Hook>{ ocppi::runtime::config::types::Hook{
           .path = "/sbin/ldconfig",
         } })
-      .forwordDefaultEnv()
+      .forwardDefaultEnv()
       .addMask({
         "/project/linglong/output",
         "/project/linglong/overlay",
@@ -1008,7 +1008,7 @@ utils::error::Result<void> Builder::buildStagePreCommit() noexcept
         .options = { { "rbind", "rw" } },
         .source = this->workingDir.absolutePath().toStdString(),
         .type = "bind" })
-      .forwordDefaultEnv();
+      .forwardDefaultEnv();
 
     if (cfgBuilder.getRuntimePath()) {
         cfgBuilder.setRuntimePath(runtimeOverlay->mergedDirPath().toStdString(), false);
@@ -1927,7 +1927,7 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
       .mapPrivate(std::string("/home/") + userNameEnv + "/.ssh", true)
       .mapPrivate(std::string("/home/") + userNameEnv + "/.gnupg", true)
       .bindIPC()
-      .forwordDefaultEnv()
+      .forwardDefaultEnv()
       .addExtraMounts(applicationMounts)
       .enableSelfAdjustingMount();
 #ifdef LINGLONG_FONT_CACHE_GENERATOR

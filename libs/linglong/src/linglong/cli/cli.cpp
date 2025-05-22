@@ -718,7 +718,7 @@ int Cli::run([[maybe_unused]] CLI::App *subcommand)
       .mapPrivate(std::string("/home/") + userNameEnv + "/.ssh", true)
       .mapPrivate(std::string("/home/") + userNameEnv + "/.gnupg", true)
       .bindIPC()
-      .forwordDefaultEnv()
+      .forwardDefaultEnv()
       .enableSelfAdjustingMount();
 #ifdef LINGLONG_FONT_CACHE_GENERATOR
     cfgBuilder.enableFontCache();

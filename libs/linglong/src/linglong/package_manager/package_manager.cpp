@@ -1787,7 +1787,7 @@ auto PackageManager::Update(const QVariantMap &parameters) noexcept -> QVariantM
       refSpecs,
       [this, upgrades = std::move(upgrades)](PackageTask &taskRef) {
           for (const auto &[reference, newReference] : upgrades) {
-              if (isTaskDone(taskRef.subState())) {
+              if (taskRef.subState() == linglong::api::types::v1::SubState::AllDone) {
                   return;
               }
 

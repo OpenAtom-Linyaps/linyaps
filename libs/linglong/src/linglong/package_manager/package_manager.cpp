@@ -2240,7 +2240,7 @@ utils::error::Result<void> PackageManager::generateCache(const package::Referenc
       .bindCgroup()
       .bindRun()
       .bindUserGroup()
-      .forwordDefaultEnv()
+      .forwardDefaultEnv()
       .addExtraMounts(std::vector<ocppi::runtime::config::types::Mount>{
         ocppi::runtime::config::types::Mount{ .destination = generatorDest,
                                               .options = { { "rbind", "ro" } },

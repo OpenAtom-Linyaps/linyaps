@@ -160,6 +160,7 @@ utils::error::Result<void> RunContext::resolve(const api::types::v1::BuilderProj
         return LINGLONG_ERR(targetRef);
     }
     containerID = runtime::genContainerID(*targetRef);
+    targetId = target.package.id;
 
     if (target.package.kind == "extension") {
         extensionOutput = buildOutput;
@@ -269,10 +270,77 @@ utils::error::Result<void> RunContext::resolveLayer(bool depsBinaryOnly,
         }
     }
 
+    auto replaceSubstring = [](std::string_view str, std::string_view from, std::string_view to) {
+        std::string result;
+        if (from.empty()) {
+            return std::string(str);
+        }
+
+        size_t start = 0;
+        while (true) {
+            size_t pos = str.find(from, start);
+            if (pos == std::string_view::npos) {
+                break;
+            }
+            // Append the part before the match
+            result.append(str.data() + start, pos - start);
+            // Append the replacement
+            result.append(to.data(), to.size());
+            // Move past the matched part
+            start = pos + from.size();
+        }
+        // Append the remaining part of the string
+        result.append(str.data() + start, str.size() - start);
+        return result;
+    };
+
     for (auto &ext : extensionLayers) {
         if (!ext.resolveLayer()) {
             qWarning() << "ignore failed extension layer";
             continue;
+        }
+
+        auto extensionOf = ext.getExtensionInfo();
+        if (!extensionOf) {
+            continue;
+        }
+        const auto &extensionDefine = std::get<0>(*extensionOf);
+        if (!extensionDefine.allowEnv) {
+            continue;
+        }
+        const auto &allowEnv = *extensionDefine.allowEnv;
+
+        auto extItem = ext.getCachedItem();
+        if (!extItem) {
+            continue;
+        }
+        const auto &extInfo = extItem->info;
+        if (!extInfo.extImpl) {
+            qWarning() << "no ext_impl found for " << ext.getReference().toString();
+            continue;
+        }
+        const auto &extImpl = *extInfo.extImpl;
+        if (extImpl.env) {
+            for (const auto &env : *extImpl.env) {
+                auto allowed = allowEnv.find(env.first);
+                if (allowed == allowEnv.end()) {
+                    qWarning() << "env " << QString::fromStdString(env.first) << " not allowed in "
+                               << std::get<1>(*extensionOf).get().getReference().toString();
+                    continue;
+                }
+
+                std::string res =
+                  replaceSubstring(env.second,
+                                   "$PREFIX",
+                                   "/opt/extensions/" + ext.getReference().id.toStdString());
+                if (!allowed->second.empty()) {
+                    res = replaceSubstring(res, "$ORIGIN", allowed->second);
+                }
+
+                environment[env.first] = res;
+                qDebug() << "environment[" << QString::fromStdString(env.first)
+                         << "]=" << QString::fromStdString(res);
+            }
         }
     }
 
@@ -320,7 +388,10 @@ utils::error::Result<void> RunContext::resolveExtension(RuntimeLayer &layer)
                 qDebug() << "extension is not installed: " << fuzzyRef->toString();
                 continue;
             }
-            extensionLayers.emplace_back(RuntimeLayer(*ref, *this));
+
+            auto &extensionLayer = extensionLayers.emplace_back(RuntimeLayer(*ref, *this));
+            extensionLayer.setExtensionInfo(
+              std::make_tuple(extension, std::reference_wrapper<RuntimeLayer>(extensionLayer)));
         }
     }
 
@@ -393,6 +464,10 @@ RunContext::fillContextCfg(linglong::generator::ContainerCfgBuilder &builder)
     }
 
     builder.setBundlePath(bundle);
+
+    if (!environment.empty()) {
+        builder.appendEnv(environment);
+    }
 
     return LINGLONG_OK;
 }

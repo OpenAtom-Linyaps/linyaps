@@ -1806,6 +1806,14 @@ void OSTreeRepo::unexportReference(const package::Reference &ref) noexcept
         }
 
         if (!info.isSymLink()) {
+            // update-desktop-database and update-mime-database will generate system files in
+            // specify a directory. these files do not belong to the applications and should not be
+            // printed in the log.
+            if (info.absoluteFilePath().contains("share/mime")
+                || info.absoluteFilePath().contains("share/applications")) {
+                continue;
+            }
+
             // NOTE: Everything in entries should be directory or symbol link.
             // But it can be some cache file, we should not remove it too.
             qWarning() << "Invalid file detected." << info.absoluteFilePath();

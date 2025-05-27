@@ -1879,7 +1879,8 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
           .addUIdMapping(uid, uid, 1)
           .addGIdMapping(gid, gid, 1)
           .bindDefault()
-          .addExtraMounts(applicationMounts);
+          .addExtraMounts(applicationMounts)
+          .enableSelfAdjustingMount();
 
         if (!cfgBuilder.build()) {
             auto err = cfgBuilder.getError();
@@ -2010,7 +2011,8 @@ utils::error::Result<void> Builder::runFromRepo(const package::Reference &ref,
             .destination = "/etc/ld.so.conf.d/zz_deepin-linglong-app.conf",
             .options = { { "rbind", "ro" } },
             .source = ldConfPath,
-            .type = "bind" });
+            .type = "bind" })
+          .enableSelfAdjustingMount();
 
         // write ld.so.conf
         std::string triplet = ref.arch.getTriplet().toStdString();

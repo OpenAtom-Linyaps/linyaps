@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include <memory>
 #include <string>
 
 namespace linglong::extension {
@@ -26,7 +27,7 @@ public:
 class ExtensionFactory
 {
 public:
-    static ExtensionIf *makeExtension(const std::string &name);
+    static std::unique_ptr<ExtensionIf> makeExtension(const std::string &name);
 };
 
 class ExtensionImplNVIDIADisplayDriver : public ExtensionIf
@@ -38,7 +39,7 @@ public:
 
     bool shouldEnable(std::string &extensionName) override;
 
-    static std::string name;
+    static constexpr auto Identify = "org.deepin.driver.display.nvidia";
 
 private:
     std::string hostDriverEnable();

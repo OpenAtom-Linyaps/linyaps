@@ -373,8 +373,7 @@ utils::error::Result<void> RunContext::resolveExtension(RuntimeLayer &layer)
             }
 
             std::string name = extension.name;
-            std::shared_ptr<extension::ExtensionIf> ext(
-              extension::ExtensionFactory::makeExtension(name));
+            auto ext = extension::ExtensionFactory::makeExtension(name);
             if (!ext->shouldEnable(name)) {
                 continue;
             }

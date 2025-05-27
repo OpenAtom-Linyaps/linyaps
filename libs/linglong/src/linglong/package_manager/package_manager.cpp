@@ -13,6 +13,7 @@
 #include "linglong/api/types/v1/PackageManager1PruneResult.hpp"
 #include "linglong/api/types/v1/Repo.hpp"
 #include "linglong/api/types/v1/State.hpp"
+#include "linglong/extension/extension.h"
 #include "linglong/package/layer_file.h"
 #include "linglong/package/layer_packager.h"
 #include "linglong/package/reference.h"
@@ -2080,6 +2081,39 @@ PackageManager::Prune(std::vector<api::types::v1::PackageInfoV2> &removed) noexc
     }
 
     std::unordered_map<package::Reference, int> target;
+
+    auto scanExtensionsByInfo = [&target, this](const api::types::v1::PackageInfoV2 &info) {
+        if (info.extensions) {
+            for (const auto &extension : *info.extensions) {
+                std::string name = extension.name;
+                auto ext = extension::ExtensionFactory::makeExtension(name);
+                if (!ext->shouldEnable(name)) {
+                    continue;
+                }
+
+                auto fuzzyRef =
+                  package::FuzzyReference::create(QString::fromStdString(info.channel),
+                                                  QString::fromStdString(name),
+                                                  QString::fromStdString(extension.version),
+                                                  std::nullopt);
+                auto ref = repo.clearReference(
+                  *fuzzyRef,
+                  { .forceRemote = false, .fallbackToRemote = false, .semanticMatching = true });
+                if (ref) {
+                    target[*ref] += 1;
+                }
+            }
+        }
+    };
+    auto scanExtensionsByRef = [scanExtensionsByInfo, this](package::Reference &ref) {
+        auto item = this->repo.getLayerItem(ref);
+        if (!item) {
+            qWarning() << item.error().message();
+            return;
+        }
+        scanExtensionsByInfo(item->info);
+    };
+
     for (const auto &info : *pkgsInfo) {
         if (info.packageInfoV2Module != "binary" && info.packageInfoV2Module != "runtime") {
             continue;
@@ -2115,6 +2149,7 @@ PackageManager::Prune(std::vector<api::types::v1::PackageInfoV2> &removed) noexc
                 continue;
             }
             target[*runtimeRef] += 1;
+            scanExtensionsByRef(*runtimeRef);
         }
 
         auto baseFuzzyRef = package::FuzzyReference::parse(QString::fromStdString(info.base));
@@ -2134,6 +2169,8 @@ PackageManager::Prune(std::vector<api::types::v1::PackageInfoV2> &removed) noexc
             continue;
         }
         target[*baseRef] += 1;
+        scanExtensionsByRef(*baseRef);
+        scanExtensionsByInfo(info);
     }
 
     for (const auto &it : target) {

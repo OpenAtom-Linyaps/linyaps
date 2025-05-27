@@ -13,16 +13,14 @@ namespace linglong::extension {
 
 ExtensionIf::~ExtensionIf() { }
 
-ExtensionIf *ExtensionFactory::makeExtension(const std::string &name)
+std::unique_ptr<ExtensionIf> ExtensionFactory::makeExtension(const std::string &name)
 {
-    if (name == ExtensionImplNVIDIADisplayDriver::name) {
-        return new ExtensionImplNVIDIADisplayDriver();
+    if (name == ExtensionImplNVIDIADisplayDriver::Identify) {
+        return std::make_unique<ExtensionImplNVIDIADisplayDriver>();
     }
 
-    return new ExtensionImplDummy();
+    return std::make_unique<ExtensionImplDummy>();
 }
-
-std::string ExtensionImplNVIDIADisplayDriver::name = "org.deepin.driver.display.nvidia";
 
 ExtensionImplNVIDIADisplayDriver::ExtensionImplNVIDIADisplayDriver()
 {
@@ -31,12 +29,12 @@ ExtensionImplNVIDIADisplayDriver::ExtensionImplNVIDIADisplayDriver()
 
 bool ExtensionImplNVIDIADisplayDriver::shouldEnable(std::string &extensionName)
 {
-    if (extensionName != name) {
+    if (extensionName != Identify) {
         return false;
     }
 
     if (!driverName.empty()) {
-        extensionName = name + "." + driverName;
+        extensionName = std::string(Identify) + "." + driverName;
         return true;
     }
 

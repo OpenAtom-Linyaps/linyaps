@@ -15,6 +15,10 @@
 #include <yaml-cpp/yaml.h>
 
 #include <exception>
+#include <filesystem>
+#include <fstream>
+#include <sstream>
+#include <string>
 
 namespace linglong::utils::serialize {
 
@@ -32,25 +36,16 @@ error::Result<T> LoadYAML(Source &content)
 }
 
 template <typename T>
-error::Result<T> LoadYAMLFile(const QString &filename) noexcept
+error::Result<T> LoadYAMLFile(const std::filesystem::path &filename) noexcept
 {
     LINGLONG_TRACE("load yaml from file");
 
-    QFile file{ filename };
-
-    file.open(QFile::ReadOnly);
-    if (!file.isOpen()) {
-        return LINGLONG_ERR("open", file);
+    std::ifstream file_stream(filename);
+    if (!file_stream.is_open()) {
+        return LINGLONG_ERR("Failed to open file: " + QString::fromStdString(filename));
     }
 
-    Q_ASSERT(file.error() == QFile::NoError);
-
-    auto content = file.readAll();
-    if (file.error() != QFile::NoError) {
-        return LINGLONG_ERR("read all", file);
-    }
-
-    return LoadYAML<T>(content);
+    return LoadYAML<T>(file_stream);
 }
 
 } // namespace linglong::utils::serialize

@@ -98,9 +98,10 @@ std::string validateNonEmptyString(const std::string &parameter)
 }
 
 linglong::utils::error::Result<linglong::api::types::v1::BuilderProject>
-parseProjectConfig(const QString &filename)
+parseProjectConfig(const std::filesystem::path &filename)
 {
-    LINGLONG_TRACE(QString("parse project config %1").arg(filename));
+    LINGLONG_TRACE("parse project config " + QString::fromStdString(filename));
+    std::cerr << "Using project file " + filename.string() << std::endl;
     auto project =
       linglong::utils::serialize::LoadYAMLFile<linglong::api::types::v1::BuilderProject>(filename);
     if (!project) {
@@ -147,6 +148,45 @@ parseProjectConfig(const QString &filename)
         }
     }
     return project;
+}
+
+linglong::utils::error::Result<std::filesystem::path>
+getProjectYAMLPath(const std::filesystem::path &projectDir, const std::string &usePath)
+{
+    LINGLONG_TRACE("get project yaml path");
+
+    std::error_code ec;
+    if (!usePath.empty()) {
+        std::filesystem::path path = std::filesystem::canonical(usePath, ec);
+        if (ec) {
+            return LINGLONG_ERR(QString("invalid file path %1 error: %2")
+                                  .arg(usePath.c_str())
+                                  .arg(ec.message().c_str()));
+        }
+        return path;
+    }
+
+    auto arch = linglong::package::Architecture::currentCPUArchitecture();
+    if (arch && *arch != linglong::package::Architecture()) {
+        std::filesystem::path path =
+          projectDir / ("linglong." + arch->toString().toStdString() + ".yaml");
+        if (std::filesystem::exists(path, ec)) {
+            return path;
+        }
+        if (ec) {
+            return LINGLONG_ERR(QString("path %1 error: %2").arg(path.c_str()).arg(ec.message().c_str()));
+        }
+    }
+
+    std::filesystem::path path = projectDir / "linglong.yaml";
+    if (std::filesystem::exists(path, ec)) {
+        return path;
+    }
+    if (ec) {
+        return LINGLONG_ERR(QString("path %1 error: %2").arg(path.c_str()).arg(ec.message().c_str()));
+    }
+
+    return LINGLONG_ERR("project yaml file not found");
 }
 
 int handleCreate(const CreateCommandOptions &options)
@@ -607,22 +647,6 @@ std::vector<std::string> getProjectModule(const linglong::api::types::v1::Builde
     return { modules.begin(), modules.end() };
 }
 
-std::optional<QDir> getProjectDir(std::filesystem::path &yamlPath)
-{
-    std::error_code ec;
-    std::filesystem::path path = std::filesystem::canonical(yamlPath, ec);
-    if (ec) {
-        qCritical() << "invalid project file path: " << QString::fromStdString(yamlPath.string())
-                    << " error: " << ec.message().c_str();
-        return std::nullopt;
-    }
-
-    QDir projectDir(QString::fromStdString(path.parent_path().string()));
-    // put canonical path back
-    yamlPath = path;
-    return std::make_optional(projectDir);
-}
-
 std::optional<std::filesystem::path>
 backupFailedMigrationRepo(const std::filesystem::path &repoPath)
 {
@@ -707,14 +731,13 @@ You can report bugs to the linyaps team under this project: https://github.com/O
       ->check(validatorString);
 
     // add builder build
-    std::string filePath{ "./linglong.yaml" };
+    std::string filePath;
     // group empty will hide command
     std::string hiddenGroup = "";
     auto buildBuilder = commandParser.add_subcommand("build", _("Build a linyaps project"));
     buildBuilder->usage(_("Usage: ll-builder build [OPTIONS] [COMMAND...]"));
     buildBuilder->add_option("-f, --file", filePath, _("File path of the linglong.yaml"))
       ->type_name("FILE")
-      ->capture_default_str()
       ->check(CLI::ExistingFile);
     buildBuilder->add_option(
       "COMMAND",
@@ -756,7 +779,6 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     buildRun->usage(_("Usage: ll-builder run [OPTIONS] [COMMAND...]"));
     buildRun->add_option("-f, --file", filePath, _("File path of the linglong.yaml"))
       ->type_name("FILE")
-      ->capture_default_str()
       ->check(CLI::ExistingFile);
     buildRun
       ->add_option("--modules",
@@ -784,7 +806,6 @@ You can report bugs to the linyaps team under this project: https://github.com/O
 
     buildExport->add_option("-f, --file", filePath, _("File path of the linglong.yaml"))
       ->type_name("FILE")
-      ->capture_default_str()
       ->check(CLI::ExistingFile);
     buildExport
       ->add_option("-z, --compressor",
@@ -823,7 +844,6 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     buildPush->usage(_("Usage: ll-builder push [OPTIONS]"));
     buildPush->add_option("-f, --file", filePath, _("File path of the linglong.yaml"))
       ->type_name("FILE")
-      ->capture_default_str()
       ->check(CLI::ExistingFile);
     buildPush->add_option("--repo-url", pushOpts.repoOptions.repoUrl, _("Remote repo url"))
       ->type_name("URL")
@@ -1023,21 +1043,37 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     auto *containerBuilder = new linglong::runtime::ContainerBuilder(**ociRuntime);
     containerBuilder->setParent(QCoreApplication::instance());
 
-    std::filesystem::path canonicalYamlPath{ filePath };
-    auto optProjectDir = getProjectDir(canonicalYamlPath);
-    if (!optProjectDir) {
+    // use the current directory as the project(working) directory
+    std::error_code ec;
+    auto projectDir = std::filesystem::current_path(ec);
+    if (ec) {
+        std::cerr << "invalid current directory: " << ec.message() << std::endl;
         return -1;
     }
-    const auto &projectDir = *optProjectDir;
 
-    auto project = parseProjectConfig(QString::fromStdString(canonicalYamlPath.string()));
+    auto canonicalYamlPath = getProjectYAMLPath(projectDir, filePath);
+    if (!canonicalYamlPath) {
+        std::cerr << canonicalYamlPath.error().message().toStdString() << std::endl;
+        return -1;
+    }
+    if (canonicalYamlPath->string().rfind(projectDir.string(), 0) != 0) {
+        std::cerr << "the project file " << canonicalYamlPath->string()
+                  << " is not under the current project directory " << projectDir.string();
+        return -1;
+    }
+
+    auto project = parseProjectConfig(*canonicalYamlPath);
     if (!project) {
         qCritical() << project.error();
         return -1;
     }
 
-    linglong::builder::Builder builder(*project, projectDir, repo, *containerBuilder, *builderCfg);
-    builder.projectYamlFile = canonicalYamlPath;
+    linglong::builder::Builder builder(*project,
+                                       QDir(QString::fromStdString(projectDir)),
+                                       repo,
+                                       *containerBuilder,
+                                       *builderCfg);
+    builder.projectYamlFile = std::move(canonicalYamlPath).value();
 
     if (buildBuilder->parsed()) {
         return handleBuild(builder, buildOpts);

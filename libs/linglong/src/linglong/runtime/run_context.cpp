@@ -409,7 +409,7 @@ RunContext::fillContextCfg(linglong::generator::ContainerCfgBuilder &builder)
         return LINGLONG_ERR("run context doesn't resolved");
     }
 
-    auto bundleDir = runtime::getBundleDir(containerID);
+    auto bundleDir = runtime::makeBundleDir(containerID);
     if (!bundleDir) {
         return LINGLONG_ERR("failed to get bundle dir of " + QString::fromStdString(containerID));
     }

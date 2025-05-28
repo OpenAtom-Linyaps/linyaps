@@ -38,8 +38,8 @@ inline std::string genContainerID(const package::Reference &ref) noexcept
       .toStdString();
 }
 
-// getBundleDir 用于获取容器的运行目录
-inline utils::error::Result<std::filesystem::path> getBundleDir(const std::string &containerID)
+// Used to obtain a clean container bundle directory.
+inline utils::error::Result<std::filesystem::path> makeBundleDir(const std::string &containerID)
 {
     LINGLONG_TRACE("get bundle dir");
 
@@ -48,6 +48,14 @@ inline utils::error::Result<std::filesystem::path> getBundleDir(const std::strin
     auto bundle = runtimeDir / "linglong" / containerID;
 
     std::error_code ec;
+    if (std::filesystem::exists(bundle, ec)) {
+        std::filesystem::remove_all(bundle, ec);
+        if (ec) {
+            qWarning() << QString("failed to remove bundle directory %1: %2")
+                            .arg(bundle.c_str(), ec.message().c_str());
+        }
+    }
+
     if (!std::filesystem::create_directories(bundle, ec) && ec) {
         return LINGLONG_ERR(QString("failed to create bundle directory %1: %2")
                               .arg(bundle.c_str(), ec.message().c_str()));

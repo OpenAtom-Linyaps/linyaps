@@ -26,30 +26,28 @@
 
 ```txt
 项目根目录/
-├── linglong.yaml # x86_64 架构配置文件
-├── arm64/
-│ └── linglong.yaml # arm64 架构配置文件
-├── loong64/
-│ └── linglong.yaml # loong64 架构配置文件
+├── linglong.x86_64.yaml # x86_64 架构配置文件
+├── linglong.arm64.yaml # arm64 架构配置文件
+├── linglong.loong64.yaml # loong64 架构配置文件
 ├── src/ # 共享的源代码
 └── resources/ # 共享的资源文件
 ```
 
-将源代码、资源文件等放在项目根目录，各架构目录只存放差异化的配置文件
+将源代码、资源文件等放在项目根目录，不同架构的构建由对应架构的配置文件决定。
 
 ### 构建命令示例
 
-构建指定架构的包：
+ll-builder 会优先查找当前架构的项目配置文件，因此在不同架构的机器上执行 ll-builder 会自动使用当前架构对应的配置文件。如果架构配置文件不在默认位置，可以使用下面的方法指定配置文件的位置：
 
 ```bash
 # 构建 arm64 架构包
 ll-builder -f arm64/linglong.yaml
-```
 
-```bash
 # 构建 loongarch64 架构包
 ll-builder -f loongarch64/linglong.yaml
 ```
+
+需要注意项目配置文件（即由 -f 指定的 linglong.yaml 文件），需要在项目目录（运行 ll-builder 的当前目录）的目录或者子目录下。
 
 ### 龙芯
 
@@ -67,7 +65,7 @@ ll-builder -f loongarch64/linglong.yaml
 
 迁移步骤：
 
-1. 准备一个新世界架构的机器并安装 deepin 或 uos 系统
-1. 在宿主机安装 `liblol-dkms` 内核模块 `apt install liblol-dkms`
-1. 编写一个 linglong.yaml 文件，base 和 runtime 填写上文所属的版本号。
-1. 在 linglong.yaml 里解压旧世界应用的软件包，复制到$PREFIX 目录
+1. 准备一个新世界架构的机器并安装 deepin 或 uos 系统。
+2. 在宿主机安装 `liblol-dkms` 内核模块 `apt install liblol-dkms`。
+3. 编写一个 linglong.yaml 文件，base 和 runtime 填写上文所属的版本号。
+4. 在 linglong.yaml 里解压旧世界应用的软件包，复制到 `$PREFIX` 目录。

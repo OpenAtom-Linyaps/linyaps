@@ -365,6 +365,7 @@ ContainerCfgBuilder &ContainerCfgBuilder::bindHostStatics() noexcept
         "/etc/localtime",
         "/etc/resolv.conf",
         "/etc/timezone",
+        "/etc/hosts"
     };
 
     hostStaticsMount = std::vector<Mount>{};

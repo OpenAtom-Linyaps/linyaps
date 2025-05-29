@@ -48,6 +48,8 @@ bool Legacy::generate(ocppi::runtime::config::types::Config &config) const noexc
     // repaired later.
     std::multimap<std::string_view, std::string_view> roMountMap{
         { "/etc/resolvconf", "/run/host/etc/resolvconf" },
+        { "/etc/hosts", "/run/host/etc/hosts" },
+        { "/etc/hosts", "/etc/hosts" },
         { "/etc/machine-id", "/run/host/etc/machine-id" },
         { "/etc/machine-id", "/etc/machine-id" },
         { "/etc/ssl/certs", "/run/host/etc/ssl/certs" },

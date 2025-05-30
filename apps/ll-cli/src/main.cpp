@@ -3,6 +3,7 @@
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
+#include "configure.h"
 #include "linglong/api/dbus/v1/dbus_peer.h"
 #include "linglong/cli/cli.h"
 #include "linglong/cli/cli_printer.h"
@@ -13,7 +14,6 @@
 #include "linglong/repo/config.h"
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/runtime/container_builder.h"
-#include "linglong/utils/configure.h"
 #include "linglong/utils/finally/finally.h"
 #include "linglong/utils/gettext.h"
 #include "linglong/utils/global/initialize.h"

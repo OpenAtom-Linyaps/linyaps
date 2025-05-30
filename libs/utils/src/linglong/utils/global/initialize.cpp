@@ -6,7 +6,7 @@
 
 #include "linglong/utils/global/initialize.h"
 
-#include "linglong/utils/configure.h"
+#include "configure.h"
 
 #include <qcoreapplication.h>
 #include <qloggingcategory.h>

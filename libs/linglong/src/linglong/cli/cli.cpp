@@ -6,6 +6,7 @@
 
 #include "linglong/cli/cli.h"
 
+#include "configure.h"
 #include "linglong/api/dbus/v1/dbus_peer.h"
 #include "linglong/api/types/v1/InteractionReply.hpp"
 #include "linglong/api/types/v1/InteractionRequest.hpp"
@@ -27,7 +28,6 @@
 #include "linglong/package/reference.h"
 #include "linglong/runtime/container_builder.h"
 #include "linglong/runtime/run_context.h"
-#include "linglong/utils/configure.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/finally/finally.h"
 #include "linglong/utils/gettext.h"

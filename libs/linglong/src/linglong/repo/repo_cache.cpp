@@ -6,8 +6,8 @@
 
 #include "repo_cache.h"
 
+#include "configure.h"
 #include "linglong/package/version.h"
-#include "linglong/utils/configure.h"
 #include "linglong/utils/packageinfo_handler.h"
 #include "linglong/utils/serialize/json.h"
 

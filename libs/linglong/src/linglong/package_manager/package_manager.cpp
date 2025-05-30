@@ -6,6 +6,7 @@
 
 #include "package_manager.h"
 
+#include "configure.h"
 #include "linglong/api/types/helper.h"
 #include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/api/types/v1/PackageInfoV2.hpp"
@@ -23,7 +24,6 @@
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/runtime/run_context.h"
 #include "linglong/utils/command/env.h"
-#include "linglong/utils/configure.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/finally/finally.h"
 #include "linglong/utils/packageinfo_handler.h"

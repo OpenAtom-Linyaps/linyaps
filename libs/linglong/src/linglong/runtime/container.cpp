@@ -6,7 +6,7 @@
 
 #include "linglong/runtime/container.h"
 
-#include "linglong/utils/configure.h"
+#include "configure.h"
 #include "linglong/utils/finally/finally.h"
 #include "ocppi/runtime/RunOption.hpp"
 #include "ocppi/runtime/config/types/Generators.hpp"

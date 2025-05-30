@@ -5,6 +5,7 @@
  */
 
 #include "command_options.h"
+#include "configure.h"
 #include "linglong/builder/config.h"
 #include "linglong/builder/linglong_builder.h"
 #include "linglong/cli/cli.h"
@@ -14,7 +15,6 @@
 #include "linglong/repo/config.h"
 #include "linglong/repo/migrate.h"
 #include "linglong/utils/command/env.h"
-#include "linglong/utils/configure.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/gettext.h"
 #include "linglong/utils/global/initialize.h"
@@ -174,7 +174,8 @@ getProjectYAMLPath(const std::filesystem::path &projectDir, const std::string &u
             return path;
         }
         if (ec) {
-            return LINGLONG_ERR(QString("path %1 error: %2").arg(path.c_str()).arg(ec.message().c_str()));
+            return LINGLONG_ERR(
+              QString("path %1 error: %2").arg(path.c_str()).arg(ec.message().c_str()));
         }
     }
 
@@ -183,7 +184,8 @@ getProjectYAMLPath(const std::filesystem::path &projectDir, const std::string &u
         return path;
     }
     if (ec) {
-        return LINGLONG_ERR(QString("path %1 error: %2").arg(path.c_str()).arg(ec.message().c_str()));
+        return LINGLONG_ERR(
+          QString("path %1 error: %2").arg(path.c_str()).arg(ec.message().c_str()));
     }
 
     return LINGLONG_ERR("project yaml file not found");

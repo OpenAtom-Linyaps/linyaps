@@ -166,6 +166,12 @@ public:
         return *this;
     }
 
+    ContainerCfgBuilder &disablePatch() noexcept
+    {
+        applyPatchEnabled = false;
+        return *this;
+    }
+
     std::string ldConf(const std::string &triplet);
 
     bool build() noexcept;
@@ -198,6 +204,10 @@ private:
     bool buildLDCache() noexcept;
     bool buildQuirkVolatile() noexcept;
     bool buildEnv() noexcept;
+    bool applyPatch() noexcept;
+    bool applyPatchFile(const std::filesystem::path &patchFile) noexcept;
+    bool applyJsonPatchFile(const std::filesystem::path &patchFile) noexcept;
+    bool applyExecutablePatch(const std::filesystem::path &patchFile) noexcept;
     bool mergeMount() noexcept;
     bool finalize() noexcept;
 
@@ -284,9 +294,11 @@ private:
     // .mount_idx > 0 represents the path is a mount point, and it's the subscript of the array
     // mounts
     std::vector<MountNode> mountpoints;
+    // this 'mounts' is used internally, distinct from config.mounts
     std::vector<ocppi::runtime::config::types::Mount> mounts;
 
     bool isolateNetWorkEnabled = false;
+    bool applyPatchEnabled = true;
 
     std::vector<std::string> maskedPaths;
     ocppi::runtime::config::types::Config config;

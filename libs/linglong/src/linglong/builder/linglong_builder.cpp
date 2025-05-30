@@ -6,6 +6,7 @@
 
 #include "linglong_builder.h"
 
+#include "configure.h"
 #include "linglong/api/types/v1/ExportDirs.hpp"
 #include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/builder/printer.h"
@@ -18,7 +19,6 @@
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/runtime/container.h"
 #include "linglong/utils/command/env.h"
-#include "linglong/utils/configure.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/file.h"
 #include "linglong/utils/global/initialize.h"

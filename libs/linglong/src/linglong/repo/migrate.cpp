@@ -4,9 +4,9 @@
 
 #include "migrate.h"
 
+#include "configure.h"
 #include "linglong/package/version.h"
 #include "linglong/repo/config.h"
-#include "linglong/utils/configure.h"
 
 #include <gio/gio.h>
 #include <glib.h>

@@ -126,3 +126,47 @@ CONFIG += debug
 ```
 
 cmake 会自动使用 cflags 和 cxxflags 环境变量，所以不需要额外配置。其他构建工具可自定查询文档。
+
+## 从debian仓库下载调试符号
+
+由于base镜像中没有包含调试符号，如果需要调试应用的系统依赖库，需要从base对应的debian仓库手动下载调试符号包。具体步骤如下：
+
+1. 使用以下命令之一进入容器命令行环境:
+   ```bash
+   ll-builder run --bash
+   # 或
+   ll-cli run $appid --bash
+   ```
+
+2. 查看base镜像使用的仓库地址:
+   ```bash
+   cat /etc/apt/sources.list
+   ```
+
+3. 在宿主机浏览器中打开仓库地址，定位依赖库的deb包所在目录:
+   - 使用命令 `apt-cache show <package-name> | grep Filename` 查看deb包在仓库中的路径
+   - 完整的下载地址为: 仓库地址 + deb包路径
+
+   例如，要下载libgtk-3-0的调试符号包:
+   ```bash
+   apt-cache show libgtk-3-0 | grep Filename
+   # 输出: pool/main/g/gtk+3.0/libgtk-3-0_3.24.41-1deepin3_amd64.deb
+   # 完整目录: <repo-url>/pool/main/g/gtk+3.0/
+   ```
+
+4. 在该目录下寻找对应的调试符号包，通常有两种命名格式:
+   - `<package-name>-dbgsym.deb`
+   - `<package-name>-dbg.deb`
+
+5. 下载并解压调试符号包:
+   ```bash
+   dpkg-deb -R <package-name>-dbgsym.deb /tmp/<package-name>
+   ```
+
+6. 配置调试器查找调试符号:
+   在上面的场景设置debug-file-directory时，追加解压的目录，用冒号分隔:
+   ```
+   ${workspaceFolder}/linglong/output/develop/files/lib/debug:/tmp/<package-name>/usr/lib/debug
+   ```
+
+这样调试器就能在解压的目录中找到系统依赖库的调试符号了。

@@ -948,14 +948,6 @@ You can report bugs to the linyaps team under this project: https://github.com/O
         return -1;
     }
 
-    // To avoid glib start thread
-    // set GIO_USE_VFS to local and GVFS_REMOTE_VOLUME_MONITOR_IGNORE to 1
-    auto gioGuard =
-      std::make_unique<linglong::utils::command::EnvironmentVariableGuard>("GIO_USE_VFS", "local");
-    auto gvfsGuard = std::make_unique<linglong::utils::command::EnvironmentVariableGuard>(
-      "GVFS_REMOTE_VOLUME_MONITOR_IGNORE",
-      "1");
-
     auto result = linglong::repo::tryMigrate(builderCfg->repo, *repoCfg);
     if (result == linglong::repo::MigrateResult::Failed) {
         if (!backupFailedMigrationRepo(builderCfg->repo)) {
@@ -972,10 +964,6 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     }
 
     linglong::repo::OSTreeRepo repo(repoRoot, *repoCfg, clientFactory);
-
-    // restore to original value
-    gioGuard.reset();
-    gvfsGuard.reset();
 
     if (buildRepo->parsed()) {
         return handleRepo(repo,

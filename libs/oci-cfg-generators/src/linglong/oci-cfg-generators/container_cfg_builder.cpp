@@ -6,13 +6,19 @@
 
 #include "linglong/oci-cfg-generators/container_cfg_builder.h"
 
+#include "configure.h"
+#include "linglong/api/types/v1/Generators.hpp"
+#include "linglong/api/types/v1/OciConfigurationPatch.hpp"
 #include "ocppi/runtime/config/types/Generators.hpp"
 
+#include <algorithm>
 #include <fstream>
 #include <iostream>
+#include <vector>
 
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 extern char **environ;
@@ -320,7 +326,7 @@ ContainerCfgBuilder::appendEnv(const std::map<std::string, std::string> &envMap)
 {
     for (const auto &[key, value] : envMap) {
         if (envAppend.find(key) != envAppend.end()) {
-            std::cerr << "env " << key << " is already exist";
+            std::cerr << "env " << key << " is already exist" << std::endl;
         } else {
             envAppend[key] = value;
         }
@@ -970,7 +976,7 @@ bool ContainerCfgBuilder::buildMountIPC() noexcept
         }
 
         if (buf.st_uid != ::getuid()) {
-            std::cerr << hostXDGRuntimeDir << " doesn't belong to current user.";
+            std::cerr << hostXDGRuntimeDir << " doesn't belong to current user." << std::endl;
             return;
         }
 
@@ -1204,6 +1210,248 @@ bool ContainerCfgBuilder::buildEnv() noexcept
     return true;
 }
 
+bool ContainerCfgBuilder::applyPatch() noexcept
+{
+    if (!applyPatchEnabled) {
+        return true;
+    }
+
+    std::filesystem::path containerConfigPath{ LINGLONG_INSTALL_PREFIX
+                                               "/lib/linglong/container/config.d" };
+    std::error_code ec;
+    if (!std::filesystem::exists(containerConfigPath, ec)) {
+        // if no-exists or failed to check exists, ignore it
+        return true;
+    }
+
+    std::vector<std::filesystem::path> globalPatchFiles;
+    std::vector<std::filesystem::path> appPatchFiles;
+    auto iter = std::filesystem::directory_iterator{
+        containerConfigPath,
+        std::filesystem::directory_options::skip_permission_denied,
+        ec
+    };
+    if (ec) {
+        error_.reason =
+          "failed to iterator directory " + containerConfigPath.string() + ": " + ec.message();
+        error_.code = BUILD_PREPARE_ERROR;
+        return false;
+    }
+    for (const auto &entry : iter) {
+        if (entry.is_regular_file(ec)) {
+            const auto &path = entry.path();
+            // application-specific patch will be applied last
+            if (path.stem().string() == appId) {
+                appPatchFiles.emplace_back(path);
+                continue;
+            }
+            globalPatchFiles.emplace_back(path);
+        }
+    }
+    std::sort(globalPatchFiles.begin(), globalPatchFiles.end());
+
+    auto doPatch = [this](const std::vector<std::filesystem::path> &patchFiles) -> bool {
+        for (const auto &patchFile : patchFiles) {
+            applyPatchFile(patchFile);
+        }
+        return true;
+    };
+
+    if (!doPatch(globalPatchFiles) || !doPatch(appPatchFiles)) {
+        return false;
+    }
+
+    return true;
+}
+
+bool ContainerCfgBuilder::applyPatchFile(const std::filesystem::path &patchFile) noexcept
+{
+    std::error_code ec;
+    auto status = std::filesystem::status(patchFile, ec);
+    if (ec) {
+        std::cerr << "Failed to get status of patch file " << patchFile << ": " << ec.message()
+                  << std::endl;
+        return true;
+    }
+
+    if ((status.permissions() & std::filesystem::perms::owner_exec) != std::filesystem::perms::none
+        || (status.permissions() & std::filesystem::perms::group_exec)
+          != std::filesystem::perms::none
+        || (status.permissions() & std::filesystem::perms::others_exec)
+          != std::filesystem::perms::none) {
+        applyExecutablePatch(patchFile);
+        return true;
+    }
+
+    if (patchFile.extension() == ".json") {
+        // skip if failed to apply
+        applyJsonPatchFile(patchFile);
+        return true;
+    }
+
+    std::cerr << "Patch file " << patchFile
+              << " is not an executable or a JSON patch file, skipping." << std::endl;
+    return true;
+}
+
+bool ContainerCfgBuilder::applyJsonPatchFile(const std::filesystem::path &patchFile) noexcept
+{
+    std::ifstream file(patchFile);
+    if (!file.is_open()) {
+        std::cerr << "Failed to open file " << patchFile << std::endl;
+        return false;
+    }
+
+    try {
+        auto json = nlohmann::json::parse(file);
+        auto patchContent = json.get<linglong::api::types::v1::OciConfigurationPatch>();
+
+        if (config.ociVersion != patchContent.ociVersion) {
+            std::cerr << "ociVersion mismatched " << patchFile << std::endl;
+            return false;
+        }
+
+        auto raw = nlohmann::json(config);
+        auto patchedJson = raw.patch(patchContent.patch);
+        config = patchedJson.get<Config>();
+    } catch (const std::exception &e) {
+        std::cerr << "Failed to apply JSON patch " << patchFile << ": " << e.what() << std::endl;
+        return false;
+    }
+
+    return true;
+}
+
+bool ContainerCfgBuilder::applyExecutablePatch(const std::filesystem::path &patchFile) noexcept
+{
+    std::string command = patchFile.string();
+    std::string inputJsonStr;
+    try {
+        inputJsonStr = nlohmann::json(config).dump();
+    } catch (const std::exception &e) {
+        error_.reason = std::string("Failed to serialize config: ") + e.what();
+        error_.code = BUILD_PREPARE_ERROR;
+        return false;
+    }
+
+    int stdinPipe[2];
+    int stdoutPipe[2];
+    if (pipe(stdinPipe) == -1) {
+        error_.reason = std::string("Failed to create stdin pipe: ") + strerror(errno);
+        error_.code = BUILD_PREPARE_ERROR;
+        return false;
+    }
+    if (pipe(stdoutPipe) == -1) {
+        close(stdinPipe[0]);
+        close(stdinPipe[1]);
+        error_.reason = std::string("Failed to create stdout pipe: ") + strerror(errno);
+        error_.code = BUILD_PREPARE_ERROR;
+        return false;
+    }
+
+    pid_t pid = fork();
+    if (pid == -1) {
+        close(stdinPipe[0]);
+        close(stdinPipe[1]);
+        close(stdoutPipe[0]);
+        close(stdoutPipe[1]);
+        error_.reason = "Failed to fork " + command + ": " + strerror(errno);
+        error_.code = BUILD_PREPARE_ERROR;
+        return false;
+    }
+
+    if (pid == 0) { // Child process
+        close(stdinPipe[1]);
+        close(stdoutPipe[0]);
+
+        if (dup2(stdinPipe[0], STDIN_FILENO) == -1) {
+            perror(("dup2 stdin failed for " + command).c_str());
+            _exit(EXIT_FAILURE);
+        }
+        if (dup2(stdoutPipe[1], STDOUT_FILENO) == -1) {
+            perror(("dup2 stdout failed for " + command).c_str());
+            _exit(EXIT_FAILURE);
+        }
+
+        close(stdinPipe[0]);
+        close(stdoutPipe[1]);
+
+        execl(patchFile.c_str(), patchFile.filename().c_str(), (char *)nullptr);
+
+        // If execl returns, it's an error
+        perror(("execl failed for " + command).c_str());
+        _exit(127);
+    }
+
+    // Parent process
+    close(stdinPipe[0]);  // Close read end of stdin pipe
+    close(stdoutPipe[1]); // Close write end of stdout pipe
+
+    size_t bytesWritten = 0;
+    while (bytesWritten < inputJsonStr.size()) {
+        ssize_t n = write(stdinPipe[1],
+                          inputJsonStr.c_str() + bytesWritten,
+                          inputJsonStr.size() - bytesWritten);
+        if (n == -1) {
+            if (errno == EINTR) {
+                continue;
+            }
+            error_.reason = "Failed to write to stdin of " + command + ": " + strerror(errno);
+            error_.code = BUILD_PREPARE_ERROR;
+            close(stdinPipe[1]); // Attempt to close before waiting
+            close(stdoutPipe[0]);
+            waitpid(pid, nullptr, 0); // Clean up child
+            return false;
+        }
+        bytesWritten += n;
+    }
+    close(stdinPipe[1]); // Close write end to signal EOF to child
+
+    std::stringstream outputJson;
+    char buffer[4096];
+    ssize_t bytesRead;
+    while ((bytesRead = read(stdoutPipe[0], buffer, sizeof(buffer))) > 0) {
+        outputJson.write(buffer, bytesRead);
+    }
+    close(stdoutPipe[0]); // Close read end
+
+    if (bytesRead == -1 && errno != EINTR
+        && errno != 0) { // EINTR is ok, 0 means EOF was already hit
+        error_.reason = "Failed to read from stdout of " + command + ": " + strerror(errno);
+        error_.code = BUILD_PREPARE_ERROR;
+        waitpid(pid, nullptr, 0); // Clean up child
+        return false;
+    }
+
+    int status;
+    waitpid(pid, &status, 0);
+
+    if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
+        std::string exitInfo;
+        if (WIFEXITED(status)) {
+            exitInfo = "exited with status " + std::to_string(WEXITSTATUS(status));
+        } else if (WIFSIGNALED(status)) {
+            exitInfo = "killed by signal " + std::to_string(WTERMSIG(status));
+        } else {
+            exitInfo = "terminated abnormally";
+        }
+        error_.reason = "Command " + command + " " + exitInfo + ". Output: " + outputJson.str();
+        error_.code = BUILD_PREPARE_ERROR;
+        return false;
+    }
+
+    std::string outputJsonStr = outputJson.str();
+    try {
+        config = nlohmann::json::parse(outputJsonStr).get<Config>();
+    } catch (const std::exception &e) {
+        error_.reason = "Failed to process output from " + command + ": " + e.what()
+          + ". Output: " + outputJsonStr;
+        error_.code = BUILD_PREPARE_ERROR;
+        return false;
+    }
+    return true;
+}
+
 bool ContainerCfgBuilder::mergeMount() noexcept
 {
     // merge all mounts here, the order of mounts is relevant
@@ -1289,12 +1537,6 @@ bool ContainerCfgBuilder::mergeMount() noexcept
 
     if (extraMount) {
         std::move(extraMount->begin(), extraMount->end(), std::back_inserter(mounts));
-    }
-
-    if (selfAdjustingMountEnabled) {
-        if (!selfAdjustingMount()) {
-            return false;
-        }
     }
 
     config.mounts = std::move(mounts);
@@ -1598,6 +1840,12 @@ void ContainerCfgBuilder::generateMounts() noexcept
 
 bool ContainerCfgBuilder::selfAdjustingMount() noexcept
 {
+    if (!selfAdjustingMountEnabled) {
+        return true;
+    }
+
+    mounts = std::move(config.mounts).value();
+
     // Some apps depends on files which doesn't exist in runtime layer or base layer, we have to
     // mount host files to container, or create the file on demand, but the layer is readonly. We
     // make a workaround by mount the suitable target's ancestor directory as tmpfs.
@@ -1620,6 +1868,8 @@ bool ContainerCfgBuilder::selfAdjustingMount() noexcept
     tryFixMountpointsTree();
 
     generateMounts();
+
+    config.mounts = std::move(mounts);
 
     return true;
 }
@@ -1669,6 +1919,14 @@ bool ContainerCfgBuilder::build() noexcept
     }
 
     if (!finalize()) {
+        return false;
+    }
+
+    if (!applyPatch()) {
+        return false;
+    }
+
+    if (!selfAdjustingMount()) {
         return false;
     }
 

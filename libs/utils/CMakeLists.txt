@@ -13,8 +13,6 @@ pfl_add_library(
   src/linglong/utils/command/env.h
   src/linglong/utils/command/ocppi-helper.cpp
   src/linglong/utils/command/ocppi-helper.h
-  src/linglong/utils/configure.cpp
-  src/linglong/utils/configure.h.in
   src/linglong/utils/dbus/log.cpp
   src/linglong/utils/dbus/log.h
   src/linglong/utils/dbus/properties_forwarder.cpp

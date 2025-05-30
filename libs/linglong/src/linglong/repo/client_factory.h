@@ -10,7 +10,7 @@ extern "C" {
 #include "api/ClientAPI.h"
 }
 
-#include "linglong/utils/configure.h"
+#include "configure.h"
 
 #include <QObject>
 #include <QPoint>

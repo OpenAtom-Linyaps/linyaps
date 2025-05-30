@@ -4,12 +4,12 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
+#include "configure.h"
 #include "linglong/adaptors/package_manager/package_manager1.h"
 #include "linglong/package_manager/package_manager.h"
 #include "linglong/repo/config.h"
 #include "linglong/repo/migrate.h"
 #include "linglong/repo/ostree_repo.h"
-#include "linglong/utils/configure.h"
 #include "linglong/utils/dbus/register.h"
 #include "linglong/utils/global/initialize.h"
 #include "ocppi/cli/CLI.hpp"

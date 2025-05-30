@@ -6,7 +6,7 @@ cmake_minimum_required(VERSION 3.11.4)
 
 project(
   linglong
-  VERSION 1.8.0
+  VERSION 1.9.0
   DESCRIPTION "a container based application package manager for Linux desktop"
   HOMEPAGE_URL "https://github.com/OpenAtom-Linyaps/linyaps"
   LANGUAGES CXX C)
@@ -171,6 +171,11 @@ endfunction()
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+include(GNUInstallDirs)
+# depends on GNUInstallDirs
+configure_file(configure.h.in ${CMAKE_CURRENT_BINARY_DIR}/configure.h @ONLY)
+include_directories(${CMAKE_CURRENT_BINARY_DIR})
+
 # build ll-build-utils only
 if(BUILD_LINGLONG_BUILDER_UTILS_IN_BOX)
     pfl_init(AUTO)
@@ -254,8 +259,6 @@ pfl_init(AUTO)
 
 add_subdirectory(external/http)
 add_subdirectory(tools/qdbusxml2cpp)
-
-include(GNUInstallDirs)
 
 pfl_add_libraries(
   LIBS

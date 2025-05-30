@@ -4,12 +4,12 @@
 
 #include "linglong/package/uab_packager.h"
 
+#include "configure.h"
 #include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/api/types/v1/UabLayer.hpp"
 #include "linglong/api/types/v1/Version.hpp"
 #include "linglong/package/architecture.h"
 #include "linglong/utils/command/env.h"
-#include "linglong/utils/configure.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/file.h"
 #include "linglong/utils/serialize/json.h"

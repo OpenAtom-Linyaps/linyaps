@@ -644,6 +644,27 @@
         }
       }
     },
+    "PackageInfoDisplay": {
+      "title": "PackageInfoDisplay",
+      "description": "this is the each item output of ll-cli list --json",
+      "allOf": [
+        {
+          "$ref": "#/$defs/PackageInfoV2"
+        },
+        {
+          "type": "object",
+          "requested": [
+            "info"
+          ],
+          "properties": {
+            "install_time": {
+              "type": "integer",
+              "description": "package install time"
+            }
+          }
+        }
+      ]
+    },
     "PackageInfoV2": {
       "title": "PackageInfoV2",
       "description": "this is the each item output of ll-cli list --json",
@@ -1416,6 +1437,9 @@
     },
     "PackageManager1Package": {
       "$ref": "#/$defs/PackageManager1Package"
+    },
+    "PackageInfoDisplay": {
+      "$ref": "#/$defs/PackageInfoDisplay"
     },
     "PackageInfoV2": {
       "$ref": "#/$defs/PackageInfoV2"

@@ -37,6 +37,7 @@
 #include "linglong/api/types/v1/LayerInfo.hpp"
 #include "linglong/api/types/v1/OciConfigurationPatch.hpp"
 #include "linglong/api/types/v1/PackageInfo.hpp"
+#include "linglong/api/types/v1/PackageInfoDisplay.hpp"
 #include "linglong/api/types/v1/PackageInfoV2.hpp"
 #include "linglong/api/types/v1/PackageManager1GetRepoInfoResult.hpp"
 #include "linglong/api/types/v1/PackageManager1InstallParameters.hpp"
@@ -107,6 +108,7 @@ std::optional<InteractionRequest> interactionRequest;
 std::optional<LayerInfo> layerInfo;
 std::optional<OciConfigurationPatch> ociConfigurationPatch;
 std::optional<PackageInfo> packageInfo;
+std::optional<PackageInfoDisplay> packageInfoDisplay;
 std::optional<PackageInfoV2> packageInfoV2;
 std::optional<PackageManager1GetRepoInfoResult> packageManager1GetRepoInfoResult;
 std::optional<CommonResult> packageManager1InstallLayerFDResult;

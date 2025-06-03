@@ -9,6 +9,8 @@
 #include "linglong/api/dbus/v1/package_manager.h"
 #include "linglong/api/dbus/v1/task.h"
 #include "linglong/api/types/v1/CommonOptions.hpp"
+#include "linglong/api/types/v1/PackageInfoDisplay.hpp"
+#include "linglong/api/types/v1/RepositoryCacheLayersItem.hpp"
 #include "linglong/cli/interactive_notifier.h"
 #include "linglong/cli/printer.h"
 #include "linglong/repo/ostree_repo.h"
@@ -99,9 +101,12 @@ private:
     filePathMapping(const std::vector<std::string> &command) const noexcept;
     static std::string mappingFile(const std::filesystem::path &file) noexcept;
     static std::string mappingUrl(std::string_view url) noexcept;
+
     static void filterPackageInfosByType(
       std::map<std::string, std::vector<api::types::v1::PackageInfoV2>> &list,
       const std::string &type) noexcept;
+    static void filterPackageInfosByType(std::vector<api::types::v1::PackageInfoDisplay> &list,
+                                         const std::string &type);
     static utils::error::Result<void> filterPackageInfosByVersion(
       std::map<std::string, std::vector<api::types::v1::PackageInfoV2>> &list) noexcept;
     void printProgress() noexcept;

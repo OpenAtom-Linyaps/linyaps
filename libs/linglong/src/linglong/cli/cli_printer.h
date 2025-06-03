@@ -35,7 +35,7 @@ public:
 
     void printErr(const utils::error::Error &) override;
     void printPackage(const api::types::v1::PackageInfoV2 &) override;
-    void printPackages(const std::vector<api::types::v1::PackageInfoV2> &) override;
+    void printPackages(const std::vector<api::types::v1::PackageInfoDisplay> &) override;
     void
       printSearchResult(std::map<std::string, std::vector<api::types::v1::PackageInfoV2>>) override;
     void printPruneResult(const std::vector<api::types::v1::PackageInfoV2> &list) override;

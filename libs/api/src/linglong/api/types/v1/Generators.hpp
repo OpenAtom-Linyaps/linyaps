@@ -46,6 +46,7 @@
 #include "linglong/api/types/v1/PackageManager1GetRepoInfoResult.hpp"
 #include "linglong/api/types/v1/PackageManager1GetRepoInfoResultRepoInfo.hpp"
 #include "linglong/api/types/v1/PackageInfoV2.hpp"
+#include "linglong/api/types/v1/PackageInfoDisplay.hpp"
 #include "linglong/api/types/v1/PackageInfo.hpp"
 #include "linglong/api/types/v1/OciConfigurationPatch.hpp"
 #include "linglong/api/types/v1/LayerInfo.hpp"
@@ -163,6 +164,9 @@ void to_json(json & j, const OciConfigurationPatch & x);
 
 void from_json(const json & j, PackageInfo & x);
 void to_json(json & j, const PackageInfo & x);
+
+void from_json(const json & j, PackageInfoDisplay & x);
+void to_json(json & j, const PackageInfoDisplay & x);
 
 void from_json(const json & j, PackageInfoV2 & x);
 void to_json(json & j, const PackageInfoV2 & x);
@@ -730,6 +734,69 @@ j["size"] = x.size;
 j["version"] = x.version;
 }
 
+inline void from_json(const json & j, PackageInfoDisplay& x) {
+x.arch = j.at("arch").get<std::vector<std::string>>();
+x.base = j.at("base").get<std::string>();
+x.channel = j.at("channel").get<std::string>();
+x.command = get_stack_optional<std::vector<std::string>>(j, "command");
+x.compatibleVersion = get_stack_optional<std::string>(j, "compatible_version");
+x.description = get_stack_optional<std::string>(j, "description");
+x.extImpl = get_stack_optional<ExtensionImpl>(j, "ext_impl");
+x.extensions = get_stack_optional<std::vector<ExtensionDefine>>(j, "extensions");
+x.id = j.at("id").get<std::string>();
+x.kind = j.at("kind").get<std::string>();
+x.packageInfoDisplayModule = j.at("module").get<std::string>();
+x.name = j.at("name").get<std::string>();
+x.permissions = get_stack_optional<ApplicationConfigurationPermissions>(j, "permissions");
+x.runtime = get_stack_optional<std::string>(j, "runtime");
+x.schemaVersion = j.at("schema_version").get<std::string>();
+x.size = j.at("size").get<int64_t>();
+x.uuid = get_stack_optional<std::string>(j, "uuid");
+x.version = j.at("version").get<std::string>();
+x.installTime = get_stack_optional<int64_t>(j, "install_time");
+}
+
+inline void to_json(json & j, const PackageInfoDisplay & x) {
+j = json::object();
+j["arch"] = x.arch;
+j["base"] = x.base;
+j["channel"] = x.channel;
+if (x.command) {
+j["command"] = x.command;
+}
+if (x.compatibleVersion) {
+j["compatible_version"] = x.compatibleVersion;
+}
+if (x.description) {
+j["description"] = x.description;
+}
+if (x.extImpl) {
+j["ext_impl"] = x.extImpl;
+}
+if (x.extensions) {
+j["extensions"] = x.extensions;
+}
+j["id"] = x.id;
+j["kind"] = x.kind;
+j["module"] = x.packageInfoDisplayModule;
+j["name"] = x.name;
+if (x.permissions) {
+j["permissions"] = x.permissions;
+}
+if (x.runtime) {
+j["runtime"] = x.runtime;
+}
+j["schema_version"] = x.schemaVersion;
+j["size"] = x.size;
+if (x.uuid) {
+j["uuid"] = x.uuid;
+}
+j["version"] = x.version;
+if (x.installTime) {
+j["install_time"] = x.installTime;
+}
+}
+
 inline void from_json(const json & j, PackageInfoV2& x) {
 x.arch = j.at("arch").get<std::vector<std::string>>();
 x.base = j.at("base").get<std::string>();
@@ -1169,6 +1236,7 @@ x.interactionRequest = get_stack_optional<InteractionRequest>(j, "InteractionReq
 x.layerInfo = get_stack_optional<LayerInfo>(j, "LayerInfo");
 x.ociConfigurationPatch = get_stack_optional<OciConfigurationPatch>(j, "OCIConfigurationPatch");
 x.packageInfo = get_stack_optional<PackageInfo>(j, "PackageInfo");
+x.packageInfoDisplay = get_stack_optional<PackageInfoDisplay>(j, "PackageInfoDisplay");
 x.packageInfoV2 = get_stack_optional<PackageInfoV2>(j, "PackageInfoV2");
 x.packageManager1GetRepoInfoResult = get_stack_optional<PackageManager1GetRepoInfoResult>(j, "PackageManager1GetRepoInfoResult");
 x.packageManager1InstallLayerFDResult = get_stack_optional<CommonResult>(j, "PackageManager1InstallLayerFDResult");
@@ -1259,6 +1327,9 @@ j["OCIConfigurationPatch"] = x.ociConfigurationPatch;
 }
 if (x.packageInfo) {
 j["PackageInfo"] = x.packageInfo;
+}
+if (x.packageInfoDisplay) {
+j["PackageInfoDisplay"] = x.packageInfoDisplay;
 }
 if (x.packageInfoV2) {
 j["PackageInfoV2"] = x.packageInfoV2;

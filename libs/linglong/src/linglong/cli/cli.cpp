@@ -10,6 +10,8 @@
 #include "linglong/api/dbus/v1/dbus_peer.h"
 #include "linglong/api/types/v1/InteractionReply.hpp"
 #include "linglong/api/types/v1/InteractionRequest.hpp"
+#include "linglong/api/types/v1/LinglongAPIV1.hpp"
+#include "linglong/api/types/v1/PackageInfoDisplay.hpp"
 #include "linglong/api/types/v1/PackageInfoV2.hpp"
 #include "linglong/api/types/v1/PackageManager1InstallParameters.hpp"
 #include "linglong/api/types/v1/PackageManager1JobInfo.hpp"
@@ -19,6 +21,7 @@
 #include "linglong/api/types/v1/PackageManager1SearchParameters.hpp"
 #include "linglong/api/types/v1/PackageManager1SearchResult.hpp"
 #include "linglong/api/types/v1/PackageManager1UninstallParameters.hpp"
+#include "linglong/api/types/v1/RepositoryCacheLayersItem.hpp"
 #include "linglong/api/types/v1/State.hpp"
 #include "linglong/api/types/v1/SubState.hpp"
 #include "linglong/api/types/v1/UpgradeListResult.hpp"
@@ -39,7 +42,10 @@
 #include "ocppi/runtime/Signal.hpp"
 #include "ocppi/types/ContainerListItem.hpp"
 
+#include <nlohmann/detail/conversions/from_json.hpp>
+#include <nlohmann/detail/conversions/to_json.hpp>
 #include <nlohmann/json.hpp>
+#include <nlohmann/json_fwd.hpp>
 
 #include <QCryptographicHash>
 #include <QEventLoop>
@@ -48,6 +54,7 @@
 #include <algorithm>
 #include <cassert>
 #include <charconv>
+#include <cstdint>
 #include <cstdlib>
 #include <filesystem>
 #include <iostream>
@@ -1699,22 +1706,28 @@ int Cli::uninstall([[maybe_unused]] CLI::App *subcommand)
 }
 
 int Cli::list([[maybe_unused]] CLI::App *subcommand)
+
 {
     if (!options.showUpgradeList) {
-        auto pkgs = this->repository.listLocal();
-        if (!pkgs) {
-            this->printer.printErr(pkgs.error());
+        auto items = this->repository.listLayerItem();
+        if (!items) {
+            this->printer.printErr(items.error());
             return -1;
         }
-
-        auto localPkgs = std::map<std::string, std::vector<api::types::v1::PackageInfoV2>>{
-            { "local", std::move(pkgs).value() }
-        };
-
-        if (!options.type.empty()) {
-            filterPackageInfosByType(localPkgs, options.type);
+        std::vector<api::types::v1::PackageInfoDisplay> list;
+        for (const auto &item : *items) {
+            nlohmann::json json = item.info;
+            auto m = json.get<api::types::v1::PackageInfoDisplay>();
+            auto t = this->repository.getLayerCreateTime(item);
+            if (t.has_value()) {
+                m.installTime = *t;
+            }
+            list.push_back(std::move(m));
         }
-        this->printer.printPackages(localPkgs["local"]);
+        if (!options.type.empty()) {
+            filterPackageInfosByType(list, options.type);
+        }
+        this->printer.printPackages(list);
         return 0;
     }
 
@@ -2251,6 +2264,20 @@ void Cli::filterPackageInfosByType(
     list = std::move(filtered);
 }
 
+void Cli::filterPackageInfosByType(std::vector<api::types::v1::PackageInfoDisplay> &list,
+                                   const std::string &type)
+{
+    if (type == "all") {
+        return;
+    }
+    list.erase(std::remove_if(list.begin(),
+                              list.end(),
+                              [&type](const api::types::v1::PackageInfoDisplay &pkg) {
+                                  return pkg.kind == type;
+                              }),
+               list.end());
+}
+
 utils::error::Result<void> Cli::filterPackageInfosByVersion(
   std::map<std::string, std::vector<api::types::v1::PackageInfoV2>> &list) noexcept
 {
@@ -2390,11 +2417,9 @@ Cli::RequestDirectories(const api::types::v1::PackageInfoV2 &info) noexcept
         ::close(fd);
     });
 
-    struct flock lock{
-        .l_type = F_WRLCK,
-        .l_whence = SEEK_SET,
-        .l_start = 0,
-        .l_len = 0,
+    struct flock lock
+    {
+        .l_type = F_WRLCK, .l_whence = SEEK_SET, .l_start = 0, .l_len = 0,
     };
 
     // all later processes should be blocked

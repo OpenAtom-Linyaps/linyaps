@@ -26,6 +26,7 @@
 #include "linglong/oci-cfg-generators/container_cfg_builder.h"
 #include "linglong/package/layer_file.h"
 #include "linglong/package/reference.h"
+#include "linglong/repo/config.h"
 #include "linglong/runtime/container_builder.h"
 #include "linglong/runtime/run_context.h"
 #include "linglong/utils/error/error.h"
@@ -1897,14 +1898,25 @@ int Cli::repo(CLI::App *app)
     }
 
     if (argsParseFunc("remove")) {
-        if (cfgRef.defaultRepo == alias) {
-            this->printer.printErr(
-              LINGLONG_ERRV(QString{ "repo " } + alias.c_str()
-                            + "is default repo, please change default repo before removing it."));
+        if (cfgRef.repos.size() == 1) {
+            this->printer.printErr(LINGLONG_ERRV(QString{ "repo " } + alias.c_str()
+                                                 + " is the only repo, please add another repo "
+                                                   "before removing it or update it directly."));
             return -1;
         }
-
         cfgRef.repos.erase(existingRepo);
+
+        if (cfgRef.defaultRepo == alias) {
+            // choose the max priority repo as default repo
+            auto maxPriority = linglong::repo::getRepoMaxPriority(cfgRef);
+            for (auto &repo : cfgRef.repos) {
+                if (repo.priority == maxPriority) {
+                    cfgRef.defaultRepo = repo.alias.value_or(repo.name);
+                    break;
+                }
+            }
+        }
+
         return this->setRepoConfig(utils::serialize::toQVariantMap(cfgRef));
     }
 
@@ -1921,6 +1933,14 @@ int Cli::repo(CLI::App *app)
     if (argsParseFunc("set-default")) {
         if (cfgRef.defaultRepo != alias) {
             cfgRef.defaultRepo = alias;
+            // set-default is equal to set-priority to the current max priority + 100
+            auto maxPriority = linglong::repo::getRepoMaxPriority(cfgRef);
+            for (auto &repo : cfgRef.repos) {
+                if (repo.alias.value_or(repo.name) == alias) {
+                    repo.priority = maxPriority + 100;
+                    break;
+                }
+            }
             return this->setRepoConfig(utils::serialize::toQVariantMap(cfgRef));
         }
 

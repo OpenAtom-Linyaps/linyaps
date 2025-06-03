@@ -2094,12 +2094,14 @@ OSTreeRepo::exportEntries(const std::filesystem::path &rootEntriesDir,
             destination = rootEntriesDir / "lib/systemd/user";
         }
 
+        auto desktopExportPath = std::string{ LINGLONG_EXPORT_PATH } + "/applications";
+
         if (path == "share/applications") {
-            if (strcmp(LINGLONG_DESKTOP_EXPORT_PATH, "share/applications") != 0) {
+            if (desktopExportPath != "share/applications") {
                 qInfo() << "destination update from " << destination.c_str() << " to "
-                        << QString::fromStdString(rootEntriesDir / LINGLONG_DESKTOP_EXPORT_PATH);
+                        << QString::fromStdString(rootEntriesDir / desktopExportPath);
             }
-            destination = rootEntriesDir / LINGLONG_DESKTOP_EXPORT_PATH;
+            destination = rootEntriesDir / desktopExportPath;
         }
 
         // 检查源目录是否存在，跳过不存在的目录
@@ -2199,8 +2201,9 @@ void OSTreeRepo::updateSharedInfo() noexcept
 {
     auto defaultApplicationDir = QDir(this->repoDir.absoluteFilePath("entries/share/applications"));
     // 自定义desktop安装路径
-    QDir customApplicationDir = QDir(
-      this->repoDir.absoluteFilePath(QString{ "entries/%1" }.arg(LINGLONG_DESKTOP_EXPORT_PATH)));
+    auto desktopExportPath = std::string{ LINGLONG_EXPORT_PATH } + "/applications";
+    QDir customApplicationDir =
+      QDir(this->repoDir.absoluteFilePath(QString{ "entries/%1" }.arg(desktopExportPath.c_str())));
     auto mimeDataDir = QDir(this->repoDir.absoluteFilePath("entries/share/mime"));
     auto glibSchemasDir = QDir(this->repoDir.absoluteFilePath("entries/share/glib-2.0/schemas"));
 

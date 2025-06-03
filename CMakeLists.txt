@@ -53,9 +53,18 @@ set(GETTEXT_DOMAIN_NAME
     "linyaps"
     CACHE STRING "The name of gettext domain.")
 set(QT_VERSION_MAJOR CACHE STRING "The major version of qt.")
-set(LINGLONG_DESKTOP_EXPORT_PATH
-    "share/applications"
-    CACHE STRING "The path to export linglong desktop files.")
+set(LINGLONG_EXPORT_PATH
+    "share"
+    CACHE STRING
+          "The path to export linglong config files, it must end with share.")
+
+if(NOT LINGLONG_EXPORT_PATH MATCHES ".*share$")
+  message(
+    WARNING
+      "LINGLONG_EXPORT_PATH '${LINGLONG_EXPORT_PATH}' must end with 'share'"
+  )
+  set(LINGLONG_EXPORT_PATH "share")
+endif()
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 include(PFL)
@@ -173,16 +182,16 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # build ll-build-utils only
 if(BUILD_LINGLONG_BUILDER_UTILS_IN_BOX)
-    pfl_init(AUTO)
-    pfl_add_libraries(
-        LIBS
-        api
-        ocppi
-        oci-cfg-generators
-        APPS
-        ll-builder-utils
-        uab)
-    return()
+  pfl_init(AUTO)
+  pfl_add_libraries(
+    LIBS
+    api
+    ocppi
+    oci-cfg-generators
+    APPS
+    ll-builder-utils
+    uab)
+  return()
 endif()
 
 set(CMAKE_AUTOMOC ON)
@@ -275,7 +284,7 @@ pfl_add_libraries(
   ll-session-helper)
 
 if(ENABLE_LINGLONG_APP_BUILDER_UTILS)
-    add_subdirectory(apps/ll-builder-utils)
+  add_subdirectory(apps/ll-builder-utils)
 endif()
 
 add_subdirectory(misc)

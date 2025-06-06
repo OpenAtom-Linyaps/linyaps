@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "linglong/api/types/v1/PackageInfoV2.hpp"
 #include "linglong/api/types/v1/Repo.hpp"
 #include "linglong/api/types/v1/RepoConfigV2.hpp"
 #include "linglong/package/fuzzy_reference.h"
@@ -40,6 +41,7 @@ struct getRemoteReferenceByPriorityOption
 };
 
 class OSTreeRepo : public QObject
+
 {
     Q_OBJECT
 public:
@@ -102,9 +104,13 @@ public:
     utils::error::Result<std::vector<api::types::v1::PackageInfoV2>>
     listRemote(const package::FuzzyReference &fuzzyRef,
                const std::optional<api::types::v1::Repo> &repo = std::nullopt) const noexcept;
+
+    utils::error::Result<std::vector<api::types::v1::RepositoryCacheLayersItem>>
+    listLayerItem() const noexcept;
     [[nodiscard]] utils::error::Result<std::vector<api::types::v1::RepositoryCacheLayersItem>>
     listLocalBy(const linglong::repo::repoCacheQuery &query) const noexcept;
-
+    utils::error::Result<int64_t>
+    getLayerCreateTime(const api::types::v1::RepositoryCacheLayersItem &item) const noexcept;
     utils::error::Result<void>
     remove(const package::Reference &ref,
            const std::string &module = "binary",

@@ -45,6 +45,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cstddef>
+#include <cstdint>
 #include <cstdlib>
 #include <cstring>
 #include <filesystem>
@@ -1548,12 +1549,7 @@ utils::error::Result<std::vector<api::types::v1::PackageInfoV2>>
 OSTreeRepo::listLocal() const noexcept
 {
     std::vector<api::types::v1::PackageInfoV2> pkgInfos;
-
-    QDir layersDir = this->repoDir.absoluteFilePath("layers");
-    Q_ASSERT(layersDir.exists());
-
     auto items = this->cache->queryExistingLayerItem();
-    pkgInfos.reserve(items.size());
     for (const auto &item : items) {
         if (item.deleted && item.deleted.value()) {
             continue;
@@ -1563,6 +1559,23 @@ OSTreeRepo::listLocal() const noexcept
     }
 
     return pkgInfos;
+}
+
+utils::error::Result<std::vector<api::types::v1::RepositoryCacheLayersItem>>
+OSTreeRepo::listLayerItem() const noexcept
+{
+    return this->cache->queryExistingLayerItem();
+}
+
+utils::error::Result<int64_t>
+OSTreeRepo::getLayerCreateTime(const api::types::v1::RepositoryCacheLayersItem &item) const noexcept
+{
+    LINGLONG_TRACE("get install time");
+    auto dir = this->getLayerDir(item);
+    if (!dir.has_value()) {
+        return LINGLONG_ERR("get layer dir", dir);
+    }
+    return QFileInfo(dir->absolutePath()).birthTime().toSecsSinceEpoch();
 }
 
 // Note: Since version 1.7.0, multiple versions are no longer supported, so there will be multiple

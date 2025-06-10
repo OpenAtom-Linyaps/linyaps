@@ -388,6 +388,19 @@ msgid ""
 "# find all of runtime(s) of remote\n"
 "ll-cli search . --type=runtime"
 msgstr ""
+"Käyttö: ll-cli search [OPTIONS] KEYWORDS\n"
+"\n"
+"Esimerkki:\n"
+"# etsi palvelimelta sovellukse(t), alusta(t) tai ajoympäristö(t) hakusanoilla\n"
+"ll-cli search org.deepin.demo\n"
+"# etsi ajoympäristö palvelimelta nimellä\n"
+"ll-cli search org.deepin.base --type=runtime\n"
+"# etsi kaikki sovellukset palvelimelta\n"
+"ll-cli search .\n"
+"# etsi alusta(t) palvelimelta\n"
+"ll-cli search . --type=base\n"
+"# etsi ajoympäristö(t) palvelimelta\n"
+"ll-cli search . --type=runtime"
 
 #: ../apps/ll-cli/src/main.cpp:389
 msgid "Specify the Keywords"
@@ -396,6 +409,8 @@ msgstr "Määrittele hakusanat"
 #: ../apps/ll-cli/src/main.cpp:396 ../apps/ll-cli/src/main.cpp:430
 msgid "Filter result with specify type. One of \"runtime\", \"base\", \"app\" or \"all\""
 msgstr ""
+"Suodata tulokset tyypillä. Joku seuraavista: \"runtime\", \"base\", \"app\" "
+"tai \"all\""
 
 #: ../apps/ll-cli/src/main.cpp:400
 msgid "Specify the repo"
@@ -403,7 +418,7 @@ msgstr "Määritä arkisto"
 
 #: ../apps/ll-cli/src/main.cpp:403
 msgid "Include develop application in result"
-msgstr ""
+msgstr "Sisällytä tuloksiin kehitteillä olevat sovellukset"
 
 #: ../apps/ll-cli/src/main.cpp:406
 msgid "Show all versions of an application(s), base(s) or runtime(s)"

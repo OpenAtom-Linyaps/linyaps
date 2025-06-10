@@ -61,8 +61,7 @@ set(LINGLONG_EXPORT_PATH
 if(NOT LINGLONG_EXPORT_PATH MATCHES ".*share$")
   message(
     WARNING
-      "LINGLONG_EXPORT_PATH '${LINGLONG_EXPORT_PATH}' must end with 'share'"
-  )
+      "LINGLONG_EXPORT_PATH '${LINGLONG_EXPORT_PATH}' must end with 'share'")
   set(LINGLONG_EXPORT_PATH "share")
 endif()
 
@@ -130,6 +129,17 @@ if(ENABLE_CPM)
 endif()
 
 set(linglong_EXTERNALS "ytj ytj::ytj")
+
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "^mips" OR CMAKE_SYSTEM_PROCESSOR MATCHES
+                                             "^MIPS")
+  message(
+    STATUS
+      "MIPS architecture detected. Globally adding -mxgot to CMAKE_CXX_FLAGS.")
+
+  set(CMAKE_CXX_FLAGS
+      "${CMAKE_CXX_FLAGS} -mxgot"
+      CACHE STRING "C++ compiler flags" FORCE)
+endif()
 
 # NOTE: UOS v20 do not have tl-expected packaged.
 find_package(tl-expected 1.0.0 QUIET)

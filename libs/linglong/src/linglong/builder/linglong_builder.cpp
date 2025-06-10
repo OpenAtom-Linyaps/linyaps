@@ -1807,9 +1807,8 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
     }
 
     auto *homeEnv = ::getenv("HOME");
-    auto *userNameEnv = ::getenv("USER");
-    if (homeEnv == nullptr || userNameEnv == nullptr) {
-        return LINGLONG_ERR("Couldn't get HOME or USER from env.");
+    if (homeEnv == nullptr) {
+        return LINGLONG_ERR("Couldn't get HOME env.");
     }
 
     std::vector<ocppi::runtime::config::types::Mount> applicationMounts{};
@@ -1833,7 +1832,7 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
             f << "set debug-file-directory " + debugDir << std::endl;
 
             applicationMounts.push_back(ocppi::runtime::config::types::Mount{
-              .destination = std::string("/home/") + userNameEnv + "/.gdbinit",
+              .destination = std::string{ homeEnv } + "/.gdbinit",
               .options = { { "ro", "rbind" } },
               .source = gdbinit,
               .type = "bind",
@@ -1924,10 +1923,10 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
       .bindMedia()
       .bindHostRoot()
       .bindHostStatics()
-      .bindHome(homeEnv, userNameEnv)
+      .bindHome(homeEnv)
       .enablePrivateDir()
-      .mapPrivate(std::string("/home/") + userNameEnv + "/.ssh", true)
-      .mapPrivate(std::string("/home/") + userNameEnv + "/.gnupg", true)
+      .mapPrivate(std::string{ homeEnv } + "/.ssh", true)
+      .mapPrivate(std::string{ homeEnv } + "/.gnupg", true)
       .bindIPC()
       .forwardDefaultEnv()
       .addExtraMounts(applicationMounts)

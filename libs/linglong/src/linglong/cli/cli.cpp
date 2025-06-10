@@ -689,9 +689,8 @@ int Cli::run([[maybe_unused]] CLI::App *subcommand)
     }
 
     auto *homeEnv = ::getenv("HOME");
-    auto *userNameEnv = ::getenv("USER");
-    if (homeEnv == nullptr || userNameEnv == nullptr) {
-        qCritical() << "Couldn't get HOME or USER from env.";
+    if (homeEnv == nullptr) {
+        qCritical() << "Couldn't get HOME env.";
         return -1;
     }
 
@@ -714,10 +713,10 @@ int Cli::run([[maybe_unused]] CLI::App *subcommand)
       .bindMedia()
       .bindHostRoot()
       .bindHostStatics()
-      .bindHome(homeEnv, userNameEnv)
+      .bindHome(homeEnv)
       .enablePrivateDir()
-      .mapPrivate(std::string("/home/") + userNameEnv + "/.ssh", true)
-      .mapPrivate(std::string("/home/") + userNameEnv + "/.gnupg", true)
+      .mapPrivate(std::string{ homeEnv } + "/.ssh", true)
+      .mapPrivate(std::string{ homeEnv } + "/.gnupg", true)
       .bindIPC()
       .forwardDefaultEnv()
       .enableSelfAdjustingMount();

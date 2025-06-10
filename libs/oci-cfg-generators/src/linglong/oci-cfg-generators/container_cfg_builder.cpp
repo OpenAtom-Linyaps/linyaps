@@ -174,10 +174,6 @@ ContainerCfgBuilder &ContainerCfgBuilder::bindRun() noexcept
                .options = string_list{ "nosuid", "strictatime", "mode=0755", "size=65536k" },
                .source = "tmpfs",
                .type = "tmpfs" },
-        Mount{ .destination = "/run/udev",
-               .options = string_list{ "rbind" },
-               .source = "/run/udev",
-               .type = "bind" },
         Mount{ .destination = "/run/user",
                .options = string_list{ "nodev", "nosuid", "mode=700" },
                .source = "tmpfs",
@@ -279,6 +275,7 @@ ContainerCfgBuilder &ContainerCfgBuilder::forwardDefaultEnv() noexcept
       "CLUTTER_IM_MODULE",
       "QT4_IM_MODULE",
       "GTK_IM_MODULE",
+      "all_proxy",
       "auto_proxy",      // 网络系统代理自动代理
       "http_proxy",      // 网络系统代理手动http代理
       "https_proxy",     // 网络系统代理手动https代理
@@ -389,11 +386,9 @@ ContainerCfgBuilder &ContainerCfgBuilder::bindHostStatics() noexcept
     return *this;
 }
 
-ContainerCfgBuilder &ContainerCfgBuilder::bindHome(std::filesystem::path hostHome,
-                                                   std::string user) noexcept
+ContainerCfgBuilder &ContainerCfgBuilder::bindHome(std::filesystem::path hostHome) noexcept
 {
     homePath = hostHome;
-    homeUser = user;
     homeMount = std::vector<Mount>{};
 
     return *this;
@@ -608,8 +603,8 @@ bool ContainerCfgBuilder::buildMountHome() noexcept
         return true;
     }
 
-    if (homePath->empty() || homeUser.empty()) {
-        error_.reason = "homePath or user is empty";
+    if (homePath->empty()) {
+        error_.reason = "homePath is empty";
         error_.code = BUILD_MOUNT_HOME_ERROR;
         return false;
     }
@@ -626,7 +621,7 @@ bool ContainerCfgBuilder::buildMountHome() noexcept
                                    .source = "tmpfs",
                                    .type = "tmpfs" });
 
-    auto containerHome = "/home/" + homeUser;
+    auto containerHome = homePath->string();
 
     homeMount->emplace_back(Mount{ .destination = containerHome,
                                    .options = string_list{ "rbind" },
@@ -1070,7 +1065,7 @@ bool ContainerCfgBuilder::buildMountIPC() noexcept
         }
 
         auto hostXauthFile = *homePath / ".Xauthority";
-        auto cognitiveXauthFile = std::string{ "/home/" } + homeUser + "/.Xauthority";
+        auto cognitiveXauthFile = homePath->string() + "/.Xauthority";
 
         auto *xauthFileEnv = ::getenv("XAUTHORITY"); // NOLINT
         std::error_code ec;

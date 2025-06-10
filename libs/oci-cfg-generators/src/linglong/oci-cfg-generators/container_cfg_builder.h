@@ -132,7 +132,7 @@ public:
 
     ContainerCfgBuilder &bindHostRoot() noexcept;
     ContainerCfgBuilder &bindHostStatics() noexcept;
-    ContainerCfgBuilder &bindHome(std::filesystem::path hostHome, std::string user) noexcept;
+    ContainerCfgBuilder &bindHome(std::filesystem::path hostHome) noexcept;
 
     ContainerCfgBuilder &enablePrivateDir() noexcept;
     ContainerCfgBuilder &mapPrivate(std::string containerPath, bool isDir) noexcept;

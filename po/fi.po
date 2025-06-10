@@ -443,12 +443,25 @@ msgid ""
 "# show the latest version list of the currently installed application(s)\n"
 "ll-cli list --upgradable\n"
 msgstr ""
+"Käyttö: ll-cli list [OPTIONS]\n"
+"\n"
+"Esimerkki:\n"
+"# näytä asennetut sovellukse(t), alusta(t) tai ajoympäristö(t)\n"
+"ll-cli list\n"
+"# näytä asennetut alusta(t)\n"
+"ll-cli list --type=base\n"
+"# näytä asennetut ajoympäristö(t)\n"
+"ll-cli list --type=runtime\n"
+"# näytä asennettujen sovellusten (uusin) versioluettelo\n"
+"ll-cli list --upgradable\n"
 
 #: ../apps/ll-cli/src/main.cpp:436
 msgid ""
 "Show the list of latest version of the currently installed application(s), "
 "base(s) or runtime(s)"
 msgstr ""
+"Näytä luettelo asennettujen uusimmista versioista. Sovellukse(t), alusta(t) "
+"tai ajoympäristö(t)"
 
 #: ../apps/ll-cli/src/main.cpp:443
 msgid "Display or modify information of the repository currently using"
@@ -828,7 +841,7 @@ msgstr "Vie uab kokonaan"
 
 #: ../apps/ll-builder/src/main.cpp:827
 msgid "Export to linyaps layer file (deprecated)"
-msgstr ""
+msgstr "Vie linyaps tiedosto-kerrokseen (vanhentunut)"
 
 #: ../apps/ll-builder/src/main.cpp:830
 msgid "Use custom loader"

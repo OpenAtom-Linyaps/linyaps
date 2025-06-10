@@ -41,7 +41,7 @@ msgstr "Ha fallat la instal·lació."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:452
 msgid "The module could not be found remotely."
-msgstr ""
+msgstr "No s'ha pogut trobar el mòdul remotament."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:455
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1659
@@ -321,7 +321,7 @@ msgstr "Instal·la un mòdul específic."
 
 #: ../apps/ll-cli/src/main.cpp:328
 msgid "Install from a specific repo"
-msgstr ""
+msgstr "Instal·lació des d'un repositori específic"
 
 #: ../apps/ll-cli/src/main.cpp:331
 msgid "Force install the application"
@@ -402,22 +402,24 @@ msgstr "Especifiqueu les paraules clau."
 #: ../apps/ll-cli/src/main.cpp:396 ../apps/ll-cli/src/main.cpp:430
 msgid "Filter result with specify type. One of \"runtime\", \"base\", \"app\" or \"all\""
 msgstr ""
+"Filtra el resultat amb el tipus especificat: \"runtime\", \"base\", \"app\" "
+"o \"all\"."
 
 #: ../apps/ll-cli/src/main.cpp:400
 msgid "Specify the repo"
-msgstr ""
+msgstr "Especifiqueu el repositori"
 
 #: ../apps/ll-cli/src/main.cpp:403
 msgid "Include develop application in result"
-msgstr ""
+msgstr "Inclou l'aplicació de desenvolupament al resultat."
 
 #: ../apps/ll-cli/src/main.cpp:406
 msgid "Show all versions of an application(s), base(s) or runtime(s)"
-msgstr ""
+msgstr "Mostra totes les versions d'una aplicació, base o temps d'execució."
 
 #: ../apps/ll-cli/src/main.cpp:411
 msgid "List installed application(s), base(s) or runtime(s)"
-msgstr ""
+msgstr "Llista les aplicacions, bases o temps d'execució instal·lats."
 
 #: ../apps/ll-cli/src/main.cpp:414
 msgid ""
@@ -439,6 +441,8 @@ msgid ""
 "Show the list of latest version of the currently installed application(s), "
 "base(s) or runtime(s)"
 msgstr ""
+"Mostra la llista de les darreres versions de les aplicacions, bases o temps "
+"d'execució instal·lats actualment."
 
 #: ../apps/ll-cli/src/main.cpp:443
 msgid "Display or modify information of the repository currently using"
@@ -625,11 +629,11 @@ msgstr "Descripció"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:108
 msgid "No packages found in the remote repo."
-msgstr ""
+msgstr "No s'han trobat paquets al repositori remot."
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:140
 msgid "Repo"
-msgstr ""
+msgstr "Repositori"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:175
 msgid "No containers are running."
@@ -820,7 +824,7 @@ msgstr "Exporta uab completament."
 
 #: ../apps/ll-builder/src/main.cpp:827
 msgid "Export to linyaps layer file (deprecated)"
-msgstr ""
+msgstr "Exporta a un fitxer de capa de Linyaps (obsolet)"
 
 #: ../apps/ll-builder/src/main.cpp:830
 msgid "Use custom loader"

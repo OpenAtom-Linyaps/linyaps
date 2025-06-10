@@ -40,7 +40,7 @@ msgstr "Asennus epäonnistui"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:452
 msgid "The module could not be found remotely."
-msgstr ""
+msgstr "Moduulia ei löytynyt palvelimelta."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:455
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1659
@@ -315,7 +315,7 @@ msgstr "Asenna tietty moduuli"
 
 #: ../apps/ll-cli/src/main.cpp:328
 msgid "Install from a specific repo"
-msgstr ""
+msgstr "Asenna tietystä arkistosta"
 
 #: ../apps/ll-cli/src/main.cpp:331
 msgid "Force install the application"
@@ -399,7 +399,7 @@ msgstr ""
 
 #: ../apps/ll-cli/src/main.cpp:400
 msgid "Specify the repo"
-msgstr ""
+msgstr "Määritä arkisto"
 
 #: ../apps/ll-cli/src/main.cpp:403
 msgid "Include develop application in result"
@@ -618,11 +618,11 @@ msgstr "Kuvaus"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:108
 msgid "No packages found in the remote repo."
-msgstr ""
+msgstr "Paketteja ei löytynyt palvelimen arkistosta."
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:140
 msgid "Repo"
-msgstr ""
+msgstr "Arkisto"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:175
 msgid "No containers are running."

@@ -423,10 +423,11 @@ msgstr "Sisällytä tuloksiin kehitteillä olevat sovellukset"
 #: ../apps/ll-cli/src/main.cpp:406
 msgid "Show all versions of an application(s), base(s) or runtime(s)"
 msgstr ""
+"Näytä kaikki versiot (sovelluksita), (alustoista) tai (ajoympäristöistä)"
 
 #: ../apps/ll-cli/src/main.cpp:411
 msgid "List installed application(s), base(s) or runtime(s)"
-msgstr ""
+msgstr "Luettele asennetut sovellukse(t), alusta(t) tai ajoympäristö(t)"
 
 #: ../apps/ll-cli/src/main.cpp:414
 msgid ""

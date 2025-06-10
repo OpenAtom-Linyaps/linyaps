@@ -407,7 +407,7 @@ msgstr "Specify the Keywords"
 msgid ""
 "Filter result with specify type. One of \"runtime\", \"base\", \"app\" or "
 "\"all\""
-msgid ""
+msgstr ""
 "Filter result with specify type. One of \"runtime\", \"base\", \"app\" or "
 "\"all\""
 

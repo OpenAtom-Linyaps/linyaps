@@ -405,15 +405,15 @@ msgstr "指定仓库"
 
 #: ../apps/ll-cli/src/main.cpp:403
 msgid "Include develop application in result"
-msgstr ""
+msgstr "结果包括应用调试包"
 
 #: ../apps/ll-cli/src/main.cpp:406
 msgid "Show all versions of an application(s), base(s) or runtime(s)"
-msgstr ""
+msgstr "显示应用，base或runtime的所有版本"
 
 #: ../apps/ll-cli/src/main.cpp:411
 msgid "List installed application(s), base(s) or runtime(s)"
-msgstr ""
+msgstr "列出已安装的 应用, base或runtime"
 
 #: ../apps/ll-cli/src/main.cpp:414
 msgid ""

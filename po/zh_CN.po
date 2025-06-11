@@ -434,7 +434,7 @@ msgstr ""
 msgid ""
 "Show the list of latest version of the currently installed application(s), "
 "base(s) or runtime(s)"
-msgstr ""
+msgstr "显示当前已安装的应用（application）、基础环境（base）或运行时（runtime）的最新版本"
 
 #: ../apps/ll-cli/src/main.cpp:443
 msgid "Display or modify information of the repository currently using"
@@ -620,11 +620,11 @@ msgstr "描述"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:108
 msgid "No packages found in the remote repo."
-msgstr ""
+msgstr "远程仓库中未找到软件包"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:140
 msgid "Repo"
-msgstr ""
+msgstr "仓库"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:175
 msgid "No containers are running."
@@ -810,7 +810,7 @@ msgstr "全量导出uab"
 
 #: ../apps/ll-builder/src/main.cpp:827
 msgid "Export to linyaps layer file (deprecated)"
-msgstr ""
+msgstr "导出如意玲珑layer文件（已弃用）"
 
 #: ../apps/ll-builder/src/main.cpp:830
 msgid "Use custom loader"

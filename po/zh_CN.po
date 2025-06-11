@@ -41,7 +41,7 @@ msgstr "安装失败"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:452
 msgid "The module could not be found remotely."
-msgstr ""
+msgstr "远程无法找到该模块"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:455
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1659
@@ -308,7 +308,7 @@ msgstr "安装指定模块"
 
 #: ../apps/ll-cli/src/main.cpp:328
 msgid "Install from a specific repo"
-msgstr ""
+msgstr "从指定的仓库安装"
 
 #: ../apps/ll-cli/src/main.cpp:331
 msgid "Force install the application"

@@ -10,8 +10,8 @@ pfl_add_executable(
   uab-loader
   LINK_LIBRARIES
   PRIVATE
-  linglong::oci-cfg-generators
-  nlohmann_json::nlohmann_json)
+  linglong::api
+  linglong::oci-cfg-generators)
 
 set(UAB_LOADER_TARGET)
 get_real_target_name(UAB_LOADER_TARGET linglong::loader)

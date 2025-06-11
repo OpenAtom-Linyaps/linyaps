@@ -117,7 +117,7 @@ public:
             shdrstrndx = shdr.sh_link;
         }
 
-        auto shdrstrtab = elfHeader.e_shoff + shdrstrndx * elfHeader.e_shentsize;
+        auto shdrstrtab = elfHeader.e_shoff + (shdrstrndx * elfHeader.e_shentsize);
         bytesRead = ::pread(fd, &shdr, section_size, shdrstrtab);
         if (bytesRead == -1) {
             throw std::runtime_error("failed to read section header string table of" + path.string()

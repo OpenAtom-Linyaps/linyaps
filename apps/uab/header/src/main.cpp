@@ -1,12 +1,11 @@
-// SPDX-FileCopyrightText: 2024 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2024 - 2025 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 #include "light_elf.h"
-#include "linglong/api/types/v1/Generators.hpp"
+#include "linglong/api/types/v1/Generators.hpp" // IWYU pragma: keep
 #include "linglong/api/types/v1/UabMetaInfo.hpp"
 #include "sha256.h"
-#include "utils.h"
 
 #include <gelf.h>
 #include <getopt.h>
@@ -14,27 +13,29 @@
 #include <nlohmann/json.hpp>
 #include <sys/mount.h>
 
-#include <algorithm>
 #include <array>
 #include <atomic>
-#include <cstdint>
 #include <cstring>
 #include <filesystem>
 #include <iomanip>
 #include <iostream>
-#include <optional>
 
 #include <fcntl.h>
+#include <sys/mman.h>
 #include <sys/stat.h>
+#include <sys/statvfs.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
 extern "C" int erofsfuse_main(int argc, char **argv);
 
-static std::atomic_bool mountFlag{ false };  // NOLINT
-static std::atomic_bool createFlag{ false }; // NOLINT
-static std::filesystem::path mountPoint;     // NOLINT
+namespace {
+
+std::atomic_bool mountFlag{ false };  // NOLINT
+std::atomic_bool createFlag{ false }; // NOLINT
+std::filesystem::path mountPoint;     // NOLINT
+constexpr std::size_t default_page_size = 4096;
 
 constexpr auto usage = u8R"(Linglong Universal Application Bundle
 
@@ -49,7 +50,21 @@ Options:
     --help print usage of uab [exclusive]
 )";
 
-std::string resolveRealPath(std::string_view source) noexcept
+enum uabOption : std::uint8_t {
+    Help = 1,
+    Extract,
+    Meta,
+};
+
+struct argOption
+{
+    bool help{ false };
+    bool printMeta{ false };
+    std::string extractPath;
+    std::vector<std::string_view> loaderArgs;
+};
+
+std::string resolveRealPath(const std::string &source) noexcept
 {
     std::array<char, PATH_MAX + 1> resolvedPath{};
 
@@ -62,63 +77,121 @@ std::string resolveRealPath(std::string_view source) noexcept
     return { ptr };
 }
 
+std::size_t getChunkSize(std::size_t bundleSize) noexcept
+{
+    std::size_t page_size{ default_page_size };
+    const auto ret = sysconf(_SC_PAGESIZE);
+    if (ret > 0) {
+        page_size = ret;
+    }
+
+    std::size_t block_size{ 0 };
+    struct statvfs fs_info{};
+    if (statvfs(".", &fs_info) > 0) {
+        block_size = fs_info.f_bsize;
+    }
+
+    const auto base_block = std::max(page_size, block_size);
+    if (bundleSize <= static_cast<std::size_t>(10 * 1024 * 1024)) {
+        return 64 * base_block;
+    }
+
+    if (bundleSize <= static_cast<std::size_t>(100 * 1024 * 1024)) {
+        return 128 * base_block;
+    }
+
+    return 256 * base_block;
+}
+
 std::string calculateDigest(int fd, std::size_t bundleOffset, std::size_t bundleLength) noexcept
 {
     digest::SHA256 sha256;
-    std::array<std::byte, 4096> buf{};
-    std::array<std::byte, 32> md_value{};
-    auto expectedRead = buf.size();
-    int readLength{ 0 };
+    std::array<std::byte, 32> digest{};
+    auto *mem = mmap(nullptr, bundleLength, PROT_READ, MAP_PRIVATE, fd, bundleOffset);
+    if (mem != MAP_FAILED) {
+        posix_madvise(mem, bundleLength, POSIX_FADV_WILLNEED | POSIX_FADV_SEQUENTIAL);
+        sha256.update(reinterpret_cast<std::byte *>(mem), bundleLength);
+        if (munmap(mem, bundleLength) == -1) {
+            std::cerr << "munmap error:" << ::strerror(errno) << std::endl;
+        }
+    } else {
+        // fallback to read blocks
+        posix_fadvise(fd, bundleOffset, bundleLength, POSIX_FADV_WILLNEED | POSIX_FADV_SEQUENTIAL);
+        std::align_val_t alignment{ default_page_size };
+        if (auto ret = sysconf(_SC_PAGESIZE); ret > 0) {
+            alignment = static_cast<std::align_val_t>(ret);
+        }
 
-    while ((readLength = ::pread(fd, buf.data(), expectedRead, bundleOffset)) != 0) {
-        if (readLength == -1) {
-            if (errno == EINTR) {
-                continue;
-            }
-
-            std::cerr << "read uab error:" << ::strerror(errno) << std::endl;
+        auto chunkSize = getChunkSize(bundleLength);
+        auto *buf = ::operator new(chunkSize, alignment, std::nothrow);
+        if (buf == nullptr) {
+            std::cerr << "failed to allocate aligned memory" << std::endl;
             return {};
         }
 
-        sha256.update(buf.data(), readLength);
+        auto deleter = [alignment](void *ptr) noexcept {
+            ::operator delete(ptr, alignment, std::nothrow);
+        };
+        std::unique_ptr<std::byte, decltype(deleter)> buffer{ reinterpret_cast<std::byte *>(buf),
+                                                              deleter };
 
-        bundleLength -= readLength;
-        if (bundleLength == 0) {
-            sha256.final(md_value.data());
-            break;
+        std::size_t totalRead{ 0 };
+        while (totalRead < bundleLength) {
+            auto remaining = bundleLength - totalRead;
+            auto readBytes = std::min(remaining, chunkSize);
+
+            auto bytesRead = pread(fd, buffer.get(), readBytes, bundleOffset + totalRead);
+            if (bytesRead < 0) {
+                if (errno == EINTR) {
+                    continue;
+                }
+
+                std::cerr << "read uab error:" << ::strerror(errno) << std::endl;
+                return {};
+            }
+
+            if (bytesRead == 0) {
+                break;
+            }
+
+            sha256.update(buffer.get(), bytesRead);
+            totalRead += bytesRead;
         }
-
-        bundleOffset += readLength;
-        expectedRead = bundleLength > buf.size() ? buf.size() : bundleLength;
     }
+
+    sha256.final(digest.data());
 
     std::stringstream stream;
     stream << std::setfill('0') << std::hex;
 
-    for (auto v : md_value) {
+    for (auto v : digest) {
         stream << std::setw(2) << static_cast<unsigned int>(v);
     }
 
     return stream.str();
 }
 
-std::string find_fusermount()
+std::optional<std::filesystem::path> find_fusermount() noexcept
 {
-    std::string res;
-
-    const char *path = getenv("PATH");
-    if (!path) {
-        return res;
+    auto *pathEnv = getenv("PATH");
+    if (pathEnv == nullptr) {
+        return std::nullopt;
     }
 
-    auto search_dir = [](std::filesystem::path dir, std::string &res) {
+    auto search_dir = [](const std::filesystem::path &dir) -> std::optional<std::filesystem::path> {
         std::error_code ec;
-        auto iter = std::filesystem::directory_iterator{ dir, ec };
+        auto iter = std::filesystem::directory_iterator{
+            dir,
+            std::filesystem::directory_options::skip_permission_denied,
+            ec
+        };
+
         if (ec) {
             std::cerr << "failed to open directory " << dir << ": " << ec.message() << std::endl;
-            return false;
+            return std::nullopt;
         }
-        for (auto const &entry : iter) {
+
+        for (const auto &entry : iter) {
             std::string filename = entry.path().filename();
             if (filename.rfind("fusermount", 0) != 0) {
                 continue;
@@ -128,7 +201,7 @@ std::string find_fusermount()
                 continue;
             }
 
-            struct stat sb;
+            struct stat sb{};
             if (stat(entry.path().c_str(), &sb) == -1) {
                 std::cerr << "stat error: " << strerror(errno) << std::endl;
                 continue;
@@ -136,37 +209,25 @@ std::string find_fusermount()
 
             if (sb.st_uid != 0 || (sb.st_mode & S_ISUID) == 0) {
                 std::cerr << "skip " << entry.path() << std::endl;
-                ;
                 continue;
             }
 
-            res = entry.path();
-            return true;
+            return entry.path();
         }
 
-        return false;
+        return std::nullopt;
     };
 
-    const char *begin = path;
-    const char *end = path + strlen(path);
-
-    while (begin < end) {
-        const char *colon = std::strchr(begin, ':');
-        if (!colon) {
-            colon = end;
+    std::stringstream ss{ pathEnv };
+    std::string path;
+    while (std::getline(ss, path, ':')) {
+        auto res = search_dir(path);
+        if (res) {
+            return res;
         }
-
-        std::string dir(begin, colon);
-        if (!dir.empty()) {
-            if (search_dir(dir, res)) {
-                return res;
-            }
-        }
-
-        begin = colon + 1;
     }
 
-    return res;
+    return std::nullopt;
 }
 
 int mountSelfBundle(const lightElf::native_elf &elf,
@@ -209,11 +270,11 @@ int mountSelfBundle(const lightElf::native_elf &elf,
             }
         }
 
-        if (!getenv("FUSERMOUNT_PROG")) {
+        if (getenv("FUSERMOUNT_PROG") == nullptr) {
             auto fuserMountProg = find_fusermount();
-            if (!fuserMountProg.empty()) {
-                setenv("FUSERMOUNT_PROG", fuserMountProg.c_str(), 1);
-                std::cerr << "use fusermount:" << fuserMountProg << std::endl;
+            if (fuserMountProg) {
+                setenv("FUSERMOUNT_PROG", fuserMountProg.value().c_str(), 1);
+                std::cerr << "use fusermount:" << fuserMountProg->string() << std::endl;
             } else {
                 std::cerr << "fusermount not found" << std::endl;
             }
@@ -223,16 +284,25 @@ int mountSelfBundle(const lightElf::native_elf &elf,
     }
 
     int status{ 0 };
-    auto ret = ::waitpid(fusePid, &status, 0);
-    if (ret == -1) {
-        std::cerr << "waitpid() failed:" << ::strerror(errno) << std::endl;
-        return -1;
+    while (true) {
+        auto ret = ::waitpid(fusePid, &status, 0);
+        if (ret < 0) {
+            if (errno == EINTR) {
+                continue;
+            }
+            std::cerr << "waitpid() failed:" << ::strerror(errno) << std::endl;
+            return -1;
+        }
+        break;
     }
 
-    ret = WEXITSTATUS(status);
-    if (ret != 0) {
-        std::cerr << "couldn't mount bundle, fuse error code:" << ret << std::endl;
-        ret = -1;
+    int ret{ -1 };
+    if (WIFEXITED(status)) {
+        auto code = WEXITSTATUS(status);
+        ret = code;
+    } else if (WIFSIGNALED(status)) {
+        auto sig = WTERMSIG(status);
+        std::cerr << "erofsfuse terminated due to signal " << strsignal(sig) << std::endl;
     }
 
     return ret;
@@ -240,58 +310,48 @@ int mountSelfBundle(const lightElf::native_elf &elf,
 
 void cleanResource() noexcept
 {
-    auto umountRet = [] {
-        if (!mountFlag.load(std::memory_order_relaxed)) {
-            return true;
-        }
-
-        auto pid = fork();
-        if (pid < 0) {
-            std::cerr << "fork() error" << ": " << ::strerror(errno) << std::endl;
-            return false;
-        }
-
-        if (pid == 0) {
-            if (::execlp("fusermount", "fusermount", "-z", "-u", mountPoint.c_str(), nullptr)
-                == -1) {
-                std::cerr << "fusermount error: " << ::strerror(errno) << std::endl;
-                return false;
-            }
-        }
-
-        int status{ 0 };
-        auto ret = ::waitpid(pid, &status, 0);
-        if (ret == -1) {
-            std::cerr << "wait failed:" << ::strerror(errno) << std::endl;
-            return false;
-        }
-
-        mountFlag.store(false, std::memory_order_relaxed);
-        return true;
-    }();
-
-    if (umountRet && createFlag.load(std::memory_order_relaxed)) {
-        std::error_code ec;
-        if (!std::filesystem::exists(mountPoint, ec)) {
-            if (ec) {
-                std::cerr << "filesystem error " << mountPoint << ":" << ec.message() << std::endl;
-                return;
-            }
-
-            createFlag.store(false, std::memory_order_relaxed);
-            return;
-        }
-
-        if (std::filesystem::remove_all(mountPoint, ec) == static_cast<std::uintmax_t>(-1) || ec) {
-            std::cerr << "failed to remove mount point:" << ec.message() << std::endl;
-            return;
-        }
-
-        createFlag.store(false, std::memory_order_relaxed);
+    if (!mountFlag.load(std::memory_order_relaxed)) {
+        return;
     }
+
+    auto pid = fork();
+    if (pid < 0) {
+        std::cerr << "fork() error" << ": " << ::strerror(errno) << std::endl;
+        return;
+    }
+
+    if (pid == 0) {
+        if (::execlp("fusermount", "fusermount", "-z", "-u", mountPoint.c_str(), nullptr) == -1) {
+            std::cerr << "fusermount error: " << ::strerror(errno) << std::endl;
+            ::_exit(1);
+        }
+
+        ::_exit(0);
+    }
+
+    int status{ 0 };
+    auto ret = ::waitpid(pid, &status, 0);
+    if (ret == -1) {
+        std::cerr << "wait failed:" << ::strerror(errno) << std::endl;
+        return;
+    }
+    mountFlag.store(false, std::memory_order_relaxed);
+
+    if (!createFlag.load(std::memory_order_relaxed)) {
+        return;
+    }
+
+    // try to remove mount point
+    std::error_code ec;
+    if (std::filesystem::remove_all(mountPoint, ec) == static_cast<std::uintmax_t>(-1) && ec) {
+        std::cerr << "failed to remove mount point:" << ec.message() << std::endl;
+        return;
+    }
+
+    createFlag.store(false, std::memory_order_relaxed);
 }
 
-[[noreturn]] static void cleanAndExit(int exitCode) noexcept
+[[noreturn]] void cleanAndExit(int exitCode) noexcept
 {
     cleanResource();
     ::_exit(exitCode);
@@ -299,20 +359,19 @@ void cleanResource() noexcept
 
 void handleSig() noexcept
 {
-    auto handler = [](int sig) -> void {
-        cleanAndExit(sig);
-    };
-
     sigset_t blocking_mask;
     sigemptyset(&blocking_mask);
-    auto quitSignals = { SIGTERM, SIGINT, SIGQUIT, SIGHUP, SIGABRT, SIGSEGV };
+    auto quitSignals = { SIGTERM, SIGINT, SIGQUIT, SIGHUP, SIGABRT };
     for (auto sig : quitSignals) {
         sigaddset(&blocking_mask, sig);
     }
 
     struct sigaction sa{};
 
-    sa.sa_handler = handler;
+    sa.sa_handler = [](int sig) -> void {
+        // TODO: maybe not async safe, find a better way to handle signal
+        cleanAndExit(128 + sig);
+    };
     sa.sa_mask = blocking_mask;
     sa.sa_flags = 0;
 
@@ -335,16 +394,17 @@ int createMountPoint(std::string_view uuid) noexcept
         runtimeDirPtr = "/tmp";
     }
 
-    auto mountPointPath =
-      std::filesystem::path{ resolveRealPath(runtimeDirPtr) } / "linglong" / "UAB" / uuid;
+    auto runtimeDir = resolveRealPath(runtimeDirPtr);
+    if (runtimeDir.empty()) {
+        return -1;
+    }
+    auto mountPointPath = std::filesystem::path{ runtimeDir } / "linglong" / "UAB" / uuid;
 
     std::error_code ec;
-    if (!std::filesystem::create_directories(mountPointPath, ec)) {
-        if (ec.value() != EEXIST) {
-            std::cerr << "couldn't create mount point " << mountPoint << ": " << ec.message()
-                      << std::endl;
-            return ec.value();
-        }
+    if (!std::filesystem::create_directories(mountPointPath, ec) && ec) {
+        std::cerr << "couldn't create mount point " << mountPointPath << ": " << ec.message()
+                  << std::endl;
+        return ec.value();
     }
 
     mountPoint = std::move(mountPointPath);
@@ -353,7 +413,8 @@ int createMountPoint(std::string_view uuid) noexcept
     return 0;
 }
 
-std::optional<linglong::api::types::v1::UabMetaInfo> getMetaInfo(const lightElf::native_elf &elf)
+std::optional<linglong::api::types::v1::UabMetaInfo>
+getMetaInfo(const lightElf::native_elf &elf) noexcept
 {
     auto metaSh = elf.getSectionHeader("linglong.meta");
     if (!metaSh) {
@@ -367,11 +428,13 @@ std::optional<linglong::api::types::v1::UabMetaInfo> getMetaInfo(const lightElf:
         return {};
     }
 
-    nlohmann::json meta;
+    std::optional<linglong::api::types::v1::UabMetaInfo> meta;
     try {
-        meta = nlohmann::json::parse(content);
-    } catch (const std::exception &ex) {
-        std::cerr << "exception: " << ex.what() << std::endl;
+        auto json = nlohmann::json::parse(content);
+        meta = json.get<linglong::api::types::v1::UabMetaInfo>();
+    } catch (const nlohmann::json::parse_error &e) {
+        std::cerr << "exception: " << e.what() << std::endl;
+        return std::nullopt;
     }
 
     return meta;
@@ -397,23 +460,32 @@ int extractBundle(std::string_view destination) noexcept
     return 0;
 }
 
-[[noreturn]] void runAppLoader(bool onlyApp,
-                               const std::vector<std::string_view> &loaderArgs) noexcept
+int runAppLoader(bool onlyApp, const std::vector<std::string_view> &loaderArgs) noexcept
 {
     auto loader = mountPoint / "loader";
-    auto loaderStr = loader.string();
+    std::error_code ec;
+    if (!std::filesystem::exists(loader, ec)) {
+        if (ec) {
+            std::cerr << "failed to get loader status" << std::endl;
+            return -1;
+        }
+
+        std::cout << "This UAB is not support for runnning" << std::endl;
+        return 0;
+    }
+
     auto argc = loaderArgs.size() + 2;
     auto *argv = new (std::nothrow) const char *[argc]();
     if (argv == nullptr) {
         std::cerr << "out of memory, exit." << std::endl;
-        cleanAndExit(ENOMEM);
+        return ENOMEM;
     }
 
     auto deleter = defer([argv] {
         delete[] argv;
     });
 
-    argv[0] = loaderStr.c_str();
+    argv[0] = loader.c_str();
     argv[argc - 1] = nullptr;
     for (std::size_t i = 0; i < loaderArgs.size(); ++i) {
         argv[i + 1] = loaderArgs[i].data();
@@ -422,20 +494,19 @@ int extractBundle(std::string_view destination) noexcept
     auto loaderPid = fork();
     if (loaderPid < 0) {
         std::cerr << "fork() error" << ": " << ::strerror(errno) << std::endl;
-        cleanAndExit(errno);
+        return errno;
     }
 
     if (loaderPid == 0) {
-        std::string_view newEnv{ "LINGLONG_UAB_LOADER_ONLY_APP=true" };
-        if (onlyApp && ::putenv(const_cast<char *>(newEnv.data())) < 0) {
-            std::cerr << "putenv error: " << ::strerror(errno) << std::endl;
-            cleanAndExit(errno);
+        if (onlyApp && ::setenv("LINGLONG_UAB_LOADER_ONLY_APP", "true", 1) < 0) {
+            std::cerr << "setenv error: " << ::strerror(errno) << std::endl;
+            return errno;
         }
 
-        if (::execv(loaderStr.c_str(), reinterpret_cast<char *const *>(const_cast<char **>(argv)))
+        if (::execv(loader.c_str(), reinterpret_cast<char *const *>(const_cast<char **>(argv)))
             == -1) {
-            std::cerr << "execv(" << loaderStr << ") error: " << ::strerror(errno) << std::endl;
-            cleanAndExit(errno);
+            std::cerr << "execv(" << loader << ") error: " << ::strerror(errno) << std::endl;
+            return errno;
         }
     }
 
@@ -443,25 +514,21 @@ int extractBundle(std::string_view destination) noexcept
     auto ret = ::waitpid(loaderPid, &status, 0);
     if (ret == -1) {
         std::cerr << "waitpid failed:" << ::strerror(errno) << std::endl;
-        cleanAndExit(errno);
+        return errno;
     }
 
-    cleanAndExit(WEXITSTATUS(status));
+    if (WIFEXITED(status)) {
+        return WEXITSTATUS(status);
+    }
+
+    if (WIFSIGNALED(status)) {
+        // maybe we runnning under a shell
+        return 128 + WTERMSIG(status);
+    }
+
+    std::cerr << "unknown exit state of loader" << std::endl;
+    return -1;
 }
-
-enum uabOption {
-    Help = 1,
-    Extract,
-    Meta,
-};
-
-struct argOption
-{
-    bool help{ false };
-    bool printMeta{ false };
-    std::string extractPath;
-    std::vector<std::string_view> loaderArgs;
-};
 
 argOption parseArgs(const std::vector<std::string_view> &args)
 {
@@ -538,12 +605,13 @@ int mountSelf(const lightElf::native_elf &elf,
     }
 
     if (auto ret = mountSelfBundle(elf, metaInfo); ret != 0) {
-        return -1;
+        return ret;
     }
 
     mountFlag.store(true, std::memory_order_relaxed);
     return 0;
 }
+} // namespace
 
 int main(int argc, char **argv)
 {
@@ -576,21 +644,33 @@ int main(int argc, char **argv)
         return 0;
     }
 
-    if (!opts.extractPath.empty()) {
-        if (mountSelf(elf, metaInfo) != 0) {
-            cleanAndExit(-1);
-        }
-
-        cleanAndExit(extractBundle(opts.extractPath));
+    // for cleaning up mount point
+    if (std::atexit(cleanResource) != 0) {
+        std::cerr << "failed register exit handler" << std::endl;
+        return 1;
     }
 
-    if (mountSelf(elf, metaInfo) != 0) {
-        cleanAndExit(-1);
+    std::set_terminate([]() {
+        cleanResource();
+        std::abort();
+    });
+
+    if (!opts.extractPath.empty()) {
+        if (auto ret = mountSelf(elf, metaInfo); ret != 0) {
+            return ret;
+        }
+
+        return extractBundle(opts.extractPath);
+    }
+
+    if (auto ret = mountSelf(elf, metaInfo); ret != 0) {
+        return ret;
     }
 
     bool onlyApp = metaInfo.onlyApp.value_or(false);
     if (onlyApp) {
-        std::string appID, module;
+        std::string appID;
+        std::string module;
         for (const auto &layer : metaInfo.layers) {
             if (layer.info.kind == "app") {
                 appID = layer.info.id;
@@ -598,13 +678,19 @@ int main(int argc, char **argv)
                 break;
             }
         }
+
+        if (appID.empty() || module.empty()) {
+            std::cerr << "failed to find appID and module" << std::endl;
+            return 1;
+        }
+
         std::string envAppRoot =
           std::string(mountPoint) + "/layers/" + appID + "/" + module + "/files";
-        if (-1 == ::setenv("LINGLONG_UAB_APPROOT", const_cast<char *>(envAppRoot.data()), 1)) {
+        if (::setenv("LINGLONG_UAB_APPROOT", const_cast<char *>(envAppRoot.data()), 1) == -1) {
             std::cerr << "setenv error: " << ::strerror(errno) << std::endl;
-            cleanAndExit(errno);
+            return 1;
         }
     }
 
-    runAppLoader(onlyApp, opts.loaderArgs);
+    return runAppLoader(onlyApp, opts.loaderArgs);
 }

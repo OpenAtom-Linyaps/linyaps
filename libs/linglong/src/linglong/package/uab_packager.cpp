@@ -381,7 +381,7 @@ prepareSymlink(const std::filesystem::path &sourceRoot,
     }
 
     if (maxDepth < 0) {
-        return LINGLONG_ERR(QString{ "resolve symlink %1 too deep" }.arg(source.string()));
+        return LINGLONG_ERR(QString{ "resolve symlink %1 too deep" }.arg(source.c_str()));
     }
 
     return std::make_pair(std::move(source), std::move(destination));
@@ -658,12 +658,12 @@ utils::error::Result<void> UABPackager::prepareBundle(const QDir &bundleDir, boo
                 if (!std::filesystem::exists(source, ec)) {
                     if (ec) {
                         return LINGLONG_ERR(
-                          QString{ "couldn't check file %1 exists: %2" }.arg(source.string(),
+                          QString{ "couldn't check file %1 exists: %2" }.arg(source.c_str(),
                                                                              ec.message().c_str()));
                     }
 
                     // source file must exist, it must be a regular file
-                    return LINGLONG_ERR(QString{ "file %1 doesn't exist" }.arg(source.string()));
+                    return LINGLONG_ERR(QString{ "file %1 doesn't exist" }.arg(source.c_str()));
                 }
 
                 auto relative = destination.lexically_relative(fakePrefix);
@@ -946,7 +946,7 @@ UABPackager::filteringFiles(const LayerDir &layer) const noexcept
 
         if (ec) {
             return LINGLONG_ERR(
-              QString{ "failed to check file %1 type: %2" }.arg(file.path().string(),
+              QString{ "failed to check file %1 type: %2" }.arg(file.path().c_str(),
                                                                 ec.message().c_str()));
         }
 

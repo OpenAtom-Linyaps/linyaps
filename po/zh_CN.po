@@ -380,7 +380,7 @@ msgstr ""
 "用法: ll-cli search [选项] 关键词\n"
 "\n"
 "示例:\n"
-"# 按照名称搜索远程的 application, base 或 runtime\n"
+"# 按照名称搜索远程的 application(s), base(s) 或 runtime(s)\n"
 "ll-cli search org.deepin.demo\n"
 "# 按名称搜索远程 runtime\n"
 "ll-cli search org.deepin.base --type=runtime\n"
@@ -397,11 +397,11 @@ msgstr "指定搜索关键词"
 
 #: ../apps/ll-cli/src/main.cpp:396 ../apps/ll-cli/src/main.cpp:430
 msgid "Filter result with specify type. One of \"runtime\", \"base\", \"app\" or \"all\""
-msgstr ""
+msgstr "按指定类型过滤结果。可选类型：\"runtime\"、\"base\"、\"app\"或 \"all\"。"
 
 #: ../apps/ll-cli/src/main.cpp:400
 msgid "Specify the repo"
-msgstr ""
+msgstr "指定仓库"
 
 #: ../apps/ll-cli/src/main.cpp:403
 msgid "Include develop application in result"

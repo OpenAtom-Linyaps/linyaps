@@ -40,7 +40,7 @@ msgstr "Nie udało się zainstalować"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:452
 msgid "The module could not be found remotely."
-msgstr "Moduł nie mógł zostać zdalnie znaleziony."
+msgstr "Nie znaleziono modułu w zdalnym repozytorium."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:455
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1659
@@ -396,7 +396,7 @@ msgstr "Podaj słowa kluczowe"
 
 #: ../apps/ll-cli/src/main.cpp:396 ../apps/ll-cli/src/main.cpp:430
 msgid "Filter result with specify type. One of \"runtime\", \"base\", \"app\" or \"all\""
-msgstr ""
+msgstr "Filtruj wyniki wybranego typu. Na przykład \"runtime\", \"base\", \"app\" lub \"all\""
 
 #: ../apps/ll-cli/src/main.cpp:400
 msgid "Specify the repo"
@@ -620,7 +620,7 @@ msgstr "Opis"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:108
 msgid "No packages found in the remote repo."
-msgstr ""
+msgstr "Nie znaleziono pakietów w zdalnym repozytorium."
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:140
 msgid "Repo"

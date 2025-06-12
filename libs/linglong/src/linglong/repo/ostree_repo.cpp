@@ -2112,6 +2112,10 @@ OSTreeRepo::exportEntries(const std::filesystem::path &rootEntriesDir,
             destination = rootEntriesDir / desktopExportPath;
         }
 
+        if (path == "share/deepin-elf-verify") {
+            destination = rootEntriesDir / "share/deepin-elf-verify" / item.commit;
+        }
+
         // 检查源目录是否存在，跳过不存在的目录
         exists = std::filesystem::exists(source, ec);
         if (ec) {

@@ -129,7 +129,7 @@ msgid ""
 "You can report bugs to the linyaps team under this project: https://github.com/OpenAtom-Linyaps/linyaps/issues"
 msgstr ""
 "Jeśli znajdziesz jakieś problemy, \n"
-"Możesz zgłosić błąd do zespołu linyaps w tym projekcie: \n"
+"możesz zgłosić błąd do zespołu linyaps pod tym adresem: \n"
 "https://github.com/OpenAtom-Linyaps/linyaps/issues"
 
 #. add flags
@@ -260,7 +260,7 @@ msgstr "Polecenie: ll-cli kill [OPCJE] APLIKACJA"
 
 #: ../apps/ll-cli/src/main.cpp:292
 msgid "Specify the signal to send to the application"
-msgstr "Podaj sygnał do wysłania aplikacji"
+msgstr "Podaj sygnał jaki wysłać aplikacji"
 
 #: ../apps/ll-cli/src/main.cpp:294
 msgid "Specify the running application"
@@ -389,6 +389,19 @@ msgid ""
 "# find all of runtime(s) of remote\n"
 "ll-cli search . --type=runtime"
 msgstr ""
+"Polecenie: ll-cli search [OPCJE] SŁOWA KLUCZOWE\n"
+"\n"
+"Przykład:\n"
+"# znajdź zdalnie aplikacje, bazy i środowiska wykonawcze\n"
+"ll-cli search org.deepin.demo\n"
+"# znajdź zdalnie środowisko wykonawcze\n"
+"ll-cli search org.deepin.base --type=runtime\n"
+"# znajdź wszystkie aplikacje repozytorium\n"
+"ll-cli search .\n"
+"# znajdź wszystkie bazy repozytorium\n"
+"ll-cli search . --type=base\n"
+"# znajdź wszystkie środowiska wykonawcze repozytorium\n"
+"ll-cli search . --type=runtime"
 
 #: ../apps/ll-cli/src/main.cpp:389
 msgid "Specify the Keywords"

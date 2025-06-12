@@ -402,9 +402,9 @@ utils::error::Result<void> UABPackager::prepareBundle(const QDir &bundleDir, boo
             }
 
             const auto &info = *infoRet;
-            // the kind of old org.deepin.base and org.deepin.foundation is runtime
+            // the kind of old org.deepin.base,org.deepin.foundation and com.uniontech.foundation is runtime
             if (info.kind == "base" || info.id == "org.deepin.base"
-                || info.id == "org.deepin.foundation") {
+                || info.id == "org.deepin.foundation" || info.id == "com.uniontech.foundation") {
                 base = *it;
                 it = this->layers.erase(it);
                 continue;

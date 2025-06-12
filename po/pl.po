@@ -40,7 +40,7 @@ msgstr "Nie udało się zainstalować"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:452
 msgid "The module could not be found remotely."
-msgstr ""
+msgstr "Moduł nie mógł zostać zdalnie znaleziony."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:455
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1659
@@ -316,7 +316,7 @@ msgstr "Zainstaluj moduł"
 
 #: ../apps/ll-cli/src/main.cpp:328
 msgid "Install from a specific repo"
-msgstr ""
+msgstr "Zainstaluj z wybranego repozytorium"
 
 #: ../apps/ll-cli/src/main.cpp:331
 msgid "Force install the application"
@@ -400,11 +400,11 @@ msgstr ""
 
 #: ../apps/ll-cli/src/main.cpp:400
 msgid "Specify the repo"
-msgstr ""
+msgstr "Podaj repozytorium"
 
 #: ../apps/ll-cli/src/main.cpp:403
 msgid "Include develop application in result"
-msgstr ""
+msgstr "Uwzględnij aplikacje w trakcie rozwoju w wynikach wyszukiwania"
 
 #: ../apps/ll-cli/src/main.cpp:406
 msgid "Show all versions of an application(s), base(s) or runtime(s)"
@@ -624,7 +624,7 @@ msgstr ""
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:140
 msgid "Repo"
-msgstr ""
+msgstr "Repozytorium"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:175
 msgid "No containers are running."
@@ -816,7 +816,7 @@ msgstr "Eksportuj uab całkowicie"
 
 #: ../apps/ll-builder/src/main.cpp:827
 msgid "Export to linyaps layer file (deprecated)"
-msgstr ""
+msgstr "Eksportuj do pliku warstwy linyaps (brak wsparcia)"
 
 #: ../apps/ll-builder/src/main.cpp:830
 msgid "Use custom loader"

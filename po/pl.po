@@ -408,11 +408,12 @@ msgstr "Uwzględnij aplikacje w trakcie rozwoju w wynikach wyszukiwania"
 
 #: ../apps/ll-cli/src/main.cpp:406
 msgid "Show all versions of an application(s), base(s) or runtime(s)"
-msgstr ""
+msgstr "Pokaż wszystkie wersje aplikacji, baz i środowisk wykonawczych"
 
 #: ../apps/ll-cli/src/main.cpp:411
 msgid "List installed application(s), base(s) or runtime(s)"
 msgstr ""
+"Wyświetl listę zainstalowanych aplikacji, baz i środowisk wykonawczych"
 
 #: ../apps/ll-cli/src/main.cpp:414
 msgid ""

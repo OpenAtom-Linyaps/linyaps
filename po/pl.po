@@ -435,6 +435,8 @@ msgid ""
 "Show the list of latest version of the currently installed application(s), "
 "base(s) or runtime(s)"
 msgstr ""
+"Wyświetl listę najnowszych wersji aktualnie zainstalowanych aplikacji, baz i"
+" środowisk wykonawczych"
 
 #: ../apps/ll-cli/src/main.cpp:443
 msgid "Display or modify information of the repository currently using"

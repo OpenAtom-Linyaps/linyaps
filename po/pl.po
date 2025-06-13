@@ -40,7 +40,7 @@ msgstr "Nie udało się zainstalować"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:452
 msgid "The module could not be found remotely."
-msgstr ""
+msgstr "Nie znaleziono modułu w zdalnym repozytorium."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:455
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1659
@@ -129,7 +129,7 @@ msgid ""
 "You can report bugs to the linyaps team under this project: https://github.com/OpenAtom-Linyaps/linyaps/issues"
 msgstr ""
 "Jeśli znajdziesz jakieś problemy, \n"
-"Możesz zgłosić błąd do zespołu linyaps w tym projekcie: \n"
+"możesz zgłosić błąd do zespołu linyaps pod tym adresem: \n"
 "https://github.com/OpenAtom-Linyaps/linyaps/issues"
 
 #. add flags
@@ -200,7 +200,7 @@ msgstr ""
 "Polecenie: ll-cli run [OPCJE] APLIKACJA [KOMENDA...]\n"
 "\n"
 "Przykład:\n"
-"# uruchom aplikację po appid\n"
+"# uruchom aplikację po ID aplikacji\n"
 "ll-cli run org.deepin.demo\n"
 "# uruchamiaj komendy wewnątrz kontenera zamiast obok aplikacji\n"
 "ll-cli run org.deepin.demo bash\n"
@@ -260,7 +260,7 @@ msgstr "Polecenie: ll-cli kill [OPCJE] APLIKACJA"
 
 #: ../apps/ll-cli/src/main.cpp:292
 msgid "Specify the signal to send to the application"
-msgstr "Podaj sygnał do wysłania aplikacji"
+msgstr "Podaj sygnał jaki wysłać aplikacji"
 
 #: ../apps/ll-cli/src/main.cpp:294
 msgid "Specify the running application"
@@ -292,15 +292,15 @@ msgstr ""
 "Polecenie: ll-cli install [OPCJE] APLIKACJA\n"
 "\n"
 "Przykład:\n"
-"# zainstaluj aplikację po appid\n"
+"# zainstaluj aplikację po ID aplikacji\n"
 "ll-cli install org.deepin.demo\n"
 "# zainstaluj aplikację po warstwie linyaps\n"
 "ll-cli install demo_0.0.0.1_x86_64_binary.layer\n"
 "# zainstaluj aplikację linyaps uab\n"
 "ll-cli install demo_x86_64_0.0.0.1_main.uab\n"
-"# zainstaluj moduł po appid\n"
+"# zainstaluj moduł po ID aplikacji\n"
 "ll-cli install org.deepin.demo --module=binary\n"
-"# zainstaluj określoną wersję po appid\n"
+"# zainstaluj określoną wersję po ID aplikacji\n"
 "ll-cli install org.deepin.demo/0.0.0.1\n"
 "# zainstaluj aplikację po szczegółowym odniesieniu\n"
 "ll-cli install stable:org.deepin.demo/0.0.0.1/x86_64\n"
@@ -316,7 +316,7 @@ msgstr "Zainstaluj moduł"
 
 #: ../apps/ll-cli/src/main.cpp:328
 msgid "Install from a specific repo"
-msgstr ""
+msgstr "Zainstaluj z wybranego repozytorium"
 
 #: ../apps/ll-cli/src/main.cpp:331
 msgid "Force install the application"
@@ -389,6 +389,19 @@ msgid ""
 "# find all of runtime(s) of remote\n"
 "ll-cli search . --type=runtime"
 msgstr ""
+"Polecenie: ll-cli search [OPCJE] SŁOWA KLUCZOWE\n"
+"\n"
+"Przykład:\n"
+"# znajdź zdalnie aplikacje, bazy i środowiska wykonawcze\n"
+"ll-cli search org.deepin.demo\n"
+"# znajdź zdalnie środowisko wykonawcze\n"
+"ll-cli search org.deepin.base --type=runtime\n"
+"# znajdź wszystkie aplikacje repozytorium\n"
+"ll-cli search .\n"
+"# znajdź wszystkie bazy repozytorium\n"
+"ll-cli search . --type=base\n"
+"# znajdź wszystkie środowiska wykonawcze repozytorium\n"
+"ll-cli search . --type=runtime"
 
 #: ../apps/ll-cli/src/main.cpp:389
 msgid "Specify the Keywords"
@@ -396,23 +409,24 @@ msgstr "Podaj słowa kluczowe"
 
 #: ../apps/ll-cli/src/main.cpp:396 ../apps/ll-cli/src/main.cpp:430
 msgid "Filter result with specify type. One of \"runtime\", \"base\", \"app\" or \"all\""
-msgstr ""
+msgstr "Filtruj wyniki wybranego typu. Na przykład \"runtime\", \"base\", \"app\" lub \"all\""
 
 #: ../apps/ll-cli/src/main.cpp:400
 msgid "Specify the repo"
-msgstr ""
+msgstr "Podaj repozytorium"
 
 #: ../apps/ll-cli/src/main.cpp:403
 msgid "Include develop application in result"
-msgstr ""
+msgstr "Uwzględnij aplikacje w trakcie rozwoju w wynikach wyszukiwania"
 
 #: ../apps/ll-cli/src/main.cpp:406
 msgid "Show all versions of an application(s), base(s) or runtime(s)"
-msgstr ""
+msgstr "Pokaż wszystkie wersje aplikacji, baz i środowisk wykonawczych"
 
 #: ../apps/ll-cli/src/main.cpp:411
 msgid "List installed application(s), base(s) or runtime(s)"
 msgstr ""
+"Wyświetl listę zainstalowanych aplikacji, baz i środowisk wykonawczych"
 
 #: ../apps/ll-cli/src/main.cpp:414
 msgid ""
@@ -428,12 +442,25 @@ msgid ""
 "# show the latest version list of the currently installed application(s)\n"
 "ll-cli list --upgradable\n"
 msgstr ""
+"Polecenie: ll-cli list [OPCJE]\n"
+"\n"
+"Przykład:\n"
+"# pokaż zainstalowane aplikacje, bazy lub środowiska wykonawcze\n"
+"ll-cli list\n"
+"# pokaż zainstalowane bazy\n"
+"ll-cli list --type=base\n"
+"# pokaż zainstalowane środowiska wykonawcze\n"
+"ll-cli list --type=runtime\n"
+"# pokaż najnowsze wersje zainstalowanych aplikacji\n"
+"ll-cli list --upgradable\n"
 
 #: ../apps/ll-cli/src/main.cpp:436
 msgid ""
 "Show the list of latest version of the currently installed application(s), "
 "base(s) or runtime(s)"
 msgstr ""
+"Wyświetl listę najnowszych wersji zainstalowanych aplikacji, baz i środowisk"
+" wykonawczych"
 
 #: ../apps/ll-cli/src/main.cpp:443
 msgid "Display or modify information of the repository currently using"
@@ -620,11 +647,11 @@ msgstr "Opis"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:108
 msgid "No packages found in the remote repo."
-msgstr ""
+msgstr "Nie znaleziono pakietów w zdalnym repozytorium."
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:140
 msgid "Repo"
-msgstr ""
+msgstr "Repozytorium"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:175
 msgid "No containers are running."
@@ -816,7 +843,7 @@ msgstr "Eksportuj uab całkowicie"
 
 #: ../apps/ll-builder/src/main.cpp:827
 msgid "Export to linyaps layer file (deprecated)"
-msgstr ""
+msgstr "Eksportuj do pliku warstwy linyaps (brak wsparcia)"
 
 #: ../apps/ll-builder/src/main.cpp:830
 msgid "Use custom loader"

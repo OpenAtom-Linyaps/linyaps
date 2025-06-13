@@ -10,11 +10,13 @@
 #include "linglong/api/types/v1/CommonResult.hpp"
 #include "linglong/api/types/v1/InspectResult.hpp"
 #include "linglong/api/types/v1/LayerInfo.hpp"
+#include "linglong/api/types/v1/PackageInfoDisplay.hpp"
 #include "linglong/api/types/v1/PackageInfoV2.hpp"
 #include "linglong/api/types/v1/RepoConfigV2.hpp"
 #include "linglong/api/types/v1/State.hpp"
 #include "linglong/api/types/v1/SubState.hpp"
 #include "linglong/api/types/v1/UpgradeListResult.hpp"
+#include "linglong/cli/cli.h"
 #include "linglong/utils/error/error.h"
 
 namespace linglong::cli {
@@ -75,7 +77,7 @@ public:
 
     virtual void printErr(const utils::error::Error &) = 0;
     virtual void printPackage(const api::types::v1::PackageInfoV2 &) = 0;
-    virtual void printPackages(const std::vector<api::types::v1::PackageInfoV2> &) = 0;
+    virtual void printPackages(const std::vector<api::types::v1::PackageInfoDisplay> &) = 0;
     virtual void
       printSearchResult(std::map<std::string, std::vector<api::types::v1::PackageInfoV2>>) = 0;
     virtual void printPruneResult(const std::vector<api::types::v1::PackageInfoV2> &) = 0;

@@ -67,7 +67,7 @@ std::string adjustDisplayWidth(const QString &str, int targetWidth)
     return (str + QString(targetWidth - currentWidth, QChar(' '))).toStdString();
 }
 
-void CLIPrinter::printPackages(const std::vector<api::types::v1::PackageInfoV2> &list)
+void CLIPrinter::printPackages(const std::vector<api::types::v1::PackageInfoDisplay> &list)
 {
     std::cout << "\033[38;5;214m" << std::left << adjustDisplayWidth(qUtf8Printable(_("ID")), 43)
               << adjustDisplayWidth(qUtf8Printable(_("Name")), 33)
@@ -96,7 +96,7 @@ void CLIPrinter::printPackages(const std::vector<api::types::v1::PackageInfoV2> 
         auto nameOffset = nameStr.size() - nameWcswidth;
         std::cout << std::setw(43) << info.id + " " << std::setw(33 + nameOffset) << nameStr + " "
                   << std::setw(16) << info.version + " " << std::setw(16) << info.channel + " "
-                  << std::setw(12) << info.packageInfoV2Module + " "
+                  << std::setw(12) << info.packageInfoDisplayModule + " "
                   << simpleDescription.toStdString() << std::endl;
     }
 }

@@ -7,6 +7,7 @@
 #include "linglong/cli/json_printer.h"
 
 #include "linglong/api/types/v1/Generators.hpp"
+#include "linglong/cli/cli.h"
 #include "linglong/package/version.h"
 
 #include <QJsonArray>
@@ -26,6 +27,11 @@ void JSONPrinter::printErr(const utils::error::Error &err)
 void JSONPrinter::printPackage(const api::types::v1::PackageInfoV2 &info)
 {
     std::cout << nlohmann::json(info).dump() << std::endl;
+}
+
+void JSONPrinter::printPackages(const std::vector<api::types::v1::PackageInfoDisplay> &list)
+{
+    std::cout << nlohmann::json(list).dump() << std::endl;
 }
 
 void JSONPrinter::printPackages(const std::vector<api::types::v1::PackageInfoV2> &list)

@@ -1371,7 +1371,7 @@ utils::error::Result<void> Builder::commitToLocalRepo() noexcept
         if (!ret) {
             return LINGLONG_ERR(ret);
         }
-        info.size = static_cast<int>(*ret);
+        info.size = static_cast<int64_t>(*ret);
 
         QFile infoFile{ moduleOutput.filePath("info.json") };
         if (!infoFile.open(QIODevice::WriteOnly | QIODevice::Truncate)) {

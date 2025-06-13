@@ -702,7 +702,7 @@ utils::error::Result<void> UABPackager::prepareBundle(const QDir &bundleDir, boo
             if (!newSize) {
                 return LINGLONG_ERR(newSize);
             }
-            info.size = static_cast<int>(*newSize);
+            info.size = static_cast<int64_t>(*newSize);
 
             stream << nlohmann::json(info).dump();
             layerInfoRef.info = info;

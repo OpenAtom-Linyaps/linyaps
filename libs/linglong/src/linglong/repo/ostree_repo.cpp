@@ -2102,16 +2102,6 @@ OSTreeRepo::exportEntries(const std::filesystem::path &rootEntriesDir,
             destination = rootEntriesDir / "lib/systemd/user";
         }
 
-        auto desktopExportPath = std::string{ LINGLONG_EXPORT_PATH } + "/applications";
-
-        if (path == "share/applications") {
-            if (desktopExportPath != "share/applications") {
-                qInfo() << "destination update from " << destination.c_str() << " to "
-                        << QString::fromStdString(rootEntriesDir / desktopExportPath);
-            }
-            destination = rootEntriesDir / desktopExportPath;
-        }
-
         if (path == "share/deepin-elf-verify") {
             destination = rootEntriesDir / "share/deepin-elf-verify" / item.commit;
         }
@@ -2127,6 +2117,23 @@ OSTreeRepo::exportEntries(const std::filesystem::path &rootEntriesDir,
         auto ret = this->exportDir(item.info.id, source, destination, 10);
         if (!ret.has_value()) {
             return ret;
+        }
+
+        if (path == "share/applications") {
+            auto desktopExportPath = std::string{ LINGLONG_EXPORT_PATH } + "/applications";
+
+            // 如果存在自定义的desktop安装路径，则也需要将desktop文件导出到指定目录
+            if (desktopExportPath != "share/applications") {
+                qInfo() << "destination update from " << destination.c_str() << " to "
+                        << QString::fromStdString(rootEntriesDir / desktopExportPath);
+
+                destination = rootEntriesDir / desktopExportPath;
+
+                auto ret = this->exportDir(item.info.id, source, destination, 10);
+                if (!ret.has_value()) {
+                    return ret;
+                }
+            }
         }
     }
     return LINGLONG_OK;

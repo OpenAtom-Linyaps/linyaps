@@ -288,7 +288,7 @@ pfl_add_libraries(
   linglong
   oci-cfg-generators
   APPS
-  dumb-init
+  ll-init
   ll-dialog
   ll-builder
   ll-cli

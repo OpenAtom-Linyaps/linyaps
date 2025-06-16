@@ -142,7 +142,7 @@ SPDX-FileCopyrightText = "None"
 SPDX-License-Identifier = "CC0-1.0"
 
 [[annotations]]
-path = "misc/share/linglong/**.json" 
+path = "misc/share/linglong/**.json"
 precedence = "aggregate"
 SPDX-FileCopyrightText = "None"
 SPDX-License-Identifier = "CC0-1.0"
@@ -193,12 +193,6 @@ SPDX-License-Identifier = "LGPL-3.0-or-later"
 path = "misc/share/linglong/builder/uab/blacklist"
 precedence = "aggregate"
 SPDX-FileCopyrightText = "AppImageCommunity"
-SPDX-License-Identifier = "MIT"
-
-[[annotations]]
-path = "apps/dumb-init/src/*"
-precedence = "aggregate"
-SPDX-FileCopyrightText = "Yelp Inc."
 SPDX-License-Identifier = "MIT"
 
 [[annotations]]

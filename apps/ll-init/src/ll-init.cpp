@@ -9,15 +9,15 @@
 #include <csignal>
 #include <cstring>
 #include <iostream>
-#include <optional>
 #include <variant>
 #include <vector>
 
 #include <sys/wait.h>
 
 // no need to block these signals
-constexpr std::array<int, 11> unblock_signals{ SIGABRT, SIGBUS,  SIGFPE,  SIGILL,  SIGSEGV, SIGSYS,
-                                               SIGTRAP, SIGXCPU, SIGXFSZ, SIGTTIN, SIGTTOU };
+constexpr std::array<int, 13> unblock_signals{ SIGABRT, SIGBUS,  SIGFPE,  SIGILL,  SIGSEGV,
+                                               SIGSYS,  SIGTRAP, SIGXCPU, SIGXFSZ, SIGTTIN,
+                                               SIGTTOU, SIGINT,  SIGTERM };
 
 struct sig_conf
 {
@@ -25,7 +25,11 @@ struct sig_conf
     sigset_t old_set{};
     struct sigaction ttin_action{};
     struct sigaction ttou_action{};
+    struct sigaction int_action{};
+    struct sigaction term_action{};
 };
+
+sig_atomic_t received_signal{ 0 };
 
 namespace {
 
@@ -36,7 +40,14 @@ void print_sys_error(std::string_view msg) noexcept
 
 void print_info(std::string_view msg) noexcept
 {
-    std::cout << msg << std::endl;
+    std::cerr << msg << std::endl;
+}
+
+// ATTENTION: there is a potential risk that the signal will be overridden if multiple signals are
+// received at the same time.
+void sig_forward(int signo) noexcept
+{
+    received_signal = signo;
 }
 
 using sig_result = std::variant<int, sig_conf>;
@@ -49,6 +60,7 @@ sig_result handle_signals() noexcept
         ::sigdelset(&conf.cur_set, signal);
     }
 
+    // ignore the rest of the signals
     auto ret = ::sigprocmask(SIG_SETMASK, &conf.cur_set, &conf.old_set);
     if (ret == -1) {
         print_sys_error("Failed to set signal mask");
@@ -68,6 +80,21 @@ sig_result handle_signals() noexcept
 
     if (::sigaction(SIGTTOU, &ignore, &conf.ttou_action) == -1) {
         print_sys_error("Failed to ignore SIGTTOU");
+        return -1;
+    }
+
+    // we only forward SIGINT, SIGTERM to the child process
+    struct sigaction forward_action{};
+    forward_action.sa_handler = sig_forward;
+    forward_action.sa_flags = 0;
+
+    if (::sigaction(SIGINT, &forward_action, &conf.int_action) == -1) {
+        print_sys_error("Failed to forward SIGINT");
+        return -1;
+    }
+
+    if (::sigaction(SIGTERM, &forward_action, &conf.term_action) == -1) {
+        print_sys_error("Failed to forward SIGTERM");
         return -1;
     }
 
@@ -124,32 +151,28 @@ pid_t run(std::vector<const char *> args, const sig_conf &conf) noexcept
             return -1;
         }
 
+        ret = ::sigaction(SIGINT, &conf.int_action, nullptr);
+        if (ret == -1) {
+            print_sys_error("Failed to restore SIGINT action");
+            return -1;
+        }
+
+        ret = ::sigaction(SIGTERM, &conf.term_action, nullptr);
+        if (ret == -1) {
+            print_sys_error("Failed to restore SIGTERM action");
+            return -1;
+        }
+
         args.emplace_back(nullptr);
 
         ::execv(args[0], const_cast<char *const *>(args.data()));
         print_sys_error("Failed to exec");
-        return -1;
+        ::_exit(EXIT_FAILURE);
     }
 
     return pid;
 }
 
-std::optional<int> handle_exited_child(pid_t child) noexcept
-{
-    int status{};
-    while (true) {
-        auto ret = ::waitpid(-1, &status, WNOHANG);
-        if (ret == 0) {
-            break;
-        }
-
-        if (ret == child) {
-            return status;
-        }
-    }
-
-    return std::nullopt;
-}
 } // namespace
 
 int main(int argc, char *argv[])
@@ -175,48 +198,42 @@ int main(int argc, char *argv[])
 
     auto child = run(args, conf);
     if (child == -1) {
-        return -1;
-    }
-
-    auto sigfd = ::signalfd(-1, &conf.cur_set, 0);
-    if (sigfd == -1) {
-        print_sys_error("Failed to create signalfd");
+        print_info("Failed to run child process");
         return -1;
     }
 
     int child_status{};
-    signalfd_siginfo info{};
     while (true) {
-        std::memset(&info, 0, sizeof(info));
-        auto ret = ::read(sigfd, &info, sizeof(info));
-        if (ret == -1) {
-            print_sys_error("Failed to read from signalfd");
-            return -1;
+        ret = waitpid(-1, &child_status, 0);
+        if (ret != -1) {
+            if (ret == child) {
+                // if child process already exited, we will send the signal to all processes in this
+                // pid namespace
+                child = -1;
+            }
+
+            continue;
         }
 
-        if (info.ssi_signo != SIGCHLD) {
-            ret = ::kill(child, info.ssi_signo);
+        if (errno == EINTR) {
+            ret = ::kill(child, received_signal);
             if (ret == -1) {
-                auto msg = std::string("Failed to forward signal ") + ::strsignal(info.ssi_signo);
+                auto msg = std::string("Failed to forward signal ") + ::strsignal(received_signal);
                 print_sys_error(msg);
             }
         }
 
-        auto child_exited = handle_exited_child(child);
-        if (child_exited) {
-            child_status = *child_exited;
+        if (errno == ECHILD) {
             break;
         }
     }
 
-    ::close(sigfd);
-
     if (WIFEXITED(child_status)) {
-        print_info("Child exited with status " + std::to_string(WEXITSTATUS(child_status)));
+        print_info("Last child exited with status " + std::to_string(WEXITSTATUS(child_status)));
     } else if (WIFSIGNALED(child_status)) {
-        print_info("Child exited with signal " + std::to_string(WTERMSIG(child_status)));
+        print_info("Last child exited with signal " + std::to_string(WTERMSIG(child_status)));
     } else {
-        print_info("Child exited with unknown status");
+        print_info("Last child exited with unknown status");
     }
 
     return 0;

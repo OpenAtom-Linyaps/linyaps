@@ -1972,7 +1972,8 @@ utils::error::Result<void> OSTreeRepo::exportDir(const std::string &appID,
                 }
             }
 
-            {
+            // 如果source_path不是linyaps.original文件，则进行重写
+            if (source_path.string().rfind(".linyaps.original") == std::string::npos) {
                 auto info = QFileInfo(target_path.c_str());
                 if ((info.path().contains("share/applications") && info.suffix() == "desktop")
                     || (info.path().contains("share/dbus-1") && info.suffix() == "service")
@@ -1987,7 +1988,16 @@ utils::error::Result<void> OSTreeRepo::exportDir(const std::string &appID,
                                                 QString::number(timestamp),
                                                 info.suffix())
                                            .toStdString();
-                    std::filesystem::copy(source_path, sourceNewPath, ec);
+
+                    auto originPath = source_path.string() + ".linyaps.original";
+                    if (!std::filesystem::exists(originPath, ec)) {
+                        std::filesystem::rename(source_path, originPath, ec);
+                        if (ec) {
+                            return LINGLONG_ERR("rename orig path", ec);
+                        }
+                    }
+
+                    std::filesystem::copy(originPath, sourceNewPath, ec);
                     if (ec) {
                         return LINGLONG_ERR("copy file failed: " + sourceNewPath, ec);
                     }

@@ -1974,7 +1974,11 @@ utils::error::Result<void> OSTreeRepo::exportDir(const std::string &appID,
 
             {
                 auto info = QFileInfo(target_path.c_str());
-                if ((info.path().contains("share/applications") && info.suffix() == "desktop")
+                auto desktopExportPath = std::string{ LINGLONG_EXPORT_PATH } + "/applications";
+
+                // 导出到自定义目录下的desktop文件在导出到entries/share目录时已经被重写过了,不需要再重新写
+                if (((!info.path().contains(desktopExportPath.c_str()))
+                     && (info.path().contains("share/applications") && info.suffix() == "desktop"))
                     || (info.path().contains("share/dbus-1") && info.suffix() == "service")
                     || (info.path().contains("share/systemd/user") && info.suffix() == "service")
                     || (info.path().contains("share/applications/context-menus"))) {

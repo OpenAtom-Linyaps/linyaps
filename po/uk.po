@@ -42,7 +42,7 @@ msgstr "Не вдалося встановити"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:452
 msgid "The module could not be found remotely."
-msgstr ""
+msgstr "Не вдалося знайти модуль віддалено."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:455
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1659
@@ -321,7 +321,7 @@ msgstr "Встановити вказаний модуль"
 
 #: ../apps/ll-cli/src/main.cpp:328
 msgid "Install from a specific repo"
-msgstr ""
+msgstr "Встановити з певного сховища"
 
 #: ../apps/ll-cli/src/main.cpp:331
 msgid "Force install the application"
@@ -393,6 +393,19 @@ msgid ""
 "# find all of runtime(s) of remote\n"
 "ll-cli search . --type=runtime"
 msgstr ""
+"Користування: ll-cli search [ПАРАМЕТРИ] КЛЮЧОВІ СЛОВА\n"
+"\n"
+"Приклад:\n"
+"# знайти віддалену програму за назвою\n"
+"ll-cli search org.deepin.demo\n"
+"# знайти віддалене середовище виконання за назвою\n"
+"ll-cli search org.deepin.base --type=runtime\n"
+"# знайти усі програми у віддаленому сховищі\n"
+"ll-cli search .\n"
+"# знайти усі основи віддаленого сховища\n"
+"ll-cli search . --type=base\n"
+"# знайти усі середовища виконання у віддаленому сховищі\n"
+"ll-cli search . --type=runtime"
 
 #: ../apps/ll-cli/src/main.cpp:389
 msgid "Specify the Keywords"
@@ -401,22 +414,24 @@ msgstr "Вказати ключові слова"
 #: ../apps/ll-cli/src/main.cpp:396 ../apps/ll-cli/src/main.cpp:430
 msgid "Filter result with specify type. One of \"runtime\", \"base\", \"app\" or \"all\""
 msgstr ""
+"Фільтрувати результат за типом. Одне зі значень, «runtime», «base», «app» "
+"або «all»"
 
 #: ../apps/ll-cli/src/main.cpp:400
 msgid "Specify the repo"
-msgstr ""
+msgstr "Вказати сховище"
 
 #: ../apps/ll-cli/src/main.cpp:403
 msgid "Include develop application in result"
-msgstr ""
+msgstr "Включити до результату програми у розробці"
 
 #: ../apps/ll-cli/src/main.cpp:406
 msgid "Show all versions of an application(s), base(s) or runtime(s)"
-msgstr ""
+msgstr "Показати усі версії програм, основ або середовищ виконання"
 
 #: ../apps/ll-cli/src/main.cpp:411
 msgid "List installed application(s), base(s) or runtime(s)"
-msgstr ""
+msgstr "Вивести список встановлених програм, основ або середовищ виконання"
 
 #: ../apps/ll-cli/src/main.cpp:414
 msgid ""
@@ -432,12 +447,25 @@ msgid ""
 "# show the latest version list of the currently installed application(s)\n"
 "ll-cli list --upgradable\n"
 msgstr ""
+"Користування: ll-cli list [ПАРАМЕТРИ]\n"
+"\n"
+"Приклад:\n"
+"# вивести список встановлених програм, основ або середовищ виконання\n"
+"ll-cli list\n"
+"# вивести список встановлених основ\n"
+"ll-cli list --type=base\n"
+"# вивести список встановлених середовищ виконання\n"
+"ll-cli list --type=runtime\n"
+"# вивести список найсвіжіших версій поточних встановлених програм\n"
+"ll-cli list --upgradable\n"
 
 #: ../apps/ll-cli/src/main.cpp:436
 msgid ""
 "Show the list of latest version of the currently installed application(s), "
 "base(s) or runtime(s)"
 msgstr ""
+"Вивести список найсвіжіших встановлених програм, основ або середовищ "
+"виконання"
 
 #: ../apps/ll-cli/src/main.cpp:443
 msgid "Display or modify information of the repository currently using"
@@ -624,11 +652,11 @@ msgstr "Опис"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:108
 msgid "No packages found in the remote repo."
-msgstr ""
+msgstr "У віддаленому сховищі не виявлено пакунків."
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:140
 msgid "Repo"
-msgstr ""
+msgstr "Сховище"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:175
 msgid "No containers are running."
@@ -816,7 +844,7 @@ msgstr "Експортувати uab повністю"
 
 #: ../apps/ll-builder/src/main.cpp:827
 msgid "Export to linyaps layer file (deprecated)"
-msgstr ""
+msgstr "Експортувати до файла шару linyaps (застаріле)"
 
 #: ../apps/ll-builder/src/main.cpp:830
 msgid "Use custom loader"

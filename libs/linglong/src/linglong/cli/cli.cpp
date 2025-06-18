@@ -1513,11 +1513,13 @@ int Cli::prune([[maybe_unused]] CLI::App *subcommand)
           if (!ret) {
               this->printer.printErr(ret.error());
               loop.exit(-1);
+              return;
           }
 
           if (!ret->packages) {
               this->printer.printErr(LINGLONG_ERRV("No packages to prune."));
               loop.exit(0);
+              return;
           }
 
           this->printer.printPruneResult(*ret->packages);

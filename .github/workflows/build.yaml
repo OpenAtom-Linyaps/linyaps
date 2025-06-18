@@ -1,0 +1,53 @@
+name: build
+on:
+  pull_request_target:
+  push:
+    branches:
+      - master
+jobs:
+  ubuntu2404:
+    name: ubuntu_24.04
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake \
+               debhelper-compat \
+               erofsfuse \
+               intltool \
+               libcli11-dev \
+               libcurl4-openssl-dev \
+               libdeflate-dev \
+               libelf-dev \
+               libexpected-dev \
+               libfuse3-dev \
+               libglib2.0-dev \
+               libgmock-dev \
+               libgtest-dev \
+               liblz4-dev \
+               liblzma-dev \
+               libostree-dev \
+               libpcre2-dev \
+               libselinux1-dev \
+               libssl-dev \
+               libsystemd-dev \
+               libyaml-cpp-dev \
+               libzstd-dev \
+               nlohmann-json3-dev \
+               pkg-config \
+               qtbase5-dev \
+               qtbase5-private-dev \
+               systemd \
+               zlib1g-dev
+      - name: Build
+        run: |
+          mkdir build
+          cd build
+          cmake -DCMAKE_BUILD_TYPE=Release \
+            -DCPM_LOCAL_PACKAGES_ONLY=ON \
+            -DBUILD_SHARED_LIBS=OFF \
+            ..
+
+          make -j$(nproc)

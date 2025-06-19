@@ -190,13 +190,7 @@ utils::error::Result<void> Container::run(const ocppi::runtime::config::types::P
     });
 
     auto originalArgs =
-      this->cfg.process->args.value_or(std::vector<std::string>{ "echo", "'noting to run'" });
-    QStringList appArgs;
-    std::transform(originalArgs.begin(),
-                   originalArgs.end(),
-                   std::back_inserter(appArgs),
-                   QString::fromStdString);
-    appArgs.prepend("exec");
+      this->cfg.process->args.value_or(std::vector<std::string>{ "echo", "noting to run" });
 
     auto entrypoint = bundle / "entrypoint.sh";
     {
@@ -211,7 +205,26 @@ utils::error::Result<void> Container::run(const ocppi::runtime::config::types::P
         ofs << "#!/run/linglong/container-init /bin/bash\n";
         ofs << "source /etc/profile\n"; // we need use /etc/profile to generate all needed
                                         // environment variables
-        ofs << appArgs.join(' ').toStdString();
+        ofs << "exec ";
+
+        // quote the argument to avoid the space in the argument and use single quote to avoid the
+        // shell to expand the argument
+        // example:
+        // arg: "let's go"
+        // quoteArg: "'let'\''s go'"
+        auto quoteArg = [](std::string arg) {
+            const std::string quotePrefix = "'\\";
+            for (auto it = arg.begin(); it != arg.end(); it++) {
+                if (*it == '\'') {
+                    it = arg.insert(it, quotePrefix.cbegin(), quotePrefix.cend());
+                    it = arg.insert(it + quotePrefix.size() + 1, 1, '\'');
+                }
+            }
+            return "'" + arg + "'";
+        };
+        for (auto arg : originalArgs) {
+            ofs << quoteArg(arg) << " ";
+        }
     }
 
     std::filesystem::permissions(entrypoint, std::filesystem::perms::owner_all, ec);

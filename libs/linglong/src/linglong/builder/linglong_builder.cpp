@@ -1854,11 +1854,12 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
       .type = "bind",
     });
 
-    QDir appCache = this->workingDir.absoluteFilePath("linglong/cache");
+    auto appCache = std::filesystem::path{ workingDir.absolutePath().toStdString() } / "linglong" / "cache";
+    std::string ldConfPath = appCache / "ld.so.conf";
     applicationMounts.push_back(ocppi::runtime::config::types::Mount{
       .destination = "/etc/ld.so.conf.d/zz_deepin-linglong-app.conf",
       .options = { { "rbind", "ro" } },
-      .source = appCache.absoluteFilePath("ld.so.conf").toStdString(),
+      .source = ldConfPath,
       .type = "bind",
     });
 
@@ -1874,12 +1875,24 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
             return LINGLONG_ERR(res);
         }
         cfgBuilder.setAppId(curRef->id.toStdString())
-          .setAppCache(appCache.absolutePath().toStdString(), false)
+          .setAppCache(appCache, false)
           .addUIdMapping(uid, uid, 1)
           .addGIdMapping(gid, gid, 1)
           .bindDefault()
           .addExtraMounts(applicationMounts)
           .enableSelfAdjustingMount();
+
+        // write ld.so.conf
+        std::string triplet = curRef->arch.getTriplet().toStdString();
+        std::string ldRawConf = cfgBuilder.ldConf(triplet);
+
+        QFile ldsoconf{ ldConfPath.c_str() };
+        if (!ldsoconf.open(QIODevice::WriteOnly)) {
+            return LINGLONG_ERR(ldsoconf);
+        }
+        ldsoconf.write(ldRawConf.c_str());
+        // must be closed here, this conf will be used later.
+        ldsoconf.close();
 
         if (!cfgBuilder.build()) {
             auto err = cfgBuilder.getError();
@@ -1911,7 +1924,7 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
         return LINGLONG_ERR(res);
     }
     cfgBuilder.setAppId(curRef->id.toStdString())
-      .setAppCache(appCache.absolutePath().toStdString())
+      .setAppCache(appCache)
       .enableLDCache()
       .addUIdMapping(uid, uid, 1)
       .addGIdMapping(gid, gid, 1)

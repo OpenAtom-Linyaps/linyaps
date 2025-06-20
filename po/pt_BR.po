@@ -420,6 +420,8 @@ msgstr "Especifique as palavras-chave"
 #: ../apps/ll-cli/src/main.cpp:396 ../apps/ll-cli/src/main.cpp:430
 msgid "Filter result with specify type. One of \"runtime\", \"base\", \"app\" or \"all\""
 msgstr ""
+"Filtrar os resultados pelo tipo especificado. Valores: \"runtime\", "
+"\"base\", \"app\" ou \"todos\""
 
 #: ../apps/ll-cli/src/main.cpp:400
 msgid "Specify the repo"

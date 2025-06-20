@@ -420,24 +420,24 @@ msgstr "Especifique as palavras-chave"
 #: ../apps/ll-cli/src/main.cpp:396 ../apps/ll-cli/src/main.cpp:430
 msgid "Filter result with specify type. One of \"runtime\", \"base\", \"app\" or \"all\""
 msgstr ""
-"Filtrar os resultados pelo tipo especificado. Valores: \"runtime\", "
+"Filtrar os resultados pelo tipo especificado. Um dos valores: \"runtime\", "
 "\"base\", \"app\" ou \"todos\""
 
 #: ../apps/ll-cli/src/main.cpp:400
 msgid "Specify the repo"
-msgstr ""
+msgstr "Especificar o repositório"
 
 #: ../apps/ll-cli/src/main.cpp:403
 msgid "Include develop application in result"
-msgstr ""
+msgstr "Incluir aplicativos em desenvolvimento no resultado"
 
 #: ../apps/ll-cli/src/main.cpp:406
 msgid "Show all versions of an application(s), base(s) or runtime(s)"
-msgstr ""
+msgstr "Exibir todas as versões de aplicativos, bases ou runtimes"
 
 #: ../apps/ll-cli/src/main.cpp:411
 msgid "List installed application(s), base(s) or runtime(s)"
-msgstr ""
+msgstr "Listar aplicativos, bases ou runtimes instalados"
 
 #: ../apps/ll-cli/src/main.cpp:414
 msgid ""
@@ -473,6 +473,8 @@ msgid ""
 "Show the list of latest version of the currently installed application(s), "
 "base(s) or runtime(s)"
 msgstr ""
+"Exibir a lista das versões mais recentes dos aplicativos, bases ou runtimes "
+"atualmente instalados"
 
 #: ../apps/ll-cli/src/main.cpp:443
 msgid "Display or modify information of the repository currently using"
@@ -658,11 +660,11 @@ msgstr "Descrição"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:108
 msgid "No packages found in the remote repo."
-msgstr ""
+msgstr "Nenhum pacote encontrado no repositório remoto."
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:140
 msgid "Repo"
-msgstr ""
+msgstr "Repositório"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:175
 msgid "No containers are running."
@@ -852,7 +854,7 @@ msgstr "Exportar uab completamente"
 
 #: ../apps/ll-builder/src/main.cpp:827
 msgid "Export to linyaps layer file (deprecated)"
-msgstr ""
+msgstr "Exportar para arquivo de camada Linyaps (obsoleto)"
 
 #: ../apps/ll-builder/src/main.cpp:830
 msgid "Use custom loader"

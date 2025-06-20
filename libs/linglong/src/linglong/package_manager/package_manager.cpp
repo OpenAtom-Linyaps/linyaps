@@ -23,6 +23,7 @@
 #include "linglong/repo/config.h"
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/runtime/run_context.h"
+#include "linglong/utils/bash_quote.h"
 #include "linglong/utils/command/env.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/finally/finally.h"
@@ -2402,15 +2403,22 @@ utils::error::Result<void> PackageManager::generateCache(const package::Referenc
     if (!currentArch) {
         return LINGLONG_ERR(currentArch);
     }
-    const auto ldGenerateCmd = "/sbin/ldconfig -X -C " + appCacheDest + "/ld.so.cache";
+    auto ldGenerateCmd =
+      std::vector<std::string>{ "/sbin/ldconfig", "-X", "-C", appCacheDest + "/ld.so.cache" };
 #ifdef LINGLONG_FONT_CACHE_GENERATOR
     // Usage: font-cache-generator [cacheRoot] [id]
-    const std::string fontGenerateCmd =
-      fontGenerator + " " + appCacheDest + " " + ref.id.toStdString();
-    process.args = std::vector<std::string>{ "bash", "-c", ldGenerateCmd + ";" + fontGenerateCmd };
+    const std::string fontGenerateCmd = utils::quoteBashArg(fontGenerator) + " "
+      + utils::quoteBashArg(appCacheDest) + " " + utils::quoteBashArg(ref.id.toStdString());
+    auto ldGenerateCmdstr;
+    for (const auto &c : ldGenerateCmd) {
+        ldGenerateCmdstr.append(utils::quoteBashArg(c));
+        ldGenerateCmdstr.append(" ");
+    }
+    process.args =
+      std::vector<std::string>{ "bash", "-c", ldGenerateCmdstr + ";" + fontGenerateCmd };
 #endif
 
-    process.args = std::vector<std::string>{ ldGenerateCmd };
+    process.args = std::move(ldGenerateCmd);
 
     // Note: XDG_RUNTIME_DIR is not set in PM, the ll-box will finally fallback to /run/ll-box.
     //       But PM has no write permission in that place, so we should specific the root path.

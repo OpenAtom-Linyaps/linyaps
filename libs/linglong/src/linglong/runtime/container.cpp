@@ -7,6 +7,7 @@
 #include "linglong/runtime/container.h"
 
 #include "configure.h"
+#include "linglong/utils/bash_quote.h"
 #include "linglong/utils/finally/finally.h"
 #include "ocppi/runtime/RunOption.hpp"
 #include "ocppi/runtime/config/types/Generators.hpp"
@@ -207,23 +208,8 @@ utils::error::Result<void> Container::run(const ocppi::runtime::config::types::P
                                         // environment variables
         ofs << "exec ";
 
-        // quote the argument to avoid the space in the argument and use single quote to avoid the
-        // shell to expand the argument
-        // example:
-        // arg: "let's go"
-        // quoteArg: "'let'\''s go'"
-        auto quoteArg = [](std::string arg) {
-            const std::string quotePrefix = "'\\";
-            for (auto it = arg.begin(); it != arg.end(); it++) {
-                if (*it == '\'') {
-                    it = arg.insert(it, quotePrefix.cbegin(), quotePrefix.cend());
-                    it = arg.insert(it + quotePrefix.size() + 1, 1, '\'');
-                }
-            }
-            return "'" + arg + "'";
-        };
         for (auto arg : originalArgs) {
-            ofs << quoteArg(arg) << " ";
+            ofs << utils::quoteBashArg(arg) << " ";
         }
     }
 

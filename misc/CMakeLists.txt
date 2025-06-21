@@ -69,7 +69,7 @@ install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/share/dbus-1/system-services
         DESTINATION ${DBUS_SYSTEM_BUS_DIR})
 
 # libexec
-set(LIBEXEC_LINGLONG_DIR ${CMAKE_INSTALL_PREFIX}/libexec/linglong)
+set(LIBEXEC_LINGLONG_DIR ${CMAKE_INSTALL_FULL_LIBEXECDIR}/linglong)
 install(
   PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/libexec/linglong/app-conf-generator
            ${CMAKE_CURRENT_BINARY_DIR}/libexec/linglong/ld-cache-generator

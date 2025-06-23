@@ -78,6 +78,8 @@ public:
 
     const std::optional<RuntimeLayer> &getRuntimeLayer() const { return runtimeLayer; }
 
+    const std::optional<RuntimeLayer> &getAppLayer() const { return appLayer; }
+
     utils::error::Result<std::filesystem::path> getBaseLayerPath() const;
     utils::error::Result<std::filesystem::path> getRuntimeLayerPath() const;
 

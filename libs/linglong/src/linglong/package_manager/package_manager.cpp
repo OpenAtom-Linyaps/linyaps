@@ -2319,7 +2319,8 @@ utils::error::Result<void> PackageManager::generateCache(const package::Referenc
     const std::string fontGenerator = generatorDest + "/font-cache-generator";
 #endif
     std::error_code ec;
-    if (!std::filesystem::create_directories(appCache, ec)) {
+    std::filesystem::create_directories(appCache, ec);
+    if (ec) {
         return LINGLONG_ERR(QString::fromStdString(ec.message()));
     }
 
@@ -2374,12 +2375,12 @@ utils::error::Result<void> PackageManager::generateCache(const package::Referenc
 
     // generate ld config
     {
-        std::ofstream ofs(ldConfPath);
+        std::ofstream ofs(ldConfPath, std::ios::binary | std::ios::out | std::ios::trunc);
         Q_ASSERT(ofs.is_open());
         if (!ofs.is_open()) {
             return LINGLONG_ERR("create ld config in bundle directory");
         }
-        ofs << cfgBuilder.ldConf(ref.arch.getTriplet().toStdString()) << std::endl;
+        ofs << cfgBuilder.ldConf(ref.arch.getTriplet().toStdString());
     }
 
     if (!cfgBuilder.build()) {
@@ -2437,10 +2438,25 @@ utils::error::Result<void> PackageManager::generateCache(const package::Referenc
     return LINGLONG_OK;
 }
 
-// we should allow cache generation to fail, skip it when an error occurs by. the function can be
-// removed later when the kernel clone new_user problem is solved.
+// it's safe to skip cache generation here, if the cache directory already exists.
+// when application begins to run, it will regenerate the cache if necessary
 utils::error::Result<void> PackageManager::tryGenerateCache(const package::Reference &ref) noexcept
 {
+    LINGLONG_TRACE("try to generate cache for " + ref.toString());
+
+    auto layerItem = this->repo.getLayerItem(ref);
+    if (!layerItem) {
+        return LINGLONG_ERR(layerItem);
+    }
+    auto appCache = std::filesystem::path(LINGLONG_ROOT) / "cache" / layerItem->commit;
+    std::error_code ec;
+    if (std::filesystem::exists(appCache, ec)) {
+        return LINGLONG_OK;
+    }
+    if (ec) {
+        return LINGLONG_ERR(QString::fromStdString(ec.message()));
+    }
+
     auto ret = generateCache(ref);
     if (!ret) {
         qWarning() << "failed to generate cache" << ret.error();
@@ -2478,24 +2494,6 @@ auto PackageManager::GenerateCache(const QString &reference) noexcept -> QVarian
     auto jobID = QUuid::createUuid().toString();
     m_generator_queue.runTask([this, jobID, ref]() {
         qInfo() << "Generate cache for:" << ref.toString();
-
-        const auto &appLayerItem = this->repo.getLayerItem(ref);
-        if (!appLayerItem) {
-            qWarning() << "failed to get app layer item" << appLayerItem.error();
-            return;
-        }
-        auto appCache = std::filesystem::path(LINGLONG_ROOT) / "cache" / appLayerItem->commit;
-
-        std::error_code ec;
-        if (std::filesystem::exists(appCache, ec)) {
-            qInfo() << "The cache has been generated.";
-            return;
-        }
-
-        if (ec) {
-            qCritical() << "failed to get app cache" << ec.message().c_str() << ec.value();
-            return;
-        }
 
         auto ret = this->generateCache(ref);
         if (!ret) {

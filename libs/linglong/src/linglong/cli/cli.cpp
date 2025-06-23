@@ -596,12 +596,6 @@ int Cli::run([[maybe_unused]] CLI::App *subcommand)
         qWarning() << ret.error().message();
     }
 
-    auto appCache = this->ensureCache(*curAppRef, *appLayerItem);
-    if (!appCache) {
-        this->printer.printErr(LINGLONG_ERRV(appCache));
-        return -1;
-    }
-
     auto commands = options.commands;
     if (options.commands.empty()) {
         commands = info.command.value_or(std::vector<std::string>{ "bash" });
@@ -705,8 +699,6 @@ int Cli::run([[maybe_unused]] CLI::App *subcommand)
         return -1;
     }
     cfgBuilder.setAppId(curAppRef->id.toStdString())
-      .setAppCache(*appCache)
-      .enableLDCache()
       .addUIdMapping(uid, uid, 1)
       .addGIdMapping(gid, gid, 1)
       .bindDefault()
@@ -727,6 +719,13 @@ int Cli::run([[maybe_unused]] CLI::App *subcommand)
 #ifdef LINGLONG_FONT_CACHE_GENERATOR
     cfgBuilder.enableFontCache();
 #endif
+
+    auto appCache = this->ensureCache(runContext, cfgBuilder);
+    if (!appCache) {
+        this->printer.printErr(LINGLONG_ERRV(appCache));
+        return -1;
+    }
+    cfgBuilder.setAppCache(*appCache).enableLDCache();
 
     if (!cfgBuilder.build()) {
         auto err = cfgBuilder.getError();
@@ -2414,9 +2413,11 @@ Cli::RequestDirectories(const api::types::v1::PackageInfoV2 &info) noexcept
         ::close(fd);
     });
 
-    struct flock lock
-    {
-        .l_type = F_WRLCK, .l_whence = SEEK_SET, .l_start = 0, .l_len = 0,
+    struct flock lock{
+        .l_type = F_WRLCK,
+        .l_whence = SEEK_SET,
+        .l_start = 0,
+        .l_len = 0,
     };
 
     // all later processes should be blocked
@@ -2563,7 +2564,7 @@ Cli::RequestDirectories(const api::types::v1::PackageInfoV2 &info) noexcept
 
 int Cli::generateCache(const package::Reference &ref)
 {
-    LINGLONG_TRACE("generate cache for all applications");
+    LINGLONG_TRACE("generate cache for " + ref.toString());
     QEventLoop loop;
     QString jobIDReply;
     auto ret = connect(&this->pkgMan,
@@ -2598,34 +2599,63 @@ int Cli::generateCache(const package::Reference &ref)
     return loop.exec();
 }
 
-utils::error::Result<std::string>
-Cli::ensureCache(const package::Reference &ref,
-                 const api::types::v1::RepositoryCacheLayersItem &appLayerItem) noexcept
+utils::error::Result<std::filesystem::path> Cli::ensureCache(
+  runtime::RunContext &runContext, const generator::ContainerCfgBuilder &cfgBuilder) noexcept
 {
-    LINGLONG_TRACE("ensure cache for: " + QString::fromStdString(appLayerItem.info.id));
+    LINGLONG_TRACE("ensure cache");
 
-    std::error_code ec;
-    // TODO: Here we need to judge the validity of the cache. The directory may be an empty
-    // directory.
-    auto appCache = std::filesystem::path(LINGLONG_ROOT) / "cache" / appLayerItem.commit;
+    auto appLayerItem = runContext.getCachedAppItem();
+    if (!appLayerItem) {
+        return LINGLONG_ERR(appLayerItem);
+    }
 
-    if (std::filesystem::exists(appCache, ec)) {
-        qDebug() << "The cache has been generated.";
+    auto appLayer = runContext.getAppLayer();
+    if (!appLayer) {
+        return LINGLONG_ERR("app layer not found");
+    }
+    auto appRef = appLayer->getReference();
+
+    auto appCache = std::filesystem::path(LINGLONG_ROOT) / "cache" / appLayerItem->commit;
+    do {
+        std::error_code ec;
+        if (!std::filesystem::exists(appCache, ec)) {
+            break;
+        }
+
+        // check ld.so.conf
+        {
+            auto ldSoConf = appCache / "ld.so.conf";
+            if (!std::filesystem::exists(ldSoConf, ec)) {
+                break;
+            }
+
+            // If the ld.so.conf exists, check if it is consistent with the current configuration.
+            auto ldConf = cfgBuilder.ldConf(appRef.arch.getTriplet().toStdString());
+            std::stringstream oldCache;
+            std::ifstream ifs(ldSoConf, std::ios::binary | std::ios::in);
+            if (!ifs.is_open()) {
+                return LINGLONG_ERR("failed to open " + QString::fromStdString(ldSoConf.string()));
+            }
+            oldCache << ifs.rdbuf();
+            qDebug() << "ld.so.conf:" << QString::fromStdString(ldConf);
+            qDebug() << "old ld.so.conf:" << QString::fromStdString(oldCache.str());
+            if (oldCache.str() != ldConf) {
+                break;
+            }
+        }
+
         return appCache;
-    }
-
-    if (ec) {
-        return LINGLONG_ERR(QString::fromStdString(ec.message()), ec.value());
-    }
+    } while (false);
 
     // Try to generate cache here
     QProcess process;
     process.setProgram(LINGLONG_LIBEXEC_DIR "/ll-dialog");
-    process.setArguments({ "-m", "startup", "--id", QString::fromStdString(appLayerItem.info.id) });
+    process.setArguments(
+      { "-m", "startup", "--id", QString::fromStdString(appLayerItem->info.id) });
     process.start();
     qDebug() << process.program() << process.arguments();
 
-    auto ret = this->generateCache(ref);
+    auto ret = this->generateCache(appRef);
     if (ret != 0) {
         this->notifier->notify(api::types::v1::InteractionRequest{
           .summary =

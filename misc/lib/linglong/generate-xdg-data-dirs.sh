@@ -16,6 +16,12 @@ LINGLONG_EXPORT_PATH="@LINGLONG_EXPORT_PATH@"
 
 LINGLONG_DATA_DIR="${LINGLONG_ROOT}/entries/share"
 
+# 如果 XDG_DATA_DIRS 为空，则先设置为 /usr/local/share:/usr/share
+# 参考: https://specifications.freedesktop.org/basedir-spec/latest
+if [ -z "$XDG_DATA_DIRS" ]; then
+    XDG_DATA_DIRS="/usr/local/share:/usr/share"
+fi
+
 # --- 辅助函数：安全地添加路径到 XDG_DATA_DIRS ---
 # 这个函数会检查路径是否已存在，如果不存在则添加。
 # 参数1: 要添加的路径 (path_to_add)
@@ -40,11 +46,6 @@ _add_path_to_xdg_data_dirs() {
     fi
 }
 
-# 如果 XDG_DATA_DIRS 为空，则先设置为 /usr/local/share:/usr/share
-# 参考: https://specifications.freedesktop.org/basedir-spec/latest
-_add_path_to_xdg_data_dirs "/usr/local/share" "end"
-_add_path_to_xdg_data_dirs "/usr/share" "end"
-
 # 将 LINGLONG_DATA_DIR 添加到 XDG_DATA_DIRS 的末尾（如果不存在）
 _add_path_to_xdg_data_dirs "$LINGLONG_DATA_DIR" "end"
 
@@ -53,6 +54,6 @@ if [ "$LINGLONG_EXPORT_PATH" != "share" ]; then
     CUSTOM_DATA_DIR="${LINGLONG_ROOT}/entries/${LINGLONG_EXPORT_PATH}"
     _add_path_to_xdg_data_dirs "$CUSTOM_DATA_DIR" "start"
 fi
-
+export XDG_DATA_DIRS
 # --- 清理辅助函数 ---
 unset -f _add_path_to_xdg_data_dirs

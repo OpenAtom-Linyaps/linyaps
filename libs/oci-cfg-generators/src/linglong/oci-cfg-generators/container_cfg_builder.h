@@ -172,7 +172,7 @@ public:
         return *this;
     }
 
-    std::string ldConf(const std::string &triplet);
+    std::string ldConf(const std::string &triplet) const;
 
     bool build() noexcept;
 

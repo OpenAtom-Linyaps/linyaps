@@ -10,9 +10,11 @@
 #include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/api/types/v1/OciConfigurationPatch.hpp"
 #include "ocppi/runtime/config/types/Generators.hpp"
+#include "sha256.h"
 
 #include <algorithm>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <vector>
 
@@ -469,8 +471,9 @@ ContainerCfgBuilder &ContainerCfgBuilder::addMask(const std::vector<std::string>
     return *this;
 }
 
-std::string ContainerCfgBuilder::ldConf(const std::string &triplet)
+std::string ContainerCfgBuilder::ldConf(const std::string &triplet) const
 {
+    std::vector<std::string> factors;
     std::string ldRawConf;
     auto appendLdConf = [&ldRawConf, &triplet](const std::string &prefix) {
         ldRawConf.append(prefix + "/lib\n");
@@ -480,17 +483,41 @@ std::string ContainerCfgBuilder::ldConf(const std::string &triplet)
 
     if (runtimePath) {
         appendLdConf(runtimeMountPoint);
+        factors.push_back(runtimePath->string());
     }
 
     if (appPath) {
         appendLdConf(std::filesystem::path{ "/opt/apps" } / appId / "files");
+        factors.push_back(appPath->string());
     }
 
     if (extensionMount) {
         for (const auto &extension : *extensionMount) {
             appendLdConf(extension.destination);
+            if (extension.source) {
+                factors.push_back(*extension.source);
+            }
         }
     }
+
+    std::sort(factors.begin(), factors.end());
+
+    digest::SHA256 sha256;
+    for (const auto &factor : factors) {
+        sha256.update(reinterpret_cast<const std::byte *>(factor.c_str()), factor.size());
+    }
+    std::array<std::byte, 32> digest{};
+    sha256.final(digest.data());
+
+    std::stringstream stream;
+    stream << "# ";
+    stream << std::setfill('0') << std::hex;
+    for (auto v : digest) {
+        stream << std::setw(2) << static_cast<unsigned int>(v);
+    }
+    stream << std::endl;
+
+    ldRawConf.insert(0, stream.str());
 
     return ldRawConf;
 }

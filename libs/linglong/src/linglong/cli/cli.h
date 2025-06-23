@@ -19,6 +19,14 @@
 
 #include <CLI/App.hpp>
 
+namespace linglong::runtime {
+class RunContext;
+}
+
+namespace linglong::generator {
+class ContainerCfgBuilder;
+}
+
 namespace linglong::cli {
 
 class Printer;
@@ -121,9 +129,8 @@ private:
     utils::error::Result<std::vector<api::types::v1::UpgradeListResult>>
     listUpgradable(const std::string &type = "app");
     int generateCache(const package::Reference &ref);
-    utils::error::Result<std::string>
-    ensureCache(const package::Reference &ref,
-                const api::types::v1::RepositoryCacheLayersItem &appLayerItem) noexcept;
+    utils::error::Result<std::filesystem::path> ensureCache(
+      runtime::RunContext &runContext, const generator::ContainerCfgBuilder &cfgBuilder) noexcept;
     QDBusReply<QString> authorization();
     void updateAM() noexcept;
 

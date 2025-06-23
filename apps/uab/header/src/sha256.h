@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <array>
 #include <cstdint>
+#include <cstring>
 
 namespace digest {
 
@@ -149,7 +150,9 @@ private:
         for (std::size_t i = 0; i < block_num; ++i) {
             std::array<uint32_t, 16> M{};
             for (int j = 0; j < 16; ++j) {
-                M[j] = details::to_big_endian(reinterpret_cast<const uint32_t *>(data)[i * 16 + j]);
+                uint32_t tmp = 0;
+                std::memcpy(&tmp, &data[i * 64 + j * 4], 4);
+                M[j] = details::to_big_endian(tmp);
             }
 
             std::array<uint32_t, 64> W{};

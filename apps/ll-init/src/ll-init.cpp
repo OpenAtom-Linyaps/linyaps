@@ -13,6 +13,7 @@
 #include <vector>
 
 #include <sys/wait.h>
+#include <unistd.h>
 
 // no need to block these signals
 constexpr std::array<int, 13> unblock_signals{ SIGABRT, SIGBUS,  SIGFPE,  SIGILL,  SIGSEGV,

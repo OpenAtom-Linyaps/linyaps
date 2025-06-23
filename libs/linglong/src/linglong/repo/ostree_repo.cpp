@@ -33,6 +33,7 @@
 #include <ostree-repo.h>
 
 #include <QCryptographicHash>
+#include <QDateTime>
 #include <QDebug>
 #include <QDir>
 #include <QDirIterator>

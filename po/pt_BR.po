@@ -7,6 +7,7 @@
 # Cassiano Molinari <chano2808a@gmail.com>, 2025
 # Wislley Marçal, 2025
 # keven doria, 2025
+# Alex, 2025
 # 
 #, fuzzy
 msgid ""
@@ -15,7 +16,7 @@ msgstr ""
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2025-06-09 14:53+0800\n"
 "PO-Revision-Date: 2025-04-11 01:38+0000\n"
-"Last-Translator: keven doria, 2025\n"
+"Last-Translator: Alex, 2025\n"
 "Language-Team: Portuguese (Brazil) (https://app.transifex.com/linuxdeepin/teams/3976/pt_BR/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -42,7 +43,7 @@ msgstr "Falha na instalação"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:452
 msgid "The module could not be found remotely."
-msgstr ""
+msgstr "O módulo não pôde ser encontrado remotamente."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:455
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1659
@@ -320,7 +321,7 @@ msgstr "Instalar um módulo específico"
 
 #: ../apps/ll-cli/src/main.cpp:328
 msgid "Install from a specific repo"
-msgstr ""
+msgstr "Instalar a partir de um repositório específico"
 
 #: ../apps/ll-cli/src/main.cpp:331
 msgid "Force install the application"
@@ -393,6 +394,24 @@ msgid ""
 "# find all of runtime(s) of remote\n"
 "ll-cli search . --type=runtime"
 msgstr ""
+"Uso: ll-cli search [OPÇÕES] PALAVRAS-CHAVE\n"
+"\n"
+"Exemplo:\n"
+"\n"
+"# localizar remotamente aplicativo(s), base(s) ou runtime(s) por palavras-chave\n"
+"ll-cli search org.deepin.demo\n"
+"\n"
+"# localizar remotamente runtime pelo nome\n"
+"ll-cli search org.deepin.base --type=runtime\n"
+"\n"
+"# listar todos os aplicativos remotos\n"
+"ll-cli search .\n"
+"\n"
+"# listar todas as bases remotas\n"
+"ll-cli search . --type=base\n"
+"\n"
+"# listar todos os runtimes remotos\n"
+"ll-cli search . --type=runtime"
 
 #: ../apps/ll-cli/src/main.cpp:389
 msgid "Specify the Keywords"
@@ -401,22 +420,24 @@ msgstr "Especifique as palavras-chave"
 #: ../apps/ll-cli/src/main.cpp:396 ../apps/ll-cli/src/main.cpp:430
 msgid "Filter result with specify type. One of \"runtime\", \"base\", \"app\" or \"all\""
 msgstr ""
+"Filtrar os resultados pelo tipo especificado. Um dos valores: \"runtime\", "
+"\"base\", \"app\" ou \"todos\""
 
 #: ../apps/ll-cli/src/main.cpp:400
 msgid "Specify the repo"
-msgstr ""
+msgstr "Especificar o repositório"
 
 #: ../apps/ll-cli/src/main.cpp:403
 msgid "Include develop application in result"
-msgstr ""
+msgstr "Incluir aplicativos em desenvolvimento no resultado"
 
 #: ../apps/ll-cli/src/main.cpp:406
 msgid "Show all versions of an application(s), base(s) or runtime(s)"
-msgstr ""
+msgstr "Exibir todas as versões de aplicativos, bases ou runtimes"
 
 #: ../apps/ll-cli/src/main.cpp:411
 msgid "List installed application(s), base(s) or runtime(s)"
-msgstr ""
+msgstr "Listar aplicativos, bases ou runtimes instalados"
 
 #: ../apps/ll-cli/src/main.cpp:414
 msgid ""
@@ -432,12 +453,28 @@ msgid ""
 "# show the latest version list of the currently installed application(s)\n"
 "ll-cli list --upgradable\n"
 msgstr ""
+"Uso: ll-cli list [OPÇÕES]\n"
+"\n"
+"Exemplo:\n"
+"# exibir aplicativos, bases ou runtimes instalados\n"
+"ll-cli list\n"
+"\n"
+"# exibir bases instaladas\n"
+"ll-cli list --type=base\n"
+"\n"
+"# exibir runtimes instalados\n"
+"ll-cli list --type=runtime\n"
+"\n"
+"# exibir a lista das versões mais recentes dos aplicativos instalados que podem ser atualizados\n"
+"ll-cli list --upgradable\n"
 
 #: ../apps/ll-cli/src/main.cpp:436
 msgid ""
 "Show the list of latest version of the currently installed application(s), "
 "base(s) or runtime(s)"
 msgstr ""
+"Exibir a lista das versões mais recentes dos aplicativos, bases ou runtimes "
+"atualmente instalados"
 
 #: ../apps/ll-cli/src/main.cpp:443
 msgid "Display or modify information of the repository currently using"
@@ -623,11 +660,11 @@ msgstr "Descrição"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:108
 msgid "No packages found in the remote repo."
-msgstr ""
+msgstr "Nenhum pacote encontrado no repositório remoto."
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:140
 msgid "Repo"
-msgstr ""
+msgstr "Repositório"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:175
 msgid "No containers are running."
@@ -817,7 +854,7 @@ msgstr "Exportar uab completamente"
 
 #: ../apps/ll-builder/src/main.cpp:827
 msgid "Export to linyaps layer file (deprecated)"
-msgstr ""
+msgstr "Exportar para arquivo de camada Linyaps (obsoleto)"
 
 #: ../apps/ll-builder/src/main.cpp:830
 msgid "Use custom loader"

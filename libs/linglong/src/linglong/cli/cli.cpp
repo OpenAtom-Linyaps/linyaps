@@ -2269,7 +2269,7 @@ void Cli::filterPackageInfosByType(std::vector<api::types::v1::PackageInfoDispla
     list.erase(std::remove_if(list.begin(),
                               list.end(),
                               [&type](const api::types::v1::PackageInfoDisplay &pkg) {
-                                  return pkg.kind == type;
+                                  return pkg.kind != type;
                               }),
                list.end());
 }

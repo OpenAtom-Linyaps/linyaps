@@ -43,7 +43,9 @@
 #include "ocppi/types/ContainerListItem.hpp"
 
 #include <nlohmann/json.hpp>
-
+#include <QProcess>
+#include <QTimer>
+#include <QTime>
 #include <QCryptographicHash>
 #include <QEventLoop>
 #include <QFileInfo>
@@ -2622,14 +2624,30 @@ Cli::ensureCache(const package::Reference &ref,
     QProcess process;
     process.setProgram(LINGLONG_LIBEXEC_DIR "/ll-dialog");
     process.setArguments({ "-m", "startup", "--id", QString::fromStdString(appLayerItem.info.id) });
-    process.start();
     qDebug() << process.program() << process.arguments();
 
+    QTime processStartTime;
+    // 延迟300ms显示等待提示窗口
+    QTimer timer(this); 
+    timer.setSingleShot(true);
+    timer.setInterval(300);
+    QObject::connect(&timer, &QTimer::timeout, [&process, &processStartTime] {
+        processStartTime = QTime::currentTime();
+        process.start();
+    });
+    timer.start();
     auto ret = this->generateCache(ref);
     if (ret != 0) {
         this->notifier->notify(api::types::v1::InteractionRequest{
           .summary =
             _("The cache generation failed, please uninstall and reinstall the application.") });
+    }
+    // 如果缓存生成时间小于300ms, 则不再显示等待窗口
+    // 如果等待窗口显示时间小于1s，则等待1s后再关闭窗口
+    if (processStartTime.isNull()) {
+        timer.stop();
+    } else if (processStartTime.elapsed() < 1000 + 300) {
+        QProcess::sleep(1)
     }
     process.close();
 

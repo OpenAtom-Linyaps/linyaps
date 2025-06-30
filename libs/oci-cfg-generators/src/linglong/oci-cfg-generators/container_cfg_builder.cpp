@@ -1339,17 +1339,31 @@ bool ContainerCfgBuilder::applyPatch() noexcept
         return false;
     }
     for (const auto &entry : iter) {
+        const auto &path = entry.path();
         if (entry.is_regular_file(ec)) {
-            const auto &path = entry.path();
-            // application-specific patch will be applied last
-            if (path.stem().string() == appId) {
-                appPatchFiles.emplace_back(path);
-                continue;
-            }
             globalPatchFiles.emplace_back(path);
+        } else if (entry.is_directory(ec)) {
+            if (path.filename().string() == appId) {
+                auto iterApp = std::filesystem::directory_iterator{
+                    path,
+                    std::filesystem::directory_options::skip_permission_denied,
+                    ec
+                };
+                if (ec) {
+                    error_.reason =
+                      "failed to iterator directory " + path.string() + ": " + ec.message();
+                }
+                for (const auto &entryApp : iterApp) {
+                    if (!entryApp.is_regular_file(ec)) {
+                        continue;
+                    }
+                    appPatchFiles.emplace_back(entryApp.path());
+                }
+            }
         }
     }
     std::sort(globalPatchFiles.begin(), globalPatchFiles.end());
+    std::sort(appPatchFiles.begin(), appPatchFiles.end());
 
     auto doPatch = [this](const std::vector<std::filesystem::path> &patchFiles) -> bool {
         for (const auto &patchFile : patchFiles) {

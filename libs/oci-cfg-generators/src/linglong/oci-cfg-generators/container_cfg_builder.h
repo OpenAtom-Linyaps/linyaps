@@ -41,6 +41,7 @@ public:
         BUILD_LDCONF_ERROR,
         BUILD_LDCACHE_ERROR,
         BUILD_ENV_ERROR,
+        BUILD_NETWORK_CONF_ERROR,
     };
 
     class Error
@@ -202,6 +203,8 @@ private:
     bool buildMountIPC() noexcept;
     bool buildMountCache() noexcept;
     bool buildLDCache() noexcept;
+    bool buildMountLocalTime() noexcept;
+    bool buildMountNetworkConf() noexcept;
     bool buildQuirkVolatile() noexcept;
     bool buildEnv() noexcept;
     bool applyPatch() noexcept;
@@ -258,6 +261,8 @@ private:
     std::optional<std::vector<ocppi::runtime::config::types::Mount>> hostRootMount;
     std::optional<std::vector<ocppi::runtime::config::types::Mount>> hostStaticsMount;
     std::optional<std::vector<ocppi::runtime::config::types::Mount>> ipcMount;
+    std::optional<std::vector<ocppi::runtime::config::types::Mount>> localtimeMount;
+    std::optional<std::vector<ocppi::runtime::config::types::Mount>> networkConfMount;
 
     // cache
     std::optional<std::vector<ocppi::runtime::config::types::Mount>> cacheMount;

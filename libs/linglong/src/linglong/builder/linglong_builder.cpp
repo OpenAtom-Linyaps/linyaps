@@ -703,6 +703,30 @@ std::unique_ptr<utils::OverlayFS> Builder::makeOverlay(QString lowerdir,
     return overlay;
 }
 
+// when using overlayfs, remove /etc/localtime and allow the container(box for now) to create the
+// correct mount point
+void Builder::fixLocaltimeInOverlay(std::unique_ptr<utils::OverlayFS> &baseOverlay)
+{
+    std::filesystem::path base{ baseOverlay->mergedDirPath().toStdString() };
+    std::vector<std::string> remove{
+        "etc/localtime",
+        "etc/resolv.conf",
+    };
+
+    for (const auto &r : remove) {
+        std::error_code ec;
+        auto target = base / r;
+        if (std::filesystem::exists(target, ec)) {
+            std::filesystem::remove(target, ec);
+            if (ec) {
+                qWarning() << QString("failed to remove %1: %2")
+                                .arg(target.string().c_str())
+                                .arg(ec.message().c_str());
+            }
+        }
+    }
+}
+
 utils::error::Result<void> Builder::processBuildDepends() noexcept
 {
     LINGLONG_TRACE("process build depends");
@@ -800,6 +824,7 @@ utils::error::Result<void> Builder::buildStagePreBuild() noexcept
     if (!baseOverlay) {
         return LINGLONG_ERR("failed to mount build base overlayfs");
     }
+    fixLocaltimeInOverlay(baseOverlay);
 
     if (buildContext.hasRuntime()) {
         auto runtimeLayerPath = buildContext.getRuntimeLayerPath();
@@ -978,6 +1003,7 @@ utils::error::Result<void> Builder::buildStagePreCommit() noexcept
     if (!baseOverlay) {
         return LINGLONG_ERR("failed to mount prepare base overlayfs");
     }
+    fixLocaltimeInOverlay(baseOverlay);
 
     if (buildContext.hasRuntime()) {
         auto runtimeLayerPath = buildContext.getRuntimeLayerPath();
@@ -1854,7 +1880,8 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
       .type = "bind",
     });
 
-    auto appCache = std::filesystem::path{ workingDir.absolutePath().toStdString() } / "linglong" / "cache";
+    auto appCache =
+      std::filesystem::path{ workingDir.absolutePath().toStdString() } / "linglong" / "cache";
     std::string ldConfPath = appCache / "ld.so.conf";
     applicationMounts.push_back(ocppi::runtime::config::types::Mount{
       .destination = "/etc/ld.so.conf.d/zz_deepin-linglong-app.conf",

@@ -103,6 +103,7 @@ private:
     utils::error::Result<void> processBuildDepends() noexcept;
     utils::error::Result<void> commitToLocalRepo() noexcept;
     std::unique_ptr<utils::OverlayFS> makeOverlay(QString lowerdir, QString overlayDir) noexcept;
+    void fixLocaltimeInOverlay(std::unique_ptr<utils::OverlayFS> &base);
     utils::error::Result<package::Reference> ensureUtils(const std::string &id) noexcept;
     utils::error::Result<package::Reference> clearDependency(const std::string &ref,
                                                              bool forceRemote,

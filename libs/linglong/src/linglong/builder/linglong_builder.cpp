@@ -87,7 +87,7 @@ utils::error::Result<void> inline copyDir(const QString &src, const QString &dst
     }
 
     const QFileInfoList list =
-      srcDir.entryInfoList(QDir::System | QDir::AllEntries | QDir::NoDotAndDotDot);
+      srcDir.entryInfoList(QDir::System | QDir::AllEntries | QDir::NoDotAndDotDot | QDir::Hidden);
 
     for (const auto &info : list) {
         if (info.isDir() && !info.isSymLink()) {

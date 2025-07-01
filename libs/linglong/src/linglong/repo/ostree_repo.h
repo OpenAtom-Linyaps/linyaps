@@ -197,10 +197,12 @@ private:
     static utils::error::Result<void> IniLikeFileRewrite(const QFileInfo &info,
                                                          const QString &id) noexcept;
 
-    utils::error::Result<void> exportDir(const std::string &appID,
-                                         const std::filesystem::path &source,
-                                         const std::filesystem::path &destination,
-                                         const int &max_depth);
+    utils::error::Result<void>
+    exportDir(const std::string &appID,
+              const std::filesystem::path &source,
+              const std::filesystem::path &destination,
+              const int &max_depth,
+              const std::optional<std::string> &fileSuffix = std::nullopt);
     // exportEntries will clear the entries/share and export all applications to the entries/share
     utils::error::Result<void> exportAllEntries() noexcept;
 };

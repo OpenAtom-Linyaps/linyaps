@@ -1908,7 +1908,8 @@ void OSTreeRepo::exportReference(const package::Reference &ref) noexcept
 utils::error::Result<void> OSTreeRepo::exportDir(const std::string &appID,
                                                  const std::filesystem::path &source,
                                                  const std::filesystem::path &destination,
-                                                 const int &max_depth)
+                                                 const int &max_depth,
+                                                 const std::optional<std::string> &fileSuffix)
 {
     LINGLONG_TRACE(QString("export %1").arg(source.c_str()));
     if (max_depth <= 0) {
@@ -1932,6 +1933,7 @@ utils::error::Result<void> OSTreeRepo::exportDir(const std::string &appID,
     if (!is_directory) {
         return LINGLONG_ERR("source is not a directory");
     }
+
     // 检查目标目录是否存在，如果不存在则创建
     exists = std::filesystem::exists(destination, ec);
     if (ec) {
@@ -1952,10 +1954,20 @@ utils::error::Result<void> OSTreeRepo::exportDir(const std::string &appID,
             return LINGLONG_ERR(QString("Failed to create directory: ") + destination.c_str(), ec);
         }
     }
+
     auto iterator = std::filesystem::directory_iterator(source, ec);
     if (ec) {
         return LINGLONG_ERR("list directory: " + source.string(), ec);
     }
+
+    static auto endWithFunc = [](std::string_view path, std::string_view suffix) {
+        if (suffix.length() > path.length()) {
+            return false;
+        }
+
+        return path.substr(path.length() - suffix.length()) == suffix;
+    };
+
     // 遍历源目录中的所有文件和子目录
     for (const auto &entry : iterator) {
         const auto &source_path = entry.path();
@@ -1975,6 +1987,12 @@ utils::error::Result<void> OSTreeRepo::exportDir(const std::string &appID,
             return LINGLONG_ERR("check file type: " + source_path.string(), ec);
         }
         if (is_regular_file) {
+            // 如果有指定的后缀名，则只处理指定后缀名的文件
+            if (fileSuffix.has_value()
+                && !endWithFunc(std::string_view(source_path.string()), std::string_view(fileSuffix.value()))) {
+                continue;
+            }
+
             exists = std::filesystem::exists(target_path, ec);
             if (ec) {
                 return LINGLONG_ERR("check file existence", ec);
@@ -2056,7 +2074,7 @@ utils::error::Result<void> OSTreeRepo::exportDir(const std::string &appID,
             return LINGLONG_ERR("check file type", ec);
         }
         if (is_directory) {
-            auto ret = this->exportDir(appID, source_path, target_path, max_depth - 1);
+            auto ret = this->exportDir(appID, source_path, target_path, max_depth - 1, fileSuffix);
             if (!ret.has_value()) {
                 return ret;
             }
@@ -2153,7 +2171,11 @@ OSTreeRepo::exportEntries(const std::filesystem::path &rootEntriesDir,
 
                 destination = rootEntriesDir / desktopExportPath;
 
-                auto ret = this->exportDir(item.info.id, source, destination, 10);
+                auto ret = this->exportDir(item.info.id,
+                                           source,
+                                           destination,
+                                           10,
+                                           std::make_optional(".desktop"));
                 if (!ret.has_value()) {
                     return ret;
                 }

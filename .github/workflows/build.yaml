@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - 'release/**'
 jobs:
   ubuntu2404:
     name: ubuntu_24.04

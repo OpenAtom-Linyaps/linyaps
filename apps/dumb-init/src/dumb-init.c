@@ -15,6 +15,7 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -48,7 +49,6 @@ char signal_temporary_ignores[MAXSIG + 1] = { [0 ... MAXSIG] = 0 };
 
 pid_t child_pid = -1;
 char debug = 0;
-char use_setsid = 1;
 
 int translate_signal(int signum)
 {
@@ -69,7 +69,7 @@ void forward_signal(int signum)
 {
     signum = translate_signal(signum);
     if (signum != 0) {
-        kill(use_setsid ? -child_pid : child_pid, signum);
+        kill(child_pid, signum);
         DEBUG("Forwarded signal %d to children.\n", signum);
     } else {
         DEBUG("Not forwarding signal %d to children (ignored).\n", signum);
@@ -196,7 +196,7 @@ char **parse_command(int argc, char *argv[])
         { "rewrite", required_argument, NULL, 'r' }, { "verbose", no_argument, NULL, 'v' },
         { "version", no_argument, NULL, 'V' },       { NULL, 0, NULL, 0 },
     };
-    while ((opt = getopt_long(argc, argv, "+hvVcr:", long_options, NULL)) != -1) {
+    while ((opt = getopt_long(argc, argv, "+hvVr:", long_options, NULL)) != -1) {
         switch (opt) {
         case 'h':
             print_help(argv);
@@ -207,9 +207,6 @@ char **parse_command(int argc, char *argv[])
         case 'V':
             fprintf(stderr, "dumb-init v%.*s", VERSION_len, VERSION);
             exit(0);
-        case 'c':
-            use_setsid = 0;
-            break;
         case 'r':
             parse_rewrite_signum(optarg);
             break;
@@ -233,18 +230,6 @@ char **parse_command(int argc, char *argv[])
         DEBUG("Running in debug mode.\n");
     }
 
-    char *setsid_env = getenv("DUMB_INIT_SETSID");
-    if (setsid_env && strcmp(setsid_env, "0") == 0) {
-        use_setsid = 0;
-        DEBUG("Not running in setsid mode.\n");
-    }
-
-    if (use_setsid) {
-        set_rewrite_to_sigstop_if_not_defined(SIGTSTP);
-        set_rewrite_to_sigstop_if_not_defined(SIGTTOU);
-        set_rewrite_to_sigstop_if_not_defined(SIGTTIN);
-    }
-
     return &argv[optind];
 }
 
@@ -266,35 +251,6 @@ int main(int argc, char *argv[])
         signal(i, dummy);
     }
 
-    /*
-     * Detach dumb-init from controlling tty, so that the child's session can
-     * attach to it instead.
-     *
-     * We want the child to be able to be the session leader of the TTY so that
-     * it can do normal job control.
-     */
-    if (use_setsid) {
-        if (ioctl(STDIN_FILENO, TIOCNOTTY) == -1) {
-            DEBUG("Unable to detach from controlling tty (errno=%d %s).\n", errno, strerror(errno));
-        } else {
-            /*
-             * When the session leader detaches from its controlling tty via
-             * TIOCNOTTY, the kernel sends SIGHUP and SIGCONT to the process
-             * group. We need to be careful not to forward these on to the
-             * dumb-init child so that it doesn't receive a SIGHUP and
-             * terminate itself (#136).
-             */
-            if (getsid(0) == getpid()) {
-                DEBUG("Detached from controlling tty, ignoring the first SIGHUP and SIGCONT we "
-                      "receive.\n");
-                signal_temporary_ignores[SIGHUP] = 1;
-                signal_temporary_ignores[SIGCONT] = 1;
-            } else {
-                DEBUG("Detached from controlling tty, but was not session leader.\n");
-            }
-        }
-    }
-
     child_pid = fork();
     if (child_pid < 0) {
         PRINTERR("Unable to fork. Exiting.\n");
@@ -302,19 +258,6 @@ int main(int argc, char *argv[])
     } else if (child_pid == 0) {
         /* child */
         sigprocmask(SIG_UNBLOCK, &all_signals, NULL);
-        if (use_setsid) {
-            if (setsid() == -1) {
-                PRINTERR("Unable to setsid (errno=%d %s). Exiting.\n", errno, strerror(errno));
-                exit(1);
-            }
-
-            if (ioctl(STDIN_FILENO, TIOCSCTTY, 0) == -1) {
-                DEBUG("Unable to attach to controlling tty (errno=%d %s).\n",
-                      errno,
-                      strerror(errno));
-            }
-            DEBUG("setsid complete.\n");
-        }
         execvp(cmd[0], &cmd[0]);
 
         // if this point is reached, exec failed, so we should exit nonzero

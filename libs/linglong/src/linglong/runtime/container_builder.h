@@ -1,19 +1,16 @@
 /*
- * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
+ * SPDX-FileCopyrightText: 2022 - 2025 UnionTech Software Technology Co., Ltd.
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
 #pragma once
 
-#include "linglong/api/types/v1/OciConfigurationPatch.hpp"
 #include "linglong/oci-cfg-generators/container_cfg_builder.h"
 #include "linglong/package/reference.h"
 #include "linglong/runtime/container.h"
 #include "linglong/utils/error/error.h"
 #include "ocppi/cli/CLI.hpp"
-#include "ocppi/runtime/config/types/Config.hpp"
-#include "ocppi/runtime/config/types/Mount.hpp"
 
 #include <QCryptographicHash>
 #include <QDir>
@@ -39,14 +36,18 @@ inline std::string genContainerID(const package::Reference &ref) noexcept
 }
 
 // Used to obtain a clean container bundle directory.
+
+inline std::filesystem::path getBundleDir(const std::string &containerID) noexcept
+{
+    const std::filesystem::path runtimeDir =
+      QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation).toStdString();
+    return runtimeDir / "linglong" / containerID;
+}
+
 inline utils::error::Result<std::filesystem::path> makeBundleDir(const std::string &containerID)
 {
     LINGLONG_TRACE("get bundle dir");
-
-    std::filesystem::path runtimeDir =
-      QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation).toStdString();
-    auto bundle = runtimeDir / "linglong" / containerID;
-
+    auto bundle = getBundleDir(containerID);
     std::error_code ec;
     if (std::filesystem::exists(bundle, ec)) {
         std::filesystem::remove_all(bundle, ec);

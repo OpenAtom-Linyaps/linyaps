@@ -2021,6 +2021,7 @@ utils::error::Result<void> OSTreeRepo::exportDir(const std::string &appID,
                                                 info.suffix())
                                            .toStdString();
 
+                    // 如果原始文件不存在，当前source作为原始文件
                     auto originPath = source_path.string() + ".linyaps.original";
                     if (!std::filesystem::exists(originPath, ec)) {
                         std::filesystem::rename(source_path, originPath, ec);
@@ -2028,12 +2029,13 @@ utils::error::Result<void> OSTreeRepo::exportDir(const std::string &appID,
                             return LINGLONG_ERR("rename orig path", ec);
                         }
                     }
-
+                    // 复制原始文件到source用于后面的重写
                     std::filesystem::copy(originPath, sourceNewPath, ec);
                     if (ec) {
                         return LINGLONG_ERR("copy file failed: " + sourceNewPath, ec);
                     }
-
+                    
+                    // TODO 这部分代码可以删除
                     exists = std::filesystem::exists(sourceNewPath, ec);
                     if (ec) {
                         return LINGLONG_ERR("check file exists", ec);
@@ -2044,14 +2046,22 @@ utils::error::Result<void> OSTreeRepo::exportDir(const std::string &appID,
                         continue;
                     }
 
-                    auto ret = IniLikeFileRewrite(QFileInfo(sourceNewPath.c_str()), appID.c_str());
-                    if (ret) {
-                        std::filesystem::rename(sourceNewPath, source_path, ec);
-                        if (ec) {
-                            return LINGLONG_ERR("rename new path", ec);
+                    // 为了兼容上个版本直接对source进行重写，这里需要判断原始文件的硬链接数
+                    // 如果硬链接数为1，则说明原始文件重写过了，就跳过重写
+                    auto hard_link_count = std::filesystem::hard_link_count(originPath, ec);
+                    if (ec) {
+                        return LINGLONG_ERR("get hard link count", ec);
+                    }
+                    if (hard_link_count > 1) {
+                        auto ret = IniLikeFileRewrite(QFileInfo(sourceNewPath.c_str()), appID.c_str());
+                        if (!ret) {
+                            qWarning() << "rewrite file failed: " << ret.error().message();
+                            continue;
                         }
-                    } else {
-                        qWarning() << "rewrite file failed: " << ret.error().message();
+                    }
+                    std::filesystem::rename(sourceNewPath, source_path, ec);
+                    if (ec) {
+                        return LINGLONG_ERR("rename new path", ec);
                     }
                 }
 

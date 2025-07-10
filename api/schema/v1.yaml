@@ -478,6 +478,9 @@ $defs:
       priority:
         type: integer
         description: priority of repo
+      mirror_enabled:
+        type: boolean
+        description: whether mirror is enabled for this repo
   LayerInfo:
     description: Meta information on the head of layer file.
     type: object

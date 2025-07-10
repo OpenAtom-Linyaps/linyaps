@@ -509,6 +509,20 @@ ll-cli list --upgradable
       ->add_option("PRIORITY", options.repoOptions.repoPriority, _("Priority of the repo"))
       ->required()
       ->check(validatorString);
+    // add repo sub command enable mirror
+    auto *repoEnableMirror =
+      cliRepo->add_subcommand("enable-mirror", _("Enable mirror for the repo"));
+    repoEnableMirror->usage(_("Usage: ll-cli repo enable-mirror [OPTIONS] ALIAS"));
+    repoEnableMirror->add_option("ALIAS", options.repoOptions.repoAlias, _("Alias of the repo name"))
+      ->required()
+      ->check(validatorString);
+    // add repo sub command disable mirror
+    auto *repoDisableMirror =
+      cliRepo->add_subcommand("disable-mirror", _("Disable mirror for the repo"));
+    repoDisableMirror->usage(_("Usage: ll-cli repo disable-mirror [OPTIONS] ALIAS"));
+    repoDisableMirror->add_option("ALIAS", options.repoOptions.repoAlias, _("Alias of the repo name"))
+      ->required()
+      ->check(validatorString);
 
     // add sub command info
     auto *cliInfo =

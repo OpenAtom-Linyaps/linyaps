@@ -398,6 +398,14 @@ updateOstreeRepoConfig(OstreeRepo *repo,
         // libcurl 8.2.1 has a http2 bug https://github.com/curl/curl/issues/11859
         // We disable http2 for now.
         g_variant_builder_add(&builder, "{sv}", "http2", g_variant_new_boolean(FALSE));
+        // add contenturl to use mirrorlist
+        if (repoCfg.mirrorEnabled.value_or(false)) {
+            auto mirrorlist = std::string("mirrorlist=") + repoCfg.url + "/api/v2/mirrors/stable";
+            g_variant_builder_add(&builder,
+                                  "{sv}",
+                                  "contenturl",
+                                  g_variant_new_string(mirrorlist.c_str()));
+        }
         options = g_variant_ref_sink(g_variant_builder_end(&builder));
 
         if (ostree_repo_remote_change(repo,

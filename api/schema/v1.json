@@ -600,6 +600,10 @@
         "priority": {
           "type": "integer",
           "description": "priority of repo"
+        },
+        "mirror_enabled": {
+          "type": "boolean",
+          "description": "whether mirror is enabled for this repo"
         }
       }
     },

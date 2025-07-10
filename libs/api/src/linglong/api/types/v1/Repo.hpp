@@ -36,6 +36,10 @@ struct Repo {
 */
 std::optional<std::string> alias;
 /**
+* whether mirror is enabled for this repo
+*/
+std::optional<bool> mirrorEnabled;
+/**
 * repo name
 */
 std::string name;

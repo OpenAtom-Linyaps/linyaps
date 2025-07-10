@@ -2,10 +2,10 @@
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PACKAGE package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
-#
+# 
 # Translators:
 # Janusz Ruchała, 2025
-#
+# 
 #, fuzzy
 msgid ""
 msgstr ""
@@ -14,15 +14,12 @@ msgstr ""
 "POT-Creation-Date: 2025-07-10 14:05+0800\n"
 "PO-Revision-Date: 2025-04-11 01:38+0000\n"
 "Last-Translator: Janusz Ruchała, 2025\n"
-"Language-Team: Polish (https://app.transifex.com/linuxdeepin/teams/3976/"
-"pl/)\n"
-"Language: pl\n"
+"Language-Team: Polish (https://app.transifex.com/linuxdeepin/teams/3976/pl/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=4; plural=(n==1 ? 0 : (n%10>=2 && n%10<=4) && (n"
-"%100<12 || n%100>14) ? 1 : n!=1 && (n%10>=0 && n%10<=1) || (n%10>=5 && n"
-"%10<=9) || (n%100>=12 && n%100<=14) ? 2 : 3);\n"
+"Language: pl\n"
+"Plural-Forms: nplurals=4; plural=(n==1 ? 0 : (n%10>=2 && n%10<=4) && (n%100<12 || n%100>14) ? 1 : n!=1 && (n%10>=0 && n%10<=1) || (n%10>=5 && n%10<=9) || (n%100>=12 && n%100<=14) ? 2 : 3);\n"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:71
 msgid "Permission denied, please check whether you are running as root."
@@ -112,8 +109,7 @@ msgid ""
 "A CLI program to run application and manage application and runtime\n"
 msgstr ""
 "linyaps CLI\n"
-"Aplikacja wiersza poleceń do uruchamiania i zarządzania aplikacjami oraz "
-"środowiskami wykonawczymi\n"
+"Aplikacja wiersza poleceń do uruchamiania i zarządzania aplikacjami oraz środowiskami wykonawczymi\n"
 
 #: ../apps/ll-cli/src/main.cpp:161 ../apps/ll-builder/src/main.cpp:761
 msgid "Print this help message and exit"
@@ -130,8 +126,7 @@ msgstr "Polecenie: ll-cli [OPCJE] [PODKOMENDA]"
 #: ../apps/ll-cli/src/main.cpp:164
 msgid ""
 "If you found any problems during use,\n"
-"You can report bugs to the linyaps team under this project: https://github."
-"com/OpenAtom-Linyaps/linyaps/issues"
+"You can report bugs to the linyaps team under this project: https://github.com/OpenAtom-Linyaps/linyaps/issues"
 msgstr ""
 "Jeśli znajdziesz jakieś problemy, \n"
 "możesz zgłosić błąd do zespołu linyaps pod tym adresem: \n"
@@ -366,8 +361,8 @@ msgstr "Polecenie: ll-cli upgrade [OPCJE] [APLIKACJA]"
 
 #: ../apps/ll-cli/src/main.cpp:367
 msgid ""
-"Specify the application ID. If it not be specified, all applications will be "
-"upgraded"
+"Specify the application ID. If it not be specified, all applications will be"
+" upgraded"
 msgstr ""
 "Podaj ID aplikacji. Jeśli nie podasz, wszystkie aplikacje zostaną "
 "zaktualizowane."
@@ -413,12 +408,8 @@ msgid "Specify the Keywords"
 msgstr "Podaj słowa kluczowe"
 
 #: ../apps/ll-cli/src/main.cpp:396 ../apps/ll-cli/src/main.cpp:430
-msgid ""
-"Filter result with specify type. One of \"runtime\", \"base\", \"app\" or "
-"\"all\""
-msgstr ""
-"Filtruj wyniki wybranego typu. Na przykład \"runtime\", \"base\", \"app\" "
-"lub \"all\""
+msgid "Filter result with specify type. One of \"runtime\", \"base\", \"app\" or \"all\""
+msgstr "Filtruj wyniki wybranego typu. Na przykład \"runtime\", \"base\", \"app\" lub \"all\""
 
 #: ../apps/ll-cli/src/main.cpp:400
 msgid "Specify the repo"
@@ -434,7 +425,8 @@ msgstr "Pokaż wszystkie wersje aplikacji, baz i środowisk wykonawczych"
 
 #: ../apps/ll-cli/src/main.cpp:411
 msgid "List installed application(s), base(s) or runtime(s)"
-msgstr "Wyświetl listę zainstalowanych aplikacji, baz i środowisk wykonawczych"
+msgstr ""
+"Wyświetl listę zainstalowanych aplikacji, baz i środowisk wykonawczych"
 
 #: ../apps/ll-cli/src/main.cpp:414
 msgid ""
@@ -467,8 +459,8 @@ msgid ""
 "Show the list of latest version of the currently installed application(s), "
 "base(s) or runtime(s)"
 msgstr ""
-"Wyświetl listę najnowszych wersji zainstalowanych aplikacji, baz i środowisk "
-"wykonawczych"
+"Wyświetl listę najnowszych wersji zainstalowanych aplikacji, baz i środowisk"
+" wykonawczych"
 
 #: ../apps/ll-cli/src/main.cpp:443
 msgid "Display or modify information of the repository currently using"
@@ -734,8 +726,7 @@ msgstr "Polecenie: ll-builder [OPCJE] [PODKOMENDA]"
 #: ../apps/ll-builder/src/main.cpp:766
 msgid ""
 "If you found any problems during use\n"
-"You can report bugs to the linyaps team under this project: https://github."
-"com/OpenAtom-Linyaps/linyaps/issues"
+"You can report bugs to the linyaps team under this project: https://github.com/OpenAtom-Linyaps/linyaps/issues"
 msgstr ""
 "Jeśli znajdziesz jakieś problemy, \n"
 "Możesz zgłosić błąd do zespołu linyaps klikając ten link: \n"
@@ -767,7 +758,8 @@ msgid "File path of the linglong.yaml"
 msgstr "Ścieżka pliku linglong.yaml"
 
 #: ../apps/ll-builder/src/main.cpp:808
-msgid "Enter the container to execute command instead of building applications"
+msgid ""
+"Enter the container to execute command instead of building applications"
 msgstr ""
 "Wykonuj polecenia wewnątrz kontenera, zamiast ciągle przebudowywać aplikacje"
 
@@ -776,8 +768,8 @@ msgid ""
 "Only use local files. This implies --skip-fetch-source and --skip-pull-"
 "depend will be set"
 msgstr ""
-"Korzystaj tylko z plików lokalnych. To oznacza, że flagi --skip-fetch-source "
-"i --skip-pull-depend będą ustawione"
+"Korzystaj tylko z plików lokalnych. To oznacza, że flagi --skip-fetch-source"
+" i --skip-pull-depend będą ustawione"
 
 #: ../apps/ll-builder/src/main.cpp:816
 msgid "Build full develop packages, runtime requires"

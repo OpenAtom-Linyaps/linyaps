@@ -14,6 +14,7 @@
 #include <QSysInfo>
 
 #include <string>
+#include <fstream>
 
 #include <unistd.h>
 
@@ -127,11 +128,21 @@ utils::error::Result<LayerDir> LayerPackager::unpack(LayerFile &file)
     if (!offset) {
         return LINGLONG_ERR(offset);
     }
-
+    auto fdPath = QString{ "/proc/%1/fd/%2" }.arg(::getpid()).arg(file.handle());
+    // 测试fdpath是否可读，如果不可读，先复制到临时文件
+    std::ifstream f(fdPath.toStdString());
+    if (!f.is_open()) {
+        // 如果不可读，通过文件描述符复制到工作目录
+        fdPath = this->workDir.absoluteFilePath(QUuid::createUuid().toString(QUuid::Id128)+".erofs");
+        // 如果保存失败，返回错误
+        if (!file.saveTo(fdPath)) {
+            return LINGLONG_ERR("Failed to save layer file to work directory");
+        }
+    }
     auto ret =
       utils::command::Exec("erofsfuse",
                            { QString("--offset=%1").arg(*offset),
-                             QString{ "/proc/%1/fd/%2" }.arg(::getpid()).arg(file.handle()),
+                            fdPath,
                              unpackDir.absolutePath() });
     if (!ret) {
         return LINGLONG_ERR(ret);

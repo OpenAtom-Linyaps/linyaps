@@ -567,7 +567,7 @@ msgstr "Wyłącz mirror dla wybranego repozytorium"
 
 #: ../apps/ll-cli/src/main.cpp:522
 msgid "Usage: ll-cli repo disable-mirror [OPTIONS] ALIAS"
-msgstr ""
+msgstr "Polecenie: ll-cli repo disable-mirror [OPCJE] ALIAS"
 
 #: ../apps/ll-cli/src/main.cpp:530
 msgid "Display information about installed apps or runtimes"
@@ -959,11 +959,11 @@ msgstr "Polecenie: ll-builder repo set-default [OPCJE] NAZWA"
 
 #: ../apps/ll-builder/src/main.cpp:997
 msgid "Usage: ll-builder repo enable-mirror [OPTIONS] ALIAS"
-msgstr ""
+msgstr "Polecenie: ll-builder repo enable-mirror [OPCJE] ALIAS"
 
 #: ../apps/ll-builder/src/main.cpp:1005
 msgid "Usage: ll-builder repo disable-mirror [OPTIONS] ALIAS"
-msgstr ""
+msgstr "Polecenie: ll-builder repo disable-mirror [OPCJE] ALIAS"
 
 #: ../apps/ll-builder/src/main.cpp:1012
 msgid "Usage: ll-builder repo show [OPTIONS]"

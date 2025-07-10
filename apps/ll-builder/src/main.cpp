@@ -496,7 +496,7 @@ int handleRepoAdd(linglong::repo::OSTreeRepo &repo, linglong::cli::RepoOptions &
 int handleRepoRemove(linglong::repo::OSTreeRepo &repo, linglong::cli::RepoOptions &options)
 {
     auto newCfg = repo.getConfig();
-    const std::string &alias = options.repoAlias.value();
+    const std::string &alias = options.repoAlias.value_or(options.repoName);
 
     auto existingRepo =
       std::find_if(newCfg.repos.begin(), newCfg.repos.end(), [&alias](const auto &r) {
@@ -529,7 +529,7 @@ int handleRepoRemove(linglong::repo::OSTreeRepo &repo, linglong::cli::RepoOption
 int handleRepoUpdate(linglong::repo::OSTreeRepo &repo, linglong::cli::RepoOptions &options)
 {
     auto newCfg = repo.getConfig();
-    const std::string &alias = options.repoAlias.value();
+    const std::string &alias = options.repoAlias.value_or(options.repoName);
 
     if (options.repoUrl.empty()) {
         std::cerr << "url is empty." << std::endl;
@@ -561,7 +561,7 @@ int handleRepoUpdate(linglong::repo::OSTreeRepo &repo, linglong::cli::RepoOption
 int handleRepoSetDefault(linglong::repo::OSTreeRepo &repo, linglong::cli::RepoOptions &options)
 {
     auto newCfg = repo.getConfig();
-    const std::string &alias = options.repoAlias.value();
+    const std::string &alias = options.repoAlias.value_or(options.repoName);
 
     auto existingRepo =
       std::find_if(newCfg.repos.begin(), newCfg.repos.end(), [&alias](const auto &r) {
@@ -588,13 +588,66 @@ int handleRepoSetDefault(linglong::repo::OSTreeRepo &repo, linglong::cli::RepoOp
     return 0;
 }
 
+int handleRepoEnableMirror(linglong::repo::OSTreeRepo &repo, linglong::cli::RepoOptions &options)
+{
+    auto newCfg = repo.getConfig();
+    const std::string &alias = options.repoAlias.value_or(options.repoName);
+
+    auto existingRepo =
+      std::find_if(newCfg.repos.begin(), newCfg.repos.end(), [&alias](const auto &r) {
+          return r.alias.value_or(r.name) == alias;
+      });
+
+    if (existingRepo == newCfg.repos.cend()) {
+        std::cerr << "the operated repo " + alias + " doesn't exist." << std::endl;
+        return -1;
+    }
+
+    existingRepo->mirrorEnabled = true;
+    auto ret = repo.setConfig(newCfg);
+    if (!ret) {
+        std::cerr << ret.error().message().toStdString() << std::endl;
+        return -1;
+    }
+
+    std::cerr << "Repository " << alias << " mirror enabled successfully.";
+    return 0;
+}
+
+int handleRepoDisableMirror(linglong::repo::OSTreeRepo &repo, linglong::cli::RepoOptions &options)
+{
+    auto newCfg = repo.getConfig();
+    const std::string &alias = options.repoAlias.value_or(options.repoName);
+
+    auto existingRepo =
+      std::find_if(newCfg.repos.begin(), newCfg.repos.end(), [&alias](const auto &r) {
+          return r.alias.value_or(r.name) == alias;
+      });
+
+    if (existingRepo == newCfg.repos.cend()) {
+        std::cerr << "the operated repo " + alias + " doesn't exist." << std::endl;
+        return -1;
+    }
+
+    existingRepo->mirrorEnabled = false;
+    auto ret = repo.setConfig(newCfg);
+    if (!ret) {
+        std::cerr << ret.error().message().toStdString() << std::endl;
+        return -1;
+    }
+    std::cerr << "Repository " << alias << " mirror disabled successfully.";
+    return 0;
+}
+
 int handleRepo(linglong::repo::OSTreeRepo &repo,
                const RepoSubcommandOptions &options,
                CLI::App *buildRepoShow,
                CLI::App *buildRepoAdd,
                CLI::App *buildRepoRemove,
                CLI::App *buildRepoUpdate,
-               CLI::App *buildRepoSetDefault)
+               CLI::App *buildRepoSetDefault,
+               CLI::App *buildRepoEnableMirror,
+               CLI::App *buildRepoDisableMirror)
 {
     if (buildRepoShow->parsed()) {
         return handleRepoShow(repo);
@@ -626,6 +679,14 @@ int handleRepo(linglong::repo::OSTreeRepo &repo,
 
     if (buildRepoSetDefault->parsed()) {
         return handleRepoSetDefault(repo, repoOptions);
+    }
+
+    if (buildRepoEnableMirror->parsed()) {
+        return handleRepoEnableMirror(repo, repoOptions);
+    }
+
+    if (buildRepoDisableMirror->parsed()) {
+        return handleRepoDisableMirror(repo, repoOptions);
     }
 
     std::cerr << "unknown repo operation, please see help information." << std::endl;
@@ -930,6 +991,22 @@ You can report bugs to the linyaps team under this project: https://github.com/O
       ->required()
       ->check(validatorString);
 
+    // add repo sub command enable mirror
+    auto buildRepoEnableMirror =
+      buildRepo->add_subcommand("enable-mirror", _("Enable mirror for the repo"));
+    buildRepoEnableMirror->usage(_("Usage: ll-builder repo enable-mirror [OPTIONS] ALIAS"));
+    buildRepoEnableMirror->add_option("ALIAS", repoCmdOpts.repoOptions.repoAlias, _("Alias of the repo name"))
+      ->required()
+      ->check(validatorString);
+
+    // add repo sub command disable mirror
+    auto buildRepoDisableMirror =
+      buildRepo->add_subcommand("disable-mirror", _("Disable mirror for the repo"));
+    buildRepoDisableMirror->usage(_("Usage: ll-builder repo disable-mirror [OPTIONS] ALIAS"));
+    buildRepoDisableMirror->add_option("ALIAS", repoCmdOpts.repoOptions.repoAlias, _("Alias of the repo name"))
+      ->required()
+      ->check(validatorString);
+
     // add repo sub command show
     auto buildRepoShow = buildRepo->add_subcommand("show", _("Show repository information"));
     buildRepoShow->usage(_("Usage: ll-builder repo show [OPTIONS]"));
@@ -994,7 +1071,9 @@ You can report bugs to the linyaps team under this project: https://github.com/O
                           buildRepoAdd,
                           buildRepoRemove,
                           buildRepoUpdate,
-                          buildRepoSetDefault);
+                          buildRepoSetDefault,
+                          buildRepoEnableMirror,
+                          buildRepoDisableMirror);
     }
 
     if (buildImport->parsed()) {

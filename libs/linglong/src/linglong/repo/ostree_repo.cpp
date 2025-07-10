@@ -2385,7 +2385,8 @@ OSTreeRepo::getLayerItem(const package::Reference &ref,
                           .version = ref.version.toString().toStdString(),
                           .module = std::move(module),
                           .uuid = subRef,
-                          .deleted = std::nullopt };
+                          .deleted = std::nullopt,
+                          .architecture = ref.arch.toString().toStdString()};
     auto items = this->cache->queryLayerItem(query);
     auto count = items.size();
     if (count > 1) {
@@ -2555,6 +2556,7 @@ std::vector<std::string> OSTreeRepo::getModuleList(const package::Reference &ref
         .repo = std::nullopt,
         .channel = ref.channel.toStdString(),
         .version = ref.version.toString().toStdString(),
+        .architecture = ref.arch.toString().toStdString(),
     };
     auto layers = this->cache->queryLayerItem(query);
     // 按module字母从小到大排序，提前排序以保证后面的commits比较

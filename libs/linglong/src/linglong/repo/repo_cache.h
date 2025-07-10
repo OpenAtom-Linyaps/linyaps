@@ -27,18 +27,19 @@ struct repoCacheQuery
     std::optional<std::string> module;
     std::optional<std::string> uuid;
     std::optional<bool> deleted;
+    std::optional<std::string> architecture;
 
-    static auto arch()
+    auto arch()
     {
-        auto ret = package::Architecture::currentCPUArchitecture();
-        if (ret) {
-            return ret->toString().toStdString();
+        if (!architecture) {
+            auto curArch = package::Architecture::currentCPUArchitecture();
+            architecture = curArch ? curArch->toString().toStdString() : std::string{"unknown"};
         }
 
-        return std::string{ "unknown" };
+        return *architecture;
     }
 
-    [[nodiscard]] std::string to_string() const noexcept
+    [[nodiscard]] std::string to_string() noexcept
     {
         std::stringstream ss;
         ss << repo.value_or("undefined") << ":" << channel.value_or("undefined") << "/"

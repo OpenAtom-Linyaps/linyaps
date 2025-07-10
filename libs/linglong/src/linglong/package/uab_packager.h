@@ -5,6 +5,7 @@
 #pragma once
 
 #include "linglong/api/types/v1/UabMetaInfo.hpp"
+#include "linglong/package/elf_handler.h"
 #include "linglong/package/layer_dir.h"
 #include "linglong/utils/error/error.h"
 
@@ -16,6 +17,7 @@
 #include <QString>
 #include <QUuid>
 
+#include <memory>
 #include <filesystem>
 #include <unordered_set>
 
@@ -93,7 +95,7 @@ private:
     [[nodiscard]] utils::error::Result<std::pair<bool, std::unordered_set<std::string>>>
     filteringFiles(const LayerDir &layer) const noexcept;
 
-    elfHelper uab;
+    std::unique_ptr<ElfHandler> uab;
     QList<LayerDir> layers;
     std::unordered_set<std::string> excludeFiles;
     std::unordered_set<std::string> includeFiles;

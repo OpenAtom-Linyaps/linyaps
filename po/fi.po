@@ -2,67 +2,68 @@
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PACKAGE package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
-# 
+#
 # Translators:
 # Kimmo Kujansuu <mrkujansuu@gmail.com>, 2025
-# 
+#
 #, fuzzy
 msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-06-09 14:53+0800\n"
+"POT-Creation-Date: 2025-07-10 14:05+0800\n"
 "PO-Revision-Date: 2025-04-11 01:38+0000\n"
 "Last-Translator: Kimmo Kujansuu <mrkujansuu@gmail.com>, 2025\n"
-"Language-Team: Finnish (https://app.transifex.com/linuxdeepin/teams/3976/fi/)\n"
+"Language-Team: Finnish (https://app.transifex.com/linuxdeepin/teams/3976/"
+"fi/)\n"
+"Language: fi\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Language: fi\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: ../libs/linglong/src/linglong/cli/cli.cpp:67
+#: ../libs/linglong/src/linglong/cli/cli.cpp:71
 msgid "Permission denied, please check whether you are running as root."
 msgstr "Lupa evätty. Tarkista oletko root-käyttäjänä."
 
-#: ../libs/linglong/src/linglong/cli/cli.cpp:443
+#: ../libs/linglong/src/linglong/cli/cli.cpp:447
 msgid "To install the module, one must first install the app."
 msgstr "Moduulin asentamiseksi on ensin asennettava sovellus."
 
-#: ../libs/linglong/src/linglong/cli/cli.cpp:446
+#: ../libs/linglong/src/linglong/cli/cli.cpp:450
 msgid "Module is already installed."
 msgstr "Moduuli on jo asennettu."
 
-#: ../libs/linglong/src/linglong/cli/cli.cpp:449
-#: ../libs/linglong/src/linglong/cli/cli.cpp:1170
+#: ../libs/linglong/src/linglong/cli/cli.cpp:453
+#: ../libs/linglong/src/linglong/cli/cli.cpp:1172
 msgid "Install failed"
 msgstr "Asennus epäonnistui"
 
-#: ../libs/linglong/src/linglong/cli/cli.cpp:452
+#: ../libs/linglong/src/linglong/cli/cli.cpp:456
 msgid "The module could not be found remotely."
 msgstr "Moduulia ei löytynyt palvelimelta."
 
-#: ../libs/linglong/src/linglong/cli/cli.cpp:455
-#: ../libs/linglong/src/linglong/cli/cli.cpp:1659
+#: ../libs/linglong/src/linglong/cli/cli.cpp:459
+#: ../libs/linglong/src/linglong/cli/cli.cpp:1663
 msgid "Uninstall failed"
 msgstr "Poistaminen epäonnistui"
 
-#: ../libs/linglong/src/linglong/cli/cli.cpp:458
+#: ../libs/linglong/src/linglong/cli/cli.cpp:462
 msgid "Upgrade failed"
 msgstr "Päivitys epäonnistui"
 
-#: ../libs/linglong/src/linglong/cli/cli.cpp:461
-#: ../libs/linglong/src/linglong/cli/cli.cpp:1582
-#: ../libs/linglong/src/linglong/cli/cli.cpp:1655
+#: ../libs/linglong/src/linglong/cli/cli.cpp:465
+#: ../libs/linglong/src/linglong/cli/cli.cpp:1586
+#: ../libs/linglong/src/linglong/cli/cli.cpp:1659
 msgid "Application is not installed."
 msgstr "Sovellusta ei ole asennettu."
 
-#: ../libs/linglong/src/linglong/cli/cli.cpp:464
+#: ../libs/linglong/src/linglong/cli/cli.cpp:468
 msgid "Latest version is already installed."
 msgstr "Uusin versio on jo asennettu."
 
-#: ../libs/linglong/src/linglong/cli/cli.cpp:1144
-#: ../libs/linglong/src/linglong/cli/cli.cpp:1438
+#: ../libs/linglong/src/linglong/cli/cli.cpp:1146
+#: ../libs/linglong/src/linglong/cli/cli.cpp:1440
 msgid ""
 "Network connection failed. Please:\n"
 "1. Check your internet connection\n"
@@ -72,7 +73,7 @@ msgstr ""
 "1. Tarkista internetyhteys\n"
 "2. Tarkista välityspalvelimen asetukset, jos niitä käytetään"
 
-#: ../libs/linglong/src/linglong/cli/cli.cpp:1150
+#: ../libs/linglong/src/linglong/cli/cli.cpp:1152
 msgid ""
 "Application already installed, If you want to replace it, try using 'll-cli "
 "install %1 --force'"
@@ -80,15 +81,15 @@ msgstr ""
 "Sovellus on jo asennettu. Jos haluat vaihtaa sen, kokeile \"ll-cli install "
 "%1 --force\""
 
-#: ../libs/linglong/src/linglong/cli/cli.cpp:1156
+#: ../libs/linglong/src/linglong/cli/cli.cpp:1158
 msgid "Application %1 is not found in remote repo."
 msgstr "Sovellusta %1 ei löydy palvelimelta."
 
-#: ../libs/linglong/src/linglong/cli/cli.cpp:1160
+#: ../libs/linglong/src/linglong/cli/cli.cpp:1162
 msgid "Cannot specify a version when installing a module."
 msgstr "Moduulia asennettaessa ei voitu määrittää versiota."
 
-#: ../libs/linglong/src/linglong/cli/cli.cpp:1164
+#: ../libs/linglong/src/linglong/cli/cli.cpp:1166
 msgid ""
 "The latest version has been installed. If you want to replace it, try using "
 "'ll-cli install %1/version --force'"
@@ -96,7 +97,7 @@ msgstr ""
 "Uusin versio on asennettu. Jos haluat vaihtaa sen, kokeile \"ll-cli install "
 "%1/version --force\""
 
-#: ../libs/linglong/src/linglong/cli/cli.cpp:2609
+#: ../libs/linglong/src/linglong/cli/cli.cpp:2672
 msgid ""
 "The cache generation failed, please uninstall and reinstall the application."
 msgstr ""
@@ -110,11 +111,11 @@ msgstr ""
 "linyaps CLI\n"
 "Ohjelma sovellusten suorittamiseen ja ajoympäristön hallintaan\n"
 
-#: ../apps/ll-cli/src/main.cpp:161 ../apps/ll-builder/src/main.cpp:700
+#: ../apps/ll-cli/src/main.cpp:161 ../apps/ll-builder/src/main.cpp:761
 msgid "Print this help message and exit"
 msgstr "Tulosta tämä ohje ja poistu"
 
-#: ../apps/ll-cli/src/main.cpp:162 ../apps/ll-builder/src/main.cpp:701
+#: ../apps/ll-cli/src/main.cpp:162 ../apps/ll-builder/src/main.cpp:762
 msgid "Expand all help"
 msgstr "Kaikki ohjeet"
 
@@ -125,13 +126,15 @@ msgstr "Käyttö: ll-cli [OPTIONS] [SUBCOMMAND]"
 #: ../apps/ll-cli/src/main.cpp:164
 msgid ""
 "If you found any problems during use,\n"
-"You can report bugs to the linyaps team under this project: https://github.com/OpenAtom-Linyaps/linyaps/issues"
+"You can report bugs to the linyaps team under this project: https://github."
+"com/OpenAtom-Linyaps/linyaps/issues"
 msgstr ""
 "Jos havaitset ongelmia käytön aikana,\n"
-"Voit ilmoittaa vioista linyaps-tiimille täällä: https://github.com/OpenAtom-Linyaps/linyaps/issues"
+"Voit ilmoittaa vioista linyaps-tiimille täällä: https://github.com/OpenAtom-"
+"Linyaps/linyaps/issues"
 
 #. add flags
-#: ../apps/ll-cli/src/main.cpp:171 ../apps/ll-builder/src/main.cpp:725
+#: ../apps/ll-cli/src/main.cpp:171 ../apps/ll-builder/src/main.cpp:786
 msgid "Show version"
 msgstr "Näytä versio"
 
@@ -147,7 +150,7 @@ msgstr ""
 msgid "Use json format to output result"
 msgstr "Käytä json-formaattia tuloksiin"
 
-#: ../apps/ll-cli/src/main.cpp:186 ../apps/ll-cli/src/main.cpp:553
+#: ../apps/ll-cli/src/main.cpp:186 ../apps/ll-cli/src/main.cpp:567
 #: ../apps/ll-builder/src/main.cpp:95
 msgid "Input parameter is empty, please input valid parameter instead"
 msgstr "Parametri on tyhjä, anna kelvollinen parametri"
@@ -306,8 +309,7 @@ msgstr ""
 
 #: ../apps/ll-cli/src/main.cpp:322
 msgid "Specify the application ID, and it can also be a .uab or .layer file"
-msgstr ""
-"Määritä sovelluksen id-tunnus. Voi olla myös .uab- tai .layer-tiedosto"
+msgstr "Määritä sovelluksen id-tunnus. Voi olla myös .uab- tai .layer-tiedosto"
 
 #: ../apps/ll-cli/src/main.cpp:325
 msgid "Install a specify module"
@@ -360,8 +362,8 @@ msgstr "Käyttö: ll-cli upgrade [OPTIONS] [APP]"
 
 #: ../apps/ll-cli/src/main.cpp:367
 msgid ""
-"Specify the application ID. If it not be specified, all applications will be"
-" upgraded"
+"Specify the application ID. If it not be specified, all applications will be "
+"upgraded"
 msgstr ""
 "Määritä sovelluksen id-tunnus. Jos ei määritetä, kaikki sovellukset "
 "päivitetään"
@@ -371,8 +373,8 @@ msgid ""
 "Search the applications/runtimes containing the specified text from the "
 "remote repository"
 msgstr ""
-"Etsi palvelimen arkistosta tietyn tekstin sisältävät "
-"sovellukset/ajoympäristöt"
+"Etsi palvelimen arkistosta tietyn tekstin sisältävät sovellukset/"
+"ajoympäristöt"
 
 #: ../apps/ll-cli/src/main.cpp:378
 msgid ""
@@ -391,7 +393,8 @@ msgstr ""
 "Käyttö: ll-cli search [OPTIONS] KEYWORDS\n"
 "\n"
 "Esimerkki:\n"
-"# etsi palvelimelta sovellukse(t), alusta(t) tai ajoympäristö(t) hakusanoilla\n"
+"# etsi palvelimelta sovellukse(t), alusta(t) tai ajoympäristö(t) "
+"hakusanoilla\n"
 "ll-cli search org.deepin.demo\n"
 "# etsi ajoympäristö palvelimelta nimellä\n"
 "ll-cli search org.deepin.base --type=runtime\n"
@@ -407,7 +410,9 @@ msgid "Specify the Keywords"
 msgstr "Määrittele hakusanat"
 
 #: ../apps/ll-cli/src/main.cpp:396 ../apps/ll-cli/src/main.cpp:430
-msgid "Filter result with specify type. One of \"runtime\", \"base\", \"app\" or \"all\""
+msgid ""
+"Filter result with specify type. One of \"runtime\", \"base\", \"app\" or "
+"\"all\""
 msgstr ""
 "Suodata tulokset tyypillä. Joku seuraavista: \"runtime\", \"base\", \"app\" "
 "tai \"all\""
@@ -472,7 +477,7 @@ msgid "Usage: ll-cli repo SUBCOMMAND [OPTIONS]"
 msgstr "Käyttö: ll-cli repo SUBCOMMAND [OPTIONS]"
 
 #. add repo sub command add
-#: ../apps/ll-cli/src/main.cpp:449 ../apps/ll-builder/src/main.cpp:892
+#: ../apps/ll-cli/src/main.cpp:449 ../apps/ll-builder/src/main.cpp:953
 msgid "Add a new repository"
 msgstr "Lisää uusi ohjelma-arkisto"
 
@@ -481,21 +486,23 @@ msgid "Usage: ll-cli repo add [OPTIONS] NAME URL"
 msgstr "Käyttö: ll-cli repo add [OPTIONS] NAME URL"
 
 #: ../apps/ll-cli/src/main.cpp:451 ../apps/ll-cli/src/main.cpp:464
-#: ../apps/ll-builder/src/main.cpp:894
+#: ../apps/ll-builder/src/main.cpp:955
 msgid "Specify the repo name"
 msgstr "Määritä arkiston nimi"
 
 #: ../apps/ll-cli/src/main.cpp:454 ../apps/ll-cli/src/main.cpp:467
-#: ../apps/ll-cli/src/main.cpp:485 ../apps/ll-builder/src/main.cpp:897
-#: ../apps/ll-builder/src/main.cpp:920
+#: ../apps/ll-cli/src/main.cpp:485 ../apps/ll-builder/src/main.cpp:958
+#: ../apps/ll-builder/src/main.cpp:981
 msgid "Url of the repository"
 msgstr "Arkiston verkko-osoite"
 
 #: ../apps/ll-cli/src/main.cpp:457 ../apps/ll-cli/src/main.cpp:474
 #: ../apps/ll-cli/src/main.cpp:482 ../apps/ll-cli/src/main.cpp:493
-#: ../apps/ll-cli/src/main.cpp:505 ../apps/ll-builder/src/main.cpp:901
-#: ../apps/ll-builder/src/main.cpp:909 ../apps/ll-builder/src/main.cpp:917
-#: ../apps/ll-builder/src/main.cpp:929
+#: ../apps/ll-cli/src/main.cpp:505 ../apps/ll-cli/src/main.cpp:516
+#: ../apps/ll-cli/src/main.cpp:523 ../apps/ll-builder/src/main.cpp:962
+#: ../apps/ll-builder/src/main.cpp:970 ../apps/ll-builder/src/main.cpp:978
+#: ../apps/ll-builder/src/main.cpp:990 ../apps/ll-builder/src/main.cpp:998
+#: ../apps/ll-builder/src/main.cpp:1006
 msgid "Alias of the repo name"
 msgstr "Alias arkiston nimelle"
 
@@ -504,7 +511,7 @@ msgid "Modify repository URL"
 msgstr "Muokkaa arkiston verkko-osoitetta"
 
 #. add repo sub command remove
-#: ../apps/ll-cli/src/main.cpp:472 ../apps/ll-builder/src/main.cpp:906
+#: ../apps/ll-cli/src/main.cpp:472 ../apps/ll-builder/src/main.cpp:967
 msgid "Remove a repository"
 msgstr "Poista ohjelma-arkisto"
 
@@ -515,7 +522,7 @@ msgstr "Käyttö: ll-cli repo remove [OPTIONS] NAME"
 #. add repo sub command update
 #. TODO: add --repo and --url options
 #. add repo sub command update
-#: ../apps/ll-cli/src/main.cpp:480 ../apps/ll-builder/src/main.cpp:914
+#: ../apps/ll-cli/src/main.cpp:480 ../apps/ll-builder/src/main.cpp:975
 msgid "Update the repository URL"
 msgstr "Päivitä arkiston verkko-osoite"
 
@@ -523,7 +530,7 @@ msgstr "Päivitä arkiston verkko-osoite"
 msgid "Usage: ll-cli repo update [OPTIONS] NAME URL"
 msgstr "Käyttö: ll-cli repo update [OPTIONS] NAME URL"
 
-#: ../apps/ll-cli/src/main.cpp:491 ../apps/ll-builder/src/main.cpp:926
+#: ../apps/ll-cli/src/main.cpp:491 ../apps/ll-builder/src/main.cpp:987
 msgid "Set a default repository name"
 msgstr "Aseta oletusarkiston nimi"
 
@@ -532,7 +539,7 @@ msgid "Usage: ll-cli repo set-default [OPTIONS] NAME"
 msgstr "Käyttö: ll-cli repo set-default [OPTIONS] NAME"
 
 #. add repo sub command show
-#: ../apps/ll-cli/src/main.cpp:498 ../apps/ll-builder/src/main.cpp:934
+#: ../apps/ll-cli/src/main.cpp:498 ../apps/ll-builder/src/main.cpp:1011
 msgid "Show repository information"
 msgstr "Näytä ohjelma-arkiston tiedot"
 
@@ -552,64 +559,80 @@ msgstr "Käyttö: ll-cli repo set-priority ALIAS PRIORITY"
 msgid "Priority of the repo"
 msgstr "Arkiston prioriteetti"
 
-#: ../apps/ll-cli/src/main.cpp:516
+#: ../apps/ll-cli/src/main.cpp:514 ../apps/ll-builder/src/main.cpp:996
+msgid "Enable mirror for the repo"
+msgstr ""
+
+#: ../apps/ll-cli/src/main.cpp:515
+msgid "Usage: ll-cli repo enable-mirror [OPTIONS] ALIAS"
+msgstr ""
+
+#: ../apps/ll-cli/src/main.cpp:521 ../apps/ll-builder/src/main.cpp:1004
+msgid "Disable mirror for the repo"
+msgstr ""
+
+#: ../apps/ll-cli/src/main.cpp:522
+msgid "Usage: ll-cli repo disable-mirror [OPTIONS] ALIAS"
+msgstr ""
+
+#: ../apps/ll-cli/src/main.cpp:530
 msgid "Display information about installed apps or runtimes"
 msgstr "Näytä tiedot sovelluksista tai ajoympäristöistä"
 
-#: ../apps/ll-cli/src/main.cpp:519
+#: ../apps/ll-cli/src/main.cpp:533
 msgid "Usage: ll-cli info [OPTIONS] APP"
 msgstr "Käyttö: ll-cli info [OPTIONS] APP"
 
-#: ../apps/ll-cli/src/main.cpp:523
+#: ../apps/ll-cli/src/main.cpp:537
 msgid "Specify the application ID, and it can also be a .layer file"
 msgstr "Määritä sovelluksen id-tunnus. Voi olla myös .layer-tiedosto"
 
-#: ../apps/ll-cli/src/main.cpp:530
+#: ../apps/ll-cli/src/main.cpp:544
 msgid "Display the exported files of installed application"
 msgstr "Näytä asennetun sovelluksen viedyt tiedostot"
 
-#: ../apps/ll-cli/src/main.cpp:533
+#: ../apps/ll-cli/src/main.cpp:547
 msgid "Usage: ll-cli content [OPTIONS] APP"
 msgstr "Käyttö: ll-cli content [OPTIONS] APP"
 
-#: ../apps/ll-cli/src/main.cpp:534
+#: ../apps/ll-cli/src/main.cpp:548
 msgid "Specify the installed application ID"
 msgstr "Määritä sovelluksen id-tunnus"
 
 #. add sub command prune
-#: ../apps/ll-cli/src/main.cpp:539
+#: ../apps/ll-cli/src/main.cpp:553
 msgid "Remove the unused base or runtime"
 msgstr "Poista käyttämätön alusta tai ajoympäristö"
 
-#: ../apps/ll-cli/src/main.cpp:541
+#: ../apps/ll-cli/src/main.cpp:555
 msgid "Usage: ll-cli prune [OPTIONS]"
 msgstr "Käyttö: ll-cli prune [OPTIONS]"
 
-#: ../apps/ll-cli/src/main.cpp:546
+#: ../apps/ll-cli/src/main.cpp:560
 msgid "Display the information of installed application"
 msgstr "Näytä sovelluksen tiedot"
 
-#: ../apps/ll-cli/src/main.cpp:548
+#: ../apps/ll-cli/src/main.cpp:562
 msgid "Usage: ll-cli inspect [OPTIONS]"
 msgstr "Käyttö: ll-cli inspect [OPTIONS]"
 
-#: ../apps/ll-cli/src/main.cpp:550
+#: ../apps/ll-cli/src/main.cpp:564
 msgid "Specify the process id"
 msgstr "Määritä prosessin id-tunnus"
 
-#: ../apps/ll-cli/src/main.cpp:559
+#: ../apps/ll-cli/src/main.cpp:573
 msgid "Invalid process id"
 msgstr "Väärä prosessin id-tunnus"
 
-#: ../apps/ll-cli/src/main.cpp:562
+#: ../apps/ll-cli/src/main.cpp:576
 msgid "Invalid pid format"
 msgstr "Väärä pid formaatti"
 
-#: ../apps/ll-cli/src/main.cpp:572
+#: ../apps/ll-cli/src/main.cpp:586
 msgid "Specify the installed app(base or runtime)"
 msgstr "Määritä asennettu sovellus (base tai runtime)"
 
-#: ../apps/ll-cli/src/main.cpp:583
+#: ../apps/ll-cli/src/main.cpp:597
 msgid "linyaps CLI version "
 msgstr "linyaps CLI versio "
 
@@ -693,7 +716,7 @@ msgstr "Asennettu"
 msgid "New"
 msgstr "Uusi"
 
-#: ../apps/ll-builder/src/main.cpp:698
+#: ../apps/ll-builder/src/main.cpp:759
 msgid ""
 "linyaps builder CLI \n"
 "A CLI program to build linyaps application\n"
@@ -701,247 +724,256 @@ msgstr ""
 "linyaps builder CLI \n"
 "Ohjelma jolla linyaps-sovellukset käännetään\n"
 
-#: ../apps/ll-builder/src/main.cpp:703
+#: ../apps/ll-builder/src/main.cpp:764
 msgid "Usage: ll-builder [OPTIONS] [SUBCOMMAND]"
 msgstr "Käyttö: ll-builder [OPTIONS] [SUBCOMMAND]"
 
-#: ../apps/ll-builder/src/main.cpp:705
+#: ../apps/ll-builder/src/main.cpp:766
 msgid ""
 "If you found any problems during use\n"
-"You can report bugs to the linyaps team under this project: https://github.com/OpenAtom-Linyaps/linyaps/issues"
+"You can report bugs to the linyaps team under this project: https://github."
+"com/OpenAtom-Linyaps/linyaps/issues"
 msgstr ""
 "Jos havaitset ongelmia käytön aikana,\n"
-"Voit ilmoittaa vioista linyaps-tiimille täällä: https://github.com/OpenAtom-Linyaps/linyaps/issues"
+"Voit ilmoittaa vioista linyaps-tiimille täällä: https://github.com/OpenAtom-"
+"Linyaps/linyaps/issues"
 
-#: ../apps/ll-builder/src/main.cpp:729
+#: ../apps/ll-builder/src/main.cpp:790
 msgid "Create linyaps build template project"
 msgstr "Rakenna linyaps malliprojekti"
 
-#: ../apps/ll-builder/src/main.cpp:730
+#: ../apps/ll-builder/src/main.cpp:791
 msgid "Usage: ll-builder create [OPTIONS] NAME"
 msgstr "Käyttö: ll-builder create [OPTIONS] NAME"
 
-#: ../apps/ll-builder/src/main.cpp:731
+#: ../apps/ll-builder/src/main.cpp:792
 msgid "Project name"
 msgstr "Projektin nimi"
 
-#: ../apps/ll-builder/src/main.cpp:739
+#: ../apps/ll-builder/src/main.cpp:800
 msgid "Build a linyaps project"
 msgstr "Rakenna linyaps projekti"
 
-#: ../apps/ll-builder/src/main.cpp:740
+#: ../apps/ll-builder/src/main.cpp:801
 msgid "Usage: ll-builder build [OPTIONS] [COMMAND...]"
 msgstr "Käyttö: ll-builder build [OPTIONS] [COMMAND...]"
 
-#: ../apps/ll-builder/src/main.cpp:741 ../apps/ll-builder/src/main.cpp:782
-#: ../apps/ll-builder/src/main.cpp:809 ../apps/ll-builder/src/main.cpp:847
+#: ../apps/ll-builder/src/main.cpp:802 ../apps/ll-builder/src/main.cpp:843
+#: ../apps/ll-builder/src/main.cpp:870 ../apps/ll-builder/src/main.cpp:908
 msgid "File path of the linglong.yaml"
 msgstr "Tiedoston linglong.yaml tiedostopolku"
 
-#: ../apps/ll-builder/src/main.cpp:747
-msgid ""
-"Enter the container to execute command instead of building applications"
+#: ../apps/ll-builder/src/main.cpp:808
+msgid "Enter the container to execute command instead of building applications"
 msgstr ""
 "Kirjoita kontin nimi, suorittaaksesi komento sovelluksen rakentamisen sijaan"
 
-#: ../apps/ll-builder/src/main.cpp:750
+#: ../apps/ll-builder/src/main.cpp:811
 msgid ""
 "Only use local files. This implies --skip-fetch-source and --skip-pull-"
 "depend will be set"
 msgstr ""
-"Käytä vain paikallisia tiedostoja. Tarkoittaa, että --skip-fetch-source ja "
-"--skip-pull-depend asetetaan"
+"Käytä vain paikallisia tiedostoja. Tarkoittaa, että --skip-fetch-source ja --"
+"skip-pull-depend asetetaan"
 
-#: ../apps/ll-builder/src/main.cpp:755
+#: ../apps/ll-builder/src/main.cpp:816
 msgid "Build full develop packages, runtime requires"
 msgstr "Rakenna kehityspaketteja kokonaan, ajoympäristö tarvitaan"
 
-#: ../apps/ll-builder/src/main.cpp:759
+#: ../apps/ll-builder/src/main.cpp:820
 msgid "Skip fetch sources"
 msgstr "Ohita fetch sources"
 
-#: ../apps/ll-builder/src/main.cpp:762
+#: ../apps/ll-builder/src/main.cpp:823
 msgid "Skip pull dependency"
 msgstr "Ohita pull dependency"
 
-#: ../apps/ll-builder/src/main.cpp:765
+#: ../apps/ll-builder/src/main.cpp:826
 msgid "Skip run container"
 msgstr "Ohita run container"
 
-#: ../apps/ll-builder/src/main.cpp:768
+#: ../apps/ll-builder/src/main.cpp:829
 msgid "Skip commit build output"
 msgstr "Ohita commit build output"
 
-#: ../apps/ll-builder/src/main.cpp:771
+#: ../apps/ll-builder/src/main.cpp:832
 msgid "Skip output check"
 msgstr "Ohita output check"
 
-#: ../apps/ll-builder/src/main.cpp:774
+#: ../apps/ll-builder/src/main.cpp:835
 msgid "Skip strip debug symbols"
 msgstr "Ohita strip debug symbols"
 
-#: ../apps/ll-builder/src/main.cpp:777
+#: ../apps/ll-builder/src/main.cpp:838
 msgid "Build in an isolated network environment"
 msgstr "Rakenna eristettyyn verkkoympäristöön"
 
 #. add builder run
-#: ../apps/ll-builder/src/main.cpp:780
+#: ../apps/ll-builder/src/main.cpp:841
 msgid "Run built linyaps app"
 msgstr "Suorita rakennettu linyaps sovellus"
 
-#: ../apps/ll-builder/src/main.cpp:781
+#: ../apps/ll-builder/src/main.cpp:842
 msgid "Usage: ll-builder run [OPTIONS] [COMMAND...]"
 msgstr "Käyttö: ll-builder run [OPTIONS] [COMMAND...]"
 
-#: ../apps/ll-builder/src/main.cpp:788
+#: ../apps/ll-builder/src/main.cpp:849
 msgid "Run specified module. eg: --modules binary,develop"
 msgstr "Suorita tiettyjä moduuleja, kuten: --modules binary,develop"
 
-#: ../apps/ll-builder/src/main.cpp:794
+#: ../apps/ll-builder/src/main.cpp:855
 msgid "Enter the container to execute command instead of running application"
 msgstr ""
 "Kirjoita kontin nimi, suorittaaksesi komento sovelluksen suorittamiseksi"
 
-#: ../apps/ll-builder/src/main.cpp:797
+#: ../apps/ll-builder/src/main.cpp:858
 msgid "Run in debug mode (enable develop module)"
 msgstr "Suorita vikasietotilassa (ottaa käyttöön kehitysmoduulit)"
 
-#: ../apps/ll-builder/src/main.cpp:799
+#: ../apps/ll-builder/src/main.cpp:860
 msgid "List built linyaps app"
 msgstr "Luettelo rakennetuista linyaps sovelluksista"
 
-#: ../apps/ll-builder/src/main.cpp:800
+#: ../apps/ll-builder/src/main.cpp:861
 msgid "Usage: ll-builder list [OPTIONS]"
 msgstr "Käyttö: ll-builder list [OPTIONS]"
 
-#: ../apps/ll-builder/src/main.cpp:801
+#: ../apps/ll-builder/src/main.cpp:862
 msgid "Remove built linyaps app"
 msgstr "Poista rakennettu linyaps sovellus"
 
-#: ../apps/ll-builder/src/main.cpp:802
+#: ../apps/ll-builder/src/main.cpp:863
 msgid "Usage: ll-builder remove [OPTIONS] [APP...]"
 msgstr "Käyttö: ll-builder remove [OPTIONS] [APP...]"
 
 #. build export
-#: ../apps/ll-builder/src/main.cpp:806
+#: ../apps/ll-builder/src/main.cpp:867
 msgid "Export to linyaps layer or uab"
 msgstr "Vie linyaps kerrokseen tai uab:iin"
 
-#: ../apps/ll-builder/src/main.cpp:807
+#: ../apps/ll-builder/src/main.cpp:868
 msgid "Usage: ll-builder export [OPTIONS]"
 msgstr "Käyttö: ll-builder export [OPTIONS]"
 
-#: ../apps/ll-builder/src/main.cpp:819
+#: ../apps/ll-builder/src/main.cpp:880
 msgid "Uab icon (optional)"
 msgstr "Uab kuvake (valinnainen)"
 
-#: ../apps/ll-builder/src/main.cpp:823
+#: ../apps/ll-builder/src/main.cpp:884
 msgid "Export uab fully"
 msgstr "Vie uab kokonaan"
 
-#: ../apps/ll-builder/src/main.cpp:827
+#: ../apps/ll-builder/src/main.cpp:888
 msgid "Export to linyaps layer file (deprecated)"
 msgstr "Vie linyaps tiedosto-kerrokseen (vanhentunut)"
 
-#: ../apps/ll-builder/src/main.cpp:830
+#: ../apps/ll-builder/src/main.cpp:891
 msgid "Use custom loader"
 msgstr "Käytä mukautettua lataajaa"
 
-#: ../apps/ll-builder/src/main.cpp:837
+#: ../apps/ll-builder/src/main.cpp:898
 msgid "Don't export the develop module"
 msgstr "Älä vie kehitysmoduulia"
 
-#: ../apps/ll-builder/src/main.cpp:839
+#: ../apps/ll-builder/src/main.cpp:900
 msgid "Output file"
 msgstr "Tulostustiedosto"
 
-#: ../apps/ll-builder/src/main.cpp:845
+#: ../apps/ll-builder/src/main.cpp:906
 msgid "Push linyaps app to remote repo"
 msgstr "Siirrä linyaps sovellus palvelimen arkistoon"
 
-#: ../apps/ll-builder/src/main.cpp:846
+#: ../apps/ll-builder/src/main.cpp:907
 msgid "Usage: ll-builder push [OPTIONS]"
 msgstr "Käyttö: ll-builder push [OPTIONS]"
 
-#: ../apps/ll-builder/src/main.cpp:850
+#: ../apps/ll-builder/src/main.cpp:911
 msgid "Remote repo url"
 msgstr "Arkiston verkko-osoite"
 
-#: ../apps/ll-builder/src/main.cpp:853
+#: ../apps/ll-builder/src/main.cpp:914
 msgid "Remote repo name"
 msgstr "Arkiston nimi"
 
-#: ../apps/ll-builder/src/main.cpp:856
+#: ../apps/ll-builder/src/main.cpp:917
 msgid "Push single module"
 msgstr "Lähetä yksittäinen moduuli"
 
-#: ../apps/ll-builder/src/main.cpp:860
+#: ../apps/ll-builder/src/main.cpp:921
 msgid "Import linyaps layer to build repo"
 msgstr "Tuo linyaps kerros rakennus-arkistoon"
 
-#: ../apps/ll-builder/src/main.cpp:861
+#: ../apps/ll-builder/src/main.cpp:922
 msgid "Usage: ll-builder import [OPTIONS] LAYER"
 msgstr "Käyttö: ll-builder import [OPTIONS] LAYER"
 
-#: ../apps/ll-builder/src/main.cpp:862 ../apps/ll-builder/src/main.cpp:879
+#: ../apps/ll-builder/src/main.cpp:923 ../apps/ll-builder/src/main.cpp:940
 msgid "Layer file path"
 msgstr "Tason tiedostopolku"
 
-#: ../apps/ll-builder/src/main.cpp:869
+#: ../apps/ll-builder/src/main.cpp:930
 msgid "Import linyaps layer dir to build repo"
 msgstr "Tuo linyaps kerroshakemisto rakennus-arkistoon"
 
-#: ../apps/ll-builder/src/main.cpp:871
+#: ../apps/ll-builder/src/main.cpp:932
 msgid "Usage: ll-builder import-dir PATH"
 msgstr "Käyttö: ll-builder import-dir PATH"
 
-#: ../apps/ll-builder/src/main.cpp:872
+#: ../apps/ll-builder/src/main.cpp:933
 msgid "Layer dir path"
 msgstr "Tason hakemistopolku"
 
 #. add build extract
-#: ../apps/ll-builder/src/main.cpp:877
+#: ../apps/ll-builder/src/main.cpp:938
 msgid "Extract linyaps layer to dir"
 msgstr "Pura linyaps kerros hakemistoon"
 
-#: ../apps/ll-builder/src/main.cpp:878
+#: ../apps/ll-builder/src/main.cpp:939
 msgid "Usage: ll-builder extract [OPTIONS] LAYER DIR"
 msgstr "Käyttö: ll-builder extract [OPTIONS] LAYER DIR"
 
-#: ../apps/ll-builder/src/main.cpp:882
+#: ../apps/ll-builder/src/main.cpp:943
 msgid "Destination directory"
 msgstr "Kohdehakemisto"
 
 #. add build repo
-#: ../apps/ll-builder/src/main.cpp:887
+#: ../apps/ll-builder/src/main.cpp:948
 msgid "Display and manage repositories"
 msgstr "Näytä ja hallitse ohjelma-arkistoja"
 
-#: ../apps/ll-builder/src/main.cpp:888
+#: ../apps/ll-builder/src/main.cpp:949
 msgid "Usage: ll-builder repo [OPTIONS] SUBCOMMAND"
 msgstr "Käyttö: ll-builder repo [OPTIONS] SUBCOMMAND"
 
-#: ../apps/ll-builder/src/main.cpp:893
+#: ../apps/ll-builder/src/main.cpp:954
 msgid "Usage: ll-builder repo add [OPTIONS] NAME URL"
 msgstr "Käyttö: ll-builder repo add [OPTIONS] NAME URL"
 
-#: ../apps/ll-builder/src/main.cpp:907
+#: ../apps/ll-builder/src/main.cpp:968
 msgid "Usage: ll-builder repo remove [OPTIONS] NAME"
 msgstr "Käyttö: ll-builder repo remove [OPTIONS] NAME"
 
-#: ../apps/ll-builder/src/main.cpp:915
+#: ../apps/ll-builder/src/main.cpp:976
 msgid "Usage: ll-builder repo update [OPTIONS] NAME URL"
 msgstr "Käyttö: ll-builder repo update [OPTIONS] NAME URL"
 
-#: ../apps/ll-builder/src/main.cpp:927
+#: ../apps/ll-builder/src/main.cpp:988
 msgid "Usage: ll-builder repo set-default [OPTIONS] NAME"
 msgstr "Käyttö: ll-builder repo set-default [OPTIONS] NAME"
 
-#: ../apps/ll-builder/src/main.cpp:935
+#: ../apps/ll-builder/src/main.cpp:997
+msgid "Usage: ll-builder repo enable-mirror [OPTIONS] ALIAS"
+msgstr ""
+
+#: ../apps/ll-builder/src/main.cpp:1005
+msgid "Usage: ll-builder repo disable-mirror [OPTIONS] ALIAS"
+msgstr ""
+
+#: ../apps/ll-builder/src/main.cpp:1012
 msgid "Usage: ll-builder repo show [OPTIONS]"
 msgstr "Käyttö: ll-builder repo show [OPTIONS]"
 
-#: ../apps/ll-builder/src/main.cpp:940
+#: ../apps/ll-builder/src/main.cpp:1017
 msgid "linyaps build tool version "
 msgstr "linyaps build tool versio "
 

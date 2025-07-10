@@ -2,13 +2,13 @@
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PACKAGE package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
-#
+# 
 # Translators:
 # Cassiano Molinari <chano2808a@gmail.com>, 2025
 # Wislley Marçal, 2025
 # keven doria, 2025
 # Alex, 2025
-#
+# 
 #, fuzzy
 msgid ""
 msgstr ""
@@ -17,14 +17,12 @@ msgstr ""
 "POT-Creation-Date: 2025-07-10 14:05+0800\n"
 "PO-Revision-Date: 2025-04-11 01:38+0000\n"
 "Last-Translator: Alex, 2025\n"
-"Language-Team: Portuguese (Brazil) (https://app.transifex.com/linuxdeepin/"
-"teams/3976/pt_BR/)\n"
-"Language: pt_BR\n"
+"Language-Team: Portuguese (Brazil) (https://app.transifex.com/linuxdeepin/teams/3976/pt_BR/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=3; plural=(n == 0 || n == 1) ? 0 : n != 0 && n % "
-"1000000 == 0 ? 1 : 2;\n"
+"Language: pt_BR\n"
+"Plural-Forms: nplurals=3; plural=(n == 0 || n == 1) ? 0 : n != 0 && n % 1000000 == 0 ? 1 : 2;\n"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:71
 msgid "Permission denied, please check whether you are running as root."
@@ -113,8 +111,7 @@ msgid ""
 "A CLI program to run application and manage application and runtime\n"
 msgstr ""
 "linyaps CLI\n"
-"Um programa em CLI para executar aplicativos e gerenciar aplicativos e "
-"runtimes\n"
+"Um programa em CLI para executar aplicativos e gerenciar aplicativos e runtimes\n"
 
 #: ../apps/ll-cli/src/main.cpp:161 ../apps/ll-builder/src/main.cpp:761
 msgid "Print this help message and exit"
@@ -131,12 +128,10 @@ msgstr "Uso: ll-cli [OPÇÕES] [SUBCOMANDO]"
 #: ../apps/ll-cli/src/main.cpp:164
 msgid ""
 "If you found any problems during use,\n"
-"You can report bugs to the linyaps team under this project: https://github."
-"com/OpenAtom-Linyaps/linyaps/issues"
+"You can report bugs to the linyaps team under this project: https://github.com/OpenAtom-Linyaps/linyaps/issues"
 msgstr ""
 "Se encontrar qualquer problema durante o uso,\n"
-"Você pode reportar erros para o time linyaps sob este projeto: https://"
-"github.com/OpenAtom-Linyaps/linyaps/issues"
+"Você pode reportar erros para o time linyaps sob este projeto: https://github.com/OpenAtom-Linyaps/linyaps/issues"
 
 #. add flags
 #: ../apps/ll-cli/src/main.cpp:171 ../apps/ll-builder/src/main.cpp:786
@@ -158,7 +153,8 @@ msgstr "Usar o formato json para o resultado de saída"
 #: ../apps/ll-cli/src/main.cpp:186 ../apps/ll-cli/src/main.cpp:567
 #: ../apps/ll-builder/src/main.cpp:95
 msgid "Input parameter is empty, please input valid parameter instead"
-msgstr "Parâmetro de entrada está vazio, por favor informe um parâmetro válido"
+msgstr ""
+"Parâmetro de entrada está vazio, por favor informe um parâmetro válido"
 
 #: ../apps/ll-cli/src/main.cpp:209
 msgid "Show debug info (verbose logs)"
@@ -242,8 +238,8 @@ msgstr "Executar comandos na sandbox atualmente em execução"
 #: ../apps/ll-cli/src/main.cpp:259 ../apps/ll-cli/src/main.cpp:277
 msgid "Specify the application running instance(you can get it by ps command)"
 msgstr ""
-"Especificar a instância de execução do aplicativo (você pode obter isto pelo "
-"comando ps)"
+"Especificar a instância de execução do aplicativo (você pode obter isto pelo"
+" comando ps)"
 
 #: ../apps/ll-cli/src/main.cpp:262 ../apps/ll-cli/src/main.cpp:279
 msgid "Specify working directory"
@@ -316,7 +312,8 @@ msgstr ""
 #: ../apps/ll-cli/src/main.cpp:322
 msgid "Specify the application ID, and it can also be a .uab or .layer file"
 msgstr ""
-"Especifique o ID do aplicativo, que também pode ser um arquivo .uab ou .layer"
+"Especifique o ID do aplicativo, que também pode ser um arquivo .uab ou "
+".layer"
 
 #: ../apps/ll-cli/src/main.cpp:325
 msgid "Install a specify module"
@@ -369,8 +366,8 @@ msgstr "Uso: ll-cli upgrade [OPÇÕES] [APP]"
 
 #: ../apps/ll-cli/src/main.cpp:367
 msgid ""
-"Specify the application ID. If it not be specified, all applications will be "
-"upgraded"
+"Specify the application ID. If it not be specified, all applications will be"
+" upgraded"
 msgstr ""
 "Especifique o ID do aplicativo. Caso não seja especificado, todos os "
 "aplicativos serão atualizados."
@@ -401,8 +398,7 @@ msgstr ""
 "\n"
 "Exemplo:\n"
 "\n"
-"# localizar remotamente aplicativo(s), base(s) ou runtime(s) por palavras-"
-"chave\n"
+"# localizar remotamente aplicativo(s), base(s) ou runtime(s) por palavras-chave\n"
 "ll-cli search org.deepin.demo\n"
 "\n"
 "# localizar remotamente runtime pelo nome\n"
@@ -422,9 +418,7 @@ msgid "Specify the Keywords"
 msgstr "Especifique as palavras-chave"
 
 #: ../apps/ll-cli/src/main.cpp:396 ../apps/ll-cli/src/main.cpp:430
-msgid ""
-"Filter result with specify type. One of \"runtime\", \"base\", \"app\" or "
-"\"all\""
+msgid "Filter result with specify type. One of \"runtime\", \"base\", \"app\" or \"all\""
 msgstr ""
 "Filtrar os resultados pelo tipo especificado. Um dos valores: \"runtime\", "
 "\"base\", \"app\" ou \"todos\""
@@ -471,8 +465,7 @@ msgstr ""
 "# exibir runtimes instalados\n"
 "ll-cli list --type=runtime\n"
 "\n"
-"# exibir a lista das versões mais recentes dos aplicativos instalados que "
-"podem ser atualizados\n"
+"# exibir a lista das versões mais recentes dos aplicativos instalados que podem ser atualizados\n"
 "ll-cli list --upgradable\n"
 
 #: ../apps/ll-cli/src/main.cpp:436
@@ -746,12 +739,10 @@ msgstr "Uso: ll-builder [OPÇÕES] [SUBCOMANDO]"
 #: ../apps/ll-builder/src/main.cpp:766
 msgid ""
 "If you found any problems during use\n"
-"You can report bugs to the linyaps team under this project: https://github."
-"com/OpenAtom-Linyaps/linyaps/issues"
+"You can report bugs to the linyaps team under this project: https://github.com/OpenAtom-Linyaps/linyaps/issues"
 msgstr ""
 "Se você encontrar algum problema durante o uso,\n"
-"Você pode reportar bugs para a equipe linyaps neste projeto: https://github."
-"com/OpenAtom-Linyaps/linyaps/issues"
+"Você pode reportar bugs para a equipe linyaps neste projeto: https://github.com/OpenAtom-Linyaps/linyaps/issues"
 
 #: ../apps/ll-builder/src/main.cpp:790
 msgid "Create linyaps build template project"
@@ -779,7 +770,8 @@ msgid "File path of the linglong.yaml"
 msgstr "Caminho do arquivo linglong.yaml"
 
 #: ../apps/ll-builder/src/main.cpp:808
-msgid "Enter the container to execute command instead of building applications"
+msgid ""
+"Enter the container to execute command instead of building applications"
 msgstr ""
 "Entre no contêiner para executar o comando em vez de construir aplicativos"
 

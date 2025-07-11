@@ -402,7 +402,8 @@ utils::error::Result<void> UABPackager::prepareBundle(const QDir &bundleDir, boo
             }
 
             const auto &info = *infoRet;
-            // the kind of old org.deepin.base,org.deepin.foundation and com.uniontech.foundation is runtime
+            // the kind of old org.deepin.base,org.deepin.foundation and com.uniontech.foundation is
+            // runtime
             if (info.kind == "base" || info.id == "org.deepin.base"
                 || info.id == "org.deepin.foundation" || info.id == "com.uniontech.foundation") {
                 base = *it;
@@ -555,7 +556,9 @@ utils::error::Result<void> UABPackager::prepareBundle(const QDir &bundleDir, boo
                       QString::fromStdString(ec.message())));
                 }
 
-                if (!std::filesystem::create_directories(realDestination.parent_path(), ec) && ec) {
+                if (!std::filesystem::exists(realDestination.parent_path(), ec)
+                    && !std::filesystem::create_directories(realDestination.parent_path(), ec)
+                    && ec) {
                     return LINGLONG_ERR(
                       "couldn't create directories "
                       % QString::fromStdString(realDestination.parent_path().string() + ":"

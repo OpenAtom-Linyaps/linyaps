@@ -895,7 +895,8 @@ utils::error::Result<bool> Builder::buildStageBuild(const QStringList &args) noe
       .addMask({
         "/project/linglong/output",
         "/project/linglong/overlay",
-      });
+      })
+      .appendEnv("LINYAPS_INIT_SINGLE_MODE", "1");
 
     if (this->buildOptions.isolateNetWork) {
         cfgBuilder.isolateNetWork();
@@ -1034,7 +1035,8 @@ utils::error::Result<void> Builder::buildStagePreCommit() noexcept
         .options = { { "rbind", "rw" } },
         .source = this->workingDir.absolutePath().toStdString(),
         .type = "bind" })
-      .forwardDefaultEnv();
+      .forwardDefaultEnv()
+      .appendEnv("LINYAPS_INIT_SINGLE_MODE", "1");
 
     if (cfgBuilder.getRuntimePath()) {
         cfgBuilder.setRuntimePath(runtimeOverlay->mergedDirPath().toStdString(), false);
@@ -1907,7 +1909,8 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
           .addGIdMapping(gid, gid, 1)
           .bindDefault()
           .addExtraMounts(applicationMounts)
-          .enableSelfAdjustingMount();
+          .enableSelfAdjustingMount()
+          .appendEnv("LINYAPS_INIT_SINGLE_MODE", "1");
 
         // write ld.so.conf
         std::string triplet = curRef->arch.getTriplet().toStdString();
@@ -1970,12 +1973,15 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
       .bindIPC()
       .forwardDefaultEnv()
       .addExtraMounts(applicationMounts)
-      .enableSelfAdjustingMount();
+      .enableSelfAdjustingMount()
+      .appendEnv("LINYAPS_INIT_SINGLE_MODE", "1");
+
 #ifdef LINGLONG_FONT_CACHE_GENERATOR
-    cfgBuilder.enableFontCache();
+    cfgBuilder.enableFontCache()
 #endif
 
-    if (!cfgBuilder.build()) {
+      if (!cfgBuilder.build())
+    {
         auto err = cfgBuilder.getError();
         return LINGLONG_ERR("build cfg error: " + QString::fromStdString(err.reason));
     }
@@ -2051,7 +2057,8 @@ utils::error::Result<void> Builder::runFromRepo(const package::Reference &ref,
             .options = { { "rbind", "ro" } },
             .source = ldConfPath,
             .type = "bind" })
-          .enableSelfAdjustingMount();
+          .enableSelfAdjustingMount()
+          .appendEnv("LINYAPS_INIT_SINGLE_MODE", "1");
 
         // write ld.so.conf
         std::string triplet = ref.arch.getTriplet().toStdString();
@@ -2105,7 +2112,8 @@ utils::error::Result<void> Builder::runFromRepo(const package::Reference &ref,
         .options = { { "rbind", "rw" } },
         .source = this->workingDir.absolutePath().toStdString(),
         .type = "bind" })
-      .enableSelfAdjustingMount();
+      .enableSelfAdjustingMount()
+      .appendEnv("LINYAPS_INIT_SINGLE_MODE", "1");
 
     if (!cfgBuilder.build()) {
         auto err = cfgBuilder.getError();

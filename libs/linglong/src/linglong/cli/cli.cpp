@@ -744,7 +744,6 @@ int Cli::run([[maybe_unused]] CLI::App *subcommand)
 
     std::error_code ec;
     auto socketDir = cfgBuilder.getBundlePath() / "init";
-    qInfo() << "socket dir" << socketDir.c_str();
     std::filesystem::create_directories(socketDir, ec);
     if (ec) {
         this->printer.printErr(LINGLONG_ERRV(ec.message().c_str()));

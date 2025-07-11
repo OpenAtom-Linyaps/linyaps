@@ -360,6 +360,19 @@ ContainerCfgBuilder::appendEnv(const std::map<std::string, std::string> &envMap)
     return *this;
 }
 
+ContainerCfgBuilder &ContainerCfgBuilder::appendEnv(const std::string &env,
+                                                    const std::string &value,
+                                                    bool overwrite) noexcept
+{
+    if (overwrite || envAppend.find(env) == envAppend.end()) {
+        envAppend[env] = value;
+    } else {
+        std::cerr << "env " << env << " is already exist" << std::endl;
+    }
+
+    return *this;
+}
+
 ContainerCfgBuilder &ContainerCfgBuilder::bindHostRoot() noexcept
 {
     hostRootMount = {
@@ -1770,12 +1783,11 @@ bool ContainerCfgBuilder::shouldFix(int node, std::filesystem::path &fixPath) no
         });
         return find != mount.options->end();
     };
-    // node should fix if the file 
+    // node should fix if the file
     // 1. is /etc/localtime or
     // 2. is not exist or
     // 3. is not a symlink but mount with option copy-symlink
-    if (getRelativePath(0, node) == "etc/localtime"
-        || !std::filesystem::exists(hostPath, ec)
+    if (getRelativePath(0, node) == "etc/localtime" || !std::filesystem::exists(hostPath, ec)
         || ((!std::filesystem::is_symlink(hostPath, ec)) && isCopySymlink(node))) {
         fixPath = std::move(hostPath);
         return true;

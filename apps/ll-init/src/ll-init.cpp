@@ -41,7 +41,10 @@ void print_sys_error(std::string_view msg, const std::error_code &ec) noexcept
 
 void print_info(std::string_view msg) noexcept
 {
-    std::cerr << msg << std::endl;
+    static const auto is_debug = ::getenv("LINYAPS_INIT_VERBOSE_OUTPUT") != nullptr;
+    if (is_debug) {
+        std::cerr << msg << std::endl;
+    }
 }
 
 class sigConf
@@ -198,7 +201,7 @@ file_descriptor_wrapper create_fs_uds() noexcept
     auto fd = ::socket(AF_UNIX, SOCK_NONBLOCK | SOCK_SEQPACKET, 0);
     file_descriptor_wrapper socket_fd{ fd };
     if (fd == -1) {
-        print_sys_error("Failed to create unix socket");
+        print_sys_error("Failed to create unix domain socket");
         return socket_fd;
     }
 
@@ -213,13 +216,13 @@ file_descriptor_wrapper create_fs_uds() noexcept
 
     auto ret = ::bind(socket_fd, reinterpret_cast<struct sockaddr *>(&addr), len);
     if (ret == -1) {
-        print_sys_error("Failed to bind abstract socket");
+        print_sys_error("Failed to bind unix domain socket");
         return socket_fd;
     }
 
     ret = ::listen(socket_fd, 1);
     if (ret == -1) {
-        print_sys_error("Failed to listen on abstract socket");
+        print_sys_error("Failed to listen on unix domain socket");
         return socket_fd;
     }
 
@@ -559,6 +562,19 @@ bool handle_client(const file_descriptor_wrapper &unix_socket, const sigConf &co
     return true;
 }
 
+bool register_event(const file_descriptor_wrapper &epfd,
+                    const file_descriptor_wrapper &fd,
+                    epoll_event ev) noexcept
+{
+    auto ret = ::epoll_ctl(epfd, EPOLL_CTL_ADD, fd, &ev);
+    if (ret == -1) {
+        print_sys_error("Failed to add event to epoll");
+        return false;
+    }
+
+    return true;
+}
+
 } // namespace
 
 int main(int argc, char **argv) // NOLINT
@@ -580,19 +596,12 @@ int main(int argc, char **argv) // NOLINT
         return -1;
     }
 
+    auto *singleModeEnv = ::getenv("LINYAPS_INIT_SINGLE_MODE");
+    const bool singleMode = singleModeEnv != nullptr && std::string_view{ singleModeEnv } == "1";
+
     auto child = run(args, conf);
     if (child == -1) {
         print_info("Failed to run child process");
-        return -1;
-    }
-
-    auto sigfd = create_signalfd(conf.current_sigset());
-    if (!sigfd) {
-        return -1;
-    }
-
-    auto unix_socket = create_fs_uds();
-    if (!unix_socket) {
         return -1;
     }
 
@@ -601,20 +610,28 @@ int main(int argc, char **argv) // NOLINT
         return -1;
     }
 
-    struct epoll_event sig_ev{ .events = EPOLLIN | EPOLLET, .data = { .fd = sigfd } }; // NOLINT
-    ret = ::epoll_ctl(epfd, EPOLL_CTL_ADD, sigfd,
-                      &sig_ev); // NOLINT
-    if (ret == -1) {
-        print_sys_error("Failed to add signalfd to epoll");
+    auto sigfd = create_signalfd(conf.current_sigset());
+    if (!sigfd) {
         return -1;
     }
 
-    struct epoll_event server_ev{ .events = EPOLLIN | EPOLLET,
-                                  .data = { .fd = unix_socket } }; // NOLINT
-    ret = ::epoll_ctl(epfd, EPOLL_CTL_ADD, unix_socket, &server_ev);
-    if (ret == -1) {
-        print_sys_error("Failed to add server socket to epoll");
+    const struct epoll_event ev{ .events = EPOLLIN | EPOLLET, .data = { .fd = sigfd } };
+    if (!register_event(epfd, sigfd, ev)) {
         return -1;
+    }
+
+    file_descriptor_wrapper unix_socket;
+    if (!singleMode) {
+        unix_socket = create_fs_uds();
+        if (!unix_socket) {
+            return -1;
+        }
+
+        const struct epoll_event ev{ .events = EPOLLIN | EPOLLET,
+                                     .data = { .fd = unix_socket } }; // NOLINT
+        if (!register_event(epfd, unix_socket, ev)) {
+            return -1;
+        }
     }
 
     file_descriptor_wrapper timerfd;
@@ -658,7 +675,7 @@ int main(int argc, char **argv) // NOLINT
                 continue;
             }
 
-            if (event.data.fd == unix_socket) {
+            if (unix_socket && event.data.fd == unix_socket) {
                 if (handle_client(unix_socket, conf)) {
                     done = false;
                 }

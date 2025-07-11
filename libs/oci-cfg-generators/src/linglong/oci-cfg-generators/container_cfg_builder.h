@@ -47,7 +47,7 @@ public:
     class Error
     {
     public:
-        operator bool() const { return code != BUILD_SUCCESS; }
+        explicit operator bool() const { return code != BUILD_SUCCESS; }
 
         ERROR_CODE code;
         std::string reason;
@@ -62,7 +62,7 @@ public:
         int parent_idx;
     };
 
-    ContainerCfgBuilder &setAppId(std::string id) noexcept
+    ContainerCfgBuilder &setAppId(const std::string &id) noexcept
     {
         appId = id;
         return *this;
@@ -86,7 +86,7 @@ public:
 
     std::optional<std::filesystem::path> getRuntimePath() { return runtimePath; }
 
-    ContainerCfgBuilder &setBasePath(std::filesystem::path path, bool isRo = true) noexcept
+    ContainerCfgBuilder &setBasePath(const std::filesystem::path &path, bool isRo = true) noexcept
     {
         basePath = path;
         basePathRo = isRo;
@@ -130,6 +130,9 @@ public:
     ContainerCfgBuilder &forwardDefaultEnv() noexcept;
     ContainerCfgBuilder &forwardEnv(const std::vector<std::string> &envList = {}) noexcept;
     ContainerCfgBuilder &appendEnv(const std::map<std::string, std::string> &envMap) noexcept;
+    ContainerCfgBuilder &appendEnv(const std::string &env,
+                                   const std::string &value,
+                                   bool overwrite = false) noexcept;
 
     ContainerCfgBuilder &bindHostRoot() noexcept;
     ContainerCfgBuilder &bindHostStatics() noexcept;

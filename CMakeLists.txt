@@ -165,17 +165,32 @@ if(NOT CLI11_FOUND)
 endif()
 
 find_package(LIEF COMPONENTS STATIC)
-if (NOT LIEF_FOUNT)
-  option(LIEF_INSTALL "" OFF)
-  option(LIEF_C_API "" OFF)
-  option(LIEF_EXAMPLES "" OFF)
-  option(LIEF_LOGGING "" OFF)
-  option(LIEF_ENABLE_JSON "" OFF)
-  option(LIEF_PE "" OFF)
-  option(LIEF_MACHO "" OFF)
-  option(LIEF_DEX "" OFF)
-  option(LIEF_ART "" OFF)
-  list(APPEND linglong_EXTERNALS "LIEF LIEF::LIEF")
+if (NOT LIEF_FOUND)
+  find_path(LIEF_INCLUDE NAMES LIEF/ELF.hpp PATH /usr/include /usr/local/include)
+  find_library(LIEF_LIB NAMES LIEF)
+  include(FindPackageHandleStandardArgs)
+  find_package_handle_standard_args(LIEF DEFAULT_MSG
+      LIEF_LIB
+      LIEF_INCLUDE
+  )
+  if (LIEF_FOUND)
+    add_library(LIEF::LIEF UNKNOWN IMPORTED)
+    set_target_properties(LIEF::LIEF PROPERTIES
+        IMPORTED_LOCATION "${LIEF_LIB}"
+        INTERFACE_INCLUDE_DIRECTORIES "${LIEF_INCLUDE}"
+    )
+  else()
+    option(LIEF_INSTALL "" OFF)
+    option(LIEF_C_API "" OFF)
+    option(LIEF_EXAMPLES "" OFF)
+    option(LIEF_LOGGING "" OFF)
+    option(LIEF_ENABLE_JSON "" OFF)
+    option(LIEF_PE "" OFF)
+    option(LIEF_MACHO "" OFF)
+    option(LIEF_DEX "" OFF)
+    option(LIEF_ART "" OFF)
+    list(APPEND linglong_EXTERNALS "LIEF LIEF::LIEF")
+  endif()
 endif()
 
 find_package(PkgConfig REQUIRED)

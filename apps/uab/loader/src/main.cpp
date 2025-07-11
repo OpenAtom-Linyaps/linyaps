@@ -321,7 +321,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv) // NOLINT
     }
 
     builder.setBundlePath(containerBundle)
-      .setBasePath("/")
+      .setBasePath("/", false)
       .enableSelfAdjustingMount()
       .forwardEnv()
       .addUIdMapping(uid, uid, 1)

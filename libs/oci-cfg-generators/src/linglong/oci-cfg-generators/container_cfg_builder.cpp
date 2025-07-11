@@ -350,7 +350,15 @@ ContainerCfgBuilder &ContainerCfgBuilder::forwardDefaultEnv() noexcept
       "GIO_LAUNCHED_DESKTOP_FILE", // 系统监视器
       "GNOME_DESKTOP_SESSION_ID",  // gnome 桌面标识，有些应用会读取此变量以使用gsettings配置,
       // 如chrome
-      "TERM" });
+      "TERM",
+      // 控制应用将渲染任务路由到 NVIDIA 独立显卡
+      "__NV_PRIME_RENDER_OFFLOAD",
+      // 控制应用使用哪个OpenGL厂商提供的驱动库来与显卡通信和渲染。
+      "__GLX_VENDOR_LIBRARY_NAME",
+      // 控制NVIDIA独立显卡在Vulkan应用程序枚举GPU时拥有更高的优先级
+      "__VK_LAYER_NV_optimus",
+      // 控制应用尝试使用非默认（通常是独立显卡）的GPU来执行OpenGL渲染任务
+      "DRI_PRIME" });
 }
 
 ContainerCfgBuilder &

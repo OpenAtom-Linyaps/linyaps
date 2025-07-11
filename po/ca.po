@@ -561,19 +561,19 @@ msgstr "Prioritat del repositori"
 
 #: ../apps/ll-cli/src/main.cpp:514 ../apps/ll-builder/src/main.cpp:996
 msgid "Enable mirror for the repo"
-msgstr ""
+msgstr "Habilita la rèplica per al repositori"
 
 #: ../apps/ll-cli/src/main.cpp:515
 msgid "Usage: ll-cli repo enable-mirror [OPTIONS] ALIAS"
-msgstr ""
+msgstr "Ús: ll-cli repo enable-mirror [OPCIONS] ÀLIES"
 
 #: ../apps/ll-cli/src/main.cpp:521 ../apps/ll-builder/src/main.cpp:1004
 msgid "Disable mirror for the repo"
-msgstr ""
+msgstr "Inhabilita la rèplica per al repositori"
 
 #: ../apps/ll-cli/src/main.cpp:522
 msgid "Usage: ll-cli repo disable-mirror [OPTIONS] ALIAS"
-msgstr ""
+msgstr "Ús: ll-cli repo disable-mirror [OPCIONS] ÀLIES"
 
 #: ../apps/ll-cli/src/main.cpp:530
 msgid "Display information about installed apps or runtimes"
@@ -965,11 +965,11 @@ msgstr "Ús: ll-builder repo set-default [OPCIONS] NOM"
 
 #: ../apps/ll-builder/src/main.cpp:997
 msgid "Usage: ll-builder repo enable-mirror [OPTIONS] ALIAS"
-msgstr ""
+msgstr "Ús: ll-builder repo enable-mirror [OPCIONS] ÀLIES"
 
 #: ../apps/ll-builder/src/main.cpp:1005
 msgid "Usage: ll-builder repo disable-mirror [OPTIONS] ALIAS"
-msgstr ""
+msgstr "Ús: ll-builder repo disable-mirror [OPCIONS] ÀLIES"
 
 #: ../apps/ll-builder/src/main.cpp:1012
 msgid "Usage: ll-builder repo show [OPTIONS]"

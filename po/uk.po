@@ -2,10 +2,10 @@
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PACKAGE package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
-#
+# 
 # Translators:
 # Yuri Chornoivan <yurchor@ukr.net>, 2025
-#
+# 
 #, fuzzy
 msgid ""
 msgstr ""
@@ -14,16 +14,12 @@ msgstr ""
 "POT-Creation-Date: 2025-07-10 14:05+0800\n"
 "PO-Revision-Date: 2025-04-11 01:38+0000\n"
 "Last-Translator: Yuri Chornoivan <yurchor@ukr.net>, 2025\n"
-"Language-Team: Ukrainian (https://app.transifex.com/linuxdeepin/teams/3976/"
-"uk/)\n"
-"Language: uk\n"
+"Language-Team: Ukrainian (https://app.transifex.com/linuxdeepin/teams/3976/uk/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=4; plural=(n % 1 == 0 && n % 10 == 1 && n % 100 != "
-"11 ? 0 : n % 1 == 0 && n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % "
-"100 > 14) ? 1 : n % 1 == 0 && (n % 10 ==0 || (n % 10 >=5 && n % 10 <=9) || "
-"(n % 100 >=11 && n % 100 <=14 )) ? 2: 3);\n"
+"Language: uk\n"
+"Plural-Forms: nplurals=4; plural=(n % 1 == 0 && n % 10 == 1 && n % 100 != 11 ? 0 : n % 1 == 0 && n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? 1 : n % 1 == 0 && (n % 10 ==0 || (n % 10 >=5 && n % 10 <=9) || (n % 100 >=11 && n % 100 <=14 )) ? 2: 3);\n"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:71
 msgid "Permission denied, please check whether you are running as root."
@@ -106,7 +102,8 @@ msgstr ""
 msgid ""
 "The cache generation failed, please uninstall and reinstall the application."
 msgstr ""
-"Не вдалося створити кеш. Будь ласка, вилучіть і повторно встановіть програму."
+"Не вдалося створити кеш. Будь ласка, вилучіть і повторно встановіть "
+"програму."
 
 #: ../apps/ll-cli/src/main.cpp:149
 msgid ""
@@ -114,8 +111,7 @@ msgid ""
 "A CLI program to run application and manage application and runtime\n"
 msgstr ""
 "linyaps CLI\n"
-"Інтерфейс командного рядка для запуску програм і керування програмами та "
-"середовищами виконання програм\n"
+"Інтерфейс командного рядка для запуску програм і керування програмами та середовищами виконання програм\n"
 
 #: ../apps/ll-cli/src/main.cpp:161 ../apps/ll-builder/src/main.cpp:761
 msgid "Print this help message and exit"
@@ -132,12 +128,10 @@ msgstr "Користування: ll-cli [ПАРАМЕТРИ] [ПІДКОМАН�
 #: ../apps/ll-cli/src/main.cpp:164
 msgid ""
 "If you found any problems during use,\n"
-"You can report bugs to the linyaps team under this project: https://github."
-"com/OpenAtom-Linyaps/linyaps/issues"
+"You can report bugs to the linyaps team under this project: https://github.com/OpenAtom-Linyaps/linyaps/issues"
 msgstr ""
 "Якщо під час користування у вас виникнуть якісь проблеми,\n"
-"ви можете повідомити про вади команді розробників linyaps на сторінці "
-"проєкту: https://github.com/OpenAtom-Linyaps/linyaps/issues"
+"ви можете повідомити про вади команді розробників linyaps на сторінці проєкту: https://github.com/OpenAtom-Linyaps/linyaps/issues"
 
 #. add flags
 #: ../apps/ll-cli/src/main.cpp:171 ../apps/ll-builder/src/main.cpp:786
@@ -318,7 +312,8 @@ msgstr ""
 #: ../apps/ll-cli/src/main.cpp:322
 msgid "Specify the application ID, and it can also be a .uab or .layer file"
 msgstr ""
-"Вказати за ідентифікатором програми, також можна вказати файл .uab або .layer"
+"Вказати за ідентифікатором програми, також можна вказати файл .uab або "
+".layer"
 
 #: ../apps/ll-cli/src/main.cpp:325
 msgid "Install a specify module"
@@ -371,8 +366,8 @@ msgstr "Користування: ll-cli upgrade [ПАРАМЕТРИ] [ПРОГ�
 
 #: ../apps/ll-cli/src/main.cpp:367
 msgid ""
-"Specify the application ID. If it not be specified, all applications will be "
-"upgraded"
+"Specify the application ID. If it not be specified, all applications will be"
+" upgraded"
 msgstr ""
 "Вказати ідентифікатор програми. Якщо не вказано, буде оновлено усі програми"
 
@@ -417,9 +412,7 @@ msgid "Specify the Keywords"
 msgstr "Вказати ключові слова"
 
 #: ../apps/ll-cli/src/main.cpp:396 ../apps/ll-cli/src/main.cpp:430
-msgid ""
-"Filter result with specify type. One of \"runtime\", \"base\", \"app\" or "
-"\"all\""
+msgid "Filter result with specify type. One of \"runtime\", \"base\", \"app\" or \"all\""
 msgstr ""
 "Фільтрувати результат за типом. Одне зі значень, «runtime», «base», «app» "
 "або «all»"
@@ -738,12 +731,10 @@ msgstr "Користування: ll-builder [ПАРАМЕТРИ] [ПІДКОМ�
 #: ../apps/ll-builder/src/main.cpp:766
 msgid ""
 "If you found any problems during use\n"
-"You can report bugs to the linyaps team under this project: https://github."
-"com/OpenAtom-Linyaps/linyaps/issues"
+"You can report bugs to the linyaps team under this project: https://github.com/OpenAtom-Linyaps/linyaps/issues"
 msgstr ""
 "Якщо під час користування у вас виникнуть якісь проблеми,\n"
-"ви можете повідомити про вади команді розробників linyaps на сторінці "
-"проєкту: https://github.com/OpenAtom-Linyaps/linyaps/issues"
+"ви можете повідомити про вади команді розробників linyaps на сторінці проєкту: https://github.com/OpenAtom-Linyaps/linyaps/issues"
 
 #: ../apps/ll-builder/src/main.cpp:790
 msgid "Create linyaps build template project"
@@ -771,7 +762,8 @@ msgid "File path of the linglong.yaml"
 msgstr "Шлях до файла linglong.yaml"
 
 #: ../apps/ll-builder/src/main.cpp:808
-msgid "Enter the container to execute command instead of building applications"
+msgid ""
+"Enter the container to execute command instead of building applications"
 msgstr "Введіть контейнер для виконання команди замість збирання програм"
 
 #: ../apps/ll-builder/src/main.cpp:811
@@ -779,8 +771,8 @@ msgid ""
 "Only use local files. This implies --skip-fetch-source and --skip-pull-"
 "depend will be set"
 msgstr ""
-"Використовувати лише локальні файли. Неявно припускає, що буде встановлено --"
-"skip-fetch-source і --skip-pull-depend"
+"Використовувати лише локальні файли. Неявно припускає, що буде встановлено "
+"--skip-fetch-source і --skip-pull-depend"
 
 #: ../apps/ll-builder/src/main.cpp:816
 msgid "Build full develop packages, runtime requires"

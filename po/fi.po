@@ -2,10 +2,10 @@
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PACKAGE package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
-#
+# 
 # Translators:
 # Kimmo Kujansuu <mrkujansuu@gmail.com>, 2025
-#
+# 
 #, fuzzy
 msgid ""
 msgstr ""
@@ -14,12 +14,11 @@ msgstr ""
 "POT-Creation-Date: 2025-07-10 14:05+0800\n"
 "PO-Revision-Date: 2025-04-11 01:38+0000\n"
 "Last-Translator: Kimmo Kujansuu <mrkujansuu@gmail.com>, 2025\n"
-"Language-Team: Finnish (https://app.transifex.com/linuxdeepin/teams/3976/"
-"fi/)\n"
-"Language: fi\n"
+"Language-Team: Finnish (https://app.transifex.com/linuxdeepin/teams/3976/fi/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+"Language: fi\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:71
@@ -126,12 +125,10 @@ msgstr "Käyttö: ll-cli [OPTIONS] [SUBCOMMAND]"
 #: ../apps/ll-cli/src/main.cpp:164
 msgid ""
 "If you found any problems during use,\n"
-"You can report bugs to the linyaps team under this project: https://github."
-"com/OpenAtom-Linyaps/linyaps/issues"
+"You can report bugs to the linyaps team under this project: https://github.com/OpenAtom-Linyaps/linyaps/issues"
 msgstr ""
 "Jos havaitset ongelmia käytön aikana,\n"
-"Voit ilmoittaa vioista linyaps-tiimille täällä: https://github.com/OpenAtom-"
-"Linyaps/linyaps/issues"
+"Voit ilmoittaa vioista linyaps-tiimille täällä: https://github.com/OpenAtom-Linyaps/linyaps/issues"
 
 #. add flags
 #: ../apps/ll-cli/src/main.cpp:171 ../apps/ll-builder/src/main.cpp:786
@@ -309,7 +306,8 @@ msgstr ""
 
 #: ../apps/ll-cli/src/main.cpp:322
 msgid "Specify the application ID, and it can also be a .uab or .layer file"
-msgstr "Määritä sovelluksen id-tunnus. Voi olla myös .uab- tai .layer-tiedosto"
+msgstr ""
+"Määritä sovelluksen id-tunnus. Voi olla myös .uab- tai .layer-tiedosto"
 
 #: ../apps/ll-cli/src/main.cpp:325
 msgid "Install a specify module"
@@ -362,8 +360,8 @@ msgstr "Käyttö: ll-cli upgrade [OPTIONS] [APP]"
 
 #: ../apps/ll-cli/src/main.cpp:367
 msgid ""
-"Specify the application ID. If it not be specified, all applications will be "
-"upgraded"
+"Specify the application ID. If it not be specified, all applications will be"
+" upgraded"
 msgstr ""
 "Määritä sovelluksen id-tunnus. Jos ei määritetä, kaikki sovellukset "
 "päivitetään"
@@ -373,8 +371,8 @@ msgid ""
 "Search the applications/runtimes containing the specified text from the "
 "remote repository"
 msgstr ""
-"Etsi palvelimen arkistosta tietyn tekstin sisältävät sovellukset/"
-"ajoympäristöt"
+"Etsi palvelimen arkistosta tietyn tekstin sisältävät "
+"sovellukset/ajoympäristöt"
 
 #: ../apps/ll-cli/src/main.cpp:378
 msgid ""
@@ -393,8 +391,7 @@ msgstr ""
 "Käyttö: ll-cli search [OPTIONS] KEYWORDS\n"
 "\n"
 "Esimerkki:\n"
-"# etsi palvelimelta sovellukse(t), alusta(t) tai ajoympäristö(t) "
-"hakusanoilla\n"
+"# etsi palvelimelta sovellukse(t), alusta(t) tai ajoympäristö(t) hakusanoilla\n"
 "ll-cli search org.deepin.demo\n"
 "# etsi ajoympäristö palvelimelta nimellä\n"
 "ll-cli search org.deepin.base --type=runtime\n"
@@ -410,9 +407,7 @@ msgid "Specify the Keywords"
 msgstr "Määrittele hakusanat"
 
 #: ../apps/ll-cli/src/main.cpp:396 ../apps/ll-cli/src/main.cpp:430
-msgid ""
-"Filter result with specify type. One of \"runtime\", \"base\", \"app\" or "
-"\"all\""
+msgid "Filter result with specify type. One of \"runtime\", \"base\", \"app\" or \"all\""
 msgstr ""
 "Suodata tulokset tyypillä. Joku seuraavista: \"runtime\", \"base\", \"app\" "
 "tai \"all\""
@@ -731,12 +726,10 @@ msgstr "Käyttö: ll-builder [OPTIONS] [SUBCOMMAND]"
 #: ../apps/ll-builder/src/main.cpp:766
 msgid ""
 "If you found any problems during use\n"
-"You can report bugs to the linyaps team under this project: https://github."
-"com/OpenAtom-Linyaps/linyaps/issues"
+"You can report bugs to the linyaps team under this project: https://github.com/OpenAtom-Linyaps/linyaps/issues"
 msgstr ""
 "Jos havaitset ongelmia käytön aikana,\n"
-"Voit ilmoittaa vioista linyaps-tiimille täällä: https://github.com/OpenAtom-"
-"Linyaps/linyaps/issues"
+"Voit ilmoittaa vioista linyaps-tiimille täällä: https://github.com/OpenAtom-Linyaps/linyaps/issues"
 
 #: ../apps/ll-builder/src/main.cpp:790
 msgid "Create linyaps build template project"
@@ -764,7 +757,8 @@ msgid "File path of the linglong.yaml"
 msgstr "Tiedoston linglong.yaml tiedostopolku"
 
 #: ../apps/ll-builder/src/main.cpp:808
-msgid "Enter the container to execute command instead of building applications"
+msgid ""
+"Enter the container to execute command instead of building applications"
 msgstr ""
 "Kirjoita kontin nimi, suorittaaksesi komento sovelluksen rakentamisen sijaan"
 
@@ -773,8 +767,8 @@ msgid ""
 "Only use local files. This implies --skip-fetch-source and --skip-pull-"
 "depend will be set"
 msgstr ""
-"Käytä vain paikallisia tiedostoja. Tarkoittaa, että --skip-fetch-source ja --"
-"skip-pull-depend asetetaan"
+"Käytä vain paikallisia tiedostoja. Tarkoittaa, että --skip-fetch-source ja "
+"--skip-pull-depend asetetaan"
 
 #: ../apps/ll-builder/src/main.cpp:816
 msgid "Build full develop packages, runtime requires"

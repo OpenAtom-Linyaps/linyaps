@@ -2,11 +2,11 @@
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PACKAGE package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
-#
+# 
 # Translators:
 # Jaime Muñoz Martín <jmmartin_5@outlook.com>, 2025
 # Davidmp <medipas@gmail.com>, 2025
-#
+# 
 #, fuzzy
 msgid ""
 msgstr ""
@@ -15,12 +15,11 @@ msgstr ""
 "POT-Creation-Date: 2025-07-10 14:05+0800\n"
 "PO-Revision-Date: 2025-04-11 01:38+0000\n"
 "Last-Translator: Davidmp <medipas@gmail.com>, 2025\n"
-"Language-Team: Catalan (https://app.transifex.com/linuxdeepin/teams/3976/"
-"ca/)\n"
-"Language: ca\n"
+"Language-Team: Catalan (https://app.transifex.com/linuxdeepin/teams/3976/ca/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+"Language: ca\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:71
@@ -111,8 +110,7 @@ msgid ""
 "A CLI program to run application and manage application and runtime\n"
 msgstr ""
 "CLI de linyaps\n"
-"Un programa de línia d'ordres per executar aplicacions i gestionar "
-"l'aplicació i el temps d'execució\n"
+"Un programa de línia d'ordres per executar aplicacions i gestionar l'aplicació i el temps d'execució\n"
 
 #: ../apps/ll-cli/src/main.cpp:161 ../apps/ll-builder/src/main.cpp:761
 msgid "Print this help message and exit"
@@ -129,8 +127,7 @@ msgstr "Ús: ll-cli [OPCIONS] [SUBORDRE]"
 #: ../apps/ll-cli/src/main.cpp:164
 msgid ""
 "If you found any problems during use,\n"
-"You can report bugs to the linyaps team under this project: https://github."
-"com/OpenAtom-Linyaps/linyaps/issues"
+"You can report bugs to the linyaps team under this project: https://github.com/OpenAtom-Linyaps/linyaps/issues"
 msgstr ""
 "Si heu trobat algun problema durant l'ús,\n"
 "podeu informar d'errors a l'equip de linyaps en aquest projecte: \n"
@@ -369,8 +366,8 @@ msgstr "Ús: ll-cli upgrade [OPCIONS] [APLICACIÓ]"
 
 #: ../apps/ll-cli/src/main.cpp:367
 msgid ""
-"Specify the application ID. If it not be specified, all applications will be "
-"upgraded"
+"Specify the application ID. If it not be specified, all applications will be"
+" upgraded"
 msgstr ""
 "Especifiqueu l'ID de l'aplicació. Si no s'especifica, s'actualitzaran totes "
 "les aplicacions."
@@ -416,9 +413,7 @@ msgid "Specify the Keywords"
 msgstr "Especifiqueu les paraules clau."
 
 #: ../apps/ll-cli/src/main.cpp:396 ../apps/ll-cli/src/main.cpp:430
-msgid ""
-"Filter result with specify type. One of \"runtime\", \"base\", \"app\" or "
-"\"all\""
+msgid "Filter result with specify type. One of \"runtime\", \"base\", \"app\" or \"all\""
 msgstr ""
 "Filtra el resultat amb el tipus especificat: \"runtime\", \"base\", \"app\" "
 "o \"all\"."
@@ -462,8 +457,7 @@ msgstr ""
 "ll-cli list --type=base\n"
 "# mostra els temps d'execució instal·lats\n"
 "ll-cli list --type=runtime\n"
-"# mostra la llista de versions més recents de les aplicacions instal·lades "
-"actualment\n"
+"# mostra la llista de versions més recents de les aplicacions instal·lades actualment\n"
 "ll-cli list --upgradable\n"
 
 #: ../apps/ll-cli/src/main.cpp:436
@@ -567,23 +561,24 @@ msgstr "Prioritat del repositori"
 
 #: ../apps/ll-cli/src/main.cpp:514 ../apps/ll-builder/src/main.cpp:996
 msgid "Enable mirror for the repo"
-msgstr ""
+msgstr "Habilita la rèplica per al repositori"
 
 #: ../apps/ll-cli/src/main.cpp:515
 msgid "Usage: ll-cli repo enable-mirror [OPTIONS] ALIAS"
-msgstr ""
+msgstr "Ús: ll-cli repo enable-mirror [OPCIONS] ÀLIES"
 
 #: ../apps/ll-cli/src/main.cpp:521 ../apps/ll-builder/src/main.cpp:1004
 msgid "Disable mirror for the repo"
-msgstr ""
+msgstr "Inhabilita la rèplica per al repositori"
 
 #: ../apps/ll-cli/src/main.cpp:522
 msgid "Usage: ll-cli repo disable-mirror [OPTIONS] ALIAS"
-msgstr ""
+msgstr "Ús: ll-cli repo disable-mirror [OPCIONS] ÀLIES"
 
 #: ../apps/ll-cli/src/main.cpp:530
 msgid "Display information about installed apps or runtimes"
-msgstr "Mostra informació sobre aplicacions instal·lades o entorns d'execució."
+msgstr ""
+"Mostra informació sobre aplicacions instal·lades o entorns d'execució."
 
 #: ../apps/ll-cli/src/main.cpp:533
 msgid "Usage: ll-cli info [OPTIONS] APP"
@@ -737,8 +732,7 @@ msgstr "Ús: ll-builder [OPCIONS] [SUBORDRE]"
 #: ../apps/ll-builder/src/main.cpp:766
 msgid ""
 "If you found any problems during use\n"
-"You can report bugs to the linyaps team under this project: https://github."
-"com/OpenAtom-Linyaps/linyaps/issues"
+"You can report bugs to the linyaps team under this project: https://github.com/OpenAtom-Linyaps/linyaps/issues"
 msgstr ""
 "Si heu trobat algun problema durant l'ús,\n"
 "podeu informar d'errors a l'equip de linyaps en aquest projecte: \n"
@@ -770,7 +764,8 @@ msgid "File path of the linglong.yaml"
 msgstr "Camí del fitxer linglong.yaml"
 
 #: ../apps/ll-builder/src/main.cpp:808
-msgid "Enter the container to execute command instead of building applications"
+msgid ""
+"Enter the container to execute command instead of building applications"
 msgstr ""
 "Entreu al contenidor per executar l'ordre en lloc de construir aplicacions."
 
@@ -970,11 +965,11 @@ msgstr "Ús: ll-builder repo set-default [OPCIONS] NOM"
 
 #: ../apps/ll-builder/src/main.cpp:997
 msgid "Usage: ll-builder repo enable-mirror [OPTIONS] ALIAS"
-msgstr ""
+msgstr "Ús: ll-builder repo enable-mirror [OPCIONS] ÀLIES"
 
 #: ../apps/ll-builder/src/main.cpp:1005
 msgid "Usage: ll-builder repo disable-mirror [OPTIONS] ALIAS"
-msgstr ""
+msgstr "Ús: ll-builder repo disable-mirror [OPCIONS] ÀLIES"
 
 #: ../apps/ll-builder/src/main.cpp:1012
 msgid "Usage: ll-builder repo show [OPTIONS]"

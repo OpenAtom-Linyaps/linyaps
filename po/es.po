@@ -976,7 +976,7 @@ msgstr "Uso: ll-builder repo enable-mirror [OPCIONES] ALIAS"
 
 #: ../apps/ll-builder/src/main.cpp:1005
 msgid "Usage: ll-builder repo disable-mirror [OPTIONS] ALIAS"
-msgstr ""
+msgstr "Uso: ll-builder repo disabled-mirror [OPCIONES] ALIAS"
 
 #: ../apps/ll-builder/src/main.cpp:1012
 msgid "Usage: ll-builder repo show [OPTIONS]"

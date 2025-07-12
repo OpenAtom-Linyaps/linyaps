@@ -566,19 +566,19 @@ msgstr "Prioridad del repositorio"
 
 #: ../apps/ll-cli/src/main.cpp:514 ../apps/ll-builder/src/main.cpp:996
 msgid "Enable mirror for the repo"
-msgstr ""
+msgstr "Habilitar espejo para el repositorio"
 
 #: ../apps/ll-cli/src/main.cpp:515
 msgid "Usage: ll-cli repo enable-mirror [OPTIONS] ALIAS"
-msgstr ""
+msgstr "Uso: ll-cli repo enable-mirror [OPCIONES] ALIAS"
 
 #: ../apps/ll-cli/src/main.cpp:521 ../apps/ll-builder/src/main.cpp:1004
 msgid "Disable mirror for the repo"
-msgstr ""
+msgstr "Deshabilitar el espejo para el repositorio"
 
 #: ../apps/ll-cli/src/main.cpp:522
 msgid "Usage: ll-cli repo disable-mirror [OPTIONS] ALIAS"
-msgstr ""
+msgstr "Uso: ll-cli repo disabled-mirror [OPCIONES] ALIAS"
 
 #: ../apps/ll-cli/src/main.cpp:530
 msgid "Display information about installed apps or runtimes"
@@ -972,7 +972,7 @@ msgstr "Uso: ll-builder repo set-default [OPCIONES] NOMBRE"
 
 #: ../apps/ll-builder/src/main.cpp:997
 msgid "Usage: ll-builder repo enable-mirror [OPTIONS] ALIAS"
-msgstr ""
+msgstr "Uso: ll-builder repo enable-mirror [OPCIONES] ALIAS"
 
 #: ../apps/ll-builder/src/main.cpp:1005
 msgid "Usage: ll-builder repo disable-mirror [OPTIONS] ALIAS"

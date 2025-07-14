@@ -1302,6 +1302,10 @@ void OSTreeRepo::pull(service::PackageTask &taskContext,
                           "{s@v}",
                           "append-user-agent",
                           g_variant_new_variant(g_variant_new_string(userAgent.c_str())));
+    g_variant_builder_add(&builder,
+                          "{s@v}",
+                          "disable-static-deltas",
+                          g_variant_new_variant(g_variant_new_boolean(true)));
 
     g_autoptr(GVariant) pull_options = g_variant_ref_sink(g_variant_builder_end(&builder));
     // 这里不能使用g_main_context_push_thread_default，因为会阻塞Qt的事件循环
@@ -1345,6 +1349,10 @@ void OSTreeRepo::pull(service::PackageTask &taskContext,
                               "{s@v}",
                               "append-user-agent",
                               g_variant_new_variant(g_variant_new_string(userAgent.c_str())));
+        g_variant_builder_add(&builder,
+                              "{s@v}",
+                              "disable-static-deltas",
+                              g_variant_new_variant(g_variant_new_boolean(true)));
 
         g_autoptr(GVariant) pull_options = g_variant_ref_sink(g_variant_builder_end(&builder));
 
@@ -1997,7 +2005,8 @@ utils::error::Result<void> OSTreeRepo::exportDir(const std::string &appID,
         if (is_regular_file) {
             // 如果有指定的后缀名，则只处理指定后缀名的文件
             if (fileSuffix.has_value()
-                && !endWithFunc(std::string_view(source_path.string()), std::string_view(fileSuffix.value()))) {
+                && !endWithFunc(std::string_view(source_path.string()),
+                                std::string_view(fileSuffix.value()))) {
                 continue;
             }
 
@@ -2042,7 +2051,7 @@ utils::error::Result<void> OSTreeRepo::exportDir(const std::string &appID,
                     if (ec) {
                         return LINGLONG_ERR("copy file failed: " + sourceNewPath, ec);
                     }
-                    
+
                     // TODO 这部分代码可以删除
                     exists = std::filesystem::exists(sourceNewPath, ec);
                     if (ec) {
@@ -2061,7 +2070,8 @@ utils::error::Result<void> OSTreeRepo::exportDir(const std::string &appID,
                         return LINGLONG_ERR("get hard link count", ec);
                     }
                     if (hard_link_count > 1) {
-                        auto ret = IniLikeFileRewrite(QFileInfo(sourceNewPath.c_str()), appID.c_str());
+                        auto ret =
+                          IniLikeFileRewrite(QFileInfo(sourceNewPath.c_str()), appID.c_str());
                         if (!ret) {
                             qWarning() << "rewrite file failed: " << ret.error().message();
                             continue;

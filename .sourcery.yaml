@@ -1,0 +1,97 @@
+# SPDX-FileCopyrightText: None
+# SPDX-License-Identifier: CC0-1.0
+
+# Sourcery AI 代码审查配置文件
+# 忽略不需要 AI 审查的文件和目录
+
+version: "1"
+
+# 忽略的文件扩展名
+ignore:
+  - .git
+  - venv
+  - .venv
+  - env
+  - .env
+  - .tox
+  - node_modules
+  - vendor
+  - .*
+  - build
+  - dist
+  - rd_cmfgen.py
+  - "**/*.md"
+  - "**/*.json"
+  - "**/*.yaml"
+  - "**/*.yml"
+  - "**/*.xml"
+  - "**/*.svg"
+  - "**/*.png"
+  - "**/*.jpg"
+  - "**/*.jpeg"
+  - "**/*.gif"
+  - "**/*.ico"
+  - "**/*.pdf"
+  - "**/*.log"
+  - "**/*.lock"
+  - "**/*.patch"
+  - "**/*.diff"
+  - "**/*.po"
+  - "**/*.pot"
+  - "**/*.in"
+  - "**/*.cfg"
+  - "**/*.conf"
+  - "**/*.service"
+  - "**/*.policy"
+  - "**/*.preset"
+  - "**/*.desktop"
+  - "**/*.licence"
+  - "**/*.license"
+  - "**/*.rst"
+  - "**/*.adoc"
+  - "**/*.asc"
+  - "docs/"
+  - "external/"
+  - "LICENSES/"
+  - "po/"
+  - "build-clang-tidy/"
+  - ".git/"
+  - "dist/"
+  - "build/"
+  - "target/"
+  - "bin/"
+  - "obj/"
+  - "Debug/"
+  - "Release/"
+  - "x64/"
+  - "x86/"
+  - "Debug_x64/"
+
+rule_settings:
+  enable: [default]
+  disable: []
+  rule_types:
+    - refactoring
+    - suggestion
+    - comment
+  python_version: '3.9'
+
+rules: []
+
+metrics:
+  quality_threshold: 25.0
+
+github:
+  labels: []
+  ignore_labels:
+    - sourcery-ignore
+  request_review: author
+  sourcery_branch: sourcery/{base_branch}
+
+clone_detection:
+  min_lines: 7
+  min_duplicates: 2
+  identical_clones_only: false
+
+proxy:
+  no_ssl_verify: false

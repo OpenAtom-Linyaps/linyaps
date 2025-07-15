@@ -6,6 +6,13 @@
 
 set -xe
 
+# 清理环境
+rm -rf org.deepin.demo || true
+ll-cli repo set-default stable
+ll-cli repo remove smoketesting || true
+ll-builder repo set-default stable
+ll-builder repo remove smoketesting || true
+
 echo "开始玲珑冒烟测试"
 
 # 修改仓库为冒烟测试仓库
@@ -16,10 +23,10 @@ ll-builder repo add smoketesting https://repo-dev.cicd.getdeepin.org
 ll-builder repo set-default smoketesting
 
 #创建玲珑项目
-ll-builder create org.dde.demo
+ll-builder create org.deepin.demo
 
 #构建玲珑应用
-pushd org.dde.demo
+pushd org.deepin.demo
 ll-builder build
 
 #导出layer文件
@@ -42,19 +49,19 @@ export DBUS_SYSTEM_BUS_ADDRESS="unix:path=/var/run/dbus/system_bus_socket,test=2
 ll-builder run -- bash -c "export" | grep DBUS_SYSTEM_BUS_ADDRESS | grep test=2
 
 #运行并安装uab
-ll-cli uninstall org.dde.demo || true
-./org.dde.demo_x86_64_0.0.0.1_main.uab
+ll-cli uninstall org.deepin.demo || true
+./org.deepin.demo_x86_64_0.0.0.1_main.uab
 
 #安装构建的应用
-ll-cli install org.dde.demo_x86_64_0.0.0.1_main.uab
-ll-cli uninstall org.dde.demo || true
-ll-cli install org.dde.demo_0.0.0.1_x86_64_binary.layer
+ll-cli install org.deepin.demo_x86_64_0.0.0.1_main.uab
+ll-cli uninstall org.deepin.demo || true
+ll-cli install org.deepin.demo_0.0.0.1_x86_64_binary.layer
 
 #运行安装好的demo
-timeout 10 ll-cli run org.dde.demo
+timeout 10 ll-cli run org.deepin.demo
 popd
-rm -rf org.dde.demo
-ll-cli uninstall org.dde.demo
+rm -rf org.deepin.demo
+ll-cli uninstall org.deepin.demo
 
 #列出已经安装的应用
 ll-cli list
@@ -87,14 +94,13 @@ ll-cli upgrade "$appid"
 
 #运行玲珑应用
 ll-cli run "$appid" &
-sleep 20
+sleep 5
 
-cur_version=$(ll-cli info "$appid" | jq '.version' | xargs)
-arch=$(uname -m)
-ll-cli kill "main:$appid/$cur_version/$arch"
+ll-cli kill -9 "$appid"
+sleep 3
+ll-cli uninstall org.dde.calendar
 
 # 测试module安装
-ll-cli uninstall org.dde.calendar
 ll-cli install org.dde.calendar/5.14.4.102
 ll-cli install --module develop org.dde.calendar
 ll-cli install --module unuse org.dde.calendar

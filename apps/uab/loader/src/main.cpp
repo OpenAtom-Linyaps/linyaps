@@ -187,29 +187,30 @@ bool processLDConfig(linglong::generator::ContainerCfgBuilder &builder,
         }
     }
 
-    builder.addExtraMounts({ {
-                               .destination = "/etc/" + randomFile.filename().string(),
-                               .options = { { "ro", "rbind" } },
-                               .source = randomFile,
-                               .type = "bind",
-                             },
-                             {
-                               .destination = "/etc/ld.so.conf.d/zz_deepin-linglong.ld.so.conf",
-                               .options = { { "ro", "rbind" } },
-                               .source = ldConf,
-                               .type = "bind",
-                             } });
+    builder.addExtraMounts(std::vector<ocppi::runtime::config::types::Mount>{
+      ocppi::runtime::config::types::Mount{
+        .destination = "/etc/" + randomFile.filename().string(),
+        .options = { { "ro", "rbind" } },
+        .source = randomFile,
+        .type = "bind",
+      },
+      ocppi::runtime::config::types::Mount{
+        .destination = "/etc/ld.so.conf.d/zz_deepin-linglong.ld.so.conf",
+        .options = { { "ro", "rbind" } },
+        .source = ldConf,
+        .type = "bind",
+      } });
 
-    builder.setStartContainerHooks(
-      { {
-          .args = std::vector<std::string>{ "/sbin/ldconfig", "-C", "/tmp/ld.so.cache" },
-          .path = "/sbin/ldconfig",
-        },
-        {
-          .args =
-            std::vector<std::string>{ "/bin/sh", "-c", "cat /tmp/ld.so.cache > /etc/ld.so.cache" },
-          .path = "/bin/sh",
-        } });
+    builder.setStartContainerHooks(std::vector<ocppi::runtime::config::types::Hook>{
+      ocppi::runtime::config::types::Hook{
+        .args = std::vector<std::string>{ "/sbin/ldconfig", "-C", "/tmp/ld.so.cache" },
+        .path = "/sbin/ldconfig",
+      },
+      ocppi::runtime::config::types::Hook{
+        .args =
+          std::vector<std::string>{ "/bin/sh", "-c", "cat /tmp/ld.so.cache > /etc/ld.so.cache" },
+        .path = "/bin/sh",
+      } });
 
     return true;
 }
@@ -326,18 +327,19 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv) // NOLINT
       .forwardEnv()
       .addUIdMapping(uid, uid, 1)
       .addGIdMapping(gid, gid, 1)
-      .addExtraMounts({ {
-                          .destination = "/etc/ld.so.cache",
-                          .options = { { "rbind" } },
-                          .source = runtimeLD,
-                          .type = "bind",
-                        },
-                        {
-                          .destination = "/tmp",
-                          .options = { { "rbind" } },
-                          .source = "/tmp",
-                          .type = "bind",
-                        } });
+      .addExtraMounts(
+        std::vector<ocppi::runtime::config::types::Mount>{ ocppi::runtime::config::types::Mount{
+                                                             .destination = "/etc/ld.so.cache",
+                                                             .options = { { "rbind" } },
+                                                             .source = runtimeLD,
+                                                             .type = "bind",
+                                                           },
+                                                           ocppi::runtime::config::types::Mount{
+                                                             .destination = "/tmp",
+                                                             .options = { { "rbind" } },
+                                                             .source = "/tmp",
+                                                             .type = "bind",
+                                                           } });
 
     auto extraDir = bundleDir / "extra";
     if (!std::filesystem::exists(extraDir, ec)) {
@@ -469,8 +471,10 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv) // NOLINT
 
         auto linux_ = json["linux"].get<ocppi::runtime::config::types::Linux>();
         linux_.namespaces = std::vector<ocppi::runtime::config::types::NamespaceReference>{
-            { .type = ocppi::runtime::config::types::NamespaceType::User },
-            { .type = ocppi::runtime::config::types::NamespaceType::Mount }
+            ocppi::runtime::config::types::NamespaceReference{
+              .type = ocppi::runtime::config::types::NamespaceType::User },
+            ocppi::runtime::config::types::NamespaceReference{
+              .type = ocppi::runtime::config::types::NamespaceType::Mount }
         };
         json["linux"] = std::move(linux_);
 

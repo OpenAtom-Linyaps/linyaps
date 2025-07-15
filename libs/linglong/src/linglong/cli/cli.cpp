@@ -2493,7 +2493,7 @@ Cli::RequestDirectories(const api::types::v1::PackageInfoV2 &info) noexcept
     auto rawData = dialogProc.read(4);
     auto *len = reinterpret_cast<uint32_t *>(rawData.data());
     rawData = dialogProc.read(*len);
-    auto version = utils::serialize::LoadJSON<api::types::v1::DialogMessage>(rawData);
+    auto version = utils::serialize::LoadJSON<api::types::v1::DialogMessage>(rawData.data());
     if (!version) {
         dialogProc.kill();
         return LINGLONG_ERR("error reply from dialog:" + version.error().message());

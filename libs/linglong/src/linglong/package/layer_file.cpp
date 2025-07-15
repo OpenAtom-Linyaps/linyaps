@@ -78,7 +78,7 @@ utils::error::Result<api::types::v1::LayerInfo> LayerFile::metaInfo() noexcept
 
     auto rawData = this->read(qint64(*ret));
 
-    auto layerInfo = utils::serialize::LoadJSON<api::types::v1::LayerInfo>(rawData);
+    auto layerInfo = utils::serialize::LoadJSON<api::types::v1::LayerInfo>(rawData.data());
     if (!layerInfo) {
         return LINGLONG_ERR(layerInfo);
     }

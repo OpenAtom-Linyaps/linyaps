@@ -6,6 +6,15 @@
 
 set -xe
 
+echo "开始玲珑冒烟测试"
+
+# 修改仓库为冒烟测试仓库
+ll-cli repo add smoketesting https://repo-dev.cicd.getdeepin.org
+ll-cli repo set-default smoketesting
+
+ll-builder repo add smoketesting https://repo-dev.cicd.getdeepin.org
+ll-builder repo set-default smoketesting
+
 #创建玲珑项目
 ll-builder create org.dde.demo
 
@@ -37,6 +46,7 @@ ll-cli uninstall org.dde.demo || true
 ./org.dde.demo_x86_64_0.0.0.1_main.uab
 
 #安装构建的应用
+ll-cli install org.dde.demo_x86_64_0.0.0.1_main.uab
 ll-cli uninstall org.dde.demo || true
 ll-cli install org.dde.demo_0.0.0.1_x86_64_binary.layer
 
@@ -103,8 +113,6 @@ ll-cli list | grep org.dde.calendar | grep -vq lang-ja
 
 #测试versionV1 升级到 versionV2
 echo "测试versionV1 升级到 versionV2"
-ll-cli repo add stable https://repo-dev.cicd.getdeepin.org --alias test-stable
-ll-cli repo set-default test-stable
 ll-cli search org.deepin.semver.demo
 
 # 安装
@@ -128,3 +136,5 @@ ll-cli list | grep org.deepin.semver.demo
 #重置默认仓库
 ll-cli repo set-default stable
 ll-cli uninstall org.deepin.semver.demo
+
+echo "成功执行玲珑冒烟测试"

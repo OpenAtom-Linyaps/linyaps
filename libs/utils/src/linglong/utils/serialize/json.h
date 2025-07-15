@@ -101,7 +101,7 @@ error::Result<T> LoadJSONFile(QFile &file) noexcept
         return LINGLONG_ERR("read all", file);
     }
 
-    return LoadJSON<T>(content);
+    return LoadJSON<T>(content.data());
 }
 
 template <typename T>

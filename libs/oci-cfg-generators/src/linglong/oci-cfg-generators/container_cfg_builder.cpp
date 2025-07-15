@@ -1193,8 +1193,9 @@ bool ContainerCfgBuilder::buildMountLocalTime() noexcept
             isSymLink = true;
         }
         localtimeMount->emplace_back(Mount{ .destination = localtime.string(),
-                                            .options = isSymLink ? string_list{ "copy-symlink" }
-                                                                 : string_list{ "rbind", "ro" },
+                                            .options = isSymLink
+                                              ? string_list{ "rbind", "copy-symlink" }
+                                              : string_list{ "rbind", "ro" },
                                             .source = localtime,
                                             .type = "bind" });
     }
@@ -1239,7 +1240,7 @@ bool ContainerCfgBuilder::buildMountNetworkConf() noexcept
             }
 
             networkConfMount->emplace_back(Mount{ .destination = resolvConf.string(),
-                                                  .options = string_list{ "copy-symlink" },
+                                                  .options = string_list{ "rbind", "copy-symlink" },
                                                   .source = bundleResolvConf,
                                                   .type = "bind" });
         } else {

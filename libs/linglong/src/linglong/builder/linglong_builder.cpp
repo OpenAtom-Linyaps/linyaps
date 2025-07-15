@@ -519,10 +519,10 @@ utils::error::Result<void> Builder::buildStageFetchSource() noexcept
     if (!qEnvironmentVariableIsEmpty("LINGLONG_FETCH_CACHE")) {
         fetchCacheDir = qgetenv("LINGLONG_FETCH_CACHE");
     }
-    auto result = fetchSources(*this->project.sources,
-                               fetchCacheDir,
-                               this->workingDir.absoluteFilePath("linglong/sources"),
-                               this->cfg);
+    // clean sources directory on every build
+    auto fetchSourcesDir = QDir(this->workingDir.absoluteFilePath("linglong/sources"));
+    fetchSourcesDir.removeRecursively();
+    auto result = fetchSources(*this->project.sources, fetchCacheDir, fetchSourcesDir, this->cfg);
 
     if (!result) {
         return LINGLONG_ERR(result);

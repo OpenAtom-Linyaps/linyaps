@@ -9,20 +9,18 @@ package:
   kind: app
   description: |
     Utils for ll-builder
-
 command: [/opt/apps/cn.org.linyaps.builder.utils/files/bin/ll-builder-export]
-
 base: org.deepin.base/25.2.0
 sources:
   - kind: archive
-    url:  https://github.com/erofs/erofs-utils/archive/refs/tags/v1.8.6.tar.gz
+    url: https://github.com/erofs/erofs-utils/archive/refs/tags/v1.8.6.tar.gz
     digest: 5b221dc3fd6d151425b30534ede46fb7a90dc233a8659cba0372796b0a066547
   - kind: archive
-    url:  https://github.com/libfuse/libfuse/releases/download/fuse-3.17.1/fuse-3.17.1.tar.gz
+    url: https://github.com/libfuse/libfuse/releases/download/fuse-3.17.1/fuse-3.17.1.tar.gz
     digest: 2d8ae87a4525fbfa1db5e5eb010ff6f38140627a7004554ed88411c1843d51b2
   - kind: archive
-    url:  https://github.com/OpenAtom-Linyaps/linyaps-box/archive/refs/tags/2.0.1.tar.gz
-    digest: a1e128736ff53f5da6613eb698789ed93df1e1d48dd808c50def1afbfcf1c130
+    url: https://github.com/OpenAtom-Linyaps/linyaps-box/archive/refs/tags/2.0.2.tar.gz
+    digest: 13100b8d9b1c0775e23ab4fb9b9fd9726a27df04bd112b303b6abf18df53ce60
 build: |
   echo "$PREFIX"
 
@@ -43,7 +41,7 @@ build: |
   make install
 
   # build static ll-box
-  cd /project/linglong/sources/2.0.1.tar.gz/linyaps-box-2.0.1/
+  cd /project/linglong/sources/2.0.2.tar.gz/linyaps-box-2.0.2/
   cmake --preset static
   cmake --build build-static -j$(nproc)
   cmake --install build-static --prefix=$PREFIX

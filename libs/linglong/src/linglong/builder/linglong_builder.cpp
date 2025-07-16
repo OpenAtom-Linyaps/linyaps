@@ -760,7 +760,8 @@ utils::error::Result<void> Builder::processBuildDepends() noexcept
         .options = { { "rbind", "ro" } },
         .source = this->workingDir.absolutePath().toStdString(),
         .type = "bind" })
-      .forwardDefaultEnv();
+      .forwardDefaultEnv()
+      .appendEnv("LINYAPS_INIT_SINGLE_MODE", "1");
 
     // overwrite runtime overlay directory
     if (cfgBuilder.getRuntimePath()) {

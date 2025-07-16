@@ -29,6 +29,12 @@ constexpr std::array unblock_signals{ SIGABRT, SIGBUS,  SIGFPE,  SIGILL, SIGSEGV
 
 namespace {
 
+struct WaitPidResult
+{
+    pid_t pid;
+    int status;
+};
+
 void print_sys_error(std::string_view msg) noexcept
 {
     std::cerr << msg << ": " << ::strerror(errno) << std::endl;
@@ -286,7 +292,9 @@ pid_t run(std::vector<const char *> args, const sigConf &conf) noexcept
     return pid;
 }
 
-bool handle_sigevent(const file_descriptor_wrapper &sigfd, pid_t &child) noexcept
+bool handle_sigevent(const file_descriptor_wrapper &sigfd,
+                     pid_t child,
+                     struct WaitPidResult &waitChild) noexcept
 {
     while (true) {
         signalfd_siginfo info{};
@@ -325,10 +333,8 @@ bool handle_sigevent(const file_descriptor_wrapper &sigfd, pid_t &child) noexcep
             print_child_status(status, std::to_string(ret));
 
             if (ret == child) {
-                // child exited, reset the child pid to -1.
-                // after that, init will broadcast the forwarded signal to all processes in the
-                // pid namespace.
-                child = -1;
+                waitChild.pid = child;
+                waitChild.status = status;
             }
         }
     }
@@ -637,6 +643,8 @@ int main(int argc, char **argv) // NOLINT
     file_descriptor_wrapper timerfd;
     bool done{ false };
     std::array<struct epoll_event, 10> events{};
+    WaitPidResult waitChild{ .pid = child };
+    int childExitCode = 0;
     while (true) {
         ret = ::epoll_wait(epfd, events.data(), events.size(), -1);
         if (ret == -1) {
@@ -647,12 +655,24 @@ int main(int argc, char **argv) // NOLINT
         for (auto i = 0; i < ret; ++i) {
             const auto event = events.at(i);
             if (event.data.fd == sigfd) {
-                const int temp_child{ child };
-                if (!handle_sigevent(sigfd, child)) {
+                if (!handle_sigevent(sigfd, waitChild.pid, waitChild)) {
                     return -1;
                 }
 
-                if (temp_child != child) {
+                if (waitChild.pid == child) {
+                    // Init process will propagate received signals to all child processes (using
+                    // pid -1) after initial child exits
+                    if (WIFEXITED(waitChild.status)) {
+                        waitChild.pid = -1;
+                        childExitCode = WEXITSTATUS(waitChild.status);
+                    } else if (WIFSIGNALED(waitChild.status)) {
+                        waitChild.pid = -1;
+                        childExitCode = 128 + WTERMSIG(waitChild.status);
+                    }
+
+                    if (!shouldWait()) {
+                        done = true;
+                    }
                     timerfd = start_timer(epfd);
                     if (!timerfd) {
                         return -1;
@@ -688,5 +708,5 @@ int main(int argc, char **argv) // NOLINT
         }
     }
 
-    return 0;
+    return childExitCode;
 }

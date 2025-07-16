@@ -21,7 +21,7 @@ sources:
     url:  https://github.com/libfuse/libfuse/releases/download/fuse-3.17.1/fuse-3.17.1.tar.gz
     digest: 2d8ae87a4525fbfa1db5e5eb010ff6f38140627a7004554ed88411c1843d51b2
   - kind: archive
-    url:  https://github.com/OpenAtom-Linyaps/linyaps-box/archive/refs/tags/2.0.1.tar.gz
+    url:  https://github.com/OpenAtom-Linyaps/linyaps-box/archive/refs/tags/2.0.2.tar.gz
     digest: a1e128736ff53f5da6613eb698789ed93df1e1d48dd808c50def1afbfcf1c130
 build: |
   echo "$PREFIX"
@@ -43,7 +43,7 @@ build: |
   make install
 
   # build static ll-box
-  cd /project/linglong/sources/2.0.1.tar.gz/linyaps-box-2.0.1/
+  cd /project/linglong/sources/2.0.2.tar.gz/linyaps-box-2.0.2/
   cmake --preset static
   cmake --build build-static -j$(nproc)
   cmake --install build-static --prefix=$PREFIX

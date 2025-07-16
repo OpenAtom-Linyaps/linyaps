@@ -2794,13 +2794,18 @@ int Cli::dir([[maybe_unused]] CLI::App *subcommand)
         return -1;
     }
 
-    auto layerItem = this->repository.getLayerItem(*ref);
-    if (!layerItem) {
-        this->printer.printErr(layerItem.error());
+    std::string module = "binary";
+    if (!options.module.empty()) {
+        module = options.module;
+    }
+
+    auto layerDir = this->repository.getLayerDir(*ref, module);
+    if (!layerDir) {
+        this->printer.printErr(layerDir.error());
         return -1;
     }
 
-    std::cout << layerItem->commit << std::endl;
+    std::cout << layerDir->absolutePath().toStdString() << std::endl;
     return 0;
 }
 

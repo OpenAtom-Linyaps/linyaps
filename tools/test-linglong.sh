@@ -96,7 +96,7 @@ ll-cli upgrade "$appid"
 ll-cli run "$appid" &
 sleep 5
 
-ll-cli kill -9 "$appid"
+ll-cli kill -s 9 "$appid"
 sleep 3
 ll-cli uninstall org.dde.calendar
 

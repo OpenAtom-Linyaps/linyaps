@@ -24,10 +24,25 @@ while read -r filepath; do
         buildID=$(readelf -n "$filepath" | grep 'Build ID' | awk '{print $NF}')
         debugIDFile="$prefix/lib/debug/.build-id/${buildID:0:2}/${buildID:2}.debug"
         mkdir -p "$(dirname "$debugIDFile")"
-        eu-strip "$filepath" -f "$debugIDFile"
+
+        tmp_strip=$(mktemp)
+        tmp_debug=$(mktemp)
+        cp "$filepath" "$tmp_strip"
+        eu-strip "$tmp_strip" -f "$tmp_debug"
+
+        total=$(readelf -l "$tmp_strip" 2>/dev/null | grep "There are" | awk '{print $3}')
+        null_count=$(readelf -l "$tmp_strip" 2>/dev/null | grep -c "^  NULL")
+        if [ -n "$total" ] && [ "$total" -eq "$null_count" ] && [ "$total" -ne 0 ]; then
+                echo "invalid program headers after stripping, skipping: $filepath"
+                rm -f "$tmp_strip" "$tmp_debug"
+                continue
+        fi
+        mv "$tmp_strip" "$filepath"
+        mv "$tmp_debug" "$debugIDFile"
+
         echo "striped $filepath to $debugIDFile"
 
         debugFile="$prefix/lib/debug/$filepath.debug"
         mkdir -p "$(dirname "$debugFile")"
-        ln -s "$debugIDFile" "$debugFile"
+        ln -sf "$debugIDFile" "$debugFile"
 done <"$tmpFile"

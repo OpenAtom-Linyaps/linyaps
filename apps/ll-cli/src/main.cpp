@@ -583,8 +583,12 @@ ll-cli list --upgradable
     auto cliLayerDir =
       commandParser.add_subcommand("dir", "Get the layer directory of app(base or runtime)")
         ->group(CliHiddenGroup);
+    cliLayerDir->footer("This subcommand is for internal use only currently");
     cliLayerDir->add_option("APP", options.appid, _("Specify the installed app(base or runtime)"))
       ->required()
+      ->check(validatorString);
+    cliLayerDir->add_option("--module", options.module, _("Specify a module"))
+      ->type_name("MODULE")
       ->check(validatorString);
 
     auto res = transformOldExec(argc, argv);

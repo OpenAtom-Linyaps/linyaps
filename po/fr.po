@@ -1,0 +1,968 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+# 
+# Translators:
+# Lisa Cintosh, 2025
+# Sykhasamann, 2025
+# 
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-07-10 14:05+0800\n"
+"PO-Revision-Date: 2025-04-11 01:38+0000\n"
+"Last-Translator: Sykhasamann, 2025\n"
+"Language-Team: French (https://app.transifex.com/linuxdeepin/teams/3976/fr/)\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: fr\n"
+"Plural-Forms: nplurals=3; plural=(n == 0 || n == 1) ? 0 : n != 0 && n % 1000000 == 0 ? 1 : 2;\n"
+
+#: ../libs/linglong/src/linglong/cli/cli.cpp:71
+msgid "Permission denied, please check whether you are running as root."
+msgstr ""
+"Autorisation refusée, veuillez vérifier si vous êtes connecté en tant "
+"qu'administrateur."
+
+#: ../libs/linglong/src/linglong/cli/cli.cpp:447
+msgid "To install the module, one must first install the app."
+msgstr "Pour installer le module, vous devez d'abord installer l'application."
+
+#: ../libs/linglong/src/linglong/cli/cli.cpp:450
+msgid "Module is already installed."
+msgstr "Ce module est déjà installé."
+
+#: ../libs/linglong/src/linglong/cli/cli.cpp:453
+#: ../libs/linglong/src/linglong/cli/cli.cpp:1172
+msgid "Install failed"
+msgstr "Échec de l'installation"
+
+#: ../libs/linglong/src/linglong/cli/cli.cpp:456
+msgid "The module could not be found remotely."
+msgstr "Le module n'a pas pu être trouvé à distance."
+
+#: ../libs/linglong/src/linglong/cli/cli.cpp:459
+#: ../libs/linglong/src/linglong/cli/cli.cpp:1663
+msgid "Uninstall failed"
+msgstr "Échec de la désinstallation"
+
+#: ../libs/linglong/src/linglong/cli/cli.cpp:462
+msgid "Upgrade failed"
+msgstr "Échec de la mise à jour"
+
+#: ../libs/linglong/src/linglong/cli/cli.cpp:465
+#: ../libs/linglong/src/linglong/cli/cli.cpp:1586
+#: ../libs/linglong/src/linglong/cli/cli.cpp:1659
+msgid "Application is not installed."
+msgstr "L'application n'est pas installé."
+
+#: ../libs/linglong/src/linglong/cli/cli.cpp:468
+msgid "Latest version is already installed."
+msgstr "La dernière version est déjà installée."
+
+#: ../libs/linglong/src/linglong/cli/cli.cpp:1146
+#: ../libs/linglong/src/linglong/cli/cli.cpp:1440
+msgid ""
+"Network connection failed. Please:\n"
+"1. Check your internet connection\n"
+"2. Verify network proxy settings if used"
+msgstr ""
+"Échec de la connexion réseau. Veuillez :\n"
+"1. Vérifiez votre connexion Internet.\n"
+"2. Vérifiez les paramètres du proxy réseau si utilisé."
+
+#: ../libs/linglong/src/linglong/cli/cli.cpp:1152
+msgid ""
+"Application already installed, If you want to replace it, try using 'll-cli "
+"install %1 --force'"
+msgstr ""
+"L'application est déjà installée. Si vous souhaitez la remplacer, essayez "
+"d'utiliser « ll-cli install %1 --force »."
+
+#: ../libs/linglong/src/linglong/cli/cli.cpp:1158
+msgid "Application %1 is not found in remote repo."
+msgstr "L'application %1 est introuvable dans le référentiel distant."
+
+#: ../libs/linglong/src/linglong/cli/cli.cpp:1162
+msgid "Cannot specify a version when installing a module."
+msgstr ""
+"Impossible de spécifier une version lors de l'installation d'un module."
+
+#: ../libs/linglong/src/linglong/cli/cli.cpp:1166
+msgid ""
+"The latest version has been installed. If you want to replace it, try using "
+"'ll-cli install %1/version --force'"
+msgstr ""
+"La dernière version a été installée. Si vous souhaitez la remplacer, essayez"
+" d'utiliser « ll-cli install %1/version --force »."
+
+#: ../libs/linglong/src/linglong/cli/cli.cpp:2672
+msgid ""
+"The cache generation failed, please uninstall and reinstall the application."
+msgstr ""
+"La génération du cache a échoué, veuillez désinstaller et réinstaller "
+"l'application."
+
+#: ../apps/ll-cli/src/main.cpp:149
+msgid ""
+"linyaps CLI\n"
+"A CLI program to run application and manage application and runtime\n"
+msgstr ""
+"Interface CLI linyaps\n"
+"Un programme CLI pour exécuter l'application et gérer l'application et le runtime\n"
+
+#: ../apps/ll-cli/src/main.cpp:161 ../apps/ll-builder/src/main.cpp:761
+msgid "Print this help message and exit"
+msgstr "Imprimer ce message d'aide et quitter"
+
+#: ../apps/ll-cli/src/main.cpp:162 ../apps/ll-builder/src/main.cpp:762
+msgid "Expand all help"
+msgstr "Développer toute l'aide"
+
+#: ../apps/ll-cli/src/main.cpp:163
+msgid "Usage: ll-cli [OPTIONS] [SUBCOMMAND]"
+msgstr "Usage : ll-cli [OPTIONS] [SOUS-COMMANDE]"
+
+#: ../apps/ll-cli/src/main.cpp:164
+msgid ""
+"If you found any problems during use,\n"
+"You can report bugs to the linyaps team under this project: https://github.com/OpenAtom-Linyaps/linyaps/issues"
+msgstr ""
+"Si vous avez rencontré des problèmes lors de l'utilisation,\n"
+"Vous pouvez signaler les bogues à l'équipe linyaps dans le cadre de ce projet : https://github.com/OpenAtom-Linyaps/linyaps/issues"
+
+#. add flags
+#: ../apps/ll-cli/src/main.cpp:171 ../apps/ll-builder/src/main.cpp:786
+msgid "Show version"
+msgstr "Afficher la version"
+
+#: ../apps/ll-cli/src/main.cpp:175
+msgid ""
+"Use peer to peer DBus, this is used only in case that DBus daemon is not "
+"available"
+msgstr ""
+"Utilisez DBus peer-to-peer, qui n'est utilisé que dans le cas où le démon "
+"DBus n'est pas disponible."
+
+#: ../apps/ll-cli/src/main.cpp:179
+msgid "Use json format to output result"
+msgstr "Utilisez le format json pour afficher le résultat."
+
+#: ../apps/ll-cli/src/main.cpp:186 ../apps/ll-cli/src/main.cpp:567
+#: ../apps/ll-builder/src/main.cpp:95
+msgid "Input parameter is empty, please input valid parameter instead"
+msgstr ""
+"Le paramètre d'entrée est vide, veuillez saisir un paramètre valide à la "
+"place."
+
+#: ../apps/ll-cli/src/main.cpp:209
+msgid "Show debug info (verbose logs)"
+msgstr "Afficher les informations de débogage (journaux détaillés)"
+
+#. groups
+#: ../apps/ll-cli/src/main.cpp:212
+msgid "Managing installed applications and runtimes"
+msgstr "Gestion des applications installées et des environnements d'exécution"
+
+#: ../apps/ll-cli/src/main.cpp:213
+msgid "Managing running applications"
+msgstr "Gérer les applications en cours d'exécution"
+
+#: ../apps/ll-cli/src/main.cpp:214
+msgid "Finding applications and runtimes"
+msgstr "Recherche d'applications et de runtimes"
+
+#: ../apps/ll-cli/src/main.cpp:215
+msgid "Managing remote repositories"
+msgstr "Gérer les répertoires distants"
+
+#. add sub command run
+#: ../apps/ll-cli/src/main.cpp:218
+msgid "Run an application"
+msgstr "Lancer une application"
+
+#. add sub command run options
+#: ../apps/ll-cli/src/main.cpp:223
+msgid "Specify the application ID"
+msgstr "Spécifiez l'ID de l'application."
+
+#: ../apps/ll-cli/src/main.cpp:226
+msgid ""
+"Usage: ll-cli run [OPTIONS] APP [COMMAND...]\n"
+"\n"
+"Example:\n"
+"# run application by appid\n"
+"ll-cli run org.deepin.demo\n"
+"# execute commands in the container rather than running the application\n"
+"ll-cli run org.deepin.demo bash\n"
+"ll-cli run org.deepin.demo -- bash\n"
+"ll-cli run org.deepin.demo -- bash -x /path/to/bash/script"
+msgstr ""
+"Utilisation : ll-cli run [OPTIONS] APP [COMMANDE...]\n"
+"\n"
+"Exemple :\n"
+"# Exécuter l'application par appid\n"
+"ll-cli run org.deepin.demo\n"
+"# Exécuter des commandes dans le conteneur plutôt que d'exécuter l'application\n"
+"ll-cli run org.deepin.demo bash\n"
+"ll-cli run org.deepin.demo -- bash\n"
+"ll-cli run org.deepin.demo -- bash -x /path/to/bash/script"
+
+#: ../apps/ll-cli/src/main.cpp:236
+msgid "Pass file to applications running in a sandbox"
+msgstr ""
+"Transférer un fichier vers des applications s'exécutant dans un bac à sable"
+
+#: ../apps/ll-cli/src/main.cpp:240
+msgid "Pass url to applications running in a sandbox"
+msgstr "Transmettre l'URL aux applications exécutées dans un bac à sable"
+
+#: ../apps/ll-cli/src/main.cpp:243 ../apps/ll-cli/src/main.cpp:265
+#: ../apps/ll-cli/src/main.cpp:282
+msgid "Run commands in a running sandbox"
+msgstr "Exécuter des commandes dans un bac à sable en cours d'exécution"
+
+#. add sub command ps
+#: ../apps/ll-cli/src/main.cpp:246
+msgid "List running applications"
+msgstr "Lister les applications en cours d'exécution"
+
+#: ../apps/ll-cli/src/main.cpp:249
+msgid "Usage: ll-cli ps [OPTIONS]"
+msgstr "Usage : ll-cli ps [OPTIONS]"
+
+#: ../apps/ll-cli/src/main.cpp:253
+msgid "Execute commands in the currently running sandbox"
+msgstr ""
+"Exécuter des commandes dans le bac à sable actuellement en cours d'exécution"
+
+#: ../apps/ll-cli/src/main.cpp:259 ../apps/ll-cli/src/main.cpp:277
+msgid "Specify the application running instance(you can get it by ps command)"
+msgstr ""
+"Spécifiez l'instance d'exécution de l'application (vous pouvez l'obtenir à "
+"l'aide de la commande ps)."
+
+#: ../apps/ll-cli/src/main.cpp:262 ../apps/ll-cli/src/main.cpp:279
+msgid "Specify working directory"
+msgstr "Définir le dossier de travail"
+
+#: ../apps/ll-cli/src/main.cpp:270
+msgid "Enter the namespace where the application is running"
+msgstr "Entrez le nom de l'espace dans lequel l'application est exécutée."
+
+#: ../apps/ll-cli/src/main.cpp:273
+msgid "Usage: ll-cli enter [OPTIONS] INSTANCE [COMMAND...]"
+msgstr "Utilisation : ll-cli enter [OPTIONS] INSTANCE [COMMANDE...]"
+
+#. add sub command kill
+#: ../apps/ll-cli/src/main.cpp:285
+msgid "Stop running applications"
+msgstr "Arrêter les applications en cours d'exécution"
+
+#: ../apps/ll-cli/src/main.cpp:288
+msgid "Usage: ll-cli kill [OPTIONS] APP"
+msgstr "Usage : ll-cli kill [OPTIONS] APP"
+
+#: ../apps/ll-cli/src/main.cpp:292
+msgid "Specify the signal to send to the application"
+msgstr "Spécifiez le signal à envoyer à l'application."
+
+#: ../apps/ll-cli/src/main.cpp:294
+msgid "Specify the running application"
+msgstr "Spécifie les applications en cours d'exécution"
+
+#: ../apps/ll-cli/src/main.cpp:300
+msgid "Installing an application or runtime"
+msgstr "Installation d'une application ou d'un runtime"
+
+#: ../apps/ll-cli/src/main.cpp:303
+msgid ""
+"Usage: ll-cli install [OPTIONS] APP\n"
+"\n"
+"Example:\n"
+"# install application by appid\n"
+"ll-cli install org.deepin.demo\n"
+"# install application by linyaps layer\n"
+"ll-cli install demo_0.0.0.1_x86_64_binary.layer\n"
+"# install application by linyaps uab\n"
+"ll-cli install demo_x86_64_0.0.0.1_main.uab\n"
+"# install specified module of the appid\n"
+"ll-cli install org.deepin.demo --module=binary\n"
+"# install specified version of the appid\n"
+"ll-cli install org.deepin.demo/0.0.0.1\n"
+"# install application by detailed reference\n"
+"ll-cli install stable:org.deepin.demo/0.0.0.1/x86_64\n"
+"    "
+msgstr ""
+"Utilisation : ll-cli install [OPTIONS] APP\n"
+"\n"
+"Exemple :\n"
+"# Installer l'application par appid\n"
+"ll-cli install org.deepin.demo\n"
+"# Installer l'application via la couche linyaps\n"
+"ll-cli install demo_0.0.0.1_x86_64_binary.layer\n"
+"# Installer l'application par linyaps uab\n"
+"ll-cli install demo_x86_64_0.0.0.1_main.uab\n"
+"# installer le module spécifié de l'appid\n"
+"ll-cli install org.deepin.demo --module=binary\n"
+"# installer la version spécifiée de l'appid\n"
+"ll-cli install org.deepin.demo/0.0.0.1\n"
+"# Installer l'application en suivant les instructions détaillées\n"
+"ll-cli install stable:org.deepin.demo/0.0.0.1/x86_64"
+
+#: ../apps/ll-cli/src/main.cpp:322
+msgid "Specify the application ID, and it can also be a .uab or .layer file"
+msgstr ""
+"Spécifiez l'ID de l'application. Il peut également s'agir d'un fichier .uab "
+"ou .layer."
+
+#: ../apps/ll-cli/src/main.cpp:325
+msgid "Install a specify module"
+msgstr "Installer le module spécifié"
+
+#: ../apps/ll-cli/src/main.cpp:328
+msgid "Install from a specific repo"
+msgstr "Installer à partir d'un dépôt spécifique"
+
+#: ../apps/ll-cli/src/main.cpp:331
+msgid "Force install the application"
+msgstr "Forcer l'installation de l'application"
+
+#: ../apps/ll-cli/src/main.cpp:332
+msgid "Automatically answer yes to all questions"
+msgstr "Répondre automatiquement « oui » à toutes les questions"
+
+#: ../apps/ll-cli/src/main.cpp:338
+msgid "Uninstall the application or runtimes"
+msgstr "Désinstaller l'application ou les environnements d'exécution."
+
+#: ../apps/ll-cli/src/main.cpp:341
+msgid "Usage: ll-cli uninstall [OPTIONS] APP"
+msgstr "Usage : ll-cli uninstall [OPTIONS] APP"
+
+#: ../apps/ll-cli/src/main.cpp:342
+msgid "Specify the applications ID"
+msgstr "Spécifiez l'ID des applications."
+
+#: ../apps/ll-cli/src/main.cpp:345
+msgid "Uninstall a specify module"
+msgstr "Désinstaller le module spécifié"
+
+#. below options are used for compatibility with old ll-cli
+#: ../apps/ll-cli/src/main.cpp:350
+msgid "Remove all unused modules"
+msgstr "Supprimer tous les modules inutilisés"
+
+#: ../apps/ll-cli/src/main.cpp:354
+msgid "Uninstall all modules"
+msgstr "Désinstaller tous les modules"
+
+#: ../apps/ll-cli/src/main.cpp:360
+msgid "Upgrade the application or runtimes"
+msgstr "Mettre à niveau l'application ou les environnements d'exécution"
+
+#: ../apps/ll-cli/src/main.cpp:363
+msgid "Usage: ll-cli upgrade [OPTIONS] [APP]"
+msgstr "Usage : ll-cli upgrade [OPTIONS] [APP]"
+
+#: ../apps/ll-cli/src/main.cpp:367
+msgid ""
+"Specify the application ID. If it not be specified, all applications will be"
+" upgraded"
+msgstr ""
+"Spécifiez l'ID de l'application. Si celui-ci n'est pas spécifié, toutes les "
+"applications seront mises à niveau."
+
+#: ../apps/ll-cli/src/main.cpp:374
+msgid ""
+"Search the applications/runtimes containing the specified text from the "
+"remote repository"
+msgstr ""
+"Rechercher les applications/runtimes contenant le texte spécifié dans le "
+"référentiel distant."
+
+#: ../apps/ll-cli/src/main.cpp:378
+msgid ""
+"Usage: ll-cli search [OPTIONS] KEYWORDS\n"
+"\n"
+"Example:\n"
+"# find remotely application(s), base(s) or runtime(s) by keywords\n"
+"ll-cli search org.deepin.demo\n"
+"# find all of app of remote\n"
+"ll-cli search .\n"
+"# find all of base(s) of remote\n"
+"ll-cli search . --type=base\n"
+"# find all of runtime(s) of remote\n"
+"ll-cli search . --type=runtime"
+msgstr ""
+
+#: ../apps/ll-cli/src/main.cpp:389
+msgid "Specify the Keywords"
+msgstr "Définir les mots clés"
+
+#: ../apps/ll-cli/src/main.cpp:396 ../apps/ll-cli/src/main.cpp:430
+msgid "Filter result with specify type. One of \"runtime\", \"base\", \"app\" or \"all\""
+msgstr ""
+
+#: ../apps/ll-cli/src/main.cpp:400
+msgid "Specify the repo"
+msgstr ""
+
+#: ../apps/ll-cli/src/main.cpp:403
+msgid "Include develop application in result"
+msgstr ""
+
+#: ../apps/ll-cli/src/main.cpp:406
+msgid "Show all versions of an application(s), base(s) or runtime(s)"
+msgstr ""
+
+#: ../apps/ll-cli/src/main.cpp:411
+msgid "List installed application(s), base(s) or runtime(s)"
+msgstr ""
+
+#: ../apps/ll-cli/src/main.cpp:414
+msgid ""
+"Usage: ll-cli list [OPTIONS]\n"
+"\n"
+"Example:\n"
+"# show installed application(s), base(s) or runtime(s)\n"
+"ll-cli list\n"
+"# show installed base(s)\n"
+"ll-cli list --type=base\n"
+"# show installed runtime(s)\n"
+"ll-cli list --type=runtime\n"
+"# show the latest version list of the currently installed application(s)\n"
+"ll-cli list --upgradable\n"
+msgstr ""
+
+#: ../apps/ll-cli/src/main.cpp:436
+msgid ""
+"Show the list of latest version of the currently installed application(s), "
+"base(s) or runtime(s)"
+msgstr ""
+
+#: ../apps/ll-cli/src/main.cpp:443
+msgid "Display or modify information of the repository currently using"
+msgstr ""
+
+#: ../apps/ll-cli/src/main.cpp:445
+msgid "Usage: ll-cli repo SUBCOMMAND [OPTIONS]"
+msgstr "Usage : ll-cli repo SOUS-COMMANDE [OPTIONS]"
+
+#. add repo sub command add
+#: ../apps/ll-cli/src/main.cpp:449 ../apps/ll-builder/src/main.cpp:953
+msgid "Add a new repository"
+msgstr "Ajouter un nouveau répertoire"
+
+#: ../apps/ll-cli/src/main.cpp:450
+msgid "Usage: ll-cli repo add [OPTIONS] NAME URL"
+msgstr ""
+
+#: ../apps/ll-cli/src/main.cpp:451 ../apps/ll-cli/src/main.cpp:464
+#: ../apps/ll-builder/src/main.cpp:955
+msgid "Specify the repo name"
+msgstr "Spécifie le nom du répertoire"
+
+#: ../apps/ll-cli/src/main.cpp:454 ../apps/ll-cli/src/main.cpp:467
+#: ../apps/ll-cli/src/main.cpp:485 ../apps/ll-builder/src/main.cpp:958
+#: ../apps/ll-builder/src/main.cpp:981
+msgid "Url of the repository"
+msgstr "L'adresse du répertoire"
+
+#: ../apps/ll-cli/src/main.cpp:457 ../apps/ll-cli/src/main.cpp:474
+#: ../apps/ll-cli/src/main.cpp:482 ../apps/ll-cli/src/main.cpp:493
+#: ../apps/ll-cli/src/main.cpp:505 ../apps/ll-cli/src/main.cpp:516
+#: ../apps/ll-cli/src/main.cpp:523 ../apps/ll-builder/src/main.cpp:962
+#: ../apps/ll-builder/src/main.cpp:970 ../apps/ll-builder/src/main.cpp:978
+#: ../apps/ll-builder/src/main.cpp:990 ../apps/ll-builder/src/main.cpp:998
+#: ../apps/ll-builder/src/main.cpp:1006
+msgid "Alias of the repo name"
+msgstr ""
+
+#: ../apps/ll-cli/src/main.cpp:463
+msgid "Modify repository URL"
+msgstr "Modifier l'adresse du répertoire"
+
+#. add repo sub command remove
+#: ../apps/ll-cli/src/main.cpp:472 ../apps/ll-builder/src/main.cpp:967
+msgid "Remove a repository"
+msgstr "Supprimer un répertoire"
+
+#: ../apps/ll-cli/src/main.cpp:473
+msgid "Usage: ll-cli repo remove [OPTIONS] NAME"
+msgstr ""
+
+#. add repo sub command update
+#. TODO: add --repo and --url options
+#. add repo sub command update
+#: ../apps/ll-cli/src/main.cpp:480 ../apps/ll-builder/src/main.cpp:975
+msgid "Update the repository URL"
+msgstr "Mettre à jour l'adresse du répertoire"
+
+#: ../apps/ll-cli/src/main.cpp:481
+msgid "Usage: ll-cli repo update [OPTIONS] NAME URL"
+msgstr ""
+
+#: ../apps/ll-cli/src/main.cpp:491 ../apps/ll-builder/src/main.cpp:987
+msgid "Set a default repository name"
+msgstr ""
+
+#: ../apps/ll-cli/src/main.cpp:492
+msgid "Usage: ll-cli repo set-default [OPTIONS] NAME"
+msgstr ""
+
+#. add repo sub command show
+#: ../apps/ll-cli/src/main.cpp:498 ../apps/ll-builder/src/main.cpp:1011
+msgid "Show repository information"
+msgstr "Afficher les informations sur le répertoire"
+
+#: ../apps/ll-cli/src/main.cpp:499
+msgid "Usage: ll-cli repo show [OPTIONS]"
+msgstr ""
+
+#: ../apps/ll-cli/src/main.cpp:503
+msgid "Set the priority of the repo"
+msgstr ""
+
+#: ../apps/ll-cli/src/main.cpp:504
+msgid "Usage: ll-cli repo set-priority ALIAS PRIORITY"
+msgstr ""
+
+#: ../apps/ll-cli/src/main.cpp:509
+msgid "Priority of the repo"
+msgstr ""
+
+#: ../apps/ll-cli/src/main.cpp:514 ../apps/ll-builder/src/main.cpp:996
+msgid "Enable mirror for the repo"
+msgstr ""
+
+#: ../apps/ll-cli/src/main.cpp:515
+msgid "Usage: ll-cli repo enable-mirror [OPTIONS] ALIAS"
+msgstr ""
+
+#: ../apps/ll-cli/src/main.cpp:521 ../apps/ll-builder/src/main.cpp:1004
+msgid "Disable mirror for the repo"
+msgstr ""
+
+#: ../apps/ll-cli/src/main.cpp:522
+msgid "Usage: ll-cli repo disable-mirror [OPTIONS] ALIAS"
+msgstr ""
+
+#: ../apps/ll-cli/src/main.cpp:530
+msgid "Display information about installed apps or runtimes"
+msgstr ""
+
+#: ../apps/ll-cli/src/main.cpp:533
+msgid "Usage: ll-cli info [OPTIONS] APP"
+msgstr ""
+
+#: ../apps/ll-cli/src/main.cpp:537
+msgid "Specify the application ID, and it can also be a .layer file"
+msgstr ""
+
+#: ../apps/ll-cli/src/main.cpp:544
+msgid "Display the exported files of installed application"
+msgstr ""
+
+#: ../apps/ll-cli/src/main.cpp:547
+msgid "Usage: ll-cli content [OPTIONS] APP"
+msgstr ""
+
+#: ../apps/ll-cli/src/main.cpp:548
+msgid "Specify the installed application ID"
+msgstr ""
+
+#. add sub command prune
+#: ../apps/ll-cli/src/main.cpp:553
+msgid "Remove the unused base or runtime"
+msgstr ""
+
+#: ../apps/ll-cli/src/main.cpp:555
+msgid "Usage: ll-cli prune [OPTIONS]"
+msgstr "Usage : ll-cli prune [OPTIONS]"
+
+#: ../apps/ll-cli/src/main.cpp:560
+msgid "Display the information of installed application"
+msgstr ""
+
+#: ../apps/ll-cli/src/main.cpp:562
+msgid "Usage: ll-cli inspect [OPTIONS]"
+msgstr "Usage : ll-cli inspect [OPTIONS]"
+
+#: ../apps/ll-cli/src/main.cpp:564
+msgid "Specify the process id"
+msgstr ""
+
+#: ../apps/ll-cli/src/main.cpp:573
+msgid "Invalid process id"
+msgstr "Identifiant de processus invalide"
+
+#: ../apps/ll-cli/src/main.cpp:576
+msgid "Invalid pid format"
+msgstr ""
+
+#: ../apps/ll-cli/src/main.cpp:586
+msgid "Specify the installed app(base or runtime)"
+msgstr ""
+
+#: ../apps/ll-cli/src/main.cpp:597
+msgid "linyaps CLI version "
+msgstr ""
+
+#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:72
+#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:135
+#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:330
+msgid "ID"
+msgstr "ID"
+
+#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:73
+#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:136
+#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:254
+msgid "Name"
+msgstr "Nom"
+
+#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:74
+#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:137
+msgid "Version"
+msgstr "version"
+
+#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:75
+#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:138
+msgid "Channel"
+msgstr "Canal"
+
+#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:76
+#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:139
+msgid "Module"
+msgstr "Module"
+
+#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:77
+#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:141
+msgid "Description"
+msgstr "Description"
+
+#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:108
+msgid "No packages found in the remote repo."
+msgstr ""
+
+#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:140
+msgid "Repo"
+msgstr ""
+
+#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:175
+msgid "No containers are running."
+msgstr "Aucun conteneur n'est en cours d'exécution."
+
+#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:179
+msgid "App"
+msgstr "App"
+
+#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:180
+msgid "ContainerID"
+msgstr ""
+
+#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:181
+msgid "Pid"
+msgstr ""
+
+#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:255
+msgid "Url"
+msgstr "URL"
+
+#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:256
+msgid "Alias"
+msgstr "Raccourci"
+
+#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:257
+msgid "Priority"
+msgstr "Priorité"
+
+#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:318
+msgid "No apps available for update."
+msgstr ""
+
+#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:331
+msgid "Installed"
+msgstr "Installé"
+
+#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:332
+msgid "New"
+msgstr "Nouveau"
+
+#: ../apps/ll-builder/src/main.cpp:759
+msgid ""
+"linyaps builder CLI \n"
+"A CLI program to build linyaps application\n"
+msgstr ""
+
+#: ../apps/ll-builder/src/main.cpp:764
+msgid "Usage: ll-builder [OPTIONS] [SUBCOMMAND]"
+msgstr "Usage : ll-builder [OPTIONS] [SOUS-COMMANDE]"
+
+#: ../apps/ll-builder/src/main.cpp:766
+msgid ""
+"If you found any problems during use\n"
+"You can report bugs to the linyaps team under this project: https://github.com/OpenAtom-Linyaps/linyaps/issues"
+msgstr ""
+
+#: ../apps/ll-builder/src/main.cpp:790
+msgid "Create linyaps build template project"
+msgstr ""
+
+#: ../apps/ll-builder/src/main.cpp:791
+msgid "Usage: ll-builder create [OPTIONS] NAME"
+msgstr ""
+
+#: ../apps/ll-builder/src/main.cpp:792
+msgid "Project name"
+msgstr "Nom du projet"
+
+#: ../apps/ll-builder/src/main.cpp:800
+msgid "Build a linyaps project"
+msgstr "Construire un project linyaps"
+
+#: ../apps/ll-builder/src/main.cpp:801
+msgid "Usage: ll-builder build [OPTIONS] [COMMAND...]"
+msgstr ""
+
+#: ../apps/ll-builder/src/main.cpp:802 ../apps/ll-builder/src/main.cpp:843
+#: ../apps/ll-builder/src/main.cpp:870 ../apps/ll-builder/src/main.cpp:908
+msgid "File path of the linglong.yaml"
+msgstr ""
+
+#: ../apps/ll-builder/src/main.cpp:808
+msgid ""
+"Enter the container to execute command instead of building applications"
+msgstr ""
+
+#: ../apps/ll-builder/src/main.cpp:811
+msgid ""
+"Only use local files. This implies --skip-fetch-source and --skip-pull-"
+"depend will be set"
+msgstr ""
+
+#: ../apps/ll-builder/src/main.cpp:816
+msgid "Build full develop packages, runtime requires"
+msgstr ""
+
+#: ../apps/ll-builder/src/main.cpp:820
+msgid "Skip fetch sources"
+msgstr "Passer la récupération des sources"
+
+#: ../apps/ll-builder/src/main.cpp:823
+msgid "Skip pull dependency"
+msgstr ""
+
+#: ../apps/ll-builder/src/main.cpp:826
+msgid "Skip run container"
+msgstr "Passer le lancer dans un conteneur"
+
+#: ../apps/ll-builder/src/main.cpp:829
+msgid "Skip commit build output"
+msgstr ""
+
+#: ../apps/ll-builder/src/main.cpp:832
+msgid "Skip output check"
+msgstr "Passer la vérification de la sortie"
+
+#: ../apps/ll-builder/src/main.cpp:835
+msgid "Skip strip debug symbols"
+msgstr ""
+
+#: ../apps/ll-builder/src/main.cpp:838
+msgid "Build in an isolated network environment"
+msgstr ""
+
+#. add builder run
+#: ../apps/ll-builder/src/main.cpp:841
+msgid "Run built linyaps app"
+msgstr ""
+
+#: ../apps/ll-builder/src/main.cpp:842
+msgid "Usage: ll-builder run [OPTIONS] [COMMAND...]"
+msgstr "Usage : ll-builder run [OPTIONS] [COMMANDE...]"
+
+#: ../apps/ll-builder/src/main.cpp:849
+msgid "Run specified module. eg: --modules binary,develop"
+msgstr ""
+
+#: ../apps/ll-builder/src/main.cpp:855
+msgid "Enter the container to execute command instead of running application"
+msgstr ""
+
+#: ../apps/ll-builder/src/main.cpp:858
+msgid "Run in debug mode (enable develop module)"
+msgstr ""
+
+#: ../apps/ll-builder/src/main.cpp:860
+msgid "List built linyaps app"
+msgstr "Lister les applications linyaps construites"
+
+#: ../apps/ll-builder/src/main.cpp:861
+msgid "Usage: ll-builder list [OPTIONS]"
+msgstr "Usage : ll-builder list [OPTIONS]"
+
+#: ../apps/ll-builder/src/main.cpp:862
+msgid "Remove built linyaps app"
+msgstr "Supprimer une application linyaps construite"
+
+#: ../apps/ll-builder/src/main.cpp:863
+msgid "Usage: ll-builder remove [OPTIONS] [APP...]"
+msgstr ""
+
+#. build export
+#: ../apps/ll-builder/src/main.cpp:867
+msgid "Export to linyaps layer or uab"
+msgstr ""
+
+#: ../apps/ll-builder/src/main.cpp:868
+msgid "Usage: ll-builder export [OPTIONS]"
+msgstr "Usage : ll-builder export [OPTIONS]"
+
+#: ../apps/ll-builder/src/main.cpp:880
+msgid "Uab icon (optional)"
+msgstr "Icône Uab (optionnel)"
+
+#: ../apps/ll-builder/src/main.cpp:884
+msgid "Export uab fully"
+msgstr ""
+
+#: ../apps/ll-builder/src/main.cpp:888
+msgid "Export to linyaps layer file (deprecated)"
+msgstr ""
+
+#: ../apps/ll-builder/src/main.cpp:891
+msgid "Use custom loader"
+msgstr "Utiliser un chargeur personnalisé"
+
+#: ../apps/ll-builder/src/main.cpp:898
+msgid "Don't export the develop module"
+msgstr ""
+
+#: ../apps/ll-builder/src/main.cpp:900
+msgid "Output file"
+msgstr "Fichier de sortie"
+
+#: ../apps/ll-builder/src/main.cpp:906
+msgid "Push linyaps app to remote repo"
+msgstr ""
+
+#: ../apps/ll-builder/src/main.cpp:907
+msgid "Usage: ll-builder push [OPTIONS]"
+msgstr "Usage : ll-builder push [OPTIONS]"
+
+#: ../apps/ll-builder/src/main.cpp:911
+msgid "Remote repo url"
+msgstr ""
+
+#: ../apps/ll-builder/src/main.cpp:914
+msgid "Remote repo name"
+msgstr ""
+
+#: ../apps/ll-builder/src/main.cpp:917
+msgid "Push single module"
+msgstr ""
+
+#: ../apps/ll-builder/src/main.cpp:921
+msgid "Import linyaps layer to build repo"
+msgstr ""
+
+#: ../apps/ll-builder/src/main.cpp:922
+msgid "Usage: ll-builder import [OPTIONS] LAYER"
+msgstr ""
+
+#: ../apps/ll-builder/src/main.cpp:923 ../apps/ll-builder/src/main.cpp:940
+msgid "Layer file path"
+msgstr ""
+
+#: ../apps/ll-builder/src/main.cpp:930
+msgid "Import linyaps layer dir to build repo"
+msgstr ""
+
+#: ../apps/ll-builder/src/main.cpp:932
+msgid "Usage: ll-builder import-dir PATH"
+msgstr "Usage : ll-builder dossier-d'import PATH"
+
+#: ../apps/ll-builder/src/main.cpp:933
+msgid "Layer dir path"
+msgstr ""
+
+#. add build extract
+#: ../apps/ll-builder/src/main.cpp:938
+msgid "Extract linyaps layer to dir"
+msgstr ""
+
+#: ../apps/ll-builder/src/main.cpp:939
+msgid "Usage: ll-builder extract [OPTIONS] LAYER DIR"
+msgstr ""
+
+#: ../apps/ll-builder/src/main.cpp:943
+msgid "Destination directory"
+msgstr "Dossier de destination"
+
+#. add build repo
+#: ../apps/ll-builder/src/main.cpp:948
+msgid "Display and manage repositories"
+msgstr "Afficher et gérer les répertoires"
+
+#: ../apps/ll-builder/src/main.cpp:949
+msgid "Usage: ll-builder repo [OPTIONS] SUBCOMMAND"
+msgstr "Usage : ll-builder repo [OPTIONS] SOUS-COMMANDE"
+
+#: ../apps/ll-builder/src/main.cpp:954
+msgid "Usage: ll-builder repo add [OPTIONS] NAME URL"
+msgstr ""
+
+#: ../apps/ll-builder/src/main.cpp:968
+msgid "Usage: ll-builder repo remove [OPTIONS] NAME"
+msgstr ""
+
+#: ../apps/ll-builder/src/main.cpp:976
+msgid "Usage: ll-builder repo update [OPTIONS] NAME URL"
+msgstr ""
+
+#: ../apps/ll-builder/src/main.cpp:988
+msgid "Usage: ll-builder repo set-default [OPTIONS] NAME"
+msgstr ""
+
+#: ../apps/ll-builder/src/main.cpp:997
+msgid "Usage: ll-builder repo enable-mirror [OPTIONS] ALIAS"
+msgstr ""
+
+#: ../apps/ll-builder/src/main.cpp:1005
+msgid "Usage: ll-builder repo disable-mirror [OPTIONS] ALIAS"
+msgstr ""
+
+#: ../apps/ll-builder/src/main.cpp:1012
+msgid "Usage: ll-builder repo show [OPTIONS]"
+msgstr "Usage : ll-builder repo show [OPTIONS]"
+
+#: ../apps/ll-builder/src/main.cpp:1017
+msgid "linyaps build tool version "
+msgstr ""
+
+#: ../apps/ll-dialog/src/permissionDialog.cpp:34
+msgid "Whether to allow %1 to access %2?"
+msgstr ""
+
+#. button
+#: ../apps/ll-dialog/src/permissionDialog.cpp:43
+msgid "Allow"
+msgstr "Autoriser"
+
+#: ../apps/ll-dialog/src/permissionDialog.cpp:48
+#, c-format
+msgid "Deny (%1s)"
+msgstr "Refuser (%1s)"
+
+#: ../apps/ll-dialog/src/cache_dialog.cpp:53
+msgid "Linglong Package Manager"
+msgstr "Gestionnaire de paquets Linglong"
+
+#: ../apps/ll-dialog/src/cache_dialog.cpp:54
+msgid "is starting"
+msgstr "démarre"

@@ -399,6 +399,19 @@ msgid ""
 "# find all of runtime(s) of remote\n"
 "ll-cli search . --type=runtime"
 msgstr ""
+"Utilisation : ll-cli search [OPTIONS] MOTS-CLÉS\n"
+"\n"
+"Exemple :\n"
+"# Rechercher à distance des applications, des bases ou des environnements d'exécution à l'aide de mots-clés\n"
+"ll-cli search org.deepin.demo\n"
+"# Rechercher à distance le runtime par son nom\n"
+"ll-cli search org.deepin.base --type=runtime\n"
+"# Trouver toutes les applications à distance\n"
+"ll-cli search .\n"
+"# Trouver toutes les bases du serveur distant\n"
+"ll-cli search . --type=base\n"
+"# Trouver tous les runtime(s) distants\n"
+"ll-cli search . --type=runtime"
 
 #: ../apps/ll-cli/src/main.cpp:389
 msgid "Specify the Keywords"
@@ -407,22 +420,26 @@ msgstr "Définir les mots clés"
 #: ../apps/ll-cli/src/main.cpp:396 ../apps/ll-cli/src/main.cpp:430
 msgid "Filter result with specify type. One of \"runtime\", \"base\", \"app\" or \"all\""
 msgstr ""
+"Filtrer les résultats avec le type spécifié. L'un des types suivants : « "
+"runtime », « base », « app » ou « all »."
 
 #: ../apps/ll-cli/src/main.cpp:400
 msgid "Specify the repo"
-msgstr ""
+msgstr "Spécifiez le dépôt"
 
 #: ../apps/ll-cli/src/main.cpp:403
 msgid "Include develop application in result"
-msgstr ""
+msgstr "Inclure le développement d'applications dans les résultats"
 
 #: ../apps/ll-cli/src/main.cpp:406
 msgid "Show all versions of an application(s), base(s) or runtime(s)"
 msgstr ""
+"Afficher toutes les versions d'une ou plusieurs applications, bases ou "
+"environnements d'exécution."
 
 #: ../apps/ll-cli/src/main.cpp:411
 msgid "List installed application(s), base(s) or runtime(s)"
-msgstr ""
+msgstr "Liste des applications, bases ou environnements d'exécution installés"
 
 #: ../apps/ll-cli/src/main.cpp:414
 msgid ""
@@ -438,16 +455,30 @@ msgid ""
 "# show the latest version list of the currently installed application(s)\n"
 "ll-cli list --upgradable\n"
 msgstr ""
+"Utilisation : ll-cli list [OPTIONS]\n"
+"\n"
+"Exemple :\n"
+"# Afficher les applications, bases ou environnements d'exécution installés\n"
+"ll-cli list\n"
+"# Afficher les bases installées\n"
+"ll-cli list --type=base\n"
+"# Afficher les environnements d'exécution installés\n"
+"ll-cli list --type=runtime\n"
+"# Afficher la liste des dernières versions des applications actuellement installées\n"
+"ll-cli list --upgradable\n"
 
 #: ../apps/ll-cli/src/main.cpp:436
 msgid ""
 "Show the list of latest version of the currently installed application(s), "
 "base(s) or runtime(s)"
 msgstr ""
+"Afficher la liste des dernières versions des applications, bases ou "
+"environnements d'exécution actuellement installés."
 
 #: ../apps/ll-cli/src/main.cpp:443
 msgid "Display or modify information of the repository currently using"
 msgstr ""
+"Afficher ou modifier les informations du référentiel actuellement utilisé"
 
 #: ../apps/ll-cli/src/main.cpp:445
 msgid "Usage: ll-cli repo SUBCOMMAND [OPTIONS]"
@@ -460,7 +491,7 @@ msgstr "Ajouter un nouveau répertoire"
 
 #: ../apps/ll-cli/src/main.cpp:450
 msgid "Usage: ll-cli repo add [OPTIONS] NAME URL"
-msgstr ""
+msgstr "Utilisation : ll-cli repo add [OPTIONS] NOM URL"
 
 #: ../apps/ll-cli/src/main.cpp:451 ../apps/ll-cli/src/main.cpp:464
 #: ../apps/ll-builder/src/main.cpp:955
@@ -481,7 +512,7 @@ msgstr "L'adresse du répertoire"
 #: ../apps/ll-builder/src/main.cpp:990 ../apps/ll-builder/src/main.cpp:998
 #: ../apps/ll-builder/src/main.cpp:1006
 msgid "Alias of the repo name"
-msgstr ""
+msgstr "Alias du nom du dépôt"
 
 #: ../apps/ll-cli/src/main.cpp:463
 msgid "Modify repository URL"
@@ -494,7 +525,7 @@ msgstr "Supprimer un répertoire"
 
 #: ../apps/ll-cli/src/main.cpp:473
 msgid "Usage: ll-cli repo remove [OPTIONS] NAME"
-msgstr ""
+msgstr "Utilisation : ll-cli repo remove [OPTIONS] NOM"
 
 #. add repo sub command update
 #. TODO: add --repo and --url options
@@ -505,15 +536,15 @@ msgstr "Mettre à jour l'adresse du répertoire"
 
 #: ../apps/ll-cli/src/main.cpp:481
 msgid "Usage: ll-cli repo update [OPTIONS] NAME URL"
-msgstr ""
+msgstr "Utilisation : ll-cli repo update [OPTIONS] NOM URL"
 
 #: ../apps/ll-cli/src/main.cpp:491 ../apps/ll-builder/src/main.cpp:987
 msgid "Set a default repository name"
-msgstr ""
+msgstr "Définir un nom de référentiel par défaut"
 
 #: ../apps/ll-cli/src/main.cpp:492
 msgid "Usage: ll-cli repo set-default [OPTIONS] NAME"
-msgstr ""
+msgstr "Utilisation : ll-cli repo set-default [OPTIONS] NOM"
 
 #. add repo sub command show
 #: ../apps/ll-cli/src/main.cpp:498 ../apps/ll-builder/src/main.cpp:1011
@@ -522,64 +553,68 @@ msgstr "Afficher les informations sur le répertoire"
 
 #: ../apps/ll-cli/src/main.cpp:499
 msgid "Usage: ll-cli repo show [OPTIONS]"
-msgstr ""
+msgstr "Utilisation : ll-cli repo show [OPTIONS]"
 
 #: ../apps/ll-cli/src/main.cpp:503
 msgid "Set the priority of the repo"
-msgstr ""
+msgstr "Définir la priorité du dépôt"
 
 #: ../apps/ll-cli/src/main.cpp:504
 msgid "Usage: ll-cli repo set-priority ALIAS PRIORITY"
-msgstr ""
+msgstr "Utilisation : ll-cli repo set-priority ALIAS PRIORITY"
 
 #: ../apps/ll-cli/src/main.cpp:509
 msgid "Priority of the repo"
-msgstr ""
+msgstr "Propriété du dépôt"
 
 #: ../apps/ll-cli/src/main.cpp:514 ../apps/ll-builder/src/main.cpp:996
 msgid "Enable mirror for the repo"
-msgstr ""
+msgstr "Activer le miroir pour le dépôt"
 
 #: ../apps/ll-cli/src/main.cpp:515
 msgid "Usage: ll-cli repo enable-mirror [OPTIONS] ALIAS"
-msgstr ""
+msgstr "Utilisation : ll-cli repo enable-mirror [OPTIONS] ALIAS"
 
 #: ../apps/ll-cli/src/main.cpp:521 ../apps/ll-builder/src/main.cpp:1004
 msgid "Disable mirror for the repo"
-msgstr ""
+msgstr "Désactiver le miroir pour le dépôt"
 
 #: ../apps/ll-cli/src/main.cpp:522
 msgid "Usage: ll-cli repo disable-mirror [OPTIONS] ALIAS"
-msgstr ""
+msgstr "Utilisation : ll-cli repo disable-mirror [OPTIONS] ALIAS"
 
 #: ../apps/ll-cli/src/main.cpp:530
 msgid "Display information about installed apps or runtimes"
 msgstr ""
+"Afficher des informations sur les applications ou les environnements "
+"d'exécution installés"
 
 #: ../apps/ll-cli/src/main.cpp:533
 msgid "Usage: ll-cli info [OPTIONS] APP"
-msgstr ""
+msgstr "Utilisation : ll-cli info [OPTIONS] APP"
 
 #: ../apps/ll-cli/src/main.cpp:537
 msgid "Specify the application ID, and it can also be a .layer file"
 msgstr ""
+"Spécifiez l'ID de l'application. Il peut également s'agir d'un fichier "
+".layer."
 
 #: ../apps/ll-cli/src/main.cpp:544
 msgid "Display the exported files of installed application"
-msgstr ""
+msgstr "Afficher les fichiers exportés de l'application installée"
 
 #: ../apps/ll-cli/src/main.cpp:547
 msgid "Usage: ll-cli content [OPTIONS] APP"
-msgstr ""
+msgstr "Utilisation : ll-cli content [OPTIONS] APP"
 
 #: ../apps/ll-cli/src/main.cpp:548
 msgid "Specify the installed application ID"
-msgstr ""
+msgstr "Spécifiez l'ID de l'application installée."
 
 #. add sub command prune
 #: ../apps/ll-cli/src/main.cpp:553
 msgid "Remove the unused base or runtime"
-msgstr ""
+msgstr "Supprimer la base ou le runtime inutilisé"
 
 #: ../apps/ll-cli/src/main.cpp:555
 msgid "Usage: ll-cli prune [OPTIONS]"
@@ -587,7 +622,7 @@ msgstr "Usage : ll-cli prune [OPTIONS]"
 
 #: ../apps/ll-cli/src/main.cpp:560
 msgid "Display the information of installed application"
-msgstr ""
+msgstr "Afficher les informations relatives à l'application installée"
 
 #: ../apps/ll-cli/src/main.cpp:562
 msgid "Usage: ll-cli inspect [OPTIONS]"
@@ -595,7 +630,7 @@ msgstr "Usage : ll-cli inspect [OPTIONS]"
 
 #: ../apps/ll-cli/src/main.cpp:564
 msgid "Specify the process id"
-msgstr ""
+msgstr "Spécifiez l'identifiant du processus."
 
 #: ../apps/ll-cli/src/main.cpp:573
 msgid "Invalid process id"
@@ -603,15 +638,15 @@ msgstr "Identifiant de processus invalide"
 
 #: ../apps/ll-cli/src/main.cpp:576
 msgid "Invalid pid format"
-msgstr ""
+msgstr "Format pid non valide"
 
 #: ../apps/ll-cli/src/main.cpp:586
 msgid "Specify the installed app(base or runtime)"
-msgstr ""
+msgstr "Spécifiez l'application installée (base ou runtime)."
 
 #: ../apps/ll-cli/src/main.cpp:597
 msgid "linyaps CLI version "
-msgstr ""
+msgstr "Version CLI de linyaps"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:72
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:135

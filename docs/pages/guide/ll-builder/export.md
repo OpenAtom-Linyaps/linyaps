@@ -22,13 +22,13 @@ ll-builder export --help
 
 ## 主要选项
 
-* `-f, --file FILE`: 指定 `linglong.yaml` 配置文件的路径 (默认: `./linglong.yaml`)，`linglong.yaml` 文件所在的目录为项目的工作目录。
-* `-o, --output FILE`: 指定输出文件的路径。对于 UAB，这通常是 `.uab` 文件的完整路径或文件名。对于 layer 这是输出文件名的前缀。
-* `-z, --compressor X`: 指定压缩算法。支持 `lz4` (UAB 默认), `lzma` (layer 默认), `zstd`。
-* `--icon FILE`: 为导出的 UAB 文件指定图标 (仅 UAB 模式，与 `--layer` 互斥)。
-* `--loader FILE`: 为导出的 UAB 文件指定自定义加载器 (仅 UAB 模式，与 `--layer` 互斥)。
-* `--layer`: **(已弃用)** 导出为 layer 文件格式，而不是 UAB (与 `--icon`, `--loader` 互斥)。
-* `--no-develop`: 在导出 layer 文件时，不包含 `develop` 模块。
+- `-f, --file FILE`: 指定 `linglong.yaml` 配置文件的路径 (默认: `./linglong.yaml`)，`linglong.yaml` 文件所在的目录为项目的工作目录。
+- `-o, --output FILE`: 指定输出文件的路径。对于 UAB，这通常是 `.uab` 文件的完整路径或文件名。对于 layer 这是输出文件名的前缀。
+- `-z, --compressor X`: 指定压缩算法。支持 `lz4` (UAB 默认), `lzma` (layer 默认), `zstd`。
+- `--icon FILE`: 为导出的 UAB 文件指定图标 (仅 UAB 模式，与 `--layer` 互斥)。
+- `--loader FILE`: 为导出的 UAB 文件指定自定义加载器 (仅 UAB 模式，与 `--layer` 互斥)。
+- `--layer`: **(已弃用)** 导出为 layer 文件格式，而不是 UAB (与 `--icon`, `--loader` 互斥)。
+- `--no-develop`: 在导出 layer 文件时，不包含 `develop` 模块。
 
 ## 导出 UAB 文件 (推荐)
 
@@ -66,8 +66,8 @@ ll-builder export --layer -o my-app
 
 导出 layer 文件会生成以下文件：
 
-* `*_binary.layer`: 包含应用运行所需的基本文件。
-* `*_develop.layer`: （可选）包含用于开发和调试的文件。如果使用了 `--no-develop` 选项，则不会生成此文件。
+- `*_binary.layer`: 包含应用运行所需的基本文件。
+- `*_develop.layer`: （可选）包含用于开发和调试的文件。如果使用了 `--no-develop` 选项，则不会生成此文件。
 
 ## 进阶说明
 

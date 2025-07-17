@@ -17,7 +17,6 @@ http2=false
 
 /api/v2/mirrors/$repo_name 是玲珑服务器的一个API接口，通过客户端IP获取客户端所在国家，从配置文件获取对应国家的镜像列表，然后返回给ostree，这样就实现了根据用户所在国家自动分流仓库文件下载的功能更。
 
-
 ## 镜像站配置
 
 玲珑的镜像站只提供仓库静态文件的https访问即可，玲珑仓库支持rsync和ostree两种同步协议。
@@ -45,8 +44,8 @@ echo sync $url to $dir
 sleep 3
 ostree init --repo=$dir --mode archive
 ostree --repo=$dir remote add --if-not-exists --no-sign-verify remote $url
-for ref in $(ostree --repo=$dir remote refs remote); do 
-    echo pull $ref; 
+for ref in $(ostree --repo=$dir remote refs remote); do
+    echo pull $ref;
     ostree --repo=$dir pull --mirror $ref;
 done
 ```
@@ -54,9 +53,11 @@ done
 ## ostree pull 步骤
 
 ### 判断镜像是否可用
+
 在pull时，ostree 先从contenturl获取镜像列表，然后从每个url获取/config文件，如果获取不到/config文件，则认为该mirror不可用，如果获取到/config文件，则认为该mirror可用。如果没有可用mirror，pull失败。
 
 ### 获取summary文件
+
 ostree会从url获取summary文件，如果获取不到summary文件，或者summary文件不存在ref，pull失败。
 
 ### delta-indexes文件获取

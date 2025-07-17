@@ -66,7 +66,7 @@ TEST_CASE("Assignment deletion", "[assignment.deletion]") {
   struct except_move {
     except_move() = default;
     except_move(const except_move &) = default;
-    except_move(except_move &&) noexcept(false){};
+    except_move(except_move &&) noexcept(false) {};
     except_move &operator=(const except_move &) = default;
   };
   tl::expected<except_move, except_move> e3 = {};

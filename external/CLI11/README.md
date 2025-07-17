@@ -1776,16 +1776,13 @@ try! Feedback is always welcome.
 
 [doi-badge]: https://zenodo.org/badge/80064252.svg
 [doi-link]: https://zenodo.org/badge/latestdoi/80064252
-[azure-badge]:
-  https://dev.azure.com/CLIUtils/CLI11/_apis/build/status/CLIUtils.CLI11?branchName=main
+[azure-badge]: https://dev.azure.com/CLIUtils/CLI11/_apis/build/status/CLIUtils.CLI11?branchName=main
 [azure]: https://dev.azure.com/CLIUtils/CLI11
 [actions-link]: https://github.com/CLIUtils/CLI11/actions
-[actions-badge]:
-  https://github.com/CLIUtils/CLI11/actions/workflows/tests.yml/badge.svg
+[actions-badge]: https://github.com/CLIUtils/CLI11/actions/workflows/tests.yml/badge.svg
 [repology-badge]: https://repology.org/badge/latest-versions/cli11.svg
 [repology]: https://repology.org/project/cli11/versions
-[codecov-badge]:
-  https://codecov.io/gh/CLIUtils/CLI11/branch/main/graph/badge.svg?token=2O4wfs8NJO
+[codecov-badge]: https://codecov.io/gh/CLIUtils/CLI11/branch/main/graph/badge.svg?token=2O4wfs8NJO
 [codecov]: https://codecov.io/gh/CLIUtils/CLI11
 [gitter-badge]: https://badges.gitter.im/CLI11gitter/Lobby.svg
 [gitter]: https://gitter.im/CLI11gitter/Lobby
@@ -1802,8 +1799,7 @@ try! Feedback is always welcome.
 [click]: http://click.pocoo.org
 [api-docs]: https://CLIUtils.github.io/CLI11/index.html
 [rang]: https://github.com/agauniyal/rang
-[boost program options]:
-  http://www.boost.org/doc/libs/1_63_0/doc/html/program_options.html
+[boost program options]: http://www.boost.org/doc/libs/1_63_0/doc/html/program_options.html
 [the lean mean c++ option parser]: http://optionparser.sourceforge.net
 [tclap]: http://tclap.sourceforge.net
 [cxxopts]: https://github.com/jarro2783/cxxopts
@@ -1814,8 +1810,7 @@ try! Feedback is always welcome.
 [nsf award 1414736]: https://nsf.gov/awardsearch/showAward?AWD_ID=1414736
 [university of cincinnati]: http://www.uc.edu
 [gitbook]: https://cliutils.github.io/CLI11/book/
-[cli11 advanced topics/custom converters]:
-  https://cliutils.gitlab.io/CLI11Tutorial/chapters/advanced-topics.html#custom-converters
+[cli11 advanced topics/custom converters]: https://cliutils.gitlab.io/CLI11Tutorial/chapters/advanced-topics.html#custom-converters
 [programoptions.hxx]: https://github.com/Fytch/ProgramOptions.hxx
 [argument aggregator]: https://github.com/vietjtnguyen/argagg
 [args]: https://github.com/Taywee/args
@@ -1830,18 +1825,13 @@ try! Feedback is always welcome.
 [wandbox-badge]: https://img.shields.io/badge/try_2.1-online-blue.svg
 [wandbox-link]: https://wandbox.org/permlink/9eQyaD1DchlzukRv
 [releases-badge]: https://img.shields.io/github/release/CLIUtils/CLI11.svg
-[cli11-po-compare]:
-  https://iscinumpy.gitlab.io/post/comparing-cli11-and-boostpo/
-[diana slides]:
-  https://indico.cern.ch/event/619465/contributions/2507949/attachments/1448567/2232649/20170424-diana-2.pdf
+[cli11-po-compare]: https://iscinumpy.gitlab.io/post/comparing-cli11-and-boostpo/
+[diana slides]: https://indico.cern.ch/event/619465/contributions/2507949/attachments/1448567/2232649/20170424-diana-2.pdf
 [awesome c++]: https://github.com/fffaraz/awesome-cpp/blob/master/README.md#cli
 [cli]: https://codesynthesis.com/projects/cli/
-[single file libs]:
-  https://github.com/nothings/single_file_libs/blob/master/README.md
-[codacy-badge]:
-  https://app.codacy.com/project/badge/Grade/2796b969c1b54321a02ad08affec0800
-[codacy-link]:
-  https://www.codacy.com/gh/CLIUtils/CLI11/dashboard?utm_source=github.com&utm_medium=referral&utm_content=CLIUtils/CLI11&utm_campaign=Badge_Grade
+[single file libs]: https://github.com/nothings/single_file_libs/blob/master/README.md
+[codacy-badge]: https://app.codacy.com/project/badge/Grade/2796b969c1b54321a02ad08affec0800
+[codacy-link]: https://www.codacy.com/gh/CLIUtils/CLI11/dashboard?utm_source=github.com&utm_medium=referral&utm_content=CLIUtils/CLI11&utm_campaign=Badge_Grade
 [hunter]: https://docs.hunter.sh/en/latest/packages/pkg/CLI11.html
 [standard readme style]: https://github.com/RichardLitt/standard-readme
 [argparse]: https://github.com/p-ranav/argparse

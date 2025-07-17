@@ -5,7 +5,7 @@
 这些关键词与原文中的英语词汇的对应关系如下表所示：
 
 | 中文       | 英语        |
-|------------|-------------|
+| ---------- | ----------- |
 | **必须**   | MUST        |
 | **禁止**   | MUST NOT    |
 | **必要的** | REQUIRED    |
@@ -183,7 +183,6 @@ PKG_CONFIG ?= pkg-config
 - desktop文件对应图标
 
   参见：<https://specifications.freedesktop.org/icon-theme-spec/latest/#install_icons>
-
   - 如果安装的图标为固定大小的版本，那么**推荐**使用png格式
 
     至少**需要**安装一个48x48大小的png才能保证桌面环境中图标相关的基础功能正常
@@ -322,11 +321,8 @@ desktop文件的文件名中**不推荐**带有`-`，去掉.desktop后缀后，�
 - **不推荐**填写[`Icon`字段][key-icon]时使用绝对路径
 
 [key-tryexec]: https://specifications.freedesktop.org/desktop-entry-spec/latest/recognized-keys.html#key-tryexec
-
 [key-startupwmclass]: https://specifications.freedesktop.org/desktop-entry-spec/latest/recognized-keys.html#key-startupwmclass
-
 [key-exec]: https://specifications.freedesktop.org/desktop-entry-spec/latest/recognized-keys.html#key-exec
-
 [key-icon]: https://specifications.freedesktop.org/desktop-entry-spec/latest/recognized-keys.html#key-icon
 
 #### DBus服务
@@ -417,11 +413,11 @@ Terminal=false
 
 玲珑的环境最多有三部分组成，以在`x86_64`架构下编译`org.deepin.demo`为例，其头文件以及库文件默认搜索路径包含以下部分：
 
-| **组成**                                    | **包名**                                    | **头文件**                                     | **库文件**                                     |
-| ----------------------------------------------- | ------------------------------------------------ | ------------------------------------------------ | ------------------------------------------------ |
-| base | org.deepin.base | /usr/include | /usr/lib<br>/usr/lib/x86_64-linux-gnu |
-| runtime (可选) | org.deepin.runtime.dtk | /runtime/include | /runtime/lib<br>/runtime/lib/x86_64-linux-gnu |
-| app | org.deepin.demo | /opt/apps/org.deepin.demo/files/include | /opt/apps/org.deepin.demo/files/lib<br>/opt/apps/org.deepin.demo/files/lib/x86_64-linux-gnu |
+| **组成**       | **包名**               | **头文件**                              | **库文件**                                                                                  |
+| -------------- | ---------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------- |
+| base           | org.deepin.base        | /usr/include                            | /usr/lib<br>/usr/lib/x86_64-linux-gnu                                                       |
+| runtime (可选) | org.deepin.runtime.dtk | /runtime/include                        | /runtime/lib<br>/runtime/lib/x86_64-linux-gnu                                               |
+| app            | org.deepin.demo        | /opt/apps/org.deepin.demo/files/include | /opt/apps/org.deepin.demo/files/lib<br>/opt/apps/org.deepin.demo/files/lib/x86_64-linux-gnu |
 
 优先级按从上往下的顺序排列。如果一份头文件同时在`org.deepin.base`和`org.deepin.demo`中存在，使用时会优先匹配到`org.deepin.base`中的文件。库文件同理。
 
@@ -498,7 +494,7 @@ target_link_libraries(demo PRIVATE PackageName::Component)
 
 通过源码引入依赖是一个**推荐的**做法，它能极大的保证构建流程的稳定以及可维护性。缺点是这可能会花费开发者不少时间编写yaml文件，因为依赖也许也会有自身的依赖。
 
-*如果开发者发现依赖复杂且重复被其他应用使用，那么应当考虑将依赖整合做成一个runtime类型的包。*
+_如果开发者发现依赖复杂且重复被其他应用使用，那么应当考虑将依赖整合做成一个runtime类型的包。_
 
 当依赖是在玲珑环境下编译产生时，其配置文件通常是“可靠的”。编译安装后开发者可以直接在项目中使用。
 
@@ -585,14 +581,14 @@ deb的编译产物,安装前缀是`/usr`，`install_dep`脚本会自动处理其
 
 玲珑应用**必须**选择一个base作为基础运行环境。可使用的base:
 
-| **基础库**                                    | **包名/版本**                                     |
-| ----------------------------------------------- | ------------------------------------------------ |
+| **基础库**  | **包名/版本**            |
+| ----------- | ------------------------ |
 | glibc(2.38) | org.deepin.base/23.1.0.0 |
 
 如果需要额外使用基础环境以外的框架，**应当**使用合适的runtime。可使用的runtime：
 
-| **框架**                                    | **包名/版本**                                     |
-| ----------------------------------------------- | ------------------------------------------------ |
+| **框架**            | **包名/版本**                   |
+| ------------------- | ------------------------------- |
 | QT(5.15) + DTK(5.6) | org.deepin.runtime.dtk/23.1.0.0 |
 
 在使用base或runtime时，版本号**推荐**填写前三位，如 '23.1.0'，便于后续接收更新。全量填写4位版本表示**禁止**base或runtime更新。
@@ -700,14 +696,10 @@ info.json是玲珑定义的应用描述文件。该文件由构建工具自动�
 ```json
 {
   "id": "org.deepin.demo",
-  "arch": [
-    "x86_64"
-  ],
+  "arch": ["x86_64"],
   "base": "main:org.deepin.foundation/23.0.0/x86_64",
   "channel": "main",
-  "command": [
-    "/opt/apps/org.deepin.demo/files/bin/demo"
-  ],
+  "command": ["/opt/apps/org.deepin.demo/files/bin/demo"],
   "description": "simple Qt demo.\n",
   "kind": "app",
   "module": "runtime",
@@ -857,12 +849,12 @@ ExecStart = ll-cli run org.deepin.demo -- demo
 WantedBy=user-session.target
 ```
 
-与dbus service不同的是，安装到```$PREFIX/lib/systemd/user```下的文件会被自动拷贝到```$PREFIX/share/systemd/user```。
+与dbus service不同的是，安装到`$PREFIX/lib/systemd/user`下的文件会被自动拷贝到`$PREFIX/share/systemd/user`。
 
 **路径对应关系：**
 
-| **打包路径**                                                  | **安装路径**                                                   |
-| ------------------------------------------------------------- | -------------------------------------------------------------- |
+| **打包路径**                                     | **安装路径**                                        |
+| ------------------------------------------------ | --------------------------------------------------- |
 | $PREFIX/lib/systemd/user/org.deepin.demo.service | $XDG_DATA_DIRS/systemd/user/org.deepin.demo.service |
 
 ##### icons 目录

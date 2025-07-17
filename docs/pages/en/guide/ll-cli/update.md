@@ -52,5 +52,3 @@ Here is the output:
 Upgrade main:org.deepin.calculator/5.7.21.3/x86_64 to main:org.deepin.calculator/5.7.21.4/x86_64 success:100%
 Please restart the application after saving the data to experience the new version.
 ```
-
-

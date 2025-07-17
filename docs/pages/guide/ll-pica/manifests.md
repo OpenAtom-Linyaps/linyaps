@@ -33,7 +33,7 @@ runtime:
 | -------------- | ----------------------------------------------- |
 | runtime        | 运行时（runtime）                               |
 | version        | 运行时（runtime）版本，三位数可以模糊匹配第四位 |
-| base_version   | base 的版本号, 三位数可以模糊匹配第四位        |
+| base_version   | base 的版本号, 三位数可以模糊匹配第四位         |
 | source         | 获取 deb 包依赖时使用的源                       |
 | distro_version | 发行版的代号                                    |
 | arch           | 获取 deb 包需要的架构                           |

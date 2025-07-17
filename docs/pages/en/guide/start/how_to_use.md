@@ -109,7 +109,7 @@ ll-builder run --exec /bin/bash
 
 # Conversion application
 
-Here, we use  baidunetdisk as an example. We will introduce the process of converting DEB packages into linyaps packages
+Here, we use baidunetdisk as an example. We will introduce the process of converting DEB packages into linyaps packages
 
 ## Obtain software package
 

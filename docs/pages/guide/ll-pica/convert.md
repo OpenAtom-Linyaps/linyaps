@@ -31,7 +31,7 @@ Global Flags:
   -V, --verbose   verbose output
 ```
 
-在执行  `ll-pica init -w w --pi com.baidu.baidunetdisk --pn com.baidu.baidunetdisk -t repo` 命令后，我们仅需要执行 `ll-pica convert -w w -b --exportFile` 命令来转换出玲珑应用，这里会使用 `apt download` 命令去下载包名为 `com.baidu.baidunetdisk` 的 deb 包。
+在执行 `ll-pica init -w w --pi com.baidu.baidunetdisk --pn com.baidu.baidunetdisk -t repo` 命令后，我们仅需要执行 `ll-pica convert -w w -b --exportFile` 命令来转换出玲珑应用，这里会使用 `apt download` 命令去下载包名为 `com.baidu.baidunetdisk` 的 deb 包。
 
 :::tip
 这里使用 apt download 命令下载 deb 包，可能由于 deb 包过大而下载或者无法获取链接导致，失败推荐使用下面的命令。

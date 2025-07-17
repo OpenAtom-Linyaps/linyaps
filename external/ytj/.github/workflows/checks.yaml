@@ -14,7 +14,7 @@ jobs:
       - uses: black-desk/checks@master
   build-and-test:
     name: Build and tests
-    runs-on: "ubuntu-latest"
+    runs-on: 'ubuntu-latest'
     strategy:
       matrix:
         type: [Debug, Release, RelWithDebInfo]

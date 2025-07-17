@@ -38,7 +38,8 @@ Options:
   --skip-strip-symbols        Skip strip debug symbols
 ```
 
-The `ll-builder build` command  can be run in two ways:
+The `ll-builder build` command can be run in two ways:
+
 1. the root directory of the project, where the `linglong.yaml` file is located.
 2. specify the linglong.yaml file path with the `--file` parameter.
 

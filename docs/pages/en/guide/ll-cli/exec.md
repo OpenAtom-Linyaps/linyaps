@@ -46,6 +46,7 @@ main:org.dde.calendar/5.14.5.0/x86_64     c3b5ce363172     539537
 ```
 
 2. enter the org.dde.calendar container
+
 ```bash
 ll-cli exec main:org.dde.calendar/5.14.5.0/x86_64 /bin/bash
 ```

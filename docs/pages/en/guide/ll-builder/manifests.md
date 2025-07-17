@@ -27,11 +27,11 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 The `linglong.yaml` file structure follows specific specifications. First, you need to declare the configuration file version at the top level:
 
 ```yaml
-version: '1'
+version: "1"
 ```
 
-| Name    | Description                                | Required |
-| ------- | ------------------------------------------ | -------- |
+| Name    | Description                                                | Required |
+| ------- | ---------------------------------------------------------- | -------- |
 | version | The version of the build configuration file, currently '1' | Yes      |
 
 Next are the main configuration blocks. Among them, `package`, `base`, and `build` must be defined.
@@ -49,18 +49,18 @@ package:
   description: |
     calculator for deepin os.
   architecture: amd64 # Optional
-  channel: stable    # Optional
+  channel: stable # Optional
 ```
 
-| Name           | Description                                                     | Required |
-| -------------- | --------------------------------------------------------------- | -------- |
-| id             | Unique name of the build artifact (e.g., `org.deepin.calculator`) | Yes      |
-| name           | Name of the build artifact (e.g., `deepin-calculator`)          | Yes      |
-| version        | Version of the build artifact, four digits recommended (e.g., `5.7.21.0`) | Yes      |
-| kind           | Type of the build artifact: `app` (Application), `runtime` (Runtime) | Yes      |
-| description    | Detailed description of the build artifact                      | Yes      |
-| architecture   | Target architecture of the build artifact (e.g., `amd64`, `arm64`) | No       |
-| channel        | Channel of the build artifact (e.g., `stable`, `beta`)          | No       |
+| Name         | Description                                                               | Required |
+| ------------ | ------------------------------------------------------------------------- | -------- |
+| id           | Unique name of the build artifact (e.g., `org.deepin.calculator`)         | Yes      |
+| name         | Name of the build artifact (e.g., `deepin-calculator`)                    | Yes      |
+| version      | Version of the build artifact, four digits recommended (e.g., `5.7.21.0`) | Yes      |
+| kind         | Type of the build artifact: `app` (Application), `runtime` (Runtime)      | Yes      |
+| description  | Detailed description of the build artifact                                | Yes      |
+| architecture | Target architecture of the build artifact (e.g., `amd64`, `arm64`)        | No       |
+| channel      | Channel of the build artifact (e.g., `stable`, `beta`)                    | No       |
 
 ### Command (`command`)
 
@@ -72,8 +72,8 @@ command:
   # - --some-argument # More arguments can be added
 ```
 
-| Name    | Description                                                                 | Required |
-| ------- | --------------------------------------------------------------------------- | -------- |
+| Name    | Description                                                                                                       | Required |
+| ------- | ----------------------------------------------------------------------------------------------------------------- | -------- |
 | command | Defines the executable path and its argument list for starting the application. Usually required for `kind: app`. | No       |
 
 ### Base Environment (`base`)
@@ -84,9 +84,9 @@ Specifies the minimum root filesystem required for building and running. This fi
 base: org.deepin.base/23.1.0
 ```
 
-| Name    | Description                                      | Required |
-| ------- | ------------------------------------------------ | -------- |
-| base    | Identifier for the base, format `id/version`. Version number supports three-digit fuzzy matching. | Yes      |
+| Name | Description                                                                                       | Required |
+| ---- | ------------------------------------------------------------------------------------------------- | -------- |
+| base | Identifier for the base, format `id/version`. Version number supports three-digit fuzzy matching. | Yes      |
 
 ### Runtime (`runtime`)
 
@@ -96,9 +96,9 @@ Application runtime dependencies, which are also build dependencies.
 runtime: org.deepin.runtime.dtk/23.1.0
 ```
 
-| Name    | Description                                            |
-| ------- | ------------------------------------------------------ |
-| id      | Unique name of the runtime                             |
+| Name    | Description                                              |
+| ------- | -------------------------------------------------------- |
+| id      | Unique name of the runtime                               |
 | version | Runtime version, three digits can fuzzy match the fourth |
 
 ### Sources (`sources`)
@@ -116,12 +116,12 @@ sources:
     name: deepin-calculator.git # Optional, specifies the directory name after download
 ```
 
-| Name    | Description                                                                 | Required (within a single source) |
-| ------- | --------------------------------------------------------------------------- | --------------------------------- |
-| kind    | `git`, indicates download using the git tool.                               | Yes                               |
-| url     | Source repository address                                                   | Yes                               |
-| version | Branch or tag of the source repository                                      | No (defaults to the main branch)  |
-| commit  | Hash value of a specific commit, used for precise checkout                  | No                                |
+| Name    | Description                                                                        | Required (within a single source) |
+| ------- | ---------------------------------------------------------------------------------- | --------------------------------- |
+| kind    | `git`, indicates download using the git tool.                                      | Yes                               |
+| url     | Source repository address                                                          | Yes                               |
+| version | Branch or tag of the source repository                                             | No (defaults to the main branch)  |
+| commit  | Hash value of a specific commit, used for precise checkout                         | No                                |
 | name    | Optional, specifies the subdirectory name under `linglong/sources` after download. | No                                |
 
 #### File Type
@@ -134,12 +134,12 @@ sources:
     name: my-data.dat # Optional, specifies the filename after download
 ```
 
-| Name   | Description                                                                 | Required (within a single source) |
-| ------ | --------------------------------------------------------------------------- | --------------------------------- |
-| kind   | `file`, indicates direct file download.                                     | Yes                               |
-| url    | File download address                                                       | Yes                               |
-| digest | Optional, sha256 hash of the file, used for verification.                   | No                                |
-| name   | Optional, specifies the filename under `linglong/sources` after download.   | No                                |
+| Name   | Description                                                               | Required (within a single source) |
+| ------ | ------------------------------------------------------------------------- | --------------------------------- |
+| kind   | `file`, indicates direct file download.                                   | Yes                               |
+| url    | File download address                                                     | Yes                               |
+| digest | Optional, sha256 hash of the file, used for verification.                 | No                                |
+| name   | Optional, specifies the filename under `linglong/sources` after download. | No                                |
 
 #### Archive Type
 
@@ -151,12 +151,12 @@ sources:
     name: deepin-calculator-6.5.4 # Optional, specifies the directory name after extraction
 ```
 
-| Name   | Description                                                                 | Required (within a single source) |
-| ------ | --------------------------------------------------------------------------- | --------------------------------- |
+| Name   | Description                                                                                       | Required (within a single source) |
+| ------ | ------------------------------------------------------------------------------------------------- | --------------------------------- |
 | kind   | `archive`, downloads and automatically extracts the archive. Supports common compression formats. | Yes                               |
-| url    | Archive download address                                                    | Yes                               |
-| digest | Optional, sha256 hash of the archive file, used for verification.           | No                                |
-| name   | Optional, specifies the directory name under `linglong/sources` after extraction. | No                                |
+| url    | Archive download address                                                                          | Yes                               |
+| digest | Optional, sha256 hash of the archive file, used for verification.                                 | No                                |
+| name   | Optional, specifies the directory name under `linglong/sources` after extraction.                 | No                                |
 
 #### DSC Type
 
@@ -168,11 +168,11 @@ sources:
     name: deepin-calculator-dsc # Optional, specifies the directory name after download and extraction
 ```
 
-| Name   | Description                                                                 | Required (within a single source) |
-| ------ | --------------------------------------------------------------------------- | --------------------------------- |
-| kind   | `dsc`, handles Debian source package description files and associated files. | Yes                               |
-| url    | `.dsc` file download address                                                | Yes                               |
-| digest | Optional, sha256 hash of the `.dsc` file, used for verification.            | No                                |
+| Name   | Description                                                                                    | Required (within a single source) |
+| ------ | ---------------------------------------------------------------------------------------------- | --------------------------------- |
+| kind   | `dsc`, handles Debian source package description files and associated files.                   | Yes                               |
+| url    | `.dsc` file download address                                                                   | Yes                               |
+| digest | Optional, sha256 hash of the `.dsc` file, used for verification.                               | No                                |
 | name   | Optional, specifies the directory name under `linglong/sources` after download and extraction. | No                                |
 
 ### Export Rules (`exclude`/`include`)
@@ -188,9 +188,9 @@ include:
   - /usr/share/locale/zh_CN.UTF-8 # Used with exclude to export only specific files under a folder
 ```
 
-| Name    | Description                                                              |
-| ------- | ------------------------------------------------------------------------ |
-| exclude | Absolute path within the container, can be a file or folder, used for exclusion. |
+| Name    | Description                                                                                                                    |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| exclude | Absolute path within the container, can be a file or folder, used for exclusion.                                               |
 | include | Absolute path within the container, files that must be included in the UAB package (even if the parent directory is excluded). |
 
 ### Build Rules (`build`)
@@ -206,8 +206,8 @@ build: |
   make install
 ```
 
-| Name  | Description                                                                 | Required |
-| ----- | --------------------------------------------------------------------------- | -------- |
+| Name  | Description                                                                                | Required |
+| ----- | ------------------------------------------------------------------------------------------ | -------- |
 | build | Shell script executed during the build phase. Runs inside the container build environment. | Yes      |
 
 ### Build Extensions (`buildext`)
@@ -226,12 +226,12 @@ buildext:
       - libglib2.0-0
 ```
 
-| Name        | Description                                                               | Required |
-| ----------- | ------------------------------------------------------------------------- | -------- |
-| buildext    | Container block for build extension configurations.                       | No       |
-| apt         | Extension configuration using the apt package manager.                    | No       |
+| Name          | Description                                                                                  | Required |
+| ------------- | -------------------------------------------------------------------------------------------- | -------- |
+| buildext      | Container block for build extension configurations.                                          | No       |
+| apt           | Extension configuration using the apt package manager.                                       | No       |
 | build_depends | A list of strings listing packages needed at build time, not included in the final artifact. | No       |
-| depends     | A list of strings listing packages needed at runtime, included in the final artifact. | No       |
+| depends       | A list of strings listing packages needed at runtime, included in the final artifact.        | No       |
 
 ### Modules (`modules`)
 
@@ -253,11 +253,11 @@ modules:
       - share/my-app/optional-data/
 ```
 
-| Name    | Description                                                                                                                                                           | Required |
-| ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
-| modules | List defining the rules for splitting the application into modules.                                                                                                   | No       |
-| name    | Name of the module. Each module requires a unique name.                                                                                                               | Yes (within each module item) |
-| files   | A list of strings listing files or directories belonging to this module. Paths are relative to `${PREFIX}`.                                                             | Yes (within each module item) |
+| Name    | Description                                                                                                 | Required                      |
+| ------- | ----------------------------------------------------------------------------------------------------------- | ----------------------------- |
+| modules | List defining the rules for splitting the application into modules.                                         | No                            |
+| name    | Name of the module. Each module requires a unique name.                                                     | Yes (within each module item) |
+| files   | A list of strings listing files or directories belonging to this module. Paths are relative to `${PREFIX}`. | Yes (within each module item) |
 
 **Note:** All files installed under `${PREFIX}` will be assigned to a module. When `modules` is not defined, the build system automatically generates default `binary` and `develop` modules.
 
@@ -265,10 +265,10 @@ modules:
 
 Describes variables that can be used during the build process.
 
-| Name    | Description                                                                                                   |
-| ------- | ------------------------------------------------------------------------------------------------------------- |
+| Name    | Description                                                                                                                           |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------- |
 | PREFIX  | Environment variable used under the `build` field; provides the installation path during build, e.g., /opt/apps/org.deepin.calculator |
-| TRIPLET | Environment variable used under the `build` field; provides a triplet containing architecture information, e.g., x86_64-linux-gnu           |
+| TRIPLET | Environment variable used under the `build` field; provides a triplet containing architecture information, e.g., x86_64-linux-gnu     |
 
 ## Complete Example
 
@@ -277,7 +277,7 @@ Describes variables that can be used during the build process.
 #### Calculator
 
 ```yaml
-version: '1'
+version: "1"
 
 package:
   id: org.deepin.calculator

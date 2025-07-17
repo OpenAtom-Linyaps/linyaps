@@ -1,0 +1,37 @@
+# SPDX-FileCopyrightText: None
+#
+# SPDX-License-Identifier: CC0-1.0
+
+version = 1
+
+[[analyzers]]
+name = "cxx"
+enabled = true
+
+[analyzers.meta]
+environment = ["CMAKE_CXX_STANDARD=17", "CMAKE_CXX_STANDARD_REQUIRED=ON"]
+include_paths = ["libs/*/src/", "apps/*/src/", "external/*/include/", "build/"]
+compile_commands = "build/compile_commands.json"
+
+[[analyzers]]
+name = "shell"
+enabled = true
+
+[[analyzers]]
+name = "secrets"
+enabled = true
+
+[[analyzers]]
+name = "test-coverage"
+enabled = false
+
+[[transformers]]
+name = "clang-format"
+enabled = true
+
+[[transformers]]
+name = "prettier"
+enabled = true
+
+[transformers.meta]
+include_patterns = ["**/*.md", "**/*.json", "**/*.yaml", "**/*.yml"]

@@ -2148,19 +2148,20 @@ utils::error::Result<void> Builder::runtimeCheck()
 {
     LINGLONG_TRACE("runtime check");
     printMessage("[Runtime Check]");
-    // Do some checks after run container
-    if (!this->buildOptions.skipCheckOutput && this->project.package.kind == "app") {
-        printMessage("Start runtime check", 2);
-        auto ret =
-          this->run(packageModules, { { QString{ LINGLONG_BUILDER_HELPER } + "/main-check.sh" } });
-        if (!ret) {
-            printMessage("Runtime check failed", 2);
-            return LINGLONG_ERR(ret);
-        }
-    } else {
+    // skip runtime check if skipCheckOutput is set or package is not an app
+    if (this->buildOptions.skipCheckOutput || this->project.package.kind != "app") {
+        // 因为uab需要使用脚本运行生成的ldd列表，即使跳过检查也需要运行一次
+        this->run(packageModules, { { QString{ LINGLONG_BUILDER_HELPER } + "/main-check.sh" } });
         printMessage("Skip runtime check", 2);
+        return LINGLONG_OK;
     }
-
+    printMessage("Start runtime check", 2);
+    auto ret =
+      this->run(packageModules, { { QString{ LINGLONG_BUILDER_HELPER } + "/main-check.sh" } });
+    if (!ret) {
+        printMessage("Runtime check failed", 2);
+        return LINGLONG_ERR(ret);
+    }
     printMessage("Runtime check done", 2);
     return LINGLONG_OK;
 }

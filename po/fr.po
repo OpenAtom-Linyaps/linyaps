@@ -992,7 +992,7 @@ msgstr "Version de l'outil de compilation linyaps"
 
 #: ../apps/ll-dialog/src/permissionDialog.cpp:34
 msgid "Whether to allow %1 to access %2?"
-msgstr ""
+msgstr "Autoriser %1 à accéder à %2 ?"
 
 #. button
 #: ../apps/ll-dialog/src/permissionDialog.cpp:43

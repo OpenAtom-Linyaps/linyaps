@@ -8,11 +8,6 @@ version = 1
 name = "cxx"
 enabled = true
 
-[analyzers.meta]
-environment = ["CMAKE_CXX_STANDARD=17", "CMAKE_CXX_STANDARD_REQUIRED=ON"]
-include_paths = ["libs/*/src/", "apps/*/src/", "external/*/include/", "build/"]
-compile_commands = "build/compile_commands.json"
-
 [[analyzers]]
 name = "shell"
 enabled = true

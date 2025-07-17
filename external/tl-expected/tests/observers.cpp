@@ -8,9 +8,9 @@ struct move_detector {
 };
 
 TEST_CASE("Observers", "[observers]") {
-    tl::expected<int,int> o1 = 42;
-    tl::expected<int,int> o2 {tl::unexpect, 0};
-    const tl::expected<int,int> o3 = 42;
+  tl::expected<int, int> o1 = 42;
+  tl::expected<int, int> o2{tl::unexpect, 0};
+  const tl::expected<int, int> o3 = 42;
 
   REQUIRE(*o1 == 42);
   REQUIRE(*o1 == o1.value());
@@ -24,12 +24,12 @@ TEST_CASE("Observers", "[observers]") {
   success = std::is_same<decltype(std::move(o1).value()), int &&>::value;
   REQUIRE(success);
 
-  #ifndef TL_EXPECTED_NO_CONSTRR
+#ifndef TL_EXPECTED_NO_CONSTRR
   success = std::is_same<decltype(std::move(o3).value()), const int &&>::value;
   REQUIRE(success);
-  #endif
+#endif
 
-  tl::expected<move_detector,int> o4{tl::in_place};
+  tl::expected<move_detector, int> o4{tl::in_place};
   move_detector o5 = std::move(o4).value();
   REQUIRE(o4->been_moved);
   REQUIRE(!o5.been_moved);

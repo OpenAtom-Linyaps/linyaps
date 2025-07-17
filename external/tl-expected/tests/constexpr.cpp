@@ -2,5 +2,5 @@
 #include <tl/expected.hpp>
 
 TEST_CASE("Constexpr", "[constexpr]") {
-    //TODO
+  // TODO
 }

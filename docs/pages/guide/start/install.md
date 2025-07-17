@@ -16,17 +16,17 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ### release 仓库
 
-   基于最新tag自动构建
+基于最新tag自动构建
 
-   1. 仓库地址 <https://ci.deepin.com/repo/obs/linglong:/CI:/release>
-   2. 构建地址 <https://build.deepin.com/project/show/linglong:CI:release>
+1.  仓库地址 <https://ci.deepin.com/repo/obs/linglong:/CI:/release>
+2.  构建地址 <https://build.deepin.com/project/show/linglong:CI:release>
 
 ### latest 仓库
 
-   基于最新提交自动构建
+基于最新提交自动构建
 
-   1. 仓库地址 <https://ci.deepin.com/repo/obs/linglong:/CI:/latest>
-   2. 构建地址 <https://build.deepin.com/project/show/linglong:CI:latest>
+1.  仓库地址 <https://ci.deepin.com/repo/obs/linglong:/CI:/latest>
+2.  构建地址 <https://build.deepin.com/project/show/linglong:CI:latest>
 
 :::tip
 

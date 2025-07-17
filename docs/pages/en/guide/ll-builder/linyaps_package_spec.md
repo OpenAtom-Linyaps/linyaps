@@ -4,16 +4,16 @@ The explanations of the keywords **must**, **prohibited**, **necessary**, **shou
 
 The correspondence between these keywords and the English words in the original text is shown in the following table:
 
-| Chinese | English |
-|------------|-------------|
-| **Must** | MUST |
-| **Prohibited** | MUST NOT |
-| **Necessary** | REQUIRED |
-| **Should** | SHALL |
-| **Should not** | SHALL NOT |
+| Chinese         | English     |
+| --------------- | ----------- |
+| **Must**        | MUST        |
+| **Prohibited**  | MUST NOT    |
+| **Necessary**   | REQUIRED    |
+| **Should**      | SHALL       |
+| **Should not**  | SHALL NOT   |
 | **Recommended** | RECOMMENDED |
-| **Allowed** | MAY |
-| **Optional** | OPTIONAL |
+| **Allowed**     | MAY         |
+| **Optional**    | OPTIONAL    |
 
 [rfc-2119]: https://datatracker.ietf.org/doc/html/rfc2119
 
@@ -112,15 +112,16 @@ $(INSTALL_PROGRAM) path/to/my/internal/executable "$(DESTDIR)$(libexecdir)"/exec
 
 - Static libraries
 
-```makefile
+````makefile
 install:
 $(INSTALL) -d "$(DESTDIR)$(libdir)" $(INSTALL_DATA) path/to/my/library.a "$(DESTDIR)$(libdir)"/library.a ``` - pkg-config configuration file ```makefile pc_dir ?= $(libdir)/pkgconfig ifeq ($(findstring $(pc_dir), $(subst :, , $(shell \ $(PKG_CONFIG) --variable=pc_path)), ) $(warning pc_dir="$(pc_dir)" \ is not in the search path of current pkg-config installation) endif .PHONY: install-pkg-config install-pkg-config: $(INSTALL) -d "$(DESTDIR)$(pc_dir)" $(INSTALL_DATA) path/to/your.pc "$(DESTDIR)$(pc_dir)"/your.pc
-```
+````
 
 If you are sure that the file is available across architectures, you can use `$(datarootdir)` instead of `$(libdir)`.
 
-- systemd system level unit ```makefile systemd_system_unit_dir ?= $(shell \ $(PKG_CONFIG) --define-variable=prefix=$(prefix) \ systemd --variable=systemd_system_unit_dir) ifeq ($(findstring $(systemd_system_unit_dir), $(subst :, , $(shell \ $(PKG_CONFIG) systemd --variable=systemd_system_unit_path))), ) $(warning systemd_system_unit_dir="$(systemd_system_unit_dir)" \ is not in the system unit search path of current systemd installation) endif .PHONY: install-systemd-system-unit install-systemd-system-unit: $(INSTALL) -d "$(DESTDIR)$(systemd_system_unit_dir)" $(INSTALL_DATA) path/to/your.service "$(DESTDIR)$(systemd_system_unit_dir)"/your.service ``` - systemd user-level unit ```makefile systemd_user_unit_dir ?= $(shell \ $(PKG_CONFIG) --define-variable=prefix=$(prefix) \ systemd --variable=systemd_user_unit_dir) ifeq ($(findstring $(systemd_user_unit_dir), $(subst :, , $(shell \ $(PKG_CONFIG) systemd --variable=systemd_user_unit_path))), ) $(warning systemd_user_unit_dir="$(systemd_user_unit_dir)" \ is not in the user unit search path of current systemd installation) endif .PHONY: install-systemd-user-unit install-systemd-user-unit: $(INSTALL) -d "$(DESTDIR)$(systemd_user_unit_dir)" $(INSTALL_DATA) path/to/your.service "$(DESTDIR)$(systemd_user_unit_dir)"/your.service
-```
+- systemd system level unit `makefile systemd_system_unit_dir ?= $(shell \ $(PKG_CONFIG) --define-variable=prefix=$(prefix) \ systemd --variable=systemd_system_unit_dir) ifeq ($(findstring $(systemd_system_unit_dir), $(subst :, , $(shell \ $(PKG_CONFIG) systemd --variable=systemd_system_unit_path))), ) $(warning systemd_system_unit_dir="$(systemd_system_unit_dir)" \ is not in the system unit search path of current systemd installation) endif .PHONY: install-systemd-system-unit install-systemd-system-unit: $(INSTALL) -d "$(DESTDIR)$(systemd_system_unit_dir)" $(INSTALL_DATA) path/to/your.service "$(DESTDIR)$(systemd_system_unit_dir)"/your.service ` - systemd user-level unit ```makefile systemd_user_unit_dir ?= $(shell \ $(PKG_CONFIG) --define-variable=prefix=$(prefix) \ systemd --variable=systemd_user_unit_dir) ifeq ($(findstring $(systemd_user_unit_dir), $(subst :, , $(shell \ $(PKG_CONFIG) systemd --variable=systemd_user_unit_path))), ) $(warning systemd_user_unit_dir="$(systemd_user_unit_dir)" \ is not in the user unit search path of current systemd installation) endif .PHONY: install-systemd-user-unit install-systemd-user-unit: $(INSTALL) -d "$(DESTDIR)$(systemd_user_unit_dir)" $(INSTALL_DATA) path/to/your.service "$(DESTDIR)$(systemd_user_unit_dir)"/your.service
+
+````
 
 - desktop file
 
@@ -128,7 +129,7 @@ If you are sure that the file is available across architectures, you can use `$(
 install:
 $(INSTALL) -d "$(DESTDIR)$(datarootdir)"/applications
 $(INSTALL_PROGRAM) path/to/your.desktop "$(DESTDIR)$(datarootdir)"/applications/your.desktop
-```
+````
 
 - desktop file corresponding icon
 
@@ -140,7 +141,7 @@ At least **need** to install a 48x48 size png to ensure the normal basic functio
 
 - If the installed icon is a vector version, it is **recommended** to use svg format
 
-```makefile
+````makefile
 install: $(INSTALL) -d "$(DESTDIR)$(datarootdir)"/icons/hicolor/48x48/apps $(INSTALL_DATA) path/to/your.png "$(DESTDIR)$(datarootdir)"/icons/hicolor/48x48/apps/your.png # Add more size of .png icons here... $(INSTALL) -d "$(DESTDIR)$(datarootdir)"/icons/hicolor/scalable/apps $(INSTALL_DATA) path/to/your.svg "$(DESTDIR)$(datarootdir)"/icons/hicolor/scalable/apps/your.svg ``` #### CMake
 
 This section is mainly written with reference to the relevant content in <https://cmake.org/cmake/help/v3.30/module/GNUInstallDirs.html#module:GNUInstallDirs> and <https://wiki.debian.org/Multiarch/Implementation>.
@@ -151,7 +152,7 @@ The writing logic is consistent with the relevant content in the Makefile sectio
 
 ```cmake
 include(GNUInstallDirs)
-```
+````
 
 - Executable files
 
@@ -183,7 +184,7 @@ To be added
 
 - systemd system-level unit
 
-```cmake
+````cmake
 find_package(PkgConfig)
 if(NOT SYSTEMD_SYSTEM_UNIT_DIR)
 if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.28")
@@ -198,13 +199,13 @@ DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/48x48/apps)
 
 install(FILES path/to/your.svg
 DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps)
-```
+````
 
 ### Configuration file
 
 #### desktop file
 
-It is **not** recommended** to have `-` in the desktop file name. After removing the .desktop suffix, it should comply with the relevant specifications described in the application name section.
+It is **not** recommended\*\* to have `-` in the desktop file name. After removing the .desktop suffix, it should comply with the relevant specifications described in the application name section.
 
 - **Recommended** Fill in the [`TryExec` field][key-tryexec] to ensure that the desktop file is no longer valid after the application has been uninstalled
 - **Recommended** Fill in the [`WMClass` field][key-startupwmclass] to ensure that basic desktop environment functions such as the taskbar based on window and application matching can work properly
@@ -212,7 +213,6 @@ It is **not** recommended** to have `-` in the desktop file name. After removing
 - **Not recommended** Use the absolute path when filling in the [`Icon` field][key-icon]
 
 [key-tryexec]: https://specifications.freedesktop.org/desktop-entry-spec/latest/recognized-keys.html#key-tryexec
-
 [key-startupwmclass]: https://specifications.freedesktop.org/desktop-entry-spec/latest/recognized-keys.html#key-startupwmclass
 
 [key-exec]: https://specifications.freedesktop.org/desktop-entry-spec/latest/recognized-keys.html#key-exec [key-icon]: https://specifications.freedesktop.org/desktop-entry-spec/
@@ -232,10 +232,11 @@ latest/recognized-keys.html#key-icon
 - **Recommend** that the file name of the service file with BusName is consistent with BusName
 - **Recommend** that the absolute path is used in the ExecStart field
 
-When using absolute paths in the above configuration files, **hard-coded paths are **not recommended**. The path **should** be consistent with the final installation path. **Recommend** that the template file be written in the project first, and the placeholder is used to represent the absolute path. The final configuration file is generated by replacing the placeholder through the build system.
+When using absolute paths in the above configuration files, **hard-coded paths are **not recommended**. The path **should** be consistent with the final installation path. **Recommend\*\* that the template file be written in the project first, and the placeholder is used to represent the absolute path. The final configuration file is generated by replacing the placeholder through the build system.
 
 Here, taking the desktop file as an example, several examples of generating the final configuration file under common build systems are given.
 Assume that the final product `org.deepin.demo.desktop` has the following content:
+
 ```ini
 [Desktop Entry]
 Name=demo
@@ -255,7 +256,9 @@ Exec=@BINDIR@/demo
 Type=Application
 Terminal=false
 ```
+
 2. Write the corresponding makefile rules.
+
 ```makefile
 DESKTOP_TEMPLATE = org.deepin.demo.desktop.in
 DESKTOP_FILE = org.deepin.demo.desktop
@@ -276,7 +279,9 @@ all: desktop
 ```
 
 - If using CMake as build system.
+
 1. Write the desktop template file.
+
 ```desktop
 [Desktop Entry]
 Name=demo
@@ -284,7 +289,9 @@ Exec=@CMAKE_INSTALL_BINDIR@/demo
 Type=Application
 Terminal=false
 ```
+
 2. Write the corresponding cmake rules.
+
 ```cmake
 set(DESKTOP_FILE "org.deepin.demo.desktop")
 # Use configure_file to replace placeholders
@@ -296,15 +303,16 @@ ${CMAKE_CURRENT_BINARY_DIR}/${DESKTOP_FILE}
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${DESKTOP_FILE}
 DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
 ```
+
 ### Header files and link libraries
 
 Linglong's environment consists of up to three parts. Taking the compilation of `org.deepin.demo` under the `x86_64` architecture as an example, the default search path for header files and library files includes the following parts:
 
-| **Composition** | **Package name** | **Header file** | **Library files** |
-| ----------------------------------------------- | ------------------------------------------------ | ------------------------------------------------ | ------------------------------------------------ |
-| base | org.deepin.base | /usr/include | /usr/lib<br>/usr/lib/x86_64-linux-gnu |
-| runtime (optional) | org.deepin.runtime.dtk | /runtime/include | /runtime/lib<br>/runtime/lib/x86_64-linux-gnu |
-| app | org.deepin.demo | /opt/apps/org.deepin.demo/files/include | /opt/apps/org.deepin.demo/files/lib<br>/opt/apps/org.deepin.demo/files/lib/x86_64-linux-gnu |
+| **Composition**    | **Package name**       | **Header file**                         | **Library files**                                                                           |
+| ------------------ | ---------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------- |
+| base               | org.deepin.base        | /usr/include                            | /usr/lib<br>/usr/lib/x86_64-linux-gnu                                                       |
+| runtime (optional) | org.deepin.runtime.dtk | /runtime/include                        | /runtime/lib<br>/runtime/lib/x86_64-linux-gnu                                               |
+| app                | org.deepin.demo        | /opt/apps/org.deepin.demo/files/include | /opt/apps/org.deepin.demo/files/lib<br>/opt/apps/org.deepin.demo/files/lib/x86_64-linux-gnu |
 
 Priority is in order from top to bottom. If a header file exists in both `org.deepin.base` and `org.deepin.demo`, the file in `org.deepin.base` will be matched first when used. The same applies to library files.
 
@@ -315,6 +323,7 @@ Common configuration files include `.pc`, `.cmake`, etc. How to use it depends o
 #### Makefile
 
 ##### Use `.pc` file
+
 ```makefile
 # Common variables, inherit the environment variable CXXFLAGS and append content
 CXX = g++
@@ -381,7 +390,7 @@ As mentioned in the section `Header files and link libraries`, the Linglong envi
 
 Introducing dependencies through source code is a **recommended** practice, which can greatly ensure the stability and maintainability of the build process. The disadvantage is that this may take developers a lot of time to write yaml files, because the dependencies may also have their own dependencies.
 
-*If developers find that the dependencies are complex and repeatedly used by other applications, they should consider integrating the dependencies into a runtime type package. *
+_If developers find that the dependencies are complex and repeatedly used by other applications, they should consider integrating the dependencies into a runtime type package. _
 
 When the dependency is compiled in the Linglong environment, its configuration file is usually "reliable". After compilation and installation, developers can use it directly in the project.
 
@@ -418,6 +427,7 @@ This is a "shortcut". If the developer does not consider the subsequent updates 
 5. Press Ctrl+Shift+P to search and execute the linglong: Gen deb sources command
 
 After execution, the yaml file will automatically write the following content:
+
 ```yaml
 build:
 # Unzip and import deb, install_dep file is automatically downloaded by the plugin
@@ -468,13 +478,13 @@ The total length of the version number after automatically adding to four groups
 Linglong application **must** select a base as the basic running environment. Available base:
 
 | **Base library** | **Package name/version** |
-| ----------------------------------------------- | ------------------------------------------------ |
-| glibc(2.38) | org.deepin.base/23.1.0.0 |
+| ---------------- | ------------------------ |
+| glibc(2.38)      | org.deepin.base/23.1.0.0 |
 
 If you need to use additional frameworks other than the base environment, you should use the appropriate runtime. Available runtime:
 
-| **Framework** | **Package name/version** |
-| ----------------------------------------------- | ------------------------------------------------ |
+| **Framework**       | **Package name/version**        |
+| ------------------- | ------------------------------- |
 | QT(5.15) + DTK(5.6) | org.deepin.runtime.dtk/23.1.0.0 |
 
 When using base or runtime, it is recommended to fill in the first three digits of the version number, such as '23.1.0', to facilitate subsequent updates. Filling in the full 4-digit version means that base or runtime updates are prohibited.
@@ -565,7 +575,8 @@ When the application is running, these files or directories will be mapped to th
 
 info.json is the application description file defined by Linglong. This file is automatically generated by the build tool and it **should** not be modified manually. Its content is as follows: ```json { "id": "org.deepin.demo", "arch": [ "x86_64" ], "base": "main:org.deepin.foundation/23.0.0/x86_64", "channel": "main", "command": [ "/opt/apps/org.deepin.demo/files/bin/demo" ], "description": "simple Qt demo.\n", "kind": "app", "module": "runtime", "name": "demo", "runtime": "main:org.deepin.Runtime/23.0.1/x86_64", "size": 118763, "version": "0.0.0.1"
 }
-```
+
+````
 
 The following is a description of each field in info.json:
 
@@ -616,7 +627,7 @@ When the application is installed on the host, Linglong Package Manager will lin
 
 ```bash $ ls /var/lib/linglong/entries/share/applications/ -l lrwxrwxrwx 1 deepin-linglong deepin-linglong 101 July 30 11:13 org.deepin.demo.desktop -> ../../../layers/main/org.deepin.demo/0.0.0.1/x86_64/runtime/entries/share/applications/org.deep
 in.demo.desktop
-```
+````
 
 ##### applications directory
 
@@ -639,11 +650,12 @@ Name=demo
 TryExec=/usr/bin/ll-cli
 Type=Application
 ```
+
 An application can have multiple desktop files.
 
 **Path correspondence:**
 
-| **Packaging path** | **Installation path** |
+| **Packaging path**                                 | **Installation path**                                     |
 | -------------------------------------------------- | --------------------------------------------------------- |
 | $PREFIX/share/applications/org.deepin.demo.desktop | $XDG_DATA_DIRS/share/applications/org.deepin.demo.desktop |
 
@@ -669,9 +681,9 @@ An application can be configured with multiple services, and the service name mu
 
 **Path correspondence:**
 
-| **Packaging path** | **Installation path** |
+| **Packaging path**                                   | **Installation path**                                       |
 | ---------------------------------------------------- | ----------------------------------------------------------- |
-| $PREFIX/share/services/org.deepin.demo.service | $XDG_DATA_DIRS/dbus-1/service/org.deepin.demo.service |
+| $PREFIX/share/services/org.deepin.demo.service       | $XDG_DATA_DIRS/dbus-1/service/org.deepin.demo.service       |
 | $PREFIX/share/services/org.deepin.demo.hello.service | $XDG_DATA_DIRS/dbus-1/service/org.deepin.demo.hello.service |
 
 ##### User-level systemd service
@@ -707,12 +719,12 @@ ExecStart = ll-cli run org.deepin.demo -- demo
 WantedBy=user-session.target
 ```
 
-Unlike dbus service, files installed to ```$PREFIX/lib/systemd/user``` will be automatically copied to ```$PREFIX/share/systemd/user```.
+Unlike dbus service, files installed to `$PREFIX/lib/systemd/user` will be automatically copied to `$PREFIX/share/systemd/user`.
 
 **Path correspondence:**
 
-| **Packaging path** | **Installation path** |
-| ------------------------------------------------------------- | -------------------------------------------------------------- |
+| **Packaging path**                               | **Installation path**                               |
+| ------------------------------------------------ | --------------------------------------------------- |
 | $PREFIX/lib/systemd/user/org.deepin.demo.service | $XDG_DATA_DIRS/systemd/user/org.deepin.demo.service |
 
 ##### icons directory
@@ -721,11 +733,11 @@ The directory for storing application icons should be consistent with the system
 
 **Path correspondence:**
 
-| **Packaging path** | **Installation path** |
+| **Packaging path**                                            | **Installation path**                                          |
 | ------------------------------------------------------------- | -------------------------------------------------------------- |
 | $PREFIX/share/icons/hicolor/scalable/apps/org.deepin.demo.svg | $XDG_DATA_DIRS/icons/hicolor/scalable/apps/org.deepin.demo.svg |
-| $PREFIX/share/icons/hicolor/24x24/apps/org.deepin.demo.png | $XDG_DATA_DIRS/icons/hicolor/24x24/apps/org.deepin.demo.png |
-| $PREFIX/share/icons/hicolor/16x16/apps/org.deepin.demo.png | $XDG_DATA_DIRS/icons/hicolor/16x16/apps/org.deepin.demo.png |
+| $PREFIX/share/icons/hicolor/24x24/apps/org.deepin.demo.png    | $XDG_DATA_DIRS/icons/hicolor/24x24/apps/org.deepin.demo.png    |
+| $PREFIX/share/icons/hicolor/16x16/apps/org.deepin.demo.png    | $XDG_DATA_DIRS/icons/hicolor/16x16/apps/org.deepin.demo.png    |
 
 ##### mime directory
 
@@ -733,7 +745,7 @@ MIME (Multipurpose Internet Mail Extensions) Multipurpose Internet Mail Extensio
 
 **Path correspondence:**
 
-| **Packaging path** | **Installation path** |
+| **Packaging path**                              | **Installation path**                            |
 | ----------------------------------------------- | ------------------------------------------------ |
 | $PREFIX/share/mime/packages/org.deepin.demo.xml | $XDG_DATA_DIRS/mime/packages/org.deepin.demo.xml |
 

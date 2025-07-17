@@ -1,4 +1,5 @@
 # expected
+
 Single header implementation of `std::expected` with functional-style extensions.
 
 [![Documentation Status](https://readthedocs.org/projects/tl-docs/badge/?version=latest)](https://tl.tartanllama.xyz/en/latest/?badge=latest)
@@ -47,15 +48,15 @@ tl::expected<image,fail_reason> get_cute_cat (const image& img) {
 The interface is the same as `std::expected` as proposed in [p0323r3](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2017/p0323r3.pdf), but the following member functions are also defined. Explicit types are for clarity.
 
 - `map`: carries out some operation on the stored object if there is one.
-  * `tl::expected<std::size_t,std::error_code> s = exp_string.map(&std::string::size);`
+  - `tl::expected<std::size_t,std::error_code> s = exp_string.map(&std::string::size);`
 - `map_error`: carries out some operation on the unexpected object if there is one.
-  * `my_error_code translate_error (std::error_code);`
-  * `tl::expected<int,my_error_code> s = exp_int.map_error(translate_error);`
+  - `my_error_code translate_error (std::error_code);`
+  - `tl::expected<int,my_error_code> s = exp_int.map_error(translate_error);`
 - `and_then`: like `map`, but for operations which return a `tl::expected`.
-  * `tl::expected<ast, fail_reason> parse (const std::string& s);`
-  * `tl::expected<ast, fail_reason> exp_ast = exp_string.and_then(parse);`
+  - `tl::expected<ast, fail_reason> parse (const std::string& s);`
+  - `tl::expected<ast, fail_reason> exp_ast = exp_string.and_then(parse);`
 - `or_else`: calls some function if there is no value stored.
-  * `exp.or_else([] { throw std::runtime_error{"oh no"}; });`
+  - `exp.or_else([] { throw std::runtime_error{"oh no"}; });`
 
 p0323r3 specifies calling `.error()` on an expected value, or using the `*` or `->` operators on an unexpected value, to be undefined behaviour. In this implementation it causes an assertion failure. The implementation of assertions can be overridden by defining the macro `TL_ASSERT(boolean_condition)` before #including <tl/expected.hpp>; by default, `assert(boolean_condition)` from the `<cassert>` header is used. Note that correct code would not rely on these assertions.
 
@@ -64,12 +65,12 @@ p0323r3 specifies calling `.error()` on an expected value, or using the `*` or `
 Tested on:
 
 - Linux
-  * clang++ 3.5, 3.6, 3.7, 3.8, 3.9, 4, 5, 6, 7, 8, 9, 10, 11
-  * g++ 4.8, 4.9, 5.5, 6.4, 7.5, 8, 9, 10 
+  - clang++ 3.5, 3.6, 3.7, 3.8, 3.9, 4, 5, 6, 7, 8, 9, 10, 11
+  - g++ 4.8, 4.9, 5.5, 6.4, 7.5, 8, 9, 10
 - Windows
-  * MSVC 2015, 2017, 2019, 2022
+  - MSVC 2015, 2017, 2019, 2022
 
-----------
+---
 
 [![CC0](http://i.creativecommons.org/p/zero/1.0/88x31.png)]("http://creativecommons.org/publicdomain/zero/1.0/")
 

@@ -18,7 +18,7 @@ TEST(Repo, GetRepoMinPriority)
 {
     RepoConfigV2 cfg;
 
-    cfg.repos = { { std::nullopt,false, "repo1", 100, "http://example.com/repo1" }};
+    cfg.repos = { { std::nullopt, false, "repo1", 100, "http://example.com/repo1" } };
     EXPECT_EQ(getRepoMinPriority(cfg), 100);
 
     cfg.repos = { { std::nullopt, false, "repo1", 200, "http://example.com/repo1" },
@@ -54,7 +54,7 @@ TEST(Repo, GetRepoMaxPriority)
                   { std::nullopt, false, "repo3", 300, "http://example.com/repo3" } };
     EXPECT_EQ(getRepoMaxPriority(cfg), 300);
 
-    cfg.repos = { { "alias1",false, "repo1", 200, "http://example.com/repo1" },
+    cfg.repos = { { "alias1", false, "repo1", 200, "http://example.com/repo1" },
                   { "alias2", false, "repo2", 0, "http://example.com/repo2" },
                   { "alias3", false, "repo3", 300, "http://example.com/repo3" } };
     EXPECT_EQ(getRepoMaxPriority(cfg), 300);

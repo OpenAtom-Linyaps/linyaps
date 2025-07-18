@@ -62,6 +62,7 @@ ll-appimage-convert convert -f ~/Downloads/BrainWaves-0.15.1.AppImage --name "io
 ```
 
 The converted directory structure is as follows:
+
 ```text
 ├── io.github.brainwaves_x86_64_0.15.1.0_main.uab
 ├── linglong
@@ -75,6 +76,7 @@ ll-appimage-convert convert -f ~/Downloads/BrainWaves-0.15.1.AppImage --name "io
 ```
 
 The converted directory structure is as follows:
+
 ```text
 ├── io.github.brainwaves_0.15.1.0_x86_64_binary.layer
 ├── io.github.brainwaves_0.15.1.0_x86_64_develop.layer

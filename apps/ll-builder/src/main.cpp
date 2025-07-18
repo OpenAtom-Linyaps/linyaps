@@ -995,7 +995,8 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     auto buildRepoEnableMirror =
       buildRepo->add_subcommand("enable-mirror", _("Enable mirror for the repo"));
     buildRepoEnableMirror->usage(_("Usage: ll-builder repo enable-mirror [OPTIONS] ALIAS"));
-    buildRepoEnableMirror->add_option("ALIAS", repoCmdOpts.repoOptions.repoAlias, _("Alias of the repo name"))
+    buildRepoEnableMirror
+      ->add_option("ALIAS", repoCmdOpts.repoOptions.repoAlias, _("Alias of the repo name"))
       ->required()
       ->check(validatorString);
 
@@ -1003,7 +1004,8 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     auto buildRepoDisableMirror =
       buildRepo->add_subcommand("disable-mirror", _("Disable mirror for the repo"));
     buildRepoDisableMirror->usage(_("Usage: ll-builder repo disable-mirror [OPTIONS] ALIAS"));
-    buildRepoDisableMirror->add_option("ALIAS", repoCmdOpts.repoOptions.repoAlias, _("Alias of the repo name"))
+    buildRepoDisableMirror
+      ->add_option("ALIAS", repoCmdOpts.repoOptions.repoAlias, _("Alias of the repo name"))
       ->required()
       ->check(validatorString);
 

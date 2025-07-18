@@ -73,7 +73,7 @@ public:
     }
 
     void setState(linglong::api::types::v1::State newState) noexcept
-    void setState(linglong::api::types::v1::State newState) noexcept
+      void setState(linglong::api::types::v1::State newState) noexcept
     {
         m_state = static_cast<int>(newState);
     }
@@ -100,6 +100,7 @@ public:
     void setCode(utils::error::ErrorCode code) noexcept { m_code = static_cast<int>(code); }
 
     [[nodiscard]] QString taskID() const noexcept { return m_taskID.toString(QUuid::Id128); }
+
     [[nodiscard]] QString taskObjectPath() const noexcept
     {
         return "/org/deepin/linglong/Task1/" + taskID();

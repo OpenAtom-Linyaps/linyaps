@@ -28,7 +28,8 @@
 
 namespace {
 
-class ContainerBundleHolder {
+class ContainerBundleHolder
+{
 public:
     static std::filesystem::path containerBundle;
 };
@@ -65,9 +66,11 @@ void cleanResource()
     }
 
     std::error_code ec;
-    if (std::filesystem::remove_all(ContainerBundleHolder::containerBundle, ec) == static_cast<std::uintmax_t>(-1) && ec) {
-        std::cerr << "failed to remove directory " << ContainerBundleHolder::containerBundle << ":" << ec.message()
-                  << std::endl;
+    if (std::filesystem::remove_all(ContainerBundleHolder::containerBundle, ec)
+          == static_cast<std::uintmax_t>(-1)
+        && ec) {
+        std::cerr << "failed to remove directory " << ContainerBundleHolder::containerBundle << ":"
+                  << ec.message() << std::endl;
         return;
     }
 }
@@ -88,21 +91,22 @@ void handleSig() noexcept
     }
 }
 
-}  // namespace
-        sigaddset(&blocking_mask, sig);
-    }
+} // namespace
 
-    struct sigaction sa{};
+sigaddset(&blocking_mask, sig);
+}
 
-    sa.sa_handler = [](int sig) -> void {
-        cleanAndExit(128 + sig);
-    };
-    sa.sa_mask = blocking_mask;
-    sa.sa_flags = 0;
+struct sigaction sa{};
 
-    for (auto sig : quitSignals) {
-        sigaction(sig, &sa, nullptr);
-    }
+sa.sa_handler = [](int sig) -> void {
+    cleanAndExit(128 + sig);
+};
+sa.sa_mask = blocking_mask;
+sa.sa_flags = 0;
+
+for (auto sig : quitSignals) {
+    sigaction(sig, &sa, nullptr);
+}
 }
 
 std::optional<linglong::api::types::v1::PackageInfoV2>

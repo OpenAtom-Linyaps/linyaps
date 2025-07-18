@@ -51,6 +51,7 @@ id                               name                             version       
 org.dde.calendar                 dde-calendar                     5.14.5.0        x86_64      main            binary      calendar for deepin os.
 org.deepin.browser               deepin-browser                   6.5.5.4         x86_64      main            binary      browser for deepin os.
 ```
+
 To view the installed runtime, run `ll-cli list --type=runtime`:
 
 ```bash

@@ -77,6 +77,6 @@ The example of annotations is：
   }
 ```
 
-The ll-box support two method to build rootfs, use native ro bind mount or with overlayfs. 
+The ll-box support two method to build rootfs, use native ro bind mount or with overlayfs.
 
 `container_root_path` is the work directory of ll-box.

@@ -47,15 +47,14 @@ can be found at [/api/schema/v1.yaml].
 
 [/api/schema/v1.yaml]: ../../../../api/schema/v1.yaml
 
-
 ## Application-specific patches
 
 Patches in application ID-named directories are application-specific and apply after global patches
 
 ## Examples
 
-- Global patch:   `99-dump-conf`
-- App patch:     `com.example.app/99-test.json`
+- Global patch: `99-dump-conf`
+- App patch: `com.example.app/99-test.json`
 
 com.example.app/99-test.json:
 
@@ -70,9 +69,7 @@ com.example.app/99-test.json:
         "destination": "/opt/host-apps/",
         "type": "bind",
         "source": "/opt/apps",
-        "options": [
-          "rbind"
-        ]
+        "options": ["rbind"]
       }
     }
   ]
@@ -84,7 +81,7 @@ this patch will applied after 99-dump-conf.
 
 99-dump-conf can write following content to print the container's configuration:
 
-``` bash
+```bash
 #!/bin/sh
 
 content=$(cat -)

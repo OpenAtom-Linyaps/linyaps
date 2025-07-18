@@ -15,19 +15,20 @@ ll-builder export [OPTIONS]
 ```
 
 To view all available options and their detailed descriptions, run:
+
 ```bash
 ll-builder export --help
 ```
 
 ## Main Options
 
-*   `-f, --file FILE`: Specify the path to the `linglong.yaml` configuration file (default: `./linglong.yaml`). The directory containing `linglong.yaml` serves as the project's working directory.
-*   `-o, --output FILE`: Specify the output file path. For UAB, this is typically the full path or filename of the `.uab` file. For layers, this is the prefix for the output filenames.
-*   `-z, --compressor X`: Specify the compression algorithm. Supports `lz4` (UAB default), `lzma` (layer default), `zstd`.
-*   `--icon FILE`: Specify an icon for the exported UAB file (UAB mode only, mutually exclusive with `--layer`).
-*   `--loader FILE`: Specify a custom loader for the exported UAB file (UAB mode only, mutually exclusive with `--layer`).
-*   `--layer`: **(Deprecated)** Export as layer file format instead of UAB (mutually exclusive with `--icon`, `--loader`).
-*   `--no-develop`: When exporting layer files, do not include the `develop` module.
+- `-f, --file FILE`: Specify the path to the `linglong.yaml` configuration file (default: `./linglong.yaml`). The directory containing `linglong.yaml` serves as the project's working directory.
+- `-o, --output FILE`: Specify the output file path. For UAB, this is typically the full path or filename of the `.uab` file. For layers, this is the prefix for the output filenames.
+- `-z, --compressor X`: Specify the compression algorithm. Supports `lz4` (UAB default), `lzma` (layer default), `zstd`.
+- `--icon FILE`: Specify an icon for the exported UAB file (UAB mode only, mutually exclusive with `--layer`).
+- `--loader FILE`: Specify a custom loader for the exported UAB file (UAB mode only, mutually exclusive with `--layer`).
+- `--layer`: **(Deprecated)** Export as layer file format instead of UAB (mutually exclusive with `--icon`, `--loader`).
+- `--no-develop`: When exporting layer files, do not include the `develop` module.
 
 ## Exporting UAB Files (Recommended)
 
@@ -64,8 +65,9 @@ ll-builder export --layer -o my-app
 ```
 
 Exporting layer files generates the following files:
-*   `*_binary.layer`: Contains the basic files required for the application to run.
-*   `*_develop.layer`: (Optional) Contains files for development and debugging. This file is not generated if the `--no-develop` option is used.
+
+- `*_binary.layer`: Contains the basic files required for the application to run.
+- `*_develop.layer`: (Optional) Contains files for development and debugging. This file is not generated if the `--no-develop` option is used.
 
 ## Advanced Notes
 

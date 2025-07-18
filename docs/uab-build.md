@@ -13,7 +13,7 @@ loader和extra-files.txt
 
 loader的编写参考：
 
-``` bash
+```bash
 #!/bin/env sh
 APPID=org.deepin.demo
 ./ll-box $APPID $PWD /opt/apps/$APPID/files/bin/demo

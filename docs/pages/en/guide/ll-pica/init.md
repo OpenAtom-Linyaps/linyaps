@@ -63,8 +63,8 @@ Detailed Field Reference: [Manifests](../manifests.md)
 
 :::tip
 The default configuration file `~/.pica/config.json`
- is set to use Deepin v23. If you need to specify UOS 20 as the BASE and
- RUNTIME, modify the default configuration using the following command.
+is set to use Deepin v23. If you need to specify UOS 20 as the BASE and
+RUNTIME, modify the default configuration using the following command.
 Please update the link below, [https://professional-packages.chinauos.com/desktop-professional](https://professional-packages.chinauos.com/desktop-professional), to a version that does not require authentication.
 :::
 

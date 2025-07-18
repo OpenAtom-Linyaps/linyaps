@@ -40,7 +40,6 @@ Options:
 
 1. 使用 `ll-cli ps` 获取正在运行的容器ID:
 
-
 ```bash
 App                                       ContainerID      Pid
 main:org.dde.calendar/5.14.5.0/x86_64     c3b5ce363172     539537

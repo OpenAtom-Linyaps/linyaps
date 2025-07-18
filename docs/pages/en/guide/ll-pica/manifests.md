@@ -29,13 +29,13 @@ runtime:
   arch: amd64
 ```
 
-| name           | description                                                                                 |
-| -------------- | ------------------------------------------------------------------------------------------- |
+| name           | description                                                                                |
+| -------------- | ------------------------------------------------------------------------------------------ |
 | version        | Runtime version, A three-digit number can be loosely matched with a potential fourth digit |
 | base_version   | Base version, A three-digit number can be loosely matched with a potential fourth digit    |
-| source         | Obtain the sources used by the dependencies of a deb package.                               |
-| distro_version | The codename of a distribution."                                                            |
-| arch           | The architecture required by a deb package.                                                 |
+| source         | Obtain the sources used by the dependencies of a deb package.                              |
+| distro_version | The codename of a distribution."                                                           |
+| arch           | The architecture required by a deb package.                                                |
 
 ### Deb package informationeb
 

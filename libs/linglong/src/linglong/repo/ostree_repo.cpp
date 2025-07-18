@@ -1378,7 +1378,7 @@ void OSTreeRepo::pull(service::PackageTask &taskContext,
     auto sizes = this->getCommitSize(pullRepo.alias.value_or(pullRepo.name), refString);
     if (!sizes.has_value()) {
         qWarning() << "get commit size error: " << sizes.error().message();
-    } else if(sizes->size() >= 3) {
+    } else if (sizes->size() >= 3) {
         data.needed_archived = sizes->at(0);
         data.needed_unpacked = sizes->at(1);
         data.needed_objects = sizes->at(2);

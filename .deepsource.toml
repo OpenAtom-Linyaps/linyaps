@@ -4,25 +4,59 @@
 
 version = 1
 
+# 全局排除配置
+exclude_patterns = [
+    "external/**",
+    "build/**",
+    "obj-*/**",
+    ".cache/**",
+    ".obs/**",
+    ".tx/**",
+    "**/*.generated.*",
+    "**/CMakeCache.txt",
+    "**/compile_commands.json",
+    "debian/patches/**",
+    "po/*.po",
+    "po/*.pot",
+    "tools/openapi-c-libcurl-client/**",
+]
+
+# C++ 分析器配置
 [[analyzers]]
 name = "cxx"
 enabled = true
 
+[analyzers.meta]
+misra_compliance = true
+cyclomatic_complexity_threshold = "medium"
+
+# Shell 脚本分析器配置
 [[analyzers]]
 name = "shell"
 enabled = true
 
+[analyzers.meta]
+# 只保留官方支持的选项
+dialect = "bash"
+
+# 密钥检测分析器配置
 [[analyzers]]
 name = "secrets"
 enabled = true
+# secrets 分析器不支持任何 meta 配置
 
+# 测试覆盖率分析器配置
 [[analyzers]]
 name = "test-coverage"
-enabled = false
+enabled = true
 
+# 代码格式化器配置
 [[transformers]]
 name = "clang-format"
 enabled = true
+
+[transformers.meta]
+exclude_patterns = ["external/**", "build/**", "obj-*/**", "**/*.generated.*"]
 
 [[transformers]]
 name = "prettier"
@@ -30,3 +64,13 @@ enabled = true
 
 [transformers.meta]
 include_patterns = ["**/*.md", "**/*.json", "**/*.yaml", "**/*.yml"]
+exclude_patterns = [
+    "external/**",
+    "build/**",
+    "obj-*/**",
+    ".cache/**",
+    "po/**",
+    "**/*.generated.*",
+    "package-lock.json",
+    "yarn.lock",
+]

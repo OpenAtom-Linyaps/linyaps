@@ -33,7 +33,7 @@ void AddMount(ocppi::runtime::config::types::Config &config,
     }
 }
 
-std::map<AnnotationKey, std::string> AnnotationMap{
+const std::map<AnnotationKey, std::string> AnnotationMap{
     { AnnotationKey::MountRootfsComments, "dev.linglong.mount.rootfs.comments" },
 };
 

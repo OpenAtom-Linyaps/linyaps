@@ -73,6 +73,7 @@ public:
     }
 
     void setState(linglong::api::types::v1::State newState) noexcept
+    void setState(linglong::api::types::v1::State newState) noexcept
     {
         m_state = static_cast<int>(newState);
     }
@@ -99,7 +100,6 @@ public:
     void setCode(utils::error::ErrorCode code) noexcept { m_code = static_cast<int>(code); }
 
     [[nodiscard]] QString taskID() const noexcept { return m_taskID.toString(QUuid::Id128); }
-
     [[nodiscard]] QString taskObjectPath() const noexcept
     {
         return "/org/deepin/linglong/Task1/" + taskID();
@@ -119,7 +119,7 @@ public:
 
         return m_totalPercentage
           + (m_curStagePercentage
-             * m_subStateMap[static_cast<api::types::v1::SubState>(m_subState)]);
+             * m_subStateMap.value(static_cast<api::types::v1::SubState>(m_subState)));
     };
 
 public Q_SLOTS:
@@ -150,7 +150,7 @@ private:
     std::function<void(PackageTask &)> m_job;
     utils::dbus::PropertiesForwarder *m_forwarder{ nullptr };
 
-    inline static QMap<linglong::api::types::v1::SubState, double> m_subStateMap{
+    inline static const QMap<linglong::api::types::v1::SubState, double> m_subStateMap{
         { linglong::api::types::v1::SubState::PreAction, 10 },
         // install
         { linglong::api::types::v1::SubState::InstallBase, 20 },

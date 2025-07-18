@@ -136,22 +136,21 @@ bool linglongInstalled()
     return QCoreApplication::applicationDirPath() == BINDIR;
 }
 
-auto globalTaskControl = GlobalTaskControl{};
-
 const GlobalTaskControl *GlobalTaskControl::instance()
 {
+    static GlobalTaskControl globalTaskControl;
     return &globalTaskControl;
 }
 
 void GlobalTaskControl::cancel()
 {
-    globalTaskControl.cancelFlag.store(true);
-    Q_EMIT globalTaskControl.OnCancel();
+    cancelFlag.store(true);
+    Q_EMIT OnCancel();
 }
 
 bool GlobalTaskControl::canceled()
 {
-    return globalTaskControl.cancelFlag.load();
+    return cancelFlag.load();
 }
 
 } // namespace linglong::utils::global

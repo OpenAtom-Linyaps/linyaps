@@ -21,7 +21,7 @@
 
 namespace linglong::package {
 
-Q_DECLARE_LOGGING_CATEGORY(uab_packager)
+extern const QLoggingCategory uab_packager;
 
 struct elfHelper
 {

@@ -25,7 +25,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-extern char **environ;
+extern char **const environ;
 
 namespace linglong::generator {
 

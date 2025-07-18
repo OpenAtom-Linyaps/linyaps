@@ -28,7 +28,12 @@
 
 namespace {
 
-std::filesystem::path containerBundle;
+class ContainerBundleHolder {
+public:
+    static std::filesystem::path containerBundle;
+};
+
+std::filesystem::path ContainerBundleHolder::containerBundle;
 
 std::string genRandomString() noexcept
 {
@@ -50,18 +55,18 @@ std::string genRandomString() noexcept
 
 void cleanResource()
 {
-    if (containerBundle.empty()) {
+    if (ContainerBundleHolder::containerBundle.empty()) {
         return;
     }
 
-    containerBundle.clear();
+    ContainerBundleHolder::containerBundle.clear();
     if (::getenv("LINGLONG_UAB_DEBUG") != nullptr) {
         return;
     }
 
     std::error_code ec;
-    if (std::filesystem::remove_all(containerBundle, ec) == static_cast<std::uintmax_t>(-1) && ec) {
-        std::cerr << "failed to remove directory " << containerBundle << ":" << ec.message()
+    if (std::filesystem::remove_all(ContainerBundleHolder::containerBundle, ec) == static_cast<std::uintmax_t>(-1) && ec) {
+        std::cerr << "failed to remove directory " << ContainerBundleHolder::containerBundle << ":" << ec.message()
                   << std::endl;
         return;
     }
@@ -79,6 +84,11 @@ void handleSig() noexcept
     sigemptyset(&blocking_mask);
     auto quitSignals = { SIGTERM, SIGINT, SIGQUIT, SIGHUP, SIGABRT };
     for (auto sig : quitSignals) {
+        // signal handling setup continues...
+    }
+}
+
+}  // namespace
         sigaddset(&blocking_mask, sig);
     }
 

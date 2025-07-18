@@ -31,7 +31,7 @@
 
 namespace linglong::package {
 
-Q_LOGGING_CATEGORY(uab_packager, "packager.uab")
+static const QLoggingCategory uab_packager("packager.uab");
 
 elfHelper::elfHelper(QByteArray path, int fd, Elf *ptr)
     : filePath(std::move(path))

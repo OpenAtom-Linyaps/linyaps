@@ -34,10 +34,8 @@ function(linglong_add_dbus_interface target xml basename) # include
     endif()
   endif()
 
-  set(INTERFACE_SOURCES)
   if("${QT_VERSION_MAJOR}" STREQUAL "6")
-    qt6_add_dbus_interface_override(qdbusxml2cpp INTERFACE_SOURCES ${xml}
-                                    ${basename})
+    qt6_add_dbus_interface(INTERFACE_SOURCES ${xml} ${basename})
   else()
     set(Qt5DBus_QDBUSXML2CPP_EXECUTABLE qdbusxml2cpp)
     qt5_add_dbus_interface(INTERFACE_SOURCES ${xml} ${basename})

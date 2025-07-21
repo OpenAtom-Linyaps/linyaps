@@ -1270,6 +1270,29 @@ utils::error::Result<void> OSTreeRepo::prune()
     return LINGLONG_OK;
 }
 
+// 初始化一个GVariantBuilder
+GVariantBuilder OSTreeRepo::initOStreePullOptions(const std::string &ref) noexcept
+{
+    std::array<const char *, 2> refs{ ref.c_str(), nullptr };
+    GVariantBuilder builder;
+    g_variant_builder_init(&builder, G_VARIANT_TYPE("a{sv}"));
+    std::string userAgent = "linglong/" LINGLONG_VERSION;
+    g_variant_builder_add(&builder,
+                          "{s@v}",
+                          "append-user-agent",
+                          g_variant_new_variant(g_variant_new_string(userAgent.c_str())));
+    g_variant_builder_add(&builder,
+                          "{s@v}",
+                          "disable-static-deltas",
+                          g_variant_new_variant(g_variant_new_boolean(true)));
+
+    g_variant_builder_add(&builder,
+                          "{s@v}",
+                          "refs",
+                          g_variant_new_variant(g_variant_new_strv(refs.data(), -1)));
+    return builder;
+}
+
 // 在pull之前获取commit size，用于计算进度，需要服务器支持ostree.sizes
 utils::error::Result<std::vector<guint64>>
 OSTreeRepo::getCommitSize(const std::string &remote, const std::string &refString) noexcept
@@ -1277,19 +1300,7 @@ OSTreeRepo::getCommitSize(const std::string &remote, const std::string &refStrin
     LINGLONG_TRACE("get commit size " + QString::fromStdString(refString));
 #if OSTREE_CHECK_VERSION(2020, 1)
     g_autoptr(GError) gErr = nullptr;
-    // 获取commit的metadata
-    std::array<const char *, 2> refs{ refString.c_str(), nullptr };
-    std::string userAgent = "linglong/" LINGLONG_VERSION;
-    GVariantBuilder builder;
-    g_variant_builder_init(&builder, G_VARIANT_TYPE("a{sv}"));
-    g_variant_builder_add(&builder,
-                          "{s@v}",
-                          "refs",
-                          g_variant_new_variant(g_variant_new_strv(refs.data(), -1)));
-    g_variant_builder_add(&builder,
-                          "{s@v}",
-                          "append-user-agent",
-                          g_variant_new_variant(g_variant_new_string(userAgent.c_str())));
+    GVariantBuilder builder = this->initOStreePullOptions(refString);
     // 设置flags只获取commit的metadata
     g_variant_builder_add(
       &builder,
@@ -1297,6 +1308,7 @@ OSTreeRepo::getCommitSize(const std::string &remote, const std::string &refStrin
       "flags",
       g_variant_new_variant(g_variant_new_int32(OSTREE_REPO_PULL_FLAGS_COMMIT_ONLY)));
     g_autoptr(GVariant) pull_options = g_variant_ref_sink(g_variant_builder_end(&builder));
+    // 获取commit的metadata
     auto status = ostree_repo_pull_with_options(this->ostreeRepo.get(),
                                                 remote.c_str(),
                                                 pull_options,
@@ -1308,7 +1320,7 @@ OSTreeRepo::getCommitSize(const std::string &remote, const std::string &refStrin
     }
     // 使用refString获取commit的sha256
     g_autofree char *resolved_rev = NULL;
-    if (!ostree_repo_resolve_rev(this->ostreeRepo.get(), refs[0], FALSE, &resolved_rev, &gErr)) {
+    if (!ostree_repo_resolve_rev(this->ostreeRepo.get(), refString.c_str(), FALSE, &resolved_rev, &gErr)) {
         return LINGLONG_ERR("ostree_repo_resolve_rev", gErr);
     }
     // 使用sha256获取commit id
@@ -1372,7 +1384,6 @@ void OSTreeRepo::pull(service::PackageTask &taskContext,
     utils::Transaction transaction;
     auto *cancellable = taskContext.cancellable();
 
-    std::array<const char *, 2> refs{ refString.c_str(), nullptr };
     ostreeUserData data{ .taskContext = &taskContext };
 
     auto sizes = this->getCommitSize(pullRepo.alias.value_or(pullRepo.name), refString);
@@ -1390,21 +1401,7 @@ void OSTreeRepo::pull(service::PackageTask &taskContext,
 
     g_autoptr(GError) gErr = nullptr;
 
-    std::string userAgent = "linglong/" LINGLONG_VERSION;
-    GVariantBuilder builder;
-    g_variant_builder_init(&builder, G_VARIANT_TYPE("a{sv}"));
-    g_variant_builder_add(&builder,
-                          "{s@v}",
-                          "refs",
-                          g_variant_new_variant(g_variant_new_strv(refs.data(), -1)));
-    g_variant_builder_add(&builder,
-                          "{s@v}",
-                          "append-user-agent",
-                          g_variant_new_variant(g_variant_new_string(userAgent.c_str())));
-    g_variant_builder_add(&builder,
-                          "{s@v}",
-                          "disable-static-deltas",
-                          g_variant_new_variant(g_variant_new_boolean(true)));
+    auto builder = this->initOStreePullOptions(refString);
     g_autoptr(GVariant) pull_options = g_variant_ref_sink(g_variant_builder_end(&builder));
     // 这里不能使用g_main_context_push_thread_default，因为会阻塞Qt的事件循环
 
@@ -1434,23 +1431,9 @@ void OSTreeRepo::pull(service::PackageTask &taskContext,
         refString = ostreeSpecFromReference(reference, std::nullopt, module);
         qWarning() << "fallback to module runtime, pull " << QString::fromStdString(refString);
 
-        refs[0] = refString.c_str();
         g_clear_error(&gErr);
 
-        GVariantBuilder builder;
-        g_variant_builder_init(&builder, G_VARIANT_TYPE("a{sv}"));
-        g_variant_builder_add(&builder,
-                              "{s@v}",
-                              "refs",
-                              g_variant_new_variant(g_variant_new_strv(refs.data(), -1)));
-        g_variant_builder_add(&builder,
-                              "{s@v}",
-                              "append-user-agent",
-                              g_variant_new_variant(g_variant_new_string(userAgent.c_str())));
-        g_variant_builder_add(&builder,
-                              "{s@v}",
-                              "disable-static-deltas",
-                              g_variant_new_variant(g_variant_new_boolean(true)));
+        GVariantBuilder builder = this->initOStreePullOptions(refString);
 
         g_autoptr(GVariant) pull_options = g_variant_ref_sink(g_variant_builder_end(&builder));
 
@@ -1473,7 +1456,7 @@ void OSTreeRepo::pull(service::PackageTask &taskContext,
 
     g_clear_error(&gErr);
     if (ostree_repo_read_commit(this->ostreeRepo.get(),
-                                refs[0],
+                                refString.c_str(),
                                 &layerRootDir,
                                 &commit,
                                 cancellable,

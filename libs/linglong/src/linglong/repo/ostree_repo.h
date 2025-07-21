@@ -82,8 +82,6 @@ public:
                  const std::string &url,
                  const package::Reference &reference,
                  const std::string &module = "binary") const noexcept;
-    utils::error::Result<std::vector<guint64>> getCommitSize(const std::string &remote,
-                                                             const std::string &refString) noexcept;
     void pull(service::PackageTask &taskContext,
               const package::Reference &reference,
               const std::string &module = "binary",
@@ -206,6 +204,9 @@ private:
               const std::optional<std::string> &fileSuffix = std::nullopt);
     // exportEntries will clear the entries/share and export all applications to the entries/share
     utils::error::Result<void> exportAllEntries() noexcept;
+    utils::error::Result<std::vector<guint64>> getCommitSize(const std::string &remote,
+                                                             const std::string &refString) noexcept;
+    GVariantBuilder initOStreePullOptions(const std::string &ref) noexcept;
 };
 
 } // namespace linglong::repo

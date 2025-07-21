@@ -118,18 +118,6 @@ SPDX-FileCopyrightText = "None"
 SPDX-License-Identifier = "CC0-1.0"
 
 [[annotations]]
-path = "tools/qdbusxml2cpp/qdbusxml2cpp_5.cpp"
-precedence = "aggregate"
-SPDX-FileCopyrightText = "2020 The Qt Company Ltd."
-SPDX-License-Identifier = "GPL-3.0-only"
-
-[[annotations]]
-path = "tools/qdbusxml2cpp/qdbusxml2cpp_6.h"
-precedence = "aggregate"
-SPDX-FileCopyrightText = "2021 The Qt Company Ltd."
-SPDX-License-Identifier = "GPL-3.0-only"
-
-[[annotations]]
 path = "libs/ocppi/**"
 precedence = "aggregate"
 SPDX-FileCopyrightText = "UnionTech Software Technology Co., Ltd."

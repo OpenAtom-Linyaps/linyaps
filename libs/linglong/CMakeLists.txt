@@ -115,20 +115,10 @@ function(
   classname)
   get_real_target_name(target ${target})
 
-  set(DBUS_ADAPTOR_SOURCE)
-
   if("${QT_VERSION_MAJOR}" STREQUAL "6")
-    qt6_add_dbus_adaptor_override(
-      qdbusxml2cpp
-      DBUS_ADAPTOR_SOURCE
-      ${xml}
-      ${includes}
-      ${parent_class}
-      ${basename}
-      ${classname})
+    qt6_add_dbus_adaptor(DBUS_ADAPTOR_SOURCE ${xml} ${includes} ${parent_class}
+                         ${basename} ${classname})
   else()
-    set(Qt5DBus_QDBUSXML2CPP_EXECUTABLE qdbusxml2cpp) # this varible only exists
-                                                      # in qt5
     qt5_add_dbus_adaptor(DBUS_ADAPTOR_SOURCE ${xml} ${includes} ${parent_class}
                          ${basename} ${classname})
   endif()

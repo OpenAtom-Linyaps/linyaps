@@ -54,3 +54,6 @@ jobs:
             ..
 
           make -j$(nproc)
+      - name: Run tests
+        run: |
+          ./build/libs/linglong/tests/ll-tests/ll-tests

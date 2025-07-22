@@ -1320,7 +1320,11 @@ OSTreeRepo::getCommitSize(const std::string &remote, const std::string &refStrin
     }
     // 使用refString获取commit的sha256
     g_autofree char *resolved_rev = NULL;
-    if (!ostree_repo_resolve_rev(this->ostreeRepo.get(), refString.c_str(), FALSE, &resolved_rev, &gErr)) {
+    if (!ostree_repo_resolve_rev(this->ostreeRepo.get(),
+                                 refString.c_str(),
+                                 FALSE,
+                                 &resolved_rev,
+                                 &gErr)) {
         return LINGLONG_ERR("ostree_repo_resolve_rev", gErr);
     }
     // 使用sha256获取commit id

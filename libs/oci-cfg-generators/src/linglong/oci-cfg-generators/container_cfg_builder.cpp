@@ -243,7 +243,12 @@ ContainerCfgBuilder &ContainerCfgBuilder::bindRun() noexcept
 
 ContainerCfgBuilder &ContainerCfgBuilder::bindTmp() noexcept
 {
-    tmpMount = Mount{};
+    tmpMount = Mount{
+        .destination = "/tmp",
+        .options = string_list{ "rbind" },
+        .source = "/tmp",
+        .type = "bind",
+    };
 
     return *this;
 }
@@ -854,30 +859,6 @@ bool ContainerCfgBuilder::buildMountHome() noexcept
           .type = "bind",
         });
     }
-
-    return true;
-}
-
-bool ContainerCfgBuilder::buildTmp() noexcept
-{
-    if (!tmpMount) {
-        return true;
-    }
-
-    std::srand(std::time(0));
-    auto tmpPath = std::filesystem::temp_directory_path()
-      / ("linglong_" + std::to_string(::getuid())) / (appId + "-" + std::to_string(std::rand()));
-    std::error_code ec;
-    if (!std::filesystem::create_directories(tmpPath, ec) && ec) {
-        error_.reason = tmpPath.string() + "can't be created";
-        error_.code = BUILD_MOUNT_TMP_ERROR;
-        return false;
-    }
-
-    tmpMount = Mount{ .destination = "/tmp",
-                      .options = string_list{ "rbind" },
-                      .source = tmpPath,
-                      .type = "bind" };
 
     return true;
 }
@@ -2062,7 +2043,7 @@ bool ContainerCfgBuilder::build() noexcept
         return false;
     }
 
-    if (!buildTmp() || !buildPrivateDir() || !buildMountHome() || !buildPrivateMapped()) {
+    if (!buildPrivateDir() || !buildMountHome() || !buildPrivateMapped()) {
         return false;
     }
 

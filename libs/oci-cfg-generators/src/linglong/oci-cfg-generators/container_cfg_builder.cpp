@@ -65,6 +65,30 @@ bool bindIfExist(std::vector<Mount> &mounts,
 }
 } // namespace
 
+ContainerCfgBuilder &ContainerCfgBuilder::setAnnotation(ANNOTATION key, std::string value) noexcept
+{
+    if (!config.annotations) {
+        config.annotations = std::map<std::string, std::string>();
+    }
+
+    switch (key) {
+    case ANNOTATION::APPID:
+        config.annotations->insert_or_assign("org.deepin.linglong.appID", std::move(value));
+        break;
+    case ANNOTATION::BASEDIR:
+        config.annotations->insert_or_assign("org.deepin.linglong.baseDir", std::move(value));
+        break;
+    case ANNOTATION::LAST_PID:
+        config.annotations->insert_or_assign("cn.org.linyaps.runtime.ns_last_pid",
+                                             std::move(value));
+        break;
+    default:
+        break;
+    }
+
+    return *this;
+}
+
 ContainerCfgBuilder &ContainerCfgBuilder::addUIdMapping(int64_t containerID,
                                                         int64_t hostID,
                                                         int64_t size) noexcept

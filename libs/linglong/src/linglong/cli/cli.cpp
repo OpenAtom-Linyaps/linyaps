@@ -529,8 +529,9 @@ int Cli::run([[maybe_unused]] CLI::App *subcommand)
 {
     LINGLONG_TRACE("command run");
 
-    int64_t uid = getuid();
-    int64_t gid = getgid();
+    auto uid = getuid();
+    auto gid = getgid();
+    auto pid = getpid();
 
     // NOTE: ll-box is not support running as root for now.
     if (uid == 0) {
@@ -538,14 +539,14 @@ int Cli::run([[maybe_unused]] CLI::App *subcommand)
         return -1;
     }
 
-    auto userContainerDir = std::filesystem::path{ "/run/linglong" } / std::to_string(::getuid());
+    auto userContainerDir = std::filesystem::path{ "/run/linglong" } / std::to_string(uid);
     if (auto ret = ensureDirectory(userContainerDir); !ret) {
         this->printer.printErr(ret.error());
         return -1;
     }
 
     auto mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
-    auto pidFile = userContainerDir / std::to_string(::getpid());
+    auto pidFile = userContainerDir / std::to_string(pid);
     // placeholder file
     auto fd = ::open(pidFile.c_str(), O_WRONLY | O_CREAT | O_EXCL, mode);
     if (fd == -1) {
@@ -604,11 +605,9 @@ int Cli::run([[maybe_unused]] CLI::App *subcommand)
 
     // this lambda will dump reference of containerID, app, base and runtime to
     // /run/linglong/getuid()/getpid() to store these needed infomation
-    auto dumpContainerInfo = [uid, &runContext, this]() -> bool {
+    auto dumpContainerInfo = [&pidFile, &runContext, this]() -> bool {
         LINGLONG_TRACE("dump info")
         std::error_code ec;
-        auto pidFile = std::filesystem::path{ "/run/linglong" } / std::to_string(uid)
-          / std::to_string(::getpid());
         if (!std::filesystem::exists(pidFile, ec)) {
             if (ec) {
                 qCritical() << "couldn't get status of" << pidFile.c_str() << ":"
@@ -634,8 +633,8 @@ int Cli::run([[maybe_unused]] CLI::App *subcommand)
 
     auto containers = getCurrentContainers().value_or(std::vector<api::types::v1::CliContainer>{});
     for (const auto &container : containers) {
+        qDebug() << "found running container: " << container.package.c_str();
         if (container.package != curAppRef->toString().toStdString()) {
-            qDebug() << "mismatch:" << container.package.c_str() << " -- " << curAppRef->toString();
             continue;
         }
 
@@ -699,6 +698,7 @@ int Cli::run([[maybe_unused]] CLI::App *subcommand)
         return -1;
     }
     cfgBuilder.setAppId(curAppRef->id.toStdString())
+      .setAnnotation(generator::ANNOTATION::LAST_PID, std::to_string(pid))
       .addUIdMapping(uid, uid, 1)
       .addGIdMapping(gid, gid, 1)
       .bindDefault()
@@ -841,6 +841,10 @@ Cli::getCurrentContainers() const noexcept
         if (!std::filesystem::exists(process, ec)) {
             // this process may exit abnormally, skip it.
             qDebug() << process.c_str() << "doesn't exist";
+            continue;
+        }
+
+        if (pidFile.file_size(ec) == 0) {
             continue;
         }
 

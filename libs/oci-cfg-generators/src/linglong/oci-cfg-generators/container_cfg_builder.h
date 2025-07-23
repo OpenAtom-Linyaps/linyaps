@@ -17,8 +17,9 @@
 namespace linglong::generator {
 
 enum class ANNOTATION {
-    ANNOTATION_APPID,
-    ANNOTATION_BASEDIR,
+    APPID,
+    BASEDIR,
+    LAST_PID,
 };
 
 class ContainerCfgBuilder

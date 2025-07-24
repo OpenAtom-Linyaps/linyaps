@@ -57,9 +57,11 @@ bool bindIfExist(std::vector<Mount> &mounts,
     }
 
     mounts.emplace_back(Mount{ .destination = destination,
+                               .gidMappings = std::nullopt,
                                .options = string_list{ "rbind", ro ? "ro" : "rw" },
                                .source = source,
-                               .type = "bind" });
+                               .type = "bind",
+                               .uidMappings = std::nullopt });
 
     return true;
 }
@@ -134,9 +136,11 @@ ContainerCfgBuilder &ContainerCfgBuilder::bindDefault() noexcept
 ContainerCfgBuilder &ContainerCfgBuilder::bindSys() noexcept
 {
     sysMount = Mount{ .destination = "/sys",
+                      .gidMappings = {},
                       .options = string_list{ "rbind", "nosuid", "noexec", "nodev" },
                       .source = "/sys",
-                      .type = "bind" };
+                      .type = "bind",
+                      .uidMappings = {} };
 
     return *this;
 }
@@ -144,9 +148,11 @@ ContainerCfgBuilder &ContainerCfgBuilder::bindSys() noexcept
 ContainerCfgBuilder &ContainerCfgBuilder::bindProc() noexcept
 {
     procMount = Mount{ .destination = "/proc",
+                       .gidMappings = {},
                        .options = string_list{ "nosuid", "noexec", "nodev" },
                        .source = "/proc",
-                       .type = "proc" };
+                       .type = "proc",
+                       .uidMappings = {} };
 
     return *this;
 }
@@ -155,22 +161,30 @@ ContainerCfgBuilder &ContainerCfgBuilder::bindDev() noexcept
 {
     devMount = {
         Mount{ .destination = "/dev",
+               .gidMappings = {},
                .options = string_list{ "nosuid", "strictatime", "mode=0755", "size=65536k" },
                .source = "tmpfs",
-               .type = "tmpfs" },
+               .type = "tmpfs",
+               .uidMappings = {} },
         Mount{ .destination = "/dev/pts",
+               .gidMappings = {},
                .options =
                  string_list{ "nosuid", "noexec", "newinstance", "ptmxmode=0666", "mode=0620" },
                .source = "devpts",
-               .type = "devpts" },
+               .type = "devpts",
+               .uidMappings = {} },
         Mount{ .destination = "/dev/shm",
+               .gidMappings = {},
                .options = string_list{ "nosuid", "noexec", "nodev", "mode=1777" },
                .source = "shm",
-               .type = "tmpfs" },
+               .type = "tmpfs",
+               .uidMappings = {} },
         Mount{ .destination = "/dev/mqueue",
+               .gidMappings = {},
                .options = string_list{ "rbind", "nosuid", "noexec", "nodev" },
                .source = "/dev/mqueue",
-               .type = "bind" },
+               .type = "bind",
+               .uidMappings = {} },
     };
 
     return *this;
@@ -192,9 +206,11 @@ ContainerCfgBuilder::bindDevNode(std::function<bool(const std::string &)> ifBind
     for (const auto &entry : std::filesystem::directory_iterator{ "/dev" }) {
         if (ifBind(entry.path().filename())) {
             Mount m{ .destination = entry.path(),
+                     .gidMappings = {},
                      .options = string_list{ "rbind" },
                      .source = entry.path(),
-                     .type = "bind" };
+                     .type = "bind",
+                     .uidMappings = {} };
 
             if (devNodeMount) {
                 devNodeMount->emplace_back(std::move(m));
@@ -210,9 +226,11 @@ ContainerCfgBuilder::bindDevNode(std::function<bool(const std::string &)> ifBind
 ContainerCfgBuilder &ContainerCfgBuilder::bindCgroup() noexcept
 {
     cgroupMount = Mount{ .destination = "/sys/fs/cgroup",
+                         .gidMappings = {},
                          .options = string_list{ "nosuid", "noexec", "nodev", "relatime", "ro" },
                          .source = "cgroup",
-                         .type = "cgroup" };
+                         .type = "cgroup",
+                         .uidMappings = {} };
 
     return *this;
 }
@@ -223,17 +241,23 @@ ContainerCfgBuilder &ContainerCfgBuilder::bindRun() noexcept
 
     runMount = {
         Mount{ .destination = "/run",
+               .gidMappings = {},
                .options = string_list{ "nosuid", "strictatime", "mode=0755", "size=65536k" },
                .source = "tmpfs",
-               .type = "tmpfs" },
+               .type = "tmpfs",
+               .uidMappings = {} },
         Mount{ .destination = "/run/user",
+               .gidMappings = {},
                .options = string_list{ "nodev", "nosuid", "mode=700" },
                .source = "tmpfs",
-               .type = "tmpfs" },
+               .type = "tmpfs",
+               .uidMappings = {} },
         Mount{ .destination = containerXDGRuntimeDir,
+               .gidMappings = {},
                .options = string_list{ "nodev", "nosuid", "mode=700" },
                .source = "tmpfs",
-               .type = "tmpfs" },
+               .type = "tmpfs",
+               .uidMappings = {} },
     };
 
     environment["XDG_RUNTIME_DIR"] = containerXDGRuntimeDir;
@@ -245,9 +269,11 @@ ContainerCfgBuilder &ContainerCfgBuilder::bindTmp() noexcept
 {
     tmpMount = Mount{
         .destination = "/tmp",
+        .gidMappings = std::nullopt,
         .options = string_list{ "rbind" },
         .source = "/tmp",
         .type = "bind",
+        .uidMappings = std::nullopt,
     };
 
     return *this;
@@ -257,13 +283,17 @@ ContainerCfgBuilder &ContainerCfgBuilder::bindUserGroup() noexcept
 {
     UGMount = {
         Mount{ .destination = "/etc/passwd",
+               .gidMappings = {},
                .options = string_list{ "rbind", "ro" },
                .source = "/etc/passwd",
-               .type = "bind" },
+               .type = "bind",
+               .uidMappings = {} },
         Mount{ .destination = "/etc/group",
+               .gidMappings = {},
                .options = string_list{ "rbind", "ro" },
                .source = "/etc/group",
-               .type = "bind" },
+               .type = "bind",
+               .uidMappings = {} },
     };
 
     return *this;
@@ -292,20 +322,26 @@ ContainerCfgBuilder &ContainerCfgBuilder::bindMedia() noexcept
 
             mediaMount = {
                 Mount{ .destination = destinationDir,
+                       .gidMappings = {},
                        .options = string_list{ "rbind", "rshared" },
                        .source = destinationDir,
-                       .type = "bind" },
+                       .type = "bind",
+                       .uidMappings = {} },
                 Mount{ .destination = "/media",
+                       .gidMappings = {},
                        .options = string_list{ "rbind", "ro", "copy-symlink" },
                        .source = "/media",
-                       .type = "bind" },
+                       .type = "bind",
+                       .uidMappings = {} },
             };
         } else {
             mediaMount = {
                 Mount{ .destination = "/media",
+                       .gidMappings = {},
                        .options = string_list{ "rbind", "rshared" },
                        .source = "/media",
-                       .type = "bind" },
+                       .type = "bind",
+                       .uidMappings = {} },
             };
         }
     } while (false);
@@ -407,15 +443,19 @@ ContainerCfgBuilder &ContainerCfgBuilder::bindHostRoot() noexcept
     hostRootMount = {
         Mount{
           .destination = "/run/host",
+          .gidMappings = {},
           .options = string_list{ "nodev", "nosuid", "mode=700" },
           .source = "tmpfs",
           .type = "tmpfs",
+          .uidMappings = {},
         },
         Mount{
           .destination = "/run/host/rootfs",
+          .gidMappings = {},
           .options = string_list{ "rbind" },
           .source = "/",
           .type = "bind",
+          .uidMappings = {},
         },
     };
 
@@ -606,17 +646,33 @@ bool ContainerCfgBuilder::prepare() noexcept
 
     auto linux_ = ocppi::runtime::config::types::Linux{};
     linux_.namespaces = std::vector<NamespaceReference>{
-        NamespaceReference{ .type = NamespaceType::Pid },
-        NamespaceReference{ .type = NamespaceType::Mount },
-        NamespaceReference{ .type = NamespaceType::Uts },
-        NamespaceReference{ .type = NamespaceType::User },
+        NamespaceReference{ .path = {}, .type = NamespaceType::Pid },
+        NamespaceReference{ .path = {}, .type = NamespaceType::Mount },
+        NamespaceReference{ .path = {}, .type = NamespaceType::Uts },
+        NamespaceReference{ .path = {}, .type = NamespaceType::User },
     };
     if (isolateNetWorkEnabled) {
-        linux_.namespaces->push_back(NamespaceReference{ .type = NamespaceType::Network });
+        linux_.namespaces->push_back(NamespaceReference{ .path = {}, .type = NamespaceType::Network });
     }
     config.linux_ = std::move(linux_);
 
-    auto process = Process{ .args = string_list{ "bash" }, .cwd = "/" };
+        auto process = Process{
+        .apparmorProfile = {},
+        .args = string_list{ "bash" },
+        .capabilities = {},
+        .commandLine = {},
+        .consoleSize = {},
+        .cwd = "/",
+        .env = {},
+        .ioPriority = {},
+        .noNewPrivileges = {},
+        .oomScoreAdj = {},
+        .rlimits = {},
+        .scheduler = {},
+        .selinuxLabel = {},
+        .terminal = {},
+        .user = {}
+    };
     config.process = std::move(process);
 
     config.root = { .path = basePath, .readonly = basePathRo };
@@ -646,9 +702,11 @@ bool ContainerCfgBuilder::buildMountRuntime() noexcept
     }
 
     runtimeMount = Mount{ .destination = runtimeMountPoint,
+                          .gidMappings = {},
                           .options = string_list{ "rbind", runtimePathRo ? "ro" : "rw" },
                           .source = *runtimePath,
-                          .type = "bind" };
+                          .type = "bind",
+                          .uidMappings = {} };
 
     return true;
 }
@@ -667,13 +725,17 @@ bool ContainerCfgBuilder::buildMountApp() noexcept
     }
 
     appMount = { Mount{ .destination = "/opt",
+                        .gidMappings = {},
                         .options = string_list{ "nodev", "nosuid", "mode=700" },
                         .source = "tmpfs",
-                        .type = "tmpfs" },
+                        .type = "tmpfs",
+                        .uidMappings = {} },
                  Mount{ .destination = std::filesystem::path{ "/opt/apps" } / appId / "files",
+                        .gidMappings = {},
                         .options = string_list{ "rbind", appPathRo ? "ro" : "rw" },
                         .source = *appPath,
-                        .type = "bind" } };
+                        .type = "bind",
+                        .uidMappings = {} } };
 
     return true;
 }
@@ -698,16 +760,20 @@ bool ContainerCfgBuilder::buildMountHome() noexcept
     }
 
     homeMount->emplace_back(Mount{ .destination = "/home",
+                                   .gidMappings = {},
                                    .options = string_list{ "nodev", "nosuid", "mode=700" },
                                    .source = "tmpfs",
-                                   .type = "tmpfs" });
+                                   .type = "tmpfs",
+                                   .uidMappings = {} });
 
     auto containerHome = homePath->string();
 
     homeMount->emplace_back(Mount{ .destination = containerHome,
+                                   .gidMappings = {},
                                    .options = string_list{ "rbind" },
                                    .source = *homePath,
-                                   .type = "bind" });
+                                   .type = "bind",
+                                   .uidMappings = {} });
     environment["HOME"] = containerHome;
 
     auto mountDir = [this](const std::filesystem::path &hostDir, const std::string &containerDir) {
@@ -724,9 +790,11 @@ bool ContainerCfgBuilder::buildMountHome() noexcept
 
         homeMount->emplace_back(Mount{
           .destination = containerDir,
+          .gidMappings = {},
           .options = string_list{ "rbind" },
           .source = hostDir,
           .type = "bind",
+          .uidMappings = {},
         });
 
         return true;
@@ -816,9 +884,11 @@ bool ContainerCfgBuilder::buildMountHome() noexcept
     if ((XDG_CONFIG_HOME != containerConfigHome)
         && std::filesystem::exists(hostSystemdUserDir, ec)) {
         homeMount->emplace_back(Mount{ .destination = containerConfigHome + "/systemd/user",
+                                       .gidMappings = {},
                                        .options = string_list{ "rbind" },
                                        .source = hostSystemdUserDir,
-                                       .type = "bind" });
+                                       .type = "bind",
+                                       .uidMappings = {} });
     }
 
     // FIXME: Many applications get configurations from dconf, so we expose dconf to all
@@ -828,35 +898,43 @@ bool ContainerCfgBuilder::buildMountHome() noexcept
     if ((XDG_CONFIG_HOME != containerConfigHome)
         && std::filesystem::exists(hostUserDconfPath, ec)) {
         homeMount->emplace_back(Mount{ .destination = containerConfigHome + "/dconf",
+                                       .gidMappings = {},
                                        .options = string_list{ "rbind" },
                                        .source = hostUserDconfPath,
-                                       .type = "bind" });
+                                       .type = "bind",
+                                       .uidMappings = {} });
     }
 
     // for dde application theme
     auto hostDDEApiPath = XDG_CACHE_HOME / "deepin" / "dde-api";
     if ((XDG_CACHE_HOME != containerCacheHome) && std::filesystem::exists(hostDDEApiPath, ec)) {
         homeMount->emplace_back(Mount{ .destination = containerCacheHome + "/deepin/dde-api",
+                                       .gidMappings = {},
                                        .options = string_list{ "rbind" },
                                        .source = hostDDEApiPath,
-                                       .type = "bind" });
+                                       .type = "bind",
+                                       .uidMappings = {} });
     }
 
     // for xdg-user-dirs
     auto XDGUserDirs = XDG_CONFIG_HOME / "user-dirs.dirs";
     if ((XDG_CONFIG_HOME != containerConfigHome) && std::filesystem::exists(XDGUserDirs, ec)) {
         homeMount->push_back(Mount{ .destination = containerConfigHome + "/user-dirs.dirs",
+                                    .gidMappings = {},
                                     .options = string_list{ "rbind" },
                                     .source = XDGUserDirs,
-                                    .type = "bind" });
+                                    .type = "bind",
+                                    .uidMappings = {} });
     }
 
     auto XDGUserLocale = XDG_CONFIG_HOME / "user-dirs.locale";
     if ((XDG_CONFIG_HOME != containerConfigHome) && std::filesystem::exists(XDGUserLocale, ec)) {
         homeMount->push_back(Mount{ .destination = containerConfigHome + "/user-dirs.locale",
+                                    .gidMappings = {},
                                     .options = string_list{ "rbind" },
                                     .source = XDGUserLocale,
-                                    .type = "bind" });
+                                    .type = "bind",
+                                    .uidMappings = {} });
     }
 
     // NOTE:
@@ -867,9 +945,11 @@ bool ContainerCfgBuilder::buildMountHome() noexcept
     if (std::filesystem::exists(defaultBashrc, ec)) {
         homeMount->push_back(Mount{
           .destination = *homePath / ".bashrc",
+          .gidMappings = {},
           .options = string_list{ "ro", "rbind" },
           .source = defaultBashrc,
           .type = "bind",
+          .uidMappings = {},
         });
     }
 
@@ -943,9 +1023,11 @@ bool ContainerCfgBuilder::buildPrivateMapped() noexcept
         }
 
         privateMount->emplace_back(Mount{ .destination = containerPath,
+                                          .gidMappings = {},
                                           .options = string_list{ "rbind" },
                                           .source = hostPath,
-                                          .type = "bind" });
+                                          .type = "bind",
+                                          .uidMappings = {} });
     }
 
     return true;
@@ -997,9 +1079,11 @@ bool ContainerCfgBuilder::buildMountIPC() noexcept
         }
 
         ipcMount->emplace_back(Mount{ .destination = "/run/dbus/system_bus_socket",
+                                      .gidMappings = {},
                                       .options = string_list{ "rbind" },
                                       .source = std::move(socketPath),
-                                      .type = "bind" });
+                                      .type = "bind",
+                                      .uidMappings = {} });
         // 将提取的options再拼到容器中的环境变量
         environment["DBUS_SYSTEM_BUS_ADDRESS"] =
           std::string("unix:path=/run/dbus/system_bus_socket") + options;
@@ -1056,9 +1140,11 @@ bool ContainerCfgBuilder::buildMountIPC() noexcept
             }
             ipcMount->emplace_back(ocppi::runtime::config::types::Mount{
               .destination = cognitiveXDGRuntimeDir / waylandDisplayEnv,
+              .gidMappings = std::nullopt,
               .options = string_list{ "rbind" },
               .source = socketPath,
-              .type = "bind" });
+              .type = "bind",
+              .uidMappings = std::nullopt });
         }();
 
         // TODO 应该参考规范文档实现更完善的地址解析支持
@@ -1096,9 +1182,11 @@ bool ContainerCfgBuilder::buildMountIPC() noexcept
             auto cognitiveSessionBus = cognitiveXDGRuntimeDir / "bus";
             ipcMount->emplace_back(ocppi::runtime::config::types::Mount{
               .destination = cognitiveSessionBus,
+              .gidMappings = std::nullopt,
               .options = string_list{ "rbind" },
               .source = socketPath,
               .type = "bind",
+              .uidMappings = std::nullopt,
             });
             // 将提取的options再拼到容器中的环境变量
             environment["DBUS_SESSION_BUS_ADDRESS"] =
@@ -1113,9 +1201,11 @@ bool ContainerCfgBuilder::buildMountIPC() noexcept
             }
             ipcMount->emplace_back(ocppi::runtime::config::types::Mount{
               .destination = cognitiveXDGRuntimeDir / "dconf",
+              .gidMappings = std::nullopt,
               .options = string_list{ "rbind" },
               .source = dconfPath.string(),
               .type = "bind",
+              .uidMappings = std::nullopt,
             });
         }();
     }();
@@ -1147,9 +1237,11 @@ bool ContainerCfgBuilder::buildMountIPC() noexcept
         }
 
         ipcMount->emplace_back(Mount{ .destination = cognitiveXauthFile,
+                                      .gidMappings = std::nullopt,
                                       .options = string_list{ "rbind" },
                                       .source = hostXauthFile,
-                                      .type = "bind" });
+                                      .type = "bind",
+                                      .uidMappings = std::nullopt });
         environment["XAUTHORITY"] = cognitiveXauthFile;
     }();
 
@@ -1170,9 +1262,11 @@ bool ContainerCfgBuilder::buildMountCache() noexcept
     }
 
     cacheMount = { Mount{ .destination = "/run/linglong/cache",
+                          .gidMappings = {},
                           .options = string_list{ "rbind", appCacheRo ? "ro" : "rw" },
                           .source = *appCache,
-                          .type = "bind" } };
+                          .type = "bind",
+                          .uidMappings = {} } };
 
     return true;
 }
@@ -1190,9 +1284,11 @@ bool ContainerCfgBuilder::buildLDCache() noexcept
     }
 
     ldCacheMount->emplace_back(Mount{ .destination = "/etc/ld.so.cache",
+                                      .gidMappings = {},
                                       .options = string_list{ "rbind", "ro" },
                                       .source = *appCache / "ld.so.cache",
-                                      .type = "bind" });
+                                      .type = "bind",
+                                      .uidMappings = {} });
 
     return true;
 }
@@ -1211,11 +1307,13 @@ bool ContainerCfgBuilder::buildMountLocalTime() noexcept
             isSymLink = true;
         }
         localtimeMount->emplace_back(Mount{ .destination = localtime.string(),
+                                            .gidMappings = {},
                                             .options = isSymLink
                                               ? string_list{ "rbind", "copy-symlink" }
                                               : string_list{ "rbind", "ro" },
                                             .source = localtime,
-                                            .type = "bind" });
+                                            .type = "bind",
+                                            .uidMappings = {} });
     }
 
     bindIfExist(*localtimeMount, "/usr/share/zoneinfo");
@@ -1258,14 +1356,18 @@ bool ContainerCfgBuilder::buildMountNetworkConf() noexcept
             }
 
             networkConfMount->emplace_back(Mount{ .destination = resolvConf.string(),
+                                                  .gidMappings = {},
                                                   .options = string_list{ "rbind", "copy-symlink" },
                                                   .source = bundleResolvConf,
-                                                  .type = "bind" });
+                                                  .type = "bind",
+                                                  .uidMappings = {} });
         } else {
             networkConfMount->emplace_back(Mount{ .destination = resolvConf.string(),
+                                                  .gidMappings = {},
                                                   .options = string_list{ "rbind", "ro" },
                                                   .source = resolvConf,
-                                                  .type = "bind" });
+                                                  .type = "bind",
+                                                  .uidMappings = {} });
         }
     }
 
@@ -1336,9 +1438,11 @@ bool ContainerCfgBuilder::buildEnv() noexcept
     config.process->env = std::move(env);
 
     envMount = Mount{ .destination = "/etc/profile.d/00env.sh",
+                      .gidMappings = {},
                       .options = string_list{ "rbind", "ro" },
                       .source = envShFile,
-                      .type = "bind" };
+                      .type = "bind",
+                      .uidMappings = {} };
 
     return true;
 }
@@ -1733,8 +1837,9 @@ int ContainerCfgBuilder::insertChildRecursively(const std::filesystem::path &pat
 
         int childIndex = findChild(currentNodeIndex, component);
         if (childIndex == -1) {
-            childIndex = insertChild(currentNodeIndex,
-                                     MountNode{ .name = component, .ro = true, .mount_idx = -1 });
+            childIndex = insertChild(
+              currentNodeIndex,
+              MountNode{ .name = component, .ro = true, .mount_idx = -1, .childs_idx = {}, .parent_idx = {} });
             inserted = true;
         }
         currentNodeIndex = childIndex;
@@ -1854,9 +1959,11 @@ bool ContainerCfgBuilder::adjustNode(int node,
             fixMount.type = "tmpfs";
         } else {
             mounts.emplace_back(Mount{ .destination = destination,
+                                       .gidMappings = {},
                                        .options = string_list{ "nodev", "nosuid", "mode=700" },
                                        .source = "tmpfs",
-                                       .type = "tmpfs" });
+                                       .type = "tmpfs",
+                                       .uidMappings = {} });
             mp.mount_idx = mounts.size() - 1;
         }
     }
@@ -1876,18 +1983,23 @@ bool ContainerCfgBuilder::adjustNode(int node,
         }
 
         auto mount = Mount{ .destination = destination + "/" + filename.string(),
+                            .gidMappings = {},
                             .options = string_list{ "rbind", isRo ? "ro" : "rw" },
                             .source = path / filename,
-                            .type = "bind" };
+                            .type = "bind",
+                            .uidMappings = {} };
         if (entry.is_symlink()) {
             mount.options->emplace_back("copy-symlink");
         }
         mounts.emplace_back(std::move(mount));
 
         if (child < 0) {
-            insertChild(
-              node,
-              MountNode{ .name = filename, .mount_idx = static_cast<int>(mounts.size() - 1) });
+            insertChild(node,
+                        MountNode{ .name = filename,
+                                   .ro = false,
+                                   .mount_idx = static_cast<int>(mounts.size() - 1),
+                                   .childs_idx = {},
+                                   .parent_idx = {} });
         } else {
             mountpoints[child].mount_idx = static_cast<int>(mounts.size() - 1);
         }
@@ -1899,11 +2011,12 @@ bool ContainerCfgBuilder::adjustNode(int node,
 bool ContainerCfgBuilder::constructMountpointsTree() noexcept
 {
     // root always at 0
-    mountpoints.emplace_back(
-      MountNode{ .name = "",
-                 .ro = config.root->readonly ? config.root->readonly.value() : false,
-                 .mount_idx = -1,
-                 .parent_idx = -1 });
+    mountpoints.emplace_back(MountNode{ .name = "",
+                                        .ro = config.root->readonly ? config.root->readonly.value()
+                                                                    : false,
+                                        .mount_idx = -1,
+                                        .childs_idx = {},
+                                        .parent_idx = -1 });
 
     // construct prefix tree
     for (size_t i = 0; i < mounts.size(); ++i) {

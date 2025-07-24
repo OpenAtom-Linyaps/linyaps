@@ -256,7 +256,10 @@ bool delegateToContainerInit(const std::string &containerID,
         ::close(containerSocket);
     });
 
-    struct sockaddr_un addr{};
+    struct sockaddr_un addr
+    {
+    };
+
     addr.sun_family = AF_UNIX;
 
     auto bundleDir = linglong::runtime::getBundleDir(containerID);
@@ -460,7 +463,11 @@ void Cli::interaction(QDBusObjectPath object_path, int messageID, QVariantMap ad
     if (dbusReply.isError()) {
         if (dbusReply.error().type() == QDBusError::AccessDenied) {
             this->notifier->notify(
-              api::types::v1::InteractionRequest{ .summary = permissionNotifyMsg });
+              api::types::v1::InteractionRequest{ .actions = std::nullopt,
+                                                  .appName = "",
+                                                  .body = std::nullopt,
+                                                  .summary = permissionNotifyMsg,
+                                                  .timeout = 0 });
             return;
         }
 
@@ -506,7 +513,11 @@ void Cli::onTaskRemoved(QDBusObjectPath object_path,
         this->printProgress();
     } else if (this->lastSubState == api::types::v1::SubState::PackageManagerDone) {
         this->notifier->notify(
-          api::types::v1::InteractionRequest{ .summary = this->lastMessage.toStdString() });
+          api::types::v1::InteractionRequest{ .actions = std::nullopt,
+                                              .appName = "",
+                                              .body = std::nullopt,
+                                              .summary = this->lastMessage.toStdString(),
+                                              .timeout = 0 });
     }
 
     Q_EMIT taskDone();
@@ -770,9 +781,11 @@ int Cli::run([[maybe_unused]] CLI::App *subcommand)
       .enableSelfAdjustingMount()
       .addExtraMount(
         ocppi::runtime::config::types::Mount{ .destination = "/run/linglong/init",
+                                              .gidMappings = std::nullopt,
                                               .options = std::vector<std::string>{ "bind" },
                                               .source = socketDir.string(),
-                                              .type = "bind" });
+                                              .type = "bind",
+                                              .uidMappings = std::nullopt });
 #ifdef LINGLONG_FONT_CACHE_GENERATOR
     cfgBuilder.enableFontCache();
 #endif
@@ -804,8 +817,23 @@ int Cli::run([[maybe_unused]] CLI::App *subcommand)
     }
 
     ocppi::runtime::RunOption opt{};
-    auto result =
-      (*container)->run(ocppi::runtime::config::types::Process{ .args = std::move(commands) }, opt);
+    auto result = (*container)
+                    ->run(ocppi::runtime::config::types::Process{ .apparmorProfile = std::nullopt,
+                                                                  .args = std::move(commands),
+                                                                  .capabilities = std::nullopt,
+                                                                  .commandLine = std::nullopt,
+                                                                  .consoleSize = std::nullopt,
+                                                                  .cwd = "/",
+                                                                  .env = std::nullopt,
+                                                                  .ioPriority = std::nullopt,
+                                                                  .noNewPrivileges = std::nullopt,
+                                                                  .oomScoreAdj = std::nullopt,
+                                                                  .rlimits = std::nullopt,
+                                                                  .scheduler = std::nullopt,
+                                                                  .selinuxLabel = std::nullopt,
+                                                                  .terminal = std::nullopt,
+                                                                  .user = std::nullopt },
+                          opt);
     if (!result) {
         this->printer.printErr(result.error());
         return -1;
@@ -851,8 +879,12 @@ int Cli::exec([[maybe_unused]] CLI::App *subcommand)
     }
 
     auto opt = ocppi::runtime::ExecOption{
+        .tty = false,
         .uid = ::getuid(),
         .gid = ::getgid(),
+        .cwd = std::nullopt,
+        .env = {},
+        .extra = {},
     };
 
     auto result =
@@ -1057,7 +1089,11 @@ int Cli::installFromFile(const QFileInfo &fileInfo, const api::types::v1::Common
     if (pendingReply.isError()) {
         if (pendingReply.error().type() == QDBusError::AccessDenied) {
             this->notifier->notify(
-              api::types::v1::InteractionRequest{ .summary = permissionNotifyMsg });
+              api::types::v1::InteractionRequest{ .actions = std::nullopt,
+                                                  .appName = "",
+                                                  .body = std::nullopt,
+                                                  .summary = permissionNotifyMsg,
+                                                  .timeout = 0 });
             return -1;
         }
         auto err = LINGLONG_ERRV(pendingReply.error().message());
@@ -1181,7 +1217,11 @@ int Cli::install([[maybe_unused]] CLI::App *subcommand)
     if (pendingReply.isError()) {
         if (pendingReply.error().type() == QDBusError::AccessDenied) {
             this->notifier->notify(
-              api::types::v1::InteractionRequest{ .summary = permissionNotifyMsg });
+              api::types::v1::InteractionRequest{ .actions = std::nullopt,
+                                                  .appName = "",
+                                                  .body = std::nullopt,
+                                                  .summary = permissionNotifyMsg,
+                                                  .timeout = 0 });
             return -1;
         }
 
@@ -1233,12 +1273,14 @@ int Cli::install([[maybe_unused]] CLI::App *subcommand)
             this->printer.printMessage(_("Install failed"));
             break;
         default:
-            this->printer.printReply({ .code = result->code, .message = result->message });
+            this->printer.printReply(
+              { .code = result->code, .message = result->message, .type = "" });
             return -1;
         }
 
         if (options.verbose) {
-            this->printer.printReply({ .code = result->code, .message = result->message });
+            this->printer.printReply(
+              { .code = result->code, .message = result->message, .type = "" });
         }
 
         return -1;
@@ -1332,7 +1374,8 @@ int Cli::upgrade([[maybe_unused]] CLI::App *subcommand)
     }
 
     if (fuzzyRefs.empty()) {
-        this->printer.printReply({ .code = 0, .message = "All software packages are up to date." });
+        this->printer.printReply(
+          { .code = 0, .message = "All software packages are up to date.", .type = "" });
         return 0;
     }
 
@@ -2474,11 +2517,9 @@ Cli::RequestDirectories(const api::types::v1::PackageInfoV2 &info) noexcept
         ::close(fd);
     });
 
-    struct flock lock{
-        .l_type = F_WRLCK,
-        .l_whence = SEEK_SET,
-        .l_start = 0,
-        .l_len = 0,
+    struct flock lock
+    {
+        .l_type = F_WRLCK, .l_whence = SEEK_SET, .l_start = 0, .l_len = 0,
     };
 
     // all later processes should be blocked

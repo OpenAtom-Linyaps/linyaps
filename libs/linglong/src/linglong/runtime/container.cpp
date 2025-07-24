@@ -176,7 +176,11 @@ utils::error::Result<void> Container::run(const ocppi::runtime::config::types::P
 
     if (!this->cfg.process->user) {
         this->cfg.process->user =
-          ocppi::runtime::config::types::User{ .gid = ::getgid(), .uid = ::getuid() };
+          ocppi::runtime::config::types::User{ .additionalGids = std::nullopt,
+                                               .gid = ::getgid(),
+                                               .uid = ::getuid(),
+                                               .umask = std::nullopt,
+                                               .username = std::nullopt };
     }
 
     if (isatty(fileno(stdin)) != 0) {
@@ -185,9 +189,11 @@ utils::error::Result<void> Container::run(const ocppi::runtime::config::types::P
 
     this->cfg.mounts->push_back(ocppi::runtime::config::types::Mount{
       .destination = "/run/linglong/container-init",
+      .gidMappings = {},
       .options = { { "ro", "rbind" } },
       .source = std::string{ LINGLONG_CONTAINER_INIT },
       .type = "bind",
+      .uidMappings = {},
     });
 
     auto originalArgs =
@@ -220,9 +226,11 @@ utils::error::Result<void> Container::run(const ocppi::runtime::config::types::P
 
     this->cfg.mounts->push_back(ocppi::runtime::config::types::Mount{
       .destination = "/run/linglong/entrypoint.sh",
+      .gidMappings = std::nullopt,
       .options = { { "ro", "rbind" } },
       .source = entrypoint,
       .type = "bind",
+      .uidMappings = std::nullopt,
     });
 
     this->cfg.process->args = { "/run/linglong/entrypoint.sh" };
@@ -244,11 +252,11 @@ utils::error::Result<void> Container::run(const ocppi::runtime::config::types::P
 
     this->cfg.mounts->push_back(ocppi::runtime::config::types::Mount{
       .destination = "/etc/fonts/conf.d",
-      .gidMappings = {},
+      .gidMappings = std::nullopt,
       .options = { { "ro", "rbind" } },
       .source = bundle.absoluteFilePath("conf.d").toStdString(),
       .type = "bind",
-      .uidMappings = {},
+      .uidMappings = std::nullopt,
     });
 #endif
 

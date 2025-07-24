@@ -480,7 +480,9 @@ int handleRepoAdd(linglong::repo::OSTreeRepo &repo, linglong::cli::RepoOptions &
 
     newCfg.repos.push_back(linglong::api::types::v1::Repo{
       .alias = options.repoAlias,
+      .mirrorEnabled = std::nullopt,
       .name = options.repoName,
+      .priority = 0,
       .url = options.repoUrl,
     });
 

@@ -757,9 +757,11 @@ utils::error::Result<void> Builder::processBuildDepends() noexcept
       .bindHostStatics()
       .addExtraMount(ocppi::runtime::config::types::Mount{
         .destination = "/project",
+        .gidMappings = std::nullopt,
         .options = { { "rbind", "ro" } },
         .source = this->workingDir.absolutePath().toStdString(),
-        .type = "bind" })
+        .type = "bind",
+        .uidMappings = std::nullopt })
       .forwardDefaultEnv()
       .appendEnv("LINYAPS_INIT_SINGLE_MODE", "1");
 
@@ -890,7 +892,10 @@ utils::error::Result<bool> Builder::buildStageBuild(const QStringList &args) noe
       .bindHostStatics()
       .setStartContainerHooks(
         std::vector<ocppi::runtime::config::types::Hook>{ ocppi::runtime::config::types::Hook{
+          .args = {},
+          .env = {},
           .path = "/sbin/ldconfig",
+          .timeout = {},
         } })
       .forwardDefaultEnv()
       .addMask({
@@ -922,18 +927,24 @@ utils::error::Result<bool> Builder::buildStageBuild(const QStringList &args) noe
 
     cfgBuilder.addExtraMounts(std::vector<ocppi::runtime::config::types::Mount>{
       ocppi::runtime::config::types::Mount{ .destination = LINGLONG_BUILDER_HELPER,
+                                            .gidMappings = {},
                                             .options = { { "rbind", "ro" } },
                                             .source = LINGLONG_BUILDER_HELPER,
-                                            .type = "bind" },
+                                            .type = "bind",
+                                            .uidMappings = {} },
       ocppi::runtime::config::types::Mount{ .destination = "/project",
+                                            .gidMappings = {},
                                             .options = { { "rbind", "rw" } },
                                             .source = this->workingDir.absolutePath().toStdString(),
-                                            .type = "bind" },
+                                            .type = "bind",
+                                            .uidMappings = {} },
       ocppi::runtime::config::types::Mount{ .destination =
                                               "/etc/ld.so.conf.d/zz_deepin-linglong-app.conf",
+                                            .gidMappings = {},
                                             .options = { { "rbind", "ro" } },
                                             .source = ldConfPath.toStdString(),
-                                            .type = "bind" } });
+                                            .type = "bind",
+                                            .uidMappings = {} } });
 
     if (!cfgBuilder.build()) {
         auto err = cfgBuilder.getError();
@@ -1039,9 +1050,11 @@ utils::error::Result<void> Builder::buildStagePreCommit() noexcept
       .bindHostStatics()
       .addExtraMount(ocppi::runtime::config::types::Mount{
         .destination = "/project",
+        .gidMappings = {},
         .options = { { "rbind", "rw" } },
         .source = this->workingDir.absolutePath().toStdString(),
-        .type = "bind" })
+        .type = "bind",
+        .uidMappings = {} })
       .forwardDefaultEnv()
       .appendEnv("LINYAPS_INIT_SINGLE_MODE", "1");
 
@@ -1359,15 +1372,22 @@ utils::error::Result<void> Builder::commitToLocalRepo() noexcept
 
     auto info = api::types::v1::PackageInfoV2{
         .arch = { projectRef->arch.toString().toStdString() },
+        .base = {},
         .channel = projectRef->channel.toStdString(),
         .command = project.command,
+        .compatibleVersion = {},
         .description = this->project.package.description,
+        .extImpl = {},
+        .extensions = {},
         .id = this->project.package.id,
         .kind = this->project.package.kind,
+        .packageInfoV2Module = {},
         .name = this->project.package.name,
         .permissions = this->project.permissions,
         .runtime = {},
         .schemaVersion = PACKAGE_INFO_VERSION,
+        .size = {},
+        .uuid = {},
         .version = this->project.package.version,
     };
 
@@ -1868,25 +1888,31 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
 
             applicationMounts.push_back(ocppi::runtime::config::types::Mount{
               .destination = std::string{ homeEnv } + "/.gdbinit",
+              .gidMappings = {},
               .options = { { "ro", "rbind" } },
               .source = gdbinit,
               .type = "bind",
+              .uidMappings = {},
             });
         }
     }
 
     applicationMounts.push_back(ocppi::runtime::config::types::Mount{
       .destination = "/project",
+      .gidMappings = {},
       .options = { { "rbind", "rw" } },
       .source = this->workingDir.absolutePath().toStdString(),
       .type = "bind",
+      .uidMappings = {},
     });
 
     applicationMounts.push_back(ocppi::runtime::config::types::Mount{
       .destination = LINGLONG_BUILDER_HELPER,
+      .gidMappings = {},
       .options = { { "rbind", "ro" } },
       .source = LINGLONG_BUILDER_HELPER,
       .type = "bind",
+      .uidMappings = {},
     });
 
     auto appCache =
@@ -1894,9 +1920,11 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
     std::string ldConfPath = appCache / "ld.so.conf";
     applicationMounts.push_back(ocppi::runtime::config::types::Mount{
       .destination = "/etc/ld.so.conf.d/zz_deepin-linglong-app.conf",
+      .gidMappings = {},
       .options = { { "rbind", "ro" } },
       .source = ldConfPath,
       .type = "bind",
+      .uidMappings = {},
     });
 
     uid = getuid();
@@ -1943,11 +1971,26 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
             return LINGLONG_ERR(container);
         }
 
-        ocppi::runtime::config::types::Process process{ .args = std::vector<std::string>{
-                                                          "/sbin/ldconfig",
-                                                          "-X",
-                                                          "-C",
-                                                          "/run/linglong/cache/ld.so.cache" } };
+        ocppi::runtime::config::types::Process process{
+            .apparmorProfile = {},
+            .args = std::vector<std::string>{ "/sbin/ldconfig",
+                                              "-X",
+                                              "-C",
+                                              "/run/linglong/cache/ld.so.cache" },
+            .capabilities = {},
+            .commandLine = {},
+            .consoleSize = {},
+            .cwd = {},
+            .env = {},
+            .ioPriority = {},
+            .noNewPrivileges = {},
+            .oomScoreAdj = {},
+            .rlimits = {},
+            .scheduler = {},
+            .selinuxLabel = {},
+            .terminal = {},
+            .user = {}
+        };
         ocppi::runtime::RunOption opt{};
         auto result = (*container)->run(process, opt);
         if (!result) {
@@ -2061,9 +2104,11 @@ utils::error::Result<void> Builder::runFromRepo(const package::Reference &ref,
           .bindDefault()
           .addExtraMount(ocppi::runtime::config::types::Mount{
             .destination = "/etc/ld.so.conf.d/zz_deepin-linglong-app.conf",
+            .gidMappings = {},
             .options = { { "rbind", "ro" } },
             .source = ldConfPath,
-            .type = "bind" })
+            .type = "bind",
+            .uidMappings = {} })
           .enableSelfAdjustingMount()
           .appendEnv("LINYAPS_INIT_SINGLE_MODE", "1");
 
@@ -2091,13 +2136,29 @@ utils::error::Result<void> Builder::runFromRepo(const package::Reference &ref,
             return LINGLONG_ERR(container);
         }
 
-        ocppi::runtime::config::types::Process process{ .args = std::vector<std::string>{
-                                                          "/sbin/ldconfig",
-                                                          "-X",
-                                                          "-C",
-                                                          "/run/linglong/cache/ld.so.cache" } };
         ocppi::runtime::RunOption opt{};
-        auto result = (*container)->run(process, opt);
+
+        auto result = container->get()->run(
+          ocppi::runtime::config::types::Process{
+            .apparmorProfile = {},
+            .args = std::vector<std::string>{ "/sbin/ldconfig",
+                                              "-X",
+                                              "-C",
+                                              "/run/linglong/cache/ld.so.cache" },
+            .capabilities = {},
+            .commandLine = {},
+            .consoleSize = {},
+            .cwd = {},
+            .env = {},
+            .ioPriority = {},
+            .noNewPrivileges = {},
+            .oomScoreAdj = {},
+            .rlimits = {},
+            .scheduler = {},
+            .selinuxLabel = {},
+            .terminal = {},
+            .user = {} },
+          opt);
         if (!result) {
             return LINGLONG_ERR("failed to generate ld cache", result);
         }
@@ -2116,9 +2177,11 @@ utils::error::Result<void> Builder::runFromRepo(const package::Reference &ref,
       .addGIdMapping(gid, gid, 1)
       .addExtraMount(ocppi::runtime::config::types::Mount{
         .destination = "/project",
+        .gidMappings = {},
         .options = { { "rbind", "rw" } },
         .source = this->workingDir.absolutePath().toStdString(),
-        .type = "bind" })
+        .type = "bind",
+        .uidMappings = {} })
       .enableSelfAdjustingMount()
       .appendEnv("LINYAPS_INIT_SINGLE_MODE", "1");
 
@@ -2135,8 +2198,23 @@ utils::error::Result<void> Builder::runFromRepo(const package::Reference &ref,
     }
 
     ocppi::runtime::RunOption opt{};
-    auto result =
-      (*container)->run(ocppi::runtime::config::types::Process{ .args = std::move(args) }, opt);
+    auto result = (*container)
+                    ->run(ocppi::runtime::config::types::Process{ .apparmorProfile = {},
+                                                                  .args = std::move(args),
+                                                                  .capabilities = {},
+                                                                  .commandLine = {},
+                                                                  .consoleSize = {},
+                                                                  .cwd = "/",
+                                                                  .env = {},
+                                                                  .ioPriority = {},
+                                                                  .noNewPrivileges = {},
+                                                                  .oomScoreAdj = {},
+                                                                  .rlimits = {},
+                                                                  .scheduler = {},
+                                                                  .selinuxLabel = {},
+                                                                  .terminal = {},
+                                                                  .user = {} },
+                          opt);
     if (!result) {
         return LINGLONG_ERR("failed to run with " + ref.toString());
     }
@@ -2308,7 +2386,9 @@ utils::error::Result<bool> Builder::generateDependsScript() noexcept
 
 void Builder::takeTerminalForeground()
 {
-    struct sigaction sa{};
+    struct sigaction sa
+    {
+    };
 
     sa.sa_handler = SIG_IGN;
     sigaction(SIGTTOU, &sa, NULL);

@@ -82,7 +82,9 @@ void handleSig() noexcept
         sigaddset(&blocking_mask, sig);
     }
 
-    struct sigaction sa{};
+    struct sigaction sa
+    {
+    };
 
     sa.sa_handler = [](int sig) -> void {
         cleanAndExit(128 + sig);
@@ -472,8 +474,10 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv) // NOLINT
         auto linux_ = json["linux"].get<ocppi::runtime::config::types::Linux>();
         linux_.namespaces = std::vector<ocppi::runtime::config::types::NamespaceReference>{
             ocppi::runtime::config::types::NamespaceReference{
+              .path = std::nullopt,
               .type = ocppi::runtime::config::types::NamespaceType::User },
             ocppi::runtime::config::types::NamespaceReference{
+              .path = std::nullopt,
               .type = ocppi::runtime::config::types::NamespaceType::Mount }
         };
         json["linux"] = std::move(linux_);

@@ -23,10 +23,11 @@ while read -r filepath; do
         # https://sourceware.org/gdb/current/onlinedocs/gdb.html/Separate-Debug-Files.html
         buildID=$(readelf -n "$filepath" | grep 'Build ID' | awk '{print $NF}')
         debugIDFile="$prefix/lib/debug/.build-id/${buildID:0:2}/${buildID:2}.debug"
+        debugFile="$prefix/lib/debug/$filepath.debug"
         mkdir -p "$(dirname "$debugIDFile")"
-
-        tmp_strip=$(mktemp "$prefix/stripXXX")
-        tmp_debug=$(mktemp "$prefix/debugXXX")
+        mkdir -p "$(dirname "$debugFile")"
+        tmp_strip=$(mktemp "$prefix/strip.XXXXXX")
+        tmp_debug=$(mktemp "$prefix/debug.XXXXXX")
         cp -p "$filepath" "$tmp_strip"
         eu-strip "$tmp_strip" -f "$tmp_debug"
 
@@ -35,8 +36,10 @@ while read -r filepath; do
         if [ -n "$total" ] && [ "$total" -ne 0 ]; then
                 null_count=$(echo "$readelf_output" | grep -c "^  NULL")
                 if [ "$total" -eq "$null_count" ]; then
-                        echo "invalid program headers after stripping, skipping: $filepath"
                         rm -f "$tmp_strip" "$tmp_debug"
+                        objcopy --only-keep-debug "$filepath" "$debugIDFile" || true
+                        [ -s "$debugIDFile" ] || continue
+                        ln -sf "$debugIDFile" "$debugFile"
                         continue
                 fi
         fi
@@ -44,8 +47,5 @@ while read -r filepath; do
         mv "$tmp_debug" "$debugIDFile"
 
         echo "striped $filepath to $debugIDFile"
-
-        debugFile="$prefix/lib/debug/$filepath.debug"
-        mkdir -p "$(dirname "$debugFile")"
         ln -sf "$debugIDFile" "$debugFile"
 done <"$tmpFile"

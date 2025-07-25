@@ -350,7 +350,13 @@ ContainerCfgBuilder &ContainerCfgBuilder::forwardDefaultEnv() noexcept
       "GIO_LAUNCHED_DESKTOP_FILE", // 系统监视器
       "GNOME_DESKTOP_SESSION_ID",  // gnome 桌面标识，有些应用会读取此变量以使用gsettings配置,
       // 如chrome
-      "TERM" });
+      "TERM",
+      // 控制NVIDA在x下的应用是否调用独显去渲染
+      "__NV_PRIME_RENDER_OFFLOAD",
+      "__GLX_VENDOR_LIBRARY_NAME",
+      "__VK_LAYER_NV_optimus",
+      // 控制intel/AMD是否调用独显去渲染
+      "DRI_PRIME" });
 }
 
 ContainerCfgBuilder &

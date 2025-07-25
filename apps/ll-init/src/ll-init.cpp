@@ -643,7 +643,7 @@ int main(int argc, char **argv) // NOLINT
     file_descriptor_wrapper timerfd;
     bool done{ false };
     std::array<struct epoll_event, 10> events{};
-    WaitPidResult waitChild{ .pid = child };
+    WaitPidResult waitChild{ .pid = child, .status = 0 };
     int childExitCode = 0;
     while (true) {
         ret = ::epoll_wait(epfd, events.data(), events.size(), -1);

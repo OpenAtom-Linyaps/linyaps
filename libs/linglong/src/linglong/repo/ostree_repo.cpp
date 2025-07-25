@@ -1861,14 +1861,22 @@ OSTreeRepo::listRemote(const package::FuzzyReference &fuzzyRef,
         auto *item = (request_register_struct_t *)entry->data;
         pkgInfos.emplace_back(api::types::v1::PackageInfoV2{
           .arch = { item->arch },
+          .base = "",
           .channel = item->channel,
+          .command = std::nullopt,
+          .compatibleVersion = std::nullopt,
           .description = item->description,
+          .extImpl = std::nullopt,
+          .extensions = std::nullopt,
           .id = item->app_id,
           .kind = item->kind,
           .packageInfoV2Module = item->module,
           .name = item->name,
+          .permissions = std::nullopt,
           .runtime = item->runtime,
+          .schemaVersion = "",
           .size = item->size,
+          .uuid = std::nullopt,
           .version = item->version,
         });
     }
@@ -2650,6 +2658,9 @@ std::vector<std::string> OSTreeRepo::getModuleList(const package::Reference &ref
         .repo = std::nullopt,
         .channel = ref.channel.toStdString(),
         .version = ref.version.toString().toStdString(),
+        .module = std::nullopt,
+        .uuid = std::nullopt,
+        .deleted = std::nullopt,
     };
     auto layers = this->cache->queryLayerItem(query);
     // 按module字母从小到大排序，提前排序以保证后面的commits比较

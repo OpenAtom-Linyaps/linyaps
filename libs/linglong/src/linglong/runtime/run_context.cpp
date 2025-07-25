@@ -559,7 +559,10 @@ utils::error::Result<void> RunContext::fillExtraAppMounts(generator::ContainerCf
 api::types::v1::ContainerProcessStateInfo RunContext::stateInfo()
 {
     auto state = linglong::api::types::v1::ContainerProcessStateInfo{
+        .app = "",
+        .base = "",
         .containerID = containerID,
+        .runtime = std::nullopt,
     };
 
     if (baseLayer) {

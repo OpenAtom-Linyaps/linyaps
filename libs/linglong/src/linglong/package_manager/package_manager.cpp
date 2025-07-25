@@ -254,7 +254,7 @@ PackageManager::getAllRunningContainers() noexcept
                             % ::strerror(errno));
     }
 
-    struct flock locker{ .l_type = F_WRLCK, .l_whence = SEEK_SET, .l_start = 0, .l_len = 0 };
+    struct flock locker{ .l_type = F_WRLCK, .l_whence = SEEK_SET, .l_start = 0, .l_len = 0, .l_pid = 0 };
 
     if (::fcntl(lockFd, F_SETLK, &locker) == -1) {
         return LINGLONG_ERR(QStringLiteral("failed to lock ") % repoLockPath % ": "
@@ -272,7 +272,7 @@ PackageManager::getAllRunningContainers() noexcept
         return LINGLONG_OK;
     }
 
-    struct flock unlocker{ .l_type = F_UNLCK, .l_whence = SEEK_SET, .l_start = 0, .l_len = 0 };
+    struct flock unlocker{ .l_type = F_UNLCK, .l_whence = SEEK_SET, .l_start = 0, .l_len = 0, .l_pid = 0 };
 
     if (::fcntl(lockFd, F_SETLK, &unlocker)) {
         return LINGLONG_ERR(QStringLiteral("failed to unlock ") % repoLockPath % ": "
@@ -379,7 +379,15 @@ void PackageManager::deferredUninstall() noexcept
     });
 
     // query layers which have been mark 'deleted'
-    auto uninstalled = this->repo.listLocalBy(linglong::repo::repoCacheQuery{ .deleted = true });
+    auto uninstalled = this->repo.listLocalBy(linglong::repo::repoCacheQuery{ 
+        .id = std::nullopt,
+        .repo = std::nullopt,
+        .channel = std::nullopt,
+        .version = std::nullopt,
+        .module = std::nullopt,
+        .uuid = std::nullopt,
+        .deleted = true 
+    });
     if (!uninstalled) {
         qCritical() << "failed to list deleted layers" << uninstalled.error().message();
         return;
@@ -766,6 +774,7 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
       .taskObjectPath = taskRef.taskObjectPath().toStdString(),
       .code = 0,
       .message = (realFile + " is now installing").toStdString(),
+      .type = "",
     });
 }
 
@@ -1120,6 +1129,7 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd,
       .taskObjectPath = taskRef.taskObjectPath().toStdString(),
       .code = 0,
       .message = (realFile + " is now installing").toStdString(),
+      .type = {},
     });
 }
 
@@ -1228,6 +1238,7 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
           .taskObjectPath = taskRef.taskObjectPath().toStdString(),
           .code = 0,
           .message = "installing",
+          .type = {},
         });
     }
 
@@ -1371,6 +1382,7 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
       .taskObjectPath = taskRef.taskObjectPath().toStdString(),
       .code = 0,
       .message = (remoteRef.toString() + " is now installing").toStdString(),
+      .type = {},
     });
 }
 
@@ -1503,8 +1515,11 @@ void PackageManager::InstallRef(PackageTask &taskContext,
 
     auto deletedList = this->repo.listLocalBy(
       linglong::repo::repoCacheQuery{ .id = ref.id.toStdString(),
+                                      .repo = std::nullopt,
                                       .channel = ref.channel.toStdString(),
                                       .version = ref.version.toString().toStdString(),
+                                      .module = std::nullopt,
+                                      .uuid = std::nullopt,
                                       .deleted = true });
     if (!deletedList) {
         taskContext.updateState(linglong::api::types::v1::State::Failed,
@@ -1668,6 +1683,7 @@ auto PackageManager::Uninstall(const QVariantMap &parameters) noexcept -> QVaria
       .taskObjectPath = taskRef.taskObjectPath().toStdString(),
       .code = 0,
       .message = (ref->toString() + " is now uninstalling").toStdString(),
+      .type = {},
     });
 }
 
@@ -1847,6 +1863,7 @@ auto PackageManager::Update(const QVariantMap &parameters) noexcept -> QVariantM
       .taskObjectPath = taskRef.taskObjectPath().toStdString(),
       .code = 0,
       .message = "updating",
+      .type = {},
     });
 }
 
@@ -2138,6 +2155,7 @@ auto PackageManager::Prune() noexcept -> QVariantMap
             .packages = pkgs,
             .code = 0,
             .message = "",
+            .type = "",
         };
         Q_EMIT this->PruneFinished(jobID, utils::serialize::toQVariantMap(result));
     });
@@ -2145,6 +2163,7 @@ auto PackageManager::Prune() noexcept -> QVariantMap
       .id = jobID.toStdString(),
       .code = 0,
       .message = "",
+      .type = "",
     });
     return result;
 }
@@ -2359,14 +2378,18 @@ utils::error::Result<void> PackageManager::generateCache(const package::Referenc
       .forwardDefaultEnv()
       .addExtraMounts(std::vector<ocppi::runtime::config::types::Mount>{
         ocppi::runtime::config::types::Mount{ .destination = generatorDest,
+                                              .gidMappings = std::nullopt,
                                               .options = { { "rbind", "ro" } },
                                               .source = LINGLONG_LIBEXEC_DIR,
-                                              .type = "bind" },
+                                              .type = "bind",
+                                              .uidMappings = std::nullopt },
         ocppi::runtime::config::types::Mount{
           .destination = "/etc/ld.so.conf.d/zz_deepin-linglong-app.conf",
+          .gidMappings = std::nullopt,
           .options = { { "rbind", "ro" } },
           .source = ldConfPath,
           .type = "bind",
+          .uidMappings = std::nullopt,
         } })
       .enableSelfAdjustingMount();
 #ifdef LINGLONG_FONT_CACHE_GENERATOR
@@ -2510,6 +2533,7 @@ auto PackageManager::GenerateCache(const QString &reference) noexcept -> QVarian
       .id = jobID.toStdString(),
       .code = 0,
       .message = "",
+      .type = "",
     });
     return result;
 }

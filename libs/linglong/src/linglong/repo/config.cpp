@@ -114,6 +114,8 @@ api::types::v1::RepoConfigV2 convertToV2(const api::types::v1::RepoConfig &cfg) 
       });
 
     api::types::v1::Repo repoV2{
+        .alias = std::nullopt,
+        .mirrorEnabled = std::nullopt,
         .name = defaultRepo->first,
         .priority = priority,
         .url = defaultRepo->second,
@@ -127,7 +129,7 @@ api::types::v1::RepoConfigV2 convertToV2(const api::types::v1::RepoConfig &cfg) 
             continue;
         }
 
-        api::types::v1::Repo repoV2{ .name = name, .priority = priority, .url = url };
+        api::types::v1::Repo repoV2{ .alias = std::nullopt, .mirrorEnabled = std::nullopt, .name = name, .priority = priority, .url = url };
         configV2.repos.emplace_back(std::move(repoV2));
         priority -= 100;
     }

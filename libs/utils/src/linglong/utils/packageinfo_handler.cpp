@@ -19,6 +19,8 @@ api::types::v1::PackageInfoV2 toPackageInfoV2(const api::types::v1::PackageInfo 
         .command = oldInfo.command,
         .compatibleVersion = std::nullopt,
         .description = oldInfo.description,
+        .extImpl = std::nullopt,
+        .extensions = std::nullopt,
         .id = oldInfo.appid,
         .kind = oldInfo.kind,
         .packageInfoV2Module = oldInfo.packageInfoModule,

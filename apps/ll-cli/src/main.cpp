@@ -197,6 +197,7 @@ You can report bugs to the linyaps team under this project: https://github.com/O
                         .instance = "",
                         .module = "",
                         .type = "all",
+                        .repo = std::nullopt,
                         .repoOptions = {},
                         .commands = {},
                         .showDevel = false,
@@ -204,6 +205,8 @@ You can report bugs to the linyaps team under this project: https://github.com/O
                         .showUpgradeList = false,
                         .forceOpt = false,
                         .confirmOpt = false,
+                        .pid = std::nullopt,
+                        .signal = "",
                         .verbose = false };
 
     commandParser.add_flag("-v,--verbose", options.verbose, _("Show debug info (verbose logs)"));

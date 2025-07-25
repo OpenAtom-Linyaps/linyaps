@@ -45,7 +45,14 @@ struct RemoveCommandOptions
 
 struct ExportCommandOptions
 {
-    linglong::builder::ExportOption exportSpecificOptions{ .exportI18n = true };
+    linglong::builder::ExportOption exportSpecificOptions{ 
+        .iconPath = {},
+        .loader = {},
+        .compressor = {},
+        .noExportDevelop = false,
+        .exportI18n = true,
+        .full = false
+    };
     bool layerMode = false;
     std::string outputFile;
 };

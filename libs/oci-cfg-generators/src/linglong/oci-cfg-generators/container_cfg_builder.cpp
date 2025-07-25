@@ -1218,23 +1218,27 @@ bool ContainerCfgBuilder::buildMountNetworkConf() noexcept
     std::filesystem::path resolvConf{ "/etc/resolv.conf" };
     std::error_code ec;
     if (std::filesystem::exists(resolvConf, ec)) {
-        if (std::filesystem::is_symlink(resolvConf, ec) && hostRootMount) {
-            // If /etc/resolv.conf is a symlink, its target may be a relative path that is
-            // invalid inside the container. To work around this, we create a new symlink
-            // in the bundle directory pointing to the actual target, and then mount it with
-            // the 'copy-symlink' option, which tells the runtime to recreate the symlink
-            // inside the container.
-            std::array<char, PATH_MAX + 1> buf{};
-            auto *rpath = realpath(resolvConf.string().c_str(), buf.data());
-            if (rpath == nullptr) {
-                error_.reason =
-                  "Failed to read symlink " + resolvConf.string() + ": " + strerror(errno);
-                error_.code = BUILD_NETWORK_CONF_ERROR;
-                return false;
+        // /etc/resolv.conf is volatile on host, we create a new symlink in the bundle
+        // directory pointing to the actual target, and then mount it with the
+        // 'copy-symlink' option, which tells the runtime to recreate the symlink inside
+        // the container.
+        // NOTE: it's not working if /etc/resolv.conf is a symlink, and points to a
+        // different path after container started.
+        if (hostRootMount) {
+            auto target = resolvConf;
+            if (std::filesystem::is_symlink(resolvConf, ec)) {
+                std::array<char, PATH_MAX + 1> buf{};
+                auto *rpath = realpath(resolvConf.string().c_str(), buf.data());
+                if (rpath == nullptr) {
+                    error_.reason =
+                      "Failed to read symlink " + resolvConf.string() + ": " + strerror(errno);
+                    error_.code = BUILD_NETWORK_CONF_ERROR;
+                    return false;
+                }
+                target = std::filesystem::path{ rpath };
             }
 
-            std::filesystem::path target = std::filesystem::path{ "/run/host/rootfs" }
-              / std::filesystem::path{ rpath }.lexically_relative("/");
+            target = std::filesystem::path{ "/run/host/rootfs" } / target.lexically_relative("/");
             auto bundleResolvConf = bundlePath / "resolv.conf";
             std::filesystem::create_symlink(target, bundleResolvConf, ec);
             if (ec) {
@@ -1243,7 +1247,6 @@ bool ContainerCfgBuilder::buildMountNetworkConf() noexcept
                 error_.code = BUILD_NETWORK_CONF_ERROR;
                 return false;
             }
-
             networkConfMount->emplace_back(Mount{ .destination = resolvConf.string(),
                                                   .options = string_list{ "rbind", "copy-symlink" },
                                                   .source = bundleResolvConf,

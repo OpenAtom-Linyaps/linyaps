@@ -754,7 +754,6 @@ utils::error::Result<void> Builder::processBuildDepends() noexcept
       .addUIdMapping(uid, uid, 1)
       .addGIdMapping(gid, gid, 1)
       .bindDefault()
-      .bindHostStatics()
       .addExtraMount(ocppi::runtime::config::types::Mount{
         .destination = "/project",
         .options = { { "rbind", "ro" } },
@@ -886,7 +885,6 @@ utils::error::Result<bool> Builder::buildStageBuild(const QStringList &args) noe
       .addUIdMapping(uid, uid, 1)
       .addGIdMapping(gid, gid, 1)
       .bindDefault()
-      .bindHostStatics()
       .setStartContainerHooks(
         std::vector<ocppi::runtime::config::types::Hook>{ ocppi::runtime::config::types::Hook{
           .path = "/sbin/ldconfig",
@@ -1034,7 +1032,6 @@ utils::error::Result<void> Builder::buildStagePreCommit() noexcept
       .addUIdMapping(uid, uid, 1)
       .addGIdMapping(gid, gid, 1)
       .bindDefault()
-      .bindHostStatics()
       .addExtraMount(ocppi::runtime::config::types::Mount{
         .destination = "/project",
         .options = { { "rbind", "rw" } },
@@ -1077,7 +1074,7 @@ utils::error::Result<void> Builder::buildStagePreCommit() noexcept
             src.append(runtimeOverlay->upperDirPath());
         }
     }
-    mergeOutput(src, buildOutput, QStringList({ "bin/", "lib/" }));
+    mergeOutput(src, buildOutput, QStringList({ "bin/", "sbin/", "lib/" }));
 
     return LINGLONG_OK;
 }
@@ -1521,11 +1518,11 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
         return LINGLONG_OK;
     }
 
-    printMessage("Successfully build " + this->project.package.id);
-
     if (!(res = runtimeCheck())) {
         return LINGLONG_ERR("stage runtime check error", res);
     }
+
+    printMessage("Successfully build " + this->project.package.id);
 
     return LINGLONG_OK;
 }

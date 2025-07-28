@@ -240,6 +240,18 @@ ll-cli run org.deepin.demo -- bash -x /path/to/bash/script)"));
       ->add_option("--url", options.fileUrls, _("Pass url to applications running in a sandbox"))
       ->type_name("URL")
       ->expected(0, -1);
+    cliRun->add_option("--env", options.envs, _("Set environment variables for the application"))
+      ->type_name("ENV")
+      ->expected(0, -1)
+      ->check([](const std::string &env) -> std::string {
+          if (env.find('=') == std::string::npos) {
+              return std::string{ _(
+                "Input parameter is invalid, please input valid parameter instead") };
+          }
+
+          return {};
+      });
+
     cliRun->add_option("COMMAND", options.commands, _("Run commands in a running sandbox"));
 
     // add sub command ps

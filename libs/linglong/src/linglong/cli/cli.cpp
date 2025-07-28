@@ -773,6 +773,14 @@ int Cli::run([[maybe_unused]] CLI::App *subcommand)
                                               .options = std::vector<std::string>{ "bind" },
                                               .source = socketDir.string(),
                                               .type = "bind" });
+
+    for (const auto &env : options.envs) {
+        auto split = env.cbegin() + env.find('='); // already checked by CLI
+        cfgBuilder.appendEnv(std::string(env.cbegin(), split),
+                             std::string(split + 1, env.cend()),
+                             true);
+    }
+
 #ifdef LINGLONG_FONT_CACHE_GENERATOR
     cfgBuilder.enableFontCache();
 #endif

@@ -96,7 +96,7 @@ _ll_builder_complete() {
                 fi
 
                 if [[ ${prev} == "remove" || ${prev} == "set-default" ]]; then
-                        output_options="${output_options} $(__ll_cli_get_repo_name_list)"
+                        output_options="${output_options} $(__ll_builder_get_repo_name_list)"
                 fi
                 ;;
         migrate)

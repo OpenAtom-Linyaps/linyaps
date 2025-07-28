@@ -20,24 +20,12 @@ __ll_cli_get_installed_list() {
         ll-cli list | tail -n+2 | awk '{print $1}' | tr '\n' ' '
 }
 
-__ll_cli_get_app_list() {
-        ll-cli search $1 | tail -n+2 | awk '{print $1}' | sort | uniq | tr '\n' ' '
-}
-
 __ll_cli_get_layer_list() {
         ls $1*.layer 2>/dev/null | tr '\n' ' '
 }
 
 __ll_cli_get_repo_alias_list() {
         ll-cli repo show | tail -n+3 | awk '{print $3}' | tr "\n" " "
-}
-
-# 只补全当前目录下的 .layer 和 .uab 文件，不包括目录
-__ll_cli_get_layer_uab_files_bash() {
-    local cur="$1"
-    local dir="${cur%/*}"
-    [[ "$cur" == */* ]] || dir="."
-    find "$dir" -maxdepth 1 -type f \( -name '*.layer' -o -name '*.uab' \) -printf '%P\n'
 }
 
 __filter_exist_options() {
@@ -114,33 +102,10 @@ _ll_cli_complete() {
                 ;;
         install)
                 install_options="--module --force -y"
-                # 判断当前补全文本是否以 ./ 开头，若是则只补全本地layer/uab文件且不补全目录
-                if [[ "$cur" == ./* ]]; then
-                    local dir prefix files
-                    if [[ "$cur" == */* ]]; then
-                        dir="${cur%/*}"
-                        prefix="${dir}/"
-                    else
-                        dir="."
-                        prefix=""
-                    fi
-                    # 列出目录下 .layer 和 .uab 文件，只要文件不要目录
-                    files=$(find "$dir" -maxdepth 1 -type f \( -name '*.layer' -o -name '*.uab' \) -printf '%f\n')
-                    # 拼回补全前缀
-                    files=$(printf "%s\n" $files | sed "s|^|$prefix|")
-                    COMPREPLY=( $(compgen -W "$files" -- "$cur") )
-                    return 0
-                else
-                    search_target="."
-                    if [[ -n "${cur}" ]]; then
-                        search_target=${cur}
-                    fi
-                    local app_list
-                    if [[ "${prev}" == "install" ]]; then
-                        app_list="$(__ll_cli_get_app_list "${search_target}")"
-                    fi
-                    output_options="${output_options} ${install_options} ${app_list}"
-                fi
+                output_options="${output_options} ${install_options}"
+                COMPREPLY=($(compgen -W "${output_options}" -- "${cur}"))
+                _filedir @(layer|uab)
+                return 0
                 ;;
         uninstall)
                 local uninstall_options
@@ -164,12 +129,8 @@ _ll_cli_complete() {
                 output_options="${output_options} $(__ll_cli_get_installed_app_list)"
                 ;;
         search)
-                search_target="."
-                if [[ x${cur} != x ]]; then
-                        search_target=${cur}
-                fi
                 search_options="--type --dev"
-                output_options="${output_options} ${search_options} $(__ll_cli_get_app_list ${search_target})"
+                output_options="${output_options} ${search_options}"
                 ;;
         repo)
                 local repo_subcommands="add remove update set-default show"

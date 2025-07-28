@@ -44,6 +44,7 @@ struct CliOptions
 {
     std::vector<std::string> filePaths;
     std::vector<std::string> fileUrls;
+    std::vector<std::string> envs;
     std::string workDir;
     std::string appid;
     std::string instance;

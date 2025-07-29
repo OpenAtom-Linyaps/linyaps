@@ -17,7 +17,7 @@
 #include "linglong/runtime/container_builder.h"
 #include "linglong/utils/error/error.h"
 
-#include <CLI/App.hpp>
+#include <CLI/CLI.hpp>
 
 namespace linglong::runtime {
 class RunContext;

@@ -144,6 +144,7 @@ endif()
 # NOTE: UOS v20 do not have tl-expected packaged.
 find_package(tl-expected 1.0.0 QUIET)
 if(NOT tl-expected_FOUND)
+  message(STATUS "tl-expected not found, using external tl-expected")
   # list(APPEND linglong_EXTERNALS tl-expected) # tl-expected requires 3.14
   add_library(tl-expected INTERFACE)
   add_library(tl::expected ALIAS tl-expected)
@@ -161,7 +162,10 @@ endif()
 # NOTE: UOS v20 do not have cli11 packaged.
 find_package(CLI11 2.4.1 QUIET)
 if(NOT CLI11_FOUND)
-  list(APPEND linglong_EXTERNALS "CLI11 CLI11::CLI11")
+  message(STATUS "CLI11 not found, using external CLI11")
+  add_library(CLI11 INTERFACE)
+  add_library(CLI11::CLI11 ALIAS CLI11)
+  target_include_directories(CLI11 INTERFACE ./external/CLI11)
 endif()
 
 find_package(PkgConfig REQUIRED)

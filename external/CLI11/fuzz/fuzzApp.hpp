@@ -1,4 +1,4 @@
-// Copyright (c) 2017-2024, University of Cincinnati, developed by Henry Schreiner
+// Copyright (c) 2017-2025, University of Cincinnati, developed by Henry Schreiner
 // under NSF AWARD 1414736 and by the respective contributors.
 // All rights reserved.
 //
@@ -24,7 +24,7 @@ namespace CLI {
 class intWrapper64 {
   public:
     intWrapper64() = default;
-    explicit intWrapper64(int64_t v) : val(v){};
+    explicit intWrapper64(int64_t v) : val(v) {};
     CLI11_NODISCARD int64_t value() const { return val; }
 
   private:
@@ -34,7 +34,7 @@ class intWrapper64 {
 class doubleWrapper {
   public:
     doubleWrapper() = default;
-    explicit doubleWrapper(double v) : val(v){};
+    explicit doubleWrapper(double v) : val(v) {};
     CLI11_NODISCARD double value() const { return val; }
 
   private:
@@ -44,7 +44,7 @@ class doubleWrapper {
 class stringWrapper {
   public:
     stringWrapper() = default;
-    explicit stringWrapper(std::string_view v) : val(v){};
+    explicit stringWrapper(std::string_view v) : val(v) {};
     CLI11_NODISCARD std::string value() const { return val; }
 
   private:
@@ -54,9 +54,12 @@ class stringWrapper {
 class FuzzApp {
   public:
     FuzzApp() = default;
-
+    /** generate a fuzzing application with a bunch of different interfaces*/
     std::shared_ptr<CLI::App> generateApp();
-
+    /** compare two fuzz apps for equality*/
+    CLI11_NODISCARD bool compare(const FuzzApp &other) const;
+    /** generate additional options based on a string config*/
+    std::size_t add_custom_options(CLI::App *app, std::string &description_string);
     int32_t val32{0};
     int16_t val16{0};
     int8_t val8{0};
@@ -114,5 +117,7 @@ class FuzzApp {
     std::vector<std::string> vstrF{};
     std::string mergeBuffer{};
     std::vector<std::string> validator_strings{};
+    std::vector<std::shared_ptr<std::string>> custom_string_options{};
+    std::vector<std::shared_ptr<std::vector<std::string>>> custom_vector_options{};
 };
 }  // namespace CLI

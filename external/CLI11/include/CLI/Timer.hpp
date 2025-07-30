@@ -1,10 +1,12 @@
-// Copyright (c) 2017-2024, University of Cincinnati, developed by Henry Schreiner
+// Copyright (c) 2017-2025, University of Cincinnati, developed by Henry Schreiner
 // under NSF AWARD 1414736 and by the respective contributors.
 // All rights reserved.
 //
 // SPDX-License-Identifier: BSD-3-Clause
 
 #pragma once
+
+// IWYU pragma: private, include "CLI/CLI.hpp"
 
 // On GCC < 4.8, the following define is often missing. Due to the
 // fact that this library only uses sleep_for, this should be safe
@@ -16,6 +18,7 @@
 
 #include <array>
 #include <chrono>
+#include <cstdio>
 #include <functional>
 #include <iostream>
 #include <string>

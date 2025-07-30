@@ -75,8 +75,8 @@ set_property(
            "Working on count: 2, direct count: 2, opt count: 2" "Some value: 1.2")
 # test shows that the help prints out for unnamed subcommands
 add_test(NAME subcom_partitioned_help COMMAND subcom_partitioned --help)
-set_property(TEST subcom_partitioned_help PROPERTY PASS_REGULAR_EXPRESSION
-                                                   "-f,--file TEXT REQUIRED" "-d,--double FLOAT")
+set_property(TEST subcom_partitioned_help
+             PROPERTY PASS_REGULAR_EXPRESSION "-f,[ \\t]*--file TEXT REQUIRED" "-d,--double FLOAT")
 
 ####################################################
 add_cli_exe(config_app config_app.cpp)
@@ -99,7 +99,7 @@ add_test(NAME option_groups_missing COMMAND option_groups)
 set_property(TEST option_groups_missing PROPERTY PASS_REGULAR_EXPRESSION "Exactly 1 option from"
                                                  "is required")
 add_test(NAME option_groups_extra COMMAND option_groups --csv --binary)
-set_property(TEST option_groups_extra PROPERTY PASS_REGULAR_EXPRESSION "and 2 were given")
+set_property(TEST option_groups_extra PROPERTY PASS_REGULAR_EXPRESSION "but 2 were given")
 add_test(NAME option_groups_extra2 COMMAND option_groups --csv --address "192.168.1.1" -o
                                            "test.out")
 set_property(TEST option_groups_extra2 PROPERTY PASS_REGULAR_EXPRESSION "at most 1")
@@ -131,7 +131,7 @@ add_test(NAME shapes_all COMMAND shapes circle 4.4 circle 10.7 rectangle 4 4 cir
                                  4.5 ++ rectangle 2.1 ++ circle 234.675)
 set_property(
   TEST shapes_all PROPERTY PASS_REGULAR_EXPRESSION "circle2" "circle4"
-                           "rectangle2 with edges [2.1,2.1]" "triangel1 with sides [4.5]")
+                           "rectangle2 with edges [2.1,2.1]" "triangle1 with sides [4.5]")
 
 add_cli_exe(ranges ranges.cpp)
 add_test(NAME ranges_range COMMAND ranges --range 1 2 3)
@@ -145,8 +145,8 @@ add_cli_exe(validators validators.cpp)
 add_test(NAME validators_help COMMAND validators --help)
 set_property(
   TEST validators_help
-  PROPERTY PASS_REGULAR_EXPRESSION "  -f,--file TEXT:FILE[\\r\\n\\t ]+File name"
-           "  -v,--value INT:INT in [3 - 6][\\r\\n\\t ]+Value in range")
+  PROPERTY PASS_REGULAR_EXPRESSION "  -f,[ \\t]*--file TEXT:FILE[\\r\\n\\t ]+File name"
+           "  -v,[ \\t]*--value INT:INT in [3 - 6][\\r\\n\\t ]+Value in range")
 add_test(NAME validators_file COMMAND validators --file nonex.xxx)
 set_property(
   TEST validators_file PROPERTY PASS_REGULAR_EXPRESSION "--file: File does not exist: nonex.xxx"
@@ -250,6 +250,11 @@ set_property(TEST retired_deprecated PROPERTY PASS_REGULAR_EXPRESSION "deprecate
 add_cli_exe(custom_parse custom_parse.cpp)
 add_test(NAME cp_test COMMAND custom_parse --dv 1.7)
 set_property(TEST cp_test PROPERTY PASS_REGULAR_EXPRESSION "called correct")
+
+#-----------------------------------------------------
+add_cli_exe(help_usage help_usage.cpp)
+add_test(NAME help_use COMMAND help_usage --help)
+set_property(TEST help_use PROPERTY PASS_REGULAR_EXPRESSION "[1..9]")
 
 #------------------------------------------------
 # This executable is for manual testing and is expected to change regularly

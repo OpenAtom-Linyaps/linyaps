@@ -1,4 +1,4 @@
-// Copyright (c) 2017-2024, University of Cincinnati, developed by Henry Schreiner
+// Copyright (c) 2017-2025, University of Cincinnati, developed by Henry Schreiner
 // under NSF AWARD 1414736 and by the respective contributors.
 // All rights reserved.
 //
@@ -11,7 +11,12 @@
 #include <array>
 #include <chrono>
 #include <cstdint>
+#include <map>
+#include <memory>
+#include <string>
 #include <unordered_map>
+#include <utility>
+#include <vector>
 
 #if defined(CLI11_CPP17)
 #if defined(__has_include)
@@ -78,7 +83,7 @@ TEST_CASE_METHOD(TApp, "EnumTransform", "[transform]") {
     // transformer doesn't do any checking so this still works
     args = {"-s", "5"};
     run();
-    CHECK(std::int16_t(5) == static_cast<std::int16_t>(value));
+    CHECK(static_cast<std::int16_t>(5) == static_cast<std::int16_t>(value));
 }
 
 TEST_CASE_METHOD(TApp, "EnumCheckedTransform", "[transform]") {
@@ -110,6 +115,25 @@ TEST_CASE_METHOD(TApp, "EnumCheckedTransform", "[transform]") {
 
     args = {"-s", "5"};
     CHECK_THROWS_AS(run(), CLI::ValidationError);
+}
+
+// from to-mas-kral Issue #1086
+TEST_CASE_METHOD(TApp, "EnumCheckedTransformUint8", "[transform]") {
+    enum class FooType : std::uint8_t { A, B };
+    auto type = FooType::B;
+
+    const std::map<std::string, FooType> foo_map{
+        {"a", FooType::A},
+        {"b", FooType::B},
+    };
+
+    app.add_option("-f,--foo", type, "FooType")
+        ->transform(CLI::CheckedTransformer(foo_map, CLI::ignore_case))
+        ->default_val(FooType::A)
+        ->force_callback();
+
+    run();
+    CHECK(type == FooType::A);
 }
 
 // from jzakrzewski Issue #330

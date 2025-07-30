@@ -1,4 +1,4 @@
-// Copyright (c) 2017-2024, University of Cincinnati, developed by Henry Schreiner
+// Copyright (c) 2017-2025, University of Cincinnati, developed by Henry Schreiner
 // under NSF AWARD 1414736 and by the respective contributors.
 // All rights reserved.
 //
@@ -6,8 +6,10 @@
 
 #pragma once
 
+// IWYU pragma: private, include "CLI/CLI.hpp"
+
 // This include is only needed for IDEs to discover symbols
-#include <CLI/Split.hpp>
+#include "../Split.hpp"
 
 // [CLI11:public_includes:set]
 #include <string>
@@ -16,8 +18,8 @@
 #include <vector>
 // [CLI11:public_includes:end]
 
-#include <CLI/Error.hpp>
-#include <CLI/StringTools.hpp>
+#include "../Error.hpp"
+#include "../StringTools.hpp"
 
 namespace CLI {
 // [CLI11:split_inl_hpp:verbatim]
@@ -101,7 +103,7 @@ CLI11_INLINE std::vector<std::pair<std::string, std::string>> get_default_flag_v
 }
 
 CLI11_INLINE std::tuple<std::vector<std::string>, std::vector<std::string>, std::string>
-get_names(const std::vector<std::string> &input) {
+get_names(const std::vector<std::string> &input, bool allow_non_standard) {
 
     std::vector<std::string> short_names;
     std::vector<std::string> long_names;
@@ -111,23 +113,35 @@ get_names(const std::vector<std::string> &input) {
             continue;
         }
         if(name.length() > 1 && name[0] == '-' && name[1] != '-') {
-            if(name.length() == 2 && valid_first_char(name[1]))
+            if(name.length() == 2 && valid_first_char(name[1])) {
                 short_names.emplace_back(1, name[1]);
-            else if(name.length() > 2)
-                throw BadNameString::MissingDash(name);
-            else
+            } else if(name.length() > 2) {
+                if(allow_non_standard) {
+                    name = name.substr(1);
+                    if(valid_name_string(name)) {
+                        short_names.push_back(name);
+                    } else {
+                        throw BadNameString::BadLongName(name);
+                    }
+                } else {
+                    throw BadNameString::MissingDash(name);
+                }
+            } else {
                 throw BadNameString::OneCharName(name);
+            }
         } else if(name.length() > 2 && name.substr(0, 2) == "--") {
             name = name.substr(2);
-            if(valid_name_string(name))
+            if(valid_name_string(name)) {
                 long_names.push_back(name);
-            else
+            } else {
                 throw BadNameString::BadLongName(name);
-        } else if(name == "-" || name == "--") {
-            throw BadNameString::DashesOnly(name);
+            }
+        } else if(name == "-" || name == "--" || name == "++") {
+            throw BadNameString::ReservedName(name);
         } else {
-            if(!pos_name.empty())
+            if(!pos_name.empty()) {
                 throw BadNameString::MultiPositionalNames(name);
+            }
             if(valid_name_string(name)) {
                 pos_name = name;
             } else {

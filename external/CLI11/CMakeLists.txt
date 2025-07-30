@@ -1,16 +1,6 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.10...3.31)
 # Note: this is a header only library. If you have an older CMake than 3.5,
 # just add the CLI11/include directory and that's all you need to do.
-
-# Make sure users don't get warnings on a tested (3.5 to 3.28) version
-# of CMake. For most of the policies, the new version is better (hence the change).
-# We don't use the 3.5...3.28 syntax because of a bug in an older MSVC's
-# built-in and modified CMake 3.11
-if(${CMAKE_VERSION} VERSION_LESS 3.28)
-  cmake_policy(VERSION ${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION})
-else()
-  cmake_policy(VERSION 3.28)
-endif()
 
 set(VERSION_REGEX "#define CLI11_VERSION[ \t]+\"(.+)\"")
 
@@ -35,9 +25,7 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
 
   find_package(Doxygen)
 
-  if(CMAKE_VERSION VERSION_LESS 3.10)
-    message(STATUS "CMake 3.10+ adds Doxygen support. Update CMake to build documentation")
-  elseif(NOT Doxygen_FOUND)
+  if(NOT Doxygen_FOUND)
     message(STATUS "Doxygen not found, building docs has been disabled")
   endif()
 
@@ -132,10 +120,45 @@ endif()
 
 include(CLI11Warnings)
 
+# Sources
+
+set(CLI11_headerLoc "${PROJECT_SOURCE_DIR}/include/CLI")
+
+set(CLI11_headers
+    ${CLI11_headerLoc}/App.hpp
+    ${CLI11_headerLoc}/Config.hpp
+    ${CLI11_headerLoc}/ConfigFwd.hpp
+    ${CLI11_headerLoc}/Error.hpp
+    ${CLI11_headerLoc}/Formatter.hpp
+    ${CLI11_headerLoc}/FormatterFwd.hpp
+    ${CLI11_headerLoc}/Macros.hpp
+    ${CLI11_headerLoc}/Option.hpp
+    ${CLI11_headerLoc}/Split.hpp
+    ${CLI11_headerLoc}/StringTools.hpp
+    ${CLI11_headerLoc}/TypeTools.hpp
+    ${CLI11_headerLoc}/Validators.hpp
+    ${CLI11_headerLoc}/Version.hpp
+    ${CLI11_headerLoc}/Encoding.hpp
+    ${CLI11_headerLoc}/Argv.hpp)
+
+set(CLI11_impl_headers
+    ${CLI11_headerLoc}/impl/App_inl.hpp
+    ${CLI11_headerLoc}/impl/Config_inl.hpp
+    ${CLI11_headerLoc}/impl/Formatter_inl.hpp
+    ${CLI11_headerLoc}/impl/Option_inl.hpp
+    ${CLI11_headerLoc}/impl/Split_inl.hpp
+    ${CLI11_headerLoc}/impl/StringTools_inl.hpp
+    ${CLI11_headerLoc}/impl/Validators_inl.hpp
+    ${CLI11_headerLoc}/impl/Encoding_inl.hpp
+    ${CLI11_headerLoc}/impl/Argv_inl.hpp)
+
+set(CLI11_library_headers ${CLI11_headerLoc}/CLI.hpp ${CLI11_headerLoc}/Timer.hpp)
+
 # build the fuzzing example or fuzz entry point
 add_subdirectory(fuzz)
 
 add_subdirectory(src)
+add_subdirectory(single-include)
 
 # Allow tests to be run on CUDA
 if(CLI11_CUDA_TESTS)

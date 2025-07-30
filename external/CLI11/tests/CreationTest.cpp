@@ -1,4 +1,4 @@
-// Copyright (c) 2017-2024, University of Cincinnati, developed by Henry Schreiner
+// Copyright (c) 2017-2025, University of Cincinnati, developed by Henry Schreiner
 // under NSF AWARD 1414736 and by the respective contributors.
 // All rights reserved.
 //
@@ -6,6 +6,8 @@
 
 #include "app_helper.hpp"
 #include <cstdlib>
+#include <string>
+#include <vector>
 
 TEST_CASE_METHOD(TApp, "AddingExistingShort", "[creation]") {
     CLI::Option *opt = app.add_flag("-c,--count");
@@ -438,7 +440,7 @@ TEST_CASE_METHOD(TApp, "OptionFromDefaultsSubcommands", "[creation]") {
     CHECK(!app.option_defaults()->get_ignore_underscore());
     CHECK(!app.option_defaults()->get_disable_flag_override());
     CHECK(app.option_defaults()->get_configurable());
-    CHECK("Options" == app.option_defaults()->get_group());
+    CHECK("OPTIONS" == app.option_defaults()->get_group());
 
     app.option_defaults()
         ->required()
@@ -498,7 +500,7 @@ TEST_CASE_METHOD(TApp, "SubcommandDefaults", "[creation]") {
 
     CHECK(app.get_usage().empty());
     CHECK(app.get_footer().empty());
-    CHECK("Subcommands" == app.get_group());
+    CHECK("SUBCOMMANDS" == app.get_group());
     CHECK(0u == app.get_require_subcommand_min());
     CHECK(0u == app.get_require_subcommand_max());
 

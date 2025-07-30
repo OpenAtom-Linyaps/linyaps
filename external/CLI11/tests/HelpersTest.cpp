@@ -1,4 +1,4 @@
-// Copyright (c) 2017-2024, University of Cincinnati, developed by Henry Schreiner
+// Copyright (c) 2017-2025, University of Cincinnati, developed by Henry Schreiner
 // under NSF AWARD 1414736 and by the respective contributors.
 // All rights reserved.
 //
@@ -20,6 +20,7 @@
 #include <tuple>
 #include <unordered_map>
 #include <utility>
+#include <vector>
 
 class NotStreamable {};
 
@@ -46,6 +47,17 @@ TEST_CASE("TypeTools: tuple", "[helpers]") {
     CHECK(v);
     v = CLI::detail::is_tuple_like<std::tuple<double, double, double>>::value;
     CHECK(v);
+}
+
+TEST_CASE("TypeTools: tuple_to_string", "[helpers]") {
+    std::pair<double, std::string> p1{0.999, "kWh"};
+    CHECK(CLI::detail::to_string(p1) == "[0.999,kWh]");
+
+    const std::tuple<std::string> t1{"kWh"};
+    CHECK(CLI::detail::to_string(t1) == "kWh");
+
+    const std::tuple<double> td{0.999};
+    CHECK(CLI::detail::to_string(td) == "0.999");
 }
 
 TEST_CASE("TypeTools: type_size", "[helpers]") {
@@ -238,7 +250,7 @@ TEST_CASE("StringTools: Validation", "[helpers]") {
     CHECK_FALSE(CLI::detail::isalpha("test2"));
 }
 
-TEST_CASE("StringTools: binaryEscapseConversion", "[helpers]") {
+TEST_CASE("StringTools: binaryEscapeConversion", "[helpers]") {
     std::string testString("string1");
     std::string estring = CLI::detail::binary_escape_string(testString);
     CHECK(testString == estring);
@@ -271,6 +283,58 @@ TEST_CASE("StringTools: binaryEscapseConversion", "[helpers]") {
     CHECK(rstring == testString2);
     auto rstring2 = CLI::detail::extract_binary_string(rstring);
     CHECK(rstring == rstring2);
+}
+
+TEST_CASE("StringTools: binaryEscapeConversion2", "[helpers]") {
+    std::string testString;
+    testString.push_back(0);
+    testString.push_back(0);
+    testString.push_back(0);
+    testString.push_back(56);
+    testString.push_back(-112);
+    testString.push_back(-112);
+    testString.push_back(39);
+    testString.push_back(97);
+    std::string estring = CLI::detail::binary_escape_string(testString);
+    CHECK(CLI::detail::is_binary_escaped_string(estring));
+    std::string rstring = CLI::detail::extract_binary_string(estring);
+    CHECK(rstring == testString);
+}
+
+TEST_CASE("StringTools: binaryEscapeConversion_withX", "[helpers]") {
+    std::string testString("hippy\\x35mm\\XF3_helpX26fox19");
+    testString.push_back(0);
+    testString.push_back(0);
+    testString.push_back(0);
+    testString.push_back(56);
+    testString.push_back(-112);
+    testString.push_back(-112);
+    testString.push_back(39);
+    testString.push_back(97);
+    std::string estring = CLI::detail::binary_escape_string(testString);
+    CHECK(CLI::detail::is_binary_escaped_string(estring));
+    std::string rstring = CLI::detail::extract_binary_string(estring);
+    CHECK(rstring == testString);
+}
+
+TEST_CASE("StringTools: binaryEscapeConversion_withBrackets", "[helpers]") {
+
+    std::string vstr = R"raw('B"([\xb0\x0a\xb0/\xb0\xb0\xb0\xb0\xb0\xb0\xb0\xb0\xb0\xb0\xb0\xb0\xb0])"')raw";
+    std::string testString("[");
+    testString.push_back(-80);
+    testString.push_back('\n');
+    testString.push_back(-80);
+    testString.push_back('/');
+    for(int ii = 0; ii < 13; ++ii) {
+        testString.push_back(-80);
+    }
+    testString.push_back(']');
+
+    std::string estring = CLI::detail::binary_escape_string(testString);
+    CHECK(CLI::detail::is_binary_escaped_string(estring));
+    CHECK(estring == vstr);
+    std::string rstring = CLI::detail::extract_binary_string(estring);
+    CHECK(rstring == testString);
 }
 
 TEST_CASE("StringTools: binaryStrings", "[helpers]") {
@@ -522,7 +586,7 @@ TEST_CASE("Validators: FileIsDir", "[helpers]") {
 }
 
 TEST_CASE("Validators: DirectoryExists", "[helpers]") {
-    std::string mydir{"../tests"};
+    std::string mydir{"tests"};
     CHECK(CLI::ExistingDirectory(mydir).empty());
 }
 
@@ -543,7 +607,7 @@ TEST_CASE("Validators: DirectoryIsFile", "[helpers]") {
 }
 
 TEST_CASE("Validators: PathExistsDir", "[helpers]") {
-    std::string mydir{"../tests"};
+    std::string mydir{"tests"};
     CHECK(CLI::ExistingPath(mydir).empty());
 }
 
@@ -665,7 +729,7 @@ TEST_CASE("Validators: CombinedPaths", "[helpers]") {
     bool ok = static_cast<bool>(std::ofstream(myfile.c_str()).put('a'));  // create file
     CHECK(ok);
 
-    std::string dir{"../tests"};
+    std::string dir{"tests"};
     std::string notpath{"nondirectory"};
 
     auto path_or_dir = CLI::ExistingPath | CLI::ExistingDirectory;
@@ -1058,11 +1122,8 @@ TEST_CASE("RegEx: SplittingNew", "[helpers]") {
     CHECK_THROWS_AS([&]() { std::tie(shorts, longs, pname) = CLI::detail::get_names({"-hi"}); }(), CLI::BadNameString);
     CHECK_THROWS_AS([&]() { std::tie(shorts, longs, pname) = CLI::detail::get_names({"---hi"}); }(),
                     CLI::BadNameString);
-    CHECK_THROWS_AS(
-        [&]() {
-            std::tie(shorts, longs, pname) = CLI::detail::get_names({"one", "two"});
-        }(),
-        CLI::BadNameString);
+    CHECK_THROWS_AS([&]() { std::tie(shorts, longs, pname) = CLI::detail::get_names({"one", "two"}); }(),
+                    CLI::BadNameString);
 }
 
 TEST_CASE("String: ToLower", "[helpers]") { CHECK("one and two" == CLI::detail::to_lower("one And TWO")); }
@@ -1284,7 +1345,7 @@ TEST_CASE("Types: TypeNameStrings", "[helpers]") {
     auto wsclass = CLI::detail::classify_object<std::wstring>::value;
     CHECK(CLI::detail::object_category::wstring_assignable == wsclass);
 
-#if defined CLI11_HAS_FILEYSTEM && CLI11_HAS_FILESYSTEM > 0 && defined(_MSC_VER)
+#if defined CLI11_HAS_FILESYSTEM && CLI11_HAS_FILESYSTEM > 0 && defined(_MSC_VER)
     auto fspclass = CLI::detail::classify_object<std::filesystem::path>::value;
     CHECK(CLI::detail::object_category::wstring_assignable == fspclass);
 #endif
@@ -1459,6 +1520,7 @@ static_assert(CLI::detail::is_tuple_like<std::array<int, 10>>::value, "std::arra
 static_assert(!CLI::detail::is_tuple_like<std::string>::value, "std::string should not be like a tuple");
 static_assert(!CLI::detail::is_tuple_like<double>::value, "double should not be like a tuple");
 static_assert(CLI::detail::is_tuple_like<std::tuple<double, int, double>>::value, "tuple should look like a tuple");
+static_assert(!CLI::detail::is_tuple_like<std::complex<double>>::value, "std::complex should not be like a tuple");
 
 TEST_CASE("Types: LexicalConversionTuple2", "[helpers]") {
     CLI::results_t input = {"9.12", "19"};

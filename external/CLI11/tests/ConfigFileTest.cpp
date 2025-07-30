@@ -1,4 +1,4 @@
-// Copyright (c) 2017-2024, University of Cincinnati, developed by Henry Schreiner
+// Copyright (c) 2017-2025, University of Cincinnati, developed by Henry Schreiner
 // under NSF AWARD 1414736 and by the respective contributors.
 // All rights reserved.
 //
@@ -7,7 +7,12 @@
 #include "app_helper.hpp"
 
 #include <cstdio>
+#include <memory>
+#include <set>
 #include <sstream>
+#include <string>
+#include <tuple>
+#include <vector>
 
 TEST_CASE("StringBased: convert_arg_for_ini", "[config]") {
 
@@ -324,6 +329,41 @@ TEST_CASE("StringBased: TomlMultiLineString5", "[config]") {
     CHECK(output.at(2).name == "three");
     CHECK(output.at(2).inputs.size() == 1u);
     CHECK(output.at(2).inputs.at(0) == "7");
+}
+
+TEST_CASE("StringBased: TomlMultiLineString6", "[config]") {
+    std::stringstream ofile;
+
+    ofile << "one = [three]\n";
+    ofile << "two = \"\"\" mline this is a long line \"\"\"\n";
+    ofile << "three=7    \n";
+
+    ofile.seekg(0, std::ios::beg);
+
+    std::vector<CLI::ConfigItem> output = CLI::ConfigINI().from_config(ofile);
+
+    CHECK(output.size() == 3u);
+    CHECK(output.at(0).name == "one");
+    CHECK(output.at(0).inputs.size() == 1u);
+    CHECK(output.at(0).inputs.at(0) == "three");
+    CHECK(output.at(1).name == "two");
+    CHECK(output.at(1).inputs.size() == 1u);
+    CHECK(output.at(1).inputs.at(0) == " mline this is a long line ");
+    CHECK(output.at(2).name == "three");
+    CHECK(output.at(2).inputs.size() == 1u);
+    CHECK(output.at(2).inputs.at(0) == "7");
+}
+
+TEST_CASE("StringBased: TomlMultiLineStringError", "[config]") {
+    std::stringstream ofile;
+
+    ofile << "one = [three]\n";
+    ofile << "two = \"\"\" mline this\\7 is a long line \"\"\"\n";
+    ofile << "three=7    \n";
+
+    ofile.seekg(0, std::ios::beg);
+
+    CHECK_THROWS(CLI::ConfigINI().from_config(ofile));
 }
 
 TEST_CASE("StringBased: Spaces", "[config]") {
@@ -678,7 +718,26 @@ TEST_CASE_METHOD(TApp, "IniGetRemainingOption", "[config]") {
     int two{0};
     app.add_option("--two", two);
     REQUIRE_NOTHROW(run());
-    std::vector<std::string> ExpectedRemaining = {ExtraOption, "3"};
+    std::vector<std::string> ExpectedRemaining = {ExtraOption, ExtraOptionValue};
+    CHECK(ExpectedRemaining == app.remaining());
+}
+
+TEST_CASE_METHOD(TApp, "IniIgnoreRemainingOption", "[config]") {
+    TempFile tmpini{"TestIniTmp.ini"};
+
+    app.set_config("--config", tmpini);
+    app.allow_config_extras(CLI::config_extras_mode::ignore);
+
+    {
+        std::ofstream out{tmpini};
+        out << "three=3\n";
+        out << "two=99\n";
+    }
+
+    int two{0};
+    app.add_option("--two", two);
+    REQUIRE_NOTHROW(run());
+    std::vector<std::string> ExpectedRemaining = {};
     CHECK(ExpectedRemaining == app.remaining());
 }
 
@@ -1090,6 +1149,67 @@ TEST_CASE_METHOD(TApp, "IniOverwrite", "[config]") {
     CHECK(two == 99);
 }
 
+TEST_CASE_METHOD(TApp, "hInConfig", "[config]") {
+
+    TempFile tmpini{"TestIniTmp.ini"};
+    {
+        std::ofstream out{tmpini};
+        out << "[default]" << '\n';
+        out << "h=99" << '\n';
+    }
+
+    std::string next = "TestIniTmp.ini";
+    app.set_config("--conf", next);
+    int two{7};
+    app.add_option("--h", two);
+
+    run();
+
+    CHECK(two == 99);
+}
+
+TEST_CASE_METHOD(TApp, "notConfigurableOptionOverload", "[config]") {
+
+    TempFile tmpini{"TestIniTmp.ini"};
+    {
+        std::ofstream out{tmpini};
+        out << "[default]" << '\n';
+        out << "m=99" << '\n';
+    }
+
+    std::string next = "TestIniTmp.ini";
+    app.set_config("--conf", next);
+    int two{7};
+    int three{5};
+    app.add_option("--m", three)->configurable(false);
+    app.add_option("-m", two);
+
+    run();
+    CHECK(three == 5);
+    CHECK(two == 99);
+}
+
+TEST_CASE_METHOD(TApp, "notConfigurableOptionOverload2", "[config]") {
+
+    TempFile tmpini{"TestIniTmp.ini"};
+    {
+        std::ofstream out{tmpini};
+        out << "[default]" << '\n';
+        out << "m=99" << '\n';
+    }
+
+    std::string next = "TestIniTmp.ini";
+    app.set_config("--conf", next);
+    int two{7};
+    int three{5};
+    app.add_option("-m", three)->configurable(false);
+    app.add_option("m", two);
+
+    run();
+    CHECK(three == 5);
+    CHECK(two == 99);
+}
+
 TEST_CASE_METHOD(TApp, "IniRequired", "[config]") {
 
     TempFile tmpini{"TestIniTmp.ini"};
@@ -1343,6 +1463,27 @@ TEST_CASE_METHOD(TApp, "IniVector", "[config]") {
     CHECK(two == std::vector<int>({2, 3}));
     CHECK(three == std::vector<int>({1, 2, 3}));
 }
+
+TEST_CASE_METHOD(TApp, "IniFlagOverride", "[config]") {
+
+    TempFile tmpini{"TestIniTmp.ini"};
+
+    app.set_config("--config", tmpini);
+
+    {
+        std::ofstream out{tmpini};
+        out << "[default]" << '\n';
+        out << "three=0" << '\n';
+    }
+
+    int flag{45};
+    app.add_flag("--two{2},--three{3},--four{4}", flag)->disable_flag_override()->force_callback()->default_str("0");
+
+    run();
+
+    CHECK(flag == 0);
+}
+
 TEST_CASE_METHOD(TApp, "TOMLVector", "[config]") {
 
     TempFile tmptoml{"TestTomlTmp.toml"};
@@ -1419,6 +1560,104 @@ TEST_CASE_METHOD(TApp, "TOMLVectordirect", "[config]") {
     CHECK(three == std::vector<int>({1, 2, 3}));
 }
 
+TEST_CASE_METHOD(TApp, "TOMLVectorVector", "[config]") {
+
+    TempFile tmpini{"TestIniTmp.ini"};
+
+    app.set_config("--config", tmpini);
+
+    app.config_formatter(std::make_shared<CLI::ConfigTOML>());
+
+    {
+        std::ofstream out{tmpini};
+        out << "#this is a comment line\n";
+        out << "[default]\n";
+        out << "two=1,2,3\n";
+        out << "two= 4, 5, 6\n";
+        out << "three=1,2,3\n";
+        out << "three= 4, 5, 6\n";
+        out << "four=1,2\n";
+        out << "four= 3,4\n";
+        out << "four=5,6\n";
+        out << "four= 7,8\n";
+    }
+
+    std::vector<std::vector<int>> two;
+    std::vector<int> three, four;
+    app.add_option("--two", two)->delimiter(',');
+    app.add_option("--three", three)->delimiter(',');
+    app.add_option("--four", four)->delimiter(',');
+
+    run();
+
+    auto str = app.config_to_str();
+    CHECK(two == std::vector<std::vector<int>>({{1, 2, 3}, {4, 5, 6}}));
+    CHECK(three == std::vector<int>({1, 2, 3, 4, 5, 6}));
+    CHECK(four == std::vector<int>({1, 2, 3, 4, 5, 6, 7, 8}));
+}
+
+TEST_CASE_METHOD(TApp, "TOMLVectorVectorSeparated", "[config]") {
+
+    TempFile tmpini{"TestIniTmp.ini"};
+
+    app.set_config("--config", tmpini);
+
+    app.config_formatter(std::make_shared<CLI::ConfigTOML>());
+    app.get_config_formatter_base()->allowDuplicateFields();
+    {
+        std::ofstream out{tmpini};
+        out << "#this is a comment line\n";
+        out << "[default]\n";
+        out << "two=1,2,3\n";
+        out << "three=1,2,3\n";
+        out << "three= 4, 5, 6\n";
+        out << "two= 4, 5, 6\n";
+    }
+
+    std::vector<std::vector<int>> two;
+    std::vector<int> three;
+    app.add_option("--two", two)->delimiter(',');
+    app.add_option("--three", three)->delimiter(',');
+
+    run();
+
+    auto str = app.config_to_str();
+    CHECK(two == std::vector<std::vector<int>>({{1, 2, 3}, {4, 5, 6}}));
+    CHECK(three == std::vector<int>({1, 2, 3, 4, 5, 6}));
+}
+
+TEST_CASE_METHOD(TApp, "TOMLVectorVectorSeparatedSingleElement", "[config]") {
+
+    TempFile tmpini{"TestIniTmp.ini"};
+
+    app.set_config("--config", tmpini);
+
+    app.config_formatter(std::make_shared<CLI::ConfigTOML>());
+    app.get_config_formatter_base()->allowDuplicateFields();
+    {
+        std::ofstream out{tmpini};
+        out << "#this is a comment line\n";
+        out << "[default]\n";
+        out << "two=1\n";
+        out << "three=1\n";
+        out << "three= 4\n";
+        out << "three= 5\n";
+        out << "two= 2\n";
+        out << "two=3\n";
+    }
+
+    std::vector<std::vector<int>> two;
+    std::vector<int> three;
+    app.add_option("--two", two)->delimiter(',');
+    app.add_option("--three", three)->delimiter(',');
+
+    run();
+
+    auto str = app.config_to_str();
+    CHECK(two == std::vector<std::vector<int>>({{1}, {2}, {3}}));
+    CHECK(three == std::vector<int>({1, 4, 5}));
+}
+
 TEST_CASE_METHOD(TApp, "TOMLStringVector", "[config]") {
 
     TempFile tmptoml{"TestTomlTmp.toml"};
@@ -1454,7 +1693,7 @@ TEST_CASE_METHOD(TApp, "TOMLStringVector", "[config]") {
 
     CHECK(zero1 == std::vector<std::string>({}));
     CHECK(zero2 == std::vector<std::string>({}));
-    CHECK(zero3 == std::vector<std::string>({""}));
+    CHECK(zero3 == std::vector<std::string>({}));
     CHECK(zero4 == std::vector<std::string>({"{}"}));
     CHECK(nzero == std::vector<std::string>({"{}"}));
     CHECK(one == std::vector<std::string>({"1"}));
@@ -1856,6 +2095,34 @@ TEST_CASE_METHOD(TApp, "IniSubcommandConfigurableInQuotesAliasWithEquals", "[con
     CHECK(1U == subcom->count());
     CHECK(*subcom);
     CHECK(app.got_subcommand(subcom));
+}
+
+TEST_CASE_METHOD(TApp, "IniSubcommandConfigurableHelp", "[config]") {
+
+    TempFile tmpini{"TestIniTmp.ini"};
+
+    app.set_config("--config", tmpini);
+
+    {
+        std::ofstream out{tmpini};
+        out << "[default]" << '\n';
+        out << "val=1" << '\n';
+        out << "[subcom]" << '\n';
+        out << "val=2" << '\n';
+    }
+
+    int one{0}, two{0};
+    app.add_option("--val", one);
+    app.add_option("--helptest", two);
+    auto *subcom = app.add_subcommand("subcom");
+    subcom->configurable();
+    subcom->add_option("--val", two);
+
+    args = {"--help"};
+    CHECK_THROWS_AS(run(), CLI::CallForHelp);
+
+    auto helpres = app.help();
+    CHECK_THAT(helpres, Contains("--helptest"));
 }
 
 TEST_CASE_METHOD(TApp, "IniSubcommandConfigurableInQuotesAliasWithComment", "[config]") {
@@ -2799,6 +3066,13 @@ TEST_CASE_METHOD(TApp, "IniDisableFlagOverride", "[config]") {
     CHECK(tmpini3.c_str() == app.get_config_ptr()->as<std::string>());
 }
 
+TEST_CASE("fclear", "[config]") {
+    // mainly to clear up some warnings
+    (void)fclear1;
+    (void)fclear2;
+    (void)fclear3;
+}
+
 TEST_CASE_METHOD(TApp, "TomlOutputSimple", "[config]") {
 
     int v{0};
@@ -2948,6 +3222,9 @@ TEST_CASE_METHOD(TApp, "TomlOutputHiddenOptions", "[config]") {
 TEST_CASE_METHOD(TApp, "TomlOutputAppMultiLineDescription", "[config]") {
     app.description("Some short app description.\n"
                     "That has multiple lines.");
+    // for descriptions to show up needs an option that was set
+    app.add_option("--test");
+    args = {"--test", "55"};
     run();
 
     std::string str = app.config_to_str(true, true);
@@ -3135,6 +3412,24 @@ TEST_CASE_METHOD(TApp, "TomlOutputDefault", "[config]") {
 
     str = app.config_to_str(true);
     CHECK_THAT(str, Contains("simple=7"));
+
+    app.get_config_formatter_base()->commentDefaults();
+    str = app.config_to_str(true);
+    CHECK_THAT(str, Contains("#simple=7"));
+}
+
+TEST_CASE_METHOD(TApp, "TomlOutputDefaultRequired", "[config]") {
+
+    int v{7};
+    auto *opt = app.add_option("--simple", v);
+    opt->required()->run_callback_for_default(false);
+
+    std::string str = app.config_to_str(true);
+    CHECK_THAT(str, Contains("simple=\"<REQUIRED>\""));
+
+    opt->required(false);
+    str = app.config_to_str(true);
+    CHECK_THAT(str, Contains("simple=\"\""));
 }
 
 TEST_CASE_METHOD(TApp, "TomlOutputSubcom", "[config]") {
@@ -3449,6 +3744,10 @@ TEST_CASE_METHOD(TApp, "IniOutputAppMultiLineDescription", "[config]") {
     app.description("Some short app description.\n"
                     "That has multiple lines.");
     app.config_formatter(std::make_shared<CLI::ConfigINI>());
+
+    // for descriptions to show up needs an option that was set
+    app.add_option("--test");
+    args = {"--test", "66"};
     run();
 
     std::string str = app.config_to_str(true, true);
@@ -3801,4 +4100,20 @@ TEST_CASE_METHOD(TApp, "DefaultsIniOutputQuoted", "[config]") {
     std::string str = app.config_to_str(true);
     CHECK_THAT(str, Contains("val1=\"I am a string\""));
     CHECK_THAT(str, Contains("val2=\"I am a \\\"confusing\\\" string\""));
+}
+
+TEST_CASE_METHOD(TApp, "RoundTripEmptyVector", "[config]") {
+    std::vector<std::string> cv{};
+    app.add_option("-c", cv)->expected(0, 2);
+
+    args = {"-c", "{}"};
+
+    run();
+    CHECK(cv.empty());
+    cv.clear();
+    std::string configOut = app.config_to_str();
+    app.clear();
+    std::stringstream out(configOut);
+    app.parse_from_stream(out);
+    CHECK(cv.empty());
 }

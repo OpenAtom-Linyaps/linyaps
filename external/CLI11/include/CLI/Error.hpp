@@ -1,10 +1,12 @@
-// Copyright (c) 2017-2024, University of Cincinnati, developed by Henry Schreiner
+// Copyright (c) 2017-2025, University of Cincinnati, developed by Henry Schreiner
 // under NSF AWARD 1414736 and by the respective contributors.
 // All rights reserved.
 //
 // SPDX-License-Identifier: BSD-3-Clause
 
 #pragma once
+
+// IWYU pragma: private, include "CLI/CLI.hpp"
 
 // [CLI11:public_includes:set]
 #include <exception>
@@ -130,8 +132,8 @@ class BadNameString : public ConstructionError {
     static BadNameString BadPositionalName(std::string name) {
         return BadNameString("Invalid positional Name: " + name);
     }
-    static BadNameString DashesOnly(std::string name) {
-        return BadNameString("Must have a name, not just dashes: " + name);
+    static BadNameString ReservedName(std::string name) {
+        return BadNameString("Names '-','--','++' are reserved and not allowed as option names " + name);
     }
     static BadNameString MultiPositionalNames(std::string name) {
         return BadNameString("Only one positional name allowed, remove: " + name);
@@ -237,22 +239,22 @@ class RequiredError : public ParseError {
         if((min_option == 1) && (max_option == 1) && (used == 0))
             return RequiredError("Exactly 1 option from [" + option_list + "]");
         if((min_option == 1) && (max_option == 1) && (used > 1)) {
-            return {"Exactly 1 option from [" + option_list + "] is required and " + std::to_string(used) +
+            return {"Exactly 1 option from [" + option_list + "] is required but " + std::to_string(used) +
                         " were given",
                     ExitCodes::RequiredError};
         }
         if((min_option == 1) && (used == 0))
             return RequiredError("At least 1 option from [" + option_list + "]");
         if(used < min_option) {
-            return {"Requires at least " + std::to_string(min_option) + " options used and only " +
-                        std::to_string(used) + "were given from [" + option_list + "]",
+            return {"Requires at least " + std::to_string(min_option) + " options used but only " +
+                        std::to_string(used) + " were given from [" + option_list + "]",
                     ExitCodes::RequiredError};
         }
         if(max_option == 1)
             return {"Requires at most 1 options be given from [" + option_list + "]", ExitCodes::RequiredError};
 
-        return {"Requires at most " + std::to_string(max_option) + " options be used and " + std::to_string(used) +
-                    "were given from [" + option_list + "]",
+        return {"Requires at most " + std::to_string(max_option) + " options be used but " + std::to_string(used) +
+                    " were given from [" + option_list + "]",
                 ExitCodes::RequiredError};
     }
 };
@@ -345,7 +347,7 @@ class HorribleError : public ParseError {
 
 // After parsing
 
-/// Thrown when counting a non-existent option
+/// Thrown when counting a nonexistent option
 class OptionNotFound : public Error {
     CLI11_ERROR_DEF(Error, OptionNotFound)
     explicit OptionNotFound(std::string name) : OptionNotFound(name + " not found", ExitCodes::OptionNotFound) {}

@@ -1,4 +1,4 @@
-# Copyright (c) 2017-2024, University of Cincinnati, developed by Henry Schreiner
+# Copyright (c) 2017-2025, University of Cincinnati, developed by Henry Schreiner
 # under NSF AWARD 1414736 and by the respective contributors.
 # All rights reserved.
 #
@@ -29,9 +29,9 @@ if(CMAKE_CXX_STANDARD GREATER 16)
       QUICK_CLI11_APP_FUZZ
       COMMAND ${CMAKE_COMMAND} -E make_directory corp
       COMMAND
-        cli11_app_fuzzer corp -max_total_time=${CLI11_FUZZ_TIME_APP} -max_len=2148
+        cli11_app_fuzzer corp -max_total_time=${CLI11_FUZZ_TIME_APP} -max_len=4096
         -dict=${CMAKE_CURRENT_SOURCE_DIR}/fuzz_dictionary1.txt
-        -exact_artifact_path=${CLI11_FUZZ_ARTIFACT_PATH}/cli11_app_fail_artifact.txt)
+        -exact_artifact_path=${CLI11_FUZZ_ARTIFACT_PATH}/cli11_app_roundtrip_fail_artifact.txt)
 
     add_custom_target(
       QUICK_CLI11_FILE_FUZZ

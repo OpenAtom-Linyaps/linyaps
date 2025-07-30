@@ -1,4 +1,4 @@
-// Copyright (c) 2017-2024, University of Cincinnati, developed by Henry Schreiner
+// Copyright (c) 2017-2025, University of Cincinnati, developed by Henry Schreiner
 // under NSF AWARD 1414736 and by the respective contributors.
 // All rights reserved.
 //
@@ -11,6 +11,8 @@
 #endif
 
 #include "catch.hpp"
+#include <string>
+#include <vector>
 
 using input_t = std::vector<std::string>;
 

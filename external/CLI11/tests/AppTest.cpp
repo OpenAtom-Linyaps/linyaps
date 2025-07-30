@@ -1,4 +1,4 @@
-// Copyright (c) 2017-2024, University of Cincinnati, developed by Henry Schreiner
+// Copyright (c) 2017-2025, University of Cincinnati, developed by Henry Schreiner
 // under NSF AWARD 1414736 and by the respective contributors.
 // All rights reserved.
 //
@@ -13,6 +13,10 @@
 #include <cstdlib>
 #include <limits>
 #include <map>
+#include <string>
+#include <tuple>
+#include <utility>
+#include <vector>
 
 TEST_CASE_METHOD(TApp, "OneFlagShort", "[app]") {
     app.add_flag("-c,--count");
@@ -474,6 +478,69 @@ TEST_CASE_METHOD(TApp, "OneIntFlagLike", "[app]") {
     CHECK(9 == val);
 }
 
+TEST_CASE_METHOD(TApp, "PairDefault", "[app]") {
+    std::pair<double, std::string> pr{57.5, "test"};
+    auto *opt = app.add_option("-i", pr)->expected(0, 2);
+    args = {"-i"};
+    run();
+    CHECK(app.count("-i") == 1u);
+
+    std::pair<double, std::string> pr2{92.5, "t2"};
+    opt->default_val(pr2);
+    run();
+    CHECK(pr == pr2);
+}
+
+TEST_CASE_METHOD(TApp, "TupleDefault", "[app]") {
+    std::tuple<double, std::string, int, std::string> pr{57.5, "test", 5, "total"};
+    auto *opt = app.add_option("-i", pr)->expected(0, 4);
+    args = {"-i"};
+    run();
+    CHECK(app.count("-i") == 1u);
+
+    std::tuple<double, std::string, int, std::string> pr2{99.5, "test2", 87, "total3"};
+    opt->default_val(pr2);
+    run();
+    CHECK(pr == pr2);
+}
+
+TEST_CASE_METHOD(TApp, "TupleDefaultSingle", "[app]") {
+    std::tuple<std::string> pr{"test_tuple"};
+    auto *opt = app.add_option("-i", pr)->expected(0, 1);
+    args = {"-i"};
+    run();
+    CHECK(app.count("-i") == 1u);
+
+    std::tuple<std::string> pr2{"total3"};
+    opt->default_val(pr2);
+    run();
+    CHECK(pr == pr2);
+}
+
+TEST_CASE_METHOD(TApp, "TupleComplex", "[app]") {
+    std::tuple<double, std::string, int, std::pair<std::string, std::string>> pr{57.5, "test", 5, {"total", "total2"}};
+    auto *opt = app.add_option("-i", pr)->expected(0, 4);
+    args = {"-i"};
+    run();
+    CHECK(app.count("-i") == 1u);
+
+    std::tuple<double, std::string, int, std::pair<std::string, std::string>> pr2{
+        99.5, "test2", 87, {"total3", "total4"}};
+    opt->default_val(pr2);
+    run();
+    CHECK(pr == pr2);
+}
+
+TEST_CASE_METHOD(TApp, "invalidDefault", "[app]") {
+    int pr{5};
+    auto *opt = app.add_option("-i", pr)
+                    ->expected(1)
+                    ->multi_option_policy(CLI::MultiOptionPolicy::Throw)
+                    ->delimiter(',')
+                    ->force_callback();
+    CHECK_THROWS(opt->default_val("4,6,2,8"));
+}
+
 TEST_CASE_METHOD(TApp, "TogetherInt", "[app]") {
     int i{0};
     app.add_option("-i,--int", i);
@@ -553,6 +620,18 @@ TEST_CASE_METHOD(TApp, "NumberFlags", "[app]") {
     run();
     CHECK(app.count("-1") == 1u);
     CHECK(7 == val);
+}
+
+TEST_CASE_METHOD(TApp, "doubleDashH", "[app]") {
+
+    int val{0};
+    // test you can add a --h option and it doesn't conflict with the help
+    CHECK_NOTHROW(app.add_flag("--h", val));
+
+    auto *topt = app.add_flag("-t");
+    CHECK_THROWS_AS(app.add_flag("--t"), CLI::OptionAlreadyAdded);
+    topt->configurable(false);
+    CHECK_NOTHROW(app.add_flag("--t"));
 }
 
 TEST_CASE_METHOD(TApp, "DisableFlagOverrideTest", "[app]") {
@@ -648,6 +727,15 @@ TEST_CASE_METHOD(TApp, "singledash", "[app]") {
         std::string str = e.what();
         CHECK_THAT(str, Contains("one char"));
         CHECK_THAT(str, Contains("-!"));
+    } catch(...) {
+        CHECK(false);
+    }
+    app.allow_non_standard_option_names();
+    try {
+        app.add_option("-!I{am}bad");
+    } catch(const CLI::BadNameString &e) {
+        std::string str = e.what();
+        CHECK_THAT(str, Contains("!I{am}bad"));
     } catch(...) {
         CHECK(false);
     }
@@ -1146,6 +1234,56 @@ TEST_CASE_METHOD(TApp, "RequiredOptsDoubleNeg", "[app]") {
     args = {"-s", "one", "two"};
     REQUIRE_NOTHROW(run());
     CHECK(std::vector<std::string>({"one", "two"}) == strs);
+}
+
+TEST_CASE_METHOD(TApp, "ExpectedRangeParam", "[app]") {
+
+    app.add_option("-s")->required()->expected(2, 4);
+
+    args = {"-s", "one"};
+
+    CHECK_THROWS_AS(run(), CLI::ArgumentMismatch);
+
+    args = {"-s", "one", "two"};
+
+    CHECK_NOTHROW(run());
+
+    args = {"-s", "one", "two", "three"};
+
+    CHECK_NOTHROW(run());
+
+    args = {"-s", "one", "two", "three", "four"};
+
+    CHECK_NOTHROW(run());
+
+    args = {"-s", "one", "two", "three", "four", "five"};
+
+    CHECK_THROWS_AS(run(), CLI::ExtrasError);
+}
+
+TEST_CASE_METHOD(TApp, "ExpectedRangePositional", "[app]") {
+
+    app.add_option("arg")->required()->expected(2, 4);
+
+    args = {"one"};
+
+    CHECK_THROWS_AS(run(), CLI::ArgumentMismatch);
+
+    args = {"one", "two"};
+
+    CHECK_NOTHROW(run());
+
+    args = {"one", "two", "three"};
+
+    CHECK_NOTHROW(run());
+
+    args = {"one", "two", "three", "four"};
+
+    CHECK_NOTHROW(run());
+
+    args = {"one", "two", "three", "four", "five"};
+
+    CHECK_THROWS_AS(run(), CLI::ExtrasError);
 }
 
 // This makes sure unlimited option priority is
@@ -2060,6 +2198,18 @@ TEST_CASE_METHOD(TApp, "EnvOnly", "[app]") {
     CHECK_THROWS_AS(run(), CLI::RequiredError);
 }
 
+// reported bug #1013 on github
+TEST_CASE_METHOD(TApp, "groupEnvRequired", "[app]") {
+    std::string str;
+    auto *group1 = app.add_option_group("group1");
+    put_env("CLI11_TEST_GROUP_REQUIRED", "string_abc");
+    group1->add_option("-f", str, "f")->envname("CLI11_TEST_GROUP_REQUIRED")->required();
+
+    run();
+    CHECK(str == "string_abc");
+    unset_env("CLI11_TEST_GROUP_REQUIRED");
+}
+
 TEST_CASE_METHOD(TApp, "RangeInt", "[app]") {
     int x{0};
     app.add_option("--one", x)->check(CLI::Range(3, 6));
@@ -2180,7 +2330,7 @@ TEST_CASE_METHOD(TApp, "NeedsTrue", "[app]") {
     args = {"--string", "val_with_opt1", "--opt1"};
     run();
 
-    args = {"--opt1", "--string", "val_with_opt1"};  // order is not revelant
+    args = {"--opt1", "--string", "val_with_opt1"};  // order is not relevant
     run();
 }
 
@@ -2363,6 +2513,45 @@ TEST_CASE_METHOD(TApp, "OrderedModifyingTransforms", "[app]") {
     run();
 
     CHECK(std::vector<std::string>({"one21", "two21"}) == val);
+}
+
+// non standard options
+TEST_CASE_METHOD(TApp, "nonStandardOptions", "[app]") {
+    std::string string1;
+    CHECK_THROWS_AS(app.add_option("-single", string1), CLI::BadNameString);
+    app.allow_non_standard_option_names();
+    CHECK(app.get_allow_non_standard_option_names());
+    app.add_option("-single", string1);
+    args = {"-single", "string1"};
+
+    run();
+
+    CHECK(string1 == "string1");
+}
+
+TEST_CASE_METHOD(TApp, "nonStandardOptions2", "[app]") {
+    std::vector<std::string> strings;
+    app.allow_non_standard_option_names();
+    app.add_option("-single,--single,-m", strings);
+    args = {"-single", "string1", "--single", "string2"};
+
+    run();
+
+    CHECK(strings == std::vector<std::string>{"string1", "string2"});
+}
+
+TEST_CASE_METHOD(TApp, "nonStandardOptionsIntersect", "[app]") {
+    std::vector<std::string> strings;
+    app.allow_non_standard_option_names();
+    app.add_option("-s,-t");
+    CHECK_THROWS_AS(app.add_option("-single,--single", strings), CLI::OptionAlreadyAdded);
+}
+
+TEST_CASE_METHOD(TApp, "nonStandardOptionsIntersect2", "[app]") {
+    std::vector<std::string> strings;
+    app.allow_non_standard_option_names();
+    app.add_option("-single,--single", strings);
+    CHECK_THROWS_AS(app.add_option("-s,-t"), CLI::OptionAlreadyAdded);
 }
 
 TEST_CASE_METHOD(TApp, "ThrowingTransform", "[app]") {

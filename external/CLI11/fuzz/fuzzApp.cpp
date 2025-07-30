@@ -1,10 +1,11 @@
-// Copyright (c) 2017-2024, University of Cincinnati, developed by Henry Schreiner
+// Copyright (c) 2017-2025, University of Cincinnati, developed by Henry Schreiner
 // under NSF AWARD 1414736 and by the respective contributors.
 // All rights reserved.
 //
 // SPDX-License-Identifier: BSD-3-Clause
 
 #include "fuzzApp.hpp"
+#include <algorithm>
 
 namespace CLI {
 /*
@@ -43,6 +44,7 @@ std::optional<std::string>> tcomplex; std::string_view vstrv;
 std::shared_ptr<CLI::App> FuzzApp::generateApp() {
     auto fApp = std::make_shared<CLI::App>("fuzzing App", "fuzzer");
     fApp->set_config("--config");
+    fApp->set_help_all_flag("--help-all");
     fApp->add_flag("-a,--flag");
     fApp->add_flag("-b,--flag2,!--nflag2", flag1);
     fApp->add_flag("-c{34},--flag3{1}", flagCnt)->disable_flag_override();
@@ -146,6 +148,225 @@ std::shared_ptr<CLI::App> FuzzApp::generateApp() {
     vldtr->add_option("--vdtr8", validator_strings[7])->join()->check(CLI::ValidIPV4);
     vldtr->add_option("--vdtr9", validator_strings[8])->join()->transform(CLI::Bound(2, 255));
     return fApp;
+}
+
+bool FuzzApp::compare(const FuzzApp &other) const {
+    if(val32 != other.val32) {
+        return false;
+    }
+    if(val16 != other.val16) {
+        return false;
+    }
+    if(val8 != other.val8) {
+        return false;
+    }
+    if(val64 != other.val64) {
+        return false;
+    }
+
+    if(uval32 != other.uval32) {
+        return false;
+    }
+    if(uval16 != other.uval16) {
+        return false;
+    }
+    if(uval8 != other.uval8) {
+        return false;
+    }
+    if(uval64 != other.uval64) {
+        return false;
+    }
+
+    if(atomicval64 != other.atomicval64) {
+        return false;
+    }
+    if(atomicuval64 != other.atomicuval64) {
+        return false;
+    }
+
+    if(v1 != other.v1) {
+        return false;
+    }
+    if(v2 != other.v2) {
+        return false;
+    }
+
+    if(vv1 != other.vv1) {
+        return false;
+    }
+    if(vstr != other.vstr) {
+        return false;
+    }
+
+    if(vecvecd != other.vecvecd) {
+        return false;
+    }
+    if(vvs != other.vvs) {
+        return false;
+    }
+    if(od1 != other.od1) {
+        return false;
+    }
+    if(ods != other.ods) {
+        return false;
+    }
+    if(p1 != other.p1) {
+        return false;
+    }
+    if(p2 != other.p2) {
+        return false;
+    }
+    if(t1 != other.t1) {
+        return false;
+    }
+    if(tcomplex != other.tcomplex) {
+        return false;
+    }
+    if(tcomplex2 != other.tcomplex2) {
+        return false;
+    }
+    if(vectup != other.vectup) {
+        return false;
+    }
+    if(vstrv != other.vstrv) {
+        return false;
+    }
+
+    if(flag1 != other.flag1) {
+        return false;
+    }
+    if(flagCnt != other.flagCnt) {
+        return false;
+    }
+    if(flagAtomic != other.flagAtomic) {
+        return false;
+    }
+
+    if(iwrap.value() != other.iwrap.value()) {
+        return false;
+    }
+    if(dwrap.value() != other.dwrap.value()) {
+        return false;
+    }
+    if(swrap.value() != other.swrap.value()) {
+        return false;
+    }
+    if(buffer != other.buffer) {
+        return false;
+    }
+    if(intbuffer != other.intbuffer) {
+        return false;
+    }
+    if(doubleAtomic != other.doubleAtomic) {
+        return false;
+    }
+
+    // for testing restrictions and reduction methods
+    if(vstrA != other.vstrA) {
+        return false;
+    }
+    if(vstrB != other.vstrB) {
+        return false;
+    }
+    if(vstrC != other.vstrC) {
+        return false;
+    }
+    if(vstrD != other.vstrD) {
+        // the return result if reversed so it can alternate
+        std::vector<std::string> res = vstrD;
+        std::reverse(res.begin(), res.end());
+        if(res != other.vstrD) {
+            return false;
+        }
+    }
+    if(vstrE != other.vstrE) {
+        return false;
+    }
+    if(vstrF != other.vstrF) {
+        return false;
+    }
+    if(mergeBuffer != other.mergeBuffer) {
+        return false;
+    }
+    if(validator_strings != other.validator_strings) {
+        return false;
+    }
+    // now test custom string_options
+    if(custom_string_options.size() != other.custom_string_options.size()) {
+        return false;
+    }
+    for(std::size_t ii = 0; ii < custom_string_options.size(); ++ii) {
+        if(*custom_string_options[ii] != *other.custom_string_options[ii]) {
+            return false;
+        }
+    }
+    // now test custom vector_options
+    if(custom_vector_options.size() != other.custom_vector_options.size()) {
+        return false;
+    }
+    for(std::size_t ii = 0; ii < custom_vector_options.size(); ++ii) {
+        if(*custom_vector_options[ii] != *other.custom_vector_options[ii]) {
+            return false;
+        }
+    }
+    return true;
+}
+
+//<option>name_string</option>
+//<vector>name_string</vector>
+//<flag>name_string</flag>
+/** generate additional options based on a string config*/
+std::size_t FuzzApp::add_custom_options(CLI::App *app, std::string &description_string) {
+    std::size_t current_index{0};
+    while(description_string.size() - 5 > current_index && description_string[current_index] == '<') {
+        if(description_string.compare(current_index, 7, "<option") == 0) {
+            auto end_option = description_string.find("</option>", current_index + 8);
+            if(end_option == std::string::npos) {
+                break;
+            }
+            auto header_close = description_string.find_last_of('>', end_option);
+            if(header_close == std::string::npos || header_close < current_index) {
+                break;
+            }
+            std::string name = description_string.substr(header_close + 1, end_option - header_close - 1);
+            custom_string_options.push_back(std::make_shared<std::string>());
+            app->add_option(name, *(custom_string_options.back()));
+            current_index = end_option + 9;
+        } else if(description_string.compare(current_index, 5, "<flag") == 0) {
+            auto end_option = description_string.find("</flag>", current_index + 6);
+            if(end_option == std::string::npos) {
+                break;
+            }
+            auto header_close = description_string.find_last_of('>', end_option);
+            if(header_close == std::string::npos || header_close < current_index) {
+                break;
+            }
+            std::string name = description_string.substr(header_close + 1, end_option - header_close - 1);
+            custom_string_options.push_back(std::make_shared<std::string>());
+            app->add_option(name, *(custom_string_options.back()));
+            current_index = end_option + 7;
+        } else if(description_string.compare(current_index, 7, "<vector") == 0) {
+            auto end_option = description_string.find("</vector>", current_index + 8);
+            if(end_option == std::string::npos) {
+                break;
+            }
+            auto header_close = description_string.find_last_of('>', end_option);
+            if(header_close == std::string::npos || header_close < current_index) {
+                break;
+            }
+            std::string name = description_string.substr(header_close + 1, end_option - header_close - 1);
+            custom_vector_options.push_back(std::make_shared<std::vector<std::string>>());
+            app->add_option(name, *(custom_string_options.back()));
+            current_index = end_option + 9;
+        } else {
+            if(isspace(description_string[current_index]) != 0) {
+                ++current_index;
+            } else {
+                break;
+            }
+        }
+    }
+    return current_index;
 }
 
 }  // namespace CLI

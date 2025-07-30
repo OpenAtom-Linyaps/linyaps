@@ -1,4 +1,4 @@
-// Copyright (c) 2017-2024, University of Cincinnati, developed by Henry Schreiner
+// Copyright (c) 2017-2025, University of Cincinnati, developed by Henry Schreiner
 // under NSF AWARD 1414736 and by the respective contributors.
 // All rights reserved.
 //
@@ -6,10 +6,12 @@
 
 #pragma once
 
-// This include is only needed for IDEs to discover symbols
-#include <CLI/Argv.hpp>
+// IWYU pragma: private, include "CLI/CLI.hpp"
 
-#include <CLI/Encoding.hpp>
+// This include is only needed for IDEs to discover symbols
+#include "../Argv.hpp"
+
+#include "../Encoding.hpp"
 
 // [CLI11:public_includes:set]
 #include <algorithm>

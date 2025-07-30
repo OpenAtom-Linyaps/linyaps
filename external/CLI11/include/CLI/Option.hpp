@@ -1,10 +1,12 @@
-// Copyright (c) 2017-2024, University of Cincinnati, developed by Henry Schreiner
+// Copyright (c) 2017-2025, University of Cincinnati, developed by Henry Schreiner
 // under NSF AWARD 1414736 and by the respective contributors.
 // All rights reserved.
 //
 // SPDX-License-Identifier: BSD-3-Clause
 
 #pragma once
+
+// IWYU pragma: private, include "CLI/CLI.hpp"
 
 // [CLI11:public_includes:set]
 #include <algorithm>
@@ -52,7 +54,7 @@ template <typename CRTP> class OptionBase {
 
   protected:
     /// The group membership
-    std::string group_ = std::string("Options");
+    std::string group_ = std::string("OPTIONS");
 
     /// True if this is a required option
     bool required_{false};
@@ -339,9 +341,13 @@ class Option : public OptionBase<Option> {
     ///@}
 
     /// Making an option by hand is not defined, it must be made by the App class
-    Option(std::string option_name, std::string option_description, callback_t callback, App *parent)
+    Option(std::string option_name,
+           std::string option_description,
+           callback_t callback,
+           App *parent,
+           bool allow_non_standard = false)
         : description_(std::move(option_description)), parent_(parent), callback_(std::move(callback)) {
-        std::tie(snames_, lnames_, pname_) = detail::get_names(detail::split_names(option_name));
+        std::tie(snames_, lnames_, pname_) = detail::get_names(detail::split_names(option_name), allow_non_standard);
     }
 
   public:
@@ -545,7 +551,7 @@ class Option : public OptionBase<Option> {
 
     /// Get the flag names with specified default values
     CLI11_NODISCARD const std::vector<std::string> &get_fnames() const { return fnames_; }
-    /// Get a single name for the option, first of lname, pname, sname, envname
+    /// Get a single name for the option, first of lname, sname, pname, envname
     CLI11_NODISCARD const std::string &get_single_name() const {
         if(!lnames_.empty()) {
             return lnames_[0];
@@ -770,8 +776,26 @@ class Option : public OptionBase<Option> {
                 _validate_results(results_);
                 current_option_state_ = old_option_state;
             }
-        } catch(const CLI::Error &) {
+        } catch(const ValidationError &err) {
             // this should be done
+            results_ = std::move(old_results);
+            current_option_state_ = old_option_state;
+            // try an alternate way to convert
+            std::string alternate = detail::value_string(val);
+            if(!alternate.empty() && alternate != val_str) {
+                return default_val(alternate);
+            }
+
+            throw ValidationError(get_name(),
+                                  std::string("given default value does not pass validation :") + err.what());
+        } catch(const ConversionError &err) {
+            // this should be done
+            results_ = std::move(old_results);
+            current_option_state_ = old_option_state;
+
+            throw ConversionError(
+                get_name(), std::string("given default value(\"") + val_str + "\") produces an error : " + err.what());
+        } catch(const CLI::Error &) {
             results_ = std::move(old_results);
             current_option_state_ = old_option_state;
             throw;
@@ -804,5 +828,5 @@ class Option : public OptionBase<Option> {
 }  // namespace CLI
 
 #ifndef CLI11_COMPILE
-#include "impl/Option_inl.hpp"
+#include "impl/Option_inl.hpp"  // IWYU pragma: export
 #endif

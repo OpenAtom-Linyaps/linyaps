@@ -22,7 +22,7 @@ jobs:
   - job: CppLint
     pool:
       vmImage: "ubuntu-latest"
-    container: sharaku/cpplint:latest
+    container: helics/buildenv:cpplint
     steps:
       - bash: cpplint --counting=detailed --recursive examples include/CLI tests
         displayName: Checking against google style guide
@@ -49,15 +49,21 @@ jobs:
         Linux14PC:
           vmImage: "ubuntu-latest"
           cli11.precompile: ON
-        macOS17:
-          vmImage: "macOS-12"
+        macOS-15_23:
+          vmImage: "macOS-15"
+          cli11.std: 23
+        macOS-14_20:
+          vmImage: "macOS-14"
+          cli11.std: 20
+        macOS-13_17:
+          vmImage: "macOS-13"
           cli11.std: 17
-        macOS11:
-          vmImage: "macOS-11"
+        macOS-14_11:
+          vmImage: "macOS-14"
           cli11.std: 11
-        macOS11PC:
-          vmImage: "macOS-11"
-          cli11.std: 11
+        macOS-14_14_PC:
+          vmImage: "macOS-14"
+          cli11.std: 14
           cli11.precompile: ON
         Windows17:
           vmImage: "windows-2019"
@@ -100,7 +106,8 @@ jobs:
         displayName: generate test directories
       - script: ln -s  "$(pwd)" tests/mesonTest/subprojects/CLI11
         displayName: generate CLI11 symlink
-      - script: meson build
+        # Ensure that Meson doesn't use cmake or pkgconfig to find CLI11
+      - script: meson setup build --force-fallback-for=CLI11
         displayName: Run meson to generate build
         workingDirectory: tests/mesonTest
       - script: ninja -C tests/mesonTest/build
@@ -158,18 +165,22 @@ jobs:
       vmImage: "ubuntu-latest"
     strategy:
       matrix:
-        gcc13:
+        gcc13_17:
           containerImage: gcc:13
           cli11.std: 17
           cli11.options: -DCMAKE_CXX_FLAGS="-Wstrict-overflow=5"
-        gcc12:
+        gcc12_20:
           containerImage: gcc:12
           cli11.std: 20
           cli11.options: -DCMAKE_CXX_FLAGS="-Wredundant-decls -Wconversion"
-        clang17_20:
+        clang17_23:
           containerImage: silkeh/clang:17
           cli11.std: 23
           cli11.options: -DCMAKE_CXX_FLAGS=-std=c++23
+        clang19_26:
+          containerImage: silkeh/clang:19
+          cli11.std: 26
+          cli11.options: -DCMAKE_CXX_FLAGS=-std=c++2c
     container: $[ variables['containerImage'] ]
     steps:
       - template: .ci/azure-cmake-new.yml

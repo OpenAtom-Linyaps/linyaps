@@ -1,4 +1,4 @@
-// Copyright (c) 2017-2024, University of Cincinnati, developed by Henry Schreiner
+// Copyright (c) 2017-2025, University of Cincinnati, developed by Henry Schreiner
 // under NSF AWARD 1414736 and by the respective contributors.
 // All rights reserved.
 //
@@ -6,12 +6,14 @@
 
 #pragma once
 
+// IWYU pragma: private, include "CLI/CLI.hpp"
+
 // [CLI11:public_includes:set]
 #include <string>
 #include <vector>
 // [CLI11:public_includes:end]
 
-#include <CLI/Macros.hpp>
+#include "Macros.hpp"
 
 namespace CLI {
 // [CLI11:argv_hpp:verbatim]
@@ -25,5 +27,5 @@ CLI11_INLINE std::vector<std::string> compute_win32_argv();
 }  // namespace CLI
 
 #ifndef CLI11_COMPILE
-#include "impl/Argv_inl.hpp"
+#include "impl/Argv_inl.hpp"  // IWYU pragma: export
 #endif

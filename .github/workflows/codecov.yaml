@@ -1,0 +1,32 @@
+name: coverage
+on:
+  pull_request_target:
+  push:
+    branches:
+      - master
+      - 'release/**'
+jobs:
+  codecov:
+    name: codecov
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: gcovr cmake debhelper-compat erofsfuse intltool libcli11-dev libcurl4-openssl-dev libdeflate-dev libelf-dev libexpected-dev libfuse3-dev libglib2.0-dev libgmock-dev libgtest-dev liblz4-dev liblzma-dev libostree-dev libpcre2-dev libselinux1-dev libssl-dev libsystemd-dev libyaml-cpp-dev libzstd-dev nlohmann-json3-dev pkg-config qtbase5-dev qtbase5-private-dev systemd zlib1g-dev
+          version: 1.0
+
+      - name: Generate coverage
+        run: |
+          ./tools/generate-coverage.sh
+
+      - name: Upload Report to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./build-generate-coverage/report/index.xml
+          disable_search: true
+          disable_telem: true

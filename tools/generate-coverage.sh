@@ -18,7 +18,7 @@ command -v ccache &>/dev/null && {
 }
 
 # shellcheck disable=SC2086
-cmake --fresh -B "$builddir" -S . $USE_CCACHE || exit 255
+cmake --fresh -B "$builddir" -S . "$USE_CCACHE" || exit 255
 
 cmake --build "$builddir" -j "$(nproc)" || exit 255
 
@@ -26,4 +26,10 @@ cmake --build "$builddir" -t test
 
 mkdir -p "$builddir"/report || exit 255
 
-gcovr --filter "src/*" --html-nested "$builddir"/report/index.html
+gcovr \
+    --filter "apps/.*" \
+    --filter "libs/utils/.*" \
+    --filter "libs/linglong/src/.*" \
+    --html-nested "$builddir"/report/index.html \
+    --xml "$builddir"/report/index.xml \
+    --print-summary

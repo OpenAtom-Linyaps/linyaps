@@ -9,7 +9,7 @@
 #include "linglong/api/types/v1/UabLayer.hpp"
 #include "linglong/api/types/v1/Version.hpp"
 #include "linglong/package/architecture.h"
-#include "linglong/utils/command/env.h"
+#include "linglong/utils/command/cmd.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/file.h"
 
@@ -114,7 +114,7 @@ utils::error::Result<void> elfHelper::addNewSection(const QByteArray &sectionNam
     }
 
     args.append({ this->elfPath(), this->elfPath() });
-    auto ret = utils::command::Exec("objcopy", args);
+    auto ret = utils::command::Cmd("objcopy").exec(args);
     if (!ret) {
         return LINGLONG_ERR(ret.error());
     }
@@ -278,7 +278,7 @@ utils::error::Result<void> UABPackager::packIcon() noexcept
     LINGLONG_TRACE("add icon to uab")
 
     auto iconAchieve = this->uab.parentDir().absoluteFilePath("icon.a");
-    if (auto ret = utils::command::Exec("ar", { "q", iconAchieve, icon->absoluteFilePath() });
+    if (auto ret = utils::command::Cmd("ar").exec({ "q", iconAchieve, icon->absoluteFilePath() });
         !ret) {
         return LINGLONG_ERR(ret);
     }
@@ -787,7 +787,7 @@ utils::error::Result<void> UABPackager::packBundle(bool onlyApp) noexcept
         } else {
             // https://github.com/erofs/erofs-utils/blob/b526c0d7da46b14f1328594cf1d1b2401770f59b/README#L171-L183
             if (auto ret =
-                  utils::command::Exec("mkfs.erofs",
+                  utils::command::Cmd("mkfs.erofs").exec(
                                        { "-z" + compressor,
                                          "-Efragments,dedupe,ztailpacking",
                                          "-C1048576",

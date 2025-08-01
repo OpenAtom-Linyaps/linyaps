@@ -163,3 +163,7 @@ ll-builder push org.deepin.calculator_5.7.21_x86_64.uab
 [plantuml](https://github.com/linglongdev/com.plantuml.gpl) - A Java application that uses programmatic drawing to create flowcharts.
 
 [org.sumatrapdfreader](https://github.com/linglongdev/org.sumatrapdfreader) - A Wine application that provides a PDF reader.
+
+## More Complete Example
+
+[Complete Example](../start/how_to_use.md) - This example shows how to build the app, export the build, install it, and run it.

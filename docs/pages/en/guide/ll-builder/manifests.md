@@ -115,12 +115,12 @@ sources:
     name: deepin-calculator.git # Optional, specifies the directory name after download
 ```
 
-| Name    | Description                                                                        | Required (within a single source) |
-| ------- | ---------------------------------------------------------------------------------- | --------------------------------- |
-| kind    | `git`, indicates download using the git tool.                                      | Yes                               |
-| url     | Source repository address                                                          | Yes                               |
-| commit  | Source code repository branch, tag, or hash value of a commit for accurate detection                         | Yes                               |
-| name    | Optional, specifies the subdirectory name under `linglong/sources` after download. | No                                |
+| Name   | Description                                                                          | Required (within a single source) |
+| ------ | ------------------------------------------------------------------------------------ | --------------------------------- |
+| kind   | `git`, indicates download using the git tool.                                        | Yes                               |
+| url    | Source repository address                                                            | Yes                               |
+| commit | Source code repository branch, tag, or hash value of a commit for accurate detection | Yes                               |
+| name   | Optional, specifies the subdirectory name under `linglong/sources` after download.   | No                                |
 
 #### File Type
 

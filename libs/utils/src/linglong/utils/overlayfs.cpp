@@ -4,7 +4,7 @@
 
 #include "overlayfs.h"
 
-#include "linglong/utils/command/env.h"
+#include "linglong/utils/command/cmd.h"
 
 #include <QDir>
 
@@ -20,7 +20,7 @@ OverlayFS::OverlayFS(QString lowerdir, QString upperdir, QString workdir, QStrin
 
 OverlayFS::~OverlayFS()
 {
-    auto res = utils::command::Exec("fusermount", { "-z", "-u", merged_ });
+    auto res = utils::command::Cmd("fusermount").exec({ "-z", "-u", merged_ });
     if (!res) {
         qWarning() << QString("failed to umount %1 ").arg(merged_) << res.error();
     }
@@ -43,10 +43,9 @@ bool OverlayFS::mount()
         return false;
     }
 
-    utils::command::Exec("fusermount", { "-z", "-u", merged_ });
-
-    auto ret = utils::command::Exec(
-      "fuse-overlayfs",
+    utils::command::Cmd("fusermount").exec({ "-z", "-u", merged_ });
+    // TODO(wurongjie) 命令重复写了两次
+    auto ret = utils::command::Cmd("fuse-overlayfs").exec(
       { "fuse-overlayfs",
         "-o",
         QString("lowerdir=%1,upperdir=%2,workdir=%3").arg(lowerdir_, upperdir_, workdir_),
@@ -60,7 +59,7 @@ bool OverlayFS::mount()
 
 void OverlayFS::unmount(bool clean)
 {
-    auto res = utils::command::Exec("fusermount", { "-z", "-u", merged_ });
+    auto res = utils::command::Cmd("fusermount").exec({ "-z", "-u", merged_ });
     if (!res) {
         qWarning() << QString("failed to umount %1 ").arg(merged_) << res.error();
     }

@@ -11,6 +11,8 @@ pfl_add_library(
   # find -regex '\.\/*.+\.[ch]\(pp\)?\(.in\)?' -type f -printf '%P\n'| sort
   src/linglong/utils/command/env.cpp
   src/linglong/utils/command/env.h
+  src/linglong/utils/command/cmd.cpp
+  src/linglong/utils/command/cmd.h
   src/linglong/utils/command/ocppi-helper.cpp
   src/linglong/utils/command/ocppi-helper.h
   src/linglong/utils/dbus/log.cpp

@@ -43,6 +43,7 @@ enum class ErrorCode : int {
     AppInstallModuleAlreadyExists = 2007,   // 安装模块时已存在相同版本的模块
     AppInstallArchNotMatch = 2008,          // 安装app的架构不匹配
     AppInstallModuleNotFound = 2009,        // 远程不存在对应模块
+    AppInstallErofsNotFound = 2010,         // erofs解压命令不存在
     /* 卸载 */
     AppUninstallFailed = 2101,            // 卸载失败
     AppUninstallNotFoundFromLocal = 2102, // 本地不存在对应应用
@@ -321,7 +322,16 @@ using Result = tl::expected<Value, Error>;
 } // namespace linglong::utils::error
 
 // Use this macro to define trace message at the begining of function
-#define LINGLONG_TRACE(message) QString linglong_trace_message = message;
+// 支持QString, std::string, const char*
+#define LINGLONG_TRACE(message)                                                               \
+  QString linglong_trace_message = [](auto &&msg) {                                       \
+    using val_t = decltype(msg);                                               \
+    if constexpr (std::is_convertible_v<val_t, std::string>) {                 \
+      return QString::fromStdString(msg);                                                              \
+    } else {                               \
+      return msg;                                                \
+    }                                                                       \
+  }(message);
 
 // Use this macro to create new error or wrap an existing error
 // LINGLONG_ERR(message, code =-1)

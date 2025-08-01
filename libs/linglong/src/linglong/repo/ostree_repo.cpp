@@ -18,6 +18,7 @@
 #include "linglong/package/reference.h"
 #include "linglong/package_manager/package_task.h"
 #include "linglong/repo/config.h"
+#include "linglong/utils/command/cmd.h"
 #include "linglong/utils/command/env.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/file.h"
@@ -1146,7 +1147,7 @@ utils::error::Result<void> OSTreeRepo::pushToRemote(const std::string &remoteRep
     const QString tarFileName = QString("%1.tgz").arg(reference.id);
     const QString tarFilePath = QDir::cleanPath(tmpDir.filePath(tarFileName));
     QStringList args = { "-zcf", tarFilePath, "-C", layerDir->absolutePath(), "." };
-    auto tarStdout = utils::command::Exec("tar", args);
+    auto tarStdout = utils::command::Cmd("tar").exec(args);
     if (!tarStdout) {
         return LINGLONG_ERR(tarStdout);
     }
@@ -2401,7 +2402,7 @@ void OSTreeRepo::updateSharedInfo() noexcept
 
     // 更新 desktop database
     if (!desktopDirs.empty()) {
-        auto ret = utils::command::Exec("update-desktop-database", desktopDirs);
+        auto ret = utils::command::Cmd("update-desktop-database").exec(desktopDirs);
         if (!ret) {
             qWarning() << "warning: failed to update desktop database in " + desktopDirs.join(" ")
                 + ": " + ret.error().message();
@@ -2410,7 +2411,7 @@ void OSTreeRepo::updateSharedInfo() noexcept
 
     // 更新 mime type database
     if (mimeDataDir.exists()) {
-        auto ret = utils::command::Exec("update-mime-database", { mimeDataDir.absolutePath() });
+        auto ret = utils::command::Cmd("update-mime-database").exec({ mimeDataDir.absolutePath() });
         if (!ret) {
             qWarning() << "warning: failed to update mime type database in "
                 + mimeDataDir.absolutePath() + ": " + ret.error().message();
@@ -2419,7 +2420,7 @@ void OSTreeRepo::updateSharedInfo() noexcept
 
     // 更新 glib-2.0/schemas
     if (glibSchemasDir.exists()) {
-        auto ret = utils::command::Exec("glib-compile-schemas", { glibSchemasDir.absolutePath() });
+        auto ret = utils::command::Cmd("glib-compile-schemas").exec({ glibSchemasDir.absolutePath() });
         if (!ret) {
             qWarning() << "warning: failed to update schemas in " + glibSchemasDir.absolutePath()
                 + ": " + ret.error().message();

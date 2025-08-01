@@ -42,6 +42,7 @@ Options:
   -h,--help                   打印帮助信息并退出
   --help-all                  展开所有帮助
   --module MODULE             安装指定模块
+  --repo REPO                 从指定的仓库安装
   --force                     强制安装指定版本的应用程序
   -y                          自动对所有问题回答是
 

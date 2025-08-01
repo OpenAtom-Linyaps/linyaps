@@ -147,3 +147,19 @@ ll-builder export --layer
 ```text
 ll-builder push org.deepin.calculator_5.7.21_x86_64.uab
 ```
+
+## More reference examples
+
+[qt5](https://github.com/linglongdev/cn.org.linyaps.demo.qt5) - qt5 program
+
+[dtk5](https://github.com/linglongdev/cn.org.linyaps.demo.dtk5.qmake) - dtk5 + qmake
+
+[dtk5](https://github.com/linglongdev/cn.org.linyaps.demo.dtk5.cmake) - dtk5 + cmake
+
+[dtkdeclarative5](https://github.com/linglongdev/cn.org.linyaps.demo.dtkdeclarative5) - dtk5 + qml
+
+[electron](https://github.com/myml/electron-vue-linyaps-app) - electron + vue Examples
+
+[plantuml](https://github.com/linglongdev/com.plantuml.gpl) - A Java application that uses programmatic drawing to create flowcharts.
+
+[org.sumatrapdfreader](https://github.com/linglongdev/org.sumatrapdfreader) - A Wine application that provides a PDF reader.

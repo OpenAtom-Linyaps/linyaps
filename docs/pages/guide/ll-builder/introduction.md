@@ -4,7 +4,9 @@ SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
 SPDX-License-Identifier: LGPL-3.0-or-later
 -->
 
-# ll-builder简介
+# 如意玲珑构建工具介绍
+
+## ll-builder简介
 
 `ll-builder`是为应用开发者提供的一款构建如意玲珑应用工具。
 
@@ -52,3 +54,13 @@ Subcommands:
 如果在使用过程中遇到任何问题，
 您可以通过此项目向如意玲珑项目团队报告错误：https://github.com/OpenAtom-Linyaps/linyaps/issues
 ```
+
+## 第三方工具简介
+
+[ll-killer](https://github.com/System233/ll-killer-go) 专为解决玲珑容器应用构建问题而设计的命令行工具
+
+[linglong-tools](https://github.com/myml/linglong-tools) 一个玲珑的命令行辅助工具
+
+[linglong-tools](https://github.com/System233/linglong-tools) 玲珑自动化deb转制工具 
+
+[linglong-builder-action](https://github.com/myml/linglong-builder-action) github action构建玲珑包

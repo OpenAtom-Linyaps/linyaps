@@ -23,6 +23,8 @@ ll-cli list --help
 示例:
 # 显示已安装的应用程序
 ll-cli list
+# 显示已安装的最小系统
+ll-cli list --type=base
 # 显示已安装的运行时
 ll-cli list --type=runtime
 # 显示当前已安装应用程序的最新版本列表
@@ -32,7 +34,7 @@ ll-cli list --upgradable
 Options:
   -h,--help                   打印帮助信息并退出
   --help-all                  展开所有帮助
-  --type TYPE [app]           使用指定类型过滤结果。“runtime”、“app”或“all”之一
+  --type TYPE [all]           使用指定类型过滤结果。"runtime"、"base"、"app"或 "all"之一
   --upgradable                显示当前已安装应用程序的最新版本列表，仅适用于应用程序
 
 如果在使用过程中遇到任何问题，

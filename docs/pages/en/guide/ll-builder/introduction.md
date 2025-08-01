@@ -4,7 +4,9 @@ SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
 SPDX-License-Identifier: LGPL-3.0-or-later
 -->
 
-# ll-builder Introduction
+# Introduction to Linyaps Build Tools
+
+## Introduction to ll-builder
 
 `ll-builder` is a tool for developers for building linyaps applications.
 
@@ -50,3 +52,13 @@ Subcommands:
 If you found any problems during use
 You can report bugs to the linyaps team under this project: https://github.com/OpenAtom-Linyaps/linyaps/issues
 ```
+
+## Introduction to Third-Party Tools
+
+[ll-killer](https://github.com/System233/ll-killer-go) A command-line tool designed to solve Linglong container application build issues
+
+[linglong-tools](https://github.com/myml/linglong-tools) A Linglong command-line tool
+
+[linglong-tools](https://github.com/System233/linglong-tools) An automated deb conversion tool for Linglong
+
+[linglong-builder-action](https://github.com/myml/linglong-builder-action) A GitHub action for building Linglong packages

@@ -659,16 +659,6 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
               return;
           }
 
-          auto unmountLayer = utils::finally::finally([mountPoint = layerDir->absolutePath()] {
-              if (QFileInfo::exists(mountPoint)) {
-                  auto ret = utils::command::Exec("fusermount", { "-z", "-u", mountPoint });
-                  if (!ret) {
-                      qCritical() << "failed to umount " << mountPoint
-                                  << ", please umount it manually";
-                  }
-              }
-          });
-
           auto info = (*layerDir).info();
           if (!info) {
               taskRef.reportError(std::move(info).error());

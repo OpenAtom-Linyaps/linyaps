@@ -21,13 +21,15 @@ ll-cli search --help
 用法: ll-cli search [选项] 关键词
 
 示例:
-# 通过应用名从远程仓库搜索应用程序
+# 按照名称搜索远程的 application(s), base(s) 或 runtime(s)
 ll-cli search org.deepin.demo
-# 从远程仓库里搜索指定类型的应用程序
+# 按名称搜索远程 runtime
 ll-cli search org.deepin.base --type=runtime
-# 从远程仓库搜索所有应用程序
+#  搜索远程所有软件包
 ll-cli search .
-# 从远程仓库搜索所有运行时
+# 搜索远程所有的base
+ll-cli search . --type=base
+# 搜索远程所有的runtime
 ll-cli search . --type=runtime
 
 Positionals:
@@ -36,8 +38,10 @@ Positionals:
 Options:
   -h,--help                   打印帮助信息并退出
   --help-all                  展开所有帮助
-  --type TYPE [app]           使用指定类型过滤结果。“runtime”、“app”或“all”之一
-  --dev                       搜索结果中包括应用调试包
+  --type TYPE [all]           按指定类型过滤结果。可选类型："runtime"、"base"、"app"或 "all"。
+  --repo REPO                 指定仓库
+  --dev                       结果包括应用调试包
+  --show-all-version          显示应用，base或runtime的所有版本
 
 如果在使用过程中遇到任何问题，
 您可以通过此项目向如意玲珑项目团队报告错误：https://github.com/OpenAtom-Linyaps/linyaps/issues
@@ -60,7 +64,13 @@ org.deepin.calculator           deepin-calculator               5.7.1           
 
 ```
 
-如果需要查找 Base 和 Runtime 可以使用以下命令：
+如果需要查找远程所有的base可以使用以下命令：
+
+```bash
+ll-cli search . --type=base
+```
+
+如果需要查找远程所有的runtime可以使用以下命令：
 
 ```bash
 ll-cli search . --type=runtime

@@ -111,8 +111,7 @@ runtime: org.deepin.runtime.dtk/23.1.0
 sources:
   - kind: git
     url: https://github.com/linuxdeepin/deepin-calculator.git
-    version: master # 或 tag
-    commit: d7e207b4a71bbd97f7d818de5044228c1a6e2c92 # 可选，用于精确指定提交
+    commit: d7e207b4a71bbd97f7d818de5044228c1a6e2c92 # 分支、tag或commit，用于精确指定提交
     name: deepin-calculator.git # 可选，指定下载后的目录名
 ```
 
@@ -120,8 +119,7 @@ sources:
 | ------- | ------------------------------------------------------------ | ------------------- |
 | kind    | `git`，表示使用 git 工具下载。                               | 是                  |
 | url     | 源码仓库地址                                                 | 是                  |
-| version | 源码仓库的分支或标签                                         | 否 (默认为主分支)   |
-| commit  | 源码某次提交的 hash 值，用于精确检出                         | 否                  |
+| commit  | 源码仓库分支、标签或者某次提交的hash值，用于精确检出                         | 是                  |
 | name    | 可选，指定源码下载后在 `linglong/sources` 目录下的子目录名。 | 否                  |
 
 #### file 类型

@@ -131,3 +131,7 @@ org.deepin.demo
 [plantuml](https://github.com/linglongdev/com.plantuml.gpl) - 一个java应用，使用编程的方式绘制流程图
 
 [org.sumatrapdfreader](https://github.com/linglongdev/org.sumatrapdfreader) - 一个wine应用，pdf阅读器
+
+## 更完整的示例
+
+[完整示例](../start/how_to_use.md) - 包含了如何构建应用、导出构建内容、安装、运行等完整流程的示例。

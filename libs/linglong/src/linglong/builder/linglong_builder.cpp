@@ -18,7 +18,7 @@
 #include "linglong/package/uab_packager.h"
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/runtime/container.h"
-#include "linglong/utils/command/env.h"
+#include "linglong/utils/command/cmd.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/file.h"
 #include "linglong/utils/global/initialize.h"
@@ -1102,10 +1102,7 @@ utils::error::Result<void> Builder::generateAppConf() noexcept
         scriptFile = dir->filePath("app-conf-generator");
         QFile::copy(":/scripts/app-conf-generator", scriptFile);
     }
-    auto output = utils::command::Exec(
-      "bash",
-      QStringList() << "-e" << scriptFile << QString::fromStdString(this->project.package.id)
-                    << buildOutput.path());
+    auto output = utils::command::Cmd("bash").exec({ "-e", scriptFile, QString::fromStdString(this->project.package.id), buildOutput.path() });
 
     return LINGLONG_OK;
 }
@@ -1755,9 +1752,7 @@ utils::error::Result<void> Builder::extractLayer(const QString &layerPath,
         return LINGLONG_ERR(layerDir);
     }
 
-    auto output = utils::command::Exec("cp",
-                                       QStringList() << "-r" << layerDir->absolutePath()
-                                                     << destDir.absolutePath());
+    auto output = utils::command::Cmd("cp").exec({ "-r", layerDir->absolutePath(), destDir.absolutePath() });
     if (!output) {
         return LINGLONG_ERR(output);
     }

@@ -5,7 +5,7 @@
 #include "linglong/package/uab_file.h"
 
 #include "linglong/api/types/v1/Generators.hpp"
-#include "linglong/utils/command/env.h"
+#include "linglong/utils/command/cmd.h"
 #include "linglong/utils/finally/finally.h"
 
 #include <nlohmann/json.hpp>
@@ -61,7 +61,7 @@ utils::error::Result<std::shared_ptr<UABFile>> UABFile::loadFromFile(int fd) noe
 UABFile::~UABFile()
 {
     if (!mountPoint.empty()) {
-        auto ret = utils::command::Exec("fusermount", { "-z", "-u", mountPoint.c_str() });
+        auto ret = utils::command::Cmd("fusermount").exec({ "-z", "-u", mountPoint.c_str() });
         if (!ret) {
             qCritical() << "failed to umount " << mountPoint.c_str()
                         << ", please umount it manually";
@@ -217,7 +217,7 @@ utils::error::Result<std::filesystem::path> UABFile::mountUab() noexcept
     }
 
     auto ret =
-      utils::command::Exec("erofsfuse",
+      utils::command::Cmd("erofsfuse").exec(
                            QStringList{ QString{ "--offset=%1" }.arg(bundleOffset),
                                         QString{ "/proc/%1/fd/%2" }.arg(::getpid()).arg(handle()),
                                         uabDir.c_str() });
@@ -335,7 +335,7 @@ utils::error::Result<std::filesystem::path> UABFile::extractSignData() noexcept
     tarFd = -1;
 
     auto ret =
-      utils::command::Exec("tar", QStringList{ "-xf", tarFile.c_str(), "-C", destination.c_str() });
+      utils::command::Cmd("tar").exec(QStringList{ "-xf", tarFile.c_str(), "-C", destination.c_str() });
     if (!ret) {
         return LINGLONG_ERR(ret);
     }

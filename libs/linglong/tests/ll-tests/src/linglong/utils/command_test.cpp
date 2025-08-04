@@ -2,21 +2,25 @@
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
-#include <gtest/gtest.h>
 #include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 #include "linglong/utils/command/cmd.h"
 #include "linglong/utils/error/error.h"
 
-class MockCmd : public linglong::utils::command::Cmd {
+class MockCmd : public linglong::utils::command::Cmd
+{
 public:
-    MOCK_METHOD(linglong::utils::error::Result<QString>, exec, (const QStringList &args), (noexcept));
+    MOCK_METHOD(linglong::utils::error::Result<QString>,
+                exec,
+                (const QStringList &args),
+                (noexcept));
     MOCK_METHOD(linglong::utils::error::Result<bool>, exists, (), (noexcept));
 };
 
 TEST(command, Exec)
 {
-    auto ret = linglong::utils::command::Cmd("echo").exec({"-n", "hello"});
+    auto ret = linglong::utils::command::Cmd("echo").exec({ "-n", "hello" });
     EXPECT_TRUE(ret);
     EXPECT_EQ(ret->length(), 5);
     EXPECT_EQ(ret->toStdString(), "hello");
@@ -33,7 +37,7 @@ TEST(command, Exec)
     EXPECT_FALSE(ret3.has_value());
 
     // 测试exec出错时
-    auto ret4 = linglong::utils::command::Cmd("ls").exec({"nonexistent"});
+    auto ret4 = linglong::utils::command::Cmd("ls").exec({ "nonexistent" });
     EXPECT_FALSE(ret4.has_value());
 }
 

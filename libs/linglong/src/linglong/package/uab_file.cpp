@@ -216,11 +216,10 @@ utils::error::Result<std::filesystem::path> UABFile::mountUab() noexcept
                             % ec.message().c_str());
     }
 
-    auto ret =
-      utils::command::Cmd("erofsfuse").exec(
-                           QStringList{ QString{ "--offset=%1" }.arg(bundleOffset),
-                                        QString{ "/proc/%1/fd/%2" }.arg(::getpid()).arg(handle()),
-                                        uabDir.c_str() });
+    auto ret = utils::command::Cmd("erofsfuse")
+                 .exec(QStringList{ QString{ "--offset=%1" }.arg(bundleOffset),
+                                    QString{ "/proc/%1/fd/%2" }.arg(::getpid()).arg(handle()),
+                                    uabDir.c_str() });
     if (!ret) {
         return LINGLONG_ERR(ret.error());
     }
@@ -334,8 +333,8 @@ utils::error::Result<std::filesystem::path> UABFile::extractSignData() noexcept
     }
     tarFd = -1;
 
-    auto ret =
-      utils::command::Cmd("tar").exec(QStringList{ "-xf", tarFile.c_str(), "-C", destination.c_str() });
+    auto ret = utils::command::Cmd("tar").exec(
+      QStringList{ "-xf", tarFile.c_str(), "-C", destination.c_str() });
     if (!ret) {
         return LINGLONG_ERR(ret);
     }

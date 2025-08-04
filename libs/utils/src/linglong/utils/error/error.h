@@ -323,15 +323,15 @@ using Result = tl::expected<Value, Error>;
 
 // Use this macro to define trace message at the begining of function
 // 支持QString, std::string, const char*
-#define LINGLONG_TRACE(message)                                                               \
-  QString linglong_trace_message = [](auto &&msg) {                                       \
-    using val_t = decltype(msg);                                               \
-    if constexpr (std::is_convertible_v<val_t, std::string>) {                 \
-      return QString::fromStdString(msg);                                                              \
-    } else {                               \
-      return msg;                                                \
-    }                                                                       \
-  }(message);
+#define LINGLONG_TRACE(message)                                    \
+    QString linglong_trace_message = [](auto &&msg) {              \
+        using val_t = decltype(msg);                               \
+        if constexpr (std::is_convertible_v<val_t, std::string>) { \
+            return QString::fromStdString(msg);                    \
+        } else {                                                   \
+            return msg;                                            \
+        }                                                          \
+    }(message);
 
 // Use this macro to create new error or wrap an existing error
 // LINGLONG_ERR(message, code =-1)

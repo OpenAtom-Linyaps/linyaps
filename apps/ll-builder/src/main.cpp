@@ -755,6 +755,7 @@ int main(int argc, char **argv)
     Q_INIT_RESOURCE(builder_releases);
     // 初始化应用，builder在非tty环境也输出日志
     linglong::utils::global::applicationInitialize(true);
+    linglong::utils::global::initLinyapsLogSystem(argv[0]);
 
     CLI::App commandParser{ _("linyaps builder CLI \n"
                               "A CLI program to build linyaps application\n") };

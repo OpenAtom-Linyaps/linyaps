@@ -22,6 +22,12 @@ SPDX-FileCopyrightText = "2017-2024 University of Cincinnati, developed by Henry
 SPDX-License-Identifier = "BSD-3-Clause"
 
 [[annotations]]
+path = "external/fmt/**"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "Copyright (c) 2012 - present, Victor Zverovich"
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
 path = "external/ytj/**"
 precedence = "aggregate"
 SPDX-FileCopyrightText = "Chen Linxuan <me@black-desk.cn>"

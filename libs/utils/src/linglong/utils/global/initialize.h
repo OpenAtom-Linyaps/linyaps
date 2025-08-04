@@ -16,6 +16,7 @@ void applicationInitialize(bool appForceStderrLogging = false);
 void installMessageHandler();
 bool linglongInstalled();
 void cancelAllTask() noexcept;
+void initLinyapsLogSystem(const char *command);
 
 class GlobalTaskControl : public QObject
 {

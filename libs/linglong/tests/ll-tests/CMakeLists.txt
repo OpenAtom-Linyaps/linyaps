@@ -23,6 +23,7 @@ pfl_add_executable(
   src/linglong/package/semver_version_test.cpp
   src/linglong/package/layer_packager_test.cpp
   src/linglong/utils/error/result_test.cpp
+  src/linglong/utils/log.cpp
   src/linglong/utils/sha256_test.cpp
   src/linglong/utils/transaction_test.cpp
   src/linglong/utils/command_test.cpp

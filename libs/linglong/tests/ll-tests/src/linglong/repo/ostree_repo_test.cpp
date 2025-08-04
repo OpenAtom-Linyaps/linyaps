@@ -104,8 +104,6 @@ TEST_F(RepoTest, basicMethods)
         FAIL();
     }
 
-    qDebug() << "Create temporary files" << *files;
-
     QString appId = "test";
     auto ret = ostreeRepo->importDirectory(package::Ref(appId), dir->path() + "/tmp");
     if (!ret.has_value()) {
@@ -120,7 +118,6 @@ TEST_F(RepoTest, basicMethods)
         qCritical() << "Check files at repository" << ostreeRepoPath << "failed:" << files.error();
         FAIL();
     }
-    qDebug() << "Check files in ref" << refToCheck << "success";
 
     QDir(dir->path() + "/tmp").removeRecursively();
 

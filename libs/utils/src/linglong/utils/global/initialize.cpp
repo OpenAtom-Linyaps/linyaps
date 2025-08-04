@@ -7,6 +7,8 @@
 #include "linglong/utils/global/initialize.h"
 
 #include "configure.h"
+#include "linglong/utils/log/log.h"
+#include "linglong/utils/string.h"
 
 #include <qcoreapplication.h>
 #include <qloggingcategory.h>
@@ -22,6 +24,9 @@
 #include <unistd.h>
 
 namespace linglong::utils::global {
+
+using linglong::utils::log::LogBackend;
+using linglong::utils::log::LogLevel;
 
 namespace {
 void catchUnixSignals(std::initializer_list<int> quitSignals)
@@ -110,7 +115,72 @@ void linglong_message_handler(QtMsgType type,
 
     return; // Prevent further output to stderr
 }
+
+LogLevel parseLogLevel(const char *level)
+{
+    if (stringEqual(level, "debug")) {
+        return LogLevel::Debug;
+    } else if (stringEqual(level, "info")) {
+        return LogLevel::Info;
+    } else if (stringEqual(level, "warning")) {
+        return LogLevel::Warning;
+    } else if (stringEqual(level, "error")) {
+        return LogLevel::Error;
+    } else if (stringEqual(level, "fatal")) {
+        return LogLevel::Fatal;
+    }
+
+    return LogLevel::Info;
+}
+
+LogBackend parseLogBackend(const char *backends)
+{
+    LogBackend logBackend = LogBackend::None;
+
+    std::vector<std::string> backendsList = splitString(backends, ',');
+    for (auto backend : backendsList) {
+        if (stringEqual(backend, "console")) {
+            logBackend = logBackend | LogBackend::Console;
+        } else if (stringEqual(backend, "journal")) {
+            logBackend = logBackend | LogBackend::Journal;
+        }
+    }
+
+    return logBackend;
+}
+
 } // namespace
+
+void initLinyapsLogSystem(const char *command)
+{
+    LogLevel logLevel = LogLevel::Info;
+    LogBackend logBackend = LogBackend::None;
+
+    const char *logLevelEnv = getenv("LINYAPS_LOG_LEVEL");
+    if (logLevelEnv) {
+        logLevel = parseLogLevel(logLevelEnv);
+    }
+
+    const char *logBackendEnv = getenv("LINYAPS_LOG_BACKEND");
+    if (logBackendEnv) {
+        logBackend = parseLogBackend(logBackendEnv);
+    } else {
+        if (command == std::string("ll-builder")) {
+            logBackend = LogBackend::Console;
+        } else if (command == std::string("ll-cli")) {
+            logBackend = LogBackend::Journal;
+        } else if (command == std::string("ll-package-manager")) {
+            logBackend = LogBackend::Journal;
+        }
+
+        if (isatty(STDERR_FILENO)) {
+            logBackend = logBackend | LogBackend::Console;
+        }
+    }
+
+    setLogLevel(logLevel);
+    setLogBackend(logBackend);
+}
 
 void applicationInitialize(bool appForceStderrLogging)
 {

@@ -30,6 +30,10 @@ pfl_add_library(
   src/linglong/utils/gettext.h
   src/linglong/utils/global/initialize.cpp
   src/linglong/utils/global/initialize.h
+  src/linglong/utils/log/formatter.cpp
+  src/linglong/utils/log/formatter.h
+  src/linglong/utils/log/log.cpp
+  src/linglong/utils/log/log.h
   src/linglong/utils/overlayfs.cpp
   src/linglong/utils/overlayfs.h
   src/linglong/utils/packageinfo_handler.cpp
@@ -38,7 +42,6 @@ pfl_add_library(
   src/linglong/utils/serialize/json.h
   src/linglong/utils/serialize/yaml.cpp
   src/linglong/utils/serialize/yaml.h
-  src/linglong/utils/std_helper/qdebug_helper.h
   src/linglong/utils/transaction.cpp
   src/linglong/utils/transaction.h
   src/linglong/utils/file.cpp
@@ -55,6 +58,7 @@ pfl_add_library(
   Qt${QT_VERSION_MAJOR}::Core
   Qt${QT_VERSION_MAJOR}::DBus
   PkgConfig::glib2
+  fmt::fmt
   tl::expected
   ytj::ytj
   linglong::ocppi

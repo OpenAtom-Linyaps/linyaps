@@ -141,6 +141,14 @@ if(CMAKE_SYSTEM_PROCESSOR MATCHES "^mips" OR CMAKE_SYSTEM_PROCESSOR MATCHES
       CACHE STRING "C++ compiler flags" FORCE)
 endif()
 
+find_package(fmt 5.2.1 QUIET)
+if(NOT fmt_FOUND)
+  message(STATUS "system fmt not found, using external fmt")
+  add_library(fmt-lib INTERFACE)
+  add_library(fmt::fmt ALIAS fmt-lib)
+  target_include_directories(fmt-lib INTERFACE external/fmt/include)
+endif()
+
 # NOTE: UOS v20 do not have tl-expected packaged.
 find_package(tl-expected 1.0.0 QUIET)
 if(NOT tl-expected_FOUND)

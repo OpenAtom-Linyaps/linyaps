@@ -152,6 +152,7 @@ int main(int argc, char **argv)
 
     QCoreApplication app(argc, argv);
     applicationInitialize();
+    initLinyapsLogSystem(argv[0]);
 
     if (argc == 1) {
         std::cout << commandParser.help() << std::endl;

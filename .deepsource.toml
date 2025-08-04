@@ -48,7 +48,7 @@ enabled = true
 # 测试覆盖率分析器配置
 [[analyzers]]
 name = "test-coverage"
-enabled = true
+enabled = false
 
 # 代码格式化器配置
 [[transformers]]

@@ -163,7 +163,9 @@ bool LayerPackager::isFileReadable(const std::string &path) const
 }
 
 // 手动将fd保存为文件，可以避免文件无权限的问题
-utils::error::Result<void> LayerPackager::copyFile(LayerFile &file, const std::string &toPath, const int64_t offset) const
+utils::error::Result<void> LayerPackager::copyFile(LayerFile &file,
+                                                   const std::string &toPath,
+                                                   const int64_t offset) const
 {
     LINGLONG_TRACE("save file");
     file.seek(offset);
@@ -219,7 +221,8 @@ utils::error::Result<LayerDir> LayerPackager::unpack(LayerFile &file)
             }
             fuseOffset = "0";
         }
-        auto ret = utils::command::Cmd("erofsfuse").exec({ "--offset=" + fuseOffset, fdPath, unpackDir.absolutePath() });
+        auto ret = utils::command::Cmd("erofsfuse")
+                     .exec({ "--offset=" + fuseOffset, fdPath, unpackDir.absolutePath() });
         if (!ret) {
             return LINGLONG_ERR(ret);
         }
@@ -239,7 +242,7 @@ utils::error::Result<LayerDir> LayerPackager::unpack(LayerFile &file)
             return LINGLONG_ERR(ret);
         }
         auto cmdRet = utils::command::Cmd("fsck.erofs")
-                     .exec({ "--extract=" + unpackDir.absolutePath(), fdPath });
+                        .exec({ "--extract=" + unpackDir.absolutePath(), fdPath });
         if (!cmdRet) {
             return LINGLONG_ERR(cmdRet);
         }

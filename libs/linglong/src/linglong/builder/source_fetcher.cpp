@@ -55,12 +55,12 @@ auto SourceFetcher::fetch(QDir destination) noexcept -> utils::error::Result<voi
         QFile::copy(":/scripts/" + scriptName, scriptFile);
     }
     auto output = utils::command::Cmd("sh").exec({
-        scriptFile,
-        destination.absoluteFilePath(getSourceName()),
-        QString::fromStdString(*source.url),
-        QString::fromStdString(source.kind == "git" ? *source.commit : *source.digest),
-        this->cacheDir.absolutePath(),
-      });
+      scriptFile,
+      destination.absoluteFilePath(getSourceName()),
+      QString::fromStdString(*source.url),
+      QString::fromStdString(source.kind == "git" ? *source.commit : *source.digest),
+      this->cacheDir.absolutePath(),
+    });
     if (!output) {
         qDebug() << "output error:" << output.error();
         return LINGLONG_ERR("stderr:", output);

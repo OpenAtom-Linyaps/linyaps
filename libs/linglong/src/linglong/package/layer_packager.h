@@ -12,8 +12,8 @@
 
 #include <QString>
 #include <QUuid>
-#include <string>
 
+#include <string>
 
 namespace linglong::package {
 
@@ -22,6 +22,7 @@ class MockLayerPackager;
 class LayerPackager : public QObject
 {
     friend class MockLayerPackager;
+
 public:
     explicit LayerPackager();
     LayerPackager(const LayerPackager &) = delete;
@@ -34,6 +35,7 @@ public:
     utils::error::Result<LayerDir> unpack(LayerFile &file);
     utils::error::Result<void> setCompressor(const QString &compressor) noexcept;
     const QDir &getWorkDir() const;
+
 private:
     QDir workDir;
     QString compressor = "lzma";
@@ -47,7 +49,9 @@ private:
     // 判断fd是否可在其他进程读取
     virtual bool isFileReadable(const std::string &path) const;
     // LayerFile的save并不能用于保存无权限的fd，所以需要单独实现
-    virtual utils::error::Result<void> copyFile(LayerFile &file, const std::string &path, const int64_t offset) const;
+    virtual utils::error::Result<void> copyFile(LayerFile &file,
+                                                const std::string &path,
+                                                const int64_t offset) const;
 };
 
 } // namespace linglong::package

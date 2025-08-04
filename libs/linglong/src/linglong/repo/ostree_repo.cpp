@@ -2420,7 +2420,8 @@ void OSTreeRepo::updateSharedInfo() noexcept
 
     // 更新 glib-2.0/schemas
     if (glibSchemasDir.exists()) {
-        auto ret = utils::command::Cmd("glib-compile-schemas").exec({ glibSchemasDir.absolutePath() });
+        auto ret =
+          utils::command::Cmd("glib-compile-schemas").exec({ glibSchemasDir.absolutePath() });
         if (!ret) {
             qWarning() << "warning: failed to update schemas in " + glibSchemasDir.absolutePath()
                 + ": " + ret.error().message();

@@ -27,21 +27,21 @@ public:
     MOCK_METHOD(utils::error::Result<bool>, checkErofsFuseExists, (), (const));
     MOCK_METHOD(utils::error::Result<void>, mkdirDir, (const std::string &path), (noexcept));
     MOCK_METHOD(bool, isFileReadable, (const std::string &path), (const));
+
     MockLayerPackager()
     {
         // 使用 lambda 表达式调用基类方法
-        ON_CALL(*this, checkErofsFuseExists())
-        .WillByDefault(testing::Invoke([this]() {
+        ON_CALL(*this, checkErofsFuseExists()).WillByDefault(testing::Invoke([this]() {
             return this->LayerPackager::checkErofsFuseExists();
         }));
         ON_CALL(*this, mkdirDir(testing::_))
-            .WillByDefault(testing::Invoke([this](const std::string &path) {
-                return this->LayerPackager::mkdirDir(path);
-            }));
+          .WillByDefault(testing::Invoke([this](const std::string &path) {
+              return this->LayerPackager::mkdirDir(path);
+          }));
         ON_CALL(*this, isFileReadable(testing::_))
-            .WillByDefault(testing::Invoke([this](const std::string &path) {
-                return this->LayerPackager::isFileReadable(path);
-            }));
+          .WillByDefault(testing::Invoke([this](const std::string &path) {
+              return this->LayerPackager::isFileReadable(path);
+          }));
     }
 };
 

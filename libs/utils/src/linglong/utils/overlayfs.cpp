@@ -45,11 +45,12 @@ bool OverlayFS::mount()
 
     utils::command::Cmd("fusermount").exec({ "-z", "-u", merged_ });
     // TODO(wurongjie) 命令重复写了两次
-    auto ret = utils::command::Cmd("fuse-overlayfs").exec(
-      { "fuse-overlayfs",
-        "-o",
-        QString("lowerdir=%1,upperdir=%2,workdir=%3").arg(lowerdir_, upperdir_, workdir_),
-        merged_ });
+    auto ret =
+      utils::command::Cmd("fuse-overlayfs")
+        .exec({ "fuse-overlayfs",
+                "-o",
+                QString("lowerdir=%1,upperdir=%2,workdir=%3").arg(lowerdir_, upperdir_, workdir_),
+                merged_ });
     if (!ret) {
         qWarning() << "failed to mount " << ret.error();
     }

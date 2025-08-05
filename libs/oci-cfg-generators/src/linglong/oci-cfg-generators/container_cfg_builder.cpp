@@ -292,7 +292,7 @@ ContainerCfgBuilder &ContainerCfgBuilder::bindMedia() noexcept
 
             mediaMount = {
                 Mount{ .destination = destinationDir,
-                       .options = string_list{ "rbind", "rshared" },
+                       .options = string_list{ "rbind" },
                        .source = destinationDir,
                        .type = "bind" },
                 Mount{ .destination = "/media",
@@ -303,7 +303,7 @@ ContainerCfgBuilder &ContainerCfgBuilder::bindMedia() noexcept
         } else {
             mediaMount = {
                 Mount{ .destination = "/media",
-                       .options = string_list{ "rbind", "rshared" },
+                       .options = string_list{ "rbind" },
                        .source = "/media",
                        .type = "bind" },
             };
@@ -613,6 +613,7 @@ bool ContainerCfgBuilder::prepare() noexcept
     config.hostname = "linglong";
 
     auto linux_ = ocppi::runtime::config::types::Linux{};
+    linux_.rootfsPropagation = RootfsPropagation::Slave;
     linux_.namespaces = std::vector<NamespaceReference>{
         NamespaceReference{ .type = NamespaceType::Pid },
         NamespaceReference{ .type = NamespaceType::Mount },

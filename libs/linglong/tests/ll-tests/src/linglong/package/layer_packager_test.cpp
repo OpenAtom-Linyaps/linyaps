@@ -12,6 +12,7 @@
 
 #include <qdir.h>
 
+#include <filesystem>
 #include <fstream>
 #include <memory>
 #include <string>

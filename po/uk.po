@@ -561,19 +561,21 @@ msgstr "Пріоритетність сховища"
 
 #: ../apps/ll-cli/src/main.cpp:514 ../apps/ll-builder/src/main.cpp:996
 msgid "Enable mirror for the repo"
-msgstr ""
+msgstr "Увімкнути дзеркало для сховища"
 
 #: ../apps/ll-cli/src/main.cpp:515
 msgid "Usage: ll-cli repo enable-mirror [OPTIONS] ALIAS"
 msgstr ""
+"Користування: ll-cli repo enable-mirror [ПАРАМЕТРИ] АЛЬТЕРНАТИВНА_НАЗВА"
 
 #: ../apps/ll-cli/src/main.cpp:521 ../apps/ll-builder/src/main.cpp:1004
 msgid "Disable mirror for the repo"
-msgstr ""
+msgstr "Вимкнути дзеркало для сховища"
 
 #: ../apps/ll-cli/src/main.cpp:522
 msgid "Usage: ll-cli repo disable-mirror [OPTIONS] ALIAS"
 msgstr ""
+"Користування: ll-cli repo disable-mirror [ПАРАМЕТРИ] АЛЬТЕРНАТИВНА_НАЗВА"
 
 #: ../apps/ll-cli/src/main.cpp:530
 msgid "Display information about installed apps or runtimes"
@@ -961,10 +963,12 @@ msgstr "Користування: ll-builder repo set-default [ПАРАМЕТР�
 #: ../apps/ll-builder/src/main.cpp:997
 msgid "Usage: ll-builder repo enable-mirror [OPTIONS] ALIAS"
 msgstr ""
+"Користування: ll-builder repo enable-mirror [ПАРАМЕТРИ] АЛЬТЕРНАТИВНА_НАЗВА"
 
 #: ../apps/ll-builder/src/main.cpp:1005
 msgid "Usage: ll-builder repo disable-mirror [OPTIONS] ALIAS"
 msgstr ""
+"Користування: ll-builder repo disable-mirror [ПАРАМЕТРИ] АЛЬТЕРНАТИВНА_НАЗВА"
 
 #: ../apps/ll-builder/src/main.cpp:1012
 msgid "Usage: ll-builder repo show [OPTIONS]"

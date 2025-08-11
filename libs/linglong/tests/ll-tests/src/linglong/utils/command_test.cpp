@@ -24,13 +24,12 @@ TEST(command, Exec)
     EXPECT_TRUE(ret);
     EXPECT_EQ(ret->length(), 5);
     EXPECT_EQ(ret->toStdString(), "hello");
-    auto ret2 = linglong::utils::command::Cmd("id").exec();
+    auto ret2 = linglong::utils::command::Cmd("id").exec({ "-u" });
     EXPECT_TRUE(ret2.has_value());
-    // 获取当前用户名
-    auto user = getenv("USER");
-    EXPECT_TRUE(user);
-    // 输出包含用户名
-    EXPECT_TRUE(ret2->toStdString().find(user) != std::string::npos);
+
+    auto userId = ret2->toStdString();
+    userId.erase(std::remove(userId.begin(), userId.end(), '\n'), userId.end());
+    EXPECT_EQ(userId, std::to_string(getuid()));
 
     // 测试command不存在时
     auto ret3 = linglong::utils::command::Cmd("nonexistent").exec();

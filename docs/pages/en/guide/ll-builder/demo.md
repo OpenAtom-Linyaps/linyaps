@@ -4,153 +4,139 @@ SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
 SPDX-License-Identifier: LGPL-3.0-or-later
 -->
 
-## Initialize linyaps Projects
+# Build Example Demo
 
-```text
-ll-builder create org.deepin.calculator
-```
+## Initialize a Linglong Application Project
 
-## Edit linglong.yaml
+```bash
+ll-builder create org.deepin.demo
+````
 
-### Fill in the meta information of packages
+## Edit the linglong.yaml Configuration File
 
-```text
+### Configure Package Metadata
+
+```yaml
 package:
-  id: org.deepin.calculator
-  name: deepin-calculator
-  version: 5.9.17
+  id: org.deepin.demo
+  name: demo
   kind: app
+  version: 1.0.0.0
   description: |
-    calculator for deepin os.
+    A simple demo app.
 ```
 
-### Fill in the runtime info
+### Configure Application Startup Command
 
-```text
-runtime:
-  id: org.deepin.runtime.dtk
-  version: 23.1.0
+```yaml
+command:
+  - demo
 ```
 
-### Fill in the source code info
+### Configure Base System and Runtime Environment
 
-Use git source code
-
-```text
-source:
-  kind: git
-  url: "https://github.com/linuxdeepin/deepin-calculator.git"
-  commit: 7b5fdf8d133c356317636bb4b4a76fc73ef288c6
+```yaml
+base: org.deepin.base/23.1.0
+runtime: org.deepin.runtime.dtk/23.1.0
 ```
 
-### Fill in the dependencies
+### Configure Source Code Information
 
-```text
-depends:
-  - id: "dde-qt-dbus-factory"
-    version: 5.5.12
-  - id: googletest
-    version: 1.8.1
-  - id: icu
-    version: 63.1.0
-    type: runtime
-  - id: xcb-util
-    type: runtime
+Use Git to Fetch the Source Code
+
+```yaml
+sources:
+  - kind: git
+    url: "https://github.com/linuxdeepin/linglong-builder-demo.git"
+    commit: master
+    name: linglong-builder-demo
 ```
 
-### Choose build template
+### Configure Build Rules
 
-The source code is a cmake project, and choose the build type as cmake (see cmake.yaml for the template content).
-
-```text
-build:
-  kind: cmake
+```yaml
+  cd /project/linglong/sources/linglong-builder-demo
+  rm -rf build || true
+  mkdir build
+  cd build
+  qmake ..
+  make
+  make install
 ```
 
-### Override template content
+### Complete linglong.yaml Configuration File
 
-If the general template content does meet the build requirements, you can override the specified content in the linglong.yaml file. Variables or commands that are not re-declared in linglong.yaml will continue to be used.
+```yaml
+version: "1"
 
-Override the variable extra_args:
-
-```text
-variables:
-  extra_args: |
-   -DVERSION=1.1.1 \
-   -DPREFIX=/usr
-```
-
-Override the build command “build”:
-
-```text
-build:
-  kind: cmake
-  manual :
-    build: |
-      cd ${build_dir} && make -j8
-
-```
-
-### Complete linglong.yaml
-
-```text
 package:
-  id: org.deepin.calculator
-  name: deepin-calculator
-  version: 5.7.21
+  id: org.deepin.demo
+  name: demo
   kind: app
+  version: 1.0.0.0
   description: |
-    calculator for deepin os
-variables:
-  extra_args: |
-    -DVERSION=${VERSION} \
-    -DAPP_VERSION=5.7.21
-runtime:
-  id: org.deepin.runtime.dtk
-  version: 23.1.0
-depends:
-  - id: "dde-qt-dbus-factory"
-    version: 5.5.12
-  - id: googletest
-    version: 1.8.1
-  - id: icu
-    version: 63.1.0
-    type: runtime
-  - id: xcb-util
-    type: runtime
-source:
-  kind: git
-  url: https://github.com/linuxdeepin/deepin-calculator.git
-  commit: 7b5fdf8d133c356317636bb4b4a76fc73ef288c6
-build:
-  kind: cmake
+    A simple demo app.
+
+command:
+  - demo
+
+base: org.deepin.base/23.1.0
+runtime: org.deepin.runtime.dtk/23.1.0
+
+sources:
+  - kind: git
+    url: "https://github.com/linuxdeepin/linglong-builder-demo.git"
+    commit: master
+    name: linglong-builder-demo
+
+build: |
+  cd /project/linglong/sources/linglong-builder-demo
+  rm -rf build || true
+  mkdir build
+  cd build
+  qmake ..
+  make
+  make install
 ```
 
-## Start building
+For more details on configuration file fields, please refer to [Configuration File Description](https://www.google.com/search?q=./manifests.md)
 
-Execute the build subcommand in the root directory of linyaps projects:
+## Execute the Build Process
 
-```text
+In the root directory of the Linglong project, execute the build command:
+
+```bash
 ll-builder build
 ```
 
-## Export build content
+## Run the Application
 
-Execute the export subcommand in the root directory of linyaps projects to check out the build content and generate the bundle package.
+After a successful build, execute the run command in the Linglong project directory. The application can be run directly without installation.
 
-```text
+```bash
+ll-builder run
+```
+
+## Export Build Artifacts
+
+In the root directory of the Linglong project, execute the export command to check out the build content.
+
+```bash
 ll-builder export --layer
 ```
 
-## Push to repositories
+The directory structure after export is as follows:
 
 ```text
-ll-builder push org.deepin.calculator_5.7.21_x86_64.uab
+├── linglong
+├── linglong.yaml
+├── org.deepin.demo_1.0.0.0_x86_64_binary.layer
+└── org.deepin.demo_1.0.0.0_x86_64_develop.layer
 ```
 
-## More reference examples
+## More Reference Examples
 
-[qt5](https://github.com/linglongdev/cn.org.linyaps.demo.qt5) - qt5 program
+[qt5](https://github.com/linglongdev/cn.org.linyaps.demo.qt5) - qt5 application
 
 [dtk5](https://github.com/linglongdev/cn.org.linyaps.demo.dtk5.qmake) - dtk5 + qmake
 
@@ -158,12 +144,12 @@ ll-builder push org.deepin.calculator_5.7.21_x86_64.uab
 
 [dtkdeclarative5](https://github.com/linglongdev/cn.org.linyaps.demo.dtkdeclarative5) - dtk5 + qml
 
-[electron](https://github.com/myml/electron-vue-linyaps-app) - electron + vue Examples
+[electron](https://github.com/myml/electron-vue-linyaps-app) - electron + vue example
 
-[plantuml](https://github.com/linglongdev/com.plantuml.gpl) - A Java application that uses programmatic drawing to create flowcharts.
+[plantuml](https://github.com/linglongdev/com.plantuml.gpl) - a Java application for drawing flowcharts programmatically
 
-[org.sumatrapdfreader](https://github.com/linglongdev/org.sumatrapdfreader) - A Wine application that provides a PDF reader.
+[org.sumatrapdfreader](https://github.com/linglongdev/org.sumatrapdfreader) - a Wine application, a PDF reader
 
-## More Complete Example
+## More Complete Examples
 
-[Complete Example](../start/how_to_use.md) - This example shows how to build the app, export the build, install it, and run it.
+[Complete Example](https://www.google.com/search?q=../start/how_to_use.md) - a complete example that includes how to build an application, export build content, install, and run.

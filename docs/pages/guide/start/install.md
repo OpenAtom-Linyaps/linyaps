@@ -60,6 +60,14 @@ sudo dnf update
 sudo dnf install linglong-builder linglong-box linglong-bin
 ```
 
+### Fedora 42
+
+```sh
+sudo dnf config-manager addrepo --from-repofile "https://ci.deepin.com/repo/obs/linglong:/CI:/release/Fedora_42/linglong%3ACI%3Arelease.repo"
+sudo dnf update
+sudo dnf install linglong-bin
+```
+
 ### Ubuntu 24.04
 
 ```sh
@@ -76,6 +84,14 @@ sudo apt update
 sudo apt install linglong-builder linglong-box linglong-bin
 ```
 
+### Debian 13
+
+```sh
+echo "deb [trusted=yes] https://ci.deepin.com/repo/obs/linglong:/CI:/release/Debian_13/ ./" | sudo tee /etc/apt/sources.list.d/linglong.list
+sudo apt update
+sudo apt install linglong-bin
+```
+
 ### openEuler 23.09
 
 ```sh
@@ -83,6 +99,15 @@ sudo dnf config-manager --add-repo "https://ci.deepin.com/repo/obs/linglong:/CI:
 sudo sh -c "echo gpgcheck=0 >> /etc/yum.repos.d/linglong%3ACI%3Arelease.repo"
 sudo dnf update
 sudo dnf install linglong-builder linglong-box linglong-bin
+```
+
+### openEuler 24.03
+
+```sh
+sudo dnf config-manager --add-repo "https://ci.deepin.com/repo/obs/linglong:/CI:/release/openEuler_24.03/linglong%3ACI%3Arelease.repo"
+sudo sh -c "echo gpgcheck=0 >> /etc/yum.repos.d/linglong%3ACI%3Arelease.repo"
+sudo dnf update
+sudo dnf install linglong-bin
 ```
 
 ### UOS 1070

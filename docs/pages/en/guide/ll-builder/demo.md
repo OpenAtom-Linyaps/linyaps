@@ -10,7 +10,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ```bash
 ll-builder create org.deepin.demo
-````
+```
 
 ## Edit the linglong.yaml Configuration File
 
@@ -55,13 +55,13 @@ sources:
 ### Configure Build Rules
 
 ```yaml
-  cd /project/linglong/sources/linglong-builder-demo
-  rm -rf build || true
-  mkdir build
-  cd build
-  qmake ..
-  make
-  make install
+cd /project/linglong/sources/linglong-builder-demo
+rm -rf build || true
+mkdir build
+cd build
+qmake ..
+make
+make install
 ```
 
 ### Complete linglong.yaml Configuration File

@@ -194,3 +194,9 @@ path = "apps/ll-builder-utils/patch/libfuse.patch"
 precedence = "aggregate"
 SPDX-FileCopyrightText = "UnionTech Software Technology Co., Ltd."
 SPDX-License-Identifier = "LGPL-3.0-or-later"
+
+[[annotations]]
+path = ["misc/share/icons/**.svg"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "UnionTech Software Technology Co., Ltd."
+SPDX-License-Identifier = "LGPL-3.0-or-later"

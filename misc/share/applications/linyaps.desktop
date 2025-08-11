@@ -2,6 +2,7 @@
 Name=Linyaps
 Encoding=UTF-8
 Type=Application
+Icon=linyaps
 Exec=/usr/bin/ll-cli install %f
 NoDisplay=true
 Terminal=true

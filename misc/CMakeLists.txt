@@ -46,6 +46,7 @@ configure_files(
   share/linglong/config.yaml
   share/mime/packages/vnd.linyaps.uab.xml
   share/polkit-1/actions/org.deepin.linglong.PackageManager1.policy
+  share/icons/linyaps.svg
   share/applications/linyaps.desktop)
 
 # bash-completion
@@ -161,6 +162,8 @@ install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/share/mime/packages
         DESTINATION ${CMAKE_INSTALL_DATADIR}/mime)
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/share/applications/linyaps.desktop
         DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/share/icons/linyaps.svg
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps)
 
 # set linglong XDG_DATA_DIRS environtment
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/script/linglong.sh

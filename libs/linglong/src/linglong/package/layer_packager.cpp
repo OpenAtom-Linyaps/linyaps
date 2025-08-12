@@ -10,6 +10,7 @@
 #include "linglong/api/types/v1/LayerInfo.hpp"
 #include "linglong/utils/command/cmd.h"
 #include "linglong/utils/command/env.h"
+
 #include <qcontainerfwd.h>
 
 #include <QDataStream>
@@ -41,7 +42,8 @@ utils::error::Result<void> LayerPackager::initWorkDir()
         }
     }
     // 优先使用环境变量LINGLONG_TMPDIR指定的目录，默认为/var/tmp，避免/tmp是tmpfs内存不足
-    auto dirName = "linglong-layer-workdir-" + QUuid::createUuid().toString(QUuid::Id128).toStdString();
+    auto dirName =
+      "linglong-layer-workdir-" + QUuid::createUuid().toString(QUuid::Id128).toStdString();
     auto tmpDir = utils::command::getEnv("LINGLONG_TMPDIR");
     auto dirPath = std::filesystem::path(tmpDir.value_or("/var/tmp")) / dirName;
     auto ret = this->mkdirDir(dirPath);
@@ -147,9 +149,12 @@ LayerPackager::pack(const LayerDir &dir, const QString &layerFilePath) const
     const auto &ignoreRegex = QString{ "--exclude-regex=minified*" };
     // 使用-b统一指定block size为4096(2^12), 避免不同系统的兼容问题
     // loongarch64默认使用(16384)2^14, 在x86和arm64不受支持, 会导致无法推包
-    auto ret =
-      utils::command::Cmd("mkfs.erofs")
-        .exec({ "-z" + compressor, "-b4096", compressedFilePath.string().c_str(), ignoreRegex, dir.absolutePath() });
+    auto ret = utils::command::Cmd("mkfs.erofs")
+                 .exec({ "-z" + compressor,
+                         "-b4096",
+                         compressedFilePath.string().c_str(),
+                         ignoreRegex,
+                         dir.absolutePath() });
     if (!ret) {
         return LINGLONG_ERR(ret);
     }

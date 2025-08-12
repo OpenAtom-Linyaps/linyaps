@@ -49,9 +49,10 @@ public:
               return this->UABFile::isFileReadable(path);
           }));
         ON_CALL(*this, mkdirDir(testing::_))
-          .WillByDefault(testing::Invoke([this](const std::string &path) -> utils::error::Result<void> {
-              return this->UABFile::mkdirDir(path);
-          }));
+          .WillByDefault(
+            testing::Invoke([this](const std::string &path) -> utils::error::Result<void> {
+                return this->UABFile::mkdirDir(path);
+            }));
     }
 };
 
@@ -73,15 +74,18 @@ protected:
             std::error_code ec;
             std::filesystem::create_directories(testDir / "bundle/layers/test/binary", ec);
             ASSERT_FALSE(ec) << "Failed to create test directory";
-            std::string helloFilePath = testDir / "bundle" / "layers" / "test" / "binary" / "info.json";
+            std::string helloFilePath =
+              testDir / "bundle" / "layers" / "test" / "binary" / "info.json";
             std::ofstream tmpFile(helloFilePath);
             tmpFile << "Hello, World!";
             tmpFile.close();
-            auto ret =
-              utils::command::Cmd("mkfs.erofs").exec({ bundleFile.c_str(), (testDir / "bundle").c_str() });
-            ASSERT_TRUE(ret.has_value()) << "Failed to create erofs file" << ret.error().message().toStdString();
+            auto ret = utils::command::Cmd("mkfs.erofs")
+                         .exec({ bundleFile.c_str(), (testDir / "bundle").c_str() });
+            ASSERT_TRUE(ret.has_value())
+              << "Failed to create erofs file" << ret.error().message().toStdString();
             auto ret2 = uab->addNewSection("linglong.bundle", QFileInfo(bundleFile.c_str()));
-            ASSERT_TRUE(ret2.has_value()) << "Failed to add bundle section" << ret2.error().message().toStdString();
+            ASSERT_TRUE(ret2.has_value())
+              << "Failed to add bundle section" << ret2.error().message().toStdString();
         }
         // 新添加 meta section
         {
@@ -112,7 +116,8 @@ protected:
             std::ofstream jsonFile(testDir / "info.json");
             jsonFile << nlohmann::json(meta).dump();
             jsonFile.close();
-            auto ret = uab->addNewSection("linglong.meta", QFileInfo((testDir / "info.json").string().c_str()));
+            auto ret = uab->addNewSection("linglong.meta",
+                                          QFileInfo((testDir / "info.json").string().c_str()));
             ASSERT_TRUE(ret.has_value()) << "Failed to add meta section";
         }
         // 再添加sign section
@@ -128,7 +133,8 @@ protected:
             auto ret = utils::command::Cmd("tar").exec(
               { "-cvf", (testDir / "sign.tar").c_str(), "-C", signDir.c_str(), "." });
             ASSERT_TRUE(ret.has_value()) << "Failed to create tar file";
-            auto ret2 = uab->addNewSection("linglong.bundle.sign", QFileInfo((testDir / "sign.tar").string().c_str()));
+            auto ret2 = uab->addNewSection("linglong.bundle.sign",
+                                           QFileInfo((testDir / "sign.tar").string().c_str()));
             ASSERT_TRUE(ret2.has_value()) << "Failed to add sign section";
         }
     }

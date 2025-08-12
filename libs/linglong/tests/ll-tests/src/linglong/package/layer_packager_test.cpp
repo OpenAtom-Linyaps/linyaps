@@ -103,9 +103,7 @@ public:
         ASSERT_FALSE(ec) << "Failed to remove layer file dir" << ec.message();
     }
 
-    void SetUp() override
-    {
-    }
+    void SetUp() override { }
 
     void TearDown() override { }
 

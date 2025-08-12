@@ -75,7 +75,8 @@ UABFile::~UABFile()
         std::error_code ec;
         std::filesystem::remove_all(std::filesystem::path(m_unpackPath).parent_path(), ec);
         if (ec) {
-            qCritical() << "failed to remove " << m_unpackPath.c_str() << ", please remove it manually";
+            qCritical() << "failed to remove " << m_unpackPath.c_str()
+                        << ", please remove it manually";
         }
     }
     if (this->e) {
@@ -221,15 +222,15 @@ utils::error::Result<std::filesystem::path> UABFile::unpack() noexcept
 
     auto offset = bundleOffset;
     auto uabFile = QString{ "/proc/%1/fd/%2" }.arg(::getpid()).arg(handle());
-    
+
     auto dirName = "linglong-uab-" + QUuid::createUuid().toString(QUuid::Id128).toStdString();
     // 优先使用/var/tmp目录，避免tmpfs内存不足
     auto tmpDir = utils::command::getEnv("LINGLONG_TMPDIR").value_or("/var/tmp");
-    auto unpackPath = std::filesystem::path(tmpDir) / dirName/"unpack";
+    auto unpackPath = std::filesystem::path(tmpDir) / dirName / "unpack";
     auto ret = this->mkdirDir(unpackPath);
-    if (!ret) {        
+    if (!ret) {
         // 如果/var/tmp目录无权限创建，则使用临时目录
-        unpackPath = std::filesystem::temp_directory_path() / dirName/"unpack";
+        unpackPath = std::filesystem::temp_directory_path() / dirName / "unpack";
         ret = this->mkdirDir(unpackPath);
         if (!ret) {
             return LINGLONG_ERR(QString("failed to create directory ") + unpackPath.c_str(), ret);
@@ -241,8 +242,8 @@ utils::error::Result<std::filesystem::path> UABFile::unpack() noexcept
         auto isFileReadable = this->isFileReadable(uabFile.toStdString());
         if (!isFileReadable) {
             offset = 0;
-            uabFile = (unpackPath.parent_path()/"bundle.erofs").c_str();
-            auto ret = this->saveErofsToFile(unpackPath.parent_path()/"bundle.erofs");
+            uabFile = (unpackPath.parent_path() / "bundle.erofs").c_str();
+            auto ret = this->saveErofsToFile(unpackPath.parent_path() / "bundle.erofs");
             if (!ret) {
                 return LINGLONG_ERR(ret.error());
             }
@@ -259,8 +260,8 @@ utils::error::Result<std::filesystem::path> UABFile::unpack() noexcept
     }
     // 如果erofsfuse不存在，则使用fsck.erofs解压erofs文件
     if (this->checkCommandExists("fsck.erofs")) {
-        uabFile = (unpackPath.parent_path()/"bundle.erofs").c_str();
-        auto ret = this->saveErofsToFile(unpackPath.parent_path()/"bundle.erofs");
+        uabFile = (unpackPath.parent_path() / "bundle.erofs").c_str();
+        auto ret = this->saveErofsToFile(unpackPath.parent_path() / "bundle.erofs");
         if (!ret) {
             return LINGLONG_ERR(ret.error());
         }

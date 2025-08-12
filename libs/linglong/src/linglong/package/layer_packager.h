@@ -34,10 +34,10 @@ public:
                                                          const QString &layerFilePath) const;
     utils::error::Result<LayerDir> unpack(LayerFile &file);
     utils::error::Result<void> setCompressor(const QString &compressor) noexcept;
-    const QDir &getWorkDir() const;
+    const std::filesystem::path &getWorkDir() const;
 
 private:
-    QDir workDir;
+    std::filesystem::path workDir;
     QString compressor = "lzma";
     bool isMounted = false;
     // 初始化工作目录

@@ -21,6 +21,7 @@ pfl_add_executable(
   src/linglong/package/semver_prerelease_test.cpp
   src/linglong/package/semver_serialization_test.cpp
   src/linglong/package/semver_version_test.cpp
+  src/linglong/package/uab_file_test.cpp
   src/linglong/package/layer_packager_test.cpp
   src/linglong/utils/error/result_test.cpp
   src/linglong/utils/log.cpp

@@ -927,7 +927,7 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd,
         taskRef.updateSubState(linglong::api::types::v1::SubState::PreAction,
                                "prepare environment");
 
-        auto mountPoint = uab->mountUab();
+        auto mountPoint = uab->unpack();
         if (!mountPoint) {
             taskRef.reportError(std::move(mountPoint).error());
             return;

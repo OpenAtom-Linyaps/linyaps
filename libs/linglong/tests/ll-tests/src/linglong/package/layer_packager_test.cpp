@@ -5,12 +5,11 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "gmock/gmock.h"
 #include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/package/layer_packager.h"
 #include "linglong/utils/error/error.h"
 
-#include <qdir.h>
+#include <QDir>
 
 #include <filesystem>
 #include <fstream>
@@ -48,19 +47,19 @@ public:
 
 class LayerPackagerTest : public ::testing::Test
 {
-protected:
+public:
     static void SetUpTestSuite()
     {
-        char tempPath[] = "/var/tmp/linglong-test-XXXXXX";
+        char tempPath[] = "/var/tmp/linglong-layer-packager-test-SetUpTestSuite-XXXXXX";
         std::filesystem::path layerDirPath = mkdtemp(tempPath);
-        EXPECT_FALSE(layerDirPath.empty()) << "Failed to create temporary directory";
+        ASSERT_FALSE(layerDirPath.empty()) << "Failed to create temporary directory";
         // 创建临时文件，用于之后打包测试
         std::filesystem::create_directories(layerDirPath / "files");
         std::string helloFilePath = layerDirPath / "files" / "hello";
         std::ofstream tmpFile(helloFilePath);
         tmpFile << "Hello, World!";
         tmpFile.close();
-        EXPECT_TRUE(std::filesystem::exists(helloFilePath)) << "Failed to create temporary file";
+        ASSERT_TRUE(std::filesystem::exists(helloFilePath)) << "Failed to create temporary file";
         api::types::v1::PackageInfoV2 packageInfo;
         packageInfo.name = "hello";
         packageInfo.version = "1";
@@ -71,14 +70,14 @@ protected:
         std::ofstream jsonFile(layerDirPath / "info.json");
         jsonFile << json.dump();
         jsonFile.close();
-        EXPECT_TRUE(std::filesystem::exists(layerDirPath / "info.json"))
+        ASSERT_TRUE(std::filesystem::exists(layerDirPath / "info.json"))
           << layerDirPath << "Failed to create package.json";
 
         // 创建临时目录，用于存放打包后的layer文件
         char tempPath2[] = "/var/tmp/linglong-test-XXXXXX";
         layerFileDir = mkdtemp(tempPath2);
         layerFilePath = layerFileDir / "hello.layer";
-        EXPECT_FALSE(layerFileDir.empty()) << "Failed to create temporary directory";
+        ASSERT_FALSE(layerFileDir.empty()) << "Failed to create temporary directory";
         package::LayerPackager packager;
         packager.setCompressor("lz4");
         // 生成空文件，测试文件已存在的场景
@@ -86,23 +85,27 @@ protected:
         emptyFile.close();
         auto layerDir = package::LayerDir(layerDirPath.string().c_str());
         auto ret = packager.pack(layerDir, layerFilePath.string().c_str());
-        EXPECT_TRUE(ret.has_value())
+        ASSERT_TRUE(ret.has_value())
           << "Failed to pack layer file" << ret.error().message().toStdString();
-        EXPECT_TRUE(std::filesystem::exists(layerFilePath)) << "Failed to pack layer file";
+        ASSERT_TRUE(std::filesystem::exists(layerFilePath)) << "Failed to pack layer file";
         // 删除layer目录
         std::error_code ec;
         std::filesystem::remove_all(layerDirPath, ec);
-        EXPECT_FALSE(ec) << "Failed to remove layer dir" << ec.message();
+        ASSERT_FALSE(ec) << "Failed to remove layer dir" << ec.message();
     }
 
     static void TearDownTestSuite()
     {
         std::cout << "Cleanup shared resource" << std::endl;
         // 删除layer文件
-        std::filesystem::remove_all(layerFileDir);
+        std::error_code ec;
+        std::filesystem::remove_all(layerFileDir, ec);
+        ASSERT_FALSE(ec) << "Failed to remove layer file dir" << ec.message();
     }
 
-    void SetUp() override { }
+    void SetUp() override
+    {
+    }
 
     void TearDown() override { }
 
@@ -197,8 +200,12 @@ TEST_F(LayerPackagerTest, InitWorkDir)
     // 测试initWorkDir
     auto ret = packager.initWorkDir();
     ASSERT_TRUE(ret.has_value()) << "Failed to init workdir" << ret.error().message().toStdString();
-    ASSERT_NE(packager.getWorkDir().absolutePath().toStdString(), tmpPath / "not-exists")
+    ASSERT_NE(packager.getWorkDir().string(), tmpPath / "not-exists")
       << "workdir should be temporary directory";
+    // 删除临时目录
+    std::error_code ec;
+    std::filesystem::remove_all(tmpPath, ec);
+    ASSERT_FALSE(ec) << "Failed to remove tmpPath";
 }
 
 } // namespace linglong::package

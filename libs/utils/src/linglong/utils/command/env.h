@@ -16,6 +16,8 @@ namespace linglong::utils::command {
 
 QStringList getUserEnv(const QStringList &filters);
 
+std::optional<std::string> getEnv(const std::string &variableName);
+
 class EnvironmentVariableGuard
 {
 public:

@@ -23,4 +23,13 @@ QStringList getUserEnv(const QStringList &filters)
     return ret.toStringList();
 }
 
+std::optional<std::string> getEnv(const std::string &variableName)
+{
+    auto value = std::getenv(variableName.c_str());
+    if (value == nullptr) {
+        return std::nullopt;
+    }
+    return std::string(value);
+}
+
 } // namespace linglong::utils::command

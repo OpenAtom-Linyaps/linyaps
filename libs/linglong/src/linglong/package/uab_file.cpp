@@ -6,6 +6,8 @@
 
 #include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/utils/command/cmd.h"
+#include "linglong/utils/command/env.h"
+#include "linglong/utils/error/error.h"
 #include "linglong/utils/finally/finally.h"
 
 #include <nlohmann/json.hpp>
@@ -15,6 +17,8 @@
 #include <QFileInfo>
 #include <QStandardPaths>
 
+#include <filesystem>
+#include <fstream>
 #include <random>
 #include <string_view>
 
@@ -60,15 +64,24 @@ utils::error::Result<std::shared_ptr<UABFile>> UABFile::loadFromFile(int fd) noe
 
 UABFile::~UABFile()
 {
-    if (!mountPoint.empty()) {
-        auto ret = utils::command::Cmd("fusermount").exec({ "-z", "-u", mountPoint.c_str() });
+    if (!m_mountPoint.empty()) {
+        auto ret = utils::command::Cmd("fusermount").exec({ "-z", "-u", m_mountPoint.c_str() });
         if (!ret) {
-            qCritical() << "failed to umount " << mountPoint.c_str()
+            qCritical() << "failed to umount " << m_mountPoint.c_str()
                         << ", please umount it manually";
         }
     }
-
-    elf_end(this->e);
+    if (!m_unpackPath.empty()) {
+        std::error_code ec;
+        std::filesystem::remove_all(std::filesystem::path(m_unpackPath).parent_path(), ec);
+        if (ec) {
+            qCritical() << "failed to remove " << m_unpackPath.c_str() << ", please remove it manually";
+        }
+    }
+    if (this->e) {
+        elf_end(this->e);
+        this->e = nullptr;
+    }
 }
 
 utils::error::Result<GElf_Shdr> UABFile::getSectionHeader(const QString &section) const noexcept
@@ -188,9 +201,9 @@ utils::error::Result<bool> UABFile::verify() noexcept
     return (expectedDigest == digest);
 }
 
-utils::error::Result<std::filesystem::path> UABFile::mountUab() noexcept
+utils::error::Result<std::filesystem::path> UABFile::unpack() noexcept
 {
-    LINGLONG_TRACE("mount uab bundle")
+    LINGLONG_TRACE("unpack uab bundle")
 
     auto metaInfoRet = getMetaInfo();
     if (!metaInfoRet) {
@@ -205,35 +218,69 @@ utils::error::Result<std::filesystem::path> UABFile::mountUab() noexcept
     auto bundleOffset = bundleSh->sh_offset;
     auto metaInfo = metaInfoRet->get();
     auto uuid = metaInfo.uuid;
-    auto destination = std::filesystem::path{
-        QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation).toStdString()
-    };
-    auto uabDir = destination / "linglong" / "UAB" / uuid;
 
-    std::error_code ec;
-    if (!std::filesystem::create_directories(uabDir, ec) && ec) {
-        return LINGLONG_ERR(QString{ "failed create directory" } % uabDir.c_str() % ":"
-                            % ec.message().c_str());
+    auto offset = bundleOffset;
+    auto uabFile = QString{ "/proc/%1/fd/%2" }.arg(::getpid()).arg(handle());
+    
+    auto dirName = "linglong-uab-" + QUuid::createUuid().toString(QUuid::Id128).toStdString();
+    // 优先使用/var/tmp目录，避免tmpfs内存不足
+    auto tmpDir = utils::command::getEnv("LINGLONG_TMPDIR").value_or("/var/tmp");
+    auto unpackPath = std::filesystem::path(tmpDir) / dirName/"unpack";
+    auto ret = this->mkdirDir(unpackPath);
+    if (!ret) {        
+        // 如果/var/tmp目录无权限创建，则使用临时目录
+        unpackPath = std::filesystem::temp_directory_path() / dirName/"unpack";
+        ret = this->mkdirDir(unpackPath);
+        if (!ret) {
+            return LINGLONG_ERR(QString("failed to create directory ") + unpackPath.c_str(), ret);
+        }
     }
 
-    auto ret = utils::command::Cmd("erofsfuse")
-                 .exec(QStringList{ QString{ "--offset=%1" }.arg(bundleOffset),
-                                    QString{ "/proc/%1/fd/%2" }.arg(::getpid()).arg(handle()),
-                                    uabDir.c_str() });
-    if (!ret) {
-        return LINGLONG_ERR(ret.error());
+    // 如果erofsfuse存在，则使用erofsfuse挂载
+    if (this->checkCommandExists("erofsfuse")) {
+        auto isFileReadable = this->isFileReadable(uabFile.toStdString());
+        if (!isFileReadable) {
+            offset = 0;
+            uabFile = (unpackPath.parent_path()/"bundle.erofs").c_str();
+            auto ret = this->saveErofsToFile(unpackPath.parent_path()/"bundle.erofs");
+            if (!ret) {
+                return LINGLONG_ERR(ret.error());
+            }
+        }
+        auto ret =
+          utils::command::Cmd("erofsfuse")
+            .exec(QStringList{ QString{ "--offset=%1" }.arg(offset), uabFile, unpackPath.c_str() });
+        if (!ret) {
+            return LINGLONG_ERR(ret.error());
+        }
+        this->m_mountPoint = unpackPath;
+        this->m_unpackPath = unpackPath;
+        return unpackPath;
     }
-
-    this->mountPoint = uabDir;
-    qDebug() << "erofsfuse output:" << *ret;
-
-    return mountPoint;
+    // 如果erofsfuse不存在，则使用fsck.erofs解压erofs文件
+    if (this->checkCommandExists("fsck.erofs")) {
+        uabFile = (unpackPath.parent_path()/"bundle.erofs").c_str();
+        auto ret = this->saveErofsToFile(unpackPath.parent_path()/"bundle.erofs");
+        if (!ret) {
+            return LINGLONG_ERR(ret.error());
+        }
+        auto cmdRet = utils::command::Cmd("fsck.erofs")
+                        .exec({ "--extract=" + QString::fromStdString(unpackPath), uabFile });
+        if (!cmdRet) {
+            return LINGLONG_ERR(cmdRet);
+        }
+        this->m_unpackPath = unpackPath;
+        return unpackPath;
+    }
+    return LINGLONG_ERR(
+      "erofsfuse or fsck.erofs not found, please install erofs-utils or erofsfuse",
+      utils::error::ErrorCode::AppInstallErofsNotFound);
 }
 
 utils::error::Result<std::filesystem::path> UABFile::extractSignData() noexcept
 {
     LINGLONG_TRACE("extract sign data from uab")
-    if (mountPoint.empty()) {
+    if (m_unpackPath.empty()) {
         return LINGLONG_ERR("uab is not mounted");
     }
 
@@ -340,6 +387,74 @@ utils::error::Result<std::filesystem::path> UABFile::extractSignData() noexcept
     }
 
     return root;
+}
+
+bool UABFile::isFileReadable(const std::string &path) const
+{
+    LINGLONG_TRACE("check file permission");
+    std::ifstream f(path);
+    return f.good();
+}
+
+utils::error::Result<void> UABFile::saveErofsToFile(const std::string &path)
+{
+    LINGLONG_TRACE("save erofs file");
+
+    auto metaInfoRet = getMetaInfo();
+    if (!metaInfoRet) {
+        return LINGLONG_ERR(metaInfoRet.error());
+    }
+
+    auto bundleSh = getSectionHeader(QString::fromStdString(metaInfo->sections.bundle));
+    if (!bundleSh) {
+        return LINGLONG_ERR(bundleSh.error());
+    }
+    seek(bundleSh->sh_offset);
+    auto backToHead = utils::finally::finally([this] {
+        seek(0);
+    });
+    auto bundleLength = bundleSh->sh_size;
+    // 流式保存bundleSection到path
+    std::ofstream ofs(path, std::ios::binary);
+    std::array<char, 4096> buf{};
+    while (bundleLength > 0) {
+        auto readBytes = bundleLength > buf.size() ? buf.size() : bundleLength;
+        auto bytesRead = ::read(handle(), buf.data(), readBytes);
+        if (bytesRead == -1) {
+            return LINGLONG_ERR(QString{ "read from bundle section error:" } % ::strerror(errno));
+        }
+        ofs.write(buf.data(), bytesRead);
+        if (ofs.fail()) {
+            return LINGLONG_ERR(QString{ "write " } % path.c_str() % " failed");
+        }
+        bundleLength -= bytesRead;
+    }
+    ofs.close();
+    if (ofs.fail()) {
+        return LINGLONG_ERR(QString{ "close " } % path.c_str() % " failed");
+    }
+    return LINGLONG_OK;
+}
+
+utils::error::Result<void> UABFile::mkdirDir(const std::string &path) noexcept
+{
+    LINGLONG_TRACE("mkdir dir" + path);
+    std::error_code ec;
+    std::filesystem::create_directories(path, ec);
+    if (ec) {
+        return LINGLONG_ERR("failed to create directory" + path, ec);
+    }
+    return LINGLONG_OK;
+}
+
+bool UABFile::checkCommandExists(const std::string &command) const
+{
+    LINGLONG_TRACE("check command exists" + command);
+    auto ret = utils::command::Cmd(command.c_str()).exists();
+    if (!ret.has_value()) {
+        return false;
+    }
+    return *ret;
 }
 
 } // namespace linglong::package

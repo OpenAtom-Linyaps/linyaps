@@ -13,6 +13,7 @@
 #include <QString>
 #include <QUuid>
 
+#include <filesystem>
 #include <string>
 
 namespace linglong::package {

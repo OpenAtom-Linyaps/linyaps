@@ -11,8 +11,6 @@
 #include "linglong/utils/command/cmd.h"
 #include "linglong/utils/command/env.h"
 
-#include <qcontainerfwd.h>
-
 #include <QDataStream>
 #include <QSysInfo>
 
@@ -42,8 +40,8 @@ utils::error::Result<void> LayerPackager::initWorkDir()
         }
     }
     // 优先使用环境变量LINGLONG_TMPDIR指定的目录，默认为/var/tmp，避免/tmp是tmpfs内存不足
-    auto dirName =
-      "linglong-layer-workdir-" + QUuid::createUuid().toString(QUuid::Id128).toStdString();
+    auto uuid = QUuid::createUuid().toString(QUuid::Id128);
+    auto dirName = "linglong-layer-workdir-" + uuid.toStdString();
     auto tmpDir = utils::command::getEnv("LINGLONG_TMPDIR");
     auto dirPath = std::filesystem::path(tmpDir.value_or("/var/tmp")) / dirName;
     auto ret = this->mkdirDir(dirPath);

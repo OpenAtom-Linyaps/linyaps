@@ -150,7 +150,7 @@ if(NOT fmt_FOUND)
 endif()
 
 # NOTE: UOS v20 do not have tl-expected packaged.
-find_package(tl-expected 1.0.0 QUIET)
+find_package(tl-expected 1.1.0 QUIET)
 if(NOT tl-expected_FOUND)
   message(STATUS "tl-expected not found, using external tl-expected")
   # list(APPEND linglong_EXTERNALS tl-expected) # tl-expected requires 3.14

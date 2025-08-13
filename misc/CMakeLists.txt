@@ -167,11 +167,11 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/share/icons/linyaps.svg
 
 # set linglong XDG_DATA_DIRS environtment
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/script/linglong.sh
-        DESTINATION /etc/profile.d)
+        DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/profile.d)
 
 install(
   FILES ${CMAKE_CURRENT_BINARY_DIR}/script/linglong.sh
-  DESTINATION /etc/X11/Xsession.d/
+  DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/X11/Xsession.d/
   RENAME 21linglong)
 
 # polkit actions

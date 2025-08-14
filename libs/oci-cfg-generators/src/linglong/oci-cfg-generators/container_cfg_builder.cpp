@@ -873,20 +873,6 @@ bool ContainerCfgBuilder::buildMountHome() noexcept
                                     .type = "bind" });
     }
 
-    // NOTE:
-    // Running ~/.bashrc from user home is meaningless in linglong container,
-    // and might cause some issues, so we mask it with the default one.
-    // https://github.com/linuxdeepin/linglong/issues/459
-    constexpr auto defaultBashrc = "/etc/skel/.bashrc";
-    if (std::filesystem::exists(defaultBashrc, ec)) {
-        homeMount->push_back(Mount{
-          .destination = *homePath / ".bashrc",
-          .options = string_list{ "ro", "rbind" },
-          .source = defaultBashrc,
-          .type = "bind",
-        });
-    }
-
     return true;
 }
 

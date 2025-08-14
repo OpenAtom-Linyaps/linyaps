@@ -203,7 +203,7 @@ utils::error::Result<void> Container::run(const ocppi::runtime::config::types::P
 
         // TODO: maybe we could use a symlink '/usr/bin/ll-init' points to
         // '/run/linglong/container-init' will be better
-        ofs << "#!/run/linglong/container-init /bin/bash\n";
+        ofs << "#!/bin/bash\n";
         ofs << "source /etc/profile\n"; // we need use /etc/profile to generate all needed
                                         // environment variables
         ofs << "exec ";
@@ -225,7 +225,12 @@ utils::error::Result<void> Container::run(const ocppi::runtime::config::types::P
       .type = "bind",
     });
 
-    this->cfg.process->args = { "/run/linglong/entrypoint.sh" };
+    auto cmd = std::vector<std::string>{
+        "/run/linglong/container-init", "env", "-i", "/bin/bash", "--noprofile", "--norc", "-c",
+        "/run/linglong/entrypoint.sh"
+    };
+
+    this->cfg.process->args = cmd;
 
 #ifdef LINGLONG_FONT_CACHE_GENERATOR
     {

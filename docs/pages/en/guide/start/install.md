@@ -30,6 +30,16 @@ Repository URL: <https://ci.deepin.com/repo/obs/linglong:/CI:/latest>
 
 Build URL: <https://build.deepin.com/project/show/linglong:CI:latest>
 
+### Packaging status
+
+- linyyaps
+
+[![Packaging status](https://repology.org/badge/vertical-allrepos/linyaps.svg)](https://repology.org/project/linyaps/versions)
+
+- linyaps-box
+
+[![Packaging status](https://repology.org/badge/vertical-allrepos/linyaps-box.svg)](https://repology.org/project/linyaps-box/versions)
+
 :::tip
 
 The installation steps below are based on the release repository. If you'd like to experience unreleased features, you can replace release in the repository URL with latest to install the preview version built from the master branch.
@@ -37,6 +47,12 @@ The installation steps below are based on the release repository. If you'd like 
 :::
 
 ## Installation Instructions
+
+### Arch / Manjaro / Parabola Linux 
+
+```sh
+sudo pacman -Syu linyaps
+```
 
 ### deepin 25
 

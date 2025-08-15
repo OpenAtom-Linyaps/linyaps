@@ -28,6 +28,16 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 1.  仓库地址 <https://ci.deepin.com/repo/obs/linglong:/CI:/latest>
 2.  构建地址 <https://build.deepin.com/project/show/linglong:CI:latest>
 
+### 软件包状态
+
+- linyyaps
+
+[![Packaging status](https://repology.org/badge/vertical-allrepos/linyaps.svg)](https://repology.org/project/linyaps/versions)
+
+- linyaps-box
+
+[![Packaging status](https://repology.org/badge/vertical-allrepos/linyaps-box.svg)](https://repology.org/project/linyaps-box/versions)
+
 :::tip
 
 以下安装步骤均使用基于release仓库，如果想体验还未发布的功能，将仓库地址中的release更改为latest，即可安装基于master分支构建的预览版
@@ -35,6 +45,12 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 :::
 
 ## 安装说明
+
+### Arch / Manjaro / Parabola Linux 
+
+```sh
+sudo pacman -Syu linyaps
+```
 
 ### deepin 25
 

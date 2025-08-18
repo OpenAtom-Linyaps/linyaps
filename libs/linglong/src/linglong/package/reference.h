@@ -20,6 +20,7 @@ namespace linglong::package {
 class Reference final
 {
 public:
+    static utils::error::Result<Reference> parse(const std::string &raw) noexcept;
     static utils::error::Result<Reference> parse(const QString &raw) noexcept;
     static utils::error::Result<Reference> create(const QString &channel,
                                                   const QString &id,

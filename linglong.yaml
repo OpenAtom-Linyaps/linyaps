@@ -5,7 +5,7 @@ version: '1'
 package:
   id: cn.org.linyaps.builder.utils
   name: ll-builder-utils
-  version: 0.0.1.0
+  version: 0.0.2.0
   kind: app
   description: |
     Utils for ll-builder
@@ -19,8 +19,8 @@ sources:
     url: https://github.com/libfuse/libfuse/releases/download/fuse-3.17.1/fuse-3.17.1.tar.gz
     digest: 2d8ae87a4525fbfa1db5e5eb010ff6f38140627a7004554ed88411c1843d51b2
   - kind: archive
-    url: https://github.com/OpenAtom-Linyaps/linyaps-box/archive/refs/tags/2.0.2.tar.gz
-    digest: 13100b8d9b1c0775e23ab4fb9b9fd9726a27df04bd112b303b6abf18df53ce60
+    url: https://github.com/OpenAtom-Linyaps/linyaps-box/archive/refs/tags/2.1.0.tar.gz
+    digest: a5833d0ce4bafb33115cab422968c2ae8181aa100802cabe4b29665cd9e67b31
 build: |
   echo "$PREFIX"
 
@@ -41,7 +41,7 @@ build: |
   make install
 
   # build static ll-box
-  cd /project/linglong/sources/2.0.2.tar.gz/linyaps-box-2.0.2/
+  cd /project/linglong/sources/2.1.0.tar.gz/linyaps-box-2.1.0/
   cmake --preset static
   cmake --build build-static -j$(nproc)
   cmake --install build-static --prefix=$PREFIX
@@ -53,23 +53,4 @@ build: |
   install /usr/local/bin/mkfs.erofs $PREFIX/bin/
 buildext:
   apt:
-    build_depends:
-      [
-        patch,
-        meson,
-        libtool,
-        pkg-config,
-        uuid-dev,
-        libdeflate-dev,
-        libzstd-dev,
-        nlohmann-json3-dev,
-        libyaml-cpp-dev,
-        liblz4-dev,
-        liblzma-dev,
-        libselinux1-dev,
-        libpcre2-dev,
-        libelf-dev,
-        libcap-dev,
-        libcli11-dev,
-        libgtest-dev,
-      ]
+    build_depends: [patch, meson, libtool, pkg-config, uuid-dev, libdeflate-dev, libzstd-dev, nlohmann-json3-dev, libyaml-cpp-dev, liblz4-dev, liblzma-dev, libselinux1-dev, libpcre2-dev, libelf-dev, libcap-dev, libcli11-dev, libgtest-dev]

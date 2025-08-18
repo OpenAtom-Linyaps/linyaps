@@ -22,6 +22,7 @@
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/file.h"
 #include "linglong/utils/global/initialize.h"
+#include "linglong/utils/log/log.h"
 #include "linglong/utils/packageinfo_handler.h"
 #include "linglong/utils/serialize/json.h"
 #include "ocppi/runtime/RunOption.hpp"
@@ -413,7 +414,7 @@ utils::error::Result<void> cmdRemoveApp(repo::OSTreeRepo &repo, std::vector<std:
     return LINGLONG_OK;
 }
 
-Builder::Builder(const api::types::v1::BuilderProject &project,
+Builder::Builder(std::optional<api::types::v1::BuilderProject> project,
                  const QDir &workingDir,
                  repo::OSTreeRepo &repo,
                  runtime::ContainerBuilder &containerBuilder,
@@ -461,7 +462,7 @@ utils::error::Result<void> Builder::buildStagePrepare() noexcept
     uid = getuid();
     gid = getgid();
 
-    auto ref = currentReference(this->project);
+    auto ref = currentReference(this->project.value());
     if (!ref) {
         return LINGLONG_ERR("invalid project info", ref);
     }
@@ -475,15 +476,15 @@ utils::error::Result<void> Builder::buildStagePrepare() noexcept
                       "See https://wikipedia.org/wiki/Reverse_domain_name_notation";
     }
 
-    if (this->project.package.kind == "app") {
-        if (project.command.value_or(std::vector<std::string>{}).empty()) {
+    if (this->project->package.kind == "app") {
+        if (project->command.value_or(std::vector<std::string>{}).empty()) {
             return LINGLONG_ERR("command field is required, please specify!");
         }
-        installPrefix = "/opt/apps/" + this->project.package.id + "/files";
-    } else if (this->project.package.kind == "runtime") {
+        installPrefix = "/opt/apps/" + this->project->package.id + "/files";
+    } else if (this->project->package.kind == "runtime") {
         installPrefix = "/runtime";
-    } else if (this->project.package.kind == "extension") {
-        installPrefix = "/opt/extensions/" + this->project.package.id;
+    } else if (this->project->package.kind == "extension") {
+        installPrefix = "/opt/extensions/" + this->project->package.id;
     }
 
     if (!QFileInfo::exists(LINGLONG_BUILDER_HELPER)) {
@@ -503,7 +504,7 @@ utils::error::Result<void> Builder::buildStageFetchSource() noexcept
 {
     LINGLONG_TRACE("build stage fetch source");
 
-    if (!this->project.sources || this->buildOptions.skipFetchSource) {
+    if (!this->project->sources || this->buildOptions.skipFetchSource) {
         return LINGLONG_OK;
     }
 
@@ -522,7 +523,7 @@ utils::error::Result<void> Builder::buildStageFetchSource() noexcept
     // clean sources directory on every build
     auto fetchSourcesDir = QDir(this->workingDir.absoluteFilePath("linglong/sources"));
     fetchSourcesDir.removeRecursively();
-    auto result = fetchSources(*this->project.sources, fetchCacheDir, fetchSourcesDir, this->cfg);
+    auto result = fetchSources(*this->project->sources, fetchCacheDir, fetchSourcesDir, this->cfg);
 
     if (!result) {
         return LINGLONG_ERR(result);
@@ -613,15 +614,15 @@ utils::error::Result<void> Builder::buildStagePullDependency() noexcept
                    .toStdString(),
                  2);
 
-    auto baseRef = clearDependency(this->project.base, !this->buildOptions.skipPullDepend, false);
+    auto baseRef = clearDependency(this->project->base, !this->buildOptions.skipPullDepend, false);
     if (!baseRef) {
         return LINGLONG_ERR("base dependency error", baseRef);
     }
 
     std::optional<package::Reference> runtimeRef;
-    if (this->project.runtime) {
+    if (this->project->runtime) {
         auto ref =
-          clearDependency(*this->project.runtime, !this->buildOptions.skipPullDepend, false);
+          clearDependency(*this->project->runtime, !this->buildOptions.skipPullDepend, false);
         if (!ref) {
             return LINGLONG_ERR("runtime dependency error", ref);
         }
@@ -753,7 +754,7 @@ utils::error::Result<void> Builder::processBuildDepends() noexcept
         return LINGLONG_ERR(fillRes);
     }
     cfgBuilder
-      .setAppId(this->project.package.id)
+      .setAppId(this->project->package.id)
       // overwrite base overlay directory
       .setBasePath(baseOverlay->mergedDirPath().toStdString(), false)
       .addUIdMapping(uid, uid, 1)
@@ -814,7 +815,8 @@ utils::error::Result<void> Builder::buildStagePreBuild() noexcept
 
     QString overlayPrefix("linglong/overlay");
 
-    auto res = buildContext.resolve(this->project, buildOutput.absolutePath().toStdString());
+    auto res =
+      buildContext.resolve(this->project.value(), buildOutput.absolutePath().toStdString());
     if (!res) {
         return LINGLONG_ERR(res);
     }
@@ -886,7 +888,7 @@ utils::error::Result<bool> Builder::buildStageBuild(const QStringList &args) noe
     if (!res) {
         return LINGLONG_ERR(res);
     }
-    cfgBuilder.setAppId(this->project.package.id)
+    cfgBuilder.setAppId(this->project->package.id)
       .setBasePath(baseOverlay->mergedDirPath().toStdString(), false)
       .addUIdMapping(uid, uid, 1)
       .addGIdMapping(gid, gid, 1)
@@ -987,6 +989,8 @@ utils::error::Result<void> Builder::buildStagePreCommit() noexcept
 {
     LINGLONG_TRACE("build stage pre commit");
 
+    auto &project = *this->project;
+
     // processing buildext.apt.depends
     auto res = generateDependsScript();
     if (!res) {
@@ -1034,7 +1038,7 @@ utils::error::Result<void> Builder::buildStagePreCommit() noexcept
     if (!fillRes) {
         return LINGLONG_ERR(fillRes);
     }
-    cfgBuilder.setAppId(this->project.package.id)
+    cfgBuilder.setAppId(project.package.id)
       .setBasePath(baseOverlay->mergedDirPath().toStdString(), false)
       .addUIdMapping(uid, uid, 1)
       .addGIdMapping(gid, gid, 1)
@@ -1077,7 +1081,7 @@ utils::error::Result<void> Builder::buildStagePreCommit() noexcept
     // 2. merge base and runtime to app,
     // base prefix is /usr, and runtime prefix is /runtime
     QList<QDir> src = { baseOverlay->upperDirPath() + "/usr" };
-    if (this->project.package.kind == "app" || this->project.package.kind == "extension") {
+    if (project.package.kind == "app" || project.package.kind == "extension") {
         if (runtimeOverlay) {
             src.append(runtimeOverlay->upperDirPath());
         }
@@ -1091,7 +1095,8 @@ utils::error::Result<void> Builder::generateAppConf() noexcept
 {
     LINGLONG_TRACE("generate application configure");
 
-    if (this->project.package.kind != "app") {
+    auto &project = *this->project;
+    if (project.package.kind != "app") {
         return LINGLONG_OK;
     }
 
@@ -1108,7 +1113,7 @@ utils::error::Result<void> Builder::generateAppConf() noexcept
         QFile::copy(":/scripts/app-conf-generator", scriptFile);
     }
     auto output = utils::command::Cmd("bash").exec(
-      { "-e", scriptFile, QString::fromStdString(this->project.package.id), buildOutput.path() });
+      { "-e", scriptFile, QString::fromStdString(project.package.id), buildOutput.path() });
 
     return LINGLONG_OK;
 }
@@ -1117,7 +1122,12 @@ utils::error::Result<void> Builder::installFiles() noexcept
 {
     LINGLONG_TRACE("install files");
 
-    auto appIDPrintWidth = -this->project.package.id.size() + -5;
+    if (!this->project) {
+        return LINGLONG_ERR("not a linyaps project");
+    }
+    auto &project = *this->project;
+
+    auto appIDPrintWidth = -project.package.id.size() + -5;
     printMessage("[Install Files]");
     printMessage(QString("%1%2%3%4")
                    .arg("Package", appIDPrintWidth)
@@ -1138,8 +1148,8 @@ utils::error::Result<void> Builder::installFiles() noexcept
     std::vector<api::types::v1::BuilderProjectModules> projectModules;
     auto hasDevelop = false;
     auto hasBinary = false;
-    if (this->project.modules.has_value()) {
-        for (const auto &module : *this->project.modules) {
+    if (project.modules.has_value()) {
+        for (const auto &module : *project.modules) {
             if (module.name == "develop") {
                 hasDevelop = true;
             } else if (module.name == "binary") {
@@ -1166,8 +1176,8 @@ utils::error::Result<void> Builder::installFiles() noexcept
     for (const auto &module : projectModules) {
         auto name = QString::fromStdString(module.name);
         printReplacedText(QString("%1%2%3%4")
-                            .arg(this->project.package.id.c_str(), appIDPrintWidth)
-                            .arg(this->project.package.version.c_str(), -15)
+                            .arg(project.package.id.c_str(), appIDPrintWidth)
+                            .arg(project.package.version.c_str(), -15)
                             .arg(name, -15)
                             .arg("installing")
                             .toStdString(),
@@ -1195,8 +1205,8 @@ utils::error::Result<void> Builder::installFiles() noexcept
         }
         configFile.close();
         printReplacedText(QString("%1%2%3%4")
-                            .arg(this->project.package.id.c_str(), appIDPrintWidth)
-                            .arg(this->project.package.version.c_str(), -15)
+                            .arg(project.package.id.c_str(), appIDPrintWidth)
+                            .arg(project.package.version.c_str(), -15)
                             .arg(name, -15)
                             .arg("complete\n")
                             .toStdString(),
@@ -1206,7 +1216,7 @@ utils::error::Result<void> Builder::installFiles() noexcept
     {
         QStringList installRules;
         auto installFilepath = this->workingDir.absoluteFilePath(
-          QString::fromStdString(this->project.package.id) + ".install");
+          QString::fromStdString(project.package.id) + ".install");
         // TODO 兼容$appid.install文件，后续版本删除
         if (QFile::exists(installFilepath)) {
             qWarning() << "$appid.install is deprecated. see "
@@ -1232,8 +1242,8 @@ utils::error::Result<void> Builder::installFiles() noexcept
             }
         }
         printReplacedText(QString("%1%2%3%4")
-                            .arg(this->project.package.id.c_str(), appIDPrintWidth)
-                            .arg(this->project.package.version.c_str(), -15)
+                            .arg(project.package.id.c_str(), appIDPrintWidth)
+                            .arg(project.package.version.c_str(), -15)
                             .arg("binary", -15)
                             .arg("installing")
                             .toStdString(),
@@ -1255,8 +1265,8 @@ utils::error::Result<void> Builder::installFiles() noexcept
         }
         configFile.close();
         printReplacedText(QString("%1%2%3%4")
-                            .arg(this->project.package.id.c_str(), appIDPrintWidth)
-                            .arg(this->project.package.version.c_str(), -15)
+                            .arg(project.package.id.c_str(), appIDPrintWidth)
+                            .arg(project.package.version.c_str(), -15)
                             .arg("binary", -15)
                             .arg("complete\n")
                             .toStdString(),
@@ -1272,7 +1282,8 @@ utils::error::Result<void> Builder::generateEntries() noexcept
 
     printMessage("");
 
-    if (this->project.package.kind != "app") {
+    auto &project = *this->project;
+    if (project.package.kind != "app") {
         return LINGLONG_OK;
     }
 
@@ -1355,30 +1366,31 @@ utils::error::Result<void> Builder::commitToLocalRepo() noexcept
 {
     LINGLONG_TRACE("commit to local repo");
 
-    auto appIDPrintWidth = -this->project.package.id.size() + -5;
+    auto &project = *this->project;
+    auto appIDPrintWidth = -project.package.id.size() + -5;
 
     auto info = api::types::v1::PackageInfoV2{
         .arch = { projectRef->arch.toString().toStdString() },
         .channel = projectRef->channel.toStdString(),
         .command = project.command,
-        .description = this->project.package.description,
-        .id = this->project.package.id,
-        .kind = this->project.package.kind,
-        .name = this->project.package.name,
-        .permissions = this->project.permissions,
+        .description = project.package.description,
+        .id = project.package.id,
+        .kind = project.package.kind,
+        .name = project.package.name,
+        .permissions = project.permissions,
         .runtime = {},
         .schemaVersion = PACKAGE_INFO_VERSION,
-        .version = this->project.package.version,
+        .version = project.package.version,
     };
 
-    info.base = this->project.base;
-    if (this->project.runtime) {
-        info.runtime = this->project.runtime;
+    info.base = project.base;
+    if (project.runtime) {
+        info.runtime = project.runtime;
     }
 
     if (info.kind == "extension") {
-        info.extImpl = api::types::v1::ExtensionImpl{ .env = this->project.package.env,
-                                                      .libs = this->project.package.libs };
+        info.extImpl =
+          api::types::v1::ExtensionImpl{ .env = project.package.env, .libs = project.package.libs };
     }
 
     // 从本地仓库清理旧的ref
@@ -1494,6 +1506,7 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
     LINGLONG_TRACE(
       QString("build project %1").arg(this->workingDir.absoluteFilePath("linglong.yaml")));
 
+    auto &project = *this->project;
     utils::error::Result<void> res;
     if (!(res = buildStagePrepare())) {
         return LINGLONG_ERR("stage prepare error", res);
@@ -1528,32 +1541,48 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
         return LINGLONG_ERR("stage runtime check error", res);
     }
 
-    printMessage("Successfully build " + this->project.package.id);
+    printMessage("Successfully build " + project.package.id);
 
     return LINGLONG_OK;
 }
 
 utils::error::Result<void> Builder::exportUAB(const ExportOption &option,
-                                              const std::filesystem::path outputFile)
+                                              const std::filesystem::path &outputFile)
 {
     LINGLONG_TRACE("export uab file");
 
     package::UABPackager packager{ workingDir, workingDir.absoluteFilePath(".uabBuild") };
+    auto exportOpts = option;
+    if (exportOpts.compressor.empty()) {
+        qInfo() << "Compressor not specified, defaulting to lz4 for UAB export.";
+        exportOpts.compressor = "lz4";
+    }
+
+    if (exportOpts.modules.empty()) {
+        exportOpts.modules.emplace_back("binary");
+    }
+
+    const bool distributedOnly = !exportOpts.ref.empty();
 
     // Try to use uab-header, uab-loader, ll-box and bundling logic from ll-builder-utils if
     // available. Fallback to defaults if ll-builder-utils is not found or fails.
     auto ref = ensureUtils("cn.org.linyaps.builder.utils");
     if (ref) {
         qDebug() << "using cn.org.linyaps.builder.utils";
-        auto res =
-          runFromRepo(*ref,
-                      { "/opt/apps/cn.org.linyaps.builder.utils/files/bin/ll-builder-export",
-                        "--get-header",
-                        "/project/.uabBuild/uab-header",
-                        "--get-loader",
-                        "/project/.uabBuild/uab-loader",
-                        "--get-box",
-                        "/project/.uabBuild/ll-box" });
+        std::vector<std::string> args{
+            "/opt/apps/cn.org.linyaps.builder.utils/files/bin/ll-builder-export",
+            "--get-header",
+            "/project/.uabBuild/uab-header",
+            "--get-loader",
+            "/project/.uabBuild/uab-loader",
+        };
+
+        if (!distributedOnly) {
+            args.emplace_back("--get-box");
+            args.emplace_back("/project/.uabBuild/ll-box");
+        }
+
+        auto res = runFromRepo(*ref, args);
         if (res) {
             std::error_code ec;
             if (std::filesystem::exists(
@@ -1566,7 +1595,8 @@ utils::error::Result<void> Builder::exportUAB(const ExportOption &option,
                 packager.setDefaultLoader(workingDir.absoluteFilePath(".uabBuild/uab-loader"));
             }
 
-            if (std::filesystem::exists(
+            if (!distributedOnly
+                && std::filesystem::exists(
                   workingDir.absoluteFilePath(".uabBuild/ll-box").toStdString(),
                   ec)) {
                 packager.setDefaultBox(workingDir.absoluteFilePath(".uabBuild/ll-box"));
@@ -1576,11 +1606,12 @@ utils::error::Result<void> Builder::exportUAB(const ExportOption &option,
         }
 
         auto utilsBundler =
-          [ref = *ref, option, this](const QString &bundleFile,
-                                     const QString &bundleDir) -> utils::error::Result<void> {
+          [&ref, &exportOpts, this](const QString &bundleFile,
+                                    const QString &bundleDir) -> utils::error::Result<void> {
             LINGLONG_TRACE("use utils to bundle file");
-            QString relativeBundleFile = workingDir.relativeFilePath(bundleFile);
-            QString relativeBundleDir = workingDir.relativeFilePath(bundleDir);
+
+            const auto relativeBundleFile = workingDir.relativeFilePath(bundleFile);
+            const auto relativeBundleDir = workingDir.relativeFilePath(bundleDir);
             if (relativeBundleFile.startsWith("../") || relativeBundleDir.startsWith("../")) {
                 return LINGLONG_ERR("file must be in project directory");
             }
@@ -1592,82 +1623,49 @@ utils::error::Result<void> Builder::exportUAB(const ExportOption &option,
                        QDir("/project").absoluteFilePath(relativeBundleFile))
                   .toStdString()
             };
-            if (!option.compressor.empty()) {
-                args.emplace_back("-z");
-                args.emplace_back(option.compressor);
-            }
-            return runFromRepo(ref, args);
+
+            args.emplace_back("-z");
+            args.emplace_back(exportOpts.compressor);
+            return runFromRepo(*ref, args);
         };
         packager.setBundleCB(utilsBundler);
     } else {
         qDebug() << "cn.org.linyaps.builder.utils not found, using system tools";
     }
 
-    if (!option.iconPath.empty()) {
-        if (auto ret = packager.setIcon(QFileInfo{ option.iconPath.c_str() }); !ret) {
-            return LINGLONG_ERR(ret);
+    const bool underProject = this->project.has_value();
+    auto curRef = [this, &exportOpts, underProject, distributedOnly]() {
+        LINGLONG_TRACE("get current reference");
+
+        if (distributedOnly) {
+            auto fuzzyRef = package::FuzzyReference::parse(QString::fromStdString(exportOpts.ref));
+            if (!fuzzyRef) {
+                return utils::error::Result<package::Reference>(tl::unexpect_t{},
+                                                                std::move(fuzzyRef).error());
+            }
+
+            auto targetRef = this->repo.clearReference(*fuzzyRef, { .fallbackToRemote = false });
+            if (!targetRef) {
+                return utils::error::Result<package::Reference>(tl::unexpect_t{},
+                                                                std::move(targetRef).error());
+            }
+
+            return utils::error::Result<package::Reference>(std::move(targetRef).value());
         }
-    }
 
-    if (project.exclude) {
-        packager.exclude(project.exclude.value());
-    }
-
-    if (project.include) {
-        packager.include(project.include.value());
-    }
-
-    if (!option.full && project.runtime) {
-        auto ret = packager.loadBlackList();
-        if (!ret) {
-            return LINGLONG_ERR(ret);
+        if (!underProject) {
+            auto err = utils::error::Error::Err(QT_MESSAGELOG_FILE,
+                                                QT_MESSAGELOG_LINE,
+                                                linglong_trace_message,
+                                                "not under project");
+            return utils::error::Result<package::Reference>(tl::unexpect, std::move(err));
         }
 
-        // load needed libraries
-        ret = packager.loadNeededFiles();
-        if (!ret) {
-            return LINGLONG_ERR(ret);
-        }
-    }
+        return currentReference(*this->project);
+    }();
 
-    auto baseRef = clearDependency(this->project.base, false, false);
-    if (!baseRef) {
-        return LINGLONG_ERR(baseRef);
-    }
-    auto baseDir = this->repo.getLayerDir(*baseRef);
-    if (!baseDir) {
-        return LINGLONG_ERR(baseDir);
-    }
-    packager.appendLayer(*baseDir);
-
-    if (!option.compressor.empty()) {
-        packager.setCompressor(option.compressor.c_str());
-    }
-    if (this->project.runtime) {
-        auto runtimeRef = clearDependency(this->project.runtime.value(), false, false);
-        if (!runtimeRef) {
-            return LINGLONG_ERR(runtimeRef);
-        }
-        auto runtimeDir = this->repo.getLayerDir(*runtimeRef);
-        if (!runtimeDir) {
-            return LINGLONG_ERR(runtimeDir);
-        }
-        packager.appendLayer(*runtimeDir);
-    }
-
-    auto curRef = currentReference(this->project);
     if (!curRef) {
         return LINGLONG_ERR(curRef);
-    }
-
-    auto appDir = this->repo.getLayerDir(*curRef);
-    if (!appDir) {
-        return LINGLONG_ERR(appDir);
-    }
-    packager.appendLayer(*appDir); // app layer must be the last of appended layer
-
-    if (!option.loader.empty()) {
-        packager.setLoader(option.loader.c_str());
     }
 
     QString uabFile;
@@ -1684,7 +1682,116 @@ utils::error::Result<void> Builder::exportUAB(const ExportOption &option,
                                                                        curRef->version.toString(),
                                                                        curRef->channel));
     }
-    if (auto ret = packager.pack(uabFile, !option.full); !ret) {
+
+    // export single ref
+    if (distributedOnly) {
+        auto layerDir = this->repo.getLayerDir(*curRef);
+        if (!layerDir) {
+            return LINGLONG_ERR(layerDir);
+        }
+
+        auto ret = packager.appendLayer(*layerDir);
+        if (!ret) {
+            return LINGLONG_ERR(ret);
+        }
+
+        ret = packager.pack(uabFile, true);
+        if (!ret) {
+            return LINGLONG_ERR(ret);
+        }
+
+        return LINGLONG_OK;
+    }
+
+    // if we get there, project must be set
+    if (!underProject) {
+        return LINGLONG_ERR("project is not set");
+    }
+
+    if (!option.iconPath.empty()) {
+        if (auto ret = packager.setIcon(QFileInfo{ option.iconPath.c_str() }); !ret) {
+            return LINGLONG_ERR(ret);
+        }
+    }
+
+    if (underProject && this->project->exclude) {
+        auto ret = packager.exclude(project->exclude.value());
+        if (!ret) {
+            return LINGLONG_ERR(ret);
+        }
+    }
+
+    if (underProject && this->project->include) {
+        auto ret = packager.include(project->include.value());
+        if (!ret) {
+            return LINGLONG_ERR(ret);
+        }
+    }
+
+    if (this->project->runtime) {
+        auto ret = packager.loadBlackList();
+        if (!ret) {
+            return LINGLONG_ERR(ret);
+        }
+
+        // load needed libraries
+        ret = packager.loadNeededFiles();
+        if (!ret) {
+            return LINGLONG_ERR(ret);
+        }
+    }
+
+    auto baseRef = clearDependency(this->project->base, false, false);
+    if (!baseRef) {
+        return LINGLONG_ERR(baseRef);
+    }
+
+    auto baseDir = this->repo.getLayerDir(*baseRef);
+    if (!baseDir) {
+        return LINGLONG_ERR(baseDir);
+    }
+
+    auto ret = packager.appendLayer(*baseDir);
+    if (!ret) {
+        return LINGLONG_ERR(ret);
+    }
+
+    if (!option.compressor.empty()) {
+        packager.setCompressor(option.compressor.c_str());
+    }
+
+    if (this->project->runtime) {
+        auto runtimeRef = clearDependency(this->project->runtime.value(), false, false);
+        if (!runtimeRef) {
+            return LINGLONG_ERR(runtimeRef);
+        }
+
+        auto runtimeDir = this->repo.getLayerDir(*runtimeRef);
+        if (!runtimeDir) {
+            return LINGLONG_ERR(runtimeDir);
+        }
+
+        auto ret = packager.appendLayer(*runtimeDir);
+        if (!ret) {
+            return LINGLONG_ERR(ret);
+        }
+    }
+
+    auto appDir = this->repo.getLayerDir(*curRef);
+    if (!appDir) {
+        return LINGLONG_ERR(appDir);
+    }
+
+    ret = packager.appendLayer(*appDir); // app layer must be the last of appended layer
+    if (!ret) {
+        return LINGLONG_ERR(ret);
+    }
+
+    if (!option.loader.empty()) {
+        packager.setLoader(option.loader.c_str());
+    }
+
+    if (auto ret = packager.pack(uabFile, false); !ret) {
         return LINGLONG_ERR(ret);
     }
 
@@ -1695,7 +1802,8 @@ utils::error::Result<void> Builder::exportLayer(const ExportOption &option)
 {
     LINGLONG_TRACE("export layer file");
 
-    auto ref = currentReference(this->project);
+    auto &project = *this->project;
+    auto ref = currentReference(project);
     if (!ref) {
         return LINGLONG_ERR(ref);
     }
@@ -1772,7 +1880,11 @@ linglong::utils::error::Result<void> Builder::push(const std::string &module,
 {
     LINGLONG_TRACE("push reference to remote repository");
 
-    auto ref = currentReference(this->project);
+    if (!this->project) {
+        return LINGLONG_ERR("not under project");
+    }
+
+    auto ref = currentReference(*this->project);
     if (!ref) {
         return LINGLONG_ERR(ref);
     }
@@ -1825,11 +1937,12 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
 {
     LINGLONG_TRACE("run application");
 
-    if (this->project.package.kind != "app") {
+    auto &project = *this->project;
+    if (project.package.kind != "app") {
         return LINGLONG_ERR("only app can run");
     }
 
-    auto curRef = currentReference(this->project);
+    auto curRef = currentReference(project);
     if (!curRef) {
         return LINGLONG_ERR(curRef);
     }
@@ -1859,7 +1972,7 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
         }
         // 生成 gdbinit 支持在容器中使用gdb $binary调试
         {
-            std::string appPrefix = "/opt/apps/" + this->project.package.id + "/files";
+            std::string appPrefix = "/opt/apps/" + project.package.id + "/files";
             std::string debugDir = "/usr/lib/debug:/runtime/lib/debug:" + appPrefix + "/lib/debug";
             auto gdbinit = workdir / "linglong/gdbinit";
             std::ofstream f(gdbinit);
@@ -2008,7 +2121,7 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
             process.args->push_back(arg.toStdString());
         }
     } else {
-        process.args = this->project.command;
+        process.args = project.command;
         if (!process.args) {
             process.args = std::vector<std::string>{ "bash" };
         }
@@ -2024,7 +2137,7 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
 }
 
 utils::error::Result<void> Builder::runFromRepo(const package::Reference &ref,
-                                                std::vector<std::string> args)
+                                                const std::vector<std::string> &args)
 {
     LINGLONG_TRACE("run with ref " + ref.toString());
 
@@ -2148,7 +2261,8 @@ utils::error::Result<void> Builder::runtimeCheck()
     LINGLONG_TRACE("runtime check");
     printMessage("[Runtime Check]");
     // skip runtime check for non-app packages
-    if (this->project.package.kind != "app") {
+    auto &project = *this->project;
+    if (project.package.kind != "app") {
         printMessage("Runtime check skipped", 2);
         return LINGLONG_OK;
     }
@@ -2173,6 +2287,7 @@ utils::error::Result<void> Builder::generateEntryScript() noexcept
 {
     LINGLONG_TRACE("generate entry script");
 
+    auto &project = *this->project;
     QFile entry{ this->workingDir.absoluteFilePath("linglong/entry.sh") };
     if (entry.exists() && !entry.remove()) {
         return LINGLONG_ERR(entry);
@@ -2228,10 +2343,11 @@ utils::error::Result<bool> Builder::generateBuildDependsScript() noexcept
 {
     LINGLONG_TRACE("generate build depends script");
 
-    if (this->project.buildext) {
+    auto &project = *this->project;
+    if (project.buildext) {
         std::string content;
 
-        auto &buildext = *this->project.buildext;
+        auto &buildext = *project.buildext;
         if (buildext.apt) {
             auto &apt = *buildext.apt;
             if (apt.buildDepends) {
@@ -2270,10 +2386,11 @@ utils::error::Result<bool> Builder::generateDependsScript() noexcept
 {
     LINGLONG_TRACE("generate depends script");
 
-    if (this->project.buildext) {
+    auto &project = *this->project;
+    if (project.buildext) {
         std::string content;
 
-        auto &buildext = *this->project.buildext;
+        auto &buildext = *project.buildext;
         if (buildext.apt) {
             auto &apt = *buildext.apt;
             if (apt.depends) {
@@ -2417,11 +2534,12 @@ void Builder::printBasicInfo()
     printMessage("[Builder info]");
     printMessage(std::string("Linglong Builder Version: ") + LINGLONG_VERSION, 2);
     printMessage("[Build Target]");
-    printMessage(this->project.package.id, 2);
+    auto &project = *this->project;
+    printMessage(project.package.id, 2);
     printMessage("[Project Info]");
-    printMessage("Package Name: " + this->project.package.name, 2);
-    printMessage("Version: " + this->project.package.version, 2);
-    printMessage("Package Type: " + this->project.package.kind, 2);
+    printMessage("Package Name: " + project.package.name, 2);
+    printMessage("Version: " + project.package.version, 2);
+    printMessage("Package Type: " + project.package.kind, 2);
     printMessage("Build Arch: " + projectRef->arch.toString().toStdString(), 2);
 }
 

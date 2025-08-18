@@ -460,7 +460,7 @@ int extractBundle(std::string_view destination) noexcept
     return 0;
 }
 
-int runAppLoader(bool onlyApp, const std::vector<std::string_view> &loaderArgs) noexcept
+int runAppLoader(const std::vector<std::string_view> &loaderArgs) noexcept
 {
     auto loader = mountPoint / "loader";
     std::error_code ec;
@@ -498,7 +498,7 @@ int runAppLoader(bool onlyApp, const std::vector<std::string_view> &loaderArgs) 
     }
 
     if (loaderPid == 0) {
-        if (onlyApp && ::setenv("LINGLONG_UAB_LOADER_ONLY_APP", "true", 1) < 0) {
+        if (::setenv("LINGLONG_UAB_LOADER_ONLY_APP", "true", 1) < 0) {
             std::cerr << "setenv error: " << ::strerror(errno) << std::endl;
             return errno;
         }
@@ -667,30 +667,33 @@ int main(int argc, char **argv)
         return ret;
     }
 
-    bool onlyApp = metaInfo.onlyApp.value_or(false);
-    if (onlyApp) {
-        std::string appID;
-        std::string module;
-        for (const auto &layer : metaInfo.layers) {
-            if (layer.info.kind == "app") {
-                appID = layer.info.id;
-                module = layer.info.packageInfoV2Module;
-                break;
-            }
-        }
+    const bool onlyApp = metaInfo.onlyApp.value_or(false);
 
-        if (appID.empty() || module.empty()) {
-            std::cerr << "failed to find appID and module" << std::endl;
-            return 1;
-        }
+    if (!onlyApp) {
+        std::cout << "This UAB is not support for runnning" << std::endl;
+        return 0;
+    }
 
-        std::string envAppRoot =
-          std::string(mountPoint) + "/layers/" + appID + "/" + module + "/files";
-        if (::setenv("LINGLONG_UAB_APPROOT", const_cast<char *>(envAppRoot.data()), 1) == -1) {
-            std::cerr << "setenv error: " << ::strerror(errno) << std::endl;
-            return 1;
+    std::string appID;
+    std::string module;
+    for (const auto &layer : metaInfo.layers) {
+        if (layer.info.kind == "app") {
+            appID = layer.info.id;
+            module = layer.info.packageInfoV2Module;
+            break;
         }
     }
 
-    return runAppLoader(onlyApp, opts.loaderArgs);
+    if (appID.empty() || module.empty()) {
+        std::cerr << "failed to find appID and module" << std::endl;
+        return 1;
+    }
+
+    std::string envAppRoot = std::string(mountPoint) + "/layers/" + appID + "/" + module + "/files";
+    if (::setenv("LINGLONG_UAB_APPROOT", const_cast<char *>(envAppRoot.data()), 1) == -1) {
+        std::cerr << "setenv error: " << ::strerror(errno) << std::endl;
+        return 1;
+    }
+
+    return runAppLoader(opts.loaderArgs);
 }

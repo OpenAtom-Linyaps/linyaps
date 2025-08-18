@@ -70,25 +70,26 @@ public:
 
     utils::error::Result<void> setIcon(const QFileInfo &icon) noexcept;
     utils::error::Result<void> appendLayer(const LayerDir &layer) noexcept;
-    utils::error::Result<void> pack(const QString &uabFilename, bool onlyApp) noexcept;
+    utils::error::Result<void> pack(const QString &uabFilePath, bool distributedOnly) noexcept;
     utils::error::Result<void> exclude(const std::vector<std::string> &files) noexcept;
     utils::error::Result<void> include(const std::vector<std::string> &files) noexcept;
     utils::error::Result<void> loadBlackList() noexcept;
     utils::error::Result<void> loadNeededFiles() noexcept;
-    utils::error::Result<void> setLoader(const QString &loader) noexcept;
-    utils::error::Result<void> setCompressor(const QString &compressor) noexcept;
-    utils::error::Result<void> setDefaultHeader(const QString &header) noexcept;
-    utils::error::Result<void> setDefaultLoader(const QString &loader) noexcept;
-    utils::error::Result<void> setDefaultBox(const QString &box) noexcept;
-    utils::error::Result<void>
-    setBundleCB(std::function<utils::error::Result<void>(const QString &, const QString &)>
-                  bundleCB) noexcept;
+    void setLoader(const QString &loader) noexcept;
+    void setCompressor(const QString &compressor) noexcept;
+    void setDefaultHeader(const QString &header) noexcept;
+    void setDefaultLoader(const QString &loader) noexcept;
+    void setDefaultBox(const QString &box) noexcept;
+    void setBundleCB(std::function<utils::error::Result<void>(const QString &, const QString &)>
+                       bundleCB) noexcept;
 
 private:
     [[nodiscard]] utils::error::Result<void> packIcon() noexcept;
-    [[nodiscard]] utils::error::Result<void> packBundle(bool onlyApp) noexcept;
-    [[nodiscard]] utils::error::Result<void> prepareBundle(const QDir &bundleDir,
-                                                           bool onlyApp) noexcept;
+    [[nodiscard]] utils::error::Result<void> packBundle(bool distributed) noexcept;
+    [[nodiscard]] utils::error::Result<void>
+    prepareExecutableBundle(const QDir &bundleDir) noexcept;
+    [[nodiscard]] utils::error::Result<void>
+    prepareDistributedBundle(const QDir &bundleDir) noexcept;
     [[nodiscard]] utils::error::Result<void> packMetaInfo() noexcept;
     [[nodiscard]] utils::error::Result<std::pair<bool, std::unordered_set<std::string>>>
     filteringFiles(const LayerDir &layer) const noexcept;

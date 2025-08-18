@@ -9,8 +9,6 @@
 #include "linglong/builder/linglong_builder.h"
 #include "linglong/cli/cli.h"
 
-#include <filesystem>
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -45,7 +43,7 @@ struct RemoveCommandOptions
 
 struct ExportCommandOptions
 {
-    linglong::builder::ExportOption exportSpecificOptions{ .exportI18n = true };
+    linglong::builder::ExportOption exportSpecificOptions;
     bool layerMode = false;
     std::string outputFile;
 };

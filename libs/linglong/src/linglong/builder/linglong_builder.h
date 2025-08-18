@@ -23,9 +23,9 @@ struct ExportOption
     std::string iconPath;
     std::string loader;
     std::string compressor;
+    std::string ref;
+    std::vector<std::string> modules;
     bool noExportDevelop{ false };
-    bool exportI18n{ false };
-    bool full{ false };
 };
 
 struct BuilderBuildOptions
@@ -51,7 +51,7 @@ public:
     // 记录linglong.yaml的位置，因为可以通过命令行参数传递，位置不再固定
     // 主要用于在构建完成后将linglong.yaml复制到应用中
     std::string projectYamlFile;
-    explicit Builder(const api::types::v1::BuilderProject &project,
+    explicit Builder(std::optional<api::types::v1::BuilderProject> project,
                      const QDir &workingDir,
                      repo::OSTreeRepo &repo,
                      runtime::ContainerBuilder &containerBuilder,
@@ -64,7 +64,7 @@ public:
     auto build(const QStringList &args = { "/project/linglong/entry.sh" }) noexcept
       -> utils::error::Result<void>;
 
-    auto exportUAB(const ExportOption &option, const std::filesystem::path outputFile = {})
+    auto exportUAB(const ExportOption &option, const std::filesystem::path &outputFile = {})
       -> utils::error::Result<void>;
     auto exportLayer(const ExportOption &option) -> utils::error::Result<void>;
 
@@ -83,7 +83,7 @@ public:
     auto run(const QStringList &modules, const QStringList &args, bool debug = false)
       -> utils::error::Result<void>;
     auto runtimeCheck() -> utils::error::Result<void>;
-    auto runFromRepo(const package::Reference &ref, std::vector<std::string> args)
+    auto runFromRepo(const package::Reference &ref, const std::vector<std::string> &args)
       -> utils::error::Result<void>;
 
     void setBuildOptions(const BuilderBuildOptions &options) noexcept { buildOptions = options; }
@@ -119,7 +119,7 @@ private:
 private:
     repo::OSTreeRepo &repo;
     QDir workingDir;
-    api::types::v1::BuilderProject project;
+    std::optional<api::types::v1::BuilderProject> project;
     runtime::ContainerBuilder &containerBuilder;
     api::types::v1::BuilderConfig cfg;
     BuilderBuildOptions buildOptions;

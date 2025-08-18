@@ -495,8 +495,6 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv) // NOLINT
     }
 
     if (pid == 0) {
-        std::cout << "run container" << boxBin.string() << " " << bundleArg << " " << containerID
-                  << std::endl;
         return ::execl(boxBin.c_str(),
                        boxBin.c_str(),
                        "--cgroup-manager=disabled",

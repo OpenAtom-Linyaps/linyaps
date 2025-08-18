@@ -12,6 +12,11 @@
 
 namespace linglong::package {
 
+utils::error::Result<Reference> Reference::parse(const std::string &raw) noexcept
+{
+    return parse(QString::fromStdString(raw));
+}
+
 utils::error::Result<Reference> Reference::parse(const QString &raw) noexcept
 {
     LINGLONG_TRACE("parse reference string");

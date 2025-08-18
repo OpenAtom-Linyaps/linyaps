@@ -14,10 +14,10 @@
 #include "linglong/repo/client_factory.h"
 #include "linglong/repo/config.h"
 #include "linglong/repo/migrate.h"
-#include "linglong/utils/command/env.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/gettext.h"
 #include "linglong/utils/global/initialize.h"
+#include "linglong/utils/log/log.h"
 #include "linglong/utils/serialize/yaml.h"
 #include "ocppi/cli/crun/Crun.hpp"
 
@@ -321,35 +321,26 @@ int handleExport(linglong::builder::Builder &builder, const ExportCommandOptions
 {
     // Create a mutable copy of the export options to potentially modify defaults
     auto exportOpts = options.exportSpecificOptions;
+    // layer 默认使用lz4, 保持和之前版本的兼容
+    if (exportOpts.compressor.empty()) {
+        qInfo() << "Compressor not specified, defaulting to lz4 for layer export.";
+        exportOpts.compressor = "lz4";
+    }
 
     if (options.layerMode) {
-        qInfo() << "Exporting as layer file...";
-        // layer 默认使用lz4, 保持和之前版本的兼容
-        if (exportOpts.compressor.empty()) {
-            qInfo() << "Compressor not specified, defaulting to lz4 for layer export.";
-            exportOpts.compressor = "lz4";
-        }
-
         auto result = builder.exportLayer(exportOpts);
         if (!result) {
             qCritical() << "Export layer failed: " << result.error();
             return result.error().code();
         }
-        qInfo() << "Layer export completed successfully.";
-    } else {
-        qInfo() << "Exporting as UAB file...";
-        // uab 默认使用lz4可以更快解压速度，避免影响应用自运行
-        if (exportOpts.compressor.empty()) {
-            qInfo() << "Compressor not specified, defaulting to lz4 for UAB export.";
-            exportOpts.compressor = "lz4";
-        }
 
-        auto result = builder.exportUAB(exportOpts, options.outputFile);
-        if (!result) {
-            qCritical() << "Export UAB failed: " << result.error();
-            return result.error().code();
-        }
-        qInfo() << "UAB export completed successfully.";
+        return 0;
+    }
+
+    auto result = builder.exportUAB(exportOpts, options.outputFile);
+    if (!result) {
+        qCritical() << "Export UAB failed: " << result.error();
+        return result.error().code();
     }
 
     return 0;
@@ -881,18 +872,15 @@ You can report bugs to the linyaps team under this project: https://github.com/O
         ->add_option("--icon", exportOpts.exportSpecificOptions.iconPath, _("Uab icon (optional)"))
         ->type_name("FILE")
         ->check(CLI::ExistingFile);
-    auto *fullOpt =
-      buildExport->add_flag("--full", exportOpts.exportSpecificOptions.full, _("Export uab fully"))
-        ->group(hiddenGroup);
     auto *layerFlag =
       buildExport
         ->add_flag("--layer", exportOpts.layerMode, _("Export to linyaps layer file (deprecated)"))
-        ->excludes(iconOpt, fullOpt);
+        ->excludes(iconOpt);
     buildExport
       ->add_option("--loader", exportOpts.exportSpecificOptions.loader, _("Use custom loader"))
       ->type_name("FILE")
       ->check(CLI::ExistingFile)
-      ->excludes(layerFlag, fullOpt);
+      ->excludes(layerFlag);
     buildExport
       ->add_flag("--no-develop",
                  exportOpts.exportSpecificOptions.noExportDevelop,
@@ -900,6 +888,17 @@ You can report bugs to the linyaps team under this project: https://github.com/O
       ->needs(layerFlag);
     buildExport->add_option("-o, --output", exportOpts.outputFile, _("Output file"))
       ->type_name("FILE")
+      ->excludes(layerFlag);
+    buildExport
+      ->add_option("--ref", exportOpts.exportSpecificOptions.ref, _("Reference of the package"))
+      ->type_name("REF")
+      ->check(validatorString)
+      ->excludes(layerFlag);
+    buildExport
+      ->add_option("--modules", exportOpts.exportSpecificOptions.modules, _("Modules to export"))
+      ->type_name("MODULES")
+      ->delimiter(',')
+      ->check(validatorString)
       ->excludes(layerFlag);
 
     // build push
@@ -1117,43 +1116,36 @@ You can report bugs to the linyaps team under this project: https://github.com/O
 
     // use the current directory as the project(working) directory
     std::error_code ec;
-    auto projectDir = std::filesystem::current_path(ec);
+    auto cwd = std::filesystem::current_path(ec);
     if (ec) {
-        std::cerr << "invalid current directory: " << ec.message() << std::endl;
+        LogE("invalid current directory: {}", ec.message());
         return -1;
     }
 
-    auto canonicalYamlPath = getProjectYAMLPath(projectDir, filePath);
-    if (!canonicalYamlPath) {
-        std::cerr << canonicalYamlPath.error().message().toStdString() << std::endl;
-        return -1;
-    }
-    if (canonicalYamlPath->string().rfind(projectDir.string(), 0) != 0) {
-        std::cerr << "the project file " << canonicalYamlPath->string()
-                  << " is not under the current project directory " << projectDir.string();
+    auto canonicalYamlPath = getProjectYAMLPath(cwd, filePath);
+    if (canonicalYamlPath && canonicalYamlPath->string().rfind(cwd.string(), 0) != 0) {
+        LogE("the project file {} is not under the current working directory {}",
+             canonicalYamlPath->string(),
+             cwd.string());
         return -1;
     }
 
-    auto project = parseProjectConfig(*canonicalYamlPath);
-    if (!project) {
-        qCritical() << project.error();
-        return -1;
+    std::optional<linglong::api::types::v1::BuilderProject> project;
+    if (canonicalYamlPath && std::filesystem::exists(*canonicalYamlPath, ec)) {
+        auto projectRet = parseProjectConfig(*canonicalYamlPath);
+        if (!projectRet) {
+            LogE("{}", projectRet.error());
+            return -1;
+        }
+
+        project = std::move(projectRet).value();
     }
 
-    linglong::builder::Builder builder(*project,
-                                       QDir(QString::fromStdString(projectDir)),
+    linglong::builder::Builder builder(std::move(project),
+                                       QDir(cwd.c_str()),
                                        repo,
                                        *containerBuilder,
                                        *builderCfg);
-    builder.projectYamlFile = std::move(canonicalYamlPath).value();
-
-    if (buildBuilder->parsed()) {
-        return handleBuild(builder, buildOpts);
-    }
-
-    if (buildRun->parsed()) {
-        return handleRun(builder, runOpts);
-    }
 
     if (buildExport->parsed()) {
         return handleExport(builder, exportOpts);
@@ -1166,6 +1158,20 @@ You can report bugs to the linyaps team under this project: https://github.com/O
             pushOpts.pushModules = getProjectModule(*project);
         }
         return handlePush(builder, pushOpts);
+    }
+
+    if (!canonicalYamlPath) {
+        LogE("the project file is not found");
+        return -1;
+    }
+
+    builder.projectYamlFile = std::move(canonicalYamlPath).value();
+    if (buildBuilder->parsed()) {
+        return handleBuild(builder, buildOpts);
+    }
+
+    if (buildRun->parsed()) {
+        return handleRun(builder, runOpts);
     }
 
     std::cout << commandParser.help("", CLI::AppFormatMode::All);

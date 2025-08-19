@@ -15,6 +15,8 @@
 [![Code Size](https://img.shields.io/github/languages/code-size/OpenAtom-Linyaps/linyaps)](https://github.com/OpenAtom-Linyaps/linyaps)
 [![GitHub Issues](https://img.shields.io/github/issues/OpenAtom-Linyaps/linyaps?style=social)](https://github.com/OpenAtom-Linyaps/linyaps/issues)
 
+[![Packaging status](https://repology.org/badge/vertical-allrepos/linyaps.svg)](https://repology.org/project/linyaps/versions)
+
 **Linyaps** (Linyaps Is Not Yet Another Packaging System) is a **cross-distribution Linux package format** developed and open-sourced by the Linyaps community. It implements application packaging, management, and distribution through independent sandbox containers, aiming to replace traditional package managers like deb and rpm. Linyaps ensures Linux software runs with better compatibility, security, and efficiency.
 
 ### :sparkles: Highlights

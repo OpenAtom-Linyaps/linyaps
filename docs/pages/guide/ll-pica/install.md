@@ -15,3 +15,14 @@ echo "deb [trusted=yes] https://ci.deepin.com/repo/deepin/deepin-community/lingl
 sudo apt update
 sudo apt install linglong-pica
 ```
+
+## Arch Linux
+
+通过 [AUR 仓库](https://aur.archlinux.org/packages/linglong-pica)或[自建源仓库](https://github.com/taotieren/aur-repo)安装。
+
+```bash
+# AUR
+yay -Syu linglong-pica
+# 或自建源
+sudo pacman -Syu linglong-pica
+```

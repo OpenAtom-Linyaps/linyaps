@@ -36,6 +36,12 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## 安装说明
 
+### Arch / Manjaro / Parabola Linux 
+
+```sh
+sudo pacman -Syu linyaps
+```
+
 ### deepin 25
 
 ```sh

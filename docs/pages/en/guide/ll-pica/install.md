@@ -14,4 +14,15 @@ sudo apt install linglong-pica
 echo "deb [trusted=yes] https://ci.deepin.com/repo/deepin/deepin-community/linglong-repo/ unstable main" | sudo tee -a /etc/apt/sources.list
 sudo apt update
 sudo apt install linglong-pica
+
+```
+## Arch Linux
+
+Install via [AUR repository](https://aur.archlinux.org/packages/linglong-pica) or [self-hosted repository](https://github.com/taotieren/aur-repo).
+
+```bash
+# AUR
+yay -Syu linglong-pica
+# OR self-hosted
+sudo pacman -Syu linglong-pica
 ```

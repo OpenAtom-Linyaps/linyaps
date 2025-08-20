@@ -16,6 +16,7 @@ sudo apt update
 sudo apt install linglong-pica
 
 ```
+
 ## Arch Linux
 
 Install via [AUR repository](https://aur.archlinux.org/packages/linglong-pica) or [self-hosted repository](https://github.com/taotieren/aur-repo).

@@ -38,7 +38,7 @@ The installation steps below are based on the release repository. If you'd like 
 
 ## Installation Instructions
 
-### Arch / Manjaro / Parabola Linux 
+### Arch / Manjaro / Parabola Linux
 
 ```sh
 sudo pacman -Syu linyaps

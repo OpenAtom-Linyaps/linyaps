@@ -25,7 +25,8 @@
                 "CMAKE_CXX_FLAGS": "-Wall -Wextra -Wpedantic -Wno-c++20-extensions -Wno-pessimizing-move -Og -g -fsanitize=undefined",
                 "CMAKE_EXPORT_COMPILE_COMMANDS": true,
                 "CMAKE_COLOR_DIAGNOSTICS": true,
-                "ENABLE_TESTING": true
+                "ENABLE_TESTING": true,
+                "CMAKE_INSTALL_PREFIX": "/usr"
             }
         },
         {

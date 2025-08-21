@@ -40,7 +40,7 @@ utils::error::Result<void> RuntimeLayer::resolveLayer(const QStringList &modules
     }
 
     if (!layer) {
-        return LINGLONG_ERR("layer doesn't exist: " + reference.toString());
+        return LINGLONG_ERR("layer doesn't exist: " + reference.toString(), layer);
     }
 
     layerDir = *layer;
@@ -253,20 +253,22 @@ utils::error::Result<void> RunContext::resolveLayer(bool depsBinaryOnly,
     if (depsBinaryOnly) {
         depsModules << "binary";
     }
-
-    if (!baseLayer->resolveLayer(depsModules, subRef)) {
-        return LINGLONG_ERR("failed to resolve base layer");
+    auto ref = baseLayer->resolveLayer(depsModules, subRef);
+    if (!ref.has_value()) {
+        return LINGLONG_ERR("failed to resolve base layer", ref);
     }
 
     if (appLayer) {
-        if (!appLayer->resolveLayer(appModules)) {
-            return LINGLONG_ERR("failed to resolve app layer");
+        auto ref = appLayer->resolveLayer(appModules);
+        if (!ref.has_value()) {
+            return LINGLONG_ERR("failed to resolve app layer", ref);
         }
     }
 
     if (runtimeLayer) {
-        if (!runtimeLayer->resolveLayer(depsModules, subRef)) {
-            return LINGLONG_ERR("failed to resolve runtime layer");
+        auto ref = runtimeLayer->resolveLayer(depsModules, subRef);
+        if (!ref.has_value()) {
+            return LINGLONG_ERR("failed to resolve runtime layer", ref);
         }
     }
 

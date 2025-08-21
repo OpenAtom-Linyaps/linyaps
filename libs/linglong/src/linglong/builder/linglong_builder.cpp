@@ -629,8 +629,9 @@ utils::error::Result<void> Builder::buildStagePullDependency() noexcept
     }
 
     if (!this->buildOptions.skipPullDepend) {
-        if (!pullDependency(*baseRef, this->repo, "binary")) {
-            return LINGLONG_ERR("failed to pull base binary " + baseRef->toString());
+        auto ref = pullDependency(*baseRef, this->repo, "binary");
+        if (!ref.has_value()) {
+            return LINGLONG_ERR("failed to pull base binary " + baseRef->toString(), ref);
         }
 
         printReplacedText(QString("%1%2%3%4")
@@ -641,8 +642,9 @@ utils::error::Result<void> Builder::buildStagePullDependency() noexcept
                             .toStdString(),
                           2);
 
-        if (!pullDependency(*baseRef, this->repo, "develop")) {
-            return LINGLONG_ERR("failed to pull base develop " + baseRef->toString());
+        ref = pullDependency(*baseRef, this->repo, "develop");
+        if (!ref.has_value()) {
+            return LINGLONG_ERR("failed to pull base develop " + baseRef->toString(), ref);
         }
 
         printReplacedText(QString("%1%2%3%4")
@@ -654,8 +656,9 @@ utils::error::Result<void> Builder::buildStagePullDependency() noexcept
                           2);
 
         if (runtimeRef) {
-            if (!pullDependency(*runtimeRef, this->repo, "binary")) {
-                return LINGLONG_ERR("failed to pull runtime binary " + runtimeRef->toString());
+            ref = pullDependency(*runtimeRef, this->repo, "binary");
+            if (!ref.has_value()) {
+                return LINGLONG_ERR("failed to pull runtime binary " + runtimeRef->toString(), ref);
             }
 
             printReplacedText(QString("%1%2%3%4")
@@ -666,8 +669,9 @@ utils::error::Result<void> Builder::buildStagePullDependency() noexcept
                                 .toStdString(),
                               2);
 
-            if (!pullDependency(*runtimeRef, this->repo, "develop")) {
-                return LINGLONG_ERR("failed to pull runtime develop " + runtimeRef->toString());
+            ref = pullDependency(*runtimeRef, this->repo, "develop");
+            if (!ref.has_value()) {
+                return LINGLONG_ERR("failed to pull runtime develop " + runtimeRef->toString(), ref);
             }
 
             printReplacedText(QString("%1%2%3%4")

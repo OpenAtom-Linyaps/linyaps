@@ -1366,6 +1366,15 @@ OSTreeRepo::getCommitSize(const std::string &remote, const std::string &refStrin
             needed_objects++;
         }
     }
+    // 删除ref
+    if (!ostree_repo_set_ref_immediate(this->ostreeRepo.get(),
+                                       remote.c_str(),
+                                       refString.c_str(),
+                                       nullptr,
+                                       nullptr,
+                                       &gErr)) {
+        return LINGLONG_ERR("ostree_repo_set_ref_immediate", gErr);
+    }
     return std::vector<guint64>{ needed_archived, needed_unpacked, needed_objects };
 #else
     return LINGLONG_ERR("ostree_repo_pull_with_options is not supported");

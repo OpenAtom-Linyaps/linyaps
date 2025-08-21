@@ -671,7 +671,8 @@ utils::error::Result<void> Builder::buildStagePullDependency() noexcept
 
             ref = pullDependency(*runtimeRef, this->repo, "develop");
             if (!ref.has_value()) {
-                return LINGLONG_ERR("failed to pull runtime develop " + runtimeRef->toString(), ref);
+                return LINGLONG_ERR("failed to pull runtime develop " + runtimeRef->toString(),
+                                    ref);
             }
 
             printReplacedText(QString("%1%2%3%4")

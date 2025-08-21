@@ -2031,6 +2031,7 @@ void PackageManager::pullDependency(PackageTask &taskContext,
                                                           {
                                                             .forceRemote = false,
                                                             .fallbackToRemote = false,
+                                                            .semanticMatching = true,
                                                           });
             if (!localRuntime) {
                 taskContext.updateState(linglong::api::types::v1::State::Failed,
@@ -2038,7 +2039,10 @@ void PackageManager::pullDependency(PackageTask &taskContext,
                 return;
             }
 
-            runtime->reference = *localRuntime;
+            runtime =
+              linglong::package::ReferenceWithRepo{ .repo =
+                                                      this->repo.getHighestPriorityRepos().front(),
+                                                    .reference = *localRuntime };
         }
 
         // 如果runtime已存在，则直接使用, 否则从远程拉取
@@ -2097,6 +2101,7 @@ void PackageManager::pullDependency(PackageTask &taskContext,
                                                    {
                                                      .forceRemote = false,
                                                      .fallbackToRemote = false,
+                                                     .semanticMatching = true,
                                                    });
         if (!localBase) {
             taskContext.updateState(linglong::api::types::v1::State::Failed,
@@ -2104,7 +2109,9 @@ void PackageManager::pullDependency(PackageTask &taskContext,
             return;
         }
 
-        base->reference = *localBase;
+        base = linglong::package::ReferenceWithRepo{ .repo =
+                                                       this->repo.getHighestPriorityRepos().front(),
+                                                     .reference = *localBase };
     }
 
     // 如果base已存在，则直接使用, 否则从远程拉取

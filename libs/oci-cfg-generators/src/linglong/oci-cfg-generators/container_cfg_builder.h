@@ -126,7 +126,7 @@ public:
     ContainerCfgBuilder &bindRun() noexcept;
     ContainerCfgBuilder &bindTmp() noexcept;
     ContainerCfgBuilder &bindUserGroup() noexcept;
-    ContainerCfgBuilder &bindMedia() noexcept;
+    ContainerCfgBuilder &bindRemovableStorageMounts() noexcept;
 
     ContainerCfgBuilder &forwardDefaultEnv() noexcept;
     ContainerCfgBuilder &forwardEnv(const std::vector<std::string> &envList = {}) noexcept;
@@ -260,7 +260,7 @@ private:
     std::optional<std::vector<ocppi::runtime::config::types::Mount>> runMount;
     std::optional<ocppi::runtime::config::types::Mount> tmpMount;
     std::optional<std::vector<ocppi::runtime::config::types::Mount>> UGMount;
-    std::optional<std::vector<ocppi::runtime::config::types::Mount>> mediaMount;
+    std::optional<std::vector<ocppi::runtime::config::types::Mount>> removableStorageMounts;
     std::optional<std::vector<ocppi::runtime::config::types::Mount>> hostRootMount;
     std::optional<std::vector<ocppi::runtime::config::types::Mount>> hostStaticsMount;
     std::optional<std::vector<ocppi::runtime::config::types::Mount>> ipcMount;

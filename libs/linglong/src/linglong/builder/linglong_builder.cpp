@@ -769,7 +769,7 @@ utils::error::Result<void> Builder::processBuildDepends() noexcept
       .appendEnv("LINYAPS_INIT_SINGLE_MODE", "1");
 
     // overwrite runtime overlay directory
-    if (cfgBuilder.getRuntimePath()) {
+    if (cfgBuilder.getRuntimePath() && runtimeOverlay) {
         cfgBuilder.setRuntimePath(runtimeOverlay->mergedDirPath().toStdString(), false);
     }
 
@@ -908,7 +908,7 @@ utils::error::Result<bool> Builder::buildStageBuild(const QStringList &args) noe
         cfgBuilder.isolateNetWork();
     }
 
-    if (cfgBuilder.getRuntimePath()) {
+    if (cfgBuilder.getRuntimePath() && runtimeOverlay) {
         cfgBuilder.setRuntimePath(runtimeOverlay->mergedDirPath().toStdString(), false);
     }
 
@@ -1051,7 +1051,7 @@ utils::error::Result<void> Builder::buildStagePreCommit() noexcept
       .forwardDefaultEnv()
       .appendEnv("LINYAPS_INIT_SINGLE_MODE", "1");
 
-    if (cfgBuilder.getRuntimePath()) {
+    if (cfgBuilder.getRuntimePath() && runtimeOverlay) {
         cfgBuilder.setRuntimePath(runtimeOverlay->mergedDirPath().toStdString(), false);
     }
 

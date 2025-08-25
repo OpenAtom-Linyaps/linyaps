@@ -269,46 +269,54 @@ ContainerCfgBuilder &ContainerCfgBuilder::bindUserGroup() noexcept
     return *this;
 }
 
-ContainerCfgBuilder &ContainerCfgBuilder::bindMedia() noexcept
+ContainerCfgBuilder &ContainerCfgBuilder::bindRemovableStorageMounts() noexcept
 {
+    // 绑定可移动存储设备的挂载点
+    // /media: 自动挂载可移动设备（U盘、光盘等）
+    // /mnt: 系统管理员临时挂载文件系统的标准挂载点
     std::error_code ec;
-    do {
-        auto mediaDir = std::filesystem::path("/media");
-        auto status = std::filesystem::symlink_status(mediaDir, ec);
-        if (ec) {
-            break;
-        }
 
-        if (status.type() == std::filesystem::file_type::symlink) {
-            auto targetDir = std::filesystem::read_symlink(mediaDir, ec);
+    std::vector<std::string> propagationPaths{ "/media", "/mnt" };
+
+    for (const auto &path : propagationPaths) {
+        do {
+            auto mountDir = std::filesystem::path(path);
+            auto status = std::filesystem::symlink_status(mountDir, ec);
             if (ec) {
                 break;
             }
 
-            auto destinationDir = "/" + targetDir.string();
-            if (!std::filesystem::exists(destinationDir, ec)) {
-                break;
-            }
+            if (status.type() == std::filesystem::file_type::symlink) {
+                auto targetDir = std::filesystem::read_symlink(mountDir, ec);
+                if (ec) {
+                    break;
+                }
 
-            mediaMount = {
-                Mount{ .destination = destinationDir,
-                       .options = string_list{ "rbind" },
-                       .source = destinationDir,
-                       .type = "bind" },
-                Mount{ .destination = "/media",
-                       .options = string_list{ "rbind", "ro", "copy-symlink" },
-                       .source = "/media",
-                       .type = "bind" },
-            };
-        } else {
-            mediaMount = {
-                Mount{ .destination = "/media",
-                       .options = string_list{ "rbind" },
-                       .source = "/media",
-                       .type = "bind" },
-            };
-        }
-    } while (false);
+                auto destinationDir = "/" + targetDir.string();
+                if (!std::filesystem::exists(destinationDir, ec)) {
+                    break;
+                }
+
+                removableStorageMounts = {
+                    Mount{ .destination = destinationDir,
+                           .options = string_list{ "rbind" },
+                           .source = destinationDir,
+                           .type = "bind" },
+                    Mount{ .destination = path,
+                           .options = string_list{ "rbind", "ro", "copy-symlink" },
+                           .source = path,
+                           .type = "bind" },
+                };
+            } else {
+                removableStorageMounts = {
+                    Mount{ .destination = path,
+                           .options = string_list{ "rbind" },
+                           .source = path,
+                           .type = "bind" },
+                };
+            }
+        } while (false);
+    }
 
     return *this;
 }
@@ -348,7 +356,7 @@ ContainerCfgBuilder &ContainerCfgBuilder::forwardDefaultEnv() noexcept
       "GDMSESSION",
       "QT_WAYLAND_FORCE_DPI",
       "GIO_LAUNCHED_DESKTOP_FILE", // 系统监视器
-      "GNOME_DESKTOP_SESSION_ID",  // gnome 桌面标识，有些应用会读取此变量以使用gsettings配置,
+      "GNOME_DESKTOP_SESSION_ID", // gnome 桌面标识，有些应用会读取此变量以使用gsettings配置,
       // 如chrome
       "TERM",
       // 控制应用将渲染任务路由到 NVIDIA 独立显卡
@@ -1658,8 +1666,8 @@ bool ContainerCfgBuilder::mergeMount() noexcept
         std::move(UGMount->begin(), UGMount->end(), std::back_inserter(mounts));
     }
 
-    if (mediaMount) {
-        std::move(mediaMount->begin(), mediaMount->end(), std::back_inserter(mounts));
+    if (removableStorageMounts) {
+        std::move(removableStorageMounts->begin(), removableStorageMounts->end(), std::back_inserter(mounts));
     }
 
     if (hostRootMount) {

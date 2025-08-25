@@ -2082,7 +2082,7 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
       .bindCgroup()
       .bindRun()
       .bindUserGroup()
-      .bindMedia()
+      .bindRemovableStorageMounts()
       .bindHostRoot()
       .bindHostStatics()
       .bindHome(homeEnv)

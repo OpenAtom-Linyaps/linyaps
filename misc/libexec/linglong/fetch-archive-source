@@ -34,9 +34,14 @@ name=$(basename "$url")
 wget "$url" -O "$name"
 # Compare digest
 actual_hash=$(sha256sum "$name" | awk '{print $1}')
-if [ "X$actual_hash" != "X$digest" ]; then
+if [ -n "$digest" ]; then
+  if [ "X$actual_hash" != "X$digest" ]; then
     echo "File SHA256 digest is $actual_hash, expected $digest"
     exit 1;
+  fi
+else
+  echo "warning: no digest provided; skipping verification"
+  digest="$actual_hash"   # 用内容哈希作为缓存键
 fi
 # Extract the archive
 mkdir -p "$cachedir/tmp_$digest"

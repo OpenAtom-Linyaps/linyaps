@@ -33,12 +33,18 @@ auto SourceFetcher::fetch(QDir destination) noexcept -> utils::error::Result<voi
     }
     if (this->source.kind == "git") {
         if (!source.commit) {
-            return LINGLONG_ERR("digest missing");
+            return LINGLONG_ERR("commit missing");
         }
     } else {
         if (!source.digest) {
             return LINGLONG_ERR("digest missing");
         }
+    } else {
+         // 允许通过环境变量关闭强校验（风险自担）
+         const bool allowInsecure = qEnvironmentVariableIsSet("LL_BUILDER_ALLOW_INSECURE_SOURCES");
+         if (!source.digest && !allowInsecure) {
+             return LINGLONG_ERR("digest missing");
+         }
     }
 
     auto scriptName = QString("fetch-%1-source").arg(source.kind.c_str());
@@ -58,7 +64,12 @@ auto SourceFetcher::fetch(QDir destination) noexcept -> utils::error::Result<voi
       scriptFile,
       destination.absoluteFilePath(getSourceName()),
       QString::fromStdString(*source.url),
-      QString::fromStdString(source.kind == "git" ? *source.commit : *source.digest),
+      // QString::fromStdString(source.kind == "git" ? *source.commit : *source.digest),
+      QString::fromStdString(
+         source.kind == "git"
+             ? *source.commit
+             : (source.digest ? *source.digest : std::string{})  // 无 digest 时传空串
+      ),
       this->cacheDir.absolutePath(),
     });
     if (!output) {

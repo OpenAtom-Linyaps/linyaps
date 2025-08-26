@@ -414,12 +414,10 @@ utils::error::Result<void> UABPackager::prepareExecutableBundle(const QDir &bund
             continue;
         }
 
-        if (info.kind == "runtime") {
-            // if use custom loader, only app layer will be exported
-            if (!this->loader.isEmpty()) {
-                it = this->layers.erase(it);
-                continue;
-            }
+        // if use custom loader, only app layer will be exported
+        if (info.kind == "runtime" && !this->loader.isEmpty()) {
+            it = this->layers.erase(it);
+            continue;
         }
 
         ++it;
@@ -434,6 +432,11 @@ utils::error::Result<void> UABPackager::prepareExecutableBundle(const QDir &bund
     if (!layersDir.mkpath(".")) {
         return LINGLONG_ERR(
           QString{ "couldn't create directory %1" }.arg(layersDir.absolutePath()));
+    }
+
+    auto symlinkCount = sysconf(_SC_SYMLOOP_MAX);
+    if (symlinkCount < 0) {
+        symlinkCount = 40;
     }
 
     QFile srcLoader;
@@ -494,11 +497,6 @@ utils::error::Result<void> UABPackager::prepareExecutableBundle(const QDir &bund
             return LINGLONG_ERR(QString{ "couldn't create directory: %1, error: %2" }.arg(
               QString::fromStdString(moduleFilesDir.string()),
               QString::fromStdString(ec.message())));
-        }
-
-        auto symlinkCount = sysconf(_SC_SYMLOOP_MAX);
-        if (symlinkCount < 0) {
-            symlinkCount = 40;
         }
 
         if (!files.empty()) {
@@ -591,7 +589,7 @@ utils::error::Result<void> UABPackager::prepareExecutableBundle(const QDir &bund
         auto &layerInfoRef = this->meta.layers.emplace_back(
           linglong::api::types::v1::UabLayer{ .info = info, .minified = minified });
 
-        // third step, update meta infomation
+        // third step, update meta information
         if (info.kind == "app") {
             if (!this->loader.isEmpty()) {
                 srcLoader.setFileName(this->loader);
@@ -619,9 +617,8 @@ utils::error::Result<void> UABPackager::prepareExecutableBundle(const QDir &bund
             continue;
         }
 
-        // in only-App mode, after copying runtime files, append needed files from base to runtime
-        // now we only have three layers
-        if (base) {
+        // after copying runtime files, append needed files from base to runtime
+        if (info.kind == "runtime") {
             const QDir filesDir = base->absoluteFilePath("files");
             if (!filesDir.exists()) {
                 return LINGLONG_ERR(
@@ -734,15 +731,41 @@ utils::error::Result<void> UABPackager::prepareExecutableBundle(const QDir &bund
         return LINGLONG_ERR(destLoader);
     }
 
-    // use custom loader doesn't need extra layer and ll-box any more
-    if (!this->loader.isEmpty()) {
-        return LINGLONG_OK;
-    }
-
     // add extra data
     auto extraDir = QDir{ bundleDir.absoluteFilePath("extra") };
     if (!extraDir.mkpath(".")) {
         return LINGLONG_ERR(QString{ "couldn't create directory %1" }.arg(extraDir.absolutePath()));
+    }
+
+    // copy linglong-triplet-list
+    QFile tripletFile(base->absoluteFilePath("files/etc/linglong-triplet-list"));
+    if (tripletFile.exists()) {
+        if (!tripletFile.copy(extraDir.filePath("linglong-triplet-list"))) {
+            return LINGLONG_ERR(QString{ "couldn't copy %1 to %2: %3" }.arg(
+              tripletFile.fileName(),
+              extraDir.filePath("linglong-triplet-list"),
+              tripletFile.errorString()));
+        }
+    } else {
+        LogD("linglong-triplet-list doesn't exist in base layer: {}", base->absolutePath());
+    }
+
+    // copy base profile
+    QFile profileFile(base->absoluteFilePath("files/etc/profile.d/linglong.sh"));
+    if (profileFile.exists()) {
+        if (!profileFile.copy(extraDir.filePath("profile"))) {
+            return LINGLONG_ERR(
+              QString{ "couldn't copy %1 to %2: %3" }.arg(profileFile.fileName(),
+                                                          extraDir.filePath("profile"),
+                                                          profileFile.errorString()));
+        }
+    } else {
+        LogD("profile doesn't exist in base layer: {}", base->absolutePath());
+    }
+
+    // use custom loader doesn't need extra layer and ll-box any more
+    if (!this->loader.isEmpty()) {
+        return LINGLONG_OK;
     }
 
     // copy ll-box

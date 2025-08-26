@@ -120,13 +120,9 @@ struct RepoOptions
 
 struct InspectOptions
 {
-    std::optional<pid_t> pid;
-};
-
-struct DirOptions
-{
     std::string appid;
     std::string module;
+    std::string dirType{ "layer" };
 };
 
 class Cli : public QObject
@@ -159,8 +155,7 @@ public:
     int info(const InfoOptions &options);
     int content(const ContentOptions &options);
     int prune();
-    int inspect(const InspectOptions &options);
-    int dir(const DirOptions &options);
+    int inspect(CLI::App *subcommand, const InspectOptions &options);
 
     void cancelCurrentTask();
 
@@ -199,6 +194,9 @@ private:
       runtime::RunContext &runContext, const generator::ContainerCfgBuilder &cfgBuilder) noexcept;
     QDBusReply<QString> authorization();
     void updateAM() noexcept;
+    std::vector<std::string> getRunningAppContainers(const std::string &appid);
+    int getLayerDir(const InspectOptions &options);
+    int getBundleDir(const InspectOptions &options);
 
 private Q_SLOTS:
     // maybe use in the future

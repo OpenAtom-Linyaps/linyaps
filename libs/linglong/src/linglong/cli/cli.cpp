@@ -878,32 +878,20 @@ int Cli::run(const RunOptions &options)
 int Cli::enter(const EnterOptions &options)
 {
     LINGLONG_TRACE("ll-cli exec");
-    auto containers = getCurrentContainers();
-    if (!containers) {
-        auto err = LINGLONG_ERRV(containers);
-        this->printer.printErr(err);
-        return -1;
-    }
+    auto containerIDList = this->getRunningAppContainers(options.instance);
 
-    std::string containerID;
-    for (const auto &container : *containers) {
-        std::string packageName = container.package;
-        std::string::size_type colonPos = packageName.find(':');
-        std::string::size_type slashPos = packageName.find('/');
-        if (colonPos != std::string::npos && slashPos != std::string::npos) {
-            packageName = packageName.substr(colonPos + 1, slashPos - colonPos - 1);
-        }
-        if (packageName == options.instance) {
-            containerID = container.id;
-            break;
-        }
-    }
-
-    if (containerID.empty()) {
+    if (containerIDList.empty()) {
         this->printer.printErr(LINGLONG_ERRV("no container found"));
         return -1;
     }
 
+    if (containerIDList.size() > 1) {
+        this->printer.printErr(
+          LINGLONG_ERRV("multiple running containers found, please specify which one to enter"));
+        return -1;
+    }
+
+    auto containerID = containerIDList.front();
     qInfo() << "select container id" << QString::fromStdString(containerID);
     auto commands = options.commands;
     if (commands.empty()) {
@@ -1013,30 +1001,37 @@ int Cli::ps()
     return 0;
 }
 
+std::vector<std::string> Cli::getRunningAppContainers(const std::string &appid)
+{
+    LINGLONG_TRACE("get app running containers");
+
+    std::vector<std::string> containerIDList{};
+    auto containers = getCurrentContainers();
+    if (!containers) {
+        this->printer.printErr(containers.error());
+        return containerIDList;
+    }
+
+    for (const auto &container : *containers) {
+        auto fuzzyRef = package::FuzzyReference::parse(container.package);
+        if (!fuzzyRef) {
+            qWarning() << LINGLONG_ERRV(fuzzyRef).message();
+            continue;
+        }
+
+        if (fuzzyRef->id == appid || fuzzyRef->toString() == appid) {
+            containerIDList.emplace_back(container.id);
+        }
+    }
+
+    return containerIDList;
+}
+
 int Cli::kill(const KillOptions &options)
 {
     LINGLONG_TRACE("command kill");
 
-    auto containers = getCurrentContainers();
-    if (!containers) {
-        auto err = LINGLONG_ERRV(containers);
-        this->printer.printErr(err);
-        return -1;
-    }
-
-    std::vector<std::string> containerIDList;
-    for (const auto &container : *containers) {
-        auto fuzzyRef = package::FuzzyReference::parse(container.package);
-        if (!fuzzyRef) {
-            this->printer.printErr(fuzzyRef.error());
-            continue;
-        }
-
-        // support matching container id based on appid or fuzzy ref
-        if (fuzzyRef->id == options.appid || fuzzyRef->toString() == options.appid) {
-            containerIDList.emplace_back(container.id);
-        }
-    }
+    auto containerIDList = this->getRunningAppContainers(options.appid);
 
     auto ret = 0;
     for (const auto &containerID : containerIDList) {
@@ -2834,42 +2829,37 @@ void Cli::updateAM() noexcept
     }
 }
 
-int Cli::inspect(const InspectOptions &options)
+int Cli::inspect(CLI::App *app, const InspectOptions &options)
 {
-    auto myContainersRet = getCurrentContainers();
-    if (!myContainersRet) {
-        this->printer.printErr(myContainersRet.error());
-        return -1;
-    }
-    const auto &myContainers = *myContainersRet;
+    LINGLONG_TRACE("command inspect");
 
-    api::types::v1::InspectResult result;
+    auto argsParseFunc = [&app](const std::string &name) -> bool {
+        return app->get_subcommand(name)->parsed();
+    };
 
-    if (options.pid) {
-        qDebug() << "inspect by pid:" << options.pid.value();
-        for (const auto &container : myContainers) {
-            auto ret = isChildProcess(container.pid, options.pid.value());
-            if (!ret) {
-                this->printer.printErr(ret.error());
-                return -1;
-            }
-
-            if (*ret) {
-                result.appID = container.package;
-                break;
-            }
+    if (argsParseFunc("dir")) {
+        if (options.dirType == "layer") {
+            return this->getLayerDir(options);
+        } else if (options.dirType == "bundle") {
+            return this->getBundleDir(options);
+        } else {
+            this->printer.printErr(
+              LINGLONG_ERRV(QString("Invalid type: %1, type must be layer or bundle")
+                              .arg(QString::fromStdString(options.dirType))));
+            return -1;
         }
     }
 
-    this->printer.printInspect(result);
     return 0;
 }
 
-int Cli::dir(const DirOptions &options)
+int Cli::getLayerDir(const InspectOptions &options)
 {
-    LINGLONG_TRACE("command dir");
+    LINGLONG_TRACE("Get Layer dir");
 
-    auto fuzzyRef = package::FuzzyReference::parse(options.appid);
+    auto fuzzyString = options.appid;
+
+    auto fuzzyRef = package::FuzzyReference::parse(fuzzyString);
     if (!fuzzyRef) {
         this->printer.printErr(fuzzyRef.error());
         return -1;
@@ -2895,6 +2885,32 @@ int Cli::dir(const DirOptions &options)
     }
 
     std::cout << layerDir->absolutePath().toStdString() << std::endl;
+
+    return 0;
+}
+
+int Cli::getBundleDir(const InspectOptions &options)
+{
+    LINGLONG_TRACE("Get Bundle dir");
+
+    auto containerIDList = getRunningAppContainers(options.appid);
+
+    if (containerIDList.empty()) {
+        this->printer.printErr(LINGLONG_ERRV("Can not find the running application."));
+        return -1;
+    }
+
+    if (containerIDList.size() > 1) {
+        this->printer.printErr(
+          LINGLONG_ERRV("Found multiple running containers for the application, please specify "
+                        "the container ID to inspect."));
+        return -1;
+    }
+
+    auto bundleDir = linglong::common::dir::getBundleDir(containerIDList.front());
+
+    std::cout << bundleDir.string() << std::endl;
+
     return 0;
 }
 

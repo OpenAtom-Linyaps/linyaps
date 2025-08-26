@@ -27,6 +27,7 @@ logDbg() {
 
 processExecBin() {
         local filePath="$1"
+        local recordPath="$2"
         if [[ -z ${filePath} || ! -f ${filePath} ]]; then
                 logErr "Invalid file path: ${filePath}"
         fi
@@ -70,7 +71,7 @@ processExecBin() {
                 elif [[ ${elementSize} -eq 4 ]]; then
                         rawStr="${elements[2]} ${elements[3]}"
                         if [[ ${rawStr} == "not found" ]]; then
-                                logErr "couldn't find dependency \"${elements[0]}\" of ${filePath}"
+                                echo "couldn't find dependency \"${elements[0]}\" of ${filePath}" >> $recordPath
                         fi
 
                          # clean path
@@ -99,7 +100,13 @@ collectDependsLibs() {
                 # and it also can be executed. Therefore, try to find the executable binary with the symbol “__libc_start_main”
                 has_start="$(nm -D ${filePath} /dev/null 2>&1 | grep "__libc_start_main" || true)"
                 if [[ -n ${has_start} ]]; then
-                        processExecBin "${filePath}"
+                        recordPath=$(mktemp)
+                        processExecBin "${filePath}" "${recordPath}"
+                        if [[ -s ${recordPath} ]]; then
+                                records="$(cat $recordPath)"
+                                rm "$recordPath"
+                                logErr "\n$records"
+                        fi
                 fi
         done
 

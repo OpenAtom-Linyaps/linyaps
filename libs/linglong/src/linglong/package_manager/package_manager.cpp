@@ -533,13 +533,6 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
 
     const auto &packageInfo = *packageInfoRet;
 
-    // FIXME: need to support install develop
-    if (packageInfo.packageInfoV2Module != "binary"
-        && packageInfo.packageInfoV2Module != "runtime") {
-        return toDBusReply(-1,
-                           "The current version does not support the develop module installation.");
-    }
-
     auto architectureRet = package::Architecture::parse(packageInfo.arch[0]);
     if (!architectureRet) {
         return toDBusReply(architectureRet);

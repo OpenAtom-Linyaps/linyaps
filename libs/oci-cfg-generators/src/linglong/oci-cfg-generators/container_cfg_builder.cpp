@@ -1181,7 +1181,7 @@ bool ContainerCfgBuilder::buildMountCache() noexcept
 
     std::error_code ec;
     if (!std::filesystem::exists(*appCache, ec)) {
-        error_.reason = "app cache is not exist";
+        error_.reason = "app cache does not exist";
         error_.code = BUILD_MOUNT_CACHE_ERROR;
         return false;
     }

@@ -336,41 +336,20 @@ prepareSymlink(const std::filesystem::path &sourceRoot,
               % QString::fromStdString(destination.parent_path().string() + ":" + ec.message()));
         }
 
+        // make sure the destination is not exists
+        std::filesystem::remove(destination, ec);
+        if (ec) {
+            return LINGLONG_ERR(
+              QString{ "remove symlink %1 error: %2" }.arg(destination.string().c_str(),
+                                                           ec.message().c_str()));
+        }
+
         std::filesystem::create_symlink(target, destination, ec);
-        while (ec) {
-            if (ec != std::errc::file_exists) {
-                return LINGLONG_ERR(
-                  QString{ "create_symlink error:%1" }.arg(QString::fromStdString(ec.message())));
-            }
-
-            // check symlink target is the same as the original target
-            auto status = std::filesystem::symlink_status(destination, ec);
-            if (ec) {
-                return LINGLONG_ERR(
-                  QString{ "symlink_status %1 error: %2" }.arg(destination.string().c_str(),
-                                                               ec.message().c_str()));
-            }
-
-            // destination already exists and is not a symlink
-            if (status.type() != std::filesystem::file_type::symlink) {
-                break;
-            }
-
-            auto curTarget = std::filesystem::read_symlink(destination, ec);
-            if (ec) {
-                return LINGLONG_ERR(
-                  QString{ "read_symlink %1 error: %2" }.arg(destination.string().c_str(),
-                                                             ec.message().c_str()));
-            }
-
-            if (curTarget != target) {
-                return LINGLONG_ERR(
-                  QString{ "symlink target is not the same as the original target" }
-                  % "original target: " % QString::fromStdString(target.string())
-                  % "current target: " % QString::fromStdString(curTarget.string()));
-            }
-
-            break;
+        if (ec) {
+            return LINGLONG_ERR(
+              QString{ "create symlink %1 -> %2 error: %3" }.arg(target.string().c_str(),
+                                                                 destination.string().c_str(),
+                                                                 ec.message().c_str()));
         }
 
         if (target.is_absolute()) {

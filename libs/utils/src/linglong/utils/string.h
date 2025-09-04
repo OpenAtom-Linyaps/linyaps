@@ -11,7 +11,7 @@
 
 namespace linglong::utils {
 
-bool stringEqual(std::string_view str1, std::string_view str2, bool caseSensitive = false)
+inline bool stringEqual(std::string_view str1, std::string_view str2, bool caseSensitive = false)
 {
     if (caseSensitive) {
         return str1 == str2;
@@ -22,7 +22,7 @@ bool stringEqual(std::string_view str1, std::string_view str2, bool caseSensitiv
     });
 }
 
-std::vector<std::string> splitString(std::string_view str, char delimiter)
+inline std::vector<std::string> splitString(std::string_view str, char delimiter)
 {
     std::vector<std::string> result;
     std::string token;

@@ -113,6 +113,11 @@ $defs:
         type: string
       runtime:
         type: string
+      extensions:
+        type: array
+        description: extensions of container
+        items:
+          type: string
   InteractionRequest:
     description: |
       structured message which inspired by freedesktop Notification Spec.

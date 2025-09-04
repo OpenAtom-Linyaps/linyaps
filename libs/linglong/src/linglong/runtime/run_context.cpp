@@ -576,6 +576,11 @@ api::types::v1::ContainerProcessStateInfo RunContext::stateInfo()
         state.runtime = runtimeLayer->getReference().toString().toStdString();
     }
 
+    state.extensions = std::vector<std::string>{};
+    for (auto &ext : extensionLayers) {
+        state.extensions->push_back(ext.getReference().toString().toStdString());
+    }
+
     return state;
 }
 

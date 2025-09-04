@@ -15,7 +15,7 @@ namespace linglong::package {
 
 utils::error::Result<FuzzyReference> FuzzyReference::parse(const QString &raw) noexcept
 {
-    LINGLONG_TRACE("parse fuzz reference string " + raw);
+    LINGLONG_TRACE("parse fuzzy reference string " + raw);
 
     static auto regexp = []() noexcept {
         QRegularExpression regexp(
@@ -26,7 +26,8 @@ utils::error::Result<FuzzyReference> FuzzyReference::parse(const QString &raw) n
 
     auto matches = regexp.match(raw);
     if (not(matches.isValid() and matches.hasMatch())) {
-        return LINGLONG_ERR("regexp mismatched.", utils::error::ErrorCode::Unknown);
+        return LINGLONG_ERR("invalid fuzzy reference",
+                            utils::error::ErrorCode::InvalidFuzzyReference);
     }
 
     std::optional<QString> channel = matches.captured("channel");
@@ -48,7 +49,7 @@ utils::error::Result<FuzzyReference> FuzzyReference::parse(const QString &raw) n
         auto tmpArchitecture = Architecture::parse(architectureStr.toStdString());
         if (!tmpArchitecture) {
             return LINGLONG_ERR(tmpArchitecture.error().message(),
-                                utils::error::ErrorCode::Unknown);
+                                utils::error::ErrorCode::UnknownArchitecture);
         }
         architecture = std::move(tmpArchitecture).value();
     }

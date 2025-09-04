@@ -28,6 +28,7 @@
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/finally/finally.h"
 #include "linglong/utils/hooks.h"
+#include "linglong/utils/log/log.h"
 #include "linglong/utils/packageinfo_handler.h"
 #include "linglong/utils/serialize/json.h"
 #include "linglong/utils/transaction.h"
@@ -82,6 +83,26 @@ QVariantMap toDBusReply(utils::error::ErrorCode code,
     return utils::serialize::toQVariantMap(
       api::types::v1::CommonResult{ .code = static_cast<int>(code),   // NOLINT
                                     .message = message.toStdString(), // NOLINT
+                                    .type = std::move(type) });
+}
+
+QVariantMap toDBusReply(utils::error::ErrorCode code,
+                        std::string message,
+                        std::string type = "display") noexcept
+{
+    return utils::serialize::toQVariantMap(
+      api::types::v1::CommonResult{ .code = static_cast<int>(code), // NOLINT
+                                    .message = std::move(message),  // NOLINT
+                                    .type = std::move(type) });
+}
+
+QVariantMap toDBusReply(utils::error::ErrorCode code,
+                        const char *message,
+                        std::string type = "display") noexcept
+{
+    return utils::serialize::toQVariantMap(
+      api::types::v1::CommonResult{ .code = static_cast<int>(code), // NOLINT
+                                    .message = message,             // NOLINT
                                     .type = std::move(type) });
 }
 
@@ -180,10 +201,27 @@ utils::error::Result<bool> PackageManager::isRefBusy(const package::Reference &r
     }
     auto &runningRef = *running;
 
+    std::string refStr = ref.toString().toStdString();
     return std::find_if(runningRef.cbegin(),
                         runningRef.cend(),
-                        [&ref](const api::types::v1::ContainerProcessStateInfo &info) {
-                            return info.app == ref.toString().toStdString();
+                        [&refStr](const api::types::v1::ContainerProcessStateInfo &info) {
+                            if (info.app == refStr || info.base == refStr) {
+                                return true;
+                            }
+
+                            if (info.runtime && *info.runtime == refStr) {
+                                return true;
+                            }
+
+                            if (info.extensions) {
+                                for (const auto &extension : *info.extensions) {
+                                    if (extension == refStr) {
+                                        return true;
+                                    }
+                                }
+                            }
+
+                            return false;
                         })
       != runningRef.cend();
 }
@@ -1590,54 +1628,89 @@ auto PackageManager::Uninstall(const QVariantMap &parameters) noexcept -> QVaria
         return toDBusReply(utils::error::ErrorCode::AppUninstallFailed, paras.error().message());
     }
 
-    auto fuzzyRef = fuzzyReferenceFromPackage(paras->package);
-    if (!fuzzyRef) {
-        return toDBusReply(utils::error::ErrorCode::AppUninstallFailed, fuzzyRef.error().message());
+    auto query = linglong::repo::repoCacheQuery{ .id = paras->package.id,
+                                                 .channel = paras->package.channel,
+                                                 .version = paras->package.version };
+    auto candidate = this->repo.listLocalBy(query);
+    if (!candidate) {
+        return toDBusReply(utils::error::ErrorCode::AppUninstallFailed,
+                           candidate.error().message());
     }
 
-    auto ref = this->repo.clearReference(*fuzzyRef,
-                                         {
-                                           .fallbackToRemote = false // NOLINT
-                                         });
-    if (!ref) {
-        if (ref.error().code() == static_cast<int>(utils::error::ErrorCode::AppNotFoundFromLocal)) {
-            return toDBusReply(utils::error::ErrorCode::AppUninstallNotFoundFromLocal,
-                               fuzzyRef->toString() + " not installed.");
+    int count = 0;
+    std::optional<package::Reference> mainRef{ std::nullopt };
+    std::string mainKind;
+    for (const auto &item : *candidate) {
+        // binary and runtime are both valid main modules
+        if (item.info.packageInfoV2Module == "binary"
+            || item.info.packageInfoV2Module == "runtime") {
+            if (!mainRef) {
+                auto ref = package::Reference::fromPackageInfo(item.info);
+                if (ref) {
+                    mainRef = *ref;
+                    mainKind = item.info.kind;
+                } else {
+                    LogW("invalid package info: {}", ref.error());
+                }
+            }
+            count++;
         }
-        return toDBusReply(ref.error().code(), fuzzyRef->toString() + " not installed.");
     }
-    auto reference = *ref;
 
-    auto runningRef = isRefBusy(reference);
+    if (mainKind == "base" || mainKind == "runtime") {
+        return toDBusReply(utils::error::ErrorCode::AppUninstallBaseOrRuntime,
+                           "base or runtime package cannot be uninstalled");
+    }
+
+    if (!mainRef) {
+        return toDBusReply(utils::error::ErrorCode::AppUninstallNotFoundFromLocal,
+                           "the package is not installed");
+    }
+
+    if (count > 1) {
+        std::string items;
+        for (const auto &item : *candidate) {
+            if (item.info.packageInfoV2Module == "binary"
+                || item.info.packageInfoV2Module == "runtime") {
+                auto ref = package::Reference::fromPackageInfo(item.info);
+                if (ref) {
+                    items += (ref->toString().toStdString() + "\n");
+                } else {
+                    items += "invalid ref\n";
+                }
+            }
+        }
+        return toDBusReply(utils::error::ErrorCode::AppUninstallMultipleVersions, items);
+    }
+
+    auto runningRef = isRefBusy(*mainRef);
     if (!runningRef) {
         return toDBusReply(utils::error::ErrorCode::AppUninstallFailed,
-                           "failed to get the state of target ref:" % reference.toString() + ": "
-                             + runningRef.error().message());
+                           fmt::format("failed to get the state of ref {}: {}",
+                                       mainRef->toString(),
+                                       runningRef.error()));
     }
 
     if (*runningRef) {
-        return toDBusReply(utils::error::ErrorCode::AppUninstallFailed,
-                           "The application is currently running and cannot be "
-                           "uninstalled. Please turn off the application and try again.",
-                           "notification");
+        return toDBusReply(utils::error::ErrorCode::AppUninstallAppIsRunning, "ref is busy");
     }
 
     auto curModule = paras->package.packageManager1PackageModule.value_or("binary");
     const auto defaultRepo = linglong::repo::getDefaultRepo(this->repo.getConfig());
     auto refSpec = QString{ "%1:%2/%3/%4/%5" }.arg(QString::fromStdString(defaultRepo.name),
-                                                   reference.channel,
-                                                   reference.id,
-                                                   reference.arch.toString(),
+                                                   mainRef->channel,
+                                                   mainRef->id,
+                                                   mainRef->arch.toString(),
                                                    QString::fromStdString(curModule));
 
     auto taskRet = tasks.addNewTask(
       { refSpec },
-      [this, reference, curModule](PackageTask &taskRef) {
+      [this, mainRef = *mainRef, curModule](PackageTask &taskRef) {
           if (isTaskDone(taskRef.subState())) {
               return;
           }
 
-          this->Uninstall(taskRef, reference, curModule);
+          this->Uninstall(taskRef, mainRef, curModule);
       },
       connection());
     if (!taskRet) {
@@ -1650,7 +1723,7 @@ auto PackageManager::Uninstall(const QVariantMap &parameters) noexcept -> QVaria
     return utils::serialize::toQVariantMap(api::types::v1::PackageManager1PackageTaskResult{
       .taskObjectPath = taskRef.taskObjectPath().toStdString(),
       .code = 0,
-      .message = (ref->toString() + " is now uninstalling").toStdString(),
+      .message = (refSpec + " is now uninstalling").toStdString(),
     });
 }
 

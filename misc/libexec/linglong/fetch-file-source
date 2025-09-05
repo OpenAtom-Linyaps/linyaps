@@ -18,7 +18,8 @@ then
 fi
 # Check cache
 if [ -f "$cachedir/file_$digest" ]; then
-    cp "$cachedir/file_$digest" "$outputfile"
+    # Using hard links is faster
+    cp --remove-destination --link "$cachedir/file_$digest" "$outputfile" || cp "$cachedir/file_$digest" "$outputfile"
     exit;
 fi
 # Download file
@@ -29,4 +30,4 @@ if [ "X$actual_hash" != "X$digest" ]; then
     exit 1;
 fi
 mv "$cachedir/tmp_$digest" "$cachedir/file_$digest"
-cp "$cachedir/file_$digest" "$outputfile"
+cp --remove-destination --link "$cachedir/file_$digest" "$outputfile" || cp "$cachedir/file_$digest" "$outputfile"

@@ -8,14 +8,13 @@
 
 #include "configure.h"
 #include "linglong/utils/error/error.h"
+#include "linglong/utils/command/env.h"
 
 #include <array>
 #include <cstdlib>
 #include <cstring>
 #include <filesystem>
 #include <fstream>
-#include <functional>
-#include <limits>
 #include <sstream>
 #include <vector>
 
@@ -28,62 +27,6 @@ namespace linglong::utils {
 static const std::string PRE_INSTALL_ACTION_PREFIX = "ll-pre-install=";
 static const std::string POST_INSTALL_ACTION_PREFIX = "ll-post-install=";
 static const std::string POST_UNINSTALL_ACTION_PREFIX = "ll-post-uninstall=";
-
-// Ensures variables are cleaned up even on early returns or exceptions.
-class EnvVarGuard
-{
-public:
-    EnvVarGuard(const std::string &name, const std::string &value)
-        : name(name)
-        , setOK(false)
-    {
-        if (setenv(name.c_str(), value.c_str(), 1) == 0) {
-            setOK = true;
-        } else {
-            qWarning() << "Failed to set environment variable" << name.c_str() << ":" << errno;
-        }
-    }
-
-    EnvVarGuard(const EnvVarGuard &) = delete;
-    EnvVarGuard &operator=(const EnvVarGuard &) = delete;
-
-    EnvVarGuard(EnvVarGuard &&other) noexcept
-        : name(std::move(other.name))
-        , setOK(other.setOK)
-    {
-        other.setOK = false;
-    }
-
-    EnvVarGuard &operator=(EnvVarGuard &&other) noexcept
-    {
-        if (this != &other) {
-            if (setOK && ::getenv(name.c_str()) != nullptr) {
-                if (unsetenv(name.c_str()) != 0) {
-                    qWarning() << "Failed to unset old environment variable" << name.c_str() << ":"
-                               << errno;
-                }
-            }
-            name = std::move(other.name);
-            setOK = other.setOK;
-            other.setOK = false;
-        }
-        return *this;
-    }
-
-    ~EnvVarGuard()
-    {
-        if (setOK && ::getenv(name.c_str()) != nullptr) {
-            if (unsetenv(name.c_str()) != 0) {
-                qWarning() << "Failed to unset environment variable" << name.c_str() << ":"
-                           << errno;
-            }
-        }
-    }
-
-private:
-    std::string name; // Name of the environment variable
-    bool setOK;
-};
 
 // This function ensures the command string is safely wrapped for 'sh -c'.
 static std::string escapeAndWrapCommandForShell(const std::string &command)
@@ -106,10 +49,10 @@ utils::error::Result<void> executeHookCommands(
 {
     LINGLONG_TRACE("Executing command");
 
-    std::vector<EnvVarGuard> envVarGuards;
+    std::vector<std::unique_ptr<command::EnvironmentVariableGuard>> envVarGuards;
     envVarGuards.reserve(envVars.size());
     for (const auto &pair : envVars) {
-        envVarGuards.emplace_back(pair.first, pair.second);
+        envVarGuards.emplace_back(std::make_unique<command::EnvironmentVariableGuard>(pair.first, pair.second));
     }
 
     for (const auto &command_raw : commands) {

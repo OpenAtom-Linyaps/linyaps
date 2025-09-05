@@ -552,6 +552,7 @@ inline void from_json(const json & j, ContainerProcessStateInfo& x) {
 x.app = j.at("app").get<std::string>();
 x.base = j.at("base").get<std::string>();
 x.containerID = j.at("containerID").get<std::string>();
+x.extensions = get_stack_optional<std::vector<std::string>>(j, "extensions");
 x.runtime = get_stack_optional<std::string>(j, "runtime");
 }
 
@@ -560,6 +561,9 @@ j = json::object();
 j["app"] = x.app;
 j["base"] = x.base;
 j["containerID"] = x.containerID;
+if (x.extensions) {
+j["extensions"] = x.extensions;
+}
 if (x.runtime) {
 j["runtime"] = x.runtime;
 }

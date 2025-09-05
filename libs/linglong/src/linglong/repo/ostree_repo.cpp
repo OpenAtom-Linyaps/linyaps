@@ -546,12 +546,7 @@ utils::error::Result<package::Reference> clearReferenceLocal(const linglong::rep
         return LINGLONG_ERR(foundRef);
     }
 
-    auto ver = linglong::package::Version::parse(QString::fromStdString(foundRef->info.version));
-    auto arch = linglong::package::Architecture::parse(foundRef->info.arch[0]);
-    return package::Reference::create(QString::fromStdString(foundRef->info.channel),
-                                      QString::fromStdString(foundRef->info.id),
-                                      *ver,
-                                      *arch);
+    return package::Reference::fromPackageInfo(foundRef->info);
 };
 
 std::optional<package::Reference> matchReference(const api::types::v1::PackageInfoV2 &record,

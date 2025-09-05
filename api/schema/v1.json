@@ -125,6 +125,13 @@
         },
         "runtime": {
           "type": "string"
+        },
+        "extensions": {
+          "type": "array",
+          "description": "extensions of container",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },

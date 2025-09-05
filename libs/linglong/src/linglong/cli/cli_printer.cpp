@@ -33,8 +33,7 @@ std::wstring subwstr(std::wstring wstr, int width)
 
 void CLIPrinter::printErr(const utils::error::Error &err)
 {
-    std::cout << "Error: CODE=" << err.code() << std::endl
-              << err.message().toStdString() << std::endl;
+    std::cerr << "Error " << err.code() << ": " << err.message().toStdString() << std::endl;
 }
 
 void CLIPrinter::printPruneResult(const std::vector<api::types::v1::PackageInfoV2> &list)

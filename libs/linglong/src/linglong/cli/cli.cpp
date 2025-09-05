@@ -1644,50 +1644,16 @@ int Cli::uninstall([[maybe_unused]] CLI::App *subcommand)
         return -1;
     }
 
-    auto ref = this->repository.clearReference(*fuzzyRef,
-                                               {
-                                                 .forceRemote = false,
-                                                 .fallbackToRemote = false,
-                                               });
-    if (!ref) {
-        const auto errCode = static_cast<utils::error::ErrorCode>(ref.error().code());
-        if (errCode == utils::error::ErrorCode::AppNotFoundFromLocal) {
-            this->printer.printMessage(_("Application is not installed."));
-
-            if (options.verbose) {
-                this->printer.printErr(ref.error());
-            }
-            return -1;
-        }
-        this->printer.printErr(ref.error());
-        return -1;
-    }
-
-    std::string module = "binary";
     auto params = api::types::v1::PackageManager1UninstallParameters{};
-    if (!options.module.empty()) {
-        module = options.module;
-        params.package.packageManager1PackageModule = module;
-    }
-
-    auto layerItem = this->repository.getLayerItem(*ref, module);
-    if (!layerItem) {
-        this->printer.printErr(layerItem.error());
-        return -1;
-    }
-
-    if (layerItem->info.kind != "app") {
-        this->printer.printErr(
-          LINGLONG_ERRV("This layer is not an application, please use 'll-cli prune'.", -1));
-        return -1;
-    }
-
     params.package.id = fuzzyRef->id.toStdString();
     if (fuzzyRef->channel) {
         params.package.channel = fuzzyRef->channel->toStdString();
     }
     if (fuzzyRef->version) {
         params.package.version = fuzzyRef->version->toStdString();
+    }
+    if (!options.module.empty()) {
+        params.package.packageManager1PackageModule = options.module;
     }
 
     auto pendingReply = this->pkgMan.Uninstall(utils::serialize::toQVariantMap(params));
@@ -1726,6 +1692,21 @@ int Cli::uninstall([[maybe_unused]] CLI::App *subcommand)
         switch (resultCode) {
         case utils::error::ErrorCode::AppUninstallNotFoundFromLocal:
             this->printer.printMessage(_("Application is not installed."));
+            break;
+        case utils::error::ErrorCode::AppUninstallMultipleVersions:
+            this->printer.printMessage(
+              QString{ _("Multiple versions of the package are installed. Please specify a single "
+                         "version to uninstall:\n%1") }
+                .arg(result->message.c_str()));
+            break;
+        case utils::error::ErrorCode::AppUninstallAppIsRunning:
+            this->printer.printMessage(
+              _("The application is currently running and cannot be "
+                "uninstalled. Please turn off the application and try again."));
+            break;
+        case utils::error::ErrorCode::AppUninstallBaseOrRuntime:
+            this->printer.printMessage(
+              _("Base or runtime cannot be uninstalled, please use 'll-cli prune'."));
             break;
         case utils::error::ErrorCode::AppUninstallFailed:
         case utils::error::ErrorCode::Unknown:

@@ -36,6 +36,10 @@ struct ContainerProcessStateInfo {
 std::string app;
 std::string base;
 std::string containerID;
+/**
+* extensions of container
+*/
+std::optional<std::vector<std::string>> extensions;
 std::optional<std::string> runtime;
 };
 }

@@ -309,12 +309,17 @@ bool handle_sigevent(const file_descriptor_wrapper &sigfd,
         }
 
         if (info.ssi_signo != SIGCHLD) {
-            auto ret = ::kill(child, info.ssi_signo);
-            if (ret == -1) {
-                auto msg = std::string("Failed to forward signal ") + ::strsignal(info.ssi_signo);
-                print_sys_error(msg);
+            if (info.ssi_pid != 0) {
+                auto ret = ::kill(child, info.ssi_signo);
+                if (ret == -1) {
+                    auto msg =
+                      std::string("Failed to forward signal ") + ::strsignal(info.ssi_signo);
+                    print_sys_error(msg);
+                }
             }
 
+            print_info("Received signal " + std::to_string(info.ssi_signo)
+                       + " from kernel, just ignore it");
             continue;
         }
 
@@ -648,6 +653,10 @@ int main(int argc, char **argv) // NOLINT
     while (true) {
         ret = ::epoll_wait(epfd, events.data(), events.size(), -1);
         if (ret == -1) {
+            if (errno == EINTR) {
+                continue;
+            }
+
             print_sys_error("Failed to wait for events");
             return -1;
         }

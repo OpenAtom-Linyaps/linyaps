@@ -50,6 +50,8 @@ struct CliOptions
     std::string instance;
     std::string module;
     std::string type;
+    std::string dirType;
+    std::string version;
     std::optional<std::string> repo;
     RepoOptions repoOptions;
     std::vector<std::string> commands;
@@ -58,7 +60,6 @@ struct CliOptions
     bool showUpgradeList;
     bool forceOpt;
     bool confirmOpt;
-    std::optional<pid_t> pid;
     std::string signal;
     bool verbose;
 };
@@ -95,7 +96,6 @@ public:
     int content(CLI::App *subcommand);
     int prune(CLI::App *subcommand);
     int inspect(CLI::App *subcommand);
-    int dir(CLI::App *subcommand);
 
     void cancelCurrentTask();
 
@@ -134,6 +134,8 @@ private:
       runtime::RunContext &runContext, const generator::ContainerCfgBuilder &cfgBuilder) noexcept;
     QDBusReply<QString> authorization();
     void updateAM() noexcept;
+    int getLayerDir();
+    int getBundleDir();
 
 private Q_SLOTS:
     // maybe use in the future

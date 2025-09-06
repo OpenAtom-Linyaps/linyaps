@@ -51,11 +51,11 @@ linglong::utils::error::Result<bool> Cmd::exists() noexcept
     qDebug() << "exists" << command;
     QProcess process;
     process.setProgram("sh");
-    
+
     // Use proper shell escaping to prevent command injection
     auto quotedCommand = QString::fromStdString(quoteBashArg(command.toStdString()));
     process.setArguments({ "-c", QString("command -v %1").arg(quotedCommand) });
-    
+
     process.start();
     if (!process.waitForFinished(-1)) {
         return LINGLONG_ERR(process.errorString(), process.error());

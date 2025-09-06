@@ -46,26 +46,25 @@ linglong::utils::error::Result<void> writeFile(const std::string &filepath,
 {
     LINGLONG_TRACE(QString("write file %1").arg(filepath.c_str()));
 
-    std::error_code ec;
-    auto exists = std::filesystem::exists(filepath, ec);
-    if (ec) {
-        return LINGLONG_ERR("check file", ec);
-    }
-    if (exists) {
-        std::filesystem::remove(filepath, ec);
-        if (ec) {
-            return LINGLONG_ERR("remove file", ec);
-        }
-    }
-    std::ofstream out{ filepath };
+    // Use truncate mode to atomically overwrite the file if it exists
+    // This eliminates the race condition between check/remove/create
+    std::ofstream out{ filepath, std::ios::out | std::ios::trunc };
     if (!out.is_open()) {
-        auto msg = std::string("open file:") + std::strerror(errno);
-        return LINGLONG_ERR(msg.c_str());
+        // Try to get more specific error information
+        std::error_code ec;
+        std::filesystem::path parent = std::filesystem::path(filepath).parent_path();
+        if (!parent.empty() && !std::filesystem::exists(parent, ec)) {
+            return LINGLONG_ERR("parent directory does not exist: " + parent.string());
+        }
+        return LINGLONG_ERR("failed to open file for writing: " + filepath);
     }
     out << content;
     if (out.fail()) {
-        auto msg = std::string("write file: ") + std::strerror(errno);
-        return LINGLONG_ERR(msg.c_str());
+        return LINGLONG_ERR("failed to write content to file: " + filepath);
+    }
+    out.close();
+    if (out.fail()) {
+        return LINGLONG_ERR("failed to close file: " + filepath);
     }
     return LINGLONG_OK;
 }

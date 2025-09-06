@@ -274,7 +274,7 @@ PackageManager::getAllRunningContainers() noexcept
 
     struct flock unlocker{ .l_type = F_UNLCK, .l_whence = SEEK_SET, .l_start = 0, .l_len = 0 };
 
-    if (::fcntl(lockFd, F_SETLK, &unlocker)) {
+    if (::fcntl(lockFd, F_SETLK, &unlocker) == -1) {
         return LINGLONG_ERR(QStringLiteral("failed to unlock ") % repoLockPath % ": "
                             % ::strerror(errno));
     }

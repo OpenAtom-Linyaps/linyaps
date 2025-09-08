@@ -16,6 +16,7 @@
 #include <QDir>
 #include <QFileInfo>
 #include <QStandardPaths>
+#include <QUuid>
 
 #include <filesystem>
 #include <fstream>

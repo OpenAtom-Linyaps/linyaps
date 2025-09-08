@@ -31,7 +31,80 @@ namespace linglong::cli {
 
 class Printer;
 
-// TODO: split this into multiple options
+// 全局选项（仅用于verbose等通用选项）
+struct GlobalOptions
+{
+    bool verbose{ false };
+};
+
+// 各subcommand的独立选项结构体
+struct RunOptions
+{
+    std::string appid;
+    std::vector<std::string> filePaths;
+    std::vector<std::string> fileUrls;
+    std::vector<std::string> envs;
+    std::vector<std::string> commands;
+};
+
+struct EnterOptions
+{
+    std::string instance;
+    std::string workDir;
+    std::vector<std::string> commands;
+};
+
+struct KillOptions
+{
+    std::string appid;
+    std::string signal{ "SIGTERM" };
+};
+
+struct InstallOptions
+{
+    std::string appid;
+    std::string module;
+    std::optional<std::string> repo;
+    bool forceOpt{ false };
+    bool confirmOpt{ false };
+};
+
+struct UpgradeOptions
+{
+    std::string appid; // 可选，为空时升级所有应用
+};
+
+struct SearchOptions
+{
+    std::string appid; // 用作关键词
+    std::string type{ "all" };
+    std::optional<std::string> repo;
+    bool showDevel{ false };
+    bool showAllVersion{ false };
+};
+
+struct UninstallOptions
+{
+    std::string appid;
+    std::string module;
+};
+
+struct ListOptions
+{
+    std::string type{ "all" };
+    bool showUpgradeList{ false };
+};
+
+struct InfoOptions
+{
+    std::string appid;
+};
+
+struct ContentOptions
+{
+    std::string appid;
+};
+
 struct RepoOptions
 {
     std::string repoName;
@@ -40,27 +113,15 @@ struct RepoOptions
     std::int64_t repoPriority{ 0 };
 };
 
-struct CliOptions
+struct InspectOptions
 {
-    std::vector<std::string> filePaths;
-    std::vector<std::string> fileUrls;
-    std::vector<std::string> envs;
-    std::string workDir;
-    std::string appid;
-    std::string instance;
-    std::string module;
-    std::string type;
-    std::optional<std::string> repo;
-    RepoOptions repoOptions;
-    std::vector<std::string> commands;
-    bool showDevel;
-    bool showAllVersion;
-    bool showUpgradeList;
-    bool forceOpt;
-    bool confirmOpt;
     std::optional<pid_t> pid;
-    std::string signal;
-    bool verbose;
+};
+
+struct DirOptions
+{
+    std::string appid;
+    std::string module;
 };
 
 class Cli : public QObject
@@ -73,41 +134,38 @@ public:
     Cli &operator=(Cli &&) = delete;
     ~Cli() override = default;
     Cli(Printer &printer,
-        ocppi::cli::CLI &cli,
+        ocppi::cli::CLI &ociCLI,
         runtime::ContainerBuilder &containerBuilder,
         api::dbus::v1::PackageManager &pkgMan,
         repo::OSTreeRepo &repo,
         std::unique_ptr<InteractiveNotifier> &&notifier,
         QObject *parent = nullptr);
 
-    int run(CLI::App *subcommand);
-    int exec(CLI::App *subcommand);
-    int enter(CLI::App *subcommand);
-    int ps(CLI::App *subcommand);
-    int kill(CLI::App *subcommand);
-    int install(CLI::App *subcommand);
-    int upgrade(CLI::App *subcommand);
-    int search(CLI::App *subcommand);
-    int uninstall(CLI::App *subcommand);
-    int list(CLI::App *subcommand);
-    int repo(CLI::App *subcommand);
-    int info(CLI::App *subcommand);
-    int content(CLI::App *subcommand);
-    int prune(CLI::App *subcommand);
-    int inspect(CLI::App *subcommand);
-    int dir(CLI::App *subcommand);
+    int run(const RunOptions &options);
+    int enter(const EnterOptions &options);
+    int ps();
+    int kill(const KillOptions &options);
+    int install(const InstallOptions &options);
+    int upgrade(const UpgradeOptions &options);
+    int search(const SearchOptions &options);
+    int uninstall(const UninstallOptions &options);
+    int list(const ListOptions &options);
+    int repo(CLI::App *subcommand, const RepoOptions &options);
+    int info(const InfoOptions &options);
+    int content(const ContentOptions &options);
+    int prune();
+    int inspect(const InspectOptions &options);
+    int dir(const DirOptions &options);
 
     void cancelCurrentTask();
 
-    void setCliOptions(const CliOptions &options) noexcept { this->options = options; }
-
-    void setCliOptions(CliOptions &&options) noexcept { this->options = std::move(options); }
+    void setGlobalOptions(const GlobalOptions &options) noexcept { this->globalOptions = options; }
 
 private:
     [[nodiscard]] static utils::error::Result<void>
     RequestDirectories(const api::types::v1::PackageInfoV2 &info) noexcept;
-    [[nodiscard]] std::vector<std::string>
-    filePathMapping(const std::vector<std::string> &command) const noexcept;
+    [[nodiscard]] std::vector<std::string> filePathMapping(
+      const std::vector<std::string> &command, const RunOptions &options) const noexcept;
     static std::string mappingFile(const std::filesystem::path &file) noexcept;
     static std::string mappingUrl(std::string_view url) noexcept;
 
@@ -121,7 +179,9 @@ private:
     void printProgress() noexcept;
     [[nodiscard]] utils::error::Result<std::vector<api::types::v1::CliContainer>>
     getCurrentContainers() const noexcept;
-    int installFromFile(const QFileInfo &fileInfo, const api::types::v1::CommonOptions &options);
+    int installFromFile(const QFileInfo &fileInfo,
+                        const api::types::v1::CommonOptions &commonOptions,
+                        const std::string &appid);
     int setRepoConfig(const QVariantMap &config);
     utils::error::Result<void> runningAsRoot();
     utils::error::Result<void> runningAsRoot(const QList<QString> &args);
@@ -166,7 +226,7 @@ private:
     QString lastMessage;
     double lastPercentage{ 0 };
     linglong::utils::error::ErrorCode lastErrorCode;
-    linglong::cli::CliOptions options;
+    GlobalOptions globalOptions;
 };
 
 } // namespace linglong::cli

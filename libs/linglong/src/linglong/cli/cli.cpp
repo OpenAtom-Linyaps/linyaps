@@ -553,7 +553,7 @@ void Cli::printProgress() noexcept
             return;
         }
 
-        if (options.verbose) {
+        if (this->globalOptions.verbose) {
             this->printer.printTaskState(this->lastPercentage,
                                          this->lastMessage,
                                          this->lastState,
@@ -603,7 +603,7 @@ Cli::Cli(Printer &printer,
     }
 }
 
-int Cli::run([[maybe_unused]] CLI::App *subcommand)
+int Cli::run(const RunOptions &options)
 {
     LINGLONG_TRACE("command run");
 
@@ -679,7 +679,7 @@ int Cli::run([[maybe_unused]] CLI::App *subcommand)
     if (options.commands.empty()) {
         commands = info.command.value_or(std::vector<std::string>{ "bash" });
     }
-    commands = filePathMapping(commands);
+    commands = filePathMapping(commands, options);
 
     // this lambda will dump reference of containerID, app, base and runtime to
     // /run/linglong/getuid()/getpid() to store these needed infomation
@@ -822,7 +822,7 @@ int Cli::run([[maybe_unused]] CLI::App *subcommand)
     return 0;
 }
 
-int Cli::exec([[maybe_unused]] CLI::App *subcommand)
+int Cli::enter(const EnterOptions &options)
 {
     LINGLONG_TRACE("ll-cli exec");
     auto containers = getCurrentContainers();
@@ -941,7 +941,7 @@ Cli::getCurrentContainers() const noexcept
     return myContainers;
 }
 
-int Cli::ps([[maybe_unused]] CLI::App *subcommand)
+int Cli::ps()
 {
     auto myContainers = getCurrentContainers();
     if (!myContainers) {
@@ -961,7 +961,7 @@ int Cli::ps([[maybe_unused]] CLI::App *subcommand)
     return 0;
 }
 
-int Cli::kill([[maybe_unused]] CLI::App *subcommand)
+int Cli::kill(const KillOptions &options)
 {
     LINGLONG_TRACE("command kill");
 
@@ -1012,7 +1012,9 @@ void Cli::cancelCurrentTask()
     }
 }
 
-int Cli::installFromFile(const QFileInfo &fileInfo, const api::types::v1::CommonOptions &options)
+int Cli::installFromFile(const QFileInfo &fileInfo,
+                         const api::types::v1::CommonOptions &commonOptions,
+                         const std::string &appid)
 {
     auto filePath = fileInfo.absoluteFilePath();
     LINGLONG_TRACE(QString{ "install from file %1" }.arg(filePath));
@@ -1024,7 +1026,7 @@ int Cli::installFromFile(const QFileInfo &fileInfo, const api::types::v1::Common
         // 所以将layer或uab文件的相对路径转为绝对路径，再传给pkexec
         auto path = fileInfo.absoluteFilePath();
         for (auto i = 0; i < args.length(); i++) {
-            if (args[i] == QString::fromStdString(this->options.appid)) {
+            if (args[i] == QString::fromStdString(appid)) {
                 args[i] = path.toLocal8Bit().constData();
             }
         }
@@ -1058,9 +1060,10 @@ int Cli::installFromFile(const QFileInfo &fileInfo, const api::types::v1::Common
 
     QDBusUnixFileDescriptor dbusFileDescriptor(file.handle());
 
-    auto pendingReply = this->pkgMan.InstallFromFile(dbusFileDescriptor,
-                                                     fileInfo.suffix(),
-                                                     utils::serialize::toQVariantMap(options));
+    auto pendingReply =
+      this->pkgMan.InstallFromFile(dbusFileDescriptor,
+                                   fileInfo.suffix(),
+                                   utils::serialize::toQVariantMap(commonOptions));
     pendingReply.waitForFinished();
     if (pendingReply.isError()) {
         if (pendingReply.error().type() == QDBusError::AccessDenied) {
@@ -1118,7 +1121,7 @@ int Cli::installFromFile(const QFileInfo &fileInfo, const api::types::v1::Common
     return this->lastState == linglong::api::types::v1::State::Succeed ? 0 : -1;
 }
 
-int Cli::install([[maybe_unused]] CLI::App *subcommand)
+int Cli::install(const InstallOptions &options)
 {
     LINGLONG_TRACE("command install");
 
@@ -1134,7 +1137,7 @@ int Cli::install([[maybe_unused]] CLI::App *subcommand)
 
     // 如果检测是文件，则直接安装
     if (info.exists() && info.isFile()) {
-        return installFromFile(QFileInfo{ info.absoluteFilePath() }, params.options);
+        return installFromFile(QFileInfo{ info.absoluteFilePath() }, params.options, options.appid);
     }
 
     QDBusReply<QString> authReply = this->authorization();
@@ -1245,7 +1248,7 @@ int Cli::install([[maybe_unused]] CLI::App *subcommand)
             return -1;
         }
 
-        if (options.verbose) {
+        if (this->globalOptions.verbose) {
             this->printer.printReply({ .code = result->code, .message = result->message });
         }
 
@@ -1278,7 +1281,7 @@ int Cli::install([[maybe_unused]] CLI::App *subcommand)
     return this->lastState == linglong::api::types::v1::State::Succeed ? 0 : -1;
 }
 
-int Cli::upgrade([[maybe_unused]] CLI::App *subcommand)
+int Cli::upgrade(const UpgradeOptions &options)
 {
     LINGLONG_TRACE("command upgrade");
 
@@ -1417,7 +1420,7 @@ int Cli::upgrade([[maybe_unused]] CLI::App *subcommand)
     return 0;
 }
 
-int Cli::search([[maybe_unused]] CLI::App *subcommand)
+int Cli::search(const SearchOptions &options)
 {
     LINGLONG_TRACE("command search");
 
@@ -1432,7 +1435,7 @@ int Cli::search([[maybe_unused]] CLI::App *subcommand)
         // 检查repo是否存在
         auto it = std::find_if(repoConfig.repos.begin(),
                                repoConfig.repos.end(),
-                               [this](const api::types::v1::Repo &repo) {
+                               [this, &options](const api::types::v1::Repo &repo) {
                                    return repo.alias.value_or(repo.name) == options.repo.value();
                                });
         if (it == repoConfig.repos.end()) {
@@ -1482,7 +1485,7 @@ int Cli::search([[maybe_unused]] CLI::App *subcommand)
     connect(
       &this->pkgMan,
       &api::dbus::v1::PackageManager::SearchFinished,
-      [&pendingJobID, this, &loop](const QString &jobID, const QVariantMap &data) {
+      [&pendingJobID, this, &loop, &options](const QString &jobID, const QVariantMap &data) {
           LINGLONG_TRACE("process search result");
           // Note: once an error occurs, remember to return after exiting the loop.
           if (!pendingJobID || *pendingJobID != jobID) {
@@ -1511,7 +1514,7 @@ int Cli::search([[maybe_unused]] CLI::App *subcommand)
                                                "\n2. Verify network proxy settings if used"));
               }
 
-              if (options.verbose) {
+              if (this->globalOptions.verbose) {
                   this->printer.printErr(
                     LINGLONG_ERRV("\n" + QString::fromStdString(result->message), result->code));
               }
@@ -1557,7 +1560,7 @@ int Cli::search([[maybe_unused]] CLI::App *subcommand)
     return loop.exec();
 }
 
-int Cli::prune([[maybe_unused]] CLI::App *subcommand)
+int Cli::prune()
 {
     LINGLONG_TRACE("command prune");
 
@@ -1625,7 +1628,7 @@ int Cli::prune([[maybe_unused]] CLI::App *subcommand)
     return loop.exec();
 }
 
-int Cli::uninstall([[maybe_unused]] CLI::App *subcommand)
+int Cli::uninstall(const UninstallOptions &options)
 {
     LINGLONG_TRACE("command uninstall");
 
@@ -1717,7 +1720,7 @@ int Cli::uninstall([[maybe_unused]] CLI::App *subcommand)
             return -1;
         }
 
-        if (options.verbose) {
+        if (this->globalOptions.verbose) {
             this->printer.printErr(err);
         }
 
@@ -1751,7 +1754,7 @@ int Cli::uninstall([[maybe_unused]] CLI::App *subcommand)
     return this->lastState == linglong::api::types::v1::State::Succeed ? 0 : -1;
 }
 
-int Cli::list([[maybe_unused]] CLI::App *subcommand)
+int Cli::list(const ListOptions &options)
 
 {
     if (!options.showUpgradeList) {
@@ -1862,7 +1865,7 @@ Cli::listUpgradable(const std::string &type)
     return upgradeList;
 }
 
-int Cli::repo(CLI::App *app)
+int Cli::repo(CLI::App *app, const RepoOptions &options)
 {
     LINGLONG_TRACE("command repo");
 
@@ -1903,7 +1906,7 @@ int Cli::repo(CLI::App *app)
         return EINVAL;
     }
 
-    std::string url = options.repoOptions.repoUrl;
+    std::string url = options.repoUrl;
 
     if (argsParseFunc("add") || argsParseFunc("update")) {
         if (url.rfind("http", 0) != 0) {
@@ -1917,9 +1920,9 @@ int Cli::repo(CLI::App *app)
         }
     }
 
-    std::string name = options.repoOptions.repoName;
+    std::string name = options.repoName;
     // if alias is not set, use name as alias
-    std::string alias = options.repoOptions.repoAlias.value_or(name);
+    std::string alias = options.repoAlias.value_or(name);
     auto &cfgRef = *cfg;
 
     if (argsParseFunc("add")) {
@@ -1938,7 +1941,7 @@ int Cli::repo(CLI::App *app)
             return -1;
         }
         cfgRef.repos.push_back(api::types::v1::Repo{
-          .alias = options.repoOptions.repoAlias,
+          .alias = options.repoAlias,
           .name = name,
           .priority = 0,
           .url = url,
@@ -2008,7 +2011,7 @@ int Cli::repo(CLI::App *app)
     }
 
     if (argsParseFunc("set-priority")) {
-        existingRepo->priority = options.repoOptions.repoPriority;
+        existingRepo->priority = options.repoPriority;
         return this->setRepoConfig(utils::serialize::toQVariantMap(cfgRef));
     }
 
@@ -2044,7 +2047,7 @@ int Cli::setRepoConfig(const QVariantMap &config)
     return 0;
 }
 
-int Cli::info([[maybe_unused]] CLI::App *subcommand)
+int Cli::info(const InfoOptions &options)
 {
     LINGLONG_TRACE("command info");
 
@@ -2110,7 +2113,7 @@ int Cli::info([[maybe_unused]] CLI::App *subcommand)
     return 0;
 }
 
-int Cli::content([[maybe_unused]] CLI::App *subcommand)
+int Cli::content(const ContentOptions &options)
 {
     LINGLONG_TRACE("command content");
 
@@ -2226,8 +2229,8 @@ int Cli::content([[maybe_unused]] CLI::App *subcommand)
     return std::string{ url };
 }
 
-std::vector<std::string>
-Cli::filePathMapping(const std::vector<std::string> &command) const noexcept
+std::vector<std::string> Cli::filePathMapping(const std::vector<std::string> &command,
+                                              const RunOptions &options) const noexcept
 {
     // FIXME: couldn't handel command like 'll-cli run org.xxx.yyy --file f1 f2 f3 org.xxx.yyy %%F'
     // can't distinguish the boundary of command , need validate the command arguments in the future
@@ -2738,7 +2741,7 @@ void Cli::updateAM() noexcept
     }
 }
 
-int Cli::inspect([[maybe_unused]] CLI::App *subcommand)
+int Cli::inspect(const InspectOptions &options)
 {
     auto myContainersRet = getCurrentContainers();
     if (!myContainersRet) {
@@ -2749,10 +2752,10 @@ int Cli::inspect([[maybe_unused]] CLI::App *subcommand)
 
     api::types::v1::InspectResult result;
 
-    if (this->options.pid) {
-        qDebug() << "inspect by pid:" << this->options.pid.value();
+    if (options.pid) {
+        qDebug() << "inspect by pid:" << options.pid.value();
         for (const auto &container : myContainers) {
-            auto ret = isChildProcess(container.pid, this->options.pid.value());
+            auto ret = isChildProcess(container.pid, options.pid.value());
             if (!ret) {
                 this->printer.printErr(ret.error());
                 return -1;
@@ -2769,7 +2772,7 @@ int Cli::inspect([[maybe_unused]] CLI::App *subcommand)
     return 0;
 }
 
-int Cli::dir([[maybe_unused]] CLI::App *subcommand)
+int Cli::dir(const DirOptions &options)
 {
     LINGLONG_TRACE("command dir");
 

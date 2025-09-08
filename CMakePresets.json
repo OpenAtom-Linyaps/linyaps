@@ -12,8 +12,7 @@
             "description": "Configure linglong for installing from source.",
             "binaryDir": "${sourceDir}/build-release",
             "cacheVariables": {
-                "CMAKE_CXX_FLAGS": "-Wall -Wextra -Wpedantic -Wno-c++20-extensions -Wno-pessimizing-move -O2",
-                "CMAKE_COLOR_DIAGNOSTICS": true
+                "CMAKE_CXX_FLAGS": "-Wall -Wextra -Wpedantic -Wno-c++20-extensions -Wno-pessimizing-move -O2"
             }
         },
         {
@@ -24,7 +23,6 @@
             "cacheVariables": {
                 "CMAKE_CXX_FLAGS": "-Wall -Wextra -Wpedantic -Wno-c++20-extensions -Wno-pessimizing-move -Og -g -fsanitize=undefined",
                 "CMAKE_EXPORT_COMPILE_COMMANDS": true,
-                "CMAKE_COLOR_DIAGNOSTICS": true,
                 "ENABLE_TESTING": true,
                 "CMAKE_INSTALL_PREFIX": "/usr"
             }
@@ -36,8 +34,7 @@
             "binaryDir": "${sourceDir}/build-clang-tidy",
             "cacheVariables": {
                 "CMAKE_CXX_CLANG_TIDY": "clang-tidy",
-                "CMAKE_CXX_COMPILER": "clang++",
-                "CMAKE_COLOR_DIAGNOSTICS": true
+                "CMAKE_CXX_COMPILER": "clang++"
             }
         }
     ],

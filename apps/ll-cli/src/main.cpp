@@ -17,6 +17,7 @@
 #include "linglong/utils/finally/finally.h"
 #include "linglong/utils/gettext.h"
 #include "linglong/utils/global/initialize.h"
+#include "linglong/utils/log/log.h"
 #include "ocppi/cli/crun/Crun.hpp"
 
 #include <CLI/CLI.hpp>
@@ -703,6 +704,10 @@ You can report bugs to the linyaps team under this project: https://github.com/O
             std::cout << _("linyaps CLI version ") << LINGLONG_VERSION << std::endl;
         }
         return 0;
+    }
+    // set log level if --verbose flag is set
+    if (globalOptions.verbose) {
+        linglong::utils::log::setLogLevel(linglong::utils::log::LogLevel::Debug);
     }
 
     // check lock

@@ -1755,38 +1755,43 @@ int Cli::uninstall(const UninstallOptions &options)
 }
 
 int Cli::list(const ListOptions &options)
-
 {
-    if (!options.showUpgradeList) {
-        auto items = this->repository.listLayerItem();
-        if (!items) {
-            this->printer.printErr(items.error());
+    if (options.showUpgradeList) {
+        auto upgradeList = this->listUpgradable();
+        if (!upgradeList) {
+            this->printer.printErr(upgradeList.error());
             return -1;
         }
-        std::vector<api::types::v1::PackageInfoDisplay> list;
-        for (const auto &item : *items) {
-            nlohmann::json json = item.info;
-            auto m = json.get<api::types::v1::PackageInfoDisplay>();
-            auto t = this->repository.getLayerCreateTime(item);
-            if (t.has_value()) {
-                m.installTime = *t;
-            }
-            list.push_back(std::move(m));
-        }
-        if (!options.type.empty()) {
-            filterPackageInfosByType(list, options.type);
-        }
-        this->printer.printPackages(list);
+        // 按id排序
+        std::sort(upgradeList->begin(), upgradeList->end(), [](const auto &lhs, const auto &rhs) {
+            return lhs.id < rhs.id;
+        });
+        this->printer.printUpgradeList(*upgradeList);
         return 0;
     }
-
-    auto upgradeList = this->listUpgradable();
-    if (!upgradeList) {
-        this->printer.printErr(upgradeList.error());
+    auto items = this->repository.listLayerItem();
+    if (!items) {
+        this->printer.printErr(items.error());
         return -1;
     }
-
-    this->printer.printUpgradeList(*upgradeList);
+    std::vector<api::types::v1::PackageInfoDisplay> list;
+    for (const auto &item : *items) {
+        nlohmann::json json = item.info;
+        auto m = json.get<api::types::v1::PackageInfoDisplay>();
+        auto t = this->repository.getLayerCreateTime(item);
+        if (t.has_value()) {
+            m.installTime = *t;
+        }
+        list.push_back(std::move(m));
+    }
+    if (!options.type.empty()) {
+        filterPackageInfosByType(list, options.type);
+    }
+    // 按id排序
+    std::sort(list.begin(), list.end(), [](const auto &lhs, const auto &rhs) {
+        return lhs.id < rhs.id;
+    });
+    this->printer.printPackages(list);
     return 0;
 }
 

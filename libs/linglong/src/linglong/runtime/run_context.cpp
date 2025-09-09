@@ -74,8 +74,7 @@ RunContext::~RunContext()
 }
 
 utils::error::Result<void> RunContext::resolve(const linglong::package::Reference &runnable,
-                                               bool depsBinaryOnly,
-                                               const QStringList &appModules)
+                                               const ResolveOptions &options)
 {
     LINGLONG_TRACE("resolve RunContext from runnable " + runnable.toString());
 
@@ -95,10 +94,9 @@ utils::error::Result<void> RunContext::resolve(const linglong::package::Referenc
 
     if (info.kind == "app") {
         appLayer = RuntimeLayer(runnable, *this);
-
-        if (info.runtime) {
-            auto runtimeFuzzyRef =
-              package::FuzzyReference::parse(QString::fromStdString(*info.runtime));
+        auto runtime = options.runtimeRef.value_or(info.runtime.value_or(""));
+        if (!runtime.empty()) {
+            auto runtimeFuzzyRef = package::FuzzyReference::parse(QString::fromStdString(runtime));
             if (!runtimeFuzzyRef) {
                 return LINGLONG_ERR(runtimeFuzzyRef);
             }
@@ -121,7 +119,8 @@ utils::error::Result<void> RunContext::resolve(const linglong::package::Referenc
     }
 
     // all kinds of package has base
-    auto baseFuzzyRef = package::FuzzyReference::parse(QString::fromStdString(info.base));
+    auto baseRef = options.baseRef.value_or(info.base);
+    auto baseFuzzyRef = package::FuzzyReference::parse(QString::fromStdString(baseRef));
     if (!baseFuzzyRef) {
         return LINGLONG_ERR(baseFuzzyRef);
     }
@@ -146,7 +145,8 @@ utils::error::Result<void> RunContext::resolve(const linglong::package::Referenc
     resolveExtension(*baseLayer);
 
     // all reference are cleard , we can get actual layer directory now
-    return resolveLayer(depsBinaryOnly, appModules);
+    QStringList appModules = options.appModules.value_or(QStringList{});
+    return resolveLayer(options.depsBinaryOnly, appModules);
 }
 
 utils::error::Result<void> RunContext::resolve(const api::types::v1::BuilderProject &target,

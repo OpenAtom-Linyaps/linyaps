@@ -36,6 +36,7 @@
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/finally/finally.h"
 #include "linglong/utils/gettext.h"
+#include "linglong/utils/log/log.h"
 #include "linglong/utils/serialize/json.h"
 #include "linglong/utils/xdg/directory.h"
 #include "ocppi/runtime/ExecOption.hpp"
@@ -659,9 +660,23 @@ int Cli::run(const RunOptions &options)
     }
 
     runtime::RunContext runContext(this->repository);
-    auto res = runContext.resolve(*curAppRef);
+    linglong::runtime::ResolveOptions opts;
+    opts.baseRef = options.base;
+    opts.runtimeRef = options.runtime;
+
+    LogD("start resolve run context with base {} and runtime {}",
+         opts.baseRef.value_or("null"),
+         opts.runtimeRef.value_or("null"));
+
+    auto res = runContext.resolve(*curAppRef, opts);
     if (!res) {
         this->printer.printErr(res.error());
+        return -1;
+    }
+
+    LogD("resolved run context with base {}", runContext.getBaseLayerPath()->string());
+    if (runContext.hasRuntime()) {
+        LogD("resolved run context with runtime {}", runContext.getRuntimeLayerPath()->string());
     }
 
     const auto &appLayerItem = runContext.getCachedAppItem();

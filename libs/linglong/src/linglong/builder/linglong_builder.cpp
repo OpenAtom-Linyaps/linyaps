@@ -1948,7 +1948,10 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
     }
 
     runtime::RunContext runContext(this->repo);
-    auto res = runContext.resolve(*curRef, !debug, modules);
+    linglong::runtime::ResolveOptions opts;
+    opts.depsBinaryOnly = !debug;
+    opts.appModules = modules;
+    auto res = runContext.resolve(*curRef, opts);
     if (!res) {
         return LINGLONG_ERR(res);
     }

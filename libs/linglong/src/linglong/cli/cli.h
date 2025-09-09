@@ -45,6 +45,8 @@ struct RunOptions
     std::vector<std::string> fileUrls;
     std::vector<std::string> envs;
     std::vector<std::string> commands;
+    std::optional<std::string> base;
+    std::optional<std::string> runtime;
 };
 
 struct EnterOptions

@@ -51,6 +51,14 @@ private:
     std::optional<ExtensionRuntimeLayerInfo> extensionOf;
 };
 
+struct ResolveOptions
+{
+    bool depsBinaryOnly{ false };
+    std::optional<QStringList> appModules;
+    std::optional<std::string> baseRef;
+    std::optional<std::string> runtimeRef;
+};
+
 class RunContext
 {
 public:
@@ -62,8 +70,8 @@ public:
     ~RunContext();
 
     utils::error::Result<void> resolve(const linglong::package::Reference &runnable,
-                                       bool depsBinaryOnly = false,
-                                       const QStringList &appModules = {});
+                                       const ResolveOptions &opts = ResolveOptions{});
+
     utils::error::Result<void> resolve(const api::types::v1::BuilderProject &target,
                                        std::filesystem::path buildOutput);
 

@@ -2740,40 +2740,38 @@ void Cli::updateAM() noexcept
 
 int Cli::inspect([[maybe_unused]] CLI::App *subcommand)
 {
-    auto myContainersRet = getCurrentContainers();
-    if (!myContainersRet) {
-        this->printer.printErr(myContainersRet.error());
-        return -1;
-    }
-    const auto &myContainers = *myContainersRet;
+    LINGLONG_TRACE("command inspect");
 
-    api::types::v1::InspectResult result;
+    auto argsParseFunc = [&subcommand](const std::string &name) -> bool {
+        return subcommand->get_subcommand(name)->parsed();
+    };
 
-    if (this->options.pid) {
-        qDebug() << "inspect by pid:" << this->options.pid.value();
-        for (const auto &container : myContainers) {
-            auto ret = isChildProcess(container.pid, this->options.pid.value());
-            if (!ret) {
-                this->printer.printErr(ret.error());
-                return -1;
-            }
-
-            if (*ret) {
-                result.appID = container.package;
-                break;
-            }
+    if (argsParseFunc("dir")) {
+        if (options.dirType == "layer") {
+            return this->getLayerDir();
+        } else if (options.dirType == "bundle") {
+            return this->getBundleDir();
+        } else {
+            this->printer.printErr(
+              LINGLONG_ERRV(QString("Invalid type: %1, type must be layer or bundle")
+                              .arg(QString::fromStdString(options.dirType))));
+            return -1;
         }
     }
 
-    this->printer.printInspect(result);
     return 0;
 }
 
-int Cli::dir([[maybe_unused]] CLI::App *subcommand)
+int Cli::getLayerDir()
 {
-    LINGLONG_TRACE("command dir");
+    LINGLONG_TRACE("Get Layer dir");
 
-    auto fuzzyRef = package::FuzzyReference::parse(QString::fromStdString(options.appid));
+    auto fuzzyString = options.appid;
+    if (!options.version.empty()) {
+        fuzzyString =  options.appid + "/" + options.version;
+    }
+
+    auto fuzzyRef = package::FuzzyReference::parse(QString::fromStdString(fuzzyString));
     if (!fuzzyRef) {
         this->printer.printErr(fuzzyRef.error());
         return -1;
@@ -2799,6 +2797,44 @@ int Cli::dir([[maybe_unused]] CLI::App *subcommand)
     }
 
     std::cout << layerDir->absolutePath().toStdString() << std::endl;
+
+    return 0;
+}
+
+int Cli::getBundleDir()
+{
+    LINGLONG_TRACE("Get Bundle dir");
+
+    auto containers = getCurrentContainers();
+    if (!containers) {
+        auto err = LINGLONG_ERRV(containers);
+        this->printer.printErr(err);
+        return -1;
+    }
+
+    std::string containerID;
+    for (const auto &container : *containers) {
+        std::string packageName = container.package;
+        std::string::size_type colonPos = packageName.find(':');
+        std::string::size_type slashPos = packageName.find('/');
+        if (colonPos != std::string::npos && slashPos != std::string::npos) {
+            packageName = packageName.substr(colonPos + 1, slashPos - colonPos - 1);
+        }
+        if (packageName == options.appid) {
+            containerID = container.id;
+            break;
+        }
+    }
+
+    if (containerID.empty()) {
+        this->printer.printErr(LINGLONG_ERRV("Can not find the running application."));
+        return -1;
+    }
+
+    auto bundleDir = linglong::runtime::getBundleDir(containerID);
+
+    std::cout << bundleDir.string() << std::endl;
+
     return 0;
 }
 

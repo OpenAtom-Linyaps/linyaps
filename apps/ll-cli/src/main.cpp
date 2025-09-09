@@ -198,6 +198,8 @@ You can report bugs to the linyaps team under this project: https://github.com/O
                         .instance = "",
                         .module = "",
                         .type = "all",
+                        .dirType = "layer",
+                        .version = "",
                         .repoOptions = {},
                         .commands = {},
                         .showDevel = false,
@@ -570,40 +572,39 @@ ll-cli list --upgradable
       ->usage(_("Usage: ll-cli prune [OPTIONS]"));
 
     // add sub command inspect
-    auto *cliInspect =
-      commandParser
-        .add_subcommand("inspect", _("Display the information of installed application"))
-        ->group(CliHiddenGroup)
-        ->usage(_("Usage: ll-cli inspect [OPTIONS]"));
-    cliInspect->footer("This subcommand is for internal use only currently");
-    cliInspect->add_option("-p,--pid", options.pid, _("Specify the process id"))
-      ->check([](const std::string &input) -> std::string {
-          if (input.empty()) {
-              return _("Input parameter is empty, please input valid parameter instead");
-          }
-
-          try {
-              auto pid = std::stoull(input);
-              if (pid <= 0) {
-                  return _("Invalid process id");
-              }
-          } catch (std::exception &e) {
-              return _("Invalid pid format");
-          }
-
-          return {};
-      });
-
-    // add sub command dir
-    auto cliLayerDir =
-      commandParser.add_subcommand("dir", "Get the layer directory of app(base or runtime)")
-        ->group(CliHiddenGroup);
-    cliLayerDir->footer("This subcommand is for internal use only currently");
-    cliLayerDir->add_option("APP", options.appid, _("Specify the installed app(base or runtime)"))
+    auto *cliInspect = commandParser
+        .add_subcommand("inspect", _("Display the inspect information of the installed application"))
+        ->group(CliBuildInGroup)
+        ->usage(_("Usage: ll-cli inspect SUBCOMMAND [OPTIONS]"));
+    
+    cliInspect->require_subcommand(1);
+    
+    // 创建 inspect dir 子命令
+    auto *cliInspectDir =
+      cliInspect->add_subcommand("dir",
+                                 _("Display the directory of the installed(running) application"));
+    cliInspectDir->usage(_("Usage: ll-cli inspect dir [OPTIONS] APP"));
+    cliInspectDir
+      ->add_option("APP", options.appid, _("Specify the installed(running) application ID"))
       ->required()
       ->check(validatorString);
-    cliLayerDir->add_option("--module", options.module, _("Specify a module"))
-      ->type_name("MODULE")
+    cliInspectDir
+      ->add_option("-t, --type",
+                   options.dirType,
+                   _("Specify the directory type (layer or bundle),the default is layer"))
+      ->type_name("TYPE")
+      ->capture_default_str()
+      ->check(validatorString);
+    cliInspectDir
+      ->add_option("-m, --module",
+                   options.module,
+                   _("Specify the module type (binary or develop). Only works when type is layer"))
+      ->check(validatorString);
+    cliInspectDir
+      ->add_option("-v, --version",
+                   options.version,
+                   _("Specified the version, Display the directory where the Base and Runtime of "
+                     "the specified version are installed"))
       ->check(validatorString);
 
     auto res = transformOldExec(argc, argv);
@@ -790,8 +791,7 @@ ll-cli list --upgradable
               { "content", &Cli::content },
               { "prune", &Cli::prune },
               { "inspect", &Cli::inspect },
-              { "repo", &Cli::repo },
-              { "dir", &Cli::dir }
+              { "repo", &Cli::repo }
           };
 
           if (QObject::connect(QCoreApplication::instance(),

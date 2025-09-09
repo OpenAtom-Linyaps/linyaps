@@ -279,43 +279,39 @@ ContainerCfgBuilder &ContainerCfgBuilder::bindRemovableStorageMounts() noexcept
     std::vector<std::string> propagationPaths{ "/media", "/mnt" };
 
     for (const auto &path : propagationPaths) {
-        do {
-            auto mountDir = std::filesystem::path(path);
-            auto status = std::filesystem::symlink_status(mountDir, ec);
+        auto mountPath = std::filesystem::path(path);
+        auto status = std::filesystem::symlink_status(mountPath, ec);
+        if (ec) {
+            break;
+        }
+
+        if (status.type() == std::filesystem::file_type::symlink) {
+            auto targetDir = std::filesystem::read_symlink(mountPath, ec);
             if (ec) {
                 break;
             }
 
-            if (status.type() == std::filesystem::file_type::symlink) {
-                auto targetDir = std::filesystem::read_symlink(mountDir, ec);
-                if (ec) {
-                    break;
-                }
-
-                auto destinationDir = "/" + targetDir.string();
-                if (!std::filesystem::exists(destinationDir, ec)) {
-                    break;
-                }
-
-                removableStorageMounts = {
-                    Mount{ .destination = destinationDir,
-                           .options = string_list{ "rbind" },
-                           .source = destinationDir,
-                           .type = "bind" },
-                    Mount{ .destination = path,
-                           .options = string_list{ "rbind", "ro", "copy-symlink" },
-                           .source = path,
-                           .type = "bind" },
-                };
-            } else {
-                removableStorageMounts = {
-                    Mount{ .destination = path,
-                           .options = string_list{ "rbind" },
-                           .source = path,
-                           .type = "bind" },
-                };
+            auto destinationDir = "/" + targetDir.string();
+            if (!std::filesystem::exists(destinationDir, ec)) {
+                break;
             }
-        } while (false);
+
+            removableStorageMounts->emplace_back(Mount{ .destination = destinationDir,
+                                                        .options = string_list{ "rbind" },
+                                                        .source = destinationDir,
+                                                        .type = "bind" });
+
+            removableStorageMounts->emplace_back(
+              Mount{ .destination = path,
+                     .options = string_list{ "rbind", "ro", "copy-symlink" },
+                     .source = path,
+                     .type = "bind" });
+        } else {
+            removableStorageMounts->emplace_back(Mount{ .destination = path,
+                                                        .options = string_list{ "rbind" },
+                                                        .source = path,
+                                                        .type = "bind" });
+        }
     }
 
     return *this;
@@ -356,7 +352,7 @@ ContainerCfgBuilder &ContainerCfgBuilder::forwardDefaultEnv() noexcept
       "GDMSESSION",
       "QT_WAYLAND_FORCE_DPI",
       "GIO_LAUNCHED_DESKTOP_FILE", // 系统监视器
-      "GNOME_DESKTOP_SESSION_ID",  // gnome 桌面标识，有些应用会读取此变量以使用gsettings配置,
+      "GNOME_DESKTOP_SESSION_ID", // gnome 桌面标识，有些应用会读取此变量以使用gsettings配置,
       // 如chrome
       "TERM",
       // 控制应用将渲染任务路由到 NVIDIA 独立显卡

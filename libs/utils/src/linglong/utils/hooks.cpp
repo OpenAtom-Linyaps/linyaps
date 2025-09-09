@@ -7,8 +7,8 @@
 #include "hooks.h"
 
 #include "configure.h"
-#include "linglong/utils/error/error.h"
 #include "linglong/utils/command/env.h"
+#include "linglong/utils/error/error.h"
 
 #include <array>
 #include <cstdlib>
@@ -52,7 +52,8 @@ utils::error::Result<void> executeHookCommands(
     std::vector<std::unique_ptr<command::EnvironmentVariableGuard>> envVarGuards;
     envVarGuards.reserve(envVars.size());
     for (const auto &pair : envVars) {
-        envVarGuards.emplace_back(std::make_unique<command::EnvironmentVariableGuard>(pair.first, pair.second));
+        envVarGuards.emplace_back(
+          std::make_unique<command::EnvironmentVariableGuard>(pair.first, pair.second));
     }
 
     for (const auto &command_raw : commands) {

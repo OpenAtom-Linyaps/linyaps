@@ -189,7 +189,12 @@ ll-cli run org.deepin.demo -- bash -x /path/to/bash/script)"));
 
           return {};
       });
-
+    cliRun->add_option("--base", runOptions.base, _("Specify the base used by the application to run"))
+      ->type_name("REF")
+      ->check(validatorString);
+    cliRun->add_option("--runtime", runOptions.runtime, _("Specify the runtime used by the application to run"))
+      ->type_name("REF")
+      ->check(validatorString);
     cliRun->add_option("COMMAND", runOptions.commands, _("Run commands in a running sandbox"));
 }
 
@@ -655,19 +660,19 @@ You can report bugs to the linyaps team under this project: https://github.com/O
                            _("Show debug info (verbose logs)"));
 
     // subcommand options
-    RunOptions runOptions;
-    EnterOptions enterOptions;
-    KillOptions killOptions;
-    InstallOptions installOptions;
-    UpgradeOptions upgradeOptions;
-    SearchOptions searchOptions;
-    UninstallOptions uninstallOptions;
-    ListOptions listOptions;
-    InfoOptions infoOptions;
-    ContentOptions contentOptions;
-    RepoOptions repoOptions;
-    InspectOptions inspectOptions;
-    DirOptions dirOptions;
+    RunOptions runOptions{};
+    EnterOptions enterOptions{};
+    KillOptions killOptions{};
+    InstallOptions installOptions{};
+    UpgradeOptions upgradeOptions{};
+    SearchOptions searchOptions{};
+    UninstallOptions uninstallOptions{};
+    ListOptions listOptions{};
+    InfoOptions infoOptions{};
+    ContentOptions contentOptions{};
+    RepoOptions repoOptions{};
+    InspectOptions inspectOptions{};
+    DirOptions dirOptions{};
 
     // groups for subcommands
     auto *CliBuildInGroup = _("Managing installed applications and runtimes");

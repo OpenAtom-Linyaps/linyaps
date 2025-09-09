@@ -61,8 +61,7 @@ RepoCache::create(const std::filesystem::path &cacheFile,
     if (repoCache->cache.version != enableMaker::cacheFileVersion
         || repoCache->cache.llVersion != LINGLONG_VERSION) {
         std::cerr << "The existing cache is outdated, cache version: " << repoCache->cache.llVersion
-                  << ", ll version: " << LINGLONG_VERSION
-                  << ", rebuild cache..." << std::endl;
+                  << ", ll version: " << LINGLONG_VERSION << ", rebuild cache..." << std::endl;
         auto ret = repoCache->rebuildCache(repoConfig, repo);
         if (!ret) {
             return LINGLONG_ERR(ret);

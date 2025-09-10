@@ -189,10 +189,14 @@ ll-cli run org.deepin.demo -- bash -x /path/to/bash/script)"));
 
           return {};
       });
-    cliRun->add_option("--base", runOptions.base, _("Specify the base used by the application to run"))
+    cliRun
+      ->add_option("--base", runOptions.base, _("Specify the base used by the application to run"))
       ->type_name("REF")
       ->check(validatorString);
-    cliRun->add_option("--runtime", runOptions.runtime, _("Specify the runtime used by the application to run"))
+    cliRun
+      ->add_option("--runtime",
+                   runOptions.runtime,
+                   _("Specify the runtime used by the application to run"))
       ->type_name("REF")
       ->check(validatorString);
     cliRun->add_option("COMMAND", runOptions.commands, _("Run commands in a running sandbox"));

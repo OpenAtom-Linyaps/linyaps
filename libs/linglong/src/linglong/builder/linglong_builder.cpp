@@ -10,6 +10,7 @@
 #include "linglong/api/types/v1/ExportDirs.hpp"
 #include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/builder/printer.h"
+#include "linglong/common/xdg.h"
 #include "linglong/package/architecture.h"
 #include "linglong/package/fuzzy_reference.h"
 #include "linglong/package/layer_dir.h"
@@ -778,9 +779,7 @@ utils::error::Result<void> Builder::processBuildDepends() noexcept
         return LINGLONG_ERR("build cfg error: " + QString::fromStdString(err.reason));
     }
 
-    auto container =
-      this->containerBuilder.create(cfgBuilder,
-                                    QString::fromStdString(buildContext.getContainerId()));
+    auto container = this->containerBuilder.create(cfgBuilder);
     if (!container) {
         return LINGLONG_ERR(container);
     }
@@ -945,9 +944,7 @@ utils::error::Result<bool> Builder::buildStageBuild(const QStringList &args) noe
         return LINGLONG_ERR("build cfg error: " + QString::fromStdString(err.reason));
     }
 
-    auto container =
-      this->containerBuilder.create(cfgBuilder,
-                                    QString::fromStdString(buildContext.getContainerId()));
+    auto container = this->containerBuilder.create(cfgBuilder);
     if (!container) {
         return LINGLONG_ERR(container);
     }
@@ -1060,9 +1057,7 @@ utils::error::Result<void> Builder::buildStagePreCommit() noexcept
         return LINGLONG_ERR("build cfg error: " + QString::fromStdString(err.reason));
     }
 
-    auto container =
-      this->containerBuilder.create(cfgBuilder,
-                                    QString::fromStdString(buildContext.getContainerId()));
+    auto container = this->containerBuilder.create(cfgBuilder);
     if (!container) {
         return LINGLONG_ERR(container);
     }
@@ -2048,9 +2043,7 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
             return LINGLONG_ERR("build cfg error: " + QString::fromStdString(err.reason));
         }
 
-        auto container =
-          this->containerBuilder.create(cfgBuilder,
-                                        QString::fromStdString(runContext.getContainerId()));
+        auto container = this->containerBuilder.create(cfgBuilder);
         if (!container) {
             return LINGLONG_ERR(container);
         }
@@ -2068,10 +2061,8 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
     }
 
     linglong::generator::ContainerCfgBuilder cfgBuilder;
-    res = runContext.fillContextCfg(cfgBuilder);
-    if (!res) {
-        return LINGLONG_ERR(res);
-    }
+    const auto XDGRuntimeDir = common::getAppXDGRuntimeDir(curRef->id.toStdString());
+
     cfgBuilder.setAppId(curRef->id.toStdString())
       .setAppCache(appCache)
       .enableLDCache()
@@ -2080,7 +2071,7 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
       .bindDefault()
       .bindDevNode()
       .bindCgroup()
-      .bindRun()
+      .bindXDGRuntime(XDGRuntimeDir)
       .bindUserGroup()
       .bindRemovableStorageMounts()
       .bindHostRoot()
@@ -2099,15 +2090,17 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
     cfgBuilder.enableFontCache()
 #endif
 
-      if (!cfgBuilder.build())
-    {
+      res = runContext.fillContextCfg(cfgBuilder);
+    if (!res) {
+        return LINGLONG_ERR(res);
+    }
+
+    if (!cfgBuilder.build()) {
         auto err = cfgBuilder.getError();
         return LINGLONG_ERR("build cfg error: " + QString::fromStdString(err.reason));
     }
 
-    auto container =
-      this->containerBuilder.create(cfgBuilder,
-                                    QString::fromStdString(runContext.getContainerId()));
+    auto container = this->containerBuilder.create(cfgBuilder);
 
     if (!container) {
         return LINGLONG_ERR(container);
@@ -2196,9 +2189,7 @@ utils::error::Result<void> Builder::runFromRepo(const package::Reference &ref,
             return LINGLONG_ERR("build cfg error: " + QString::fromStdString(err.reason));
         }
 
-        auto container =
-          this->containerBuilder.create(cfgBuilder,
-                                        QString::fromStdString(runContext.getContainerId()));
+        auto container = this->containerBuilder.create(cfgBuilder);
         if (!container) {
             return LINGLONG_ERR(container);
         }
@@ -2239,9 +2230,7 @@ utils::error::Result<void> Builder::runFromRepo(const package::Reference &ref,
         return LINGLONG_ERR("build cfg error: " + QString::fromStdString(err.reason));
     }
 
-    auto container =
-      this->containerBuilder.create(cfgBuilder,
-                                    QString::fromStdString(runContext.getContainerId()));
+    auto container = this->containerBuilder.create(cfgBuilder);
     if (!container) {
         return LINGLONG_ERR(container);
     }

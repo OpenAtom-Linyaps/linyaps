@@ -36,6 +36,7 @@ pfl_add_library(
   src/linglong/cli/terminal_notifier.cpp
   src/linglong/cli/terminal_notifier.h
   src/linglong/extension/extension.cpp
+  src/linglong/extension/extension.h
   src/linglong/package/architecture.cpp
   src/linglong/package/architecture.h
   src/linglong/package/fallback_version.cpp
@@ -81,6 +82,8 @@ pfl_add_library(
   src/linglong/runtime/container.h
   src/linglong/runtime/run_context.cpp
   src/linglong/runtime/run_context.h
+  src/linglong/runtime/security_context.cpp
+  src/linglong/runtime/security_context.h
   TESTS
   ll-tests
   COMPILE_FEATURES
@@ -104,6 +107,53 @@ pfl_add_library(
   linglong::oci-cfg-generators
   CLI11::CLI11
   ${YAML_CPP})
+
+if(LINGLONG_ENABLE_WAYLAND_SEC_CTX_SUPPORT)
+  # pkg_get_variable() cannot reliably get variables in a .pc file if those
+  # variables contain placeholders/macros (like ${pc_sysrootdir}) that CMake
+  # cannot expand.
+  execute_process(
+    COMMAND pkg-config --variable=pkgdatadir wayland-protocols
+    OUTPUT_VARIABLE WAYLAND_PROTOCOLS_DATA_DIR
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    RESULT_VARIABLE PKG_CONFIG_RESULT)
+
+  if(NOT PKG_CONFIG_RESULT EQUAL 0)
+    message(FATAL_ERROR "Failed to get pkgdatadir from wayland-protocols")
+  endif()
+
+  set(WAYLAND_SECURITY_CONTEXT_XML
+      ${WAYLAND_PROTOCOLS_DATA_DIR}/staging/security-context/security-context-v1.xml
+  )
+  set(WAYLAND_GENERATED_DIR ${CMAKE_CURRENT_BINARY_DIR}/wayland)
+  set(WAYLAND_SECURITY_CONTEXT_HEADER
+      ${WAYLAND_GENERATED_DIR}/wayland-security-context-v1.h)
+  set(WAYLAND_SECURITY_CONTEXT_GENERATED_FILES
+      ${WAYLAND_GENERATED_DIR}/wayland-security-context-v1.c)
+
+  add_custom_command(
+    OUTPUT ${WAYLAND_SECURITY_CONTEXT_HEADER}
+    COMMAND ${WAYLAND_SCANNER} client-header ${WAYLAND_SECURITY_CONTEXT_XML}
+            ${WAYLAND_SECURITY_CONTEXT_HEADER}
+    DEPENDS ${WAYLAND_SECURITY_CONTEXT_XML})
+
+  add_custom_command(
+    OUTPUT ${WAYLAND_SECURITY_CONTEXT_GENERATED_FILES}
+    COMMAND ${WAYLAND_SCANNER} private-code ${WAYLAND_SECURITY_CONTEXT_XML}
+            ${WAYLAND_SECURITY_CONTEXT_GENERATED_FILES}
+    DEPENDS ${WAYLAND_SECURITY_CONTEXT_XML})
+
+  get_real_target_name(target linglong::linglong)
+  target_include_directories(${target} PRIVATE ${WAYLAND_GENERATED_DIR})
+  target_sources(
+    ${target}
+    PRIVATE
+      ${WAYLAND_SECURITY_CONTEXT_GENERATED_FILES}
+      ${CMAKE_CURRENT_LIST_DIR}/src/linglong/runtime/wayland_security_ctx.cpp
+      ${CMAKE_CURRENT_LIST_DIR}/src/linglong/runtime/wayland_security_ctx.h)
+  target_link_libraries(${target} PUBLIC PkgConfig::WAYLAND_CLIENT)
+  target_compile_options(${target} PRIVATE -DWAYLAND_SEC_CTX_SUPPORT)
+endif()
 
 function(
   linglong_add_dbus_adaptor

@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
+ * SPDX-FileCopyrightText: 2022 - 2025 UnionTech Software Technology Co., Ltd.
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
@@ -13,15 +13,15 @@ ContainerBuilder::ContainerBuilder(ocppi::cli::CLI &cli)
 {
 }
 
-auto ContainerBuilder::create(const linglong::generator::ContainerCfgBuilder &cfgBuilder,
-                              const QString &containerID) noexcept
+auto ContainerBuilder::create(const linglong::generator::ContainerCfgBuilder &cfgBuilder) noexcept
   -> utils::error::Result<std::unique_ptr<Container>>
 {
-    const auto &config = cfgBuilder.getConfig();
+    LINGLONG_TRACE("create container");
+    auto config = cfgBuilder.getConfig();
 
     return std::make_unique<Container>(config,
-                                       QString::fromStdString(cfgBuilder.getAppId()),
-                                       containerID,
+                                       cfgBuilder.getAppId(),
+                                       cfgBuilder.getContainerId(),
                                        this->cli);
 }
 

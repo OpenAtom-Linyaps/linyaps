@@ -65,6 +65,10 @@ if(NOT LINGLONG_EXPORT_PATH MATCHES ".*share$")
   set(LINGLONG_EXPORT_PATH "share")
 endif()
 
+set(LINGLONG_ENABLE_WAYLAND_SEC_CTX_SUPPORT
+    OFF
+    CACHE BOOL "enable linglong wayland security context support")
+
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 include(PFL)
 
@@ -189,6 +193,13 @@ if(ENABLE_TESTING)
   endif()
 endif()
 
+if(LINGLONG_ENABLE_WAYLAND_SEC_CTX_SUPPORT)
+  message(STATUS "enable linglong wayland security context support")
+  pkg_search_module(WAYLAND_CLIENT REQUIRED IMPORTED_TARGET wayland-client)
+  pkg_search_module(WAYLAND_PROTOCOLS REQUIRED IMPORTED_TARGET wayland-protocols)
+  find_program(WAYLAND_SCANNER wayland-scanner REQUIRED)
+endif()
+
 function(get_real_target_name output target)
   get_target_property("${output}" "${target}" ALIASED_TARGET)
   if("${output}" STREQUAL "")
@@ -289,6 +300,7 @@ add_subdirectory(external/http)
 pfl_add_libraries(
   LIBS
   api
+  common
   dbus-api
   utils
   ocppi

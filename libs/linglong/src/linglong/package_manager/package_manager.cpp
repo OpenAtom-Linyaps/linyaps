@@ -14,6 +14,7 @@
 #include "linglong/api/types/v1/PackageManager1PruneResult.hpp"
 #include "linglong/api/types/v1/Repo.hpp"
 #include "linglong/api/types/v1/State.hpp"
+#include "linglong/common/xdg.h"
 #include "linglong/extension/extension.h"
 #include "linglong/package/layer_file.h"
 #include "linglong/package/layer_packager.h"
@@ -2423,8 +2424,8 @@ utils::error::Result<void> PackageManager::generateCache(const package::Referenc
         return LINGLONG_ERR(res);
     }
 
-    int64_t uid = getuid();
-    int64_t gid = getgid();
+    auto uid = getuid();
+    auto gid = getgid();
 
     std::filesystem::path ldConfPath{ appCache / "ld.so.conf" };
 
@@ -2433,13 +2434,15 @@ utils::error::Result<void> PackageManager::generateCache(const package::Referenc
     if (!res) {
         return LINGLONG_ERR(res);
     }
+
+    auto XDGRuntimeDir = common::getAppXDGRuntimeDir(ref.id.toStdString());
     cfgBuilder.setAppId(ref.id.toStdString())
       .setAppCache(appCache, false)
       .addUIdMapping(uid, uid, 1)
       .addGIdMapping(gid, gid, 1)
       .bindDefault()
       .bindCgroup()
-      .bindRun()
+      .bindXDGRuntime(XDGRuntimeDir)
       .bindUserGroup()
       .forwardDefaultEnv()
       .addExtraMounts(std::vector<ocppi::runtime::config::types::Mount>{
@@ -2473,9 +2476,7 @@ utils::error::Result<void> PackageManager::generateCache(const package::Referenc
         return LINGLONG_ERR("build cfg error: " + QString::fromStdString(err.reason));
     }
 
-    auto container =
-      this->containerBuilder.create(cfgBuilder,
-                                    QString::fromStdString(runContext.getContainerId()));
+    auto container = this->containerBuilder.create(cfgBuilder);
     if (!container) {
         return LINGLONG_ERR(container);
     }
@@ -2505,12 +2506,7 @@ utils::error::Result<void> PackageManager::generateCache(const package::Referenc
 #endif
 
     process.args = std::move(ldGenerateCmd);
-
-    // Note: XDG_RUNTIME_DIR is not set in PM, the ll-box will finally fallback to /run/ll-box.
-    //       But PM has no write permission in that place, so we should specific the root path.
-    //       Qt will fackback to /tmp/runtime-{USER}, we use this fallback.
-    auto XDGRuntimeDir = QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation);
-    auto containerStateRoot = std::filesystem::path(XDGRuntimeDir.toStdString()) / "ll-box";
+    auto containerStateRoot = XDGRuntimeDir / "ll-box";
 
     ocppi::runtime::RunOption opt;
     opt.GlobalOption::root = containerStateRoot;

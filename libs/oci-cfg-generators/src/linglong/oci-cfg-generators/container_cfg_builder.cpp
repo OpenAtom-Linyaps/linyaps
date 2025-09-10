@@ -277,6 +277,7 @@ ContainerCfgBuilder &ContainerCfgBuilder::bindRemovableStorageMounts() noexcept
     std::error_code ec;
 
     std::vector<std::string> propagationPaths{ "/media", "/mnt" };
+    removableStorageMounts = std::vector<Mount>{};
 
     for (const auto &path : propagationPaths) {
         auto mountPath = std::filesystem::path(path);

@@ -20,6 +20,7 @@ enum class ANNOTATION {
     APPID,
     BASEDIR,
     LAST_PID,
+    WAYLAND_SOCKET,
 };
 
 class ContainerCfgBuilder
@@ -43,6 +44,8 @@ public:
         BUILD_LDCACHE_ERROR,
         BUILD_ENV_ERROR,
         BUILD_NETWORK_CONF_ERROR,
+        BUILD_XDGRUNTIME_ERROR,
+        BUILD_INTERNAL_ERROR,
     };
 
     class Error
@@ -123,6 +126,7 @@ public:
     ContainerCfgBuilder &
     bindDevNode(std::function<bool(const std::string &)> ifBind = nullptr) noexcept;
     ContainerCfgBuilder &bindCgroup() noexcept;
+    ContainerCfgBuilder &bindXDGRuntime(const std::filesystem::path &path) noexcept;
     ContainerCfgBuilder &bindRun() noexcept;
     ContainerCfgBuilder &bindTmp() noexcept;
     ContainerCfgBuilder &bindUserGroup() noexcept;
@@ -143,6 +147,10 @@ public:
     ContainerCfgBuilder &mapPrivate(std::string containerPath, bool isDir) noexcept;
     ContainerCfgBuilder &bindIPC() noexcept;
     ContainerCfgBuilder &enableLDCache() noexcept;
+
+    std::string getContainerId() const { return containerId; }
+
+    ContainerCfgBuilder &setContainerId(std::string containerId) noexcept;
 
     // TODO
     ContainerCfgBuilder &enableFontCache() noexcept { return *this; }
@@ -177,6 +185,12 @@ public:
         return *this;
     }
 
+    void bindXOrgSocket(const std::filesystem::path &socket) noexcept;
+
+    void bindXAuthFile(const std::filesystem::path &authFile) noexcept;
+
+    void bindWaylandSocket(const std::filesystem::path &socket) noexcept;
+
     std::string ldConf(const std::string &triplet) const;
 
     bool build() noexcept;
@@ -204,11 +218,14 @@ private:
     bool buildPrivateDir() noexcept;
     bool buildPrivateMapped() noexcept;
     bool buildMountIPC() noexcept;
+    bool buildDisplaySystem() noexcept;
     bool buildMountCache() noexcept;
     bool buildLDCache() noexcept;
     bool buildMountLocalTime() noexcept;
     bool buildMountNetworkConf() noexcept;
     bool buildQuirkVolatile() noexcept;
+    // TODO: impl buildXDG()
+    bool buildXDGRuntime() noexcept;
     bool buildEnv() noexcept;
     bool applyPatch() noexcept;
     bool applyPatchFile(const std::filesystem::path &patchFile) noexcept;
@@ -239,6 +256,8 @@ private:
     std::filesystem::path basePath;
     std::filesystem::path bundlePath;
     std::optional<std::filesystem::path> appCache;
+    std::filesystem::path hostXDGRuntimeMountPoint;
+    std::filesystem::path containerXDGRuntimeDir;
 
     bool runtimePathRo = true;
     bool appPathRo = true;
@@ -264,6 +283,7 @@ private:
     std::optional<std::vector<ocppi::runtime::config::types::Mount>> hostRootMount;
     std::optional<std::vector<ocppi::runtime::config::types::Mount>> hostStaticsMount;
     std::optional<std::vector<ocppi::runtime::config::types::Mount>> ipcMount;
+    std::optional<std::vector<ocppi::runtime::config::types::Mount>> displayMount;
     std::optional<std::vector<ocppi::runtime::config::types::Mount>> localtimeMount;
     std::optional<std::vector<ocppi::runtime::config::types::Mount>> networkConfMount;
 
@@ -279,7 +299,6 @@ private:
 
     // home dir
     std::optional<std::filesystem::path> homePath;
-    std::string homeUser;
     std::optional<std::vector<ocppi::runtime::config::types::Mount>> homeMount;
 
     // private dir
@@ -307,9 +326,16 @@ private:
 
     bool isolateNetWorkEnabled = false;
     bool applyPatchEnabled = true;
+    bool isolateTmp{ false };
+
+    // display system
+    std::optional<std::filesystem::path> waylandSocket;
+    std::optional<std::filesystem::path> xOrgSocket;
+    std::optional<std::filesystem::path> xAuthFile;
 
     std::vector<std::string> maskedPaths;
     ocppi::runtime::config::types::Config config;
+    std::string containerId;
 
     Error error_;
 

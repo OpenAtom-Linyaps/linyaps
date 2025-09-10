@@ -26,6 +26,7 @@
 #include "linglong/api/types/v1/SubState.hpp"
 #include "linglong/api/types/v1/UpgradeListResult.hpp"
 #include "linglong/cli/printer.h"
+#include "linglong/common/xdg.h"
 #include "linglong/oci-cfg-generators/container_cfg_builder.h"
 #include "linglong/package/layer_file.h"
 #include "linglong/package/reference.h"
@@ -749,21 +750,11 @@ int Cli::run(const RunOptions &options)
         return -1;
     }
 
+    const auto XDGRuntimeDir = common::getAppXDGRuntimeDir(curAppRef->id.toStdString());
+
+    runContext.enableSecurityContext(runtime::getDefaultSecurityContexts());
+
     linglong::generator::ContainerCfgBuilder cfgBuilder;
-    res = runContext.fillContextCfg(cfgBuilder);
-    if (!res) {
-        this->printer.printErr(res.error());
-        return -1;
-    }
-
-    std::error_code ec;
-    auto socketDir = cfgBuilder.getBundlePath() / "init";
-    std::filesystem::create_directories(socketDir, ec);
-    if (ec) {
-        this->printer.printErr(LINGLONG_ERRV(ec.message().c_str()));
-        return -1;
-    }
-
     cfgBuilder.setAppId(curAppRef->id.toStdString())
       .setAnnotation(generator::ANNOTATION::LAST_PID, std::to_string(pid))
       .addUIdMapping(uid, uid, 1)
@@ -771,7 +762,7 @@ int Cli::run(const RunOptions &options)
       .bindDefault()
       .bindDevNode()
       .bindCgroup()
-      .bindRun()
+      .bindXDGRuntime(XDGRuntimeDir)
       .bindUserGroup()
       .bindRemovableStorageMounts()
       .bindHostRoot()
@@ -782,12 +773,27 @@ int Cli::run(const RunOptions &options)
       .mapPrivate(std::string{ homeEnv } + "/.gnupg", true)
       .bindIPC()
       .forwardDefaultEnv()
-      .enableSelfAdjustingMount()
-      .addExtraMount(
-        ocppi::runtime::config::types::Mount{ .destination = "/run/linglong/init",
-                                              .options = std::vector<std::string>{ "bind" },
-                                              .source = socketDir.string(),
-                                              .type = "bind" });
+      .enableSelfAdjustingMount();
+
+    std::error_code ec;
+    auto socketDir = cfgBuilder.getBundlePath() / "init";
+    std::filesystem::create_directories(socketDir, ec);
+    if (ec) {
+        this->printer.printErr(LINGLONG_ERRV(ec.message().c_str()));
+        return -1;
+    }
+
+    cfgBuilder.addExtraMount(
+      ocppi::runtime::config::types::Mount{ .destination = "/run/linglong/init",
+                                            .options = std::vector<std::string>{ "bind" },
+                                            .source = socketDir.string(),
+                                            .type = "bind" });
+
+    res = runContext.fillContextCfg(cfgBuilder);
+    if (!res) {
+        this->printer.printErr(res.error());
+        return -1;
+    }
 
     for (const auto &env : options.envs) {
         auto split = env.cbegin() + env.find('='); // already checked by CLI
@@ -813,10 +819,7 @@ int Cli::run(const RunOptions &options)
         return -1;
     }
 
-    auto container =
-      this->containerBuilder.create(cfgBuilder,
-                                    QString::fromStdString(runContext.getContainerId()));
-
+    auto container = this->containerBuilder.create(cfgBuilder);
     if (!container) {
         this->printer.printErr(container.error());
         return -1;

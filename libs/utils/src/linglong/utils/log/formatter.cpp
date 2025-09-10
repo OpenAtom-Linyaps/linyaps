@@ -43,3 +43,16 @@ auto fmt::formatter<linglong::utils::error::Error>::format(
       fmt::format("[code {}] backtrace:\n{}", error.code(), error.message()),
       ctx);
 }
+
+#if FMT_VERSION >= 70000
+auto fmt::formatter<std::filesystem::path>::format(const std::filesystem::path &path,
+                                                   fmt::format_context &ctx) const
+  -> fmt::format_context::iterator
+#else
+auto fmt::formatter<std::filesystem::path>::format(const std::filesystem::path &path,
+                                                   fmt::format_context &ctx)
+  -> fmt::format_context::iterator
+#endif
+{
+    return formatter<std::string>::format(path.string(), ctx);
+}

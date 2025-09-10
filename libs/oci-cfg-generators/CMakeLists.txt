@@ -18,6 +18,7 @@ pfl_add_library(
   PUBLIC
   linglong::ocppi
   linglong::api
+  linglong::common
   )
 
 get_real_target_name(GEN linglong::oci-cfg-generators)

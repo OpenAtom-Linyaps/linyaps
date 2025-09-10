@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
+ * SPDX-FileCopyrightText: 2022 - 2025 UnionTech Software Technology Co., Ltd.
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
@@ -17,8 +17,8 @@ class Container
 {
 public:
     Container(ocppi::runtime::config::types::Config cfg,
-              QString appID,
-              QString conatinerID,
+              std::string appId,
+              std::string containerId,
               ocppi::cli::CLI &cli);
 
     utils::error::Result<void> run(const ocppi::runtime::config::types::Process &process,
@@ -26,8 +26,8 @@ public:
 
 private:
     ocppi::runtime::config::types::Config cfg;
-    QString id;
-    QString appID;
+    std::string id;
+    std::string appId;
     ocppi::cli::CLI &cli;
 };
 

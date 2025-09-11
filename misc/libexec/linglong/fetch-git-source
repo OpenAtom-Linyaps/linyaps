@@ -34,5 +34,7 @@ git add :/
 git reset --hard FETCH_HEAD
 
 # Fetch submodule
-git submodule update --init --recursive --depth 1
-git submodule foreach git reset --hard HEAD
+if [ -n "$GIT_SUBMODULES" ]; then
+    git submodule update --init --recursive --depth 1
+    git submodule foreach git reset --hard HEAD
+fi

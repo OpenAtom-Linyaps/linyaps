@@ -19,8 +19,11 @@ QUICKTYPE=${QUICKTYPE:=$(command -v quicktype || true)}
 if [ -z "$QUICKTYPE" ]; then
         pushd quicktype
         if not npx quicktype --version &>/dev/null; then
+                echo "Installing quicktype"
                 npm i
                 npm run build
+        else
+                echo "quicktype already installed"
         fi
         popd
 fi
@@ -108,6 +111,11 @@ generate() {
 
 # yq should use which written in go instead of python. https://github.com/mikefarah/yq
 YQ=${YQ:=$(command -v yq)}
+
+if [ -z "$YQ" ]; then
+        echo "yq not found"
+        exit 255
+fi
 
 "$YQ" e '.properties = ( [
         .$defs | keys | .[] as $type | {

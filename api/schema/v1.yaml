@@ -337,15 +337,18 @@ $defs:
             digest:
               type: string
               description: digest of source
+            name:
+              type: string
+              description: name of source
             commit:
               type: string
               description: commit of source
             version:
               type: string
               description: version of source
-            name:
-              type: string
-              description: name of source
+            submodules:
+              type: boolean
+              description: whether to checkout submodules
       build:
         title: BuilderProjectBuildScript
         description: build script of builder project

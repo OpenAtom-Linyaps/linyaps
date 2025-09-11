@@ -775,6 +775,12 @@ int Cli::run(const RunOptions &options)
       .forwardDefaultEnv()
       .enableSelfAdjustingMount();
 
+    res = runContext.fillContextCfg(cfgBuilder);
+    if (!res) {
+        this->printer.printErr(res.error());
+        return -1;
+    }
+
     std::error_code ec;
     auto socketDir = cfgBuilder.getBundlePath() / "init";
     std::filesystem::create_directories(socketDir, ec);
@@ -788,12 +794,6 @@ int Cli::run(const RunOptions &options)
                                             .options = std::vector<std::string>{ "bind" },
                                             .source = socketDir.string(),
                                             .type = "bind" });
-
-    res = runContext.fillContextCfg(cfgBuilder);
-    if (!res) {
-        this->printer.printErr(res.error());
-        return -1;
-    }
 
     for (const auto &env : options.envs) {
         auto split = env.cbegin() + env.find('='); // already checked by CLI

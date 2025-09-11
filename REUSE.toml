@@ -4,7 +4,7 @@ SPDX-PackageSupplier = "UnionTech Software Technology Co., Ltd. <>"
 SPDX-PackageDownloadLocation = "https://github.com/OpenAtom-Linyaps/linyaps"
 
 [[annotations]]
-path = [".github/**", ".obs/**", "OWNERS"]
+path = [".github/**", ".obs/**", "OWNERS", ".tx/config"]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "None"
 SPDX-License-Identifier = "CC0-1.0"

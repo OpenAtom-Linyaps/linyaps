@@ -378,7 +378,7 @@ int handleList(linglong::repo::OSTreeRepo &repo, [[maybe_unused]] const ListComm
 
 int handleRemove(linglong::repo::OSTreeRepo &repo, const RemoveCommandOptions &options)
 {
-    auto ret = linglong::builder::cmdRemoveApp(repo, options.removeList);
+    auto ret = linglong::builder::cmdRemoveApp(repo, options.removeList, !options.noCleanObjects);
     if (!ret.has_value()) {
         return -1;
     }
@@ -853,6 +853,9 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     buildList->usage(_("Usage: ll-builder list [OPTIONS]"));
     auto buildRemove = commandParser.add_subcommand("remove", _("Remove built linyaps app"));
     buildRemove->usage(_("Usage: ll-builder remove [OPTIONS] [APP...]"));
+    buildRemove->add_flag("--no-clean-objects",
+                          removeOpts.noCleanObjects,
+                          _("Do not clean objects files before remove apps"));
     buildRemove->add_option("APP", removeOpts.removeList);
 
     // build export

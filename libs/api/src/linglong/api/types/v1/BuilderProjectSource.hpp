@@ -48,6 +48,10 @@ std::string kind;
 */
 std::optional<std::string> name;
 /**
+* whether to checkout submodules
+*/
+std::optional<bool> submodules;
+/**
 * url of source
 */
 std::optional<std::string> url;

@@ -169,7 +169,7 @@ fetchSources(const std::vector<api::types::v1::BuilderProjectSource> &sources,
                             .arg("downloading ...")
                             .toStdString(),
                           2);
-        SourceFetcher fetcher(sources.at(pos), cfg, cacheDir);
+        SourceFetcher fetcher(sources.at(pos), cacheDir);
         auto result = fetcher.fetch(QDir(destination));
         if (!result) {
             return LINGLONG_ERR(result);

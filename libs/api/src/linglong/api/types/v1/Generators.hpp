@@ -436,6 +436,7 @@ x.commit = get_stack_optional<std::string>(j, "commit");
 x.digest = get_stack_optional<std::string>(j, "digest");
 x.kind = j.at("kind").get<std::string>();
 x.name = get_stack_optional<std::string>(j, "name");
+x.submodules = get_stack_optional<bool>(j, "submodules");
 x.url = get_stack_optional<std::string>(j, "url");
 x.version = get_stack_optional<std::string>(j, "version");
 }
@@ -451,6 +452,9 @@ j["digest"] = x.digest;
 j["kind"] = x.kind;
 if (x.name) {
 j["name"] = x.name;
+}
+if (x.submodules) {
+j["submodules"] = x.submodules;
 }
 if (x.url) {
 j["url"] = x.url;

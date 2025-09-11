@@ -54,14 +54,16 @@ auto SourceFetcher::fetch(QDir destination) noexcept -> utils::error::Result<voi
         qDebug() << "Dumping " << scriptName << "from qrc to" << scriptFile;
         QFile::copy(":/scripts/" + scriptName, scriptFile);
     }
-    auto output = utils::command::Cmd("sh").exec({
-      scriptFile,
-      destination.absoluteFilePath(getSourceName()),
-      QString::fromStdString(*source.url),
-      QString::fromStdString(source.kind == "git" ? *source.commit : *source.digest),
-      this->cacheDir.absolutePath(),
-    });
-    if (!output) {
+    auto output =
+      m_cmd->setEnv("GIT_SUBMODULES", source.submodules.value_or(true) ? "true" : "")
+        .exec({
+          scriptFile,
+          destination.absoluteFilePath(getSourceName()),
+          QString::fromStdString(*source.url),
+          QString::fromStdString(source.kind == "git" ? *source.commit : *source.digest),
+          this->cacheDir.absolutePath(),
+        });
+    if (!output.has_value()) {
         qDebug() << "output error:" << output.error();
         return LINGLONG_ERR("stderr:", output);
     }
@@ -87,12 +89,9 @@ QString SourceFetcher::getSourceName()
     return "unknown";
 }
 
-SourceFetcher::SourceFetcher(api::types::v1::BuilderProjectSource source,
-                             api::types::v1::BuilderConfig cfg,
-                             const QDir &cacheDir)
+SourceFetcher::SourceFetcher(api::types::v1::BuilderProjectSource source, const QDir &cacheDir)
     : cacheDir(cacheDir)
     , source(std::move(source))
-    , cfg(std::move(cfg))
 {
     if (this->cacheDir.mkpath(".")) {
         return;

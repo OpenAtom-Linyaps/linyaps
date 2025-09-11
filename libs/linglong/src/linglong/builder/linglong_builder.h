@@ -43,7 +43,9 @@ struct BuilderBuildOptions
 };
 
 utils::error::Result<void> cmdListApp(repo::OSTreeRepo &repo);
-utils::error::Result<void> cmdRemoveApp(repo::OSTreeRepo &repo, std::vector<std::string> refs);
+utils::error::Result<void> cmdRemoveApp(repo::OSTreeRepo &repo,
+                                        std::vector<std::string> refs,
+                                        bool prune);
 
 class Builder
 {

@@ -38,6 +38,7 @@ struct ListCommandOptions
 
 struct RemoveCommandOptions
 {
+    bool noCleanObjects = false;
     std::vector<std::string> removeList; // List of apps to remove
 };
 

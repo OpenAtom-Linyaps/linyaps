@@ -1,0 +1,9 @@
+[main]
+host = https://www.transifex.com
+
+[o:linuxdeepin:p:linyaps:r:6e861fdc8edf8f03ac6f0b629a022f2f]
+file_filter = po/<lang>.po
+source_file = po/en_US.po
+source_lang = en_US
+type = PO
+

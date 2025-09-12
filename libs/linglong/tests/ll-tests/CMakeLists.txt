@@ -23,6 +23,8 @@ pfl_add_executable(
   src/linglong/package/semver_version_test.cpp
   src/linglong/package/uab_file_test.cpp
   src/linglong/package/layer_packager_test.cpp
+  src/linglong/builder/source_fetcher_test.cpp
+  src/linglong/mocks/command.h
   src/linglong/utils/error/result_test.cpp
   src/linglong/utils/log.cpp
   src/linglong/utils/sha256_test.cpp

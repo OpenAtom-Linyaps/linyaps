@@ -11,10 +11,12 @@
 class MockCmd : public linglong::utils::command::Cmd
 {
 public:
-    MOCK_METHOD(linglong::utils::error::Result<QString>,
-                exec,
-                (const QStringList &args),
-                (noexcept));
+    MockCmd(const QString &command)
+        : Cmd(command)
+    {
+    }
+
+    MOCK_METHOD(linglong::utils::error::Result<QString>, exec, (const QStringList &), (const));
     MOCK_METHOD(linglong::utils::error::Result<bool>, exists, (), (noexcept));
 };
 
@@ -48,4 +50,14 @@ TEST(command, commandExists)
     ret = linglong::utils::command::Cmd("nonexistent").exists();
     EXPECT_TRUE(ret.has_value()) << ret.error().message().toStdString();
     EXPECT_FALSE(*ret) << "nonexistent should not exist";
+}
+
+TEST(command, setEnv)
+{
+    linglong::utils::command::Cmd cmd("bash");
+    cmd.setEnv("LINGLONG_TEST_SETENV", "OK");
+    auto ret = cmd.exec({ "-c", "export" });
+    EXPECT_TRUE(ret.has_value()) << ret.error().message().toStdString();
+    auto retStr = *ret;
+    EXPECT_TRUE(retStr.contains("LINGLONG_TEST_SETENV=")) << retStr.toStdString();
 }

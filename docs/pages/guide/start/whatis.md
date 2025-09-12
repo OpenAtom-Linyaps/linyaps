@@ -38,14 +38,14 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 | SDK                       | 包自身携带                      |               |                  |                                        |
 | Snap Base                 |                                 |               |                  |                                        |
 | 商业支持                  | ✔                              | ✘             | ✔               | ✘                                      |
-| 应用商店数量              | 预计 3000+                      | 1400+         | 6600+            | 1300+                                  |
-| 开发工具支持              |                                 | GNOME Builder | electron-builder |                                        |
+| 应用商店数量              | 预计 4700+                      | 1400+         | 6600+            | 1300+                                  |
+| 开发工具支持              | linglong-builder                                | GNOME Builder | electron-builder |                                        |
 | 容器支持                  | ✔                              | ✔            | ✔               | ◐ （官方不提供，技术上可行）           |
 | rootless 容器             | ✔                              | ✘             | ✘                | ✘                                      |
 | 不安装运行                | ✔ （提供 Bundle 模式）         | ✘             | ✘                | ✔                                     |
 | 不解压运行                | ✔ （提供 Bundle 模式）         | ✘             | ✔               | ✔                                     |
-| 自分发/绿色格式分发       | ◐ （技术可行，但是系统做限制）  | ✘             | ✘                | ✔                                     |
-| 支持 Wine 应用运行        | ◐   (适配中)                    | ◐ （理论可行  | ◐ （理论可行）   | ◐ （使用 LD 修改 open 调用，兼容性差） |
+| 自分发/绿色格式分发       | ✔   | ✘             | ✘                | ✔                                     |
+| 支持 Wine 应用运行        | ✔                    | ◐ （理论可行  | ◐ （理论可行）   | ◐ （使用 LD 修改 open 调用，兼容性差） |
 | 离线环境支持              | ✔                              | ✔            | ✔               | ✔                                     |
 | 权限管理                  | ✔                              | ✔            | ✔               | ✘                                      |
 | 中心仓库                  | mirror-repo-linglong.deepin.com | FlatHub       | Snap Store       | AppImageHub                            |

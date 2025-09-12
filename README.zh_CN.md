@@ -220,7 +220,7 @@ ll-cli run cn.org.linyaps.demo
 
 ## :hammer_and_pick: 参与
 
-我们鼓励您报告问题并贡献更改。查看 [构建指南](./BUILD.zh_CN.md) 以获取从源代码构建 linyaps 的说明。
+我们鼓励您报告问题并贡献更改。查看 [开发者指南](./开发者指南.md) 以获取从源代码构建 linyaps 的说明。
 
 您可以在 [Discussions](https://github.com/OpenAtom-Linyaps/linyaps/discussions) 上发起话题讨论。
 

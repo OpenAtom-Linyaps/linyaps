@@ -218,7 +218,7 @@ Explore more tutorials at [Linyaps Official Website](https://linyaps.org.cn/lear
 
 ## :hammer_and_pick: Contribution
 
-We welcome issue reports and contributions. See the [Build Guide](./BUILD.md) for instructions on building Linyaps from source.
+We welcome issue reports and contributions. See the [Developer Guide](./DEVELOPER_GUIDE.md) for instructions on building Linyaps from source.
 
 Start discussions on [GitHub Discussions](https://github.com/OpenAtom-Linyaps/linyaps/discussions).
 

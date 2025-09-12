@@ -48,7 +48,7 @@ package:
   kind: app
   description: |
     calculator for deepin os.
-  architecture: amd64 # 可选
+  architecture: x86_64 # 可选
   channel: stable # 可选
 ```
 
@@ -59,7 +59,7 @@ package:
 | version      | 构建产物的版本，建议四位数字 (例如：`5.7.21.0`)    | 是   |
 | kind         | 构建产物的类型：`app` (应用)、`runtime` (运行时)   | 是   |
 | description  | 构建产物的详细描述                                 | 是   |
-| architecture | 构建产物的目标架构 (例如：`amd64`, `arm64`)        | 否   |
+| architecture | 构建产物的目标架构 (例如：`x86_64`, `arm64`)        | 否   |
 | channel      | 构建产物的通道 (例如：`stable`, `beta`)            | 否   |
 
 ### 启动命令 (`command`)

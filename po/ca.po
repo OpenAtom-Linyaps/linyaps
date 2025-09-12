@@ -101,16 +101,22 @@ msgid ""
 "Multiple versions of the package are installed. Please specify a single version to uninstall:\n"
 "%1"
 msgstr ""
+"Hi ha versions diverses del paquet instal·lades. Si us plau, especifiqueu una única versió per desinstal·lar-la:\n"
+"%1"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1722
 msgid ""
 "The application is currently running and cannot be uninstalled. Please turn "
 "off the application and try again."
 msgstr ""
+"L'aplicació s'executa i no es pot desinstal·lar. Si us plau, desactiveu "
+"l'aplicació i torneu-ho a provar."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1727
 msgid "Base or runtime cannot be uninstalled, please use 'll-cli prune'."
 msgstr ""
+"No es pot desinstal·lar la base o l'entorn d'execució; si us plau, useu ll-"
+"cli prune."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2735
 msgid ""
@@ -166,19 +172,21 @@ msgstr "Passa l'URL a les aplicacions que s'executen en un entorn de prova."
 
 #: ../apps/ll-cli/src/main.cpp:182
 msgid "Set environment variables for the application"
-msgstr ""
+msgstr "Establiu variables d'entorn per a l'aplicació"
 
 #: ../apps/ll-cli/src/main.cpp:188
 msgid "Input parameter is invalid, please input valid parameter instead"
 msgstr ""
+"El paràmetre d'entrada no és vàlid. Si us plau, introduïu-hi un paràmetre "
+"vàlid."
 
 #: ../apps/ll-cli/src/main.cpp:194
 msgid "Specify the base used by the application to run"
-msgstr ""
+msgstr "Especifiqueu la base que usa l'aplicació per executar-se."
 
 #: ../apps/ll-cli/src/main.cpp:200
 msgid "Specify the runtime used by the application to run"
-msgstr ""
+msgstr "Especifiqueu l'entorn d'execució que usa l'aplicació per executar-se."
 
 #: ../apps/ll-cli/src/main.cpp:203 ../apps/ll-cli/src/main.cpp:234
 msgid "Run commands in a running sandbox"
@@ -587,7 +595,7 @@ msgstr "Especifiqueu l'aplicació instal·lada (base o entorn d'execució)."
 
 #: ../apps/ll-cli/src/main.cpp:590
 msgid "Specify a module"
-msgstr ""
+msgstr "Especifiqueu un mòdul."
 
 #: ../apps/ll-cli/src/main.cpp:630
 msgid ""
@@ -902,11 +910,11 @@ msgstr "Fitxer de sortida"
 
 #: ../apps/ll-builder/src/main.cpp:893
 msgid "Reference of the package"
-msgstr ""
+msgstr "Referència del paquet"
 
 #: ../apps/ll-builder/src/main.cpp:898
 msgid "Modules to export"
-msgstr ""
+msgstr "Mòduls per exportar"
 
 #: ../apps/ll-builder/src/main.cpp:906
 msgid "Push linyaps app to remote repo"

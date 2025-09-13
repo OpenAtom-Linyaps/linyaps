@@ -588,7 +588,7 @@ msgstr "Podaj zainstalowaną aplikację (baza lub środowisko wykonawcze)"
 
 #: ../apps/ll-cli/src/main.cpp:590
 msgid "Specify a module"
-msgstr ""
+msgstr "Wprowadź moduł"
 
 #: ../apps/ll-cli/src/main.cpp:630
 msgid ""
@@ -904,7 +904,7 @@ msgstr "Plik wyjściowy"
 
 #: ../apps/ll-builder/src/main.cpp:893
 msgid "Reference of the package"
-msgstr ""
+msgstr "Odniesienie pakietu"
 
 #: ../apps/ll-builder/src/main.cpp:898
 msgid "Modules to export"

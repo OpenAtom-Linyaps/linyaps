@@ -1913,16 +1913,16 @@ int Cli::repo(CLI::App *app, const RepoOptions &options)
         std::abort();
     }
 
-    auto argsParseFunc = [&app](const std::string &name) -> bool {
+    auto argsParsed = [&app](const std::string &name) -> bool {
         return app->get_subcommand(name)->parsed();
     };
 
-    if (argsParseFunc("show")) {
+    if (argsParsed("show")) {
         this->printer.printRepoConfig(*cfg);
         return 0;
     }
 
-    if (argsParseFunc("modify")) {
+    if (argsParsed("modify")) {
         this->printer.printErr(
           LINGLONG_ERRV("sub-command 'modify' already has been deprecated, please use sub-command "
                         "'add' to add a remote repository and use it as default."));
@@ -1931,7 +1931,7 @@ int Cli::repo(CLI::App *app, const RepoOptions &options)
 
     std::string url = options.repoUrl;
 
-    if (argsParseFunc("add") || argsParseFunc("update")) {
+    if (argsParsed("add") || argsParsed("update")) {
         if (url.rfind("http", 0) != 0) {
             this->printer.printErr(LINGLONG_ERRV(QString{ "url is invalid: " } + url.c_str()));
             return EINVAL;
@@ -1948,7 +1948,7 @@ int Cli::repo(CLI::App *app, const RepoOptions &options)
     std::string alias = options.repoAlias.value_or(name);
     auto &cfgRef = *cfg;
 
-    if (argsParseFunc("add")) {
+    if (argsParsed("add")) {
         if (url.empty()) {
             this->printer.printErr(LINGLONG_ERRV("url is empty."));
             return EINVAL;
@@ -1983,7 +1983,7 @@ int Cli::repo(CLI::App *app, const RepoOptions &options)
         return -1;
     }
 
-    if (argsParseFunc("remove")) {
+    if (argsParsed("remove")) {
         if (cfgRef.repos.size() == 1) {
             this->printer.printErr(LINGLONG_ERRV(QString{ "repo " } + alias.c_str()
                                                  + " is the only repo, please add another repo "
@@ -2006,7 +2006,7 @@ int Cli::repo(CLI::App *app, const RepoOptions &options)
         return this->setRepoConfig(utils::serialize::toQVariantMap(cfgRef));
     }
 
-    if (argsParseFunc("update")) {
+    if (argsParsed("update")) {
         if (url.empty()) {
             this->printer.printErr(LINGLONG_ERRV("url is empty."));
             return -1;
@@ -2016,7 +2016,17 @@ int Cli::repo(CLI::App *app, const RepoOptions &options)
         return this->setRepoConfig(utils::serialize::toQVariantMap(cfgRef));
     }
 
-    if (argsParseFunc("set-default")) {
+    if (argsParsed("enable-mirror")) {
+        existingRepo->mirrorEnabled = true;
+        return this->setRepoConfig(utils::serialize::toQVariantMap(cfgRef));
+    }
+
+    if (argsParsed("disable-mirror")) {
+        existingRepo->mirrorEnabled = false;
+        return this->setRepoConfig(utils::serialize::toQVariantMap(cfgRef));
+    }
+
+    if (argsParsed("set-default")) {
         if (cfgRef.defaultRepo != alias) {
             cfgRef.defaultRepo = alias;
             // set-default is equal to set-priority to the current max priority + 100
@@ -2033,7 +2043,7 @@ int Cli::repo(CLI::App *app, const RepoOptions &options)
         return 0;
     }
 
-    if (argsParseFunc("set-priority")) {
+    if (argsParsed("set-priority")) {
         existingRepo->priority = options.repoPriority;
         return this->setRepoConfig(utils::serialize::toQVariantMap(cfgRef));
     }

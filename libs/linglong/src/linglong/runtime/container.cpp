@@ -8,6 +8,7 @@
 
 #include "configure.h"
 #include "linglong/utils/bash_quote.h"
+#include "linglong/utils/bash_command_helper.h"
 #include "linglong/utils/finally/finally.h"
 #include "ocppi/runtime/RunOption.hpp"
 #include "ocppi/runtime/config/types/Generators.hpp"
@@ -225,11 +226,7 @@ utils::error::Result<void> Container::run(const ocppi::runtime::config::types::P
       .type = "bind",
     });
 
-    auto cmd = std::vector<std::string>{
-        "/run/linglong/container-init", "env", "-i", "/bin/bash", "--noprofile", "--norc", "-c",
-        "/run/linglong/entrypoint.sh"
-    };
-
+    auto cmd = utils::BashCommandHelper::generateExecCommand(originalArgs);
     this->cfg.process->args = cmd;
 
 #ifdef LINGLONG_FONT_CACHE_GENERATOR

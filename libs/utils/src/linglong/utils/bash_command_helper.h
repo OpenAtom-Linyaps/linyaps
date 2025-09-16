@@ -26,7 +26,7 @@ public:
         };
     }
 
-private:
+public:
     static std::string generateEntrypointScript(const std::vector<std::string>& args) {
         std::string script = "#!/bin/bash\n";
         script += "source /etc/profile\n";
@@ -36,6 +36,7 @@ private:
         }
         return script;
     }
+private:
 };
 
 } // namespace linglong::utils

@@ -202,16 +202,7 @@ utils::error::Result<void> Container::run(const ocppi::runtime::config::types::P
             return LINGLONG_ERR("create font config in bundle directory");
         }
 
-        // TODO: maybe we could use a symlink '/usr/bin/ll-init' points to
-        // '/run/linglong/container-init' will be better
-        ofs << "#!/bin/bash\n";
-        ofs << "source /etc/profile\n"; // we need use /etc/profile to generate all needed
-                                        // environment variables
-        ofs << "exec ";
-
-        for (auto arg : originalArgs) {
-            ofs << utils::quoteBashArg(arg) << " ";
-        }
+        ofs << utils::BashCommandHelper::generateEntrypointScript(originalArgs);
     }
 
     std::filesystem::permissions(entrypoint, std::filesystem::perms::owner_all, ec);

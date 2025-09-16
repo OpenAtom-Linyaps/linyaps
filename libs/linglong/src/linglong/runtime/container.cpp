@@ -7,6 +7,7 @@
 #include "linglong/runtime/container.h"
 
 #include "configure.h"
+#include "linglong/utils/bash_command_helper.h"
 #include "linglong/utils/bash_quote.h"
 #include "linglong/utils/finally/finally.h"
 #include "ocppi/runtime/RunOption.hpp"
@@ -201,16 +202,7 @@ utils::error::Result<void> Container::run(const ocppi::runtime::config::types::P
             return LINGLONG_ERR("create font config in bundle directory");
         }
 
-        // TODO: maybe we could use a symlink '/usr/bin/ll-init' points to
-        // '/run/linglong/container-init' will be better
-        ofs << "#!/run/linglong/container-init /bin/bash\n";
-        ofs << "source /etc/profile\n"; // we need use /etc/profile to generate all needed
-                                        // environment variables
-        ofs << "exec ";
-
-        for (auto arg : originalArgs) {
-            ofs << utils::quoteBashArg(arg) << " ";
-        }
+        ofs << utils::BashCommandHelper::generateEntrypointScript(originalArgs);
     }
 
     std::filesystem::permissions(entrypoint, std::filesystem::perms::owner_all, ec);
@@ -218,14 +210,17 @@ utils::error::Result<void> Container::run(const ocppi::runtime::config::types::P
         return LINGLONG_ERR("make entrypoint executable", ec);
     }
 
+    auto entrypointPath = "/run/linglong/entrypoint.sh";
+
     this->cfg.mounts->push_back(ocppi::runtime::config::types::Mount{
-      .destination = "/run/linglong/entrypoint.sh",
+      .destination = entrypointPath,
       .options = { { "ro", "rbind" } },
       .source = entrypoint,
       .type = "bind",
     });
 
-    this->cfg.process->args = { "/run/linglong/entrypoint.sh" };
+    auto cmd = utils::BashCommandHelper::generateExecCommand(entrypointPath);
+    this->cfg.process->args = cmd;
 
 #ifdef LINGLONG_FONT_CACHE_GENERATOR
     {

@@ -34,6 +34,7 @@
 #include "linglong/runtime/container_builder.h"
 #include "linglong/runtime/run_context.h"
 #include "linglong/utils/bash_quote.h"
+#include "linglong/utils/bash_command_helper.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/finally/finally.h"
 #include "linglong/utils/gettext.h"
@@ -871,9 +872,8 @@ int Cli::enter(const EnterOptions &options)
 
     qInfo() << "select container id" << QString::fromStdString(containerID);
     auto commands = options.commands;
-    if (commands.size() == 0) {
-        commands.emplace_back("bash");
-        commands.emplace_back("--login");
+    if (commands.empty()) {
+        commands = utils::BashCommandHelper::generateDefaultBashCommand();
     }
 
     auto opt = ocppi::runtime::ExecOption{

@@ -51,6 +51,8 @@ pfl_add_library(
   src/linglong/utils/gkeyfile_wrapper.h
   src/linglong/utils/hooks.cpp
   src/linglong/utils/hooks.h
+  src/linglong/utils/bash_quote.h
+  src/linglong/utils/bash_command_helper.h
   COMPILE_FEATURES
   PUBLIC
   cxx_std_17

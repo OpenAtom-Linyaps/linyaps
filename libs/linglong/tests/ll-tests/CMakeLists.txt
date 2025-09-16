@@ -28,6 +28,7 @@ pfl_add_executable(
   src/linglong/utils/sha256_test.cpp
   src/linglong/utils/transaction_test.cpp
   src/linglong/utils/command_test.cpp
+  src/linglong/utils/bash_command_helper_test.cpp
   src/linglong/repo/config_test.cpp
   src/main.cpp
   COMPILE_FEATURES

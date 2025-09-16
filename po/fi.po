@@ -100,16 +100,22 @@ msgid ""
 "Multiple versions of the package are installed. Please specify a single version to uninstall:\n"
 "%1"
 msgstr ""
+"Paketista on asennettu useita versioita. Valitse poistettava versio::\n"
+"%1"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1722
 msgid ""
 "The application is currently running and cannot be uninstalled. Please turn "
 "off the application and try again."
 msgstr ""
+"Sovellus on käynnissä, eikä sitä voi poistaa. Sulje sovellus ja yritä "
+"uudelleen."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1727
 msgid "Base or runtime cannot be uninstalled, please use 'll-cli prune'."
 msgstr ""
+"Alustaa tai suoritusympäristöä ei voi poistaa, käytä \"ll-cli prune\" "
+"komentoa."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2735
 msgid ""
@@ -163,11 +169,11 @@ msgstr "Välitä verkko-osoite hiekkalaatikossa toimiville sovelluksille"
 
 #: ../apps/ll-cli/src/main.cpp:182
 msgid "Set environment variables for the application"
-msgstr ""
+msgstr "Aseta ympäristömuuttujat sovellukselle"
 
 #: ../apps/ll-cli/src/main.cpp:188
 msgid "Input parameter is invalid, please input valid parameter instead"
-msgstr ""
+msgstr "Parametri on virheellinen, anna kelvollinen parametri"
 
 #: ../apps/ll-cli/src/main.cpp:194
 msgid "Specify the base used by the application to run"

@@ -100,16 +100,22 @@ msgid ""
 "Multiple versions of the package are installed. Please specify a single version to uninstall:\n"
 "%1"
 msgstr ""
+"Znaleziono wiele wersji tego samego pakietu. Wybierz wersję do odinstalowania: \n"
+"%1"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1722
 msgid ""
 "The application is currently running and cannot be uninstalled. Please turn "
 "off the application and try again."
 msgstr ""
+"Aplikacja jest obecnie uruchomiona i nie można jej odinstalować. Wyłącz "
+"aplikację i spróbuj ponownie."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1727
 msgid "Base or runtime cannot be uninstalled, please use 'll-cli prune'."
 msgstr ""
+"Nie można odinstalować bazy lub środowiska wykonawczego. Skorzystaj z "
+"polecenia 'll-cli prune'."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2735
 msgid ""
@@ -164,19 +170,20 @@ msgstr "Przekaż adres URL aplikacji działającej w piaskownicy"
 
 #: ../apps/ll-cli/src/main.cpp:182
 msgid "Set environment variables for the application"
-msgstr ""
+msgstr "Ustaw zmienne środowiskowe aplikacji"
 
 #: ../apps/ll-cli/src/main.cpp:188
 msgid "Input parameter is invalid, please input valid parameter instead"
-msgstr ""
+msgstr "Parametr wejściowy jest nieprawidłowy, wprowadź prawidłowy parametr."
 
 #: ../apps/ll-cli/src/main.cpp:194
 msgid "Specify the base used by the application to run"
-msgstr ""
+msgstr "Wybierz bazę, na której zostanie uruchomiona aplikacja"
 
 #: ../apps/ll-cli/src/main.cpp:200
 msgid "Specify the runtime used by the application to run"
 msgstr ""
+"Wybierz środowisko wykonawcze, na którym zostanie uruchomiona aplikacja"
 
 #: ../apps/ll-cli/src/main.cpp:203 ../apps/ll-cli/src/main.cpp:234
 msgid "Run commands in a running sandbox"
@@ -581,7 +588,7 @@ msgstr "Podaj zainstalowaną aplikację (baza lub środowisko wykonawcze)"
 
 #: ../apps/ll-cli/src/main.cpp:590
 msgid "Specify a module"
-msgstr ""
+msgstr "Wprowadź moduł"
 
 #: ../apps/ll-cli/src/main.cpp:630
 msgid ""
@@ -897,11 +904,11 @@ msgstr "Plik wyjściowy"
 
 #: ../apps/ll-builder/src/main.cpp:893
 msgid "Reference of the package"
-msgstr ""
+msgstr "Odniesienie pakietu"
 
 #: ../apps/ll-builder/src/main.cpp:898
 msgid "Modules to export"
-msgstr ""
+msgstr "Moduły do wyeksportowania"
 
 #: ../apps/ll-builder/src/main.cpp:906
 msgid "Push linyaps app to remote repo"

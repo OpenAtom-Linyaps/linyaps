@@ -114,8 +114,7 @@ msgstr ""
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1727
 msgid "Base or runtime cannot be uninstalled, please use 'll-cli prune'."
 msgstr ""
-"Alustaa tai suoritusympäristöä ei voi poistaa, käytä \"ll-cli prune\" "
-"komentoa."
+"Alustaa tai ajoympäristöä ei voi poistaa, käytä \"ll-cli prune\" komentoa."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2735
 msgid ""
@@ -177,11 +176,11 @@ msgstr "Parametri on virheellinen, anna kelvollinen parametri"
 
 #: ../apps/ll-cli/src/main.cpp:194
 msgid "Specify the base used by the application to run"
-msgstr ""
+msgstr "Määritä sovelluksen käyttämä ajoalusta"
 
 #: ../apps/ll-cli/src/main.cpp:200
 msgid "Specify the runtime used by the application to run"
-msgstr ""
+msgstr "Määritä sovelluksen käyttämä ajoympäristö"
 
 #: ../apps/ll-cli/src/main.cpp:203 ../apps/ll-cli/src/main.cpp:234
 msgid "Run commands in a running sandbox"
@@ -588,7 +587,7 @@ msgstr "Määritä asennettu sovellus (base tai runtime)"
 
 #: ../apps/ll-cli/src/main.cpp:590
 msgid "Specify a module"
-msgstr ""
+msgstr "Määritä moduuli"
 
 #: ../apps/ll-cli/src/main.cpp:630
 msgid ""
@@ -901,11 +900,11 @@ msgstr "Tulostustiedosto"
 
 #: ../apps/ll-builder/src/main.cpp:893
 msgid "Reference of the package"
-msgstr ""
+msgstr "Paketin viite"
 
 #: ../apps/ll-builder/src/main.cpp:898
 msgid "Modules to export"
-msgstr ""
+msgstr "Vietävät moduulit"
 
 #: ../apps/ll-builder/src/main.cpp:906
 msgid "Push linyaps app to remote repo"

@@ -1883,39 +1883,6 @@ OSTreeRepo::listRemote(const package::FuzzyReference &fuzzyRef,
     return pkgInfos;
 }
 
-void OSTreeRepo::removeDanglingXDGIntergation() noexcept
-{
-    QDir entriesDir = this->repoDir.absoluteFilePath("entries/share");
-    QDirIterator it(entriesDir.absolutePath(),
-                    QDir::AllEntries | QDir::NoDot | QDir::NoDotDot | QDir::System,
-                    QDirIterator::Subdirectories);
-    while (it.hasNext()) {
-        it.next();
-        const auto info = it.fileInfo();
-        if (info.isDir()) {
-            continue;
-        }
-
-        if (!info.isSymLink()) {
-            // NOTE: Everything in entries should be directory or symbol link.
-            // But it can be some cache file, we should not remove it too.
-            qWarning() << "Invalid file detected." << info.absoluteFilePath();
-            qWarning() << "If the file is a cache or something like that, ignore this warning.";
-            continue;
-        }
-
-        if (info.exists()) {
-            continue;
-        }
-
-        if (!entriesDir.remove(it.filePath())) {
-            qCritical() << "Failed to remove" << it.filePath();
-            Q_ASSERT(false);
-        }
-    }
-    this->updateSharedInfo();
-}
-
 void OSTreeRepo::unexportReference(const std::string &layerDir) noexcept
 {
     QString layerDirStr = layerDir.c_str();

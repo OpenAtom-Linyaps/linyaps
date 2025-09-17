@@ -214,7 +214,6 @@ msgfmt -cv po/zh_CN.po
 ```
 
 4. Collaboration Standards:
-
    - Preserve source context
    - Avoid variable placeholders (e.g. %s)
    - Maintain terminology consistency

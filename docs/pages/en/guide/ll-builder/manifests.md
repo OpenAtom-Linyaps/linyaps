@@ -59,7 +59,7 @@ package:
 | version      | Version of the build artifact, four digits recommended (e.g., `5.7.21.0`) | Yes      |
 | kind         | Type of the build artifact: `app` (Application), `runtime` (Runtime)      | Yes      |
 | description  | Detailed description of the build artifact                                | Yes      |
-| architecture | Target architecture of the build artifact (e.g., `x86_64`, `arm64`)        | No       |
+| architecture | Target architecture of the build artifact (e.g., `x86_64`, `arm64`)       | No       |
 | channel      | Channel of the build artifact (e.g., `stable`, `beta`)                    | No       |
 
 ### Command (`command`)

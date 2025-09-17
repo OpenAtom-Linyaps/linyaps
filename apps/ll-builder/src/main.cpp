@@ -18,6 +18,7 @@
 #include "linglong/utils/gettext.h"
 #include "linglong/utils/global/initialize.h"
 #include "linglong/utils/log/log.h"
+#include "linglong/utils/namespace.h"
 #include "linglong/utils/serialize/yaml.h"
 #include "ocppi/cli/crun/Crun.hpp"
 
@@ -1021,6 +1022,28 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     if (versionFlag) {
         std::cout << _("linyaps build tool version ") << LINGLONG_VERSION << std::endl;
         return 0;
+    }
+
+    // build command need run in namespace because:
+    // 1. fuse-overlayfs should run in new user_namespaces and
+    // run with CAP_DAC_OVERRIDE capbilities.
+    // 2. mount needs CAP_SYS_ADMIN capbilities in the
+    // user_namespaces associated with current mount_namespaces,
+    if (buildBuilder->parsed()) {
+        auto res = linglong::utils::needRunInNamespace();
+        if (!res) {
+            LogE("failed to check need run in namespace {}", res.error());
+            return -1;
+        }
+
+        if (*res) {
+            auto res = linglong::utils::runInNamespace(argc, argv);
+            if (!res) {
+                LogE("failed to run in namespace {}", res.error());
+                return -1;
+            }
+            return *res;
+        }
     }
 
     if (buildCreate->parsed()) {

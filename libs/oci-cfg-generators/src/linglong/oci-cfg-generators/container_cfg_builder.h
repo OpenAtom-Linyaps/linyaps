@@ -183,9 +183,21 @@ public:
         return *this;
     }
 
+    ContainerCfgBuilder &disableUserNamespace() noexcept
+    {
+        disableUserNamespaceEnabled = true;
+        return *this;
+    }
+
     ContainerCfgBuilder &disablePatch() noexcept
     {
         applyPatchEnabled = false;
+        return *this;
+    }
+
+    ContainerCfgBuilder &setCapabilities(std::vector<std::string> caps) noexcept
+    {
+        capabilities = std::move(caps);
         return *this;
     }
 
@@ -196,15 +208,6 @@ public:
     const ocppi::runtime::config::types::Config &getConfig() const { return config; }
 
     Error getError() { return error_; }
-
-    // TODO
-    // ContainerCfgBuilder& mountPermission() noexcept;
-
-    // utils::error::Result<void> useBasicConfig() noexcept;
-    // utils::error::Result<void> useHostRootFSConfig() noexcept;
-    // utils::error::Result<void> useHostStaticsConfig() noexcept;
-
-    // utils::error::Result<void> addEnv(std::map<std::string, std::string> env) noexcept;
 
 private:
     bool checkValid() noexcept;
@@ -222,7 +225,6 @@ private:
     bool buildMountLocalTime() noexcept;
     bool buildMountNetworkConf() noexcept;
     bool buildQuirkVolatile() noexcept;
-    // TODO: impl buildXDG()
     bool buildXDGRuntime() noexcept;
     bool buildEnv() noexcept;
     bool applyPatch() noexcept;
@@ -322,6 +324,7 @@ private:
     std::vector<ocppi::runtime::config::types::Mount> mounts;
 
     bool isolateNetWorkEnabled = false;
+    bool disableUserNamespaceEnabled = false;
     bool applyPatchEnabled = true;
     bool isolateTmp{ false };
 
@@ -331,6 +334,7 @@ private:
     std::optional<std::filesystem::path> xAuthFile;
 
     std::vector<std::string> maskedPaths;
+    std::optional<std::vector<std::string>> capabilities;
     ocppi::runtime::config::types::Config config;
     std::string containerId;
 

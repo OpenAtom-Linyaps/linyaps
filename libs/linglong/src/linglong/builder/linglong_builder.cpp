@@ -67,6 +67,12 @@
 
 namespace linglong::builder {
 
+std::vector<std::string> Builder::privilegeBuilderCaps = {
+    "CAP_CHOWN",   "CAP_DAC_OVERRIDE",     "CAP_FOWNER",     "CAP_FSETID",
+    "CAP_KILL",    "CAP_NET_BIND_SERVICE", "CAP_SETFCAP",    "CAP_SETGID",
+    "CAP_SETPCAP", "CAP_SETUID",           "CAP_SYS_CHROOT",
+};
+
 namespace {
 
 /*!
@@ -318,49 +324,6 @@ utils::error::Result<void> installModule(QStringList installRules,
     return LINGLONG_OK;
 }
 
-bool runInNamespace()
-{
-    const int innerUid = 0;
-    const int innerGid = 0;
-    int outerUid = getuid();
-    int outerGid = getgid();
-
-    if (-1 == unshare(CLONE_NEWNS | CLONE_NEWUSER)) {
-        perror("unshare");
-        return false;
-    }
-
-    std::ofstream uidMapFile("/proc/self/uid_map");
-    if (!uidMapFile.is_open()) {
-        qCritical() << "failed to open uid_map";
-        return false;
-    }
-    std::ostringstream content;
-    content << innerUid << " " << outerUid << " 1\n";
-    uidMapFile << content.str();
-    uidMapFile.close();
-
-    std::ofstream setgroupsFile("/proc/self/setgroups");
-    if (!setgroupsFile.is_open()) {
-        qCritical() << "failed to open setgroups";
-        return false;
-    }
-    setgroupsFile << "deny";
-    setgroupsFile.close();
-
-    std::ofstream gidMapFile("/proc/self/gid_map");
-    if (!gidMapFile.is_open()) {
-        qCritical() << "failed to open gid_map";
-        return false;
-    }
-    std::ostringstream().swap(content);
-    content << innerGid << " " << outerGid << " 1\n";
-    gidMapFile << content.str();
-    gidMapFile.close();
-
-    return getuid() == innerUid;
-}
-
 } // namespace
 
 utils::error::Result<void> cmdListApp(repo::OSTreeRepo &repo)
@@ -451,18 +414,6 @@ void Builder::setConfig(const api::types::v1::BuilderConfig &cfg) noexcept
 utils::error::Result<void> Builder::buildStagePrepare() noexcept
 {
     LINGLONG_TRACE("build prepare");
-
-    // fuse-overlayfs should run in new user_namespaces and
-    // run with CAP_DAC_OVERRIDE capbilities. So we unshare
-    // process to new user_namespaces, and map root/root in
-    // namespace to current user/group.
-    //
-    // mount needs CAP_SYS_ADMIN capbilities in the
-    // user_namespaces associated with current mount_namespaces,
-    // So we also unshare to new mount_namespaces.
-    if (!runInNamespace()) {
-        return LINGLONG_ERR("failed to run in namespace");
-    }
 
     uid = getuid();
     gid = getgid();
@@ -762,8 +713,6 @@ utils::error::Result<void> Builder::processBuildDepends() noexcept
       .setAppId(this->project->package.id)
       // overwrite base overlay directory
       .setBasePath(baseOverlay->mergedDirPath().toStdString(), false)
-      .addUIdMapping(uid, uid, 1)
-      .addGIdMapping(gid, gid, 1)
       .bindDefault()
       .addExtraMount(ocppi::runtime::config::types::Mount{
         .destination = "/project",
@@ -771,7 +720,9 @@ utils::error::Result<void> Builder::processBuildDepends() noexcept
         .source = this->workingDir.absolutePath().toStdString(),
         .type = "bind" })
       .forwardDefaultEnv()
-      .appendEnv("LINYAPS_INIT_SINGLE_MODE", "1");
+      .appendEnv("LINYAPS_INIT_SINGLE_MODE", "1")
+      .disableUserNamespace()
+      .setCapabilities(privilegeBuilderCaps);
 
     // overwrite runtime overlay directory
     if (cfgBuilder.getRuntimePath() && runtimeOverlay) {
@@ -893,8 +844,6 @@ utils::error::Result<bool> Builder::buildStageBuild(const QStringList &args) noe
     }
     cfgBuilder.setAppId(this->project->package.id)
       .setBasePath(baseOverlay->mergedDirPath().toStdString(), false)
-      .addUIdMapping(uid, uid, 1)
-      .addGIdMapping(gid, gid, 1)
       .bindDefault()
       .setStartContainerHooks(
         std::vector<ocppi::runtime::config::types::Hook>{ ocppi::runtime::config::types::Hook{
@@ -905,7 +854,9 @@ utils::error::Result<bool> Builder::buildStageBuild(const QStringList &args) noe
         "/project/linglong/output",
         "/project/linglong/overlay",
       })
-      .appendEnv("LINYAPS_INIT_SINGLE_MODE", "1");
+      .appendEnv("LINYAPS_INIT_SINGLE_MODE", "1")
+      .disableUserNamespace()
+      .setCapabilities(privilegeBuilderCaps);
 
     if (this->buildOptions.isolateNetWork) {
         cfgBuilder.isolateNetWork();
@@ -1041,8 +992,6 @@ utils::error::Result<void> Builder::buildStagePreCommit() noexcept
     }
     cfgBuilder.setAppId(project.package.id)
       .setBasePath(baseOverlay->mergedDirPath().toStdString(), false)
-      .addUIdMapping(uid, uid, 1)
-      .addGIdMapping(gid, gid, 1)
       .bindDefault()
       .addExtraMount(ocppi::runtime::config::types::Mount{
         .destination = "/project",
@@ -1050,7 +999,9 @@ utils::error::Result<void> Builder::buildStagePreCommit() noexcept
         .source = this->workingDir.absolutePath().toStdString(),
         .type = "bind" })
       .forwardDefaultEnv()
-      .appendEnv("LINYAPS_INIT_SINGLE_MODE", "1");
+      .appendEnv("LINYAPS_INIT_SINGLE_MODE", "1")
+      .disableUserNamespace()
+      .setCapabilities(privilegeBuilderCaps);
 
     if (cfgBuilder.getRuntimePath() && runtimeOverlay) {
         cfgBuilder.setRuntimePath(runtimeOverlay->mergedDirPath().toStdString(), false);

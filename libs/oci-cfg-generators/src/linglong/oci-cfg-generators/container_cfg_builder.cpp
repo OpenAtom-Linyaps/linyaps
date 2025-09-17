@@ -33,6 +33,7 @@ namespace linglong::generator {
 
 using string_list = std::vector<std::string>;
 
+using ocppi::runtime::config::types::Capabilities;
 using ocppi::runtime::config::types::Config;
 using ocppi::runtime::config::types::Hook;
 using ocppi::runtime::config::types::Hooks;
@@ -659,14 +660,23 @@ bool ContainerCfgBuilder::prepare() noexcept
         NamespaceReference{ .type = NamespaceType::Pid },
         NamespaceReference{ .type = NamespaceType::Mount },
         NamespaceReference{ .type = NamespaceType::Uts },
-        NamespaceReference{ .type = NamespaceType::User },
     };
+    if (!disableUserNamespaceEnabled) {
+        linux_.namespaces->push_back(NamespaceReference{ .type = NamespaceType::User });
+    }
     if (isolateNetWorkEnabled) {
         linux_.namespaces->push_back(NamespaceReference{ .type = NamespaceType::Network });
     }
     config.linux_ = std::move(linux_);
 
     auto process = Process{ .args = string_list{ "bash" }, .cwd = "/" };
+    if (capabilities) {
+        process.capabilities = Capabilities{
+            .bounding = capabilities,
+            .effective = capabilities,
+            .permitted = capabilities,
+        };
+    }
     config.process = std::move(process);
 
     config.root = { .path = basePath, .readonly = basePathRo };

@@ -117,7 +117,6 @@ public:
 
     utils::error::Result<void> prune();
 
-    void removeDanglingXDGIntergation() noexcept;
     // exportReference should be called when LayerDir of ref is existed in local repo
     void exportReference(const package::Reference &ref) noexcept;
     // unexportReference should be called when LayerDir of ref is existed in local repo

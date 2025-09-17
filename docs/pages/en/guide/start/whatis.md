@@ -25,32 +25,32 @@ linyaps, an open source package format developed by UnionTech Software, is desig
 
 ## Comparison
 
-| Features                                    | Linglong                                       | Flatpak                    | Snap                       | AppImage                                                 |
-| ------------------------------------------- | ---------------------------------------------- | -------------------------- | -------------------------- | -------------------------------------------------------- |
-| Package desktop apps                        | ✔                                             | ✔                         | ✔                         | ✔                                                       |
-| Package terminal apps                       | ✔                                             | ✔                         | ✔                         | ✔                                                       |
-| Deal with server apps                       | ✔                                             | ✘                          | ✔                         | ✘                                                        |
-| Package system services (root access)       | ✘                                              | ✘                          | ✔                         | ✘                                                        |
-| Normal themes                               | ✔                                             | ✔                         | ✔                         | ✔                                                       |
-| Library hosting services                    | ✔                                             | ✘                          | ✘                          | ✘                                                        |
-| Source of libraries/dependencies            | In packages                                    |                            |                            |                                                          |
-| Host system                                 | In packages                                    |                            |                            |                                                          |
-| SDK                                         | In packages                                    |                            |                            |                                                          |
-| snap base                                   |                                                |                            |                            |                                                          |
-| Commercial support                          | ✔                                             | ✘                          | ✔                         | ✘                                                        |
-| Apps quantity                               | About 4700+                                    | 1400+                      | 6600+                      | 1300+                                                    |
-| Development tools                           | linglong-builder                               | GNOME Builder              | electron-builder           |                                                          |
-| GNOME Builder                               | electron-builder                               |                            |                            |                                                          |
-| Sandbox                                     | ✔                                             | ✔                         | ✔                         | ◐ (Not officially available, but technically feasible)   |
-| Rootless sandbox                            | ✔                                             | ✘                          | ✘                          | ✘                                                        |
-| Run without installation                    | ✔ (Offer Bundle packages)                     | ✘                          | ✘                          | ✔                                                       |
-| Run without decompression                   | ✔ (Offer Bundle packages)                     | ✘                          | ✔                         | ✔                                                       |
-| Self-distribution/Green-format distribution | ✔  | ✘                          | ✘                          | ✔                                                       |
-| Run Wine apps                               | ✔                    | ◐ (Theoretically possible) | ◐ (Theoretically possible) | ◐ (Use LD to modify open calls, with poor compatibility) |
-| Support offline environment                 | ✔                                             | ✔                         | ✔                         | ✔                                                       |
-| Permission management                       | ✔                                             | ✔                         | ✔                         | ✘                                                        |
-| Center repository                           | mirror-repo-linglong.deepin.com                | FlatHub                    | Snap Store                 | AppImageHub                                              |
-|                                             |                                                |                            |                            |                                                          |
-| Multi-version coexistence                   | ✔                                             | ✔                         | ✔                         | ✔                                                       |
-| Peer-to-peer distribution                   | ✔                                             | ✔                         | ✔                         | ✔                                                       |
-| App upgrades                                | By repository                                  | By repository              | By repository              | By official tool                                         |
+| Features                                    | Linglong                        | Flatpak                    | Snap                       | AppImage                                                 |
+| ------------------------------------------- | ------------------------------- | -------------------------- | -------------------------- | -------------------------------------------------------- |
+| Package desktop apps                        | ✔                              | ✔                         | ✔                         | ✔                                                       |
+| Package terminal apps                       | ✔                              | ✔                         | ✔                         | ✔                                                       |
+| Deal with server apps                       | ✔                              | ✘                          | ✔                         | ✘                                                        |
+| Package system services (root access)       | ✘                               | ✘                          | ✔                         | ✘                                                        |
+| Normal themes                               | ✔                              | ✔                         | ✔                         | ✔                                                       |
+| Library hosting services                    | ✔                              | ✘                          | ✘                          | ✘                                                        |
+| Source of libraries/dependencies            | In packages                     |                            |                            |                                                          |
+| Host system                                 | In packages                     |                            |                            |                                                          |
+| SDK                                         | In packages                     |                            |                            |                                                          |
+| snap base                                   |                                 |                            |                            |                                                          |
+| Commercial support                          | ✔                              | ✘                          | ✔                         | ✘                                                        |
+| Apps quantity                               | About 4700+                     | 1400+                      | 6600+                      | 1300+                                                    |
+| Development tools                           | linglong-builder                | GNOME Builder              | electron-builder           |                                                          |
+| GNOME Builder                               | electron-builder                |                            |                            |                                                          |
+| Sandbox                                     | ✔                              | ✔                         | ✔                         | ◐ (Not officially available, but technically feasible)   |
+| Rootless sandbox                            | ✔                              | ✘                          | ✘                          | ✘                                                        |
+| Run without installation                    | ✔ (Offer Bundle packages)      | ✘                          | ✘                          | ✔                                                       |
+| Run without decompression                   | ✔ (Offer Bundle packages)      | ✘                          | ✔                         | ✔                                                       |
+| Self-distribution/Green-format distribution | ✔                              | ✘                          | ✘                          | ✔                                                       |
+| Run Wine apps                               | ✔                              | ◐ (Theoretically possible) | ◐ (Theoretically possible) | ◐ (Use LD to modify open calls, with poor compatibility) |
+| Support offline environment                 | ✔                              | ✔                         | ✔                         | ✔                                                       |
+| Permission management                       | ✔                              | ✔                         | ✔                         | ✘                                                        |
+| Center repository                           | mirror-repo-linglong.deepin.com | FlatHub                    | Snap Store                 | AppImageHub                                              |
+|                                             |                                 |                            |                            |                                                          |
+| Multi-version coexistence                   | ✔                              | ✔                         | ✔                         | ✔                                                       |
+| Peer-to-peer distribution                   | ✔                              | ✔                         | ✔                         | ✔                                                       |
+| App upgrades                                | By repository                   | By repository              | By repository              | By official tool                                         |

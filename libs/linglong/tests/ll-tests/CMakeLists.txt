@@ -24,7 +24,8 @@ pfl_add_executable(
   src/linglong/package/uab_file_test.cpp
   src/linglong/package/layer_packager_test.cpp
   src/linglong/builder/source_fetcher_test.cpp
-  src/linglong/mocks/command.h
+  src/linglong/mocks/command_mock.h
+  src/linglong/mocks/ostree_repo_mock.h
   src/linglong/utils/error/result_test.cpp
   src/linglong/utils/namespce.cpp
   src/linglong/utils/log.cpp
@@ -33,6 +34,7 @@ pfl_add_executable(
   src/linglong/utils/command_test.cpp
   src/linglong/utils/bash_command_helper_test.cpp
   src/linglong/repo/config_test.cpp
+  src/linglong/repo/ostree_repo_test.cpp
   src/main.cpp
   COMPILE_FEATURES
   PUBLIC

@@ -8,7 +8,7 @@
 
 #include "configure.h"
 #include "linglong/utils/log/log.h"
-#include "linglong/utils/string.h"
+#include "linglong/utils/strings.h"
 
 #include <qcoreapplication.h>
 #include <qloggingcategory.h>
@@ -25,6 +25,7 @@
 
 namespace linglong::utils::global {
 
+using namespace linglong::utils::strings;
 using linglong::utils::log::LogBackend;
 using linglong::utils::log::LogLevel;
 

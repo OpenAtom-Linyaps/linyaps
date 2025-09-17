@@ -122,6 +122,7 @@ public:
     void exportReference(const package::Reference &ref) noexcept;
     // unexportReference should be called when LayerDir of ref is existed in local repo
     void unexportReference(const package::Reference &ref) noexcept;
+    void unexportReference(const std::string &layerDir) noexcept;
     void updateSharedInfo() noexcept;
     utils::error::Result<void>
     markDeleted(const package::Reference &ref,
@@ -190,23 +191,28 @@ private:
     [[nodiscard]] utils::error::Result<package::LayerDir>
     getMergedModuleDir(const api::types::v1::RepositoryCacheLayersItem &layer,
                        bool fallbackLayerDir = true) const noexcept;
-    utils::error::Result<void>
-    exportEntries(const std::filesystem::path &rootEntriesDir,
-                  const api::types::v1::RepositoryCacheLayersItem &item) noexcept;
     static utils::error::Result<void> IniLikeFileRewrite(const QFileInfo &info,
                                                          const QString &id) noexcept;
 
-    utils::error::Result<void>
-    exportDir(const std::string &appID,
-              const std::filesystem::path &source,
-              const std::filesystem::path &destination,
-              const int &max_depth,
-              const std::optional<std::string> &fileSuffix = std::nullopt);
     // exportEntries will clear the entries/share and export all applications to the entries/share
     utils::error::Result<void> exportAllEntries() noexcept;
     utils::error::Result<std::vector<guint64>> getCommitSize(const std::string &remote,
                                                              const std::string &refString) noexcept;
     GVariantBuilder initOStreePullOptions(const std::string &ref) noexcept;
+
+protected:
+    // entries目录，/var/lib/linglong/entries
+    QDir getEntriesDir() const noexcept;
+    // 默认的shared目录，/var/lib/linglong/entries/share
+    QDir getDefaultSharedDir() const noexcept;
+    // 能覆盖系统目录的shared目录，/var/lib/linglong/entries/apps/share
+    virtual QDir getOverlayShareDir() const noexcept;
+    utils::error::Result<void> exportDir(const std::string &appID,
+                                         const std::filesystem::path &source,
+                                         const std::filesystem::path &destination,
+                                         const int &max_depth);
+    utils::error::Result<void> exportEntries(
+      const std::filesystem::path &, const api::types::v1::RepositoryCacheLayersItem &) noexcept;
 };
 
 } // namespace linglong::repo

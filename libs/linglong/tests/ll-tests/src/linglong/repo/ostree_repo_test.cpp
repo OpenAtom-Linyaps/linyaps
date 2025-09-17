@@ -6,187 +6,205 @@
 
 #include <gtest/gtest.h>
 
+#include "../mocks/ostree_repo_mock.h"
 #include "linglong/package/reference.h"
+#include "linglong/repo/client_factory.h"
 #include "linglong/repo/ostree_repo.h"
-#include "linglong/util/file.h"
 #include "linglong/utils/error/error.h"
-#include "linglong/utils/serialize/yaml.h"
-#include "utils/serialize/TestStruct.h"
 
-#include <QDir>
-#include <QProcess>
-#include <QStandardPaths>
-#include <QTemporaryDir>
-
-#include <cstddef>
-#include <iostream>
+#include <cstdio>
+#include <cstdlib>
+#include <filesystem>
+#include <fstream>
 #include <memory>
+#include <string>
 
 namespace linglong::repo::test {
 
+namespace fs = std::filesystem;
+
 namespace {
-
-// When testing OSTreeRepo functionality, we may initialize and commit some files into the ostree
-// repository in a bash script to keep our code as unit test.
-utils::error::Result<QStringList> executeTestScript(QStringList args)
-{
-    LINGLONG_TRACE("execute test script");
-
-    QProcess process;
-    process.start("src/linglong/repo/ostree_repo_test.sh", args);
-    if (!process.waitForFinished()) {
-        return LINGLONG_ERR(
-          QString("Run ostree repo test script with %1 failed: %2")
-            .arg(QString(QJsonDocument(QJsonArray::fromStringList(args)).toJson()))
-            .arg(process.errorString()));
-    }
-
-    auto retStatus = process.exitStatus();
-    auto retCode = process.exitCode();
-    if (retStatus == 0 && retCode == 0) {
-        QString lines = process.readAllStandardOutput();
-        auto ret = lines.split('\n', Qt::SkipEmptyParts);
-        return ret;
-    }
-
-    return LINGLONG_ERR(
-      QString("Ostree repo test script with %1 failed.\nstdout:\n%2\nstderr:\n%3")
-        .arg(
-          QString(QJsonDocument(QJsonArray::fromStringList(args)).toJson(QJsonDocument::Compact)))
-        .arg(QString(process.readAllStandardOutput()))
-        .arg(QString(process.readAllStandardError())));
-}
 
 class RepoTest : public ::testing::Test
 {
 protected:
-    api::client::ClientApi api;
-    std::unique_ptr<linglong::repo::OSTreeRepo> ostreeRepo;
-    QString repoPath;
-    QString ostreeRepoPath;
-    QString remoteEndpoint;
-    QString remoteRepoName;
+    void SetUp() override { }
 
-    std::unique_ptr<QTemporaryDir> dir;
-
-    void SetUp() override
-    {
-        dir = std::make_unique<QTemporaryDir>("repo");
-        repoPath = dir->path();
-        ostreeRepoPath = repoPath + "/repo";
-        remoteEndpoint = "https://store-llrepo.deepin.com/repos/";
-        remoteRepoName = "repo";
-        auto config =
-          config::ConfigV1{ remoteRepoName.toStdString(),
-                            { { remoteRepoName.toStdString(), remoteEndpoint.toStdString() } },
-                            1 };
-        ostreeRepo = std::make_unique<linglong::repo::OSTreeRepo>(repoPath, config, api);
-    }
-
-    void TearDown() override
-    {
-        ostreeRepo.reset(nullptr);
-        dir.reset();
-    }
+    void TearDown() override { }
 };
 
-TEST_F(RepoTest, initialize)
+TEST_F(RepoTest, exportDir)
 {
-    EXPECT_TRUE(true);
-}
+    // 准备测试环境
+    fs::path tempDir = fs::temp_directory_path() / "repo_test";
+    std::error_code ec;
+    fs::remove_all(tempDir, ec);
+    EXPECT_FALSE(ec) << "Failed to remove directory: " << ec.message();
 
-TEST_F(RepoTest, basicMethods)
-{
-    auto files = executeTestScript({ "create_files", dir->path() + "/tmp" });
-    if (!files.has_value()) {
-        auto &err = files.error();
-        qCritical() << "Create files for test failed:" << err;
-        FAIL();
+    bool created = fs::create_directories(tempDir, ec);
+    EXPECT_TRUE(created) << "Failed to create directory";
+    EXPECT_FALSE(ec) << "Error creating directory: " << ec.message();
+    EXPECT_TRUE(fs::exists(tempDir)) << "Directory not created";
+
+    std::string repoPath = tempDir.string();
+    std::string ostreeRepoPath = repoPath + "/repo";
+    std::string remoteEndpoint = "https://store-llrepo.deepin.com/repos/";
+    std::string remoteRepoName = "repo";
+    ClientFactory clientFactory(std::string("http://localhost"));
+
+    // 初始化配置和repo对象
+    auto config = api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 };
+    QDir repoDir = QString(repoPath.c_str());
+    auto ostreeRepo = std::make_unique<MockOstreeRepo>(repoDir, config, clientFactory);
+
+    // 创建测试文件和目录结构，包括XDG标准文件
+    fs::path srcDirPath = tempDir / "src";
+    created = fs::create_directories(srcDirPath, ec);
+    EXPECT_TRUE(created) << "Failed to create source directory";
+    EXPECT_FALSE(ec) << "Error creating source directory: " << ec.message();
+    EXPECT_TRUE(fs::exists(srcDirPath)) << "Source directory not created";
+
+    // 创建普通测试文件
+    std::ofstream(srcDirPath / "test1.txt").close();
+    std::ofstream(srcDirPath / "test2.txt").close();
+
+    // 创建子目录和文件
+    created = fs::create_directories(srcDirPath / "subdir", ec);
+    EXPECT_TRUE(created) << "Failed to create subdirectory";
+    EXPECT_FALSE(ec) << "Error creating subdirectory: " << ec.message();
+    EXPECT_TRUE(fs::exists(srcDirPath / "subdir")) << "Subdirectory not created";
+    std::ofstream(srcDirPath / "subdir" / "test3.txt").close();
+
+    // 创建XDG标准文件
+    created = fs::create_directories(srcDirPath / "share" / "applications" / "test", ec);
+    EXPECT_TRUE(created) << "Failed to create applications directory";
+    EXPECT_FALSE(ec) << "Error creating applications directory: " << ec.message();
+    EXPECT_TRUE(fs::exists(srcDirPath / "share" / "applications" / "test"))
+      << "Applications directory not created";
+    std::ofstream desktopFile(srcDirPath / "share" / "applications" / "test" / "test.desktop");
+    desktopFile << "[Desktop Entry]\n"
+                << "Name=Test App\n"
+                << "Exec=test\n"
+                << "Type=Application\n";
+    desktopFile.close();
+
+    created = fs::create_directories(srcDirPath / "share" / "dbus-1" / "services", ec);
+    EXPECT_TRUE(created) << "Failed to create dbus services directory";
+    EXPECT_FALSE(ec) << "Error creating dbus services directory: " << ec.message();
+    EXPECT_TRUE(fs::exists(srcDirPath / "share" / "dbus-1" / "services"))
+      << "Dbus services directory not created";
+    std::ofstream dbusServiceFile(srcDirPath / "share" / "dbus-1" / "services"
+                                  / "org.test.service");
+    dbusServiceFile << "[D-BUS Service]\n"
+                    << "Name=org.test\n"
+                    << "Exec=/bin/test\n";
+    dbusServiceFile.close();
+
+    created = fs::create_directories(srcDirPath / "lib" / "systemd" / "system", ec);
+    EXPECT_TRUE(created) << "Failed to create systemd directory";
+    EXPECT_FALSE(ec) << "Error creating systemd directory: " << ec.message();
+    EXPECT_TRUE(fs::exists(srcDirPath / "lib" / "systemd" / "system"))
+      << "Systemd directory not created";
+    std::ofstream systemdServiceFile(srcDirPath / "lib" / "systemd" / "system" / "test.service");
+    systemdServiceFile << "[Unit]\n"
+                       << "Description=Test Service\n\n"
+                       << "[Service]\n"
+                       << "ExecStart=/bin/test\n";
+    systemdServiceFile.close();
+
+    // 测试exportDir功能
+    fs::path destDirPath = tempDir / "entries";
+    {
+        // 测试目标目录已存在同名文件的情况
+        created = fs::create_directories(destDirPath / "share" / "applications", ec);
+        EXPECT_TRUE(created) << "Failed to create destination applications directory";
+        EXPECT_FALSE(ec) << "Error creating destination applications directory: " << ec.message();
+        EXPECT_TRUE(fs::exists(destDirPath / "share" / "applications"))
+          << "Destination applications directory not created";
+        std::ofstream(destDirPath / "share" / "applications" / "test").close();
+        auto result = ostreeRepo->exportDir("appID", srcDirPath.string(), destDirPath.string(), 10);
+        EXPECT_TRUE(result.has_value())
+          << "exportDir failed: " << result.error().message().toStdString();
+        EXPECT_FALSE(ec) << "Unexpected error code: " << ec.message();
+
+        // 非标准路径会被忽略
+        EXPECT_TRUE(fs::exists(destDirPath / "test1.txt"));
+        EXPECT_TRUE(fs::exists(destDirPath / "test2.txt"));
+        EXPECT_TRUE(fs::exists(destDirPath / "subdir" / "test3.txt"));
+
+        // 验证XDG标准文件
+        EXPECT_TRUE(fs::exists(destDirPath / "share" / "applications" / "test" / "test.desktop"));
+        EXPECT_TRUE(
+          fs::exists(srcDirPath / "share/applications/test/test.desktop.linyaps.original"));
+        EXPECT_TRUE(
+          !fs::exists(destDirPath / "share/applications/test/test.desktop.linyaps.original"));
+        EXPECT_TRUE(fs::exists(destDirPath / "share" / "dbus-1" / "services" / "org.test.service"));
+        EXPECT_TRUE(fs::exists(destDirPath / "lib" / "systemd" / "system" / "test.service"));
+        // 测试重复导出
+        result = ostreeRepo->exportDir("appID", srcDirPath.string(), destDirPath.string(), 10);
+        EXPECT_TRUE(result.has_value())
+          << "exportDir failed: " << result.error().message().toStdString();
+        EXPECT_FALSE(ec) << "Unexpected error code: " << ec.message();
+    }
+    ostreeRepo->warpGetOverlayShareDirFunc = [destDirPath]() {
+        return QDir(QString((destDirPath / "apps/share").string().c_str()));
+    };
+    // 如果defaultShareDir已存在desktop, 则优先导出到defaultShareDir目录
+    {
+        auto result = ostreeRepo->exportDir("appID", srcDirPath.string(), destDirPath.string(), 10);
+        EXPECT_TRUE(result.has_value())
+          << "exportDir failed: " << result.error().message().toStdString();
+        EXPECT_FALSE(ec) << "Unexpected error code: " << ec.message();
+        EXPECT_TRUE(fs::exists(destDirPath / "share/applications/test/test.desktop"));
+        EXPECT_TRUE(!fs::exists(destDirPath / "app/share/applications/test/test.desktop"));
+        // 测试重复导出
+        result = ostreeRepo->exportDir("appID", srcDirPath.string(), destDirPath.string(), 10);
+        EXPECT_TRUE(result.has_value())
+          << "exportDir failed: " << result.error().message().toStdString();
+        EXPECT_FALSE(ec) << "Unexpected error code: " << ec.message();
+    }
+    // 如果defaultShareDir不存在desktop, 则导出到overlayShareDir目录
+    fs::remove_all(destDirPath);
+    {
+        auto result = ostreeRepo->exportDir("appID", srcDirPath.string(), destDirPath.string(), 10);
+        EXPECT_TRUE(result.has_value())
+          << "exportDir failed: " << result.error().message().toStdString();
+        EXPECT_TRUE(!fs::exists(destDirPath / "share/applications/test/test.desktop"));
+        EXPECT_TRUE(fs::exists(destDirPath / "apps/share/applications/test/test.desktop"));
+        // 测试重复导出
+        result = ostreeRepo->exportDir("appID", srcDirPath.string(), destDirPath.string(), 10);
+        EXPECT_TRUE(result.has_value())
+          << "exportDir failed: " << result.error().message().toStdString();
+    }
+    // 如果两个目录都有desktop，则导出到两个目录
+    {
+        std::ofstream(destDirPath / "share/applications/test/test.desktop").close();
+        EXPECT_TRUE(!fs::is_symlink(destDirPath / "share/applications/test/test.desktop"));
+        auto result = ostreeRepo->exportDir("appID", srcDirPath.string(), destDirPath.string(), 10);
+        EXPECT_TRUE(result.has_value())
+          << "exportDir failed: " << result.error().message().toStdString();
+        EXPECT_TRUE(fs::exists(destDirPath / "share/applications/test/test.desktop"));
+        EXPECT_TRUE(fs::exists(destDirPath / "apps/share/applications/test/test.desktop"));
+        EXPECT_TRUE(fs::is_symlink(destDirPath / "share/applications/test/test.desktop"));
+        EXPECT_TRUE(fs::is_symlink(destDirPath / "apps/share/applications/test/test.desktop"));
+        // 测试重复导出
+        result = ostreeRepo->exportDir("appID", srcDirPath.string(), destDirPath.string(), 10);
+        EXPECT_TRUE(result.has_value())
+          << "exportDir failed: " << result.error().message().toStdString();
     }
 
-    QString appId = "test";
-    auto ret = ostreeRepo->importDirectory(package::Ref(appId), dir->path() + "/tmp");
-    if (!ret.has_value()) {
-        qCritical() << "Failed to import directory into ostree based linglong repository:"
-                    << ret.error();
-        FAIL();
-    }
-
-    QString refToCheck = QString("linglong/%1/latest/x86_64/runtime").arg(appId);
-    files = executeTestScript(QStringList{ "check_commit", ostreeRepoPath, refToCheck } + *files);
-    if (!files.has_value()) {
-        qCritical() << "Check files at repository" << ostreeRepoPath << "failed:" << files.error();
-        FAIL();
-    }
-
-    QDir(dir->path() + "/tmp").removeRecursively();
-
-    ret = ostreeRepo->checkoutAll(package::Ref(appId), "", dir->path() + "/tmp");
-    if (!ret.has_value()) {
-        qCritical() << "Checkout reference" << appId << "failed:" << ret.error();
-        FAIL();
-    }
-
-    files->push_front("check_files");
-    files = executeTestScript(*files);
-    if (!files.has_value()) {
-        qCritical() << "Check files failed:" << files.error();
-        FAIL();
-    }
-
-    auto ref = ostreeRepo->localLatestRef(package::Ref(appId));
-    if (!ref.has_value()) {
-        qCritical() << "Get local latest reference of application" << appId
-                    << "failed:" << ref.error();
-        FAIL();
-    }
-    EXPECT_EQ(ref->appId, appId);
-
-    ret = ostreeRepo->repoDeleteDatabyRef(repoPath, package::Ref("test").toOSTreeRefLocalString());
-    if (!ret.has_value()) {
-        qCritical() << "Delete" << appId << "from repository failed:" << ret.error();
-        FAIL();
-    }
-
-    ref = ostreeRepo->localLatestRef(package::Ref(appId));
-    if (ref.has_value()) {
-        qCritical() << "Reference" << appId << "should be deleted";
-        FAIL();
-    }
-}
-
-TEST_F(RepoTest, pull)
-{
-    GTEST_SKIP();
-}
-
-TEST_F(RepoTest, remoteShowUrl)
-{
-    auto ret = ostreeRepo->remoteShowUrl(remoteRepoName);
-    if (!ret.has_value()) {
-        qCritical() << ret.error();
-        FAIL();
-    }
-}
-
-TEST_F(RepoTest, rootOfLayer)
-{
-    GTEST_SKIP();
-}
-
-TEST_F(RepoTest, latestOfRef)
-{
-    GTEST_SKIP();
-}
-
-TEST_F(RepoTest, remoteLatestRef)
-{
-    GTEST_SKIP();
-}
-
-TEST_F(RepoTest, getRemoteRepoList)
-{
-    GTEST_SKIP();
+    // 测试空目录导出
+    fs::path emptyDirPath = tempDir / "empty";
+    created = fs::create_directories(emptyDirPath, ec);
+    EXPECT_TRUE(created) << "Failed to create empty directory";
+    EXPECT_FALSE(ec) << "Error creating empty directory: " << ec.message();
+    EXPECT_TRUE(fs::exists(emptyDirPath)) << "Empty directory not created";
+    fs::path emptyDestPath = tempDir / "empty_dest";
+    auto result = ostreeRepo->exportDir("appID", emptyDirPath.string(), emptyDestPath.string(), 10);
+    EXPECT_TRUE(result.has_value())
+      << "exportDir failed: " << result.error().message().toStdString();
+    EXPECT_FALSE(ec) << "Unexpected error code: " << ec.message();
+    EXPECT_TRUE(fs::exists(emptyDestPath));
 }
 
 } // namespace

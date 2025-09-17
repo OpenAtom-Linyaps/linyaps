@@ -48,6 +48,7 @@ pfl_add_library(
   src/linglong/utils/transaction.h
   src/linglong/utils/file.cpp
   src/linglong/utils/file.h
+  src/linglong/utils/strings.h
   src/linglong/utils/xdg/directory.h
   src/linglong/utils/xdg/directory.cpp
   src/linglong/utils/gkeyfile_wrapper.h

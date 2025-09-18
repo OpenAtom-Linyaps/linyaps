@@ -126,7 +126,7 @@ public:
     ContainerCfgBuilder &
     bindDevNode(std::function<bool(const std::string &)> ifBind = nullptr) noexcept;
     ContainerCfgBuilder &bindCgroup() noexcept;
-    ContainerCfgBuilder &bindXDGRuntime(const std::filesystem::path &path) noexcept;
+    ContainerCfgBuilder &bindXDGRuntime() noexcept;
     ContainerCfgBuilder &bindRun() noexcept;
     ContainerCfgBuilder &bindTmp() noexcept;
     ContainerCfgBuilder &bindUserGroup() noexcept;
@@ -142,6 +142,10 @@ public:
     ContainerCfgBuilder &bindHostRoot() noexcept;
     ContainerCfgBuilder &bindHostStatics() noexcept;
     ContainerCfgBuilder &bindHome(std::filesystem::path hostHome) noexcept;
+
+    ContainerCfgBuilder &bindXOrgSocket(const std::filesystem::path &socket) noexcept;
+    ContainerCfgBuilder &bindXAuthFile(const std::filesystem::path &authFile) noexcept;
+    ContainerCfgBuilder &bindWaylandSocket(const std::filesystem::path &socket) noexcept;
 
     ContainerCfgBuilder &enablePrivateDir() noexcept;
     ContainerCfgBuilder &mapPrivate(std::string containerPath, bool isDir) noexcept;
@@ -184,12 +188,6 @@ public:
         applyPatchEnabled = false;
         return *this;
     }
-
-    void bindXOrgSocket(const std::filesystem::path &socket) noexcept;
-
-    void bindXAuthFile(const std::filesystem::path &authFile) noexcept;
-
-    void bindWaylandSocket(const std::filesystem::path &socket) noexcept;
 
     std::string ldConf(const std::string &triplet) const;
 
@@ -256,8 +254,7 @@ private:
     std::filesystem::path basePath;
     std::filesystem::path bundlePath;
     std::optional<std::filesystem::path> appCache;
-    std::filesystem::path hostXDGRuntimeMountPoint;
-    std::filesystem::path containerXDGRuntimeDir;
+    std::optional<std::filesystem::path> containerXDGRuntimeDir;
 
     bool runtimePathRo = true;
     bool appPathRo = true;

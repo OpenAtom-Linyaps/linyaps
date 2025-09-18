@@ -2435,14 +2435,13 @@ utils::error::Result<void> PackageManager::generateCache(const package::Referenc
         return LINGLONG_ERR(res);
     }
 
-    auto XDGRuntimeDir = common::getAppXDGRuntimeDir(ref.id.toStdString());
     cfgBuilder.setAppId(ref.id.toStdString())
       .setAppCache(appCache, false)
       .addUIdMapping(uid, uid, 1)
       .addGIdMapping(gid, gid, 1)
       .bindDefault()
       .bindCgroup()
-      .bindXDGRuntime(XDGRuntimeDir)
+      .bindXDGRuntime()
       .bindUserGroup()
       .forwardDefaultEnv()
       .addExtraMounts(std::vector<ocppi::runtime::config::types::Mount>{
@@ -2506,6 +2505,7 @@ utils::error::Result<void> PackageManager::generateCache(const package::Referenc
 #endif
 
     process.args = std::move(ldGenerateCmd);
+    auto XDGRuntimeDir = common::getAppXDGRuntimeDir(ref.id.toStdString());
     auto containerStateRoot = XDGRuntimeDir / "ll-box";
 
     ocppi::runtime::RunOption opt;

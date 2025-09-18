@@ -226,35 +226,34 @@ ContainerCfgBuilder &ContainerCfgBuilder::bindCgroup() noexcept
 
 ContainerCfgBuilder &ContainerCfgBuilder::bindRun() noexcept
 {
-    runMount = std::vector<Mount>{};
-    runMount->emplace_back(
-      Mount{ .destination = "/run",
-             .options = string_list{ "nosuid", "nodev", "mode=0755", "size=65536k" },
-             .source = "tmpfs",
-             .type = "tmpfs" });
+    runMount = { Mount{ .destination = "/run",
+                        .options = string_list{ "nosuid", "nodev", "mode=0755", "size=65536k" },
+                        .source = "tmpfs",
+                        .type = "tmpfs" } };
 
     return *this;
 }
 
-ContainerCfgBuilder &ContainerCfgBuilder::bindXDGRuntime(const std::filesystem::path &path) noexcept
+ContainerCfgBuilder &ContainerCfgBuilder::bindXDGRuntime() noexcept
 {
-    hostXDGRuntimeMountPoint = path;
     containerXDGRuntimeDir = std::filesystem::path{ "/run/user" } / std::to_string(::geteuid());
 
-    if (!runMount) {
-        runMount = std::vector<Mount>();
-    }
-
-    runMount->emplace_back(Mount{ .destination = containerXDGRuntimeDir,
-                                  .options = string_list{ "bind" },
-                                  .source = hostXDGRuntimeMountPoint,
-                                  .type = "bind" });
-    environment["XDG_RUNTIME_DIR"] = containerXDGRuntimeDir.string();
     return *this;
 }
 
 bool ContainerCfgBuilder::buildXDGRuntime() noexcept
 {
+    if (!containerXDGRuntimeDir) {
+        return true;
+    }
+
+    if (!runMount) {
+        error_.reason = "/run is not bind";
+        error_.code = BUILD_XDGRUNTIME_ERROR;
+        return false;
+    }
+
+    auto hostXDGRuntimeMountPoint = common::getAppXDGRuntimeDir(appId);
     std::error_code ec;
     std::filesystem::create_directories(hostXDGRuntimeMountPoint, ec);
     if (ec) {
@@ -269,6 +268,12 @@ bool ContainerCfgBuilder::buildXDGRuntime() noexcept
         error_.code = BUILD_XDGRUNTIME_ERROR;
         return false;
     }
+
+    runMount->emplace_back(Mount{ .destination = *containerXDGRuntimeDir,
+                                  .options = string_list{ "bind" },
+                                  .source = hostXDGRuntimeMountPoint,
+                                  .type = "bind" });
+    environment["XDG_RUNTIME_DIR"] = *containerXDGRuntimeDir;
 
     return true;
 }
@@ -1002,19 +1007,25 @@ bool ContainerCfgBuilder::buildPrivateMapped() noexcept
     return true;
 }
 
-void ContainerCfgBuilder::bindXOrgSocket(const std::filesystem::path &socket) noexcept
+ContainerCfgBuilder &
+ContainerCfgBuilder::bindXOrgSocket(const std::filesystem::path &socket) noexcept
 {
     xOrgSocket = socket;
+    return *this;
 }
 
-void ContainerCfgBuilder::bindXAuthFile(const std::filesystem::path &authFile) noexcept
+ContainerCfgBuilder &
+ContainerCfgBuilder::bindXAuthFile(const std::filesystem::path &authFile) noexcept
 {
     xAuthFile = authFile;
+    return *this;
 }
 
-void ContainerCfgBuilder::bindWaylandSocket(const std::filesystem::path &socket) noexcept
+ContainerCfgBuilder &
+ContainerCfgBuilder::bindWaylandSocket(const std::filesystem::path &socket) noexcept
 {
     waylandSocket = socket;
+    return *this;
 }
 
 bool ContainerCfgBuilder::buildDisplaySystem() noexcept
@@ -1022,38 +1033,49 @@ bool ContainerCfgBuilder::buildDisplaySystem() noexcept
     displayMount = std::vector<Mount>{};
 
     if (xOrgSocket) {
-        displayMount->emplace_back(Mount{ .destination = xOrgSocket.value(),
-                                          .options = string_list{ "bind" },
-                                          .source = xOrgSocket.value(),
-                                          .type = "bind" });
+        if (!xOrgSocket->empty()) {
+            displayMount->emplace_back(
+              Mount{ .destination = "/tmp/.X11-unix",
+                     .options = string_list{ "nodev", "nosuid", "mode=700" },
+                     .source = "tmpfs",
+                     .type = "tmpfs" });
+            displayMount->emplace_back(Mount{ .destination = "/tmp/.X11-unix/X0",
+                                              .options = string_list{ "bind" },
+                                              .source = xOrgSocket.value(),
+                                              .type = "bind" });
+            environment["DISPLAY"] = ":0";
+        } else {
+            // remote display, use env DISPLAY from host
+            if (auto *display = ::getenv("DISPLAY"); display != nullptr) {
+                environment["DISPLAY"] = display;
+            }
+        }
     }
 
     if (xAuthFile) {
-        displayMount->emplace_back(Mount{ .destination = xAuthFile.value(),
-                                          .options = string_list{ "bind" },
-                                          .source = xAuthFile.value(),
-                                          .type = "bind" });
-    }
-
-    if (waylandSocket) {
-        std::filesystem::path containerWaylandSocket;
-        if (auto *waylandSocketEnv = ::getenv("WAYLAND_DISPLAY"); waylandSocketEnv != nullptr) {
-            containerWaylandSocket = waylandSocketEnv;
-        } else {
-            error_.reason =
-              "Couldn't get WAYLAND_DISPLAY but wayland socket is set, inconsistent state";
-            error_.code = BUILD_INTERNAL_ERROR;
+        if (!runMount) {
+            error_.reason = "must enable run mount first";
+            error_.code = BUILD_PARAM_ERROR;
             return false;
         }
 
-        if (containerWaylandSocket.is_relative()) {
-            containerWaylandSocket = containerXDGRuntimeDir / containerWaylandSocket;
-        }
+        auto xAuthPath = "/run/linglong/Xauthority";
+        displayMount->emplace_back(Mount{ .destination = xAuthPath,
+                                          .options = string_list{ "bind" },
+                                          .source = xAuthFile.value(),
+                                          .type = "bind" });
+        environment["XAUTHORITY"] = xAuthPath;
+    }
 
-        displayMount->emplace_back(Mount{ .destination = containerWaylandSocket.string(),
+    if (waylandSocket) {
+        auto waylandSocketPath = containerXDGRuntimeDir
+          ? (*containerXDGRuntimeDir / "wayland-0")
+          : std::filesystem::path{ "/run/linglong/wayland-0" };
+        displayMount->emplace_back(Mount{ .destination = waylandSocketPath,
                                           .options = string_list{ "bind" },
                                           .source = waylandSocket.value(),
                                           .type = "bind" });
+        environment["WAYLAND_DISPLAY"] = waylandSocketPath;
     }
 
     return true;
@@ -1065,8 +1087,8 @@ bool ContainerCfgBuilder::buildMountIPC() noexcept
         return true;
     }
 
-    if (!runMount) {
-        error_.reason = "/run is not bind";
+    if (!containerXDGRuntimeDir) {
+        error_.reason = "must enable xdg runtime mount first";
         error_.code = BUILD_MOUNT_IPC_ERROR;
         return false;
     }
@@ -1116,11 +1138,11 @@ bool ContainerCfgBuilder::buildMountIPC() noexcept
 
         bindIfExist(*ipcMount,
                     hostXDGRuntimeDir / "pulse",
-                    (containerXDGRuntimeDir / "pulse").string(),
+                    (*containerXDGRuntimeDir / "pulse").string(),
                     false);
         bindIfExist(*ipcMount,
                     hostXDGRuntimeDir / "gvfs",
-                    (containerXDGRuntimeDir / "gvfs").string(),
+                    (*containerXDGRuntimeDir / "gvfs").string(),
                     false);
 
         // TODO 应该参考规范文档实现更完善的地址解析支持
@@ -1158,7 +1180,7 @@ bool ContainerCfgBuilder::buildMountIPC() noexcept
                 return;
             }
 
-            auto containerSessionBusAddress = containerXDGRuntimeDir / "bus";
+            auto containerSessionBusAddress = *containerXDGRuntimeDir / "bus";
             ipcMount->emplace_back(ocppi::runtime::config::types::Mount{
               .destination = containerSessionBusAddress.string(),
               .options = string_list{ "rbind" },
@@ -1177,7 +1199,7 @@ bool ContainerCfgBuilder::buildMountIPC() noexcept
                 return;
             }
             ipcMount->emplace_back(ocppi::runtime::config::types::Mount{
-              .destination = containerXDGRuntimeDir / "dconf",
+              .destination = *containerXDGRuntimeDir / "dconf",
               .options = string_list{ "rbind" },
               .source = dconfPath.string(),
               .type = "bind",

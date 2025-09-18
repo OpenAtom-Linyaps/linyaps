@@ -804,7 +804,7 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     }
 
     // check oci runtime
-    auto path = QStandardPaths::findExecutable(ociRuntimeCLI);
+    auto path = QStandardPaths::findExecutable(ociRuntimeCLI, { BINDIR });
     if (path.isEmpty()) {
         qCritical() << ociRuntimeCLI << "not found";
         return -1;

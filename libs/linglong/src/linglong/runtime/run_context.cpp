@@ -422,7 +422,6 @@ void RunContext::detectDisplaySystem(generator::ContainerCfgBuilder &builder) no
         }
 
         builder.bindXOrgSocket(xOrgDisplay.value());
-        builder.appendEnv("DISPLAY", xOrgDisplayEnv);
         break;
     }
 
@@ -440,7 +439,6 @@ void RunContext::detectDisplaySystem(generator::ContainerCfgBuilder &builder) no
         }
 
         builder.bindXAuthFile(xOrgAuthFile.value());
-        builder.appendEnv("XAUTHORITY", xOrgAuthFileEnv);
         break;
     }
 
@@ -458,7 +456,6 @@ void RunContext::detectDisplaySystem(generator::ContainerCfgBuilder &builder) no
         }
 
         builder.bindWaylandSocket(waylandDisplay.value());
-        builder.appendEnv("WAYLAND_DISPLAY", waylandDisplayEnv);
         break;
     }
 }

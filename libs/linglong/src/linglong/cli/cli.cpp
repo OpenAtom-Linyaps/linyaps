@@ -750,8 +750,6 @@ int Cli::run(const RunOptions &options)
         return -1;
     }
 
-    const auto XDGRuntimeDir = common::getAppXDGRuntimeDir(curAppRef->id.toStdString());
-
     runContext.enableSecurityContext(runtime::getDefaultSecurityContexts());
 
     linglong::generator::ContainerCfgBuilder cfgBuilder;
@@ -762,7 +760,7 @@ int Cli::run(const RunOptions &options)
       .bindDefault()
       .bindDevNode()
       .bindCgroup()
-      .bindXDGRuntime(XDGRuntimeDir)
+      .bindXDGRuntime()
       .bindUserGroup()
       .bindRemovableStorageMounts()
       .bindHostRoot()

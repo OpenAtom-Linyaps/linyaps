@@ -2068,7 +2068,6 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
     }
 
     linglong::generator::ContainerCfgBuilder cfgBuilder;
-    const auto XDGRuntimeDir = common::getAppXDGRuntimeDir(curRef->id.toStdString());
 
     cfgBuilder.setAppId(curRef->id.toStdString())
       .setAppCache(appCache)
@@ -2078,7 +2077,7 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
       .bindDefault()
       .bindDevNode()
       .bindCgroup()
-      .bindXDGRuntime(XDGRuntimeDir)
+      .bindXDGRuntime()
       .bindUserGroup()
       .bindRemovableStorageMounts()
       .bindHostRoot()

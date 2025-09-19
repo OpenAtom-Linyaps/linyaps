@@ -22,13 +22,11 @@ public:
      * 这个进程不继承父进程的环境变量，并且不自动加载任何用户的配置文件。
      * 它为后续需要在一个可预测、无用户自定义配置影响的环境中执行命令的场景提供基础。
      *
-     * @return 包含 'env -i bash --noprofile --norc -c' 的字符串向量。
+     * @return 包含 'bash --noprofile --norc -c' 的字符串向量。
      */
     inline static std::vector<std::string> generateBashCommandBase()
     {
         return {
-            "env",         // 'env' 命令，用于操作环境变量。
-            "-i",          // 'env' 的参数，用于创建一个空的环境，清除所有从父进程继承的变量。
             "/bin/bash",   // 在干净环境中执行的 Shell。
             "--noprofile", // 'bash' 的参数，防止它加载 .profile、.bash_profile 等登录脚本。
             "--norc",      // 'bash' 的另一个参数，防止它加载 .bashrc 等交互式启动脚本。
@@ -48,7 +46,7 @@ public:
      * 例如在容器或沙盒环境中。
      *
      * @return 包含完整命令和参数的字符串向量，其概念上等同于
-     * 'env -i bash --noprofile --norc -c "source /etc/profile; bash --norc"'。
+     * 'bash --noprofile --norc -c "source /etc/profile; bash --norc"'。
      */
     inline static std::vector<std::string> generateDefaultBashCommand()
     {
@@ -70,7 +68,7 @@ public:
      * 这个命令通常是一个 Shell 脚本或要运行的程序。
      * @return 包含程序路径及其参数的字符串向量。
      * 概念上，生成的命令序列是：
-     * `/run/linglong/container-init env -i /bin/bash --noprofile --norc -c "<entrypoint>"`
+     * `/run/linglong/container-init /bin/bash --noprofile --norc -c "<entrypoint>"`
      */
     inline static std::vector<std::string> generateExecCommand(const std::string &entrypoint)
     {

@@ -330,7 +330,7 @@ PackageManager::removeAfterInstall(const package::Reference &oldRef,
                                    const std::vector<std::string> &modules) noexcept
 {
     LINGLONG_TRACE("remove old reference after install")
-
+    LogI("remove after install {} to {}", oldRef.toString(), newRef.toString());
     auto needDelayRet = isRefBusy(oldRef);
     if (!needDelayRet) {
         return LINGLONG_ERR(needDelayRet);
@@ -359,19 +359,31 @@ PackageManager::removeAfterInstall(const package::Reference &oldRef,
         return LINGLONG_OK;
     }
 
-    this->repo.unexportReference(oldRef);
+    // 更新时先导出新版本，再删除旧版本。
+    // 避免因软链接删除导致任务栏和桌面的图标丢失
+    transaction.addRollBack([this, &newRef]() noexcept {
+        this->repo.unexportReference(newRef);
+    });
+    LogI("export new reference", newRef.toString());
+    this->repo.exportReference(newRef);
+
+    // 保存layer位置，以便后续删除导出
     transaction.addRollBack([this, &oldRef]() noexcept {
         this->repo.exportReference(oldRef);
     });
+    LogI("unexport old reference {}", oldRef.toString());
+    this->repo.unexportReference(oldRef);
 
     for (const auto &module : modules) {
         if (module == "binary" || module == "runtime") {
+            LogI("remove old reference {} from cache", oldRef.toString());
             auto ret = this->removeCache(oldRef);
             if (!ret) {
                 qCritical() << ret.error().message();
             }
         }
 
+        LogI("remove old reference {} from ostree", oldRef.toString());
         auto ret = this->repo.remove(oldRef, module);
         if (!ret) {
             return LINGLONG_ERR("Failed to remove old reference " % oldRef.toString(), ret);
@@ -397,9 +409,6 @@ PackageManager::removeAfterInstall(const package::Reference &oldRef,
     if (!mergeRet.has_value()) {
         qCritical() << "merge modules failed: " << mergeRet.error().message();
     }
-
-    this->repo.exportReference(newRef);
-
     transaction.commit();
     return LINGLONG_OK;
 }

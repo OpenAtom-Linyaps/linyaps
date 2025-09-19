@@ -9,7 +9,7 @@
 #include <string>
 #include <vector>
 
-namespace linglong::utils {
+namespace linglong::utils::strings {
 
 inline bool stringEqual(std::string_view str1, std::string_view str2, bool caseSensitive = false)
 {
@@ -70,4 +70,20 @@ inline std::string replaceSubstring(std::string_view str,
     return result;
 }
 
-} // namespace linglong::utils
+inline bool hasPrefix(std::string_view str, std::string_view prefix)
+{
+    if (str.size() < prefix.size()) {
+        return false;
+    }
+    return str.substr(0, prefix.size()) == prefix;
+}
+
+inline bool hasSuffix(std::string_view str, std::string_view suffix)
+{
+    if (str.size() < suffix.size()) {
+        return false;
+    }
+    return str.substr(str.size() - suffix.size()) == suffix;
+}
+
+} // namespace linglong::utils::strings

@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 #include <gtest/gtest.h>
 
-#include "../mocks/command.h"
+#include "../mocks/command_mock.h"
 #include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/builder/source_fetcher.h"
 #include "linglong/utils/error/error.h"

@@ -12,29 +12,27 @@ namespace linglong::utils {
 TEST(BashCommandHelper, GenerateBashCommandBase)
 {
     auto cmd = BashCommandHelper::generateBashCommandBase();
-    EXPECT_EQ(cmd.size(), 6);
-    EXPECT_EQ(cmd[0], "env");
-    EXPECT_EQ(cmd[1], "-i");
-    EXPECT_EQ(cmd[2], "/bin/bash");
-    EXPECT_EQ(cmd[3], "--noprofile");
-    EXPECT_EQ(cmd[4], "--norc");
-    EXPECT_EQ(cmd[5], "-c");
+    EXPECT_EQ(cmd.size(), 4);
+    EXPECT_EQ(cmd[0], "/bin/bash");
+    EXPECT_EQ(cmd[1], "--noprofile");
+    EXPECT_EQ(cmd[2], "--norc");
+    EXPECT_EQ(cmd[3], "-c");
 }
 
 TEST(BashCommandHelper, GenerateDefaultBashCommand)
 {
     auto cmd = BashCommandHelper::generateDefaultBashCommand();
-    EXPECT_EQ(cmd.size(), 7);
-    EXPECT_EQ(cmd[6], "source /etc/profile; bash --norc");
+    EXPECT_EQ(cmd.size(), 5);
+    EXPECT_EQ(cmd[4], "source /etc/profile; bash --norc");
 }
 
 TEST(BashCommandHelper, GenerateExecCommand)
 {
     auto cmd = BashCommandHelper::generateExecCommand("test-command");
-    EXPECT_EQ(cmd.size(), 8);
+    EXPECT_EQ(cmd.size(), 6);
     EXPECT_EQ(cmd[0], "/run/linglong/container-init");
-    EXPECT_EQ(cmd[6], "-c");
-    EXPECT_EQ(cmd[7], "test-command");
+    EXPECT_EQ(cmd[4], "-c");
+    EXPECT_EQ(cmd[5], "test-command");
 }
 
 TEST(BashCommandHelper, GenerateEntrypointScript)

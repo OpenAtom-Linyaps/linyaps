@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include <QString>
+#include <filesystem>
 
 namespace linglong::utils {
 
@@ -15,21 +15,24 @@ public:
     OverlayFS(const OverlayFS &) = delete;
     OverlayFS &operator=(const OverlayFS &) = delete;
 
-    OverlayFS(QString lowerdir, QString upperdir, QString workdir, QString merged);
+    OverlayFS(std::filesystem::path lowerdir,
+              std::filesystem::path upperdir,
+              std::filesystem::path workdir,
+              std::filesystem::path merged);
     ~OverlayFS();
 
     bool mount();
     void unmount(bool clean = false);
 
-    QString upperDirPath() { return upperdir_; }
+    std::filesystem::path upperDirPath() { return upperdir_; }
 
-    QString mergedDirPath() { return merged_; }
+    std::filesystem::path mergedDirPath() { return merged_; }
 
 private:
-    QString lowerdir_;
-    QString upperdir_;
-    QString workdir_;
-    QString merged_;
+    std::filesystem::path lowerdir_;
+    std::filesystem::path upperdir_;
+    std::filesystem::path workdir_;
+    std::filesystem::path merged_;
 };
 
 } // namespace linglong::utils

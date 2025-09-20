@@ -5,6 +5,7 @@
 #include "file.h"
 
 #include "linglong/utils/error/error.h"
+#include "linglong/utils/log/log.h"
 
 #include <cstdint>
 #include <cstring>
@@ -16,6 +17,7 @@
 #include <sys/stat.h>
 
 namespace linglong::utils {
+
 linglong::utils::error::Result<std::string> readFile(std::string filepath)
 {
     LINGLONG_TRACE(QString("read file %1").arg(filepath.c_str()));
@@ -124,4 +126,56 @@ calculateDirectorySize(const std::filesystem::path &dir) noexcept
 
     return size;
 }
+
+// recursive copy src to dest with matcher
+// symlinks are preserved
+linglong::utils::error::Result<void>
+copyDirectory(const std::filesystem::path &src,
+              const std::filesystem::path &dest,
+              std::function<bool(const std::filesystem::path &)> matcher,
+              std::filesystem::copy_options options)
+{
+    LINGLONG_TRACE(fmt::format("copy directory {} to {}", src, dest).c_str());
+
+    std::error_code ec;
+    for (const auto &entry : std::filesystem::recursive_directory_iterator(
+           src,
+           std::filesystem::directory_options::skip_permission_denied,
+           ec)) {
+        const auto &fromPath = entry.path();
+
+        if (!matcher(fromPath)) {
+            continue;
+        }
+
+        const auto toPath = dest / fromPath.lexically_relative(src);
+        LogD("{} -> {}", fromPath, toPath);
+
+        std::error_code ec;
+        auto status = std::filesystem::symlink_status(fromPath, ec);
+        if (ec) {
+            LogW("failed to get status of {}: {}", fromPath, ec.message());
+            continue;
+        }
+
+        // assume recursice_directory_iterator is depth-first
+        if (std::filesystem::is_directory(status)) {
+            std::filesystem::create_directories(toPath, ec);
+            if (ec) {
+                LogW("failed to create directory {}: {}", toPath, ec.message());
+                continue;
+            }
+        } else {
+            // preserve symlinks
+            std::filesystem::copy(fromPath, toPath, options, ec);
+            if (ec) {
+                LogW("failed to copy {} to {}: {}", fromPath, toPath, ec.message());
+                continue;
+            }
+        }
+    }
+
+    return LINGLONG_OK;
+}
+
 } // namespace linglong::utils

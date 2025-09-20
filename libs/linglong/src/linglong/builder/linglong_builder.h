@@ -15,7 +15,9 @@
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/overlayfs.h"
 
+#include <filesystem>
 #include <string>
+#include <vector>
 
 namespace linglong::builder {
 
@@ -55,7 +57,7 @@ public:
     // 主要用于在构建完成后将linglong.yaml复制到应用中
     std::string projectYamlFile;
     explicit Builder(std::optional<api::types::v1::BuilderProject> project,
-                     const QDir &workingDir,
+                     std::filesystem::path workingDir,
                      repo::OSTreeRepo &repo,
                      runtime::ContainerBuilder &containerBuilder,
                      const api::types::v1::BuilderConfig &cfg);
@@ -105,7 +107,8 @@ private:
     utils::error::Result<void> generateEntries() noexcept;
     utils::error::Result<void> processBuildDepends() noexcept;
     utils::error::Result<void> commitToLocalRepo() noexcept;
-    std::unique_ptr<utils::OverlayFS> makeOverlay(QString lowerdir, QString overlayDir) noexcept;
+    std::unique_ptr<utils::OverlayFS> makeOverlay(const std::filesystem::path &lowerdir,
+                                                  const std::filesystem::path &overlayDir) noexcept;
     void fixLocaltimeInOverlay(std::unique_ptr<utils::OverlayFS> &base);
     utils::error::Result<package::Reference> ensureUtils(const std::string &id) noexcept;
     utils::error::Result<package::Reference> clearDependency(const std::string &ref,
@@ -115,13 +118,16 @@ private:
     auto generateBuildDependsScript() noexcept -> utils::error::Result<bool>;
     auto generateDependsScript() noexcept -> utils::error::Result<bool>;
     void takeTerminalForeground();
-    void mergeOutput(const QList<QDir> &src, const QDir &dest, const QStringList &target);
+    void mergeOutput(const std::vector<std::filesystem::path> &src,
+                     const std::filesystem::path &dest,
+                     const std::vector<std::string> &targets);
     void printBasicInfo();
     void printRepo();
 
 private:
     repo::OSTreeRepo &repo;
-    QDir workingDir;
+    std::filesystem::path workingDir;
+    std::filesystem::path internalDir;
     std::optional<api::types::v1::BuilderProject> project;
     runtime::ContainerBuilder &containerBuilder;
     api::types::v1::BuilderConfig cfg;

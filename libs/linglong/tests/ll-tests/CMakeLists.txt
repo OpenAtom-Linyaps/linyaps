@@ -27,6 +27,7 @@ pfl_add_executable(
   src/linglong/mocks/command_mock.h
   src/linglong/mocks/ostree_repo_mock.h
   src/linglong/utils/error/result_test.cpp
+  src/linglong/utils/file.cpp
   src/linglong/utils/namespce.cpp
   src/linglong/utils/log.cpp
   src/linglong/utils/sha256_test.cpp

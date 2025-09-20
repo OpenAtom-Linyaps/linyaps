@@ -6,51 +6,60 @@
 
 #include "linglong/utils/command/cmd.h"
 
-#include <QDir>
+#include <QDebug>
+#include <QString>
+
+#include <filesystem>
+#include <system_error>
 
 namespace linglong::utils {
 
-OverlayFS::OverlayFS(QString lowerdir, QString upperdir, QString workdir, QString merged)
-    : lowerdir_(lowerdir)
-    , upperdir_(upperdir)
-    , workdir_(workdir)
-    , merged_(merged)
+OverlayFS::OverlayFS(std::filesystem::path lowerdir,
+                     std::filesystem::path upperdir,
+                     std::filesystem::path workdir,
+                     std::filesystem::path merged)
+    : lowerdir_(std::move(lowerdir))
+    , upperdir_(std::move(upperdir))
+    , workdir_(std::move(workdir))
+    , merged_(std::move(merged))
 {
 }
 
 OverlayFS::~OverlayFS()
 {
-    auto res = utils::command::Cmd("fusermount").exec({ "-z", "-u", merged_ });
+    auto res = utils::command::Cmd("fusermount")
+                 .exec({ "-z", "-u", QString::fromStdString(merged_.string()) });
     if (!res) {
-        qWarning() << QString("failed to umount %1 ").arg(merged_) << res.error();
+        qWarning() << QString("failed to umount %1 ").arg(QString::fromStdString(merged_.string()))
+                   << res.error();
     }
 }
 
 bool OverlayFS::mount()
 {
-    QDir upperDir(upperdir_);
-    if (!upperDir.mkpath(".")) {
+    std::error_code ec;
+    std::filesystem::create_directories(upperdir_, ec);
+    if (ec) {
         return false;
     }
 
-    QDir workDir(workdir_);
-    if (!workDir.mkpath(".")) {
+    std::filesystem::create_directories(workdir_, ec);
+    if (ec) {
         return false;
     }
 
-    QDir mergedDir(merged_);
-    if (!mergedDir.mkpath(".")) {
+    std::filesystem::create_directories(merged_, ec);
+    if (ec) {
         return false;
     }
 
-    utils::command::Cmd("fusermount").exec({ "-z", "-u", merged_ });
-    // TODO(wurongjie) 命令重复写了两次
-    auto ret =
-      utils::command::Cmd("fuse-overlayfs")
-        .exec({ "fuse-overlayfs",
-                "-o",
-                QString("lowerdir=%1,upperdir=%2,workdir=%3").arg(lowerdir_, upperdir_, workdir_),
-                merged_ });
+    utils::command::Cmd("fusermount")
+      .exec({ "-z", "-u", QString::fromStdString(merged_.string()) });
+    auto ret = utils::command::Cmd("fuse-overlayfs")
+                 .exec({ "-o",
+                         QString("lowerdir=%1,upperdir=%2,workdir=%3")
+                           .arg((lowerdir_.c_str()), (upperdir_.c_str()), (workdir_.c_str())),
+                         QString::fromStdString(merged_.string()) });
     if (!ret) {
         qWarning() << "failed to mount " << ret.error();
     }
@@ -60,14 +69,17 @@ bool OverlayFS::mount()
 
 void OverlayFS::unmount(bool clean)
 {
-    auto res = utils::command::Cmd("fusermount").exec({ "-z", "-u", merged_ });
+    auto res = utils::command::Cmd("fusermount")
+                 .exec({ "-z", "-u", QString::fromStdString(merged_.string()) });
     if (!res) {
-        qWarning() << QString("failed to umount %1 ").arg(merged_) << res.error();
+        qWarning() << QString("failed to umount %1 ").arg(QString::fromStdString(merged_.string()))
+                   << res.error();
     }
 
     if (clean) {
-        QDir(upperdir_).removeRecursively();
-        QDir(workdir_).removeRecursively();
+        std::error_code ec;
+        std::filesystem::remove_all(upperdir_, ec);
+        std::filesystem::remove_all(workdir_, ec);
     }
 }
 

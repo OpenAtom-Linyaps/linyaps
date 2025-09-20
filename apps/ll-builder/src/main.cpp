@@ -1168,7 +1168,7 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     }
 
     linglong::builder::Builder builder(std::move(project),
-                                       QDir(cwd.c_str()),
+                                       cwd,
                                        repo,
                                        *containerBuilder,
                                        *builderCfg);

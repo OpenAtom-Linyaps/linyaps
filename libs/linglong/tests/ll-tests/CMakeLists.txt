@@ -26,6 +26,7 @@ pfl_add_executable(
   src/linglong/builder/source_fetcher_test.cpp
   src/linglong/mocks/command.h
   src/linglong/utils/error/result_test.cpp
+  src/linglong/utils/file.cpp
   src/linglong/utils/namespce.cpp
   src/linglong/utils/log.cpp
   src/linglong/utils/sha256_test.cpp

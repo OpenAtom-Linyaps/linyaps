@@ -36,6 +36,7 @@ pfl_add_executable(
   src/linglong/utils/bash_command_helper_test.cpp
   src/linglong/repo/config_test.cpp
   src/linglong/repo/ostree_repo_test.cpp
+  src/linglong/repo/client_factory_test.cpp
   src/main.cpp
   COMPILE_FEATURES
   PUBLIC

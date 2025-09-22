@@ -21,26 +21,26 @@ public:
     }
 
     // mock exec
-    std::function<linglong::utils::error::Result<QString>(const QStringList &)> warpExecFunc;
+    std::function<linglong::utils::error::Result<QString>(const QStringList &)> wrapExecFunc;
 
     linglong::utils::error::Result<QString> exec(const QStringList &args) noexcept override
     {
-        return warpExecFunc ? warpExecFunc(args) : Cmd::exec(args);
+        return wrapExecFunc ? wrapExecFunc(args) : Cmd::exec(args);
     }
 
     // mock exists
-    std::function<linglong::utils::error::Result<bool>()> warpExistsFunc;
+    std::function<linglong::utils::error::Result<bool>()> wrapExistsFunc;
 
     linglong::utils::error::Result<bool> exists() noexcept override
     {
-        return warpExistsFunc ? warpExistsFunc() : Cmd::exists();
+        return wrapExistsFunc ? wrapExistsFunc() : Cmd::exists();
     }
 
     // mock setEnv
-    std::function<linglong::utils::command::Cmd &(const QString &, const QString &)> warpSetEnvFunc;
+    std::function<linglong::utils::command::Cmd &(const QString &, const QString &)> wrapSetEnvFunc;
 
     Cmd &setEnv(const QString &name, const QString &value) noexcept override
     {
-        return warpSetEnvFunc ? warpSetEnvFunc(name, value) : Cmd::setEnv(name, value);
+        return wrapSetEnvFunc ? wrapSetEnvFunc(name, value) : Cmd::setEnv(name, value);
     }
 };

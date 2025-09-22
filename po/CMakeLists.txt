@@ -13,7 +13,7 @@ if(GETTEXT_FOUND)
   # # get a list of active translations from LINGUAS
   file(READ ${CMAKE_CURRENT_SOURCE_DIR}/LINGUAS linguas)
   # # transform linguas string to a cmake regular list
-  string(REGEX MATCHALL "[a-zA-Z_]+" langs "${linguas}")
+  string(REGEX MATCHALL "[a-zA-Z_@]+" langs "${linguas}")
 
   # copy PO files into build dir
   foreach(lang ${langs})
@@ -64,8 +64,10 @@ if(GETTEXT_FOUND)
 
   # target for updating a given PO file
   foreach(language ${langs})
+    # Replace @ with _ in target name to make it valid for CMake
+    string(REPLACE "@" "_" safe_language ${language})
     add_custom_target(
-      linyaps_${language}.po
+      linyaps_${safe_language}.po
       COMMAND ${GETTEXT_MSGMERGE_EXECUTABLE} --no-fuzzy-matching --backup=off --update --verbose ${language}.po
               ${GETTEXT_DOMAIN_NAME}.pot
       WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/po

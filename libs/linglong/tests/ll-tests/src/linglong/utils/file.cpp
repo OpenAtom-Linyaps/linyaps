@@ -54,8 +54,7 @@ TEST_F(FileTest, CopyDirectory)
 
     EXPECT_TRUE(fs::exists(dest_dir / "file1.txt"));
     std::ifstream ifs(dest_dir / "file1.txt");
-    std::string content((std::istreambuf_iterator<char>(ifs)),
-                        (std::istreambuf_iterator<char>()));
+    std::string content((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));
     EXPECT_EQ(content, "content1");
 
     EXPECT_TRUE(fs::is_directory(dest_dir / "subdir1"));
@@ -79,16 +78,15 @@ TEST_F(FileTest, CopyDirectory_OverwriteExisting)
     };
 
     auto result = linglong::utils::copyDirectory(src_dir,
-                                               dest_dir,
-                                               matcher,
-                                               fs::copy_options::overwrite_existing
-                                                 | fs::copy_options::copy_symlinks);
+                                                 dest_dir,
+                                                 matcher,
+                                                 fs::copy_options::overwrite_existing
+                                                   | fs::copy_options::copy_symlinks);
     ASSERT_TRUE(result.has_value());
 
     EXPECT_TRUE(fs::exists(dest_dir / "file1.txt"));
     std::ifstream ifs(dest_dir / "file1.txt");
-    std::string content((std::istreambuf_iterator<char>(ifs)),
-                        (std::istreambuf_iterator<char>()));
+    std::string content((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));
     EXPECT_EQ(content, "content1");
 
     EXPECT_TRUE(fs::is_directory(dest_dir / "subdir1"));
@@ -116,8 +114,7 @@ TEST_F(FileTest, CopyDirectory_DestinationExists)
 
     EXPECT_TRUE(fs::exists(dest_dir / "file1.txt"));
     std::ifstream ifs(dest_dir / "file1.txt");
-    std::string content((std::istreambuf_iterator<char>(ifs)),
-                        (std::istreambuf_iterator<char>()));
+    std::string content((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));
     EXPECT_EQ(content, "existing_content");
 
     EXPECT_TRUE(fs::is_directory(dest_dir / "subdir1"));

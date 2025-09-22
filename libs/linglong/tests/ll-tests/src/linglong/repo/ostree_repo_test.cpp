@@ -114,6 +114,9 @@ TEST_F(RepoTest, exportDir)
 
     // 测试exportDir功能
     fs::path destDirPath = tempDir / "entries";
+    ostreeRepo->wrapGetOverlayShareDirFunc = [destDirPath]() {
+        return QDir(QString((destDirPath / "share").string().c_str()));
+    };
     {
         // 测试目标目录已存在同名文件的情况
         created = fs::create_directories(destDirPath / "share" / "applications", ec);
@@ -146,7 +149,7 @@ TEST_F(RepoTest, exportDir)
           << "exportDir failed: " << result.error().message().toStdString();
         EXPECT_FALSE(ec) << "Unexpected error code: " << ec.message();
     }
-    ostreeRepo->warpGetOverlayShareDirFunc = [destDirPath]() {
+    ostreeRepo->wrapGetOverlayShareDirFunc = [destDirPath]() {
         return QDir(QString((destDirPath / "apps/share").string().c_str()));
     };
     // 如果defaultShareDir已存在desktop, 则优先导出到defaultShareDir目录

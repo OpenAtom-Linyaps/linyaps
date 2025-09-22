@@ -34,7 +34,7 @@ TEST_F(SourceFetcherTest, FetchFileSource)
 
     QDir cacheDir("/tmp/cache");
     auto mockCmd = std::make_shared<MockCommand>("mock");
-    mockCmd->warpExecFunc = [&](const QStringList &args) {
+    mockCmd->wrapExecFunc = [&](const QStringList &args) {
         auto argsStr = args.join(" ").toStdString();
         EXPECT_TRUE(args[0].contains("fetch-file-source")) << argsStr;
         EXPECT_EQ(args[1].toStdString(), "/tmp/dest/" + source.name.value()) << argsStr;
@@ -62,7 +62,7 @@ TEST_F(SourceFetcherTest, FetchGitSource)
 
     QDir cacheDir("/tmp/cache");
     auto mockCmd = std::make_shared<MockCommand>("mock");
-    mockCmd->warpExecFunc = [&](const QStringList &args) {
+    mockCmd->wrapExecFunc = [&](const QStringList &args) {
         auto argsStr = args.join(" ").toStdString();
         EXPECT_TRUE(args[0].contains("fetch-git-source")) << argsStr;
         EXPECT_EQ(args[1].toStdString(), "/tmp/dest/" + source.name.value()) << argsStr;
@@ -92,10 +92,10 @@ TEST_F(SourceFetcherTest, gitSubmodules)
     {
         QDir cacheDir("/tmp/cache");
         auto mockCmd = std::make_shared<MockCommand>("mock");
-        mockCmd->warpExecFunc = [&](const QStringList &args) {
+        mockCmd->wrapExecFunc = [&](const QStringList &args) {
             return utils::error::Result<QString>("ok");
         };
-        mockCmd->warpSetEnvFunc = [&](const QString &name,
+        mockCmd->wrapSetEnvFunc = [&](const QString &name,
                                       const QString &value) -> linglong::utils::command::Cmd & {
             EXPECT_EQ(name, "GIT_SUBMODULES");
             EXPECT_EQ(value, "true");
@@ -111,10 +111,10 @@ TEST_F(SourceFetcherTest, gitSubmodules)
     {
         QDir cacheDir("/tmp/cache");
         auto mockCmd = std::make_shared<MockCommand>("mock");
-        mockCmd->warpExecFunc = [&](const QStringList &args) {
+        mockCmd->wrapExecFunc = [&](const QStringList &args) {
             return utils::error::Result<QString>("ok");
         };
-        mockCmd->warpSetEnvFunc = [&](const QString &name,
+        mockCmd->wrapSetEnvFunc = [&](const QString &name,
                                       const QString &value) -> linglong::utils::command::Cmd & {
             EXPECT_TRUE(value.isEmpty()) << name.toStdString();
             return *mockCmd;
@@ -184,7 +184,7 @@ TEST_F(SourceFetcherTest, FetchInvalidGitCommit)
     source.commit = "invalid_commit";
     SourceFetcher fetcher(source, cacheDir);
     auto mockCmd = std::make_shared<MockCommand>("mock");
-    mockCmd->warpExecFunc = [&](const QStringList &args) {
+    mockCmd->wrapExecFunc = [&](const QStringList &args) {
         LINGLONG_TRACE("FetchInvalidGitCommit");
         return LINGLONG_ERR("Invalid commit", -2);
     };
@@ -214,7 +214,7 @@ TEST_F(SourceFetcherTest, FetchInvalidFileDigest)
     source.digest = "invalid_digest";
     SourceFetcher fetcher(source, cacheDir);
     auto mockCmd = std::make_shared<MockCommand>("mock");
-    mockCmd->warpExecFunc = [&](const QStringList &args) {
+    mockCmd->wrapExecFunc = [&](const QStringList &args) {
         LINGLONG_TRACE("FetchInvalidFileDigest");
         return LINGLONG_ERR("Invalid digest", -3);
     };
@@ -236,7 +236,7 @@ TEST_F(SourceFetcherTest, FetchNoSetName)
 
     QDir cacheDir("/tmp/cache");
     auto mockCmd = std::make_shared<MockCommand>("mock");
-    mockCmd->warpExecFunc = [&](const QStringList &args) {
+    mockCmd->wrapExecFunc = [&](const QStringList &args) {
         return utils::error::Result<QString>("ok");
     };
     SourceFetcher fetcher(source, cacheDir);

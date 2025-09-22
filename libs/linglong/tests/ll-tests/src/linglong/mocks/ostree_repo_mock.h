@@ -34,13 +34,13 @@ public:
     }
 
     // mock getOverlayShareDir
-    std::function<QDir()> warpGetOverlayShareDirFunc;
+    std::function<QDir()> wrapGetOverlayShareDirFunc;
 
 protected:
     QDir getOverlayShareDir() const noexcept override
     {
-        if (warpGetOverlayShareDirFunc) {
-            return warpGetOverlayShareDirFunc();
+        if (wrapGetOverlayShareDirFunc) {
+            return wrapGetOverlayShareDirFunc();
         }
         return OSTreeRepo::getOverlayShareDir();
     }

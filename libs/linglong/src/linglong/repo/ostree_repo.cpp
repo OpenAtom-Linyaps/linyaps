@@ -264,8 +264,7 @@ std::string ostreeSpecFromReference(const package::Reference &ref,
     }
 
     auto spec = ref.channel.toStdString() + "/" + ref.id.toStdString() + "/"
-      + ref.version.toString().toStdString() + "/" + ref.arch.toString().toStdString() + "/"
-      + module;
+      + ref.version.toString().toStdString() + "/" + ref.arch.toStdString() + "/" + module;
 
     if (repo) {
         spec = repo.value() + ":" + spec;
@@ -283,8 +282,7 @@ ostreeSpecFromReferenceV2(const package::Reference &ref,
         module = "binary";
     }
     auto ret = ref.channel.toStdString() + "/" + ref.id.toStdString() + "/"
-      + ref.version.toString().toStdString() + "/" + ref.arch.toString().toStdString() + "/"
-      + module;
+      + ref.version.toString().toStdString() + "/" + ref.arch.toStdString() + "/" + module;
 
     if (repo) {
         ret = repo.value() + ":" + ret;
@@ -2756,7 +2754,7 @@ utils::error::Result<package::LayerDir> OSTreeRepo::getMergedModuleDir(
         }
         if (layer.info.id != ref.id.toStdString()
             || layer.info.version != ref.version.toString().toStdString()
-            || arch != ref.arch.toString().toStdString()) {
+            || arch != ref.arch.toStdString()) {
             continue;
         }
         if (!loadModules.contains(layer.info.packageInfoV2Module.c_str())) {

@@ -608,8 +608,7 @@ utils::error::Result<void> UABPackager::prepareExecutableBundle(const QDir &bund
             if (!curArch) {
                 return LINGLONG_ERR("couldn't get current architecture");
             }
-            const auto fakePrefix =
-              moduleFilesDir / "lib" / std::filesystem::path{ curArch->getTriplet().toStdString() };
+            const auto fakePrefix = moduleFilesDir / "lib" / curArch->getTriplet();
 
             for (std::filesystem::path file : this->neededFiles) {
                 auto fileName = file.filename().string();

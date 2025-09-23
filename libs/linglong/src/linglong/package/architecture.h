@@ -31,8 +31,19 @@ public:
     explicit Architecture(Value value = UNKNOW);
     explicit Architecture(const std::string &raw);
 
+    // deprecated. Use toStdString() instead
+    [[deprecated("Use toStdString() instead")]]
     QString toString() const noexcept;
-    QString getTriplet() const noexcept;
+    /**
+     * @brief 获取架构名称的字符串表示
+     * @return 架构名称的std::string表示
+     */
+    std::string toStdString() const noexcept;
+    /**
+     * @brief 获取架构的gnu路径
+     * @return gnu路径的std::string表示
+     */
+    std::string getTriplet() const noexcept;
 
     bool operator==(const Architecture &that) const noexcept { return this->v == that.v; }
 

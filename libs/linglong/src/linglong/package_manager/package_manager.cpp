@@ -2476,7 +2476,7 @@ utils::error::Result<void> PackageManager::generateCache(const package::Referenc
         if (!ofs.is_open()) {
             return LINGLONG_ERR("create ld config in bundle directory");
         }
-        ofs << cfgBuilder.ldConf(ref.arch.getTriplet().toStdString());
+        ofs << cfgBuilder.ldConf(ref.arch.getTriplet());
     }
 
     if (!cfgBuilder.build()) {

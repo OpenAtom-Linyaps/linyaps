@@ -145,6 +145,13 @@ TEST_F(UabFileTest, UnpackFuseOffset)
 
 TEST_F(UabFileTest, UnpackFuse)
 {
+    {
+        auto ret = utils::command::Cmd("erofsfuse").exists();
+        ASSERT_TRUE(ret.has_value()) << ret.error().message().toStdString();
+        if (!*ret) {
+            GTEST_SKIP() << "Skipping this test.";
+        }
+    }
     auto uab = MockUabFile(uabFile);
     uab.wrapIsFileReadableFunc = [](const std::string &path) {
         return false;
@@ -168,7 +175,7 @@ TEST_F(UabFileTest, UnpackFsck)
 {
     auto uab = MockUabFile(uabFile);
     uab.wrapCheckCommandExistsFunc = [](const std::string &command) {
-        if (command == "erofs-fuse") {
+        if (command == "erofsfuse") {
             return false;
         }
         return true;

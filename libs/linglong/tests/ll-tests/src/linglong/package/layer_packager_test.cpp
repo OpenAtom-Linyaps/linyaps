@@ -7,6 +7,7 @@
 #include "../mocks/layer_packager_mock.h"
 #include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/package/layer_packager.h"
+#include "linglong/utils/command/cmd.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/strings.h"
 
@@ -114,7 +115,13 @@ TEST_F(LayerPackagerTest, LayerPackagerUnpackFuseOffset)
 
 TEST_F(LayerPackagerTest, LayerPackagerUnpackFuse)
 {
-
+    {
+        auto ret = utils::command::Cmd("erofsfuse").exists();
+        ASSERT_TRUE(ret.has_value()) << ret.error().message().toStdString();
+        if (!*ret) {
+            GTEST_SKIP() << "Skipping this test.";
+        }
+    }
     auto layerFileRet = package::LayerFile::New((layerFilePath).string().c_str());
     ASSERT_TRUE(layerFileRet.has_value())
       << "Failed to create layer file" << layerFileRet.error().message().toStdString();

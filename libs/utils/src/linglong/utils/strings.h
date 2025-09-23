@@ -86,4 +86,9 @@ inline bool hasSuffix(std::string_view str, std::string_view suffix)
     return str.substr(str.size() - suffix.size()) == suffix;
 }
 
+inline bool contains(std::string_view str, std::string_view suffix)
+{
+    return str.find(suffix) != std::string_view::npos;
+}
+
 } // namespace linglong::utils::strings

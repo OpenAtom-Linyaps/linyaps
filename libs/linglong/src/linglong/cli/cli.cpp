@@ -2714,7 +2714,7 @@ utils::error::Result<std::filesystem::path> Cli::ensureCache(
             }
 
             // If the ld.so.conf exists, check if it is consistent with the current configuration.
-            auto ldConf = cfgBuilder.ldConf(appRef.arch.getTriplet().toStdString());
+            auto ldConf = cfgBuilder.ldConf(appRef.arch.getTriplet());
             std::stringstream oldCache;
             std::ifstream ifs(ldSoConf, std::ios::binary | std::ios::in);
             if (!ifs.is_open()) {

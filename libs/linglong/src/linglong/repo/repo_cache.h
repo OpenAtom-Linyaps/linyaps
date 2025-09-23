@@ -32,7 +32,7 @@ struct repoCacheQuery
     {
         auto ret = package::Architecture::currentCPUArchitecture();
         if (ret) {
-            return ret->toString().toStdString();
+            return ret->toStdString();
         }
 
         return std::string{ "unknown" };

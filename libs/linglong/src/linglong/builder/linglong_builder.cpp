@@ -872,7 +872,7 @@ utils::error::Result<bool> Builder::buildStageBuild(const QStringList &args) noe
 
     // write ld.so.conf
     QString ldConfPath = appCache.absoluteFilePath("ld.so.conf");
-    std::string triplet = projectRef->arch.getTriplet().toStdString();
+    std::string triplet = projectRef->arch.getTriplet();
     std::string ldRawConf = cfgBuilder.ldConf(triplet);
 
     QFile ldsoconf{ ldConfPath };
@@ -1321,7 +1321,7 @@ utils::error::Result<void> Builder::commitToLocalRepo() noexcept
     auto appIDPrintWidth = -project.package.id.size() + -5;
 
     auto info = api::types::v1::PackageInfoV2{
-        .arch = { projectRef->arch.toString().toStdString() },
+        .arch = { projectRef->arch.toStdString() },
         .channel = projectRef->channel.toStdString(),
         .command = project.command,
         .description = project.package.description,
@@ -1992,7 +1992,7 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
           .appendEnv("LINYAPS_INIT_SINGLE_MODE", "1");
 
         // write ld.so.conf
-        std::string triplet = curRef->arch.getTriplet().toStdString();
+        std::string triplet = curRef->arch.getTriplet();
         std::string ldRawConf = cfgBuilder.ldConf(triplet);
 
         QFile ldsoconf{ ldConfPath.c_str() };
@@ -2136,7 +2136,7 @@ utils::error::Result<void> Builder::runFromRepo(const package::Reference &ref,
           .appendEnv("LINYAPS_INIT_SINGLE_MODE", "1");
 
         // write ld.so.conf
-        std::string triplet = ref.arch.getTriplet().toStdString();
+        std::string triplet = ref.arch.getTriplet();
         std::string ldRawConf = cfgBuilder.ldConf(triplet);
 
         QFile ldsoconf{ ldConfPath.c_str() };
@@ -2437,7 +2437,7 @@ void Builder::printBasicInfo()
     printMessage("Package Name: " + project.package.name, 2);
     printMessage("Version: " + project.package.version, 2);
     printMessage("Package Type: " + project.package.kind, 2);
-    printMessage("Build Arch: " + projectRef->arch.toString().toStdString(), 2);
+    printMessage("Build Arch: " + projectRef->arch.toStdString(), 2);
 }
 
 void Builder::printRepo()

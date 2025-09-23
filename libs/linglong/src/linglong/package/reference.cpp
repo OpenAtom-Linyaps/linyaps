@@ -135,7 +135,7 @@ QVariantMap Reference::toVariantMap(const Reference &ref) noexcept
     json["channel"] = ref.channel.toStdString();
     json["id"] = ref.id.toStdString();
     json["version"] = ref.version.toString().toStdString();
-    json["arch"] = ref.arch.toString().toStdString();
+    json["arch"] = ref.arch.toStdString();
 
     QJsonDocument doc = QJsonDocument::fromJson(json.dump().data());
     Q_ASSERT(doc.isObject());

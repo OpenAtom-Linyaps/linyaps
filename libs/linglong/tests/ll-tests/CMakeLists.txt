@@ -26,6 +26,8 @@ pfl_add_executable(
   src/linglong/builder/source_fetcher_test.cpp
   src/linglong/mocks/command_mock.h
   src/linglong/mocks/ostree_repo_mock.h
+  src/linglong/mocks/layer_packager_mock.h
+  src/linglong/mocks/uab_file_mock.h
   src/linglong/utils/error/result_test.cpp
   src/linglong/utils/file.cpp
   src/linglong/utils/namespce.cpp
@@ -43,7 +45,7 @@ pfl_add_executable(
   cxx_std_17
   LINK_LIBRARIES
   PRIVATE
-  GTest::gmock
+  GTest::gtest
   linglong::linglong
   PkgConfig::CRYPTO
   Qt${QT_VERSION_MAJOR}::DBusPrivate)

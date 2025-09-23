@@ -77,10 +77,6 @@ linglong::utils::error::Result<bool> Cmd::exists() noexcept
 // set environment, if value is empty, remove the environment
 Cmd &Cmd::setEnv(const QString &name, const QString &value) noexcept
 {
-    if (value.isEmpty()) {
-        m_envs.remove(name);
-        return *this;
-    }
     m_envs[name] = value;
     return *this;
 }

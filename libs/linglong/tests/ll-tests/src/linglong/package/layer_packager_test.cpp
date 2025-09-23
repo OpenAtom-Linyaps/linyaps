@@ -2,12 +2,13 @@
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
-#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "../mocks/layer_packager_mock.h"
 #include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/package/layer_packager.h"
 #include "linglong/utils/error/error.h"
+#include "linglong/utils/strings.h"
 
 #include <QDir>
 
@@ -19,31 +20,6 @@
 using namespace linglong;
 
 namespace linglong::package {
-
-class MockLayerPackager : public package::LayerPackager
-{
-public:
-    using package::LayerPackager::initWorkDir;
-    MOCK_METHOD(utils::error::Result<bool>, checkErofsFuseExists, (), (const));
-    MOCK_METHOD(utils::error::Result<void>, mkdirDir, (const std::string &path), (noexcept));
-    MOCK_METHOD(bool, isFileReadable, (const std::string &path), (const));
-
-    MockLayerPackager()
-    {
-        // 使用 lambda 表达式调用基类方法
-        ON_CALL(*this, checkErofsFuseExists()).WillByDefault(testing::Invoke([this]() {
-            return this->LayerPackager::checkErofsFuseExists();
-        }));
-        ON_CALL(*this, mkdirDir(testing::_))
-          .WillByDefault(testing::Invoke([this](const std::string &path) {
-              return this->LayerPackager::mkdirDir(path);
-          }));
-        ON_CALL(*this, isFileReadable(testing::_))
-          .WillByDefault(testing::Invoke([this](const std::string &path) {
-              return this->LayerPackager::isFileReadable(path);
-          }));
-    }
-};
 
 class LayerPackagerTest : public ::testing::Test
 {
@@ -143,11 +119,14 @@ TEST_F(LayerPackagerTest, LayerPackagerUnpackFuse)
     ASSERT_TRUE(layerFileRet.has_value())
       << "Failed to create layer file" << layerFileRet.error().message().toStdString();
     auto layerFile = *layerFileRet;
-    auto packager = std::make_shared<MockLayerPackager>();
-    EXPECT_CALL(*packager, checkErofsFuseExists())
-      .WillOnce(testing::Return(utils::error::Result<bool>(true)));
-    EXPECT_CALL(*packager, isFileReadable(testing::_)).WillOnce(testing::Return(false));
-    auto ret = packager->unpack(*layerFile);
+    MockLayerPackager packager;
+    packager.wrapCheckErofsFuseExistsFunc = []() {
+        return true;
+    };
+    packager.wrapIsFileReadableFunc = [](const std::string &path) {
+        return false;
+    };
+    auto ret = packager.unpack(*layerFile);
     ASSERT_TRUE(ret.has_value()) << "Failed to unpack layer file"
                                  << ret.error().message().toStdString();
     ASSERT_TRUE(std::filesystem::exists(ret->filePath("info.json").toStdString()))
@@ -168,10 +147,11 @@ TEST_F(LayerPackagerTest, LayerPackagerUnpackFsck)
     ASSERT_TRUE(layerFileRet.has_value())
       << "Failed to create layer file" << layerFileRet.error().message().toStdString();
     auto layerFile = *layerFileRet;
-    auto packager = std::make_shared<MockLayerPackager>();
-    EXPECT_CALL(*packager, checkErofsFuseExists())
-      .WillOnce(testing::Return(utils::error::Result<bool>(false)));
-    auto ret = packager->unpack(*layerFile);
+    MockLayerPackager packager;
+    packager.wrapCheckErofsFuseExistsFunc = []() {
+        return false;
+    };
+    auto ret = packager.unpack(*layerFile);
     ASSERT_TRUE(ret.has_value()) << "Failed to unpack layer file"
                                  << ret.error().message().toStdString();
     ASSERT_TRUE(std::filesystem::exists(ret->filePath("info.json").toStdString()))
@@ -187,14 +167,13 @@ TEST_F(LayerPackagerTest, InitWorkDir)
     std::filesystem::path tmpPath = mkdtemp(tempPath);
     MockLayerPackager packager;
     // 测试创建workdir失败时, initWorkDir 应该使用临时目录
-    EXPECT_CALL(packager, mkdirDir(testing::_))
-      .WillOnce([]() {
-          LINGLONG_TRACE("test workdir not exists");
-          return LINGLONG_ERR("failed to create work dir");
-      })
-      .WillOnce([]() -> utils::error::Result<void> {
-          return LINGLONG_OK;
-      });
+    packager.wrapMkdirDirFunc = [](const std::string &path) -> utils::error::Result<void> {
+        LINGLONG_TRACE("test workdir not exists");
+        if (utils::strings::hasPrefix(path, "/var/tmp")) {
+            return LINGLONG_ERR("failed to create work dir");
+        }
+        return LINGLONG_OK;
+    };
     // 测试initWorkDir
     auto ret = packager.initWorkDir();
     ASSERT_TRUE(ret.has_value()) << "Failed to init workdir" << ret.error().message().toStdString();

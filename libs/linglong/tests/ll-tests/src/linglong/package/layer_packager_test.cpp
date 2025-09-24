@@ -119,7 +119,11 @@ TEST_F(LayerPackagerTest, LayerPackagerUnpackFuse)
         auto ret = utils::command::Cmd("erofsfuse").exists();
         ASSERT_TRUE(ret.has_value()) << ret.error().message().toStdString();
         if (!*ret) {
+#ifdef GTEST_SKIP
             GTEST_SKIP() << "Skipping this test.";
+#else
+            return;
+#endif
         }
     }
     auto layerFileRet = package::LayerFile::New((layerFilePath).string().c_str());

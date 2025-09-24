@@ -102,16 +102,22 @@ msgid ""
 "Multiple versions of the package are installed. Please specify a single version to uninstall:\n"
 "%1"
 msgstr ""
+"Встановлено декілька версій пакунка. Будь ласка, вкажіть одну версію, яку слід вилучити:\n"
+"%1"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1722
 msgid ""
 "The application is currently running and cannot be uninstalled. Please turn "
 "off the application and try again."
 msgstr ""
+"Зараз програму запущено, отже її пакунок не можна вилучити. Будь ласка, "
+"завершіть роботу програми і повторіть спробу."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1727
 msgid "Base or runtime cannot be uninstalled, please use 'll-cli prune'."
 msgstr ""
+"Не вдалося вилучити основу або середовище виконання, будь ласка, "
+"скористайтеся 'll-cli prune'."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2735
 msgid ""
@@ -166,19 +172,22 @@ msgstr "Передати адресу програмам, які запущен�
 
 #: ../apps/ll-cli/src/main.cpp:182
 msgid "Set environment variables for the application"
-msgstr ""
+msgstr "Встановити змінні середовища для програми"
 
 #: ../apps/ll-cli/src/main.cpp:188
 msgid "Input parameter is invalid, please input valid parameter instead"
 msgstr ""
+"Вхідний параметр є некоректним. Будь ласка, вкажіть замість нього коректний "
+"параметр"
 
 #: ../apps/ll-cli/src/main.cpp:194
 msgid "Specify the base used by the application to run"
-msgstr ""
+msgstr "Вкажіть основу, на якій запускатиметься програма"
 
 #: ../apps/ll-cli/src/main.cpp:200
 msgid "Specify the runtime used by the application to run"
 msgstr ""
+"Вкажіть середовище виконання, яке використовуватиметься для роботи програми"
 
 #: ../apps/ll-cli/src/main.cpp:203 ../apps/ll-cli/src/main.cpp:234
 msgid "Run commands in a running sandbox"
@@ -589,7 +598,7 @@ msgstr "Вказати встановлену програму (основу а�
 
 #: ../apps/ll-cli/src/main.cpp:590
 msgid "Specify a module"
-msgstr ""
+msgstr "Вкажіть модуль"
 
 #: ../apps/ll-cli/src/main.cpp:630
 msgid ""
@@ -900,11 +909,11 @@ msgstr "Файл результатів"
 
 #: ../apps/ll-builder/src/main.cpp:893
 msgid "Reference of the package"
-msgstr ""
+msgstr "Посилання пакунка"
 
 #: ../apps/ll-builder/src/main.cpp:898
 msgid "Modules to export"
-msgstr ""
+msgstr "Модулі, які слід експортувати"
 
 #: ../apps/ll-builder/src/main.cpp:906
 msgid "Push linyaps app to remote repo"

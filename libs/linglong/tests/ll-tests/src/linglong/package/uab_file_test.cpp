@@ -27,7 +27,7 @@ namespace linglong::package {
 class UabFileTest : public ::testing::Test
 {
 protected:
-    static void SetUpTestSuite()
+    static void SetUpTestCase()
     {
         char tempPath[] = "/var/tmp/linglong-uab-file-test-XXXXXX";
         testDir = mkdtemp(tempPath);
@@ -107,7 +107,7 @@ protected:
         }
     }
 
-    static void TearDownTestSuite()
+    static void TearDownTestCase()
     {
         std::error_code ec;
         std::filesystem::remove_all(testDir, ec);

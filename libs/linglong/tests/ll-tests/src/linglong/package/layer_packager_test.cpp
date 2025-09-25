@@ -25,7 +25,7 @@ namespace linglong::package {
 class LayerPackagerTest : public ::testing::Test
 {
 public:
-    static void SetUpTestSuite()
+    static void SetUpTestCase()
     {
         char tempPath[] = "/var/tmp/linglong-layer-packager-test-SetUpTestSuite-XXXXXX";
         std::filesystem::path layerDirPath = mkdtemp(tempPath);
@@ -71,7 +71,7 @@ public:
         ASSERT_FALSE(ec) << "Failed to remove layer dir" << ec.message();
     }
 
-    static void TearDownTestSuite()
+    static void TearDownTestCase()
     {
         std::cout << "Cleanup shared resource" << std::endl;
         // 删除layer文件

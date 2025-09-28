@@ -6,6 +6,7 @@
 
 #include <gtest/gtest.h>
 
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <string>
@@ -17,14 +18,15 @@ class FileTest : public ::testing::Test
 protected:
     void SetUp() override
     {
-        src_dir = fs::temp_directory_path() / "copyDirectory_test_src";
-        dest_dir = fs::temp_directory_path() / "copyDirectory_test_dest";
+        char src_template[] = "/tmp/linglong-file-test-src-XXXXXX";
+        src_dir = mkdtemp(src_template);
+        ASSERT_FALSE(src_dir.empty());
 
-        fs::remove_all(src_dir);
-        fs::remove_all(dest_dir);
+        char dest_template[] = "/tmp/linglong-file-test-dest-XXXXXX";
+        dest_dir = mkdtemp(dest_template);
+        ASSERT_FALSE(dest_dir.empty());
 
         fs::create_directories(src_dir / "subdir1");
-        fs::create_directories(dest_dir);
 
         std::ofstream(src_dir / "file1.txt") << "content1";
         std::ofstream(src_dir / "subdir1" / "file2.txt") << "content2";

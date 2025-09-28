@@ -655,7 +655,6 @@ bool ContainerCfgBuilder::prepare() noexcept
     config.hostname = "linglong";
 
     auto linux_ = ocppi::runtime::config::types::Linux{};
-    linux_.rootfsPropagation = RootfsPropagation::Slave;
     linux_.namespaces = std::vector<NamespaceReference>{
         NamespaceReference{ .type = NamespaceType::Pid },
         NamespaceReference{ .type = NamespaceType::Mount },

@@ -1268,8 +1268,14 @@ bool ContainerCfgBuilder::buildMountLocalTime() noexcept
                                             .type = "bind" });
     }
 
-    bindIfExist(*localtimeMount, "/usr/share/zoneinfo");
-    bindIfExist(*localtimeMount, "/etc/timezone");
+    auto *tzdir_env = getenv("TZDIR");
+    if (tzdir_env != nullptr && tzdir_env[0] != '\0')
+    {
+        bindIfExist(*localtimeMount, tzdir_env);
+    } else {
+        bindIfExist(*localtimeMount, "/usr/share/zoneinfo");
+        bindIfExist(*localtimeMount, "/etc/timezone");
+    }
 
     return true;
 }

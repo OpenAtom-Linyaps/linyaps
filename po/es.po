@@ -6,8 +6,8 @@
 # Translators:
 # Gary Wang <wzc782970009@gmail.com>, 2025
 # Isaías Gätjens M <igatjens@gmail.com>, 2025
-# Zaraza, 2025
 # Amaro Martínez <xoas@airmail.cc>, 2025
+# Zaraza, 2025
 # 
 #, fuzzy
 msgid ""
@@ -16,7 +16,7 @@ msgstr ""
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2025-09-10 17:13+0800\n"
 "PO-Revision-Date: 2025-04-11 01:38+0000\n"
-"Last-Translator: Amaro Martínez <xoas@airmail.cc>, 2025\n"
+"Last-Translator: Zaraza, 2025\n"
 "Language-Team: Spanish (https://app.transifex.com/linuxdeepin/teams/3976/es/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -103,16 +103,22 @@ msgid ""
 "Multiple versions of the package are installed. Please specify a single version to uninstall:\n"
 "%1"
 msgstr ""
+"Hay varias versiones del paquete instaladas. Especifique una versión       para desinstalar:\n"
+"%1"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1722
 msgid ""
 "The application is currently running and cannot be uninstalled. Please turn "
 "off the application and try again."
 msgstr ""
+"La aplicación se está ejecutando y no se puede desinstalar. Ciérrale y "
+"vuelva a intentarlo."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1727
 msgid "Base or runtime cannot be uninstalled, please use 'll-cli prune'."
 msgstr ""
+"No se puede desinstalar la base o el tiempo de ejecución, utilice 'll-cli "
+"prune'."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2735
 msgid ""
@@ -169,19 +175,20 @@ msgstr "Pasar URL a las aplicaciones que se ejecutan en un entorno aislado"
 
 #: ../apps/ll-cli/src/main.cpp:182
 msgid "Set environment variables for the application"
-msgstr ""
+msgstr "Establecer variables de entorno para la aplicación"
 
 #: ../apps/ll-cli/src/main.cpp:188
 msgid "Input parameter is invalid, please input valid parameter instead"
-msgstr ""
+msgstr "El parámetro de entrada está vacío, ingrese un parámetro válido."
 
 #: ../apps/ll-cli/src/main.cpp:194
 msgid "Specify the base used by the application to run"
-msgstr ""
+msgstr "Especifique la base que utilizará la aplicación para ejecutarse"
 
 #: ../apps/ll-cli/src/main.cpp:200
 msgid "Specify the runtime used by the application to run"
 msgstr ""
+"Especifique el tiempo de ejecución que utiliza la aplicación para ejecutarse"
 
 #: ../apps/ll-cli/src/main.cpp:203 ../apps/ll-cli/src/main.cpp:234
 msgid "Run commands in a running sandbox"
@@ -595,7 +602,7 @@ msgstr "Especifique la aplicación instalada (base o tiempo de ejecución)"
 
 #: ../apps/ll-cli/src/main.cpp:590
 msgid "Specify a module"
-msgstr ""
+msgstr "Especificar un módulo"
 
 #: ../apps/ll-cli/src/main.cpp:630
 msgid ""
@@ -911,11 +918,11 @@ msgstr "Archivo de salida"
 
 #: ../apps/ll-builder/src/main.cpp:893
 msgid "Reference of the package"
-msgstr ""
+msgstr "Referencia del paquete"
 
 #: ../apps/ll-builder/src/main.cpp:898
 msgid "Modules to export"
-msgstr ""
+msgstr "Módulos para exportar"
 
 #: ../apps/ll-builder/src/main.cpp:906
 msgid "Push linyaps app to remote repo"

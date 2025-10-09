@@ -15,7 +15,7 @@ class FallbackVersion;
 class VersionV2 final
 {
 public:
-    static utils::error::Result<VersionV2> parse(const QString &raw, bool strict = true) noexcept;
+    static utils::error::Result<VersionV2> parse(const std::string &raw, bool strict = true) noexcept;
     explicit VersionV2(uint64_t major = 0,
                        uint64_t minor = 0,
                        uint64_t patch = 0,
@@ -23,15 +23,15 @@ public:
                        std::string build_meta = "",
                        uint64_t security = 0,
                        bool has_patch = false) noexcept;
-    qlonglong major = 0;
-    qlonglong minor = 0;
-    qlonglong patch = 0;
+    uint64_t major = 0;
+    uint64_t minor = 0;
+    uint64_t patch = 0;
     std::string prerelease;
     std::string buildMeta;
-    qlonglong security = 0;
+    uint64_t security = 0;
     bool hasPatch = false;
 
-    bool semanticMatch(const QString &versionStr) const noexcept;
+    bool semanticMatch(const std::string &versionStr) const noexcept;
 
     bool operator==(const VersionV2 &that) const noexcept;
     bool operator!=(const VersionV2 &that) const noexcept;
@@ -56,6 +56,6 @@ public:
     friend bool operator<=(const VersionV2 &v2, const FallbackVersion &fv) noexcept;
     friend bool operator>=(const VersionV2 &v2, const FallbackVersion &fv) noexcept;
 
-    QString toString() const noexcept;
+    [[nodiscard]] std::string toString() const noexcept;
 };
 } // namespace linglong::package

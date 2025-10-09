@@ -6,7 +6,6 @@
 #pragma once
 
 #include "linglong/package/architecture.h"
-#include "linglong/package/version.h"
 
 #include <QString>
 
@@ -18,24 +17,24 @@ namespace linglong::package {
 class FuzzyReference final
 {
 public:
-    static utils::error::Result<FuzzyReference> parse(const QString &raw) noexcept;
+    static utils::error::Result<FuzzyReference> parse(const std::string &raw) noexcept;
     static utils::error::Result<FuzzyReference>
-    create(const std::optional<QString> &channel,
-           const QString &id,
-           const std::optional<QString> &version,
+    create(const std::optional<std::string> &channel,
+           const std::string &id,
+           const std::optional<std::string> &version,
            const std::optional<Architecture> &arch) noexcept;
 
-    std::optional<QString> channel;
-    QString id;
-    std::optional<QString> version;
+    std::optional<std::string> channel;
+    std::string id;
+    std::optional<std::string> version;
     std::optional<Architecture> arch;
 
-    QString toString() const noexcept;
+    [[nodiscard]] std::string toString() const noexcept;
 
 private:
-    explicit FuzzyReference(const std::optional<QString> &channel,
-                            const QString &id,
-                            const std::optional<QString> &version,
+    explicit FuzzyReference(const std::optional<std::string> &channel,
+                            const std::string &id,
+                            const std::optional<std::string> &version,
                             const std::optional<Architecture> &arch);
 };
 

@@ -13,8 +13,12 @@
 
 namespace linglong::package {
 
-const QByteArray magicNumber =
-  QByteArray("<<< deepin linglong layer archive >>>").leftJustified(40, 0);
+inline const QByteArray &magicNumber()
+{
+    static auto magicNumber =
+      QByteArray("<<< deepin linglong layer archive >>>").leftJustified(40, 0);
+    return magicNumber;
+}
 
 // LayerFile format:
 //

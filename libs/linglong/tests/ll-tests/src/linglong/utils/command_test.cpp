@@ -4,7 +4,6 @@
 
 #include <gtest/gtest.h>
 
-#include "../mocks/command_mock.h"
 #include "linglong/utils/command/cmd.h"
 #include "linglong/utils/error/error.h"
 
@@ -33,11 +32,9 @@ TEST(command, Exec)
 TEST(command, commandExists)
 {
     auto ret = linglong::utils::command::Cmd("ls").exists();
-    EXPECT_TRUE(ret.has_value()) << ret.error().message().toStdString();
-    EXPECT_TRUE(*ret) << "ls command should exist";
+    EXPECT_TRUE(ret) << "ls command should exist";
     ret = linglong::utils::command::Cmd("nonexistent").exists();
-    EXPECT_TRUE(ret.has_value()) << ret.error().message().toStdString();
-    EXPECT_FALSE(*ret) << "nonexistent should not exist";
+    EXPECT_FALSE(ret) << "nonexistent should not exist";
 }
 
 TEST(command, setEnv)
@@ -46,13 +43,12 @@ TEST(command, setEnv)
     // test set
     cmd.setEnv("LINGLONG_TEST_SETENV", "OK");
     auto existsRef = cmd.exists();
-    EXPECT_TRUE(existsRef.has_value()) << existsRef.error().message().toStdString();
-    EXPECT_TRUE(*existsRef);
+    EXPECT_TRUE(existsRef);
     // test unset
     cmd.setEnv("PATH", "");
     auto ret = cmd.exec({ "-c", "export" });
     EXPECT_TRUE(ret.has_value()) << ret.error().message().toStdString();
     auto retStr = *ret;
-    EXPECT_TRUE(retStr.contains("LINGLONG_TEST_SETENV=")) << retStr.toStdString();
-    EXPECT_TRUE(retStr.contains("PATH=\"\"")) << retStr.toStdString();
+    EXPECT_TRUE(retStr.contains("declare -x LINGLONG_TEST_SETENV=")) << retStr.toStdString();
+    EXPECT_FALSE(retStr.contains("declare -x PATH=\"")) << retStr.toStdString();
 }

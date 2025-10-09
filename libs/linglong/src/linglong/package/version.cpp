@@ -21,10 +21,10 @@ static auto SkipEmptyParts = QString::SkipEmptyParts;
 
 namespace linglong::package {
 
-utils::error::Result<Version> Version::parse(const QString &raw,
+utils::error::Result<Version> Version::parse(const std::string &raw,
                                              const ParseOptions parseOpt) noexcept
 {
-    LINGLONG_TRACE(QString("parse version %1").arg(raw));
+    LINGLONG_TRACE(QString("parse version %1").arg(raw.c_str()));
 
     auto versionV2 = VersionV2::parse(raw, parseOpt.strict);
     if (versionV2) {
@@ -47,16 +47,16 @@ utils::error::Result<Version> Version::parse(const QString &raw,
     return LINGLONG_ERR("parse version failed");
 }
 
-utils::error::Result<void> Version::validateDependVersion(const QString &raw) noexcept
+utils::error::Result<void> Version::validateDependVersion(const std::string &raw) noexcept
 {
-    LINGLONG_TRACE(QString{ "validate depend version %1" }.arg(raw));
+    LINGLONG_TRACE(QString{ "validate depend version %1" }.arg(raw.c_str()));
     static auto regexExp = []() noexcept {
         QRegularExpression regexExp(R"(^(0|[1-9]\d*)\.(0|[1-9]\d*)(?:\.(0|[1-9]\d*))?$)");
         regexExp.optimize();
         return regexExp;
     }();
 
-    QRegularExpressionMatch matched = regexExp.match(raw);
+    QRegularExpressionMatch matched = regexExp.match(QString::fromStdString(raw));
     if (!matched.hasMatch()) {
         return LINGLONG_ERR(
           "version regex mismatched, please use three digits version like MAJOR.MINOR[.PATCH]");
@@ -65,7 +65,7 @@ utils::error::Result<void> Version::validateDependVersion(const QString &raw) no
 }
 
 std::vector<linglong::api::types::v1::PackageInfoV2> Version::filterByFuzzyVersion(
-  std::vector<linglong::api::types::v1::PackageInfoV2> list, const QString &fuzzyVersion)
+  std::vector<linglong::api::types::v1::PackageInfoV2> list, const std::string &fuzzyVersion)
 {
     for (auto it = list.begin(); it != list.end();) {
         auto packageVerRet = package::Version::parse(it->version.c_str());
@@ -84,7 +84,7 @@ std::vector<linglong::api::types::v1::PackageInfoV2> Version::filterByFuzzyVersi
     return list;
 }
 
-bool Version::semanticMatch(const QString &versionStr)
+bool Version::semanticMatch(const std::string &versionStr)
 {
     if (std::holds_alternative<VersionV1>(version)) {
         return std::get<VersionV1>(version).semanticMatch(versionStr);
@@ -161,7 +161,7 @@ bool Version::operator>=(const Version &that) const noexcept
     return !(*this < that);
 }
 
-QString Version::toString() const noexcept
+std::string Version::toString() const noexcept
 {
     if (std::holds_alternative<VersionV1>(version)) {
         return std::get<VersionV1>(version).toString();
@@ -175,11 +175,7 @@ QString Version::toString() const noexcept
         return std::get<FallbackVersion>(version).toString();
     }
 
-    return QString("unknown version type");
+    return "unknown version type";
 }
 
-std::string Version::toStdString() const noexcept
-{
-    return this->toString().toStdString();
-}
 } // namespace linglong::package

@@ -6,16 +6,15 @@
 
 #include "../mocks/layer_packager_mock.h"
 #include "linglong/api/types/v1/Generators.hpp"
+#include "linglong/common/strings.h"
 #include "linglong/package/layer_packager.h"
 #include "linglong/utils/command/cmd.h"
 #include "linglong/utils/error/error.h"
-#include "linglong/utils/strings.h"
 
 #include <QDir>
 
 #include <filesystem>
 #include <fstream>
-#include <memory>
 #include <string>
 
 using namespace linglong;
@@ -117,8 +116,7 @@ TEST_F(LayerPackagerTest, LayerPackagerUnpackFuse)
 {
     {
         auto ret = utils::command::Cmd("erofsfuse").exists();
-        ASSERT_TRUE(ret.has_value()) << ret.error().message().toStdString();
-        if (!*ret) {
+        if (!ret) {
 #ifdef GTEST_SKIP
             GTEST_SKIP() << "Skipping this test.";
 #else
@@ -134,7 +132,7 @@ TEST_F(LayerPackagerTest, LayerPackagerUnpackFuse)
     packager.wrapCheckErofsFuseExistsFunc = []() {
         return true;
     };
-    packager.wrapIsFileReadableFunc = [](const std::string &path) {
+    packager.wrapIsFileReadableFunc = []([[maybe_unused]] const std::string &path) {
         return false;
     };
     auto ret = packager.unpack(*layerFile);
@@ -180,7 +178,7 @@ TEST_F(LayerPackagerTest, InitWorkDir)
     // 测试创建workdir失败时, initWorkDir 应该使用临时目录
     packager.wrapMkdirDirFunc = [](const std::string &path) -> utils::error::Result<void> {
         LINGLONG_TRACE("test workdir not exists");
-        if (utils::strings::hasPrefix(path, "/var/tmp")) {
+        if (common::strings::hasPrefix(path, "/var/tmp")) {
             return LINGLONG_ERR("failed to create work dir");
         }
         return LINGLONG_OK;

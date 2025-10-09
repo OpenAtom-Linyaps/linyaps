@@ -40,7 +40,7 @@ public:
     Q_PROPERTY(int Code MEMBER m_code NOTIFY CodeChanged)
 
     explicit PackageTask(const QDBusConnection &connection,
-                         QStringList refs,
+                         std::vector<std::string> refs,
                          std::function<void(PackageTask &)> job,
                          QObject *parent);
     PackageTask(PackageTask &&other) = delete;
@@ -56,13 +56,13 @@ public:
 
     friend bool operator!=(const PackageTask &lhs, const PackageTask &rhs) { return !(lhs == rhs); }
 
-    void updateTask(uint part, uint whole, const QString &message) noexcept;
+    void updateTask(uint part, uint whole, const std::string &message) noexcept;
     void
     updateState(linglong::api::types::v1::State newState,
-                const QString &message,
+                const std::string &message,
                 std::optional<linglong::api::types::v1::SubState> optDone = std::nullopt) noexcept;
     void updateSubState(linglong::api::types::v1::SubState newSubState,
-                        const QString &message) noexcept;
+                        const std::string &message) noexcept;
     void reportError(linglong::utils::error::Error &&err) noexcept;
 
     [[nodiscard]] utils::error::Error &&takeError() && noexcept { return std::move(m_err); }
@@ -144,7 +144,7 @@ private:
     double m_curStagePercentage{ 0 };
     QString m_message;
     QUuid m_taskID;
-    QStringList m_refs;
+    std::vector<std::string> m_refs;
     uint m_taskParts{ 0 };
     GCancellable *m_cancelFlag{ nullptr };
     std::function<void(PackageTask &)> m_job;
@@ -174,7 +174,7 @@ public:
 
     template <typename Func>
     utils::error::Result<std::reference_wrapper<PackageTask>>
-    addNewTask(const QStringList &refs,
+    addNewTask(const std::vector<std::string> &refs,
                Func &&job,
                const QDBusConnection &conn = QDBusConnection::sessionBus()) noexcept
     {

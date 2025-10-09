@@ -55,7 +55,8 @@ utils::error::Result<QSharedPointer<LayerFile>> LayerFile::New(int fd) noexcept
         return LINGLONG_ERR("open layer failed");
     }
 
-    if (file->read(magicNumber.size()) != magicNumber) {
+    const auto &number = magicNumber();
+    if (file->read(number.size()) != number) {
         return LINGLONG_ERR("invalid magic number, this is not a layer");
     }
 
@@ -116,7 +117,8 @@ utils::error::Result<quint32> LayerFile::binaryDataOffset() noexcept
         return LINGLONG_ERR(size);
     }
 
-    return magicNumber.size() + *size + sizeof(quint32);
+    const auto &number = magicNumber();
+    return number.size() + *size + sizeof(quint32);
 }
 
 utils::error::Result<void> LayerFile::saveTo(const QString &destination) noexcept

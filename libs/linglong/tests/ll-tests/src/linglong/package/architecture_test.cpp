@@ -6,8 +6,8 @@
 
 #include <gtest/gtest.h>
 
+#include "linglong/common/strings.h"
 #include "linglong/package/architecture.h"
-#include "linglong/utils/strings.h"
 
 using namespace linglong::package;
 
@@ -159,5 +159,5 @@ TEST(Package, ArchitectureCurrentCPUArchitecture)
     // 三元组不应为空，且应包含"linux-gnu"
     std::string triplet = currentArch->getTriplet();
     EXPECT_FALSE(triplet.empty());
-    EXPECT_TRUE(linglong::utils::strings::contains(triplet, "linux-gnu"));
+    EXPECT_TRUE(linglong::common::strings::contains(triplet, "linux-gnu"));
 }

@@ -56,9 +56,7 @@ TEST_F(FileTest, CopyDirectory)
         return path.filename() != "ignored.txt";
     };
 
-    auto result = linglong::utils::copyDirectory(src_dir, dest_dir, matcher);
-    ASSERT_TRUE(result.has_value());
-
+    linglong::utils::copyDirectory(src_dir, dest_dir, matcher);
     EXPECT_TRUE(fs::exists(dest_dir / "file1.txt"));
     std::ifstream ifs(dest_dir / "file1.txt");
     std::string content((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));
@@ -83,9 +81,7 @@ TEST_F(FileTest, CopyDirectory_MatcherFileInUnmatchedDir)
         return path.filename() == "file2.txt";
     };
 
-    auto result = linglong::utils::copyDirectory(src_dir, dest_dir, matcher);
-    ASSERT_TRUE(result.has_value());
-
+    linglong::utils::copyDirectory(src_dir, dest_dir, matcher);
     EXPECT_FALSE(fs::exists(dest_dir / "file1.txt"));
     EXPECT_FALSE(fs::exists(dest_dir / "ignored.txt"));
     EXPECT_TRUE(fs::exists(dest_dir / "subdir1" / "file2.txt"));
@@ -103,9 +99,7 @@ TEST_F(FileTest, CopyDirectory_MatcherSubDirInUnmatchedDir)
         return path.string().rfind("subdir1/subdir2", 0) == 0;
     };
 
-    auto result = linglong::utils::copyDirectory(src_dir, dest_dir, matcher);
-    ASSERT_TRUE(result.has_value());
-
+    linglong::utils::copyDirectory(src_dir, dest_dir, matcher);
     EXPECT_FALSE(fs::exists(dest_dir / "file1.txt"));
     EXPECT_FALSE(fs::exists(dest_dir / "ignored.txt"));
     EXPECT_FALSE(fs::exists(dest_dir / "subdir1" / "file2.txt"));
@@ -127,13 +121,11 @@ TEST_F(FileTest, CopyDirectory_OverwriteExisting)
         return path.filename() != "ignored.txt";
     };
 
-    auto result = linglong::utils::copyDirectory(src_dir,
-                                                 dest_dir,
-                                                 matcher,
-                                                 fs::copy_options::overwrite_existing
-                                                   | fs::copy_options::copy_symlinks);
-    ASSERT_TRUE(result.has_value());
-
+    linglong::utils::copyDirectory(src_dir,
+                                   dest_dir,
+                                   matcher,
+                                   fs::copy_options::overwrite_existing
+                                     | fs::copy_options::copy_symlinks);
     EXPECT_TRUE(fs::exists(dest_dir / "file1.txt"));
     std::ifstream ifs(dest_dir / "file1.txt");
     std::string content((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));
@@ -159,9 +151,7 @@ TEST_F(FileTest, CopyDirectory_DestinationExists)
         return path.filename() != "ignored.txt";
     };
 
-    auto result = linglong::utils::copyDirectory(src_dir, dest_dir, matcher);
-    ASSERT_TRUE(result.has_value());
-
+    linglong::utils::copyDirectory(src_dir, dest_dir, matcher);
     EXPECT_TRUE(fs::exists(dest_dir / "file1.txt"));
     std::ifstream ifs(dest_dir / "file1.txt");
     std::string content((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));

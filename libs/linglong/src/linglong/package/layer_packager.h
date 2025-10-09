@@ -34,7 +34,7 @@ public:
     utils::error::Result<QSharedPointer<LayerFile>> pack(const LayerDir &dir,
                                                          const QString &layerFilePath) const;
     utils::error::Result<LayerDir> unpack(LayerFile &file);
-    utils::error::Result<void> setCompressor(const QString &compressor) noexcept;
+    void setCompressor(const QString &compressor) noexcept;
     const std::filesystem::path &getWorkDir() const;
 
 private:

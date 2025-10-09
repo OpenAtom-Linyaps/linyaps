@@ -13,7 +13,7 @@ using namespace linglong::package;
 
 TEST(Package, Reference)
 {
-    QStringList vaildReferences = {
+    const std::vector<std::string> validReferences = {
         "main:com.example.App/1.0.0.0/x86_64",
         "some_channel:com.example.App/1.0.0.0/x86_64",
         "main:com.example.App/1.0.0.0/x86_64",
@@ -25,15 +25,15 @@ TEST(Package, Reference)
         "main:4444/1.0.0.1/arm64",
     };
 
-    for (const auto &vaildCase : vaildReferences) {
-        auto refer = Reference::parse(vaildCase);
+    for (const auto &validCase : validReferences) {
+        auto refer = Reference::parse(validCase);
         ASSERT_EQ(refer.has_value(), true)
-          << vaildCase.toStdString() << " is vaild reference. Error: "
+          << validCase << " is valid reference. Error: "
           << (refer.has_value() ? "no error" : refer.error().message().toStdString());
-        ASSERT_EQ(refer->toString().toStdString(), vaildCase.toStdString());
+        ASSERT_EQ(refer->toString(), validCase);
     }
 
-    QStringList invaildReferences = {
+    const QStringList invalidReferences = {
         "main:com.example.App//1.0.0.0/x86_64",
         "main:1111/1.0.0.0/ x86_64",
         "main:2222/1.0.0.0/unknown",
@@ -41,14 +41,14 @@ TEST(Package, Reference)
         ":com.example.App/1.0.0.0/x86_64",
     };
 
-    for (const auto &invaildCase : invaildReferences) {
-        auto refer = Reference::parse(invaildCase);
+    for (const auto &invalidCase : invalidReferences) {
+        auto refer = Reference::parse(invalidCase);
         ASSERT_EQ(refer.has_value(), false)
-          << invaildCase.toStdString() << " is invaild reference. Error: "
+          << invalidCase.toStdString() << " is invalid reference. Error: "
           << (refer.has_value() ? "no error" : refer.error().message().toStdString());
     }
 
-    QList<QPair<QString, QString>> vaildFuzzReferences = {
+    const std::unordered_map<std::string, std::string> validFuzzReferences = {
         { "unknown:com.example.App/1.0.0.0/x86_64", "unknown:com.example.App/1.0.0.0/x86_64" },
         { "com.example.App/1.0.0.0/x86_64", "unknown:com.example.App/1.0.0.0/x86_64" },
         { "com.example.App/unknown/x86_64", "unknown:com.example.App/unknown/x86_64" },
@@ -60,11 +60,11 @@ TEST(Package, Reference)
         { "4444/1.0.0.1/arm64", "unknown:4444/1.0.0.1/arm64" },
     };
 
-    for (const auto &vaildCase : vaildFuzzReferences) {
-        auto refer = FuzzyReference::parse(vaildCase.first);
+    for (const auto &validCase : validFuzzReferences) {
+        auto refer = FuzzyReference::parse(validCase.first);
         ASSERT_EQ(refer.has_value(), true)
-          << vaildCase.first.toStdString() << " is vaild fuzz reference. Error: "
+          << validCase.first << " is valid fuzz reference. Error: "
           << (refer.has_value() ? "no error" : refer.error().message().toStdString());
-        ASSERT_EQ(refer->toString().toStdString(), vaildCase.second.toStdString());
+        ASSERT_EQ(refer->toString(), validCase.second);
     }
 }

@@ -5,6 +5,7 @@
 #include "overlayfs.h"
 
 #include "linglong/utils/command/cmd.h"
+#include "linglong/utils/log/log.h"
 
 #include <QDebug>
 #include <QString>
@@ -53,13 +54,18 @@ bool OverlayFS::mount()
         return false;
     }
 
-    utils::command::Cmd("fusermount")
-      .exec({ "-z", "-u", QString::fromStdString(merged_.string()) });
-    auto ret = utils::command::Cmd("fuse-overlayfs")
-                 .exec({ "-o",
-                         QString("lowerdir=%1,upperdir=%2,workdir=%3")
-                           .arg((lowerdir_.c_str()), (upperdir_.c_str()), (workdir_.c_str())),
-                         QString::fromStdString(merged_.string()) });
+    // TODO: check mountpoint whether already mounted
+    auto ret = utils::command::Cmd("fusermount")
+                 .exec({ "-z", "-u", QString::fromStdString(merged_.string()) });
+    if (!ret) {
+        LogD("failed to set lazy umount {}", ret.error());
+    }
+
+    ret = utils::command::Cmd("fuse-overlayfs")
+            .exec({ "-o",
+                    QString("lowerdir=%1,upperdir=%2,workdir=%3")
+                      .arg((lowerdir_.c_str()), (upperdir_.c_str()), (workdir_.c_str())),
+                    QString::fromStdString(merged_.string()) });
     if (!ret) {
         qWarning() << "failed to mount " << ret.error();
     }

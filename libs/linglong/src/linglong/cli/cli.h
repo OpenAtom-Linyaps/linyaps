@@ -176,7 +176,7 @@ private:
       const std::string &type) noexcept;
     static void filterPackageInfosByType(std::vector<api::types::v1::PackageInfoDisplay> &list,
                                          const std::string &type);
-    static utils::error::Result<void> filterPackageInfosByVersion(
+    static void filterPackageInfosByVersion(
       std::map<std::string, std::vector<api::types::v1::PackageInfoV2>> &list) noexcept;
     void printProgress() noexcept;
     [[nodiscard]] utils::error::Result<std::vector<api::types::v1::CliContainer>>
@@ -199,17 +199,19 @@ private:
 
 private Q_SLOTS:
     // maybe use in the future
-    void onTaskAdded(QDBusObjectPath object_path);
-    void onTaskRemoved(QDBusObjectPath object_path,
+    void onTaskAdded(const QDBusObjectPath &object_path);
+    void onTaskRemoved(const QDBusObjectPath &object_path,
                        int state,
                        int subState,
-                       QString message,
+                       const QString &message,
                        double percentage,
                        int code);
-    void onTaskPropertiesChanged(QString interface,
-                                 QVariantMap changed_properties,
-                                 QStringList invalidated_properties);
-    void interaction(QDBusObjectPath object_path, int messageID, QVariantMap additionalMessage);
+    void onTaskPropertiesChanged(const QString &interface,
+                                 const QVariantMap &changed_properties,
+                                 const QStringList &invalidated_properties);
+    void interaction(const QDBusObjectPath &object_path,
+                     int messageID,
+                     const QVariantMap &additionalMessage);
 
 Q_SIGNALS:
     void taskDone();

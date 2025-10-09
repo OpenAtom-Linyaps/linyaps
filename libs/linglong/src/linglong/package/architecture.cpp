@@ -21,29 +21,6 @@ Architecture::Architecture(Value value)
 {
 }
 
-[[deprecated("Use toStdString() instead")]]
-QString Architecture::toString() const noexcept
-{
-    switch (this->v) {
-    case X86_64:
-        return "x86_64";
-    case ARM64:
-        return "arm64";
-    case LOONGARCH64:
-        return "loongarch64";
-    case LOONG64:
-        return "loong64";
-    case SW64:
-        return "sw64";
-    case MIPS64:
-        return "mips64";
-    case UNKNOW:
-        [[fallthrough]];
-    default:
-        return "unknown";
-    }
-}
-
 std::string Architecture::toStdString() const noexcept
 {
     switch (this->v) {

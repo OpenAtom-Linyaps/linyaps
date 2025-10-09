@@ -129,14 +129,11 @@ calculateDirectorySize(const std::filesystem::path &dir) noexcept
 
 // recursive copy src to dest with matcher
 // symlinks are preserved
-linglong::utils::error::Result<void>
-copyDirectory(const std::filesystem::path &src,
-              const std::filesystem::path &dest,
-              std::function<bool(const std::filesystem::path &)> matcher,
-              std::filesystem::copy_options options)
+void copyDirectory(const std::filesystem::path &src,
+                   const std::filesystem::path &dest,
+                   std::function<bool(const std::filesystem::path &)> matcher,
+                   std::filesystem::copy_options options)
 {
-    LINGLONG_TRACE(fmt::format("copy directory {} to {}", src, dest).c_str());
-
     std::error_code ec;
     for (const auto &entry : std::filesystem::recursive_directory_iterator(
            src,
@@ -164,8 +161,6 @@ copyDirectory(const std::filesystem::path &src,
             continue;
         }
     }
-
-    return LINGLONG_OK;
 }
 
 linglong::utils::error::Result<void>

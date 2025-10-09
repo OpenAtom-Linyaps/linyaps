@@ -17,17 +17,17 @@ namespace linglong::utils::command {
 class Cmd
 {
 public:
-    Cmd(const QString &command) noexcept;
-    ~Cmd();
+    explicit Cmd(QString command) noexcept;
+    virtual ~Cmd();
 
-    virtual linglong::utils::error::Result<bool> exists() noexcept;
+    virtual bool exists() noexcept;
     virtual linglong::utils::error::Result<QString> exec() noexcept;
     virtual linglong::utils::error::Result<QString> exec(const QStringList &args) noexcept;
     virtual Cmd &setEnv(const QString &name, const QString &value) noexcept;
 
 private:
     QString m_command;
-    QMap<QString, QString> m_envs{};
+    QMap<QString, QString> m_envs;
 };
 
 } // namespace linglong::utils::command

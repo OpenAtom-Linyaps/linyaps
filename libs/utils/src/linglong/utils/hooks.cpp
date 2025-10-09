@@ -10,6 +10,8 @@
 #include "linglong/utils/command/env.h"
 #include "linglong/utils/error/error.h"
 
+#include <fmt/format.h>
+
 #include <array>
 #include <cstdlib>
 #include <cstring>
@@ -24,9 +26,9 @@
 namespace linglong::utils {
 
 // Constants for hook action prefixes
-static const std::string PRE_INSTALL_ACTION_PREFIX = "ll-pre-install=";
-static const std::string POST_INSTALL_ACTION_PREFIX = "ll-post-install=";
-static const std::string POST_UNINSTALL_ACTION_PREFIX = "ll-post-uninstall=";
+constexpr std::string_view PRE_INSTALL_ACTION_PREFIX = "ll-pre-install=";
+constexpr std::string_view POST_INSTALL_ACTION_PREFIX = "ll-post-install=";
+constexpr std::string_view POST_UNINSTALL_ACTION_PREFIX = "ll-post-uninstall=";
 
 // This function ensures the command string is safely wrapped for 'sh -c'.
 static std::string escapeAndWrapCommandForShell(const std::string &command)
@@ -62,9 +64,9 @@ utils::error::Result<void> executeHookCommands(
         int ret = std::system(fullCommand.c_str());
 
         if (ret == -1) {
-            return LINGLONG_ERR(QString("Failed to execute command: '%1'. System error: %2.")
-                                  .arg(QString::fromStdString(fullCommand))
-                                  .arg(strerror(errno)));
+            return LINGLONG_ERR(fmt::format("Failed to execute command: '{}'. System error: {}.",
+                                            fullCommand,
+                                            strerror(errno)));
         }
 
         if (!WIFEXITED(ret)) {
@@ -92,9 +94,9 @@ utils::error::Result<void> InstallHookManager::parseInstallHooks()
     std::error_code ec;
     for (const auto &entry : std::filesystem::directory_iterator(LINGLONG_INSTALL_HOOKS_DIR, ec)) {
         if (ec) {
-            return LINGLONG_ERR(QString("Failed to iterate directory %1: %2")
-                                  .arg(LINGLONG_INSTALL_HOOKS_DIR)
-                                  .arg(QString::fromStdString(ec.message())));
+            return LINGLONG_ERR(
+              QString("Failed to iterate directory %1: %2")
+                .arg(LINGLONG_INSTALL_HOOKS_DIR, QString::fromStdString(ec.message())));
         }
 
         if (!std::filesystem::is_regular_file(entry.status(ec))) {
@@ -143,7 +145,6 @@ utils::error::Result<void> InstallHookManager::executeInstallHooks(int fd) noexc
     LINGLONG_TRACE("Executing pre-install hooks.");
 
     if (preInstallCommands.empty()) {
-        LINGLONG_TRACE("No pre-install commands to execute.");
         return LINGLONG_OK;
     }
 
@@ -170,16 +171,14 @@ utils::error::Result<void> InstallHookManager::executeInstallHooks(int fd) noexc
 utils::error::Result<void> InstallHookManager::executePostInstallHooks(
   const std::string &appID, const std::string &path) noexcept
 {
-    LINGLONG_TRACE("Executing post-install hooks.");
-
     if (postInstallCommands.empty()) {
-        LINGLONG_TRACE("No post-install commands to execute.");
         return LINGLONG_OK;
     }
 
-    std::vector<std::pair<std::string, std::string>> envVars = { { "LINGLONG_APPID", appID },
-                                                                 { "LINGLONG_APP_INSTALL_PATH",
-                                                                   path } };
+    const std::vector<std::pair<std::string, std::string>> envVars = {
+        { "LINGLONG_APPID", appID },
+        { "LINGLONG_APP_INSTALL_PATH", path }
+    };
 
     return executeHookCommands(postInstallCommands, envVars);
 }
@@ -187,14 +186,12 @@ utils::error::Result<void> InstallHookManager::executePostInstallHooks(
 utils::error::Result<void>
 InstallHookManager::executePostUninstallHooks(const std::string &appID) noexcept
 {
-    LINGLONG_TRACE("Executing post-uninstall hooks.");
-
     if (postUninstallCommands.empty()) {
-        LINGLONG_TRACE("No post-uninstall commands to execute.");
         return LINGLONG_OK;
     }
 
-    std::vector<std::pair<std::string, std::string>> envVars = { { "LINGLONG_APPID", appID } };
+    const std::vector<std::pair<std::string, std::string>> envVars = { { "LINGLONG_APPID",
+                                                                         appID } };
 
     return executeHookCommands(postUninstallCommands, envVars);
 }

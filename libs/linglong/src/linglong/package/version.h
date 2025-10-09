@@ -27,22 +27,25 @@ struct ParseOptions
 class Version final
 {
 public:
-    static utils::error::Result<Version> parse(const QString &raw,
-                                               const ParseOptions parseOpt = {
+    static utils::error::Result<Version> parse(const std::string &raw,
+                                               ParseOptions parseOpt = {
                                                  .strict = true, .fallback = true }) noexcept;
 
     static std::vector<linglong::api::types::v1::PackageInfoV2> filterByFuzzyVersion(
-      std::vector<linglong::api::types::v1::PackageInfoV2> list, const QString &fuzzyVersion);
-    bool semanticMatch(const QString &versionStr);
+      std::vector<linglong::api::types::v1::PackageInfoV2> list, const std::string &fuzzyVersion);
+    bool semanticMatch(const std::string &versionStr);
 
-    static utils::error::Result<void> validateDependVersion(const QString &raw) noexcept;
-    explicit Version(const QString &raw) = delete;
+    static utils::error::Result<void> validateDependVersion(const std::string &raw) noexcept;
+    explicit Version(const std::string &raw) = delete;
 
-    explicit Version(const VersionV1 &version) { this->version = version; };
+    explicit Version(const VersionV1 &version)
+        : version(version) { };
 
-    explicit Version(const VersionV2 &version) { this->version = version; };
+    explicit Version(const VersionV2 &version)
+        : version(version) { };
 
-    explicit Version(const FallbackVersion &version) { this->version = version; };
+    explicit Version(const FallbackVersion &version)
+        : version(version) { };
 
     void ignoreTweak() noexcept;
     bool isVersionV1() noexcept;
@@ -55,8 +58,7 @@ public:
     bool operator<=(const Version &that) const noexcept;
     bool operator>=(const Version &that) const noexcept;
 
-    QString toString() const noexcept;
-    std::string toStdString() const noexcept;
+    [[nodiscard]] std::string toString() const noexcept;
 
 private:
     std::variant<VersionV2, VersionV1, FallbackVersion> version;

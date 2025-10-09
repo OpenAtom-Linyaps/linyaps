@@ -8,24 +8,21 @@
 
 namespace linglong::utils::log {
 
-Logger g_logger;
-
-void setLogLevel(LogLevel level)
+void setLogLevel(LogLevel level) noexcept
 {
     g_logger.setLogLevel(level);
 }
 
-void setLogBackend(LogBackend backend)
+void setLogBackend(LogBackend backend) noexcept
 {
     g_logger.setLogBackend(backend);
 }
 
 Logger::Logger()
     : logLevel(LogLevel::Info)
+    , logBackend(LogBackend::None)
 {
 }
-
-Logger::~Logger() { }
 
 void Logger::setLogLevel(LogLevel level)
 {
@@ -37,7 +34,7 @@ void Logger::setLogBackend(LogBackend backend)
     logBackend = backend;
 }
 
-int Logger::logLevelToSDPriority(LogLevel level)
+int Logger::logLevelToSDPriority(LogLevel level) noexcept
 {
     switch (level) {
     case LogLevel::Fatal:

@@ -7,8 +7,8 @@
 #include "linglong/utils/global/initialize.h"
 
 #include "configure.h"
+#include "linglong/common/strings.h"
 #include "linglong/utils/log/log.h"
-#include "linglong/utils/strings.h"
 
 #include <qcoreapplication.h>
 #include <qloggingcategory.h>
@@ -25,7 +25,7 @@
 
 namespace linglong::utils::global {
 
-using namespace linglong::utils::strings;
+using namespace linglong::common;
 using linglong::utils::log::LogBackend;
 using linglong::utils::log::LogLevel;
 
@@ -100,34 +100,40 @@ void linglong_message_handler(QtMsgType type,
         break;
     }
 
-    auto file = QString("CODE_FILE=%1").arg(context.file ? context.file : "unknown");
+    auto file = QString("CODE_FILE=%1").arg((context.file != nullptr) ? context.file : "unknown");
     auto line = QString("CODE_LINE=%1").arg(context.line);
 
     sd_journal_send_with_location(file.toUtf8().constData(),
                                   line.toUtf8().constData(),
-                                  context.function ? context.function : "unknown",
+                                  (context.function != nullptr) ? context.function : "unknown",
                                   "MESSAGE=%s",
                                   formattedMessage.toUtf8().constData(),
                                   "PRIORITY=%i",
                                   priority,
                                   "QT_CATEGORY=%s",
-                                  context.category ? context.category : "unknown",
+                                  (context.category != nullptr) ? context.category : "unknown",
                                   NULL);
-
-    return; // Prevent further output to stderr
 }
 
 LogLevel parseLogLevel(const char *level)
 {
-    if (stringEqual(level, "debug")) {
+    if (common::strings::stringEqual(level, "debug")) {
         return LogLevel::Debug;
-    } else if (stringEqual(level, "info")) {
+    }
+
+    if (common::strings::stringEqual(level, "info")) {
         return LogLevel::Info;
-    } else if (stringEqual(level, "warning")) {
+    }
+
+    if (common::strings::stringEqual(level, "warning")) {
         return LogLevel::Warning;
-    } else if (stringEqual(level, "error")) {
+    }
+
+    if (common::strings::stringEqual(level, "error")) {
         return LogLevel::Error;
-    } else if (stringEqual(level, "fatal")) {
+    }
+
+    if (common::strings::stringEqual(level, "fatal")) {
         return LogLevel::Fatal;
     }
 
@@ -138,11 +144,11 @@ LogBackend parseLogBackend(const char *backends)
 {
     LogBackend logBackend = LogBackend::None;
 
-    std::vector<std::string> backendsList = splitString(backends, ',');
-    for (auto backend : backendsList) {
-        if (stringEqual(backend, "console")) {
+    const std::vector<std::string> backendsList = common::strings::split(backends, ',');
+    for (const auto &backend : backendsList) {
+        if (common::strings::stringEqual(backend, "console")) {
             logBackend = logBackend | LogBackend::Console;
-        } else if (stringEqual(backend, "journal")) {
+        } else if (common::strings::stringEqual(backend, "journal")) {
             logBackend = logBackend | LogBackend::Journal;
         }
     }

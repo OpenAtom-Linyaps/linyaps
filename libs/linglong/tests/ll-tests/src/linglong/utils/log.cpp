@@ -23,7 +23,9 @@ struct MockJournalData
     }
 };
 
-static MockJournalData mock_journal_data;
+namespace {
+MockJournalData mock_journal_data;
+} // namespace
 
 extern "C" int sd_journal_send_with_location(
   const char *file, const char *line, const char *func, const char *format, ...)

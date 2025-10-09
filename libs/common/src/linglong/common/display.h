@@ -8,7 +8,7 @@
 
 #include <filesystem>
 
-namespace linglong::common {
+namespace linglong::common::display {
 
 tl::expected<std::filesystem::path, std::string>
 getWaylandDisplay(std::string_view display) noexcept;
@@ -16,4 +16,4 @@ tl::expected<std::filesystem::path, std::string> getXOrgDisplay(std::string_view
 tl::expected<std::filesystem::path, std::string>
 getXOrgAuthFile(std::string_view authFile) noexcept;
 
-} // namespace linglong::common
+} // namespace linglong::common::display

@@ -254,7 +254,7 @@ bool ContainerCfgBuilder::buildXDGRuntime() noexcept
         return false;
     }
 
-    auto hostXDGRuntimeMountPoint = common::getAppXDGRuntimeDir(appId);
+    auto hostXDGRuntimeMountPoint = common::xdg::getAppXDGRuntimeDir(appId);
     std::error_code ec;
     std::filesystem::create_directories(hostXDGRuntimeMountPoint, ec);
     if (ec) {
@@ -1129,7 +1129,7 @@ bool ContainerCfgBuilder::buildMountIPC() noexcept
     }();
 
     [this]() {
-        auto hostXDGRuntimeDir = common::getXDGRuntimeDir();
+        auto hostXDGRuntimeDir = common::xdg::getXDGRuntimeDir();
 
         bindIfExist(*ipcMount,
                     hostXDGRuntimeDir / "pulse",

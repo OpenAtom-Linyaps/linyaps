@@ -9,6 +9,9 @@
 #include "linglong/utils/dbus/register.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/global/initialize.h"
+#include "linglong/utils/log/formatter.h" // IWYU pragma: keep
+
+#include <fmt/format.h>
 
 #include <QDebug>
 #include <QUuid>
@@ -36,7 +39,7 @@ PackageTask::PackageTask()
 }
 
 PackageTask::PackageTask(const QDBusConnection &connection,
-                         QStringList refs,
+                         std::vector<std::string> refs,
                          std::function<void(PackageTask &)> job,
                          QObject *parent)
     : QObject(parent)
@@ -88,7 +91,7 @@ void PackageTask::changePropertiesDone() const noexcept
     }
 }
 
-void PackageTask::updateTask(uint part, uint whole, const QString &message) noexcept
+void PackageTask::updateTask(uint part, uint whole, const std::string &message) noexcept
 {
     if (whole == 0) {
         qWarning() << "divisor equals to zero, subState wouldn't be update";
@@ -100,7 +103,7 @@ void PackageTask::updateTask(uint part, uint whole, const QString &message) noex
         return;
     }
 
-    this->setProperty("Message", message);
+    this->setProperty("Message", QString::fromStdString(message));
     m_curStagePercentage = static_cast<double>(part) / whole;
 
     Q_EMIT PercentageChanged(getPercentage());
@@ -108,7 +111,7 @@ void PackageTask::updateTask(uint part, uint whole, const QString &message) noex
 }
 
 void PackageTask::updateState(linglong::api::types::v1::State newState,
-                              const QString &message,
+                              const std::string &message,
                               std::optional<linglong::api::types::v1::SubState> optDone) noexcept
 {
     this->setProperty("State", static_cast<int>(newState));
@@ -136,15 +139,15 @@ void PackageTask::updateState(linglong::api::types::v1::State newState,
         updateSubState(subState, message);
         return;
     }
-    this->setProperty("Message", message);
+    this->setProperty("Message", QString::fromStdString(message));
     changePropertiesDone();
 }
 
 void PackageTask::updateSubState(linglong::api::types::v1::SubState newSubState,
-                                 const QString &message) noexcept
+                                 const std::string &message) noexcept
 {
     this->setProperty("SubState", static_cast<int>(newSubState));
-    this->setProperty("Message", message);
+    this->setProperty("Message", QString::fromStdString(message));
 
     auto curSubState = subState();
     if (curSubState == linglong::api::types::v1::SubState::AllDone
@@ -185,7 +188,7 @@ void PackageTask::Cancel() noexcept
     const auto &id = taskID();
     qInfo() << "task " << id << "has been canceled by user";
     updateState(linglong::api::types::v1::State::Canceled,
-                QString{ "task %1 has been canceled by user" }.arg(id));
+                fmt::format("task {} has been canceled by user", id));
 
     if (m_cancelFlag == nullptr || g_cancellable_is_cancelled(m_cancelFlag) == TRUE) {
         return;

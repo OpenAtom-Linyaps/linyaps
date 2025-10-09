@@ -13,11 +13,11 @@
 #include <QRegularExpression>
 
 namespace linglong::package {
-utils::error::Result<VersionV2> VersionV2::parse(const QString &raw, bool strict) noexcept
+utils::error::Result<VersionV2> VersionV2::parse(const std::string &raw, bool strict) noexcept
 {
     LINGLONG_TRACE("parse version v2 " + raw);
     try {
-        auto semverVersion = semver::version::parse(raw.toStdString(), strict);
+        auto semverVersion = semver::version::parse(raw, strict);
 
         return VersionV2(semverVersion.major(),
                          semverVersion.minor(),
@@ -48,7 +48,7 @@ VersionV2::VersionV2(uint64_t major,
 {
 }
 
-bool VersionV2::semanticMatch(const QString &versionStr) const noexcept
+bool VersionV2::semanticMatch(const std::string &versionStr) const noexcept
 {
     auto fuzzyVerRet = parse(versionStr, false);
     if (!fuzzyVerRet) {
@@ -169,10 +169,9 @@ bool operator>=(const VersionV2 &v2, const FallbackVersion &fv) noexcept
     return !(v2 < fv);
 }
 
-QString VersionV2::toString() const noexcept
+std::string VersionV2::toString() const noexcept
 {
-    return QString::fromStdString(
-      semver::version(major, minor, patch, prerelease, buildMeta, security).str());
+    return semver::version(major, minor, patch, prerelease, buildMeta, security).str();
 }
 
 } // namespace linglong::package

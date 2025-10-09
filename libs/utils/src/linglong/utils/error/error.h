@@ -44,6 +44,7 @@ enum class ErrorCode : int {
     AppInstallArchNotMatch = 2008,          // 安装app的架构不匹配
     AppInstallModuleNotFound = 2009,        // 远程不存在对应模块
     AppInstallErofsNotFound = 2010,         // erofs解压命令不存在
+    AppInstallUnsupportedFileFormat = 2011, // 不支持的文件格式
     /* 卸载 */
     AppUninstallFailed = 2101,            // 卸载失败
     AppUninstallNotFoundFromLocal = 2102, // 本地不存在对应应用
@@ -53,9 +54,9 @@ enum class ErrorCode : int {
     AppUninstallBaseOrRuntime = 2106,
     /* 升级 */
     AppUpgradeFailed = 2201,          // 升级失败
-    AppUpgradeNotFound = 2202,        // 本地不存在对应应用
+    AppUpgradeLocalNotFound = 2202,   // 本地不存在对应应用
     AppUpgradeLatestInstalled = 2203, // 已安装最新版本
-
+    AppUpgradeRemoteNotFound = 2204,  // 远程不存在对应应用
     /* 网络 */
     NetworkError = 3001, // 网络错误
 
@@ -92,6 +93,35 @@ public:
                                                           nullptr));
     }
 
+    static auto Err(const char *file,
+                    int line,
+                    const QString &trace_msg,
+                    const std::string &msg,
+                    const ErrorCode &code) -> Error
+    {
+        return Error(
+          std::make_unique<details::ErrorImpl>(file,
+                                               line,
+                                               "default",
+                                               static_cast<int>(code),
+                                               trace_msg + ": " + QString::fromStdString(msg),
+                                               nullptr));
+    }
+
+    static auto Err(const char *file,
+                    int line,
+                    const QString &trace_msg,
+                    const char *msg,
+                    const ErrorCode &code) -> Error
+    {
+        return Error(std::make_unique<details::ErrorImpl>(file,
+                                                          line,
+                                                          "default",
+                                                          static_cast<int>(code),
+                                                          trace_msg + ": " + QString(msg),
+                                                          nullptr));
+    }
+
     static auto
     Err(const char *file, int line, const QString &trace_msg, const QString &msg, int code = -1)
       -> Error
@@ -101,6 +131,30 @@ public:
                                                           "default",
                                                           code,
                                                           trace_msg + ": " + msg,
+                                                          nullptr));
+    }
+
+    static auto
+    Err(const char *file, int line, const QString &trace_msg, const std::string &msg, int code = -1)
+      -> Error
+    {
+        return Error(
+          std::make_unique<details::ErrorImpl>(file,
+                                               line,
+                                               "default",
+                                               code,
+                                               trace_msg + ": " + QString::fromStdString(msg),
+                                               nullptr));
+    }
+
+    static auto Err(
+      const char *file, int line, const QString &trace_msg, const char *msg, int code = -1) -> Error
+    {
+        return Error(std::make_unique<details::ErrorImpl>(file,
+                                                          line,
+                                                          "default",
+                                                          code,
+                                                          trace_msg + ": " + QString(msg),
                                                           nullptr));
     }
 
@@ -247,6 +301,41 @@ public:
                                                           "default",
                                                           cause.error().code(),
                                                           trace_msg + ": " + msg,
+                                                          std::move(cause.error().pImpl)));
+    }
+
+    template <typename Value>
+    static auto Err(const char *file,
+                    int line,
+                    const QString &trace_msg,
+                    const std::string &msg,
+                    tl::expected<Value, Error> &&cause) -> Error
+    {
+        Q_ASSERT(!cause.has_value());
+
+        return Error(
+          std::make_unique<details::ErrorImpl>(file,
+                                               line,
+                                               "default",
+                                               cause.error().code(),
+                                               trace_msg + ": " + QString::fromStdString(msg),
+                                               std::move(cause.error().pImpl)));
+    }
+
+    template <typename Value>
+    static auto Err(const char *file,
+                    int line,
+                    const QString &trace_msg,
+                    const char *msg,
+                    tl::expected<Value, Error> &&cause) -> Error
+    {
+        Q_ASSERT(!cause.has_value());
+
+        return Error(std::make_unique<details::ErrorImpl>(file,
+                                                          line,
+                                                          "default",
+                                                          cause.error().code(),
+                                                          trace_msg + ": " + QString(msg),
                                                           std::move(cause.error().pImpl)));
     }
 

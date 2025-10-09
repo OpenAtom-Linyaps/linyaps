@@ -16,7 +16,6 @@ ContainerBuilder::ContainerBuilder(ocppi::cli::CLI &cli)
 auto ContainerBuilder::create(const linglong::generator::ContainerCfgBuilder &cfgBuilder) noexcept
   -> utils::error::Result<std::unique_ptr<Container>>
 {
-    LINGLONG_TRACE("create container");
     auto config = cfgBuilder.getConfig();
 
     return std::make_unique<Container>(config,

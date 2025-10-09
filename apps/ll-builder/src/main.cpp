@@ -87,7 +87,11 @@ void initDefaultBuildConfig()
     linglong::api::types::v1::BuilderConfig config;
     config.version = 1;
     config.repo = cacheLocation.filePath("linglong-builder").toStdString();
-    linglong::builder::saveConfig(config, configFilePath);
+    auto ret = linglong::builder::saveConfig(config, configFilePath);
+    if (!ret) {
+        qCritical() << "failed to save default build config file" << configFilePath << ":"
+                    << ret.error();
+    }
 }
 
 std::string validateNonEmptyString(const std::string &parameter)
@@ -108,8 +112,7 @@ parseProjectConfig(const std::filesystem::path &filename)
     if (!project) {
         return project;
     }
-    auto version =
-      linglong::package::VersionV1::parse(QString::fromStdString(project->package.version));
+    auto version = linglong::package::VersionV1::parse(project->package.version);
     if (!version || !version->tweak) {
         return LINGLONG_ERR("Please ensure the package.version number has three parts formatted as "
                             "'MAJOR.MINOR.PATCH.TWEAK'");
@@ -160,9 +163,8 @@ getProjectYAMLPath(const std::filesystem::path &projectDir, const std::string &u
     if (!usePath.empty()) {
         std::filesystem::path path = std::filesystem::canonical(usePath, ec);
         if (ec) {
-            return LINGLONG_ERR(QString("invalid file path %1 error: %2")
-                                  .arg(usePath.c_str())
-                                  .arg(ec.message().c_str()));
+            return LINGLONG_ERR(
+              fmt::format("invalid file path {} error: {}", usePath, ec.message()));
         }
         return path;
     }
@@ -174,8 +176,7 @@ getProjectYAMLPath(const std::filesystem::path &projectDir, const std::string &u
             return path;
         }
         if (ec) {
-            return LINGLONG_ERR(
-              QString("path %1 error: %2").arg(path.c_str()).arg(ec.message().c_str()));
+            return LINGLONG_ERR(fmt::format("path {} error: {}", path, ec.message()));
         }
     }
 
@@ -184,8 +185,7 @@ getProjectYAMLPath(const std::filesystem::path &projectDir, const std::string &u
         return path;
     }
     if (ec) {
-        return LINGLONG_ERR(
-          QString("path %1 error: %2").arg(path.c_str()).arg(ec.message().c_str()));
+        return LINGLONG_ERR(fmt::format("path {} error: {}", path, ec.message()));
     }
 
     return LINGLONG_ERR("project yaml file not found");

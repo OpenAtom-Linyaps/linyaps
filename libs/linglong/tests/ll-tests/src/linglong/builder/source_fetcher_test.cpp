@@ -92,7 +92,7 @@ TEST_F(SourceFetcherTest, gitSubmodules)
     {
         QDir cacheDir("/tmp/cache");
         auto mockCmd = std::make_shared<MockCommand>("mock");
-        mockCmd->wrapExecFunc = [&](const QStringList &args) {
+        mockCmd->wrapExecFunc = [&]([[maybe_unused]] const QStringList &args) {
             return utils::error::Result<QString>("ok");
         };
         mockCmd->wrapSetEnvFunc = [&](const QString &name,
@@ -111,7 +111,7 @@ TEST_F(SourceFetcherTest, gitSubmodules)
     {
         QDir cacheDir("/tmp/cache");
         auto mockCmd = std::make_shared<MockCommand>("mock");
-        mockCmd->wrapExecFunc = [&](const QStringList &args) {
+        mockCmd->wrapExecFunc = [&]([[maybe_unused]] const QStringList &args) {
             return utils::error::Result<QString>("ok");
         };
         mockCmd->wrapSetEnvFunc = [&](const QString &name,
@@ -184,7 +184,7 @@ TEST_F(SourceFetcherTest, FetchInvalidGitCommit)
     source.commit = "invalid_commit";
     SourceFetcher fetcher(source, cacheDir);
     auto mockCmd = std::make_shared<MockCommand>("mock");
-    mockCmd->wrapExecFunc = [&](const QStringList &args) {
+    mockCmd->wrapExecFunc = [&]([[maybe_unused]] const QStringList &args) {
         LINGLONG_TRACE("FetchInvalidGitCommit");
         return LINGLONG_ERR("Invalid commit", -2);
     };
@@ -214,7 +214,7 @@ TEST_F(SourceFetcherTest, FetchInvalidFileDigest)
     source.digest = "invalid_digest";
     SourceFetcher fetcher(source, cacheDir);
     auto mockCmd = std::make_shared<MockCommand>("mock");
-    mockCmd->wrapExecFunc = [&](const QStringList &args) {
+    mockCmd->wrapExecFunc = [&]([[maybe_unused]] const QStringList &args) {
         LINGLONG_TRACE("FetchInvalidFileDigest");
         return LINGLONG_ERR("Invalid digest", -3);
     };
@@ -236,7 +236,7 @@ TEST_F(SourceFetcherTest, FetchNoSetName)
 
     QDir cacheDir("/tmp/cache");
     auto mockCmd = std::make_shared<MockCommand>("mock");
-    mockCmd->wrapExecFunc = [&](const QStringList &args) {
+    mockCmd->wrapExecFunc = [&]([[maybe_unused]] const QStringList &args) {
         return utils::error::Result<QString>("ok");
     };
     SourceFetcher fetcher(source, cacheDir);

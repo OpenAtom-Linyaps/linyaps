@@ -31,7 +31,8 @@ error::Result<T> LoadYAML(Source &content)
         nlohmann::json json = ytj::to_json(node);
         return json.template get<T>();
     } catch (...) {
-        return LINGLONG_ERR(std::current_exception());
+        auto exp = std::current_exception();
+        return LINGLONG_ERR(exp);
     }
 }
 

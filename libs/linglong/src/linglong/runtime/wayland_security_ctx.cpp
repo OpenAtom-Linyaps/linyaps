@@ -115,7 +115,7 @@ WaylandSecurityContextManagerV1::createSecurityContext(
         }
     });
 
-    auto runtimeDir = linglong::common::getAppXDGRuntimeDir(builder.getAppId());
+    auto runtimeDir = linglong::common::xdg::getAppXDGRuntimeDir(builder.getAppId());
     auto waylandSocket = runtimeDir / "wayland-socket";
 
     std::error_code ec;
@@ -223,8 +223,6 @@ WaylandSecurityContextV1::~WaylandSecurityContextV1()
 linglong::utils::error::Result<void>
 WaylandSecurityContextV1::apply(generator::ContainerCfgBuilder &builder) noexcept
 {
-    LINGLONG_TRACE("attach security context");
-
     builder.setAnnotation(generator::ANNOTATION::WAYLAND_SOCKET, socketPath.string());
     builder.bindWaylandSocket(socketPath);
     return LINGLONG_OK;

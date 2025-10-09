@@ -6,10 +6,10 @@
 
 #include "../mocks/uab_file_mock.h"
 #include "linglong/api/types/v1/Generators.hpp"
+#include "linglong/common/strings.h"
 #include "linglong/package/uab_file.h"
 #include "linglong/package/uab_packager.h"
 #include "linglong/utils/command/cmd.h"
-#include "linglong/utils/strings.h"
 
 #include <QCryptographicHash>
 #include <QFileInfo>
@@ -147,8 +147,7 @@ TEST_F(UabFileTest, UnpackFuse)
 {
     {
         auto ret = utils::command::Cmd("erofsfuse").exists();
-        ASSERT_TRUE(ret.has_value()) << ret.error().message().toStdString();
-        if (!*ret) {
+        if (!ret) {
 #ifdef GTEST_SKIP
             GTEST_SKIP() << "Skipping this test.";
 #else
@@ -157,12 +156,12 @@ TEST_F(UabFileTest, UnpackFuse)
         }
     }
     auto uab = MockUabFile(uabFile);
-    uab.wrapIsFileReadableFunc = [](const std::string &path) {
+    uab.wrapIsFileReadableFunc = []([[maybe_unused]] const std::string &path) {
         return false;
     };
     uab.wrapMkdirDirFunc = [](const std::string &path) -> utils::error::Result<void> {
         LINGLONG_TRACE("test");
-        if (utils::strings::hasPrefix(path, "/var/tmp")) {
+        if (common::strings::hasPrefix(path, "/var/tmp")) {
             return LINGLONG_ERR("Cannot create directory in /var/tmp");
         }
         std::filesystem::create_directories(path);

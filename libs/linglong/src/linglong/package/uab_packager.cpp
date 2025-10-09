@@ -83,7 +83,7 @@ utils::error::Result<elfHelper> elfHelper::create(const QByteArray &filePath) no
 
     if (!QFileInfo::exists(filePath)) {
         auto ret = filePath + "doesn't exists";
-        return LINGLONG_ERR(ret);
+        return LINGLONG_ERR(ret.toStdString());
     }
 
     // TODO: use libelf
@@ -493,7 +493,7 @@ utils::error::Result<void> UABPackager::prepareExecutableBundle(const QDir &bund
             }
 
             const bool shouldCopy = moduleFilesDirStat.f_fsid != filesStat.f_fsid;
-            for (std::filesystem::path source : files) {
+            for (const std::filesystem::path source : files) {
                 auto sourceFile = source.lexically_relative(basePath);
                 auto ret = prepareSymlink(basePath, moduleFilesDir, sourceFile, symlinkCount);
                 if (!ret) {
@@ -610,7 +610,7 @@ utils::error::Result<void> UABPackager::prepareExecutableBundle(const QDir &bund
             }
             const auto fakePrefix = moduleFilesDir / "lib" / curArch->getTriplet();
 
-            for (std::filesystem::path file : this->neededFiles) {
+            for (const std::filesystem::path file : this->neededFiles) {
                 auto fileName = file.filename().string();
                 auto it = std::find_if(this->blackList.begin(),
                                        this->blackList.end(),

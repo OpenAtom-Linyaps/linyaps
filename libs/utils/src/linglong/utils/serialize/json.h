@@ -7,7 +7,7 @@
 #pragma once
 
 // NOTE: DO NOT REMOVE THIS HEADER, nlohmann::json need this header to lookup function 'from_json'
-#include "linglong/api/types/v1/Generators.hpp"
+#include "linglong/api/types/v1/Generators.hpp" // IWYU pragma: keep
 #include "linglong/utils/error/error.h"
 #include "nlohmann/json.hpp"
 
@@ -89,8 +89,7 @@ error::Result<T> LoadJSONFile(QFile &file) noexcept
 {
     LINGLONG_TRACE("load json from file" + QFileInfo(file).absoluteFilePath());
 
-    file.open(QFile::ReadOnly);
-    if (!file.isOpen()) {
+    if (!file.open(QFile::ReadOnly)) {
         return LINGLONG_ERR("open", file);
     }
 
@@ -107,7 +106,7 @@ error::Result<T> LoadJSONFile(QFile &file) noexcept
 template <typename T>
 error::Result<T> LoadJSONFile(const QString &filename) noexcept
 {
-    QFile file{ filename };
+    std::filesystem::path file{ filename.toStdString() };
     return LoadJSONFile<T>(file);
 }
 

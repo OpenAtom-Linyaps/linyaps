@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "linglong/common/strings.h"
 #include "linglong/oci-cfg-generators/container_cfg_builder.h"
 #include "linglong/package/reference.h"
 #include "linglong/runtime/container.h"
@@ -20,7 +21,7 @@ namespace linglong::runtime {
 
 inline std::string genContainerID(const package::Reference &ref) noexcept
 {
-    auto content = (ref.toString().replace('/', '-') + ":").toStdString();
+    auto content = common::strings::replaceSubstring(ref.toString(), "/", "-") + ":";
     auto now = std::chrono::steady_clock::now().time_since_epoch().count();
     content.append(std::to_string(now));
 

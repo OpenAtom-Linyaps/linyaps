@@ -24,7 +24,12 @@ namespace linglong::package {
 
 LayerPackager::LayerPackager()
 {
-    this->initWorkDir();
+    // maybe refactor on later
+    auto ret = this->initWorkDir();
+    if (!ret) {
+        qCritical() << "init work dir failed";
+        Q_ASSERT(false);
+    }
 }
 
 utils::error::Result<void> LayerPackager::initWorkDir()
@@ -105,7 +110,8 @@ LayerPackager::pack(const LayerDir &dir, const QString &layerFilePath) const
         return LINGLONG_ERR(layer);
     }
 
-    if (layer.write(magicNumber) < 0) {
+    const auto &number = magicNumber();
+    if (layer.write(number) < 0) {
         return LINGLONG_ERR(layer);
     }
 
@@ -172,7 +178,6 @@ LayerPackager::pack(const LayerDir &dir, const QString &layerFilePath) const
 // 判断fd是否可在其他进程读取
 bool LayerPackager::isFileReadable(const std::string &path) const
 {
-    LINGLONG_TRACE("check file permission");
     std::ifstream f(path);
     return f.good();
 }
@@ -247,10 +252,7 @@ utils::error::Result<LayerDir> LayerPackager::unpack(LayerFile &file)
     // 判断fsck.erofs命令是否存在，fsck.erofs是erofs-utils的命令，可用于解压erofs文件
     // 在旧版本中fsck.erofs不支持offset参数，所以需要提前将erofs文件复制到临时目录
     auto erofsFscExistsRet = utils::command::Cmd("fsck.erofs").exists();
-    if (!erofsFscExistsRet.has_value()) {
-        return LINGLONG_ERR(erofsFscExistsRet);
-    }
-    if (*erofsFscExistsRet) {
+    if (erofsFscExistsRet) {
         fdPath = (this->workDir / "layer.erofs").string().c_str();
         auto ret = this->copyFile(file, fdPath.toStdString(), *offset);
         if (!ret) {
@@ -268,10 +270,9 @@ utils::error::Result<LayerDir> LayerPackager::unpack(LayerFile &file)
       utils::error::ErrorCode::AppInstallErofsNotFound);
 }
 
-utils::error::Result<void> LayerPackager::setCompressor(const QString &compressor) noexcept
+void LayerPackager::setCompressor(const QString &compressor) noexcept
 {
     this->compressor = compressor;
-    return LINGLONG_OK;
 }
 
 utils::error::Result<bool> LayerPackager::checkErofsFuseExists() const

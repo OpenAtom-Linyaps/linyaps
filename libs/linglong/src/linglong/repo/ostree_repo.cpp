@@ -8,11 +8,12 @@
 
 #include "api/ClientAPI.h"
 #include "linglong/api/types/v1/ExportDirs.hpp"
-#include "linglong/api/types/v1/Generators.hpp"
+#include "linglong/api/types/v1/Generators.hpp" // IWYU pragma: keep
 #include "linglong/api/types/v1/PackageInfoV2.hpp"
 #include "linglong/api/types/v1/Repo.hpp"
 #include "linglong/api/types/v1/RepositoryCacheLayersItem.hpp"
 #include "linglong/api/types/v1/RepositoryCacheMergedItem.hpp"
+#include "linglong/common/strings.h"
 #include "linglong/package/fuzzy_reference.h"
 #include "linglong/package/layer_dir.h"
 #include "linglong/package/reference.h"
@@ -27,7 +28,6 @@
 #include "linglong/utils/log/log.h"
 #include "linglong/utils/packageinfo_handler.h"
 #include "linglong/utils/serialize/json.h"
-#include "linglong/utils/strings.h"
 #include "linglong/utils/transaction.h"
 
 #include <gio/gio.h>
@@ -193,9 +193,7 @@ void progress_changed(OstreeAsyncProgress *progress, gpointer user_data)
         }
 
         data->progress = new_progress;
-        data->taskContext->updateTask(static_cast<double>(data->progress),
-                                      100,
-                                      QString::fromStdString(data->status));
+        data->taskContext->updateTask(static_cast<double>(data->progress), 100, data->status);
     });
 
     if (data->requested == 0) {
@@ -263,8 +261,8 @@ std::string ostreeSpecFromReference(const package::Reference &ref,
         module = "runtime";
     }
 
-    auto spec = ref.channel.toStdString() + "/" + ref.id.toStdString() + "/"
-      + ref.version.toString().toStdString() + "/" + ref.arch.toStdString() + "/" + module;
+    auto spec = ref.channel + "/" + ref.id + "/" + ref.version.toString() + "/"
+      + ref.arch.toStdString() + "/" + module;
 
     if (repo) {
         spec = repo.value() + ":" + spec;
@@ -281,8 +279,8 @@ ostreeSpecFromReferenceV2(const package::Reference &ref,
     if (module == "runtime") {
         module = "binary";
     }
-    auto ret = ref.channel.toStdString() + "/" + ref.id.toStdString() + "/"
-      + ref.version.toString().toStdString() + "/" + ref.arch.toStdString() + "/" + module;
+    auto ret = ref.channel + "/" + ref.id + "/" + ref.version.toString() + "/"
+      + ref.arch.toStdString() + "/" + module;
 
     if (repo) {
         ret = repo.value() + ":" + ret;
@@ -495,15 +493,15 @@ utils::error::Result<package::Reference> clearReferenceLocal(const linglong::rep
     // NOTE: ignore channel, two packages with the same version but different channels are not
     // allowed to be installed
     repoCacheQuery query;
-    query.id = fuzzy.id.toStdString();
+    query.id = fuzzy.id;
     const auto availablePackage = cache.queryLayerItem(query);
     if (availablePackage.empty()) {
-        return LINGLONG_ERR("package not found:" % fuzzy.toString(),
+        return LINGLONG_ERR("package not found:" + fuzzy.toString(),
                             utils::error::ErrorCode::AppNotFoundFromLocal);
     }
 
     std::optional<linglong::package::Version> version;
-    if (fuzzy.version && !fuzzy.version->isEmpty()) {
+    if (fuzzy.version && !fuzzy.version->empty()) {
         auto ret = linglong::package::Version::parse(fuzzy.version.value());
         if (!ret) {
             return LINGLONG_ERR(ret);
@@ -519,13 +517,12 @@ utils::error::Result<package::Reference> clearReferenceLocal(const linglong::rep
             continue;
         }
 
-        auto ver = QString::fromStdString(ref.info.version);
-        auto pkgVer = linglong::package::Version::parse(ver);
+        auto pkgVer = linglong::package::Version::parse(ref.info.version);
         if (!pkgVer) {
             qFatal("internal error: broken data of repo cache: %s", ref.info.version.c_str());
         }
 
-        qDebug() << "available layer found:" << fuzzy.toString() << ver;
+        LogD("available layer {} found: {}", fuzzy.toString(), ref.info.version);
         if (version) {
             if (semanticMatching && pkgVer->semanticMatch(version->toString())) {
                 foundRef = ref;
@@ -554,13 +551,13 @@ std::optional<package::Reference> matchReference(const api::types::v1::PackageIn
                                                  const std::string &module) noexcept
 {
     auto recordStr = nlohmann::json(record).dump();
-    if (fuzzy.channel && fuzzy.channel->toStdString() != record.channel) {
+    if (fuzzy.channel && fuzzy.channel != record.channel) {
         return std::nullopt;
     }
-    if (fuzzy.id.toStdString() != record.id) {
+    if (fuzzy.id != record.id) {
         return std::nullopt;
     }
-    auto version = package::Version::parse(QString::fromStdString(record.version));
+    auto version = package::Version::parse(record.version);
     if (!version) {
         qWarning() << "Ignore invalid package record" << recordStr.c_str() << version.error();
         return std::nullopt;
@@ -583,8 +580,8 @@ std::optional<package::Reference> matchReference(const api::types::v1::PackageIn
         qWarning() << "Ignore invalid package record" << recordStr.c_str() << arch.error();
         return std::nullopt;
     }
-    auto channel = QString::fromStdString(record.channel);
-    auto currentRef = package::Reference::create(channel, fuzzy.id, *version, *arch);
+
+    auto currentRef = package::Reference::create(record.channel, fuzzy.id, *version, *arch);
     if (!currentRef) {
         qWarning() << "Ignore invalid package record" << recordStr.c_str() << currentRef.error();
         return std::nullopt;
@@ -887,8 +884,6 @@ OSTreeRepo::getRepoByAlias(const std::string &alias) const noexcept
  */
 OSTreeRepo::repoPriority_t OSTreeRepo::promotePriority(const std::string &alias) noexcept
 {
-    LINGLONG_TRACE("promote priority of repo " + QString::fromStdString(alias));
-
     auto it =
       std::find_if(this->cfg.repos.begin(), this->cfg.repos.end(), [&alias](const auto &repo) {
           return repo.alias.value_or(repo.name) == alias;
@@ -908,8 +903,6 @@ OSTreeRepo::repoPriority_t OSTreeRepo::promotePriority(const std::string &alias)
 void OSTreeRepo::recoverPriority(const std::string &alias,
                                  const OSTreeRepo::repoPriority_t &priority) noexcept
 {
-    LINGLONG_TRACE("recover priority of repo " + QString::fromStdString(alias));
-
     auto it =
       std::find_if(this->cfg.repos.begin(), this->cfg.repos.end(), [&alias](const auto &repo) {
           return repo.alias.value_or(repo.name) == alias;
@@ -1139,8 +1132,9 @@ utils::error::Result<void> OSTreeRepo::pushToRemote(const std::string &remoteRep
         return LINGLONG_ERR(tmpDir.errorString());
     }
 
-    const QString tarFileName = QString("%1.tgz").arg(reference.id);
-    const QString tarFilePath = QDir::cleanPath(tmpDir.filePath(tarFileName));
+    const auto tarFileName = fmt::format("{}.tgz", reference.id);
+    const QString tarFilePath =
+      QDir::cleanPath(tmpDir.filePath(QString::fromStdString(tarFileName)));
     QStringList args = { "-zcf", tarFilePath, "-C", layerDir->absolutePath(), "." };
     auto tarStdout = utils::command::Cmd("tar").exec(args);
     if (!tarStdout) {
@@ -1150,10 +1144,9 @@ utils::error::Result<void> OSTreeRepo::pushToRemote(const std::string &remoteRep
     // 上传文件, 原来的binary_t需要将文件存储到内存，对大文件上传不友好，改为存储文件名
     // 底层改用 curl_mime_filedata 替换 curl_mime_data
     auto filepath = tarFilePath.toUtf8();
-    auto filename = tarFileName.toUtf8();
     binary_t binary;
     binary.filepath = filepath.data();
-    binary.filename = filename.data();
+    binary.filename = const_cast<char *>(tarFileName.data());
     auto *uploadTaskResRaw = ClientAPI_uploadTaskFile(client.get(), token, taskID, &binary);
     if (uploadTaskResRaw == nullptr) {
         return LINGLONG_ERR(QString("upload file error(%1)").arg(taskID));
@@ -1180,8 +1173,8 @@ utils::error::Result<void> OSTreeRepo::pushToRemote(const std::string &remoteRep
             auto msg = uploadInfo->msg ? uploadInfo->msg : "cannot send request to remote server";
             return LINGLONG_ERR(QString("get upload info error(%1): %2").arg(taskID, msg));
         }
-        qInfo() << "pushing" << reference.toString() << module.c_str()
-                << "status:" << uploadInfo->data->status;
+
+        LogI("pushing {}/{} status: {}", reference.toString(), module, uploadInfo->data->status);
         if (std::string(uploadInfo->data->status) == "complete") {
             return LINGLONG_OK;
         }
@@ -1583,8 +1576,8 @@ OSTreeRepo::clearReference(const package::FuzzyReference &fuzzy,
     }
 
     if (!reference) {
-        auto msg = QString("not found ref:%1 module:%2 from remote repo")
-                     .arg(fuzzy.toString(), module.c_str());
+        auto msg =
+          fmt::format("not found ref:{} module:{} from remote repo", fuzzy.toString(), module);
         return LINGLONG_ERR(msg, utils::error::ErrorCode::AppNotFoundFromRemote);
     }
 
@@ -1648,7 +1641,8 @@ OSTreeRepo::getRemoteReferenceByPriority(const package::FuzzyReference &fuzzy,
     if (it != results.end()) {
         return *it;
     }
-    return LINGLONG_ERR(QString{ "not found %1 in all repos" }.arg(fuzzy.toString()),
+
+    return LINGLONG_ERR(fmt::format("not found {} in all repos", fuzzy.toString()),
                         utils::error::ErrorCode::AppInstallNotFoundFromRemote);
 }
 
@@ -1713,11 +1707,11 @@ OSTreeRepo::listLocalLatest() const noexcept
             continue;
         }
 
-        auto pkgInfoVersion = package::Version::parse(QString::fromStdString(it->version));
+        auto pkgInfoVersion = package::Version::parse(it->version);
         if (!pkgInfoVersion) {
             return LINGLONG_ERR(pkgInfoVersion);
         }
-        auto itemVersion = package::Version::parse(QString::fromStdString(item.info.version));
+        auto itemVersion = package::Version::parse(item.info.version);
         if (!itemVersion) {
             return LINGLONG_ERR(itemVersion);
         }
@@ -1765,10 +1759,9 @@ OSTreeRepo::listRemote(const package::FuzzyReference &fuzzyRef,
         m_clientFactory.setServer(defaultRepo.url);
     });
 
-    auto id = fuzzyRef.id.toLatin1();
-    req.app_id = ::strndup(id.data(), id.size());
+    req.app_id = ::strndup(fuzzyRef.id.data(), fuzzyRef.id.size());
     if (req.app_id == nullptr) {
-        return LINGLONG_ERR(QString{ "strndup app_id failed: %1" }.arg(fuzzyRef.id));
+        return LINGLONG_ERR(fmt::format("strndup app_id failed: {}", fuzzyRef.id));
     }
     if (!repo) {
         req.repo_name = ::strndup(defaultRepo.name.data(), defaultRepo.name.size());
@@ -1781,7 +1774,7 @@ OSTreeRepo::listRemote(const package::FuzzyReference &fuzzyRef,
     }
 
     if (fuzzyRef.channel) {
-        auto channel = fuzzyRef.channel->toLatin1();
+        auto channel = fuzzyRef.channel.value();
         req.channel = strndup(channel.data(), channel.size());
         if (req.channel == nullptr) {
             return LINGLONG_ERR(QString{ "strndup channel failed: %1" }.arg(channel.data()));
@@ -1789,7 +1782,7 @@ OSTreeRepo::listRemote(const package::FuzzyReference &fuzzyRef,
     }
 
     if (fuzzyRef.version) {
-        auto version = fuzzyRef.version->toLatin1();
+        auto version = fuzzyRef.version.value();
         req.version = strndup(version.data(), version.size());
         if (req.version == nullptr) {
             return LINGLONG_ERR(QString{ "strndup version failed: %1" }.arg(version.data()));
@@ -1802,7 +1795,7 @@ OSTreeRepo::listRemote(const package::FuzzyReference &fuzzyRef,
     }
 
     auto arch = fuzzyRef.arch.value_or(*defaultArch);
-    auto archStr = arch.toString().toLatin1();
+    auto archStr = arch.toStdString();
     req.arch = strndup(archStr.data(), archStr.size());
     if (req.arch == nullptr) {
         return LINGLONG_ERR(QString{ "strndup arch failed: %1" }.arg(archStr.data()));
@@ -1954,9 +1947,10 @@ void OSTreeRepo::unexportReference(const package::Reference &ref) noexcept
 {
     auto layerDir = this->getLayerDir(ref);
     if (!layerDir) {
-        qCritical() << "Failed to unexport" << ref.toString() << layerDir.error().message();
+        LogE("Failed to unexport reference {} to {}", ref.toString(), layerDir.error().message());
         return;
     }
+
     this->unexportReference(layerDir->absolutePath().toStdString());
 }
 
@@ -1968,14 +1962,13 @@ void OSTreeRepo::exportReference(const package::Reference &ref) noexcept
     }
     auto item = this->getLayerItem(ref);
     if (!item.has_value()) {
-        qCritical() << QString("Failed to export %1:").arg(ref.toString())
-                    << "layer directory not exists." << item.error().message();
+        LogE("Failed to export {}: {}", ref.toString(), item.error().message());
         Q_ASSERT(false);
         return;
     }
     auto ret = exportEntries(entriesDir.absolutePath().toStdString(), *item);
     if (!ret.has_value()) {
-        qCritical() << QString("Failed to export %1:").arg(ref.toString()) << ret.error().message();
+        LogE("Failed to export {}: {}", ref.toString(), ret.error().message());
         Q_ASSERT(false);
         return;
     }
@@ -2064,7 +2057,7 @@ utils::error::Result<void> OSTreeRepo::exportDir(const std::string &appID,
         }
         if (is_regular_file) {
             // linyaps.original结尾的文件是重写之前的备份文件，不应该被导出
-            if (utils::strings::hasSuffix(source_path.string(), ".linyaps.original")) {
+            if (common::strings::hasSuffix(source_path.string(), ".linyaps.original")) {
                 continue;
             }
             // 在导出桌面文件和dbus服务文件时，需要修改其中的Exec和TryExec字段
@@ -2135,8 +2128,9 @@ utils::error::Result<void> OSTreeRepo::exportDir(const std::string &appID,
                  newAppDir,
                  target_path.string());
             // 如果配置了overlay并且是applications中的desktop文件，执行特殊的逻辑
-            if (oldAppDir != newAppDir && utils::strings::hasPrefix(target_path.string(), oldAppDir)
-                && utils::strings::hasSuffix(target_path.string(), ".desktop")) {
+            if (oldAppDir != newAppDir
+                && common::strings::hasPrefix(target_path.string(), oldAppDir)
+                && common::strings::hasSuffix(target_path.string(), ".desktop")) {
                 auto desktopExists = false;
                 // 如果要导出的desktop已存在，则覆盖导出（无论是在default还是overlay中），避免桌面和任务栏的快捷方式失效
                 const std::string appDirs[] = { oldAppDir, newAppDir };
@@ -2481,10 +2475,10 @@ OSTreeRepo::getLayerItem(const package::Reference &ref,
     }
     // 优先从默认仓库查找
     auto defaultRepo = getDefaultRepo(this->cfg);
-    repoCacheQuery query{ .id = ref.id.toStdString(),
+    repoCacheQuery query{ .id = ref.id,
                           .repo = defaultRepo.alias.value_or(defaultRepo.name),
-                          .channel = ref.channel.toStdString(),
-                          .version = ref.version.toString().toStdString(),
+                          .channel = ref.channel,
+                          .version = ref.version.toString(),
                           .module = std::move(module),
                           .uuid = subRef,
                           .deleted = std::nullopt };
@@ -2523,8 +2517,8 @@ OSTreeRepo::getLayerItem(const package::Reference &ref,
 
     // 搜不到binary, 则回退到runtime查找
     if (query.module != "binary") {
-        return LINGLONG_ERR("couldn't find layer item " % ref.toString() % "/"
-                            % query.module->c_str());
+        return LINGLONG_ERR("couldn't find layer item " + ref.toString() + "/"
+                            + query.module->c_str());
     }
     qDebug() << "fallback to runtime:" << query.to_string().c_str();
     query.module = "runtime";
@@ -2562,8 +2556,7 @@ auto OSTreeRepo::getLayerDir(const package::Reference &ref,
 
     auto layer = this->getLayerItem(ref, module, subRef);
     if (!layer) {
-        qDebug().nospace() << "no such item:" << ref.toString() << "/" << module.c_str() << ":"
-                           << layer.error().message();
+        LogD("no such item: {}/{}:{}", ref.toString(), module, layer.error().message());
         return LINGLONG_ERR(layer);
     }
 
@@ -2667,10 +2660,10 @@ OSTreeRepo::getRemoteModuleListByPriority(const package::Reference &ref,
 std::vector<std::string> OSTreeRepo::getModuleList(const package::Reference &ref) noexcept
 {
     repoCacheQuery query{
-        .id = ref.id.toStdString(),
+        .id = ref.id,
         .repo = std::nullopt,
-        .channel = ref.channel.toStdString(),
-        .version = ref.version.toString().toStdString(),
+        .channel = ref.channel,
+        .version = ref.version.toString(),
     };
     auto layers = this->cache->queryLayerItem(query);
     // 按module字母从小到大排序，提前排序以保证后面的commits比较
@@ -2694,11 +2687,10 @@ utils::error::Result<package::LayerDir>
 OSTreeRepo::getMergedModuleDir(const package::Reference &ref, bool fallbackLayerDir) const noexcept
 {
     LINGLONG_TRACE("get merge dir from ref " + ref.toString());
-    qDebug() << "getMergedModuleDir" << ref.toString();
+    LogD("getMergedModuleDir: {}", ref.toString());
     auto layer = this->getLayerItem(ref, "binary");
     if (!layer) {
-        qDebug().nospace() << "no such item:" << ref.toString()
-                           << "/binary:" << layer.error().message();
+        LogD("no such item {}/binary: {}", ref.toString(), layer.error().message());
         return LINGLONG_ERR(layer);
     }
     return getMergedModuleDir(*layer, fallbackLayerDir);
@@ -2741,10 +2733,10 @@ utils::error::Result<package::LayerDir> OSTreeRepo::getMergedModuleDir(
   const package::Reference &ref, const std::vector<std::string> &loadModules) const noexcept
 {
     LINGLONG_TRACE("merge modules");
-    QDir mergedDir = this->repoDir.absoluteFilePath("merged");
+    const QDir mergedDir = this->repoDir.absoluteFilePath("merged");
     auto layerItems = this->cache->queryExistingLayerItem();
     QCryptographicHash hash(QCryptographicHash::Sha256);
-    QStringList commits;
+    std::vector<std::string> commits;
     std::string findModules;
     // 筛选指定的layer
     for (auto &layer : layerItems) {
@@ -2752,8 +2744,7 @@ utils::error::Result<package::LayerDir> OSTreeRepo::getMergedModuleDir(
         if (!layer.info.arch.empty()) {
             arch = layer.info.arch.front();
         }
-        if (layer.info.id != ref.id.toStdString()
-            || layer.info.version != ref.version.toString().toStdString()
+        if (layer.info.id != ref.id || layer.info.version != ref.version.toString()
             || arch != ref.arch.toStdString()) {
             continue;
         }
@@ -2761,7 +2752,7 @@ utils::error::Result<package::LayerDir> OSTreeRepo::getMergedModuleDir(
             == loadModules.end()) {
             continue;
         }
-        commits.push_back(QString::fromStdString(layer.commit));
+        commits.push_back(layer.commit);
         findModules += layer.info.packageInfoV2Module + " ";
         hash.addData(QString::fromStdString(layer.commit).toUtf8());
     }
@@ -2773,7 +2764,7 @@ utils::error::Result<package::LayerDir> OSTreeRepo::getMergedModuleDir(
         return LINGLONG_ERR(QString("missing module, only found: ") + findModules.c_str());
     }
     // 合并layer，生成临时merged目录
-    QString mergeID = hash.result().toHex();
+    const QString mergeID = hash.result().toHex();
     auto mergeTmp = mergedDir.filePath("tmp_" + mergeID);
     for (const auto &commit : commits) {
         int root = open("/", O_DIRECTORY);
@@ -2787,7 +2778,7 @@ utils::error::Result<package::LayerDir> OSTreeRepo::getMergedModuleDir(
                                     &opt,
                                     root,
                                     mergeTmp.mid(1).toUtf8(),
-                                    commit.toStdString().c_str(),
+                                    commit.c_str(),
                                     nullptr,
                                     &gErr)
             == FALSE) {
@@ -2801,7 +2792,7 @@ utils::error::Result<void> OSTreeRepo::mergeModules() const noexcept
 {
     LINGLONG_TRACE("merge modules");
     std::error_code ec;
-    QDir mergedDir = this->repoDir.absoluteFilePath("merged");
+    const QDir mergedDir = this->repoDir.absoluteFilePath("merged");
     mergedDir.mkpath(".");
     auto layerItems = this->cache->queryExistingLayerItem();
     auto mergedItems = this->cache->queryMergedItems();

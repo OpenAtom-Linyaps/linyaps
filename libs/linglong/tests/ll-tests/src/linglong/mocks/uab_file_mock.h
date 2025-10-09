@@ -5,7 +5,6 @@
 #include "linglong/package/uab_file.h"
 #include "linglong/utils/error/error.h"
 
-#include <filesystem>
 #include <functional>
 #include <string>
 
@@ -25,10 +24,10 @@ public:
     std::function<bool(const std::string &)> wrapCheckCommandExistsFunc;
 
     explicit MockUabFile(const std::string &path)
-        : UABFile()
     {
         auto fd = ::open(path.c_str(), O_RDONLY);
-        this->open(fd, QIODevice::ReadOnly, FileHandleFlag::AutoCloseHandle);
+        [[maybe_unused]] auto ret =
+          this->open(fd, QIODevice::ReadOnly, FileHandleFlag::AutoCloseHandle);
         elf_version(EV_CURRENT);
         auto *elf = elf_begin(fd, ELF_C_READ, nullptr);
         this->UABFile::e = elf;

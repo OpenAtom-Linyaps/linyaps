@@ -45,7 +45,7 @@ void CLIPrinter::printPruneResult(const std::vector<api::types::v1::PackageInfoV
     std::cout << "Unused base or runtime:" << std::endl;
     for (const auto &info : list) {
         auto ref = package::Reference::fromPackageInfo(info);
-        std::cout << ref->toString().toStdString() << std::endl;
+        std::cout << ref->toString() << std::endl;
     }
     std::cout << list.size() << " unused base or runtime have been removed." << std::endl;
 }

@@ -20,19 +20,20 @@ journalctl SYSLOG_IDENTIFIER=ll-package-manager --no-pager -o json
 
 #define LOGNS linglong::utils::log
 #define LOGLV LOGNS::LogLevel
-#define LOGCTX LOGNS::Logger::LoggerContext(__FILE__, __LINE__, __func__)
-#define LogD(fmt, args...) LOGNS::g_logger.log(LOGCTX, LOGLV::Debug, fmt, ##args)
-#define LogI(fmt, args...) LOGNS::g_logger.log(LOGCTX, LOGLV::Info, fmt, ##args)
-#define LogW(fmt, args...) LOGNS::g_logger.log(LOGCTX, LOGLV::Warning, fmt, ##args)
-#define LogE(fmt, args...) LOGNS::g_logger.log(LOGCTX, LOGLV::Error, fmt, ##args)
-#define LogF(fmt, args...) LOGNS::g_logger.log(LOGCTX, LOGLV::Fatal, fmt, ##args)
+#define LOGCTX LOGNS::Logger::LoggerContext(__FILE__, __LINE__, __PRETTY_FUNCTION__)
+
+#define LogD(...) LOGNS::g_logger.log(LOGCTX, LOGLV::Debug, __VA_ARGS__)
+#define LogI(...) LOGNS::g_logger.log(LOGCTX, LOGLV::Info, __VA_ARGS__)
+#define LogW(...) LOGNS::g_logger.log(LOGCTX, LOGLV::Warning, __VA_ARGS__)
+#define LogE(...) LOGNS::g_logger.log(LOGCTX, LOGLV::Error, __VA_ARGS__)
+#define LogF(...) LOGNS::g_logger.log(LOGCTX, LOGLV::Fatal, __VA_ARGS__)
 
 namespace linglong::utils::log {
 
 enum class LogBackend : uint8_t {
     None = 0,
-    Console = 1 << 0,
-    Journal = 1 << 1,
+    Console = 1U << 0U,
+    Journal = 1U << 1U,
 };
 
 inline LogBackend operator|(LogBackend a, LogBackend b)
@@ -68,52 +69,64 @@ public:
         {
         }
 
-        std::string file;
+        const char *file;
         int line;
-        std::string function;
+        const char *function;
     };
 
     Logger();
-    ~Logger();
+    ~Logger() = default;
 
     void setLogLevel(LogLevel level);
     void setLogBackend(LogBackend backend);
 
     template <typename... Args>
-    void log(const LoggerContext &context, LogLevel level, fmt::string_view fmt, Args &&...args)
+    void log(const LoggerContext &context,
+             LogLevel level,
+             fmt::format_string<Args...> fmt,
+             Args &&...args)
     {
         if (logLevel < level || logBackend == LogBackend::None) {
             return;
         }
 
-        auto message = fmt::vformat(fmt, fmt::make_format_args(args...));
+        std::string message;
+        try {
+            message = fmt::format(fmt, std::forward<Args>(args)...);
+        } catch (const fmt::format_error &e) {
+            message = fmt::format("[format error: {}]", e.what());
+        }
 
         if ((logBackend & LogBackend::Console) != LogBackend::None) {
-            fmt::print(stderr, "{}\n", message);
+            fmt::println(stderr, message);
         }
 
         if ((logBackend & LogBackend::Journal) != LogBackend::None) {
-            sd_journal_send_with_location(fmt::format("CODE_FILE={}", context.file).c_str(),
-                                          fmt::format("CODE_LINE={}", context.line).c_str(),
-                                          context.function.c_str(),
+            fmt::memory_buffer fileBuf;
+            fmt::memory_buffer lineBuf;
+            fmt::format_to(fileBuf.begin(), "CODE_FILE={}\0", context.file);
+            fmt::format_to(lineBuf.begin(), "CODE_LINE={}\0", context.line);
+            sd_journal_send_with_location(fileBuf.data(),
+                                          lineBuf.data(),
+                                          context.function,
                                           "MESSAGE=%s",
                                           message.c_str(),
                                           "PRIORITY=%i",
                                           logLevelToSDPriority(level),
-                                          NULL);
+                                          nullptr);
         }
     }
 
 private:
-    int logLevelToSDPriority(LogLevel level);
+    static int logLevelToSDPriority(LogLevel level) noexcept;
 
     LogLevel logLevel;
     LogBackend logBackend;
 };
 
-void setLogLevel(LogLevel level);
-void setLogBackend(LogBackend backend);
+void setLogLevel(LogLevel level) noexcept;
+void setLogBackend(LogBackend backend) noexcept;
 
-extern Logger g_logger;
+inline Logger g_logger;
 
 } // namespace linglong::utils::log

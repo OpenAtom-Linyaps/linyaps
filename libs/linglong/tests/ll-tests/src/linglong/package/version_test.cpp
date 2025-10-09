@@ -31,7 +31,7 @@ TEST(Package, VersionRegex101)
 {
     // tests modified from https://regex101.com/r/vkijKf/1/
 
-    QStringList validCases = {
+    const std::vector<std::string> validCases = {
         "0.0.0.4",
         "1.2.3.4",
         "10.20.30.40",
@@ -53,41 +53,33 @@ TEST(Package, VersionRegex101)
 
     for (const auto &validCase : validCases) {
         auto res = Version::parse(validCase);
-        ASSERT_EQ(res.has_value(), true) << validCase.toStdString() << " is valid.";
-        ASSERT_EQ(res->toString().toStdString(), validCase.toStdString());
+        ASSERT_EQ(res.has_value(), true) << validCase << " is valid.";
+        ASSERT_EQ(res->toString(), validCase);
     }
 }
 
 TEST(Package, VersionCompare)
 {
-    QStringList versions = {
+    std::vector<std::string> versions = {
         "1.0.0-alpha",      "1.0.0-beta", "1.0.0-rc", "1.0.0+buildinfo.security.1",
         "1.0.0+security.2", "1.0.0.0",    "1.0.0.1",  "2.0.0.0",
         "2.1.0.0",          "2.1.1.0",    "2.1.1.1",  "3.1.6"
     };
-    for (int i = 0; i < versions.size() - 1; i++) {
-        for (int j = i + 1; j < versions.size(); j++) {
+    for (std::size_t i = 0; i < versions.size() - 1; i++) {
+        for (std::size_t j = i + 1; j < versions.size(); j++) {
             auto x = Version::parse(versions[i]);
-            ASSERT_EQ(x.has_value(), true) << versions[i].toStdString() << " is valid.";
+            ASSERT_EQ(x.has_value(), true) << versions[i] << " is valid.";
             auto y = Version::parse(versions[j]);
-            ASSERT_EQ(y.has_value(), true) << versions[j].toStdString() << " is valid.";
+            ASSERT_EQ(y.has_value(), true) << versions[j] << " is valid.";
 
-            ASSERT_EQ(*x < *y, true)
-              << "x: " << x->toString().toStdString() << " y:" << y->toString().toStdString();
-            ASSERT_EQ(*x <= *y, true)
-              << "x: " << x->toString().toStdString() << " y:" << y->toString().toStdString();
-            ASSERT_EQ(*y < *x, false)
-              << "x: " << x->toString().toStdString() << " y:" << y->toString().toStdString();
-            ASSERT_EQ(*y <= *x, false)
-              << "x: " << x->toString().toStdString() << " y:" << y->toString().toStdString();
-            ASSERT_EQ(*x != *y, true)
-              << "x: " << x->toString().toStdString() << " y:" << y->toString().toStdString();
-            ASSERT_EQ(*y > *x, true)
-              << "x: " << x->toString().toStdString() << " y:" << y->toString().toStdString();
-            ASSERT_EQ(*x > *y, false)
-              << "x: " << x->toString().toStdString() << " y:" << y->toString().toStdString();
-            ASSERT_EQ(*x >= *y, false)
-              << "x: " << x->toString().toStdString() << " y:" << y->toString().toStdString();
+            ASSERT_EQ(*x < *y, true) << "x: " << x->toString() << " y:" << y->toString();
+            ASSERT_EQ(*x <= *y, true) << "x: " << x->toString() << " y:" << y->toString();
+            ASSERT_EQ(*y < *x, false) << "x: " << x->toString() << " y:" << y->toString();
+            ASSERT_EQ(*y <= *x, false) << "x: " << x->toString() << " y:" << y->toString();
+            ASSERT_EQ(*x != *y, true) << "x: " << x->toString() << " y:" << y->toString();
+            ASSERT_EQ(*y > *x, true) << "x: " << x->toString() << " y:" << y->toString();
+            ASSERT_EQ(*x > *y, false) << "x: " << x->toString() << " y:" << y->toString();
+            ASSERT_EQ(*x >= *y, false) << "x: " << x->toString() << " y:" << y->toString();
         }
     }
 }

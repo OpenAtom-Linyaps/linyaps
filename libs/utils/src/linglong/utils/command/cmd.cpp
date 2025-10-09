@@ -7,15 +7,18 @@
 #include "cmd.h"
 
 #include <QProcess>
+#include <QStandardPaths>
+
+#include <utility>
 
 namespace linglong::utils::command {
 
-Cmd::Cmd(const QString &command) noexcept
+Cmd::Cmd(QString command) noexcept
+    : m_command(std::move(command))
 {
-    this->m_command = command;
 }
 
-Cmd::~Cmd() { }
+Cmd::~Cmd() = default;
 
 linglong::utils::error::Result<QString> Cmd::exec() noexcept
 {
@@ -30,11 +33,17 @@ linglong::utils::error::Result<QString> Cmd::exec(const QStringList &args) noexc
     process.setProgram(m_command);
     if (!m_envs.isEmpty()) {
         // Merge system and custom environment variables
-        QStringList envs = QProcess::systemEnvironment();
-        for (const auto &key : m_envs.keys()) {
-            envs.push_back(key + "=" + m_envs[key]);
+        auto envs = QProcessEnvironment::systemEnvironment();
+        for (auto it = m_envs.cbegin(); it != m_envs.cend(); ++it) {
+            const auto &key = it.key();
+            const auto &value = it.value();
+            if (value.isEmpty()) {
+                envs.remove(key);
+            } else {
+                envs.insert(key, value);
+            }
         }
-        process.setEnvironment(envs);
+        process.setProcessEnvironment(envs);
     }
     process.setArguments(args);
     process.setProcessChannelMode(QProcess::MergedChannels);
@@ -45,33 +54,16 @@ linglong::utils::error::Result<QString> Cmd::exec(const QStringList &args) noexc
     }
 
     if (process.exitCode() != 0) {
-        return LINGLONG_ERR(process.readAllStandardOutput(), process.exitCode());
+        return LINGLONG_ERR(process.readAllStandardOutput().toStdString(), process.exitCode());
     }
 
     return process.readAllStandardOutput();
 }
 
-linglong::utils::error::Result<bool> Cmd::exists() noexcept
+bool Cmd::exists() noexcept
 {
-    LINGLONG_TRACE(QString("check command %1 exists").arg(m_command));
-    qDebug() << "exists" << m_command;
-    QProcess process;
-    process.setProgram("sh");
-    if (!m_envs.isEmpty()) {
-        // Merge system and custom environment variables
-        QStringList envs = QProcess::systemEnvironment();
-        for (const auto &key : m_envs.keys()) {
-            envs.push_back(key + "=" + m_envs[key]);
-        }
-        process.setEnvironment(envs);
-    }
-    process.setArguments({ "-c", QString("command -v %1").arg(m_command) });
-    process.setProcessChannelMode(QProcess::MergedChannels);
-    process.start();
-    if (!process.waitForFinished(-1)) {
-        return LINGLONG_ERR(process.errorString(), process.error());
-    }
-    return process.exitCode() == 0;
+    auto ret = QStandardPaths::findExecutable(m_command);
+    return !ret.isEmpty();
 }
 
 // set environment, if value is empty, remove the environment

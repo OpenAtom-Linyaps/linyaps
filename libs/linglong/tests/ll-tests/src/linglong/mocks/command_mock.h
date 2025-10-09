@@ -29,9 +29,9 @@ public:
     }
 
     // mock exists
-    std::function<linglong::utils::error::Result<bool>()> wrapExistsFunc;
+    std::function<bool()> wrapExistsFunc;
 
-    linglong::utils::error::Result<bool> exists() noexcept override
+    bool exists() noexcept override
     {
         return wrapExistsFunc ? wrapExistsFunc() : Cmd::exists();
     }

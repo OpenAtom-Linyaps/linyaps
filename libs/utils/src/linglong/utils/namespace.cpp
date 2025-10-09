@@ -9,7 +9,6 @@
 
 #include <sys/capability.h>
 
-#include <array>
 #include <fstream>
 
 #include <pwd.h>
@@ -119,8 +118,6 @@ utils::error::Result<int> runInNamespace(int argc, char *argv[])
     LINGLONG_TRACE("run in namespace");
 
     auto entry = [](void *args) {
-        LINGLONG_TRACE("run in namespace entry");
-
         auto *runInNamespaceArgs = static_cast<detail::RunInNamespaceArgs *>(args);
         const auto &fd = runInNamespaceArgs->fd;
 

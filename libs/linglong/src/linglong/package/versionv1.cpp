@@ -9,11 +9,13 @@
 #include "linglong/package/fallback_version.h"
 #include "linglong/package/versionv2.h"
 
+#include <fmt/format.h>
+
 #include <QRegularExpression>
 #include <QRegularExpressionMatch>
 
 namespace linglong::package {
-utils::error::Result<VersionV1> VersionV1::parse(const QString &raw) noexcept
+utils::error::Result<VersionV1> VersionV1::parse(const std::string &raw) noexcept
 try {
     return VersionV1(raw);
 } catch (const std::exception &e) {
@@ -21,7 +23,7 @@ try {
     return LINGLONG_ERR(e);
 }
 
-VersionV1::VersionV1(const QString &raw)
+VersionV1::VersionV1(const std::string &raw)
 {
     // modified from https://regex101.com/r/vkijKf/1/
     static auto regexExp = []() noexcept {
@@ -31,7 +33,7 @@ VersionV1::VersionV1(const QString &raw)
         return regexExp;
     }();
 
-    QRegularExpressionMatch matched = regexExp.match(raw);
+    QRegularExpressionMatch matched = regexExp.match(QString::fromStdString(raw));
 
     if (!matched.hasMatch()) {
         throw std::runtime_error(
@@ -59,7 +61,7 @@ VersionV1::VersionV1(const QString &raw)
     }
 }
 
-bool VersionV1::semanticMatch(const QString &versionStr) const noexcept
+bool VersionV1::semanticMatch(const std::string &versionStr) const noexcept
 {
     auto fuzzyVerRet = parse(versionStr);
     if (!fuzzyVerRet) {
@@ -220,12 +222,12 @@ bool operator>=(const VersionV1 &v1, const FallbackVersion &fv) noexcept
     return !(v1 < fv);
 }
 
-QString VersionV1::toString() const noexcept
+std::string VersionV1::toString() const noexcept
 {
-    return QString("%1.%2.%3%4")
-      .arg(this->major)
-      .arg(this->minor)
-      .arg(this->patch)
-      .arg(this->tweak ? "." + QString::number(*this->tweak) : "");
+    return fmt::format("{}.{}.{}{}",
+                       this->major,
+                       this->minor,
+                       this->patch,
+                       this->tweak ? "." + std::to_string(*this->tweak) : "");
 }
 } // namespace linglong::package

@@ -393,7 +393,6 @@ utils::error::Result<std::filesystem::path> UABFile::extractSignData() noexcept
 
 bool UABFile::isFileReadable(const std::string &path) const
 {
-    LINGLONG_TRACE("check file permission");
     std::ifstream f(path);
     return f.good();
 }
@@ -451,12 +450,7 @@ utils::error::Result<void> UABFile::mkdirDir(const std::string &path) noexcept
 
 bool UABFile::checkCommandExists(const std::string &command) const
 {
-    LINGLONG_TRACE("check command exists" + command);
-    auto ret = utils::command::Cmd(command.c_str()).exists();
-    if (!ret.has_value()) {
-        return false;
-    }
-    return *ret;
+    return utils::command::Cmd(command.c_str()).exists();
 }
 
 } // namespace linglong::package

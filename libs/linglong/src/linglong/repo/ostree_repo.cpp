@@ -1864,6 +1864,7 @@ OSTreeRepo::listRemote(const package::FuzzyReference &fuzzyRef,
         auto *item = (request_register_struct_t *)entry->data;
         pkgInfos.emplace_back(api::types::v1::PackageInfoV2{
           .arch = { item->arch },
+          .base = { item->base },
           .channel = item->channel,
           .description = item->description,
           .id = item->app_id,

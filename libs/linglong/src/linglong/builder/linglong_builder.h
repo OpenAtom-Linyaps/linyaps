@@ -8,7 +8,6 @@
 
 #include "linglong/api/types/v1/BuilderConfig.hpp"
 #include "linglong/api/types/v1/BuilderProject.hpp"
-#include "linglong/oci-cfg-generators/container_cfg_builder.h"
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/runtime/container_builder.h"
 #include "linglong/runtime/run_context.h"
@@ -45,6 +44,10 @@ struct BuilderBuildOptions
     bool isolateNetWork{ false };
 };
 
+utils::error::Result<std::vector<std::filesystem::path>>
+installModule(const std::filesystem::path &buildOutput,
+              const std::filesystem::path &moduleOutput,
+              const std::unordered_set<std::string> &rules);
 utils::error::Result<void> cmdListApp(repo::OSTreeRepo &repo);
 utils::error::Result<void> cmdRemoveApp(repo::OSTreeRepo &repo,
                                         std::vector<std::string> refs,
@@ -85,7 +88,7 @@ public:
     static auto importLayer(repo::OSTreeRepo &repo, const QString &path)
       -> utils::error::Result<void>;
 
-    auto run(const QStringList &modules, const QStringList &args, bool debug = false)
+    auto run(std::vector<std::string> modules, std::vector<std::string> args, bool debug = false)
       -> utils::error::Result<void>;
     auto runtimeCheck() -> utils::error::Result<void>;
     auto runFromRepo(const package::Reference &ref, const std::vector<std::string> &args)
@@ -123,6 +126,7 @@ private:
                      const std::vector<std::string> &targets);
     void printBasicInfo();
     void printRepo();
+    bool checkDeprecatedInstallFile();
 
 private:
     repo::OSTreeRepo &repo;
@@ -137,10 +141,10 @@ private:
     int64_t gid;
 
     std::optional<package::Reference> projectRef;
-    QStringList packageModules;
+    std::vector<std::string> packageModules;
     std::unique_ptr<utils::OverlayFS> baseOverlay;
     std::unique_ptr<utils::OverlayFS> runtimeOverlay;
-    QDir buildOutput;
+    std::filesystem::path buildOutput;
     std::string installPrefix;
     runtime::RunContext buildContext;
 

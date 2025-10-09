@@ -2738,7 +2738,7 @@ utils::error::Result<package::LayerDir> OSTreeRepo::getMergedModuleDir(
 }
 
 utils::error::Result<package::LayerDir> OSTreeRepo::getMergedModuleDir(
-  const package::Reference &ref, const QStringList &loadModules) const noexcept
+  const package::Reference &ref, const std::vector<std::string> &loadModules) const noexcept
 {
     LINGLONG_TRACE("merge modules");
     QDir mergedDir = this->repoDir.absoluteFilePath("merged");
@@ -2757,7 +2757,8 @@ utils::error::Result<package::LayerDir> OSTreeRepo::getMergedModuleDir(
             || arch != ref.arch.toStdString()) {
             continue;
         }
-        if (!loadModules.contains(layer.info.packageInfoV2Module.c_str())) {
+        if (std::find(loadModules.begin(), loadModules.end(), layer.info.packageInfoV2Module)
+            == loadModules.end()) {
             continue;
         }
         commits.push_back(QString::fromStdString(layer.commit));

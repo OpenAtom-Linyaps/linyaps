@@ -25,20 +25,20 @@ RuntimeLayer::~RuntimeLayer()
     }
 }
 
-utils::error::Result<void> RuntimeLayer::resolveLayer(const QStringList &modules,
+utils::error::Result<void> RuntimeLayer::resolveLayer(const std::vector<std::string> &modules,
                                                       const std::optional<std::string> &subRef)
 {
     LINGLONG_TRACE("resolve layer");
 
     auto &repo = runContext.get().getRepo();
     utils::error::Result<package::LayerDir> layer(LINGLONG_ERR("null"));
-    if (modules.isEmpty()) {
+    if (modules.empty()) {
         layer = repo.getMergedModuleDir(reference);
     } else if (modules.size() > 1) {
         layer = repo.getMergedModuleDir(reference, modules);
         temporary = true;
     } else {
-        layer = repo.getLayerDir(reference, modules[0].toStdString(), subRef);
+        layer = repo.getLayerDir(reference, modules[0], subRef);
     }
 
     if (!layer) {
@@ -147,12 +147,12 @@ utils::error::Result<void> RunContext::resolve(const linglong::package::Referenc
     resolveExtension(*baseLayer);
 
     // all reference are cleard , we can get actual layer directory now
-    QStringList appModules = options.appModules.value_or(QStringList{});
-    return resolveLayer(options.depsBinaryOnly, appModules);
+    return resolveLayer(options.depsBinaryOnly,
+                        options.appModules.value_or(std::vector<std::string>{}));
 }
 
 utils::error::Result<void> RunContext::resolve(const api::types::v1::BuilderProject &target,
-                                               std::filesystem::path buildOutput)
+                                               const std::filesystem::path &buildOutput)
 {
     LINGLONG_TRACE("resolve RunContext from builder project "
                    + QString::fromStdString(target.package.id));
@@ -239,7 +239,7 @@ utils::error::Result<void> RunContext::resolve(const api::types::v1::BuilderProj
 }
 
 utils::error::Result<void> RunContext::resolveLayer(bool depsBinaryOnly,
-                                                    const QStringList &appModules)
+                                                    const std::vector<std::string> &appModules)
 {
     LINGLONG_TRACE("resolve layers");
 
@@ -251,9 +251,9 @@ utils::error::Result<void> RunContext::resolveLayer(bool depsBinaryOnly,
         }
     }
 
-    QStringList depsModules;
+    std::vector<std::string> depsModules;
     if (depsBinaryOnly) {
-        depsModules << "binary";
+        depsModules.emplace_back("binary");
     }
     auto ref = baseLayer->resolveLayer(depsModules, subRef);
     if (!ref.has_value()) {

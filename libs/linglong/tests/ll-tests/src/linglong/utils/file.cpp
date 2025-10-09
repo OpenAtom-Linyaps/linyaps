@@ -6,6 +6,8 @@
 
 #include <gtest/gtest.h>
 
+#include "linglong/utils/global/initialize.h"
+
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
@@ -18,6 +20,8 @@ class FileTest : public ::testing::Test
 protected:
     void SetUp() override
     {
+        linglong::utils::global::initLinyapsLogSystem("");
+
         char src_template[] = "/tmp/linglong-file-test-src-XXXXXX";
         src_dir = mkdtemp(src_template);
         ASSERT_FALSE(src_dir.empty());
@@ -26,10 +30,11 @@ protected:
         dest_dir = mkdtemp(dest_template);
         ASSERT_FALSE(dest_dir.empty());
 
-        fs::create_directories(src_dir / "subdir1");
+        fs::create_directories(src_dir / "subdir1" / "subdir2");
 
         std::ofstream(src_dir / "file1.txt") << "content1";
         std::ofstream(src_dir / "subdir1" / "file2.txt") << "content2";
+        std::ofstream(src_dir / "subdir1" / "subdir2" / "file3.txt") << "content3";
         std::ofstream(src_dir / "ignored.txt") << "ignored";
         fs::create_symlink("file1.txt", src_dir / "symlink1");
         fs::create_symlink(fs::absolute(src_dir / "file1.txt"), src_dir / "symlink_abs");
@@ -69,6 +74,49 @@ TEST_F(FileTest, CopyDirectory)
     EXPECT_EQ(fs::read_symlink(dest_dir / "symlink_abs"), fs::absolute(src_dir / "file1.txt"));
 
     EXPECT_FALSE(fs::exists(dest_dir / "ignored.txt"));
+}
+
+TEST_F(FileTest, CopyDirectory_MatcherFileInUnmatchedDir)
+{
+    auto matcher = [](const fs::path &path) {
+        // only match file2.txt, not its parent subdir1
+        return path.filename() == "file2.txt";
+    };
+
+    auto result = linglong::utils::copyDirectory(src_dir, dest_dir, matcher);
+    ASSERT_TRUE(result.has_value());
+
+    EXPECT_FALSE(fs::exists(dest_dir / "file1.txt"));
+    EXPECT_FALSE(fs::exists(dest_dir / "ignored.txt"));
+    EXPECT_TRUE(fs::exists(dest_dir / "subdir1" / "file2.txt"));
+    EXPECT_TRUE(fs::is_directory(dest_dir / "subdir1"));
+
+    std::ifstream ifs(dest_dir / "subdir1" / "file2.txt");
+    std::string content((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));
+    EXPECT_EQ(content, "content2");
+}
+
+TEST_F(FileTest, CopyDirectory_MatcherSubDirInUnmatchedDir)
+{
+    auto matcher = [](const fs::path &path) {
+        // only match subdir2 and its contents, not its parent subdir1
+        return path.string().rfind("subdir1/subdir2", 0) == 0;
+    };
+
+    auto result = linglong::utils::copyDirectory(src_dir, dest_dir, matcher);
+    ASSERT_TRUE(result.has_value());
+
+    EXPECT_FALSE(fs::exists(dest_dir / "file1.txt"));
+    EXPECT_FALSE(fs::exists(dest_dir / "ignored.txt"));
+    EXPECT_FALSE(fs::exists(dest_dir / "subdir1" / "file2.txt"));
+
+    EXPECT_TRUE(fs::is_directory(dest_dir / "subdir1"));
+    EXPECT_TRUE(fs::is_directory(dest_dir / "subdir1" / "subdir2"));
+    EXPECT_TRUE(fs::exists(dest_dir / "subdir1" / "subdir2" / "file3.txt"));
+
+    std::ifstream ifs(dest_dir / "subdir1" / "subdir2" / "file3.txt");
+    std::string content((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));
+    EXPECT_EQ(content, "content3");
 }
 
 TEST_F(FileTest, CopyDirectory_OverwriteExisting)
@@ -129,4 +177,85 @@ TEST_F(FileTest, CopyDirectory_DestinationExists)
     EXPECT_EQ(fs::read_symlink(dest_dir / "symlink_abs"), fs::absolute(src_dir / "file1.txt"));
 
     EXPECT_FALSE(fs::exists(dest_dir / "ignored.txt"));
+}
+
+TEST_F(FileTest, MoveFiles)
+{
+    auto matcher = [](const fs::path &path) {
+        return path.filename() != "ignored.txt";
+    };
+
+    auto result = linglong::utils::moveFiles(src_dir, dest_dir, matcher);
+    ASSERT_TRUE(result.has_value());
+
+    // Check files in destination
+    EXPECT_TRUE(fs::exists(dest_dir / "file1.txt"));
+    std::ifstream ifs(dest_dir / "file1.txt");
+    std::string content((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));
+    EXPECT_EQ(content, "content1");
+
+    EXPECT_TRUE(fs::is_directory(dest_dir / "subdir1"));
+    EXPECT_TRUE(fs::exists(dest_dir / "subdir1" / "file2.txt"));
+    EXPECT_TRUE(fs::is_directory(dest_dir / "subdir1" / "subdir2"));
+    EXPECT_TRUE(fs::exists(dest_dir / "subdir1" / "subdir2" / "file3.txt"));
+
+    EXPECT_TRUE(fs::is_symlink(dest_dir / "symlink1"));
+    EXPECT_EQ(fs::read_symlink(dest_dir / "symlink1"), "file1.txt");
+
+    EXPECT_TRUE(fs::is_symlink(dest_dir / "symlink_abs"));
+    EXPECT_EQ(fs::read_symlink(dest_dir / "symlink_abs"), fs::absolute(src_dir / "file1.txt"));
+
+    EXPECT_FALSE(fs::exists(dest_dir / "ignored.txt"));
+
+    // Check files are removed from source
+    EXPECT_FALSE(fs::exists(src_dir / "file1.txt"));
+    EXPECT_FALSE(fs::exists(src_dir / "symlink1"));
+    EXPECT_FALSE(fs::exists(src_dir / "symlink_abs"));
+    EXPECT_FALSE(fs::exists(src_dir / "subdir1"));
+
+    // Check ignored file is still in source
+    EXPECT_TRUE(fs::exists(src_dir / "ignored.txt"));
+}
+
+TEST_F(FileTest, MoveFiles_MatcherFileInUnmatchedDir)
+{
+    auto matcher = [](const fs::path &path) {
+        // only match file2.txt, not its parent subdir1
+        return path.filename() == "file2.txt";
+    };
+
+    auto result = linglong::utils::moveFiles(src_dir, dest_dir, matcher);
+    ASSERT_TRUE(result.has_value());
+
+    // check destination
+    EXPECT_FALSE(fs::exists(dest_dir / "file1.txt"));
+    EXPECT_FALSE(fs::exists(dest_dir / "ignored.txt"));
+    EXPECT_TRUE(fs::exists(dest_dir / "subdir1" / "file2.txt"));
+    EXPECT_TRUE(fs::is_directory(dest_dir / "subdir1"));
+    EXPECT_FALSE(fs::exists(dest_dir / "subdir1" / "subdir2"));
+
+    // check source
+    EXPECT_TRUE(fs::exists(src_dir / "file1.txt"));
+    EXPECT_TRUE(fs::exists(src_dir / "ignored.txt"));
+    EXPECT_TRUE(fs::is_directory(src_dir / "subdir1"));
+    EXPECT_FALSE(fs::exists(src_dir / "subdir1" / "file2.txt"));
+    EXPECT_TRUE(fs::exists(src_dir / "subdir1" / "subdir2" / "file3.txt"));
+    EXPECT_TRUE(fs::is_directory(src_dir / "subdir1" / "subdir2"));
+}
+
+TEST_F(FileTest, GetFiles)
+{
+    auto result = linglong::utils::getFiles(src_dir);
+    ASSERT_TRUE(result.has_value());
+
+    auto files = *result;
+    std::sort(files.begin(), files.end());
+
+    std::vector<fs::path> expected_files = { "file1.txt",       "ignored.txt",
+                                             "subdir1",         "subdir1/file2.txt",
+                                             "subdir1/subdir2", "subdir1/subdir2/file3.txt",
+                                             "symlink1",        "symlink_abs" };
+    std::sort(expected_files.begin(), expected_files.end());
+
+    EXPECT_EQ(files, expected_files);
 }

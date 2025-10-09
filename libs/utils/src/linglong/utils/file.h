@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <string>
+#include <unordered_set>
 
 namespace linglong::utils {
 
@@ -22,8 +23,16 @@ calculateDirectorySize(const std::filesystem::path &dir) noexcept;
 linglong::utils::error::Result<void>
 copyDirectory(const std::filesystem::path &src,
               const std::filesystem::path &dest,
-              std::function<bool(const std::filesystem::path &)> matcher,
+              std::function<bool(const std::filesystem::path &)> matcher = {},
               std::filesystem::copy_options options = std::filesystem::copy_options::copy_symlinks
                 | std::filesystem::copy_options::skip_existing);
+
+linglong::utils::error::Result<void>
+moveFiles(const std::filesystem::path &src,
+          const std::filesystem::path &dest,
+          std::function<bool(const std::filesystem::path &)> matcher);
+
+linglong::utils::error::Result<std::vector<std::filesystem::path>>
+getFiles(const std::filesystem::path &dir);
 
 } // namespace linglong::utils

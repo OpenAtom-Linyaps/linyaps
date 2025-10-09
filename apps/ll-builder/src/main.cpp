@@ -287,33 +287,27 @@ int handleBuild(linglong::builder::Builder &builder, const BuildCommandOptions &
 
 int handleRun(linglong::builder::Builder &builder, const RunCommandOptions &options)
 {
-    qInfo() << "Handling run command";
+    LogI("Handling run command");
 
-    QStringList modules = { "binary" };
+    std::vector<std::string> modules = { "binary" };
     if (options.debugMode) {
-        modules.push_back("develop");
+        modules.emplace_back("develop");
     }
     if (!options.execModules.empty()) {
-        for (const std::string &module : options.execModules) {
-            modules.append(QString::fromStdString(module));
-        }
-    }
-    modules.removeDuplicates(); // Ensure modules are unique
-
-    QStringList commandList;
-    if (!options.commands.empty()) {
-        for (const auto &command : options.commands) {
-            commandList.append(QString::fromStdString(command));
+        for (const auto &module : options.execModules) {
+            if (std::find(modules.begin(), modules.end(), module) == modules.end()) {
+                modules.emplace_back(module);
+            }
         }
     }
 
-    auto result = builder.run(modules, commandList, options.debugMode);
+    auto result = builder.run(modules, options.commands, options.debugMode);
     if (!result) {
-        qCritical() << "Run failed: " << result.error();
+        LogE("Run failed: {}", result.error());
         return result.error().code();
     }
 
-    qInfo() << "Run completed successfully.";
+    LogI("Run completed successfully.");
     return 0;
 }
 

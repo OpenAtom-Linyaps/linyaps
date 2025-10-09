@@ -143,39 +143,101 @@ copyDirectory(const std::filesystem::path &src,
            std::filesystem::directory_options::skip_permission_denied,
            ec)) {
         const auto &fromPath = entry.path();
+        auto relativePath = fromPath.lexically_relative(src);
 
-        if (!matcher(fromPath)) {
+        if (matcher && !matcher(relativePath)) {
             continue;
         }
 
-        const auto toPath = dest / fromPath.lexically_relative(src);
+        const auto toPath = dest / relativePath;
+        LogD("{} -> {}", fromPath, toPath);
+
+        std::filesystem::create_directories(toPath.parent_path(), ec);
+        if (ec) {
+            LogW("failed to create directory {}: {}", toPath.parent_path(), ec.message());
+            continue;
+        }
+        // preserve symlinks
+        std::filesystem::copy(fromPath, toPath, options, ec);
+        if (ec) {
+            LogW("failed to copy {} to {}: {}", fromPath, toPath, ec.message());
+            continue;
+        }
+    }
+
+    return LINGLONG_OK;
+}
+
+linglong::utils::error::Result<void>
+moveFiles(const std::filesystem::path &src,
+          const std::filesystem::path &dest,
+          std::function<bool(const std::filesystem::path &)> matcher)
+{
+    LINGLONG_TRACE(fmt::format("move files from {} to {}", src, dest).c_str());
+
+    // it must collect all files that need to be moved first, because moveing files during iteration
+    // is an undefine behavior
+    auto files = getFiles(src);
+    if (!files) {
+        return LINGLONG_ERR("failed to get files", files);
+    }
+
+    for (const auto &relPath : *files) {
+        if (matcher && !matcher(relPath)) {
+            continue;
+        }
+
+        const auto fromPath = src / relPath;
+        const auto toPath = dest / relPath;
         LogD("{} -> {}", fromPath, toPath);
 
         std::error_code ec;
         auto status = std::filesystem::symlink_status(fromPath, ec);
         if (ec) {
-            LogW("failed to get status of {}: {}", fromPath, ec.message());
+            LogD("failed to get symlink status of {}: {}", fromPath, ec.message());
+            continue;
+        }
+        if (!std::filesystem::exists(status)) {
+            LogD("{} does not exist, skip it", fromPath);
             continue;
         }
 
-        // assume recursice_directory_iterator is depth-first
-        if (std::filesystem::is_directory(status)) {
-            std::filesystem::create_directories(toPath, ec);
-            if (ec) {
-                LogW("failed to create directory {}: {}", toPath, ec.message());
-                continue;
-            }
-        } else {
-            // preserve symlinks
-            std::filesystem::copy(fromPath, toPath, options, ec);
-            if (ec) {
-                LogW("failed to copy {} to {}: {}", fromPath, toPath, ec.message());
-                continue;
-            }
+        std::filesystem::create_directories(toPath.parent_path(), ec);
+        if (ec) {
+            LogW("failed to create directory {}: {}", toPath, ec.message());
+            continue;
+        }
+        std::filesystem::rename(fromPath, toPath, ec);
+        if (ec) {
+            LogW("failed to copy {} to {}: {}", fromPath, toPath, ec.message());
+            continue;
         }
     }
 
     return LINGLONG_OK;
+}
+
+linglong::utils::error::Result<std::vector<std::filesystem::path>>
+getFiles(const std::filesystem::path &dir)
+{
+    LINGLONG_TRACE(fmt::format("get files in directory {}", dir).c_str());
+
+    std::vector<std::filesystem::path> files;
+
+    std::error_code ec;
+    for (const auto &entry : std::filesystem::recursive_directory_iterator(
+           dir,
+           std::filesystem::directory_options::skip_permission_denied,
+           ec)) {
+        const auto &fromPath = entry.path();
+        files.emplace_back(fromPath.lexically_relative(dir));
+    }
+
+    if (ec) {
+        return LINGLONG_ERR(fmt::format("failed to iterator: {}", ec.message()).c_str());
+    }
+
+    return files;
 }
 
 } // namespace linglong::utils

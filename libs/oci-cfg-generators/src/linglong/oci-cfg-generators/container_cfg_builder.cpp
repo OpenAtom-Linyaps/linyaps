@@ -1269,8 +1269,7 @@ bool ContainerCfgBuilder::buildMountLocalTime() noexcept
     }
 
     auto *tzdir_env = getenv("TZDIR");
-    if (tzdir_env != nullptr && tzdir_env[0] != '\0')
-    {
+    if (tzdir_env != nullptr && tzdir_env[0] != '\0') {
         bindIfExist(*localtimeMount, tzdir_env);
     } else {
         bindIfExist(*localtimeMount, "/usr/share/zoneinfo");

@@ -48,8 +48,7 @@ pfl_add_executable(
   PRIVATE
   GTest::gtest
   linglong::linglong
-  PkgConfig::CRYPTO
-  Qt${QT_VERSION_MAJOR}::DBusPrivate)
+  PkgConfig::CRYPTO)
 
 include(GoogleTest)
 get_real_target_name(tests linglong::linglong::ll-tests)

@@ -1,10 +1,10 @@
 // SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
-#include "linglong/builder/linglong_builder.h"
-
 #include <gtest/gtest.h>
 
+#include "../mocks/linglong_builder_mock.h"
+#include "linglong/builder/linglong_builder.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/global/initialize.h"
 
@@ -137,3 +137,23 @@ TEST(LinglongBuilder, installModule)
 
     EXPECT_EQ(installedFiles, expectedFiles);
 }
+
+TEST(LinglongBuilder, UabExportFilename)
+{
+    linglong::builder::BuilderMock builder;
+    auto ref =
+      linglong::package::Reference::parse(std::string("main:org.deepin.demo/1.0.0.0/arm64"));
+    EXPECT_TRUE(ref.has_value()) << ref.error().message().toStdString();
+    auto filename = builder.uabExportFilename(*ref);
+    EXPECT_EQ(filename, "org.deepin.demo_1.0.0.0_arm64_main.uab");
+};
+
+TEST(LinglongBuilder, LayerExportFilename)
+{
+    linglong::builder::BuilderMock builder;
+    auto ref =
+      linglong::package::Reference::parse(std::string("main:org.deepin.demo/1.0.0.0/arm64"));
+    EXPECT_TRUE(ref.has_value()) << ref.error().message().toStdString();
+    auto filename = builder.layerExportFilename(*ref, "binary");
+    EXPECT_EQ(filename, "org.deepin.demo_1.0.0.0_arm64_binary.layer");
+};

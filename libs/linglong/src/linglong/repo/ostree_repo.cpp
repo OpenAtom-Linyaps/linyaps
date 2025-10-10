@@ -2130,7 +2130,7 @@ utils::error::Result<void> OSTreeRepo::exportDir(const std::string &appID,
             }
             auto oldAppDir = this->getDefaultSharedDir().filePath("applications").toStdString();
             auto newAppDir = this->getOverlayShareDir().filePath("applications").toStdString();
-            LogF("oldAppDir: {}, newAppDir: {}, target: {}",
+            LogD("oldAppDir: {}, newAppDir: {}, target: {}",
                  oldAppDir,
                  newAppDir,
                  target_path.string());
@@ -2150,7 +2150,7 @@ utils::error::Result<void> OSTreeRepo::exportDir(const std::string &appID,
                     }
                     if (exists) {
                         desktopExists = true;
-                        LogF("remove exists file {}", linkpath);
+                        LogD("remove exists file {}", linkpath);
                         std::filesystem::remove(linkpath, ec);
                         if (ec) {
                             return LINGLONG_ERR("remove file failed", ec);
@@ -2168,7 +2168,7 @@ utils::error::Result<void> OSTreeRepo::exportDir(const std::string &appID,
                 if (!desktopExists) {
                     std::filesystem::path linkpath =
                       target_path.string().replace(0, oldAppDir.length(), newAppDir);
-                    LogF("create parent directories for {}", linkpath);
+                    LogD("create parent directories for {}", linkpath);
                     auto ret = forceMkdirDir(linkpath.parent_path().string());
                     if (!ret.has_value()) {
                         return LINGLONG_ERR("create parent dir", ret);
@@ -2190,7 +2190,7 @@ utils::error::Result<void> OSTreeRepo::exportDir(const std::string &appID,
                 return LINGLONG_ERR("check file existence", ec);
             }
             if (exists) {
-                LogF("remove exists file {}", linkpath);
+                LogD("remove exists file {}", linkpath);
                 std::filesystem::remove(linkpath, ec);
                 if (ec) {
                     return LINGLONG_ERR("remove file failed", ec);

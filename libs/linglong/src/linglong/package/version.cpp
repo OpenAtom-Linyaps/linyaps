@@ -177,4 +177,9 @@ QString Version::toString() const noexcept
 
     return QString("unknown version type");
 }
+
+std::string Version::toStdString() const noexcept
+{
+    return this->toString().toStdString();
+}
 } // namespace linglong::package

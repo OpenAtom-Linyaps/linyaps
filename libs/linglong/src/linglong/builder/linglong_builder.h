@@ -96,6 +96,11 @@ public:
 
     void setBuildOptions(const BuilderBuildOptions &options) noexcept { buildOptions = options; }
 
+protected:
+    std::string uabExportFilename(const linglong::package::Reference &ref);
+    std::string layerExportFilename(const linglong::package::Reference &ref,
+                                    const std::string &module);
+
 private:
     auto buildStagePrepare() noexcept -> utils::error::Result<void>;
     auto buildStageFetchSource() noexcept -> utils::error::Result<void>;

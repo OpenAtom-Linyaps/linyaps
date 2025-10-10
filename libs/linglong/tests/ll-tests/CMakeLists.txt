@@ -24,10 +24,11 @@ pfl_add_executable(
   src/linglong/package/semver_version_test.cpp
   src/linglong/package/uab_file_test.cpp
   src/linglong/package/layer_packager_test.cpp
-  src/linglong/builder/linglong_builder.cpp
   src/linglong/builder/source_fetcher_test.cpp
+  src/linglong/builder/linglong_builder_test.cpp
   src/linglong/mocks/command_mock.h
   src/linglong/mocks/ostree_repo_mock.h
+  src/linglong/mocks/linglong_builder_mock.h
   src/linglong/mocks/layer_packager_mock.h
   src/linglong/mocks/uab_file_mock.h
   src/linglong/utils/error/result_test.cpp

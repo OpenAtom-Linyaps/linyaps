@@ -1466,11 +1466,7 @@ utils::error::Result<void> Builder::exportUAB(const ExportOption &option,
             uabFile = QDir::current().absoluteFilePath(QString::fromStdString(outputFile));
         }
     } else {
-        uabFile = QString::fromStdString(
-          workingDir
-          / QString{ "%1_%2_%3_%4.uab" }
-              .arg(curRef->id, curRef->arch.toString(), curRef->version.toString(), curRef->channel)
-              .toStdString());
+        uabFile = QString::fromStdString(workingDir / uabExportFilename(*curRef));
     }
 
     // export single ref
@@ -1619,12 +1615,7 @@ utils::error::Result<void> Builder::exportLayer(const ExportOption &option)
             continue;
         }
 
-        auto layerFile = QString("%1/%2_%3_%4_%5.layer")
-                           .arg(QString::fromStdString(workingDir),
-                                ref->id,
-                                ref->version.toString(),
-                                ref->arch.toString(),
-                                module.c_str());
+        auto layerFile = QString::fromStdString(workingDir / layerExportFilename(*ref, module));
         auto ret = pkger.pack(*layerDir, layerFile);
         if (!ret) {
             qCritical().nospace() << "export layer " << ref->toString() << "/" << module.c_str()
@@ -2294,4 +2285,22 @@ bool Builder::checkDeprecatedInstallFile()
     return true;
 }
 
+std::string Builder::uabExportFilename(const linglong::package::Reference &ref)
+{
+    return fmt::format("{}_{}_{}_{}.uab",
+                       ref.id.toStdString(),
+                       ref.version.toStdString(),
+                       ref.arch.toStdString(),
+                       ref.channel);
+}
+
+std::string Builder::layerExportFilename(const linglong::package::Reference &ref,
+                                         const std::string &module)
+{
+    return fmt::format("{}_{}_{}_{}.layer",
+                       ref.id.toStdString(),
+                       ref.version.toStdString(),
+                       ref.arch.toStdString(),
+                       module);
+}
 } // namespace linglong::builder

@@ -11,6 +11,7 @@
 #include "linglong/repo/client_factory.h"
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/utils/error/error.h"
+#include "linglong/utils/global/initialize.h"
 
 #include <cstdio>
 #include <cstdlib>
@@ -35,6 +36,7 @@ protected:
 
 TEST_F(RepoTest, exportDir)
 {
+    linglong::utils::global::initLinyapsLogSystem("");
     // 准备测试环境
     fs::path tempDir = fs::temp_directory_path() / "repo_test";
     std::error_code ec;

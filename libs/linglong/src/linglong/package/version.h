@@ -56,6 +56,7 @@ public:
     bool operator>=(const Version &that) const noexcept;
 
     QString toString() const noexcept;
+    std::string toStdString() const noexcept;
 
 private:
     std::variant<VersionV2, VersionV1, FallbackVersion> version;

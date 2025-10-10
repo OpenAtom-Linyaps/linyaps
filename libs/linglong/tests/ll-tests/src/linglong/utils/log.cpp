@@ -64,7 +64,7 @@ extern "C" int sd_journal_send_with_location(
 class StderrRedirector
 {
 public:
-    StderrRedirector() { init(); }
+    StderrRedirector() { }
 
     bool init()
     {

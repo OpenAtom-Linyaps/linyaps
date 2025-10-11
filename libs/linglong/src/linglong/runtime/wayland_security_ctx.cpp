@@ -4,7 +4,7 @@
 
 #include "linglong/runtime/wayland_security_ctx.h"
 
-#include "linglong/common/xdg.h"
+#include "linglong/common/dir.h"
 #include "linglong/utils/finally/finally.h"
 #include "linglong/utils/log/log.h"
 #include "wayland-security-context-v1.h"
@@ -115,7 +115,7 @@ WaylandSecurityContextManagerV1::createSecurityContext(
         }
     });
 
-    auto runtimeDir = linglong::common::xdg::getAppXDGRuntimeDir(builder.getAppId());
+    auto runtimeDir = linglong::common::dir::getAppRuntimeDir(builder.getAppId());
     auto waylandSocket = runtimeDir / "wayland-socket";
 
     std::error_code ec;

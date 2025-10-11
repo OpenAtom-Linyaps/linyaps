@@ -9,7 +9,6 @@
 #include "linglong/api/types/v1/BuilderConfig.hpp"
 #include "linglong/utils/error/error.h"
 
-#include <QStandardPaths>
 #include <QString>
 
 namespace linglong::builder {

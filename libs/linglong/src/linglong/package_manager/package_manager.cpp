@@ -13,7 +13,7 @@
 #include "linglong/api/types/v1/PackageManager1PruneResult.hpp"
 #include "linglong/api/types/v1/Repo.hpp"
 #include "linglong/api/types/v1/State.hpp"
-#include "linglong/common/xdg.h"
+#include "linglong/common/dir.h"
 #include "linglong/extension/extension.h"
 #include "linglong/package/layer_file.h"
 #include "linglong/package/layer_packager.h"
@@ -39,7 +39,6 @@
 #include <QEventLoop>
 #include <QJsonArray>
 #include <QMetaObject>
-#include <QStandardPaths>
 #include <QTimer>
 #include <QUuid>
 
@@ -2514,7 +2513,7 @@ utils::error::Result<void> PackageManager::generateCache(const package::Referenc
 #endif
 
     process.args = std::move(ldGenerateCmd);
-    auto XDGRuntimeDir = common::xdg::getAppXDGRuntimeDir(ref.id);
+    auto XDGRuntimeDir = common::dir::getAppRuntimeDir(ref.id);
     auto containerStateRoot = XDGRuntimeDir / "ll-box";
 
     ocppi::runtime::RunOption opt;

@@ -32,7 +32,7 @@ private:
 
     static linglong::runtime::ContainerBuilder &initTempContainerBuilder()
     {
-        auto tempCLI = ocppi::cli::crun::Crun::New("/usr/bin/sh");
+        auto static tempCLI = ocppi::cli::crun::Crun::New(std::filesystem::current_path());
         static linglong::runtime::ContainerBuilder cb(**tempCLI);
         return cb;
     }

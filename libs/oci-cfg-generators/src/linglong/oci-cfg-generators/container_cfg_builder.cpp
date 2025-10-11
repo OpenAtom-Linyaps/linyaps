@@ -9,6 +9,7 @@
 #include "configure.h"
 #include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/api/types/v1/OciConfigurationPatch.hpp"
+#include "linglong/common/dir.h"
 #include "linglong/common/display.h"
 #include "linglong/common/xdg.h"
 #include "ocppi/runtime/config/types/Generators.hpp"
@@ -254,7 +255,7 @@ bool ContainerCfgBuilder::buildXDGRuntime() noexcept
         return false;
     }
 
-    auto hostXDGRuntimeMountPoint = common::xdg::getAppXDGRuntimeDir(appId);
+    auto hostXDGRuntimeMountPoint = common::dir::getAppRuntimeDir(appId);
     std::error_code ec;
     std::filesystem::create_directories(hostXDGRuntimeMountPoint, ec);
     if (ec) {

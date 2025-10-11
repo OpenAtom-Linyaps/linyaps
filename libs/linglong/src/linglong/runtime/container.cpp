@@ -7,19 +7,16 @@
 #include "linglong/runtime/container.h"
 
 #include "configure.h"
+#include "linglong/common/dir.h"
 #include "linglong/utils/bash_command_helper.h"
-#include "linglong/utils/bash_quote.h"
 #include "linglong/utils/finally/finally.h"
+#include "linglong/utils/log/log.h"
 #include "ocppi/runtime/RunOption.hpp"
 #include "ocppi/runtime/config/types/Generators.hpp"
-
-#include <QDir>
-#include <QStandardPaths>
 
 #include <fstream>
 #include <utility>
 
-#include <sys/stat.h>
 #include <unistd.h>
 
 namespace {
@@ -135,11 +132,10 @@ utils::error::Result<void> Container::run(const ocppi::runtime::config::types::P
     LINGLONG_TRACE(QString("run container %1").arg(QString::fromStdString(this->id)));
 
     std::error_code ec;
-    std::filesystem::path runtimeDir =
-      QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation).toStdString();
+    std::filesystem::path runtimeDir = common::dir::getRuntimeDir();
 
     // bundle dir should created before container run
-    auto bundle = runtimeDir / "linglong" / this->id;
+    auto bundle = common::dir::getBundleDir(this->id);
 #ifdef LINGLONG_FONT_CACHE_GENERATOR
     if (!bundle.mkpath("conf.d")) {
         return LINGLONG_ERR("make conf.d directory");
@@ -149,12 +145,12 @@ utils::error::Result<void> Container::run(const ocppi::runtime::config::types::P
       utils::finally::finally([&]() {
           std::error_code ec;
           while (!qEnvironmentVariableIsEmpty("LINGLONG_DEBUG")) {
-              if (!std::filesystem::create_directories(runtimeDir / "linglong/debug", ec) && ec) {
+              if (!std::filesystem::create_directories(runtimeDir / "debug", ec) && ec) {
                   qCritical() << "failed to create debug directory:" << ec.message().c_str();
                   break;
               }
 
-              auto archive = runtimeDir / "linglong/debug" / this->id;
+              auto archive = runtimeDir / "debug" / this->id;
               std::filesystem::rename(bundle, archive, ec);
               if (ec) {
                   qCritical() << "failed to rename bundle directory:" << ec.message().c_str();
@@ -171,8 +167,9 @@ utils::error::Result<void> Container::run(const ocppi::runtime::config::types::P
     this->cfg.process = std::move(curProcess);
 
     if (this->cfg.process->cwd.empty()) {
-        qDebug() << "cwd of process is empty, run process in current directory.";
-        this->cfg.process->cwd = ("/run/host/rootfs" + QDir::currentPath()).toStdString();
+        auto cwd = std::filesystem::current_path(ec);
+        LogD("cwd of process is empty, run process in current directory {}.", cwd);
+        this->cfg.process->cwd = std::filesystem::path{ "/run/host/rootfs" } / cwd;
     }
 
     if (!this->cfg.process->user) {

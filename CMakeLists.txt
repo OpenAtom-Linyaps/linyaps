@@ -151,6 +151,7 @@ if(NOT fmt_FOUND)
   add_library(fmt-lib INTERFACE)
   add_library(fmt::fmt ALIAS fmt-lib)
   target_include_directories(fmt-lib INTERFACE external/fmt/include)
+  target_compile_definitions(fmt-lib INTERFACE FMT_HEADER_ONLY)
 endif()
 
 # NOTE: UOS v20 do not have tl-expected packaged.

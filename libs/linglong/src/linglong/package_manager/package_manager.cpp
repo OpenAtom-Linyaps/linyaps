@@ -143,7 +143,7 @@ PackageManager::~PackageManager()
 
 utils::error::Result<bool> PackageManager::isRefBusy(const package::Reference &ref) noexcept
 {
-    LINGLONG_TRACE(QString{ "check if ref[%1] is used by some apps" }.arg(ref.toString().c_str()));
+    LINGLONG_TRACE(fmt::format("check if ref[{}] is used by some apps", ref.toString()));
 
     auto ret = lockRepo();
     if (!ret) {
@@ -2076,7 +2076,7 @@ void PackageManager::pullDependency(PackageTask &taskContext,
         return;
     }
 
-    LINGLONG_TRACE("pull dependencies of " + QString::fromStdString(info.id));
+    LINGLONG_TRACE("pull dependencies of " + info.id);
 
     utils::Transaction transaction;
     if (info.runtime) {

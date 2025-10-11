@@ -71,7 +71,7 @@ fetchSources(const std::vector<api::types::v1::BuilderProjectSource> &sources,
              const QDir &destination,
              [[maybe_unused]] const api::types::v1::BuilderConfig &cfg) noexcept
 {
-    LINGLONG_TRACE("fetch sources to " + destination.absolutePath());
+    LINGLONG_TRACE("fetch sources to " + destination.absolutePath().toStdString());
 
     for (decltype(sources.size()) pos = 0; pos < sources.size(); ++pos) {
         if (!sources.at(pos).url.has_value()) {
@@ -1257,8 +1257,7 @@ utils::error::Result<bool> Builder::buildStageCommit() noexcept
 
 utils::error::Result<void> Builder::build(const QStringList &args) noexcept
 {
-    LINGLONG_TRACE(
-      QString("build project %1").arg(QString::fromStdString(this->workingDir / "linglong.yaml")));
+    LINGLONG_TRACE(fmt::format("build project {}", this->workingDir / "linglong.yaml"));
 
     auto &project = *this->project;
     utils::error::Result<void> res;
@@ -1396,33 +1395,29 @@ utils::error::Result<void> Builder::exportUAB(const ExportOption &option,
     }
 
     const bool underProject = this->project.has_value();
-    auto curRef = [this, &exportOpts, underProject, distributedOnly]() {
+    auto curRef = [this,
+                   &exportOpts,
+                   underProject,
+                   distributedOnly]() -> utils::error::Result<package::Reference> {
         LINGLONG_TRACE("get current reference");
 
         if (distributedOnly) {
             auto fuzzyRef = package::FuzzyReference::parse(exportOpts.ref);
             if (!fuzzyRef) {
-                return utils::error::Result<package::Reference>(tl::unexpect_t{},
-                                                                std::move(fuzzyRef).error());
+                return LINGLONG_ERR("fuzzy ref", fuzzyRef);
             }
 
             auto targetRef = this->repo.clearReference(*fuzzyRef, { .fallbackToRemote = false });
             if (!targetRef) {
-                return utils::error::Result<package::Reference>(tl::unexpect_t{},
-                                                                std::move(targetRef).error());
+                return LINGLONG_ERR("clear ref", targetRef);
             }
 
-            return utils::error::Result<package::Reference>(std::move(targetRef).value());
+            return targetRef;
         }
 
         if (!underProject) {
-            auto err = utils::error::Error::Err(QT_MESSAGELOG_FILE,
-                                                QT_MESSAGELOG_LINE,
-                                                linglong_trace_message,
-                                                "not under project");
-            return utils::error::Result<package::Reference>(tl::unexpect, std::move(err));
+            return LINGLONG_ERR("not under project");
         }
-
         return currentReference(*this->project);
     }();
 
@@ -1605,7 +1600,7 @@ utils::error::Result<void> Builder::exportLayer(const ExportOption &option)
 utils::error::Result<void> Builder::extractLayer(const QString &layerPath,
                                                  const QString &destination)
 {
-    LINGLONG_TRACE("extract " + layerPath + " to " + destination);
+    LINGLONG_TRACE("extract " + layerPath.toStdString() + " to " + destination.toStdString());
 
     auto layerFile = package::LayerFile::New(layerPath);
     if (!layerFile) {

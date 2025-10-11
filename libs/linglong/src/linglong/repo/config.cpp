@@ -11,13 +11,15 @@
 #include "linglong/utils/serialize/yaml.h"
 #include "ytj/ytj.hpp"
 
+#include <fmt/format.h>
+
 #include <fstream>
 
 namespace linglong::repo {
 
 utils::error::Result<api::types::v1::RepoConfigV2> loadConfig(const QString &file) noexcept
 {
-    LINGLONG_TRACE(QString("load repo config from %1").arg(file));
+    LINGLONG_TRACE(fmt::format("load repo config from {}", file.toStdString()));
 
     try {
         auto ifs = std::ifstream(file.toLocal8Bit());
@@ -46,7 +48,7 @@ utils::error::Result<api::types::v1::RepoConfigV2> loadConfig(const QString &fil
 
 utils::error::Result<api::types::v1::RepoConfigV2> loadConfig(const QStringList &files) noexcept
 {
-    LINGLONG_TRACE(QString("load repo config from %1").arg(files.join(" ")));
+    LINGLONG_TRACE(fmt::format("load repo config from {}", files.join(" ").toStdString()));
 
     for (const auto &file : files) {
         auto config = loadConfig(file);
@@ -65,7 +67,7 @@ utils::error::Result<api::types::v1::RepoConfigV2> loadConfig(const QStringList 
 utils::error::Result<void> saveConfig(const api::types::v1::RepoConfigV2 &cfg,
                                       const QString &path) noexcept
 {
-    LINGLONG_TRACE(QString("save config to %1").arg(path));
+    LINGLONG_TRACE(fmt::format("save config to {}", path.toStdString()));
 
     try {
         auto defaultRepoExists =

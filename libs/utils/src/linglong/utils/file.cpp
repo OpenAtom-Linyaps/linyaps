@@ -20,7 +20,7 @@ namespace linglong::utils {
 
 linglong::utils::error::Result<std::string> readFile(std::string filepath)
 {
-    LINGLONG_TRACE(QString("read file %1").arg(filepath.c_str()));
+    LINGLONG_TRACE(fmt::format("read file {}", filepath));
     std::error_code ec;
     auto exists = std::filesystem::exists(filepath, ec);
     if (ec) {
@@ -46,7 +46,7 @@ linglong::utils::error::Result<std::string> readFile(std::string filepath)
 linglong::utils::error::Result<void> writeFile(const std::string &filepath,
                                                const std::string &content)
 {
-    LINGLONG_TRACE(QString("write file %1").arg(filepath.c_str()));
+    LINGLONG_TRACE(fmt::format("write file {}", filepath));
 
     std::error_code ec;
     auto exists = std::filesystem::exists(filepath, ec);

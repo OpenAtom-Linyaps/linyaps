@@ -162,8 +162,7 @@ utils::error::Result<void> RunContext::resolve(const linglong::package::Referenc
 utils::error::Result<void> RunContext::resolve(const api::types::v1::BuilderProject &target,
                                                const std::filesystem::path &buildOutput)
 {
-    LINGLONG_TRACE("resolve RunContext from builder project "
-                   + QString::fromStdString(target.package.id));
+    LINGLONG_TRACE("resolve RunContext from builder project " + target.package.id);
 
     auto targetRef = package::Reference::fromBuilderProject(target);
     if (!targetRef) {

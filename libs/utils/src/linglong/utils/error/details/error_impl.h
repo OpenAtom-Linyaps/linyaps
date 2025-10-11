@@ -24,11 +24,11 @@ public:
               int line,
               const char *category,
               const int &code,
-              QString msg,
+              const std::string &msg,
               std::unique_ptr<ErrorImpl> cause = nullptr)
         : context(file, line, "unknown", category)
         , _code(code)
-        , msg(std::move(msg))
+        , msg(QString::fromStdString(msg))
         , cause(std::move(cause))
     {
     }

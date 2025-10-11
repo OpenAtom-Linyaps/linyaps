@@ -79,10 +79,10 @@ namespace {
 
 linglong::utils::error::Result<bool> isChildProcess(pid_t parent, pid_t pid) noexcept
 {
-    LINGLONG_TRACE(QString{ "check if %1 is child of %2" }.arg(pid).arg(parent));
+    LINGLONG_TRACE(fmt::format("check if {} is child of {}", pid, parent));
 
     auto getppid = [](pid_t pid) -> Result<pid_t> {
-        LINGLONG_TRACE(QString{ "get ppid of %1" }.arg(pid));
+        LINGLONG_TRACE(fmt::format("get ppid of {}", pid));
         std::error_code ec;
         auto stat = std::filesystem::path("/proc/" + std::to_string(pid) + "/stat");
         auto fd = ::open(stat.c_str(), O_RDONLY);
@@ -1044,7 +1044,7 @@ int Cli::installFromFile(const QFileInfo &fileInfo,
                          const std::string &appid)
 {
     auto filePath = fileInfo.absoluteFilePath();
-    LINGLONG_TRACE(QString{ "install from file %1" }.arg(filePath));
+    LINGLONG_TRACE(fmt::format("install from file {}", filePath.toStdString()));
 
     QDBusReply<QString> authReply = this->authorization();
     if (!authReply.isValid() && authReply.error().type() == QDBusError::AccessDenied) {

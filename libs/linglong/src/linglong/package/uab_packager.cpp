@@ -105,7 +105,7 @@ utils::error::Result<void> elfHelper::addNewSection(const QByteArray &sectionNam
                                                     const QFileInfo &dataFile,
                                                     const QStringList &flags) const noexcept
 {
-    LINGLONG_TRACE(QString{ "add section:%1" }.arg(QString{ sectionName }))
+    LINGLONG_TRACE(fmt::format("add section:{}", sectionName.toStdString()))
 
     auto args =
       QStringList{ QString{ "--add-section" },

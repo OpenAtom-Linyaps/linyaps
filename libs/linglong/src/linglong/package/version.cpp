@@ -8,6 +8,8 @@
 #include "linglong/package/fallback_version.h"
 #include "linglong/package/versionv2.h"
 
+#include <fmt/format.h>
+
 #include <QRegularExpression>
 #include <QString>
 
@@ -24,7 +26,7 @@ namespace linglong::package {
 utils::error::Result<Version> Version::parse(const std::string &raw,
                                              const ParseOptions parseOpt) noexcept
 {
-    LINGLONG_TRACE(QString("parse version %1").arg(raw.c_str()));
+    LINGLONG_TRACE(fmt::format("parse version {}", raw));
 
     auto versionV2 = VersionV2::parse(raw, parseOpt.strict);
     if (versionV2) {
@@ -49,7 +51,7 @@ utils::error::Result<Version> Version::parse(const std::string &raw,
 
 utils::error::Result<void> Version::validateDependVersion(const std::string &raw) noexcept
 {
-    LINGLONG_TRACE(QString{ "validate depend version %1" }.arg(raw.c_str()));
+    LINGLONG_TRACE(fmt::format("validate depend version {}", raw));
     static auto regexExp = []() noexcept {
         QRegularExpression regexExp(R"(^(0|[1-9]\d*)\.(0|[1-9]\d*)(?:\.(0|[1-9]\d*))?$)");
         regexExp.optimize();

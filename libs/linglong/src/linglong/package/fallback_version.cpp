@@ -10,6 +10,8 @@
 #include "linglong/package/versionv1.h"
 #include "linglong/package/versionv2.h"
 
+#include <fmt/format.h>
+
 #include <charconv>
 
 #if QT_VERSION < QT_VERSION_CHECK(5, 14, 0)
@@ -31,7 +33,7 @@ namespace linglong::package {
 
 utils::error::Result<FallbackVersion> FallbackVersion::parse(const std::string &raw) noexcept
 {
-    LINGLONG_TRACE(QString("parse fallback version %1").arg(raw.c_str()));
+    LINGLONG_TRACE(fmt::format("parse fallback version {}", raw));
     auto list = split(raw, '.', common::strings::splitOption::SkipEmpty);
     if (list.empty()) {
         return LINGLONG_ERR("parse fallback version failed");

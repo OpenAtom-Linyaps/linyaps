@@ -105,7 +105,7 @@ std::string validateNonEmptyString(const std::string &parameter)
 linglong::utils::error::Result<linglong::api::types::v1::BuilderProject>
 parseProjectConfig(const std::filesystem::path &filename)
 {
-    LINGLONG_TRACE("parse project config " + QString::fromStdString(filename));
+    LINGLONG_TRACE("parse project config " + filename.string());
     std::cerr << "Using project file " + filename.string() << std::endl;
     auto project =
       linglong::utils::serialize::LoadYAMLFile<linglong::api::types::v1::BuilderProject>(filename);

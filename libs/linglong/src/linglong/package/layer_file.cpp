@@ -123,7 +123,7 @@ utils::error::Result<quint32> LayerFile::binaryDataOffset() noexcept
 
 utils::error::Result<void> LayerFile::saveTo(const QString &destination) noexcept
 {
-    LINGLONG_TRACE(QString("save layer file to %1").arg(destination));
+    LINGLONG_TRACE(fmt::format("save layer file to {}", destination.toStdString()));
 
     if (!this->copy(destination)) {
         return LINGLONG_ERR(*this);

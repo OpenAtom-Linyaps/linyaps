@@ -6,6 +6,8 @@
 
 #include "cmd.h"
 
+#include <fmt/format.h>
+
 #include <QProcess>
 #include <QStandardPaths>
 
@@ -27,7 +29,8 @@ linglong::utils::error::Result<QString> Cmd::exec() noexcept
 
 linglong::utils::error::Result<QString> Cmd::exec(const QStringList &args) noexcept
 {
-    LINGLONG_TRACE(QString("exec %1 %2").arg(m_command, args.join(" ")));
+    LINGLONG_TRACE(
+      fmt::format("exec {} {}", m_command.toStdString(), args.join(" ").toStdString()));
     qDebug() << "exec" << m_command << args;
     QProcess process;
     process.setProgram(m_command);

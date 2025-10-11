@@ -446,7 +446,8 @@ createOstreeRepo(const QDir &location,
                  const linglong::api::types::v1::RepoConfigV2 &config,
                  const QString &parent = "") noexcept
 {
-    LINGLONG_TRACE("create linglong repository at " + location.absolutePath());
+    LINGLONG_TRACE(
+      fmt::format("create linglong repository at {}", location.absolutePath().toStdString()));
 
     if (!QFileInfo(location.absolutePath()).isWritable()) {
         return LINGLONG_ERR("permission denied");
@@ -631,8 +632,7 @@ utils::error::Result<void> OSTreeRepo::handleRepositoryUpdate(
   QDir layerDir, const api::types::v1::RepositoryCacheLayersItem &layer) noexcept
 {
     std::string refspec = ostreeRefSpecFromLayerItem(layer);
-    LINGLONG_TRACE(QString("checkout %1 from ostree repository to layers dir")
-                     .arg(QString::fromStdString(refspec)));
+    LINGLONG_TRACE(fmt::format("checkout {} from ostree repository to layers dir", refspec));
 
     int root = open("/", O_DIRECTORY);
     auto _ = utils::finally::finally([root]() {
@@ -685,8 +685,7 @@ utils::error::Result<void> OSTreeRepo::handleRepositoryUpdate(
 
 utils::error::Result<QDir> OSTreeRepo::ensureEmptyLayerDir(const std::string &commit) const noexcept
 {
-    LINGLONG_TRACE(
-      QString{ "ensure empty layer dir exist %1" }.arg(QString::fromStdString(commit)));
+    LINGLONG_TRACE(fmt::format("ensure empty layer dir exist {}", commit));
 
     std::filesystem::path dir =
       this->repoDir.absoluteFilePath(QString::fromStdString("layers/" + commit)).toStdString();
@@ -771,7 +770,7 @@ OSTreeRepo::OSTreeRepo(const QDir &path,
     this->repoDir = path;
 
     {
-        LINGLONG_TRACE("use linglong repo at " + path.absolutePath());
+        LINGLONG_TRACE(fmt::format("use linglong repo at {}", path.absolutePath().toStdString()));
 
         repoPath = g_file_new_for_path(this->ostreeRepoDir().absolutePath().toLocal8Bit());
         ostreeRepo = ostree_repo_new(repoPath);
@@ -1082,7 +1081,7 @@ utils::error::Result<void> OSTreeRepo::pushToRemote(const std::string &remoteRep
                                                     const package::Reference &reference,
                                                     const std::string &module) const noexcept
 {
-    LINGLONG_TRACE("push " + reference.toString());
+    LINGLONG_TRACE(fmt::format("push {}", reference.toString()));
     auto layerDir = this->getLayerDir(reference, module);
     if (!layerDir) {
         return LINGLONG_ERR("layer not found", layerDir);
@@ -1188,7 +1187,7 @@ utils::error::Result<void> OSTreeRepo::remove(const package::Reference &ref,
                                               const std::string &module,
                                               const std::optional<std::string> &subRef) noexcept
 {
-    LINGLONG_TRACE("remove " + ref.toString());
+    LINGLONG_TRACE(fmt::format("remove {}", ref.toString()));
 
     if (module.empty()) {
         return LINGLONG_ERR("module is empty");
@@ -1286,7 +1285,7 @@ GVariantBuilder OSTreeRepo::initOStreePullOptions(const std::string &ref) noexce
 utils::error::Result<std::vector<guint64>>
 OSTreeRepo::getCommitSize(const std::string &remote, const std::string &refString) noexcept
 {
-    LINGLONG_TRACE("get commit size " + QString::fromStdString(refString));
+    LINGLONG_TRACE("get commit size " + refString);
 #if OSTREE_CHECK_VERSION(2020, 1)
     g_autoptr(GError) gErr = nullptr;
     GVariantBuilder builder = this->initOStreePullOptions(refString);
@@ -1381,7 +1380,7 @@ void OSTreeRepo::pull(service::PackageTask &taskContext,
     if (repo) {
         pullRepo = repo.value();
     }
-    LINGLONG_TRACE(std::string{ "pull " + refString + " from " + pullRepo.name }.c_str());
+    LINGLONG_TRACE(fmt::format("pull {} from {}", refString, pullRepo.name));
 
     utils::Transaction transaction;
     auto *cancellable = taskContext.cancellable();
@@ -1500,7 +1499,7 @@ OSTreeRepo::clearReference(const package::FuzzyReference &fuzzy,
                            const std::string &module,
                            const std::optional<std::string> &repo) const noexcept
 {
-    LINGLONG_TRACE("clear fuzzy reference " + fuzzy.toString());
+    LINGLONG_TRACE(fmt::format("clear fuzzy reference {}", fuzzy.toString()));
 
     utils::error::Result<package::Reference> reference = LINGLONG_ERR("reference not exists");
 
@@ -1981,7 +1980,7 @@ utils::error::Result<void> OSTreeRepo::exportDir(const std::string &appID,
                                                  const std::filesystem::path &destination,
                                                  const int &max_depth)
 {
-    LINGLONG_TRACE(QString("export %1").arg(source.c_str()));
+    LINGLONG_TRACE(fmt::format("export {}", source.string()));
     if (max_depth <= 0) {
         qWarning() << "ttl reached, skipping export for" << source.c_str();
         return LINGLONG_OK;
@@ -2004,7 +2003,7 @@ utils::error::Result<void> OSTreeRepo::exportDir(const std::string &appID,
         return LINGLONG_ERR("source is not a directory");
     }
     auto forceMkdirDir = [](std::string path) -> utils::error::Result<void> {
-        LINGLONG_TRACE(QString("force mkdir %1").arg(path.c_str()));
+        LINGLONG_TRACE(fmt::format("force mkdir {}", path));
         // 检查目标目录是否存在，如果不存在则创建
         std::error_code ec;
         auto exists = std::filesystem::exists(path, ec);
@@ -2223,7 +2222,7 @@ utils::error::Result<void>
 OSTreeRepo::exportEntries(const std::filesystem::path &rootEntriesDir,
                           const api::types::v1::RepositoryCacheLayersItem &item) noexcept
 {
-    LINGLONG_TRACE(QString("export %1").arg(item.info.id.c_str()));
+    LINGLONG_TRACE(fmt::format("export {}", item.info.id));
     auto layerDir = getLayerDir(item);
     if (!layerDir.has_value()) {
         return LINGLONG_ERR("get layer dir", layerDir);
@@ -2433,7 +2432,7 @@ OSTreeRepo::markDeleted(const package::Reference &ref,
                         const std::string &module,
                         const std::optional<std::string> &subRef) noexcept
 {
-    LINGLONG_TRACE("mark " + ref.toString() + " to deleted");
+    LINGLONG_TRACE(fmt::format("mark {} to deleted", ref.toString()));
 
     auto item = this->getLayerItem(ref, module, subRef);
     if (!item) {
@@ -2469,7 +2468,7 @@ OSTreeRepo::getLayerItem(const package::Reference &ref,
                          std::string module,
                          const std::optional<std::string> &subRef) const noexcept
 {
-    LINGLONG_TRACE("get latest layer of " + ref.toString());
+    LINGLONG_TRACE(fmt::format("get latest layer of {}", ref.toString()));
     if (module == "runtime") {
         module = "binary";
     }
@@ -2537,8 +2536,7 @@ OSTreeRepo::getLayerItem(const package::Reference &ref,
 auto OSTreeRepo::getLayerDir(const api::types::v1::RepositoryCacheLayersItem &layer) const noexcept
   -> utils::error::Result<package::LayerDir>
 {
-    LINGLONG_TRACE("get dir from layer item "
-                   + QString::fromStdString(ostreeRefSpecFromLayerItem(layer)));
+    LINGLONG_TRACE("get dir from layer item " + ostreeRefSpecFromLayerItem(layer));
 
     QDir dir = this->repoDir.absoluteFilePath(QString::fromStdString("layers/" + layer.commit));
     if (!dir.exists()) {
@@ -2552,7 +2550,7 @@ auto OSTreeRepo::getLayerDir(const package::Reference &ref,
                              const std::optional<std::string> &subRef) const noexcept
   -> utils::error::Result<package::LayerDir>
 {
-    LINGLONG_TRACE("get dir from ref " + ref.toString());
+    LINGLONG_TRACE(fmt::format("get dir from ref {}", ref.toString()));
 
     auto layer = this->getLayerItem(ref, module, subRef);
     if (!layer) {
@@ -2686,7 +2684,7 @@ std::vector<std::string> OSTreeRepo::getModuleList(const package::Reference &ref
 utils::error::Result<package::LayerDir>
 OSTreeRepo::getMergedModuleDir(const package::Reference &ref, bool fallbackLayerDir) const noexcept
 {
-    LINGLONG_TRACE("get merge dir from ref " + ref.toString());
+    LINGLONG_TRACE(fmt::format("get merge dir from ref {}", ref.toString()));
     LogD("getMergedModuleDir: {}", ref.toString());
     auto layer = this->getLayerItem(ref, "binary");
     if (!layer) {
@@ -2700,7 +2698,7 @@ OSTreeRepo::getMergedModuleDir(const package::Reference &ref, bool fallbackLayer
 utils::error::Result<package::LayerDir> OSTreeRepo::getMergedModuleDir(
   const api::types::v1::RepositoryCacheLayersItem &layer, bool fallbackLayerDir) const noexcept
 {
-    LINGLONG_TRACE("get merge dir from layer " + QString::fromStdString(layer.info.id));
+    LINGLONG_TRACE("get merge dir from layer " + layer.info.id);
     QDir mergedDir = this->repoDir.absoluteFilePath("merged");
     auto items = this->cache->queryMergedItems();
     // 如果没有merged记录，尝试使用layer
@@ -3027,7 +3025,7 @@ QString buildDesktopExec(QString origin, const QString &appID) noexcept
 
 utils::error::Result<void> desktopFileRewrite(const QString &filePath, const QString &id)
 {
-    LINGLONG_TRACE("rewrite desktop file " + filePath);
+    LINGLONG_TRACE(fmt::format("rewrite desktop file {}", filePath.toStdString()));
 
     auto file = utils::GKeyFileWrapper::New(filePath);
     if (!file) {
@@ -3078,7 +3076,7 @@ utils::error::Result<void> desktopFileRewrite(const QString &filePath, const QSt
 
 utils::error::Result<void> dbusServiceRewrite(const QString &filePath, const QString &id)
 {
-    LINGLONG_TRACE("rewrite dbus service file " + filePath);
+    LINGLONG_TRACE(fmt::format("rewrite dbus service file {}", filePath.toStdString()));
 
     auto file = utils::GKeyFileWrapper::New(filePath);
     if (!file) {
@@ -3119,7 +3117,7 @@ utils::error::Result<void> dbusServiceRewrite(const QString &filePath, const QSt
 
 utils::error::Result<void> systemdServiceRewrite(const QString &filePath, const QString &id)
 {
-    LINGLONG_TRACE("rewrite systemd user service " + filePath);
+    LINGLONG_TRACE(fmt::format("rewrite systemd user service {}", filePath.toStdString()));
 
     // Related doc: https://www.freedesktop.org/software/systemd/man/latest/systemd.service.html
     // NOTE: The key is allowed to be repeated in the service group
@@ -3166,7 +3164,7 @@ utils::error::Result<void> systemdServiceRewrite(const QString &filePath, const 
 
 utils::error::Result<void> contextMenuRewrite(const QString &filePath, const QString &id)
 {
-    LINGLONG_TRACE("rewrite context menu" + filePath);
+    LINGLONG_TRACE(fmt::format("rewrite context menu{}", filePath.toStdString()));
 
     auto file = utils::GKeyFileWrapper::New(filePath);
     if (!file) {

@@ -34,7 +34,7 @@ api::types::v1::PackageInfoV2 toPackageInfoV2(const api::types::v1::PackageInfo 
 
 error::Result<api::types::v1::PackageInfoV2> parsePackageInfo(const QString &path)
 {
-    LINGLONG_TRACE("parse package info from file: " + path);
+    LINGLONG_TRACE("parse package info from file: " + path.toStdString());
 
     auto pkgInfo = serialize::LoadJSONFile<api::types::v1::PackageInfoV2>(path);
     if (pkgInfo) {

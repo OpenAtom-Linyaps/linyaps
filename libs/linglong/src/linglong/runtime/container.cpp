@@ -14,6 +14,8 @@
 #include "ocppi/runtime/RunOption.hpp"
 #include "ocppi/runtime/config/types/Generators.hpp"
 
+#include <fmt/format.h>
+
 #include <fstream>
 #include <utility>
 
@@ -129,7 +131,7 @@ Container::Container(ocppi::runtime::config::types::Config cfg,
 utils::error::Result<void> Container::run(const ocppi::runtime::config::types::Process &process,
                                           ocppi::runtime::RunOption &opt) noexcept
 {
-    LINGLONG_TRACE(QString("run container %1").arg(QString::fromStdString(this->id)));
+    LINGLONG_TRACE(fmt::format("run container {}", this->id));
 
     std::error_code ec;
     std::filesystem::path runtimeDir = common::dir::getRuntimeDir();

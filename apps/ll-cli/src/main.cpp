@@ -181,7 +181,8 @@ ll-cli run org.deepin.demo -- bash -x /path/to/bash/script)"));
       ->expected(0, -1);
     cliRun->add_option("--env", runOptions.envs, _("Set environment variables for the application"))
       ->type_name("ENV")
-      ->expected(0, -1)
+      // vector parameter allow extra args by default, but we don't want it
+      ->allow_extra_args(false)
       ->check([](const std::string &env) -> std::string {
           if (env.find('=') == std::string::npos) {
               return std::string{ _(
@@ -206,8 +207,15 @@ ll-cli run org.deepin.demo -- bash -x /path/to/bash/script)"));
                    _("Specify extension(s) used by the application to run"))
       ->type_name("REF")
       ->delimiter(',')          // 支持以逗号分隔
-      ->allow_extra_args(false) //避免吞掉后面的参数
+      ->allow_extra_args(false) // 避免吞掉后面的参数
       ->check(validatorString);
+    cliRun
+      ->add_flag("--privileged", runOptions.privileged, _("Run the application in privileged mode"))
+      ->group("");
+    cliRun->add_option("--caps-add", runOptions.capsAdd, _("Add capabilities to the application"))
+      ->delimiter(',')
+      ->allow_extra_args(false)
+      ->group("");
     cliRun->add_option("COMMAND", runOptions.commands, _("Run commands in a running sandbox"));
 }
 

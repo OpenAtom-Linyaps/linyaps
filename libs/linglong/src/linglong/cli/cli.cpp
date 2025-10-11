@@ -626,12 +626,6 @@ int Cli::run(const RunOptions &options)
     auto gid = getgid();
     auto pid = getpid();
 
-    // NOTE: ll-box is not support running as root for now.
-    if (uid == 0) {
-        qInfo() << "'ll-cli run' currently does not support running as root.";
-        return -1;
-    }
-
     auto userContainerDir = std::filesystem::path{ "/run/linglong" } / std::to_string(uid);
     if (auto ret = ensureDirectory(userContainerDir); !ret) {
         this->printer.printErr(ret.error());
@@ -794,6 +788,27 @@ int Cli::run(const RunOptions &options)
       .bindIPC()
       .forwardDefaultEnv()
       .enableSelfAdjustingMount();
+
+    std::vector<std::string> capabilities;
+    // privileged mode shares host's user_namespace and add capabilities
+    if (options.privileged) {
+        if (uid != 0) {
+            this->printer.printMessage(_("privileged mode requires running as root"));
+            return -1;
+        }
+
+        cfgBuilder.disableUserNamespace();
+        capabilities = { "CAP_CHOWN",    "CAP_DAC_OVERRIDE",     "CAP_FOWNER",     "CAP_FSETID",
+                         "CAP_KILL",     "CAP_NET_BIND_SERVICE", "CAP_SETFCAP",    "CAP_SETGID",
+                         "CAP_SETPCAP",  "CAP_SETUID",           "CAP_SYS_CHROOT", "CAP_NET_RAW",
+                         "CAP_NET_ADMIN" };
+    }
+
+    if (!options.capsAdd.empty()) {
+        capabilities.insert(capabilities.end(), options.capsAdd.begin(), options.capsAdd.end());
+    }
+
+    cfgBuilder.setCapabilities(capabilities);
 
     res = runContext.fillContextCfg(cfgBuilder);
     if (!res) {

@@ -48,9 +48,9 @@ public:
 
     [[nodiscard]] int compareWithOtherVersion(const std::string &raw) const noexcept;
     std::vector<std::string> list;
+
 private:
     [[nodiscard]] int compare(const FallbackVersion &other) const noexcept;
-
 };
 
 } // namespace linglong::package

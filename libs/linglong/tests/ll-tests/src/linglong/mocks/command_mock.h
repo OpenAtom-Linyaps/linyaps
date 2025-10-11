@@ -31,10 +31,7 @@ public:
     // mock exists
     std::function<bool()> wrapExistsFunc;
 
-    bool exists() noexcept override
-    {
-        return wrapExistsFunc ? wrapExistsFunc() : Cmd::exists();
-    }
+    bool exists() noexcept override { return wrapExistsFunc ? wrapExistsFunc() : Cmd::exists(); }
 
     // mock setEnv
     std::function<linglong::utils::command::Cmd &(const QString &, const QString &)> wrapSetEnvFunc;

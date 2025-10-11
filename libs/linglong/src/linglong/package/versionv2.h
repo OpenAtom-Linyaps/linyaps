@@ -15,7 +15,8 @@ class FallbackVersion;
 class VersionV2 final
 {
 public:
-    static utils::error::Result<VersionV2> parse(const std::string &raw, bool strict = true) noexcept;
+    static utils::error::Result<VersionV2> parse(const std::string &raw,
+                                                 bool strict = true) noexcept;
     explicit VersionV2(uint64_t major = 0,
                        uint64_t minor = 0,
                        uint64_t patch = 0,

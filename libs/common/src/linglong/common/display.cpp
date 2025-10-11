@@ -102,4 +102,4 @@ tl::expected<std::filesystem::path, std::string> getXOrgAuthFile(std::string_vie
     return tl::unexpected{ "XAUTHORITY file not found at " + xAuthFile.string() };
 }
 
-} // namespace linglong::common
+} // namespace linglong::common::display

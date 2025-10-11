@@ -10,13 +10,15 @@
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/serialize/yaml.h"
 
+#include <fmt/format.h>
+
 #include <fstream>
 
 namespace linglong::builder {
 
 auto loadConfig(const QString &file) noexcept -> utils::error::Result<api::types::v1::BuilderConfig>
 {
-    LINGLONG_TRACE(QString("load build config from %1").arg(file));
+    LINGLONG_TRACE(fmt::format("load build config from {}", file.toStdString()));
 
     try {
         QFile f(file);
@@ -43,7 +45,7 @@ auto loadConfig(const QString &file) noexcept -> utils::error::Result<api::types
 auto loadConfig(const QStringList &files) noexcept
   -> utils::error::Result<api::types::v1::BuilderConfig>
 {
-    LINGLONG_TRACE(QString("load build config from %1").arg(files.join(" ")));
+    LINGLONG_TRACE(fmt::format("load build config from {}", files.join(" ").toStdString()));
 
     for (const auto &file : files) {
         auto config = loadConfig(file);
@@ -62,7 +64,7 @@ auto loadConfig(const QStringList &files) noexcept
 auto saveConfig(const api::types::v1::BuilderConfig &cfg, const QString &path) noexcept
   -> utils::error::Result<void>
 {
-    LINGLONG_TRACE(QString("save config to %1").arg(path));
+    LINGLONG_TRACE(fmt::format("save config to {}", path.toStdString()));
 
     try {
         auto ofs = std::ofstream(path.toLocal8Bit());

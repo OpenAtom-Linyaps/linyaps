@@ -9,13 +9,15 @@
 #include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/utils/packageinfo_handler.h"
 
+#include <fmt/format.h>
+
 #include <fstream>
 
 namespace linglong::package {
 
 utils::error::Result<api::types::v1::PackageInfoV2> LayerDir::info() const
 {
-    LINGLONG_TRACE("get layer info from " + this->absolutePath());
+    LINGLONG_TRACE(fmt::format("get layer info from {}", this->absolutePath().toStdString()));
 
     auto info = utils::parsePackageInfo(this->filePath("info.json"));
     if (!info) {

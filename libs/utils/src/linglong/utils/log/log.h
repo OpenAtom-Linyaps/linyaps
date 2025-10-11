@@ -6,7 +6,6 @@
 
 #pragma once
 
-#define FMT_HEADER_ONLY
 #include "linglong/utils/log/formatter.h"
 
 #include <fmt/format.h>

@@ -26,6 +26,7 @@
 #include "linglong/api/types/v1/SubState.hpp"
 #include "linglong/api/types/v1/UpgradeListResult.hpp"
 #include "linglong/cli/printer.h"
+#include "linglong/common/dir.h"
 #include "linglong/oci-cfg-generators/container_cfg_builder.h"
 #include "linglong/package/layer_file.h"
 #include "linglong/package/reference.h"
@@ -261,7 +262,7 @@ bool delegateToContainerInit(const std::string &containerID,
     struct sockaddr_un addr{};
     addr.sun_family = AF_UNIX;
 
-    auto bundleDir = linglong::runtime::getBundleDir(containerID);
+    auto bundleDir = linglong::common::dir::getBundleDir(containerID);
     const std::string socketPath = bundleDir / "init/socket";
 
     std::copy(socketPath.begin(), socketPath.end(), &addr.sun_path[0]);

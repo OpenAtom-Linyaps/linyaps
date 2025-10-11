@@ -11,6 +11,5 @@
 namespace linglong::common::xdg {
 
 std::filesystem::path getXDGRuntimeDir() noexcept;
-std::filesystem::path getAppXDGRuntimeDir(const std::string &appId) noexcept;
 
 } // namespace linglong::common::xdg

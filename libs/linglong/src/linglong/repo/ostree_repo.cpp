@@ -2402,7 +2402,7 @@ void OSTreeRepo::updateSharedInfo() noexcept
         auto ret = utils::command::Cmd("update-desktop-database").exec(desktopDirs);
         if (!ret) {
             qWarning() << "warning: failed to update desktop database in " + desktopDirs.join(" ")
-                + ": " + ret.error().message();
+                + ": " + QString::fromStdString(ret.error().message());
         }
     }
 
@@ -2411,7 +2411,7 @@ void OSTreeRepo::updateSharedInfo() noexcept
         auto ret = utils::command::Cmd("update-mime-database").exec({ mimeDataDir.absolutePath() });
         if (!ret) {
             qWarning() << "warning: failed to update mime type database in "
-                + mimeDataDir.absolutePath() + ": " + ret.error().message();
+                + mimeDataDir.absolutePath() + ": " + ret.error().message().c_str();
         }
     }
 
@@ -2421,7 +2421,7 @@ void OSTreeRepo::updateSharedInfo() noexcept
           utils::command::Cmd("glib-compile-schemas").exec({ glibSchemasDir.absolutePath() });
         if (!ret) {
             qWarning() << "warning: failed to update schemas in " + glibSchemasDir.absolutePath()
-                + ": " + ret.error().message();
+                + ": " + QString::fromStdString(ret.error().message());
         }
     }
 }

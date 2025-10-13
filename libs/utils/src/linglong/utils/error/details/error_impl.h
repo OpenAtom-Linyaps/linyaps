@@ -6,14 +6,8 @@
 
 #pragma once
 
-#include "QJsonDocument"
-#include "QJsonObject"
-#include "QMessageLogContext"
-#include "QString"
-#include "QStringBuilder"
-
 #include <memory>
-#include <utility>
+#include <string>
 
 namespace linglong::utils::error::details {
 
@@ -26,31 +20,33 @@ public:
               const int &code,
               const std::string &msg,
               std::unique_ptr<ErrorImpl> cause = nullptr)
-        : context(file, line, "unknown", category)
-        , _code(code)
-        , msg(QString::fromStdString(msg))
+        : _code(code)
+        , _msg(msg)
+        , _file(file)
+        , _line(line)
         , cause(std::move(cause))
     {
     }
 
     [[nodiscard]] auto code() const -> int { return _code; };
 
-    [[nodiscard]] auto message() const -> QString
+    [[nodiscard]] auto message() const -> std::string
     {
-        QString msg;
+        std::string msg;
         for (const ErrorImpl *err = this; err != nullptr; err = err->cause.get()) {
-            if (!msg.isEmpty()) {
+            if (!msg.empty()) {
                 msg += "\n";
             }
-            msg += QString("%1:%2 %4").arg(err->context.file).arg(err->context.line).arg(err->msg);
+            msg += err->_file + ":" + std::to_string(err->_line) + " " + err->_msg;
         }
         return msg;
     }
 
 private:
-    QMessageLogContext context;
-    int _code;
-    QString msg;
+    const int _code;
+    const std::string _msg;
+    const std::string _file;
+    const int _line;
     std::unique_ptr<ErrorImpl> cause;
 };
 

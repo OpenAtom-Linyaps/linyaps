@@ -471,7 +471,7 @@ int handleRepoAdd(linglong::repo::OSTreeRepo &repo, linglong::cli::RepoOptions &
 
     auto ret = repo.setConfig(newCfg);
     if (!ret) {
-        std::cerr << ret.error().message().toStdString() << std::endl;
+        std::cerr << ret.error().message() << std::endl;
         return -1;
     }
 
@@ -503,7 +503,7 @@ int handleRepoRemove(linglong::repo::OSTreeRepo &repo, linglong::cli::RepoOption
     newCfg.repos.erase(existingRepo);
     auto ret = repo.setConfig(newCfg);
     if (!ret) {
-        std::cerr << ret.error().message().toStdString() << std::endl;
+        std::cerr << ret.error().message() << std::endl;
         return -1;
     }
 
@@ -535,7 +535,7 @@ int handleRepoUpdate(linglong::repo::OSTreeRepo &repo, linglong::cli::RepoOption
 
     auto ret = repo.setConfig(newCfg);
     if (!ret) {
-        std::cerr << ret.error().message().toStdString() << std::endl;
+        std::cerr << ret.error().message() << std::endl;
         return -1;
     }
 
@@ -562,7 +562,7 @@ int handleRepoSetDefault(linglong::repo::OSTreeRepo &repo, linglong::cli::RepoOp
         newCfg.defaultRepo = alias;
         auto ret = repo.setConfig(newCfg);
         if (!ret) {
-            std::cerr << ret.error().message().toStdString() << std::endl;
+            std::cerr << ret.error().message() << std::endl;
             return -1;
         }
         qInfo() << "Default repository set to" << QString::fromStdString(alias) << "successfully.";
@@ -591,7 +591,7 @@ int handleRepoEnableMirror(linglong::repo::OSTreeRepo &repo, linglong::cli::Repo
     existingRepo->mirrorEnabled = true;
     auto ret = repo.setConfig(newCfg);
     if (!ret) {
-        std::cerr << ret.error().message().toStdString() << std::endl;
+        std::cerr << ret.error().message() << std::endl;
         return -1;
     }
 
@@ -617,7 +617,7 @@ int handleRepoDisableMirror(linglong::repo::OSTreeRepo &repo, linglong::cli::Rep
     existingRepo->mirrorEnabled = false;
     auto ret = repo.setConfig(newCfg);
     if (!ret) {
-        std::cerr << ret.error().message().toStdString() << std::endl;
+        std::cerr << ret.error().message() << std::endl;
         return -1;
     }
     std::cerr << "Repository " << alias << " mirror disabled successfully.";

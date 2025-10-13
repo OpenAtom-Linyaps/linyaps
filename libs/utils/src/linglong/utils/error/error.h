@@ -13,11 +13,6 @@
 
 #include <QDebug>
 #include <QFile>
-#include <QJsonDocument>
-#include <QJsonObject>
-#include <QMessageLogContext>
-#include <QString>
-#include <QStringBuilder>
 
 #include <memory>
 #include <string>
@@ -358,15 +353,17 @@ public:
                                                           std::move(cause.error().pImpl)));
     }
 
-    static auto
-    Err(const char *file, int line, const std::string &trace_msg, const QString &msg, Error &&cause)
-      -> Error
+    static auto Err(const char *file,
+                    int line,
+                    const std::string &trace_msg,
+                    const std::string &msg,
+                    Error &&cause) -> Error
     {
         return Error(std::make_unique<details::ErrorImpl>(file,
                                                           line,
                                                           "default",
                                                           cause.code(),
-                                                          trace_msg + ": " + msg.toStdString(),
+                                                          trace_msg + ": " + msg,
                                                           std::move(cause.pImpl)));
     }
 
@@ -482,6 +479,13 @@ static auto endl = ::endl;
 inline QDebug operator<<(QDebug debug, const linglong::utils::error::Error &err)
 {
     debug.noquote().nospace() << "[code " << err.code() << " ] message:" << Qt::endl
-                              << "\t" << err.message().replace("\n", "\n\t");
+                              << "\t"
+                              << QString::fromStdString(err.message()).replace("\n", "\n\t");
+    return debug;
+}
+
+inline QDebug operator<<(QDebug debug, const std::string &str)
+{
+    debug.noquote().nospace() << QString::fromStdString(str);
     return debug;
 }

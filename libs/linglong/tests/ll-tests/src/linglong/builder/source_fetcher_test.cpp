@@ -46,7 +46,7 @@ TEST_F(SourceFetcherTest, FetchFileSource)
     SourceFetcher fetcher(source, cacheDir);
     fetcher.setCommand(mockCmd);
     auto ret = fetcher.fetch(QDir("/tmp/dest"));
-    EXPECT_TRUE(ret.has_value()) << ret.error().message().toStdString();
+    EXPECT_TRUE(ret.has_value()) << ret.error().message();
 }
 
 // 测试获取git类型源码的正常流程
@@ -74,7 +74,7 @@ TEST_F(SourceFetcherTest, FetchGitSource)
     SourceFetcher fetcher(source, cacheDir);
     fetcher.setCommand(mockCmd);
     auto ret = fetcher.fetch(QDir("/tmp/dest"));
-    EXPECT_TRUE(ret.has_value()) << ret.error().message().toStdString();
+    EXPECT_TRUE(ret.has_value()) << ret.error().message();
 }
 
 // 测试git子模块处理功能
@@ -104,7 +104,7 @@ TEST_F(SourceFetcherTest, gitSubmodules)
         SourceFetcher fetcher(source, cacheDir);
         fetcher.setCommand(mockCmd);
         auto ret2 = fetcher.fetch(QDir("/tmp/dest"));
-        EXPECT_TRUE(ret2.has_value()) << ret2.error().message().toStdString();
+        EXPECT_TRUE(ret2.has_value()) << ret2.error().message();
     }
     // manually disable submodules
     source.submodules = false;
@@ -122,7 +122,7 @@ TEST_F(SourceFetcherTest, gitSubmodules)
         SourceFetcher fetcher(source, cacheDir);
         fetcher.setCommand(mockCmd);
         auto ret2 = fetcher.fetch(QDir("/tmp/dest"));
-        EXPECT_TRUE(ret2.has_value()) << ret2.error().message().toStdString();
+        EXPECT_TRUE(ret2.has_value()) << ret2.error().message();
     }
 }
 

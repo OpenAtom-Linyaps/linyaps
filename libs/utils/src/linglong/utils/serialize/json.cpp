@@ -6,7 +6,9 @@
 
 #include "linglong/utils/serialize/json.h"
 
-#include <qdbusargument.h>
+#include <QDBusArgument>
+#include <QJsonObject>
+#include <QVariantMap>
 
 namespace linglong::utils::serialize {
 namespace {

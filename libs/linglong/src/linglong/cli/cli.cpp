@@ -678,10 +678,18 @@ int Cli::run(const RunOptions &options)
     linglong::runtime::ResolveOptions opts;
     opts.baseRef = options.base;
     opts.runtimeRef = options.runtime;
+    // 处理多个扩展
+    if (!options.extensions.empty()) {
+        opts.extensionRefs = options.extensions;
+    }
 
-    LogD("start resolve run context with base {} and runtime {}",
+    // 调整日志输出，打印扩展列表（用逗号拼接）
+    std::string extStr =
+      opts.extensionRefs ? linglong::common::strings::join(*opts.extensionRefs, ',') : "null";
+    LogD("start resolve run context with base {}, runtime {}, extensions {}",
          opts.baseRef.value_or("null"),
-         opts.runtimeRef.value_or("null"));
+         opts.runtimeRef.value_or("null"),
+         extStr);
 
     auto res = runContext.resolve(*curAppRef, opts);
     if (!res) {

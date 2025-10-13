@@ -301,7 +301,7 @@ int handleRun(linglong::builder::Builder &builder, const RunCommandOptions &opti
         }
     }
 
-    auto result = builder.run(modules, options.commands, options.debugMode);
+    auto result = builder.run(modules, options.commands, options.debugMode, options.extensions);
     if (!result) {
         LogE("Run failed: {}", result.error());
         return result.error().code();
@@ -834,6 +834,7 @@ You can report bugs to the linyaps team under this project: https://github.com/O
                    runOpts.execModules,
                    _("Run specified module. eg: --modules binary,develop"))
       ->delimiter(',')
+      ->allow_extra_args(false)
       ->type_name("modules");
     buildRun->add_option(
       "COMMAND",
@@ -842,6 +843,14 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     buildRun->add_flag("--debug",
                        runOpts.debugMode,
                        _("Run in debug mode (enable develop module)"));
+    buildRun
+      ->add_option("--extensions",
+                   runOpts.extensions,
+                   _("Specify extension(s) used by the app to run"))
+      ->type_name("REF")
+      ->delimiter(',')
+      ->allow_extra_args(false)
+      ->check(validatorString);
 
     auto buildList = commandParser.add_subcommand("list", _("List built linyaps app"));
     buildList->usage(_("Usage: ll-builder list [OPTIONS]"));

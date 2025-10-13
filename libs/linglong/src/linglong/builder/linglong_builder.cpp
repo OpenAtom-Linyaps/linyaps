@@ -1685,7 +1685,8 @@ utils::error::Result<void> Builder::importLayer(repo::OSTreeRepo &ostree, const 
 
 utils::error::Result<void> Builder::run(std::vector<std::string> modules,
                                         std::vector<std::string> args,
-                                        bool debug)
+                                        bool debug,
+                                        std::vector<std::string> extensions)
 {
     LINGLONG_TRACE("run application");
 
@@ -1703,6 +1704,9 @@ utils::error::Result<void> Builder::run(std::vector<std::string> modules,
     linglong::runtime::ResolveOptions opts;
     opts.depsBinaryOnly = !debug;
     opts.appModules = std::move(modules);
+    if (!extensions.empty()) {
+        opts.extensionRefs = extensions;
+    }
     auto res = runContext.resolve(*curRef, opts);
     if (!res) {
         return LINGLONG_ERR(res);

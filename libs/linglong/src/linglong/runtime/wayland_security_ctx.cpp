@@ -115,8 +115,7 @@ WaylandSecurityContextManagerV1::createSecurityContext(
         }
     });
 
-    auto runtimeDir = linglong::common::dir::getAppRuntimeDir(builder.getAppId());
-    auto waylandSocket = runtimeDir / "wayland-socket";
+    auto waylandSocket = builder.getBundlePath() / "wayland-socket";
 
     std::error_code ec;
     std::filesystem::create_directories(waylandSocket.parent_path(), ec);

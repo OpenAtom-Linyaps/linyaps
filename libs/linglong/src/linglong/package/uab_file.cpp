@@ -56,7 +56,7 @@ utils::error::Result<std::shared_ptr<UABFile>> UABFile::loadFromFile(int fd) noe
     elf_version(EV_CURRENT);
     auto *elf = elf_begin(fd, ELF_C_READ, nullptr);
     if (elf == nullptr) {
-        return LINGLONG_ERR(QString{ "libelf err:" }.arg(elf_errmsg(errno)));
+        return LINGLONG_ERR(QString{ "libelf err: %1" }.arg(elf_errmsg(errno)));
     }
 
     file->e = elf;
@@ -319,7 +319,8 @@ utils::error::Result<std::filesystem::path> UABFile::extractSignData() noexcept
     auto tarFile = destination / "sign.tar";
     auto tarFd = ::open(tarFile.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
     if (tarFd == -1) {
-        return LINGLONG_ERR(QString{ "open" } % tarFile.c_str() % " failed:" % strerror(errno));
+        return LINGLONG_ERR(
+          QString{ "open %1 failed: %2" }.arg(tarFile.c_str()).arg(strerror(errno)));
     }
 
     auto removeTar = utils::finally::finally([&tarFd, &tarFile] {
@@ -350,7 +351,8 @@ utils::error::Result<std::filesystem::path> UABFile::extractSignData() noexcept
                 errno = 0;
                 continue;
             }
-            return LINGLONG_ERR(QString{ "read from sign section error:" } % ::strerror(errno));
+            return LINGLONG_ERR(
+              QString{ "read from sign section error: %1" }.arg(::strerror(errno)));
         }
 
         while (true) {
@@ -360,7 +362,8 @@ utils::error::Result<std::filesystem::path> UABFile::extractSignData() noexcept
                     errno = 0;
                     continue;
                 }
-                return LINGLONG_ERR(QString{ "write to sign.tar error:" } % ::strerror(errno));
+                return LINGLONG_ERR(
+                  QString{ "write to sign.tar error: %1" }.arg(::strerror(errno)));
             }
 
             if (writeBytes != readBytes) {
@@ -373,12 +376,12 @@ utils::error::Result<std::filesystem::path> UABFile::extractSignData() noexcept
     }
 
     if (::fsync(tarFd) == -1) {
-        return LINGLONG_ERR(QString{ "fsync sign.tar error: " } % ::strerror(errno));
+        return LINGLONG_ERR(QString{ "fsync sign.tar error: %1" }.arg(::strerror(errno)));
     }
 
     if (::close(tarFd) == -1) {
         tarFd = -1; // no need to try twice
-        return LINGLONG_ERR(QString{ "failed to close tar: " } % ::strerror(errno));
+        return LINGLONG_ERR(QString{ "failed to close tar: %1" }.arg(::strerror(errno)));
     }
     tarFd = -1;
 
@@ -422,17 +425,18 @@ utils::error::Result<void> UABFile::saveErofsToFile(const std::string &path)
         auto readBytes = bundleLength > buf.size() ? buf.size() : bundleLength;
         auto bytesRead = ::read(handle(), buf.data(), readBytes);
         if (bytesRead == -1) {
-            return LINGLONG_ERR(QString{ "read from bundle section error:" } % ::strerror(errno));
+            return LINGLONG_ERR(
+              QString{ "read from bundle section error: %1" }.arg(::strerror(errno)));
         }
         ofs.write(buf.data(), bytesRead);
         if (ofs.fail()) {
-            return LINGLONG_ERR(QString{ "write " } % path.c_str() % " failed");
+            return LINGLONG_ERR(QString{ "write %1 failed" }.arg(path.c_str()));
         }
         bundleLength -= bytesRead;
     }
     ofs.close();
     if (ofs.fail()) {
-        return LINGLONG_ERR(QString{ "close " } % path.c_str() % " failed");
+        return LINGLONG_ERR(QString{ "close %1 failed" }.arg(path.c_str()));
     }
     return LINGLONG_OK;
 }

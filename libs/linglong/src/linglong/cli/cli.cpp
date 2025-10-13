@@ -643,7 +643,8 @@ int Cli::run(const RunOptions &options)
     // placeholder file
     auto fd = ::open(pidFile.c_str(), O_WRONLY | O_CREAT | O_EXCL, mode);
     if (fd == -1) {
-        qCritical() << QString{ "create file " } % pidFile.c_str() % " error:" % ::strerror(errno);
+        qCritical()
+          << QString{ "create file %1 error: %2" }.arg(pidFile.c_str()).arg(::strerror(errno));
         QCoreApplication::exit(-1);
         return -1;
     }

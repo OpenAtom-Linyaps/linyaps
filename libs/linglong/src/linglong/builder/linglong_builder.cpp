@@ -227,14 +227,14 @@ utils::error::Result<void> cmdRemoveApp(repo::OSTreeRepo &repo,
     for (const auto &ref : refs) {
         auto r = package::Reference::parse(QString::fromStdString(ref));
         if (!r.has_value()) {
-            std::cerr << ref << ": " << r.error().message().toStdString() << std::endl;
+            std::cerr << ref << ": " << r.error().message() << std::endl;
             continue;
         }
         auto modules = repo.getModuleList(*r);
         for (const auto &module : modules) {
             auto v = repo.remove(*r, module);
             if (!v.has_value()) {
-                std::cerr << ref << ": " << v.error().message().toStdString() << std::endl;
+                std::cerr << ref << ": " << v.error().message() << std::endl;
                 continue;
             }
         }
@@ -242,12 +242,12 @@ utils::error::Result<void> cmdRemoveApp(repo::OSTreeRepo &repo,
     if (prune) {
         auto v = repo.prune();
         if (!v.has_value()) {
-            std::cerr << v.error().message().toStdString();
+            std::cerr << v.error().message();
         }
     }
     auto v = repo.mergeModules();
     if (!v.has_value()) {
-        std::cerr << v.error().message().toStdString();
+        std::cerr << v.error().message();
     }
     return LINGLONG_OK;
 }

@@ -60,8 +60,8 @@ QVariantMap toDBusReply(const utils::error::Result<T> &x, std::string type = "di
     Q_ASSERT(!x.has_value());
 
     return utils::serialize::toQVariantMap(
-      api::types::v1::CommonResult{ .code = x.error().code(),                     // NOLINT
-                                    .message = x.error().message().toStdString(), // NOLINT
+      api::types::v1::CommonResult{ .code = x.error().code(),       // NOLINT
+                                    .message = x.error().message(), // NOLINT
                                     .type = std::move(type) });
 }
 
@@ -148,8 +148,8 @@ utils::error::Result<bool> PackageManager::isRefBusy(const package::Reference &r
     auto ret = lockRepo();
     if (!ret) {
         return LINGLONG_ERR(
-          QStringLiteral("failed to lock repo, underlying data will not be removed:")
-          % ret.error().message());
+          QStringLiteral("failed to lock repo, underlying data will not be removed: %1")
+            .arg(ret.error().message().c_str()));
     }
 
     auto unlock = utils::finally::finally([this] {
@@ -161,8 +161,8 @@ utils::error::Result<bool> PackageManager::isRefBusy(const package::Reference &r
 
     auto running = getAllRunningContainers();
     if (!running) {
-        return LINGLONG_ERR(QStringLiteral("failed to get running containers:")
-                            % running.error().message());
+        return LINGLONG_ERR(QStringLiteral("failed to get running containers: %1")
+                              .arg(running.error().message().c_str()));
     }
     auto &runningRef = *running;
 
@@ -199,8 +199,8 @@ PackageManager::getAllRunningContainers() noexcept
     std::error_code ec;
     auto user_iterator = std::filesystem::directory_iterator{ "/run/linglong", ec };
     if (ec) {
-        return LINGLONG_ERR(QStringLiteral("failed to list /run/linglong: ")
-                            % ec.message().c_str());
+        return LINGLONG_ERR(
+          QStringLiteral("failed to list /run/linglong: %1").arg(ec.message().c_str()));
     }
 
     std::vector<api::types::v1::ContainerProcessStateInfo> result;
@@ -211,8 +211,9 @@ PackageManager::getAllRunningContainers() noexcept
 
         auto process_iterator = std::filesystem::directory_iterator{ entry.path(), ec };
         if (ec) {
-            return LINGLONG_ERR(QStringLiteral("failed to list ") % entry.path().c_str() % ": "
-                                % ec.message().c_str());
+            return LINGLONG_ERR(QStringLiteral("failed to list %1: %2")
+                                  .arg(entry.path().c_str())
+                                  .arg(ec.message().c_str()));
         }
 
         for (const auto &process_entry : process_iterator) {
@@ -223,8 +224,9 @@ PackageManager::getAllRunningContainers() noexcept
             auto pid = process_entry.path().filename().string();
             if (auto procDir = "/proc/" + pid; !std::filesystem::exists(procDir, ec)) {
                 if (ec) {
-                    return LINGLONG_ERR(QStringLiteral("failed to get state of ") % procDir.c_str()
-                                        % ": " % ec.message().c_str());
+                    return LINGLONG_ERR(QStringLiteral("failed to get state of %1: %2")
+                                          .arg(procDir.c_str())
+                                          .arg(ec.message().c_str()));
                 }
 
                 qInfo() << "ignore" << process_entry.path().c_str()
@@ -236,9 +238,9 @@ PackageManager::getAllRunningContainers() noexcept
               utils::serialize::LoadJSONFile<api::types::v1::ContainerProcessStateInfo>(
                 QString::fromStdString(process_entry.path().string()));
             if (!content) {
-                return LINGLONG_ERR(QStringLiteral("failed to load info from ")
-                                    % process_entry.path().c_str() % ": "
-                                    % content.error().message());
+                return LINGLONG_ERR(QStringLiteral("failed to load info from %1: %2")
+                                      .arg(process_entry.path().c_str())
+                                      .arg(content.error().message().c_str()));
             }
 
             result.emplace_back(std::move(content).value());
@@ -253,15 +255,16 @@ PackageManager::getAllRunningContainers() noexcept
     LINGLONG_TRACE("lock whole repo")
     lockFd = ::open(repoLockPath, O_RDWR | O_CREAT, 0644);
     if (lockFd == -1) {
-        return LINGLONG_ERR(QStringLiteral("failed to create lock file ") % repoLockPath % ": "
-                            % ::strerror(errno));
+        return LINGLONG_ERR(QStringLiteral("failed to create lock file %1: %2")
+                              .arg(repoLockPath)
+                              .arg(::strerror(errno)));
     }
 
     struct flock locker{ .l_type = F_WRLCK, .l_whence = SEEK_SET, .l_start = 0, .l_len = 0 };
 
     if (::fcntl(lockFd, F_SETLK, &locker) == -1) {
-        return LINGLONG_ERR(QStringLiteral("failed to lock ") % repoLockPath % ": "
-                            % ::strerror(errno));
+        return LINGLONG_ERR(
+          QStringLiteral("failed to lock %1: %2").arg(repoLockPath).arg(::strerror(errno)));
     }
 
     return LINGLONG_OK;
@@ -278,8 +281,8 @@ PackageManager::getAllRunningContainers() noexcept
     struct flock unlocker{ .l_type = F_UNLCK, .l_whence = SEEK_SET, .l_start = 0, .l_len = 0 };
 
     if (::fcntl(lockFd, F_SETLK, &unlocker)) {
-        return LINGLONG_ERR(QStringLiteral("failed to unlock ") % repoLockPath % ": "
-                            % ::strerror(errno));
+        return LINGLONG_ERR(
+          QStringLiteral("failed to unlock %1: %2").arg(repoLockPath).arg(::strerror(errno)));
     }
 
     ::close(lockFd);
@@ -498,7 +501,7 @@ void PackageManager::setConfiguration(const QVariantMap &parameters) noexcept
 {
     auto cfg = utils::serialize::fromQVariantMap<api::types::v1::RepoConfigV2>(parameters);
     if (!cfg) {
-        sendErrorReply(QDBusError::InvalidArgs, cfg.error().message());
+        sendErrorReply(QDBusError::InvalidArgs, QString::fromStdString(cfg.error().message()));
         return;
     }
 
@@ -523,7 +526,7 @@ void PackageManager::setConfiguration(const QVariantMap &parameters) noexcept
 
     auto result = this->repo.setConfig(*cfg);
     if (!result) {
-        sendErrorReply(QDBusError::Failed, result.error().message());
+        sendErrorReply(QDBusError::Failed, result.error().message().c_str());
     }
 }
 
@@ -1161,8 +1164,7 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
       utils::serialize::fromQVariantMap<api::types::v1::PackageManager1InstallParameters>(
         parameters);
     if (!paras) {
-        return toDBusReply(utils::error::ErrorCode::AppInstallFailed,
-                           paras.error().message().toStdString());
+        return toDBusReply(utils::error::ErrorCode::AppInstallFailed, paras.error().message());
     }
 
     api::types::v1::PackageManager1Package package;
@@ -1173,8 +1175,7 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
     // 解析用户输入
     auto fuzzyRef = fuzzyReferenceFromPackage(package);
     if (!fuzzyRef) {
-        return toDBusReply(utils::error::ErrorCode::AppInstallFailed,
-                           fuzzyRef.error().message().toStdString());
+        return toDBusReply(utils::error::ErrorCode::AppInstallFailed, fuzzyRef.error().message());
     }
 
     std::string curModule = "binary";
@@ -1227,8 +1228,7 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
           },
           connection());
         if (!ret) {
-            return toDBusReply(utils::error::ErrorCode::AppInstallFailed,
-                               ret.error().message().toStdString());
+            return toDBusReply(utils::error::ErrorCode::AppInstallFailed, ret.error().message());
         }
 
         auto &taskRef = ret->get();
@@ -1291,11 +1291,10 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
         if (refRet.error().code()
             == static_cast<int>(utils::error::ErrorCode::AppNotFoundFromRemote)) {
             return toDBusReply(utils::error::ErrorCode::AppInstallNotFoundFromRemote,
-                               refRet.error().message().toStdString());
+                               refRet.error().message());
         }
 
-        return toDBusReply(utils::error::ErrorCode::AppInstallFailed,
-                           refRet.error().message().toStdString());
+        return toDBusReply(utils::error::ErrorCode::AppInstallFailed, refRet.error().message());
     }
 
     auto remoteRef = refRet->reference;
@@ -1376,8 +1375,7 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
 
     auto taskRet = tasks.addNewTask({ refSpec }, std::move(installer), connection());
     if (!taskRet) {
-        return toDBusReply(utils::error::ErrorCode::Unknown,
-                           taskRet.error().message().toStdString());
+        return toDBusReply(utils::error::ErrorCode::Unknown, taskRet.error().message());
     }
 
     auto &taskRef = taskRet->get();
@@ -1487,8 +1485,7 @@ void PackageManager::Install(PackageTask &taskContext,
     auto ret = executePostInstallHooks(newRef);
     if (!ret) {
         taskContext.updateState(linglong::api::types::v1::State::Failed,
-                                "Failed to execute postInstall hooks.\n"
-                                  + ret.error().message().toStdString());
+                                "Failed to execute postInstall hooks.\n" + ret.error().message());
         return;
     }
 
@@ -1510,7 +1507,7 @@ void PackageManager::InstallRef(PackageTask &taskContext,
     auto currentArch = package::Architecture::currentCPUArchitecture();
     if (!currentArch) {
         taskContext.updateState(linglong::api::types::v1::State::Failed,
-                                currentArch.error().message().toStdString());
+                                currentArch.error().message());
     }
 
     if (ref.arch != *currentArch) {
@@ -1529,7 +1526,7 @@ void PackageManager::InstallRef(PackageTask &taskContext,
                                                              .deleted = true });
     if (!deletedList) {
         taskContext.updateState(linglong::api::types::v1::State::Failed,
-                                deletedList.error().message().toStdString());
+                                deletedList.error().message());
         Q_ASSERT(false);
         return;
     }
@@ -1603,14 +1600,14 @@ void PackageManager::InstallRef(PackageTask &taskContext,
         auto layerDir = this->repo.getLayerDir(ref);
         if (!layerDir) {
             taskContext.updateState(linglong::api::types::v1::State::Failed,
-                                    LINGLONG_ERRV(layerDir).message().toStdString());
+                                    LINGLONG_ERRV(layerDir).message());
             return;
         }
 
         auto info = layerDir->info();
         if (!info) {
             taskContext.updateState(linglong::api::types::v1::State::Failed,
-                                    LINGLONG_ERRV(info).message().toStdString());
+                                    LINGLONG_ERRV(info).message());
             return;
         }
 
@@ -1627,8 +1624,7 @@ auto PackageManager::Uninstall(const QVariantMap &parameters) noexcept -> QVaria
       utils::serialize::fromQVariantMap<api::types::v1::PackageManager1UninstallParameters>(
         parameters);
     if (!paras) {
-        return toDBusReply(utils::error::ErrorCode::AppUninstallFailed,
-                           paras.error().message().toStdString());
+        return toDBusReply(utils::error::ErrorCode::AppUninstallFailed, paras.error().message());
     }
 
     auto query = linglong::repo::repoCacheQuery{ .id = paras->package.id,
@@ -1637,7 +1633,7 @@ auto PackageManager::Uninstall(const QVariantMap &parameters) noexcept -> QVaria
     auto candidate = this->repo.listLocalBy(query);
     if (!candidate) {
         return toDBusReply(utils::error::ErrorCode::AppUninstallFailed,
-                           candidate.error().message().toStdString());
+                           candidate.error().message());
     }
 
     int count = 0;
@@ -1718,8 +1714,7 @@ auto PackageManager::Uninstall(const QVariantMap &parameters) noexcept -> QVaria
       },
       connection());
     if (!taskRet) {
-        return toDBusReply(utils::error::ErrorCode::AppUninstallFailed,
-                           taskRet.error().message().toStdString());
+        return toDBusReply(utils::error::ErrorCode::AppUninstallFailed, taskRet.error().message());
     }
 
     auto &taskRef = taskRet->get();
@@ -1827,8 +1822,7 @@ auto PackageManager::Update(const QVariantMap &parameters) noexcept -> QVariantM
     auto paras = utils::serialize::fromQVariantMap<api::types::v1::PackageManager1UpdateParameters>(
       parameters);
     if (!paras) {
-        return toDBusReply(utils::error::ErrorCode::AppUpgradeFailed,
-                           paras.error().message().toStdString());
+        return toDBusReply(utils::error::ErrorCode::AppUpgradeFailed, paras.error().message());
     }
 
     std::unordered_map<package::Reference, package::ReferenceWithRepo> upgrades;
@@ -1837,7 +1831,7 @@ auto PackageManager::Update(const QVariantMap &parameters) noexcept -> QVariantM
         auto installedAppFuzzyRef = fuzzyReferenceFromPackage(package);
         if (!installedAppFuzzyRef) {
             return toDBusReply(utils::error::ErrorCode::AppUpgradeFailed,
-                               installedAppFuzzyRef.error().message().toStdString());
+                               installedAppFuzzyRef.error().message());
         }
 
         auto ref = this->repo.clearReference(*installedAppFuzzyRef,
@@ -1857,13 +1851,13 @@ auto PackageManager::Update(const QVariantMap &parameters) noexcept -> QVariantM
         auto layerItem = this->repo.getLayerItem(*ref);
         if (!layerItem) {
             return toDBusReply(utils::error::ErrorCode::AppUpgradeFailed,
-                               layerItem.error().message().toStdString());
+                               layerItem.error().message());
         }
 
         auto newRef = this->repo.latestRemoteReference(*installedAppFuzzyRef);
         if (!newRef) {
             return toDBusReply(utils::error::ErrorCode::AppUpgradeRemoteNotFound,
-                               newRef.error().message().toStdString());
+                               newRef.error().message());
         }
 
         if (newRef->reference.version <= ref->version) {
@@ -1903,8 +1897,7 @@ auto PackageManager::Update(const QVariantMap &parameters) noexcept -> QVariantM
       },
       connection());
     if (!ret) {
-        return toDBusReply(utils::error::ErrorCode::AppUpgradeFailed,
-                           ret.error().message().toStdString());
+        return toDBusReply(utils::error::ErrorCode::AppUpgradeFailed, ret.error().message());
     }
 
     auto &taskRef = ret->get();
@@ -2034,8 +2027,7 @@ auto PackageManager::Search(const QVariantMap &parameters) noexcept -> QVariantM
                 qWarning() << "list remote failed: " << pkgInfosRet.error().message();
                 Q_EMIT this->SearchFinished(
                   jobID,
-                  toDBusReply(utils::error::ErrorCode::Failed,
-                              pkgInfosRet.error().message().toStdString()));
+                  toDBusReply(utils::error::ErrorCode::Failed, pkgInfosRet.error().message()));
                 return;
             }
 
@@ -2083,7 +2075,7 @@ void PackageManager::pullDependency(PackageTask &taskContext,
         auto fuzzyRuntime = package::FuzzyReference::parse(*info.runtime);
         if (!fuzzyRuntime) {
             taskContext.updateState(linglong::api::types::v1::State::Failed,
-                                    LINGLONG_ERRV(fuzzyRuntime).message().toStdString());
+                                    LINGLONG_ERRV(fuzzyRuntime).message());
             return;
         }
 
@@ -2102,7 +2094,7 @@ void PackageManager::pullDependency(PackageTask &taskContext,
                                                           });
             if (!localRuntime) {
                 taskContext.updateState(linglong::api::types::v1::State::Failed,
-                                        runtime.error().message().toStdString());
+                                        runtime.error().message());
                 return;
             }
 
@@ -2130,7 +2122,7 @@ void PackageManager::pullDependency(PackageTask &taskContext,
             auto ret = executePostInstallHooks(runtime->reference);
             if (!ret) {
                 taskContext.updateState(linglong::api::types::v1::State::Failed,
-                                        LINGLONG_ERRV(ret).message().toStdString());
+                                        LINGLONG_ERRV(ret).message());
                 return;
             }
 
@@ -2153,7 +2145,7 @@ void PackageManager::pullDependency(PackageTask &taskContext,
     auto fuzzyBase = package::FuzzyReference::parse(info.base);
     if (!fuzzyBase) {
         taskContext.updateState(linglong::api::types::v1::State::Failed,
-                                LINGLONG_ERRV(fuzzyBase).message().toStdString());
+                                LINGLONG_ERRV(fuzzyBase).message());
         return;
     }
 
@@ -2172,7 +2164,7 @@ void PackageManager::pullDependency(PackageTask &taskContext,
                                                    });
         if (!localBase) {
             taskContext.updateState(linglong::api::types::v1::State::Failed,
-                                    LINGLONG_ERRV(base).message().toStdString());
+                                    LINGLONG_ERRV(base).message());
             return;
         }
 
@@ -2198,7 +2190,7 @@ void PackageManager::pullDependency(PackageTask &taskContext,
         auto ret = executePostInstallHooks(base->reference);
         if (!ret) {
             taskContext.updateState(linglong::api::types::v1::State::Failed,
-                                    LINGLONG_ERRV(ret).message().toStdString());
+                                    LINGLONG_ERRV(ret).message());
             return;
         }
 

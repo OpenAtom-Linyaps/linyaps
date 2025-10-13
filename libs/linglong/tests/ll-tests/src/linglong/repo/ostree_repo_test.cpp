@@ -128,8 +128,7 @@ TEST_F(RepoTest, exportDir)
           << "Destination applications directory not created";
         std::ofstream(destDirPath / "share" / "applications" / "test").close();
         auto result = ostreeRepo->exportDir("appID", srcDirPath.string(), destDirPath.string(), 10);
-        EXPECT_TRUE(result.has_value())
-          << "exportDir failed: " << result.error().message().toStdString();
+        EXPECT_TRUE(result.has_value()) << "exportDir failed: " << result.error().message();
         EXPECT_FALSE(ec) << "Unexpected error code: " << ec.message();
 
         // 非标准路径会被忽略
@@ -147,8 +146,7 @@ TEST_F(RepoTest, exportDir)
         EXPECT_TRUE(fs::exists(destDirPath / "lib" / "systemd" / "system" / "test.service"));
         // 测试重复导出
         result = ostreeRepo->exportDir("appID", srcDirPath.string(), destDirPath.string(), 10);
-        EXPECT_TRUE(result.has_value())
-          << "exportDir failed: " << result.error().message().toStdString();
+        EXPECT_TRUE(result.has_value()) << "exportDir failed: " << result.error().message();
         EXPECT_FALSE(ec) << "Unexpected error code: " << ec.message();
     }
     ostreeRepo->wrapGetOverlayShareDirFunc = [destDirPath]() {
@@ -157,45 +155,39 @@ TEST_F(RepoTest, exportDir)
     // 如果defaultShareDir已存在desktop, 则优先导出到defaultShareDir目录
     {
         auto result = ostreeRepo->exportDir("appID", srcDirPath.string(), destDirPath.string(), 10);
-        EXPECT_TRUE(result.has_value())
-          << "exportDir failed: " << result.error().message().toStdString();
+        EXPECT_TRUE(result.has_value()) << "exportDir failed: " << result.error().message();
         EXPECT_FALSE(ec) << "Unexpected error code: " << ec.message();
         EXPECT_TRUE(fs::exists(destDirPath / "share/applications/test/test.desktop"));
         EXPECT_TRUE(!fs::exists(destDirPath / "app/share/applications/test/test.desktop"));
         // 测试重复导出
         result = ostreeRepo->exportDir("appID", srcDirPath.string(), destDirPath.string(), 10);
-        EXPECT_TRUE(result.has_value())
-          << "exportDir failed: " << result.error().message().toStdString();
+        EXPECT_TRUE(result.has_value()) << "exportDir failed: " << result.error().message();
         EXPECT_FALSE(ec) << "Unexpected error code: " << ec.message();
     }
     // 如果defaultShareDir不存在desktop, 则导出到overlayShareDir目录
     fs::remove_all(destDirPath);
     {
         auto result = ostreeRepo->exportDir("appID", srcDirPath.string(), destDirPath.string(), 10);
-        EXPECT_TRUE(result.has_value())
-          << "exportDir failed: " << result.error().message().toStdString();
+        EXPECT_TRUE(result.has_value()) << "exportDir failed: " << result.error().message();
         EXPECT_TRUE(!fs::exists(destDirPath / "share/applications/test/test.desktop"));
         EXPECT_TRUE(fs::exists(destDirPath / "apps/share/applications/test/test.desktop"));
         // 测试重复导出
         result = ostreeRepo->exportDir("appID", srcDirPath.string(), destDirPath.string(), 10);
-        EXPECT_TRUE(result.has_value())
-          << "exportDir failed: " << result.error().message().toStdString();
+        EXPECT_TRUE(result.has_value()) << "exportDir failed: " << result.error().message();
     }
     // 如果两个目录都有desktop，则导出到两个目录
     {
         std::ofstream(destDirPath / "share/applications/test/test.desktop").close();
         EXPECT_TRUE(!fs::is_symlink(destDirPath / "share/applications/test/test.desktop"));
         auto result = ostreeRepo->exportDir("appID", srcDirPath.string(), destDirPath.string(), 10);
-        EXPECT_TRUE(result.has_value())
-          << "exportDir failed: " << result.error().message().toStdString();
+        EXPECT_TRUE(result.has_value()) << "exportDir failed: " << result.error().message();
         EXPECT_TRUE(fs::exists(destDirPath / "share/applications/test/test.desktop"));
         EXPECT_TRUE(fs::exists(destDirPath / "apps/share/applications/test/test.desktop"));
         EXPECT_TRUE(fs::is_symlink(destDirPath / "share/applications/test/test.desktop"));
         EXPECT_TRUE(fs::is_symlink(destDirPath / "apps/share/applications/test/test.desktop"));
         // 测试重复导出
         result = ostreeRepo->exportDir("appID", srcDirPath.string(), destDirPath.string(), 10);
-        EXPECT_TRUE(result.has_value())
-          << "exportDir failed: " << result.error().message().toStdString();
+        EXPECT_TRUE(result.has_value()) << "exportDir failed: " << result.error().message();
     }
 
     // 测试空目录导出
@@ -206,8 +198,7 @@ TEST_F(RepoTest, exportDir)
     EXPECT_TRUE(fs::exists(emptyDirPath)) << "Empty directory not created";
     fs::path emptyDestPath = tempDir / "empty_dest";
     auto result = ostreeRepo->exportDir("appID", emptyDirPath.string(), emptyDestPath.string(), 10);
-    EXPECT_TRUE(result.has_value())
-      << "exportDir failed: " << result.error().message().toStdString();
+    EXPECT_TRUE(result.has_value()) << "exportDir failed: " << result.error().message();
     EXPECT_FALSE(ec) << "Unexpected error code: " << ec.message();
     EXPECT_TRUE(fs::exists(emptyDestPath));
 }

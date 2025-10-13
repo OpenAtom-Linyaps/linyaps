@@ -17,6 +17,7 @@
 #include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonDocument>
+#include <QJsonObject>
 
 #include <filesystem>
 #include <fstream>

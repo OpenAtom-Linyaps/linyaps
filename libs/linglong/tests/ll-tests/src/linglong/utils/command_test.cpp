@@ -47,7 +47,7 @@ TEST(command, setEnv)
     // test unset
     cmd.setEnv("PATH", "");
     auto ret = cmd.exec({ "-c", "export" });
-    EXPECT_TRUE(ret.has_value()) << ret.error().message().toStdString();
+    EXPECT_TRUE(ret.has_value()) << ret.error().message();
     auto retStr = *ret;
     EXPECT_TRUE(retStr.contains("declare -x LINGLONG_TEST_SETENV=")) << retStr.toStdString();
     EXPECT_FALSE(retStr.contains("declare -x PATH=\"")) << retStr.toStdString();

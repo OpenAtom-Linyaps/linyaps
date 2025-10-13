@@ -174,7 +174,7 @@ void PackageTask::reportError(linglong::utils::error::Error &&err) noexcept
     this->setProperty("SubState", static_cast<int>(linglong::api::types::v1::SubState::AllDone));
     m_err = std::move(err);
 
-    this->setProperty("Message", m_err.message());
+    this->setProperty("Message", m_err.message().c_str());
     this->setProperty("Code", m_err.code());
     changePropertiesDone();
 }

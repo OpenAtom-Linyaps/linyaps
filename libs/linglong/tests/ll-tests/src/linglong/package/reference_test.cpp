@@ -29,7 +29,7 @@ TEST(Package, Reference)
         auto refer = Reference::parse(validCase);
         ASSERT_EQ(refer.has_value(), true)
           << validCase << " is valid reference. Error: "
-          << (refer.has_value() ? "no error" : refer.error().message().toStdString());
+          << (refer.has_value() ? "no error" : refer.error().message());
         ASSERT_EQ(refer->toString(), validCase);
     }
 
@@ -45,7 +45,7 @@ TEST(Package, Reference)
         auto refer = Reference::parse(invalidCase);
         ASSERT_EQ(refer.has_value(), false)
           << invalidCase.toStdString() << " is invalid reference. Error: "
-          << (refer.has_value() ? "no error" : refer.error().message().toStdString());
+          << (refer.has_value() ? "no error" : refer.error().message());
     }
 
     const std::unordered_map<std::string, std::string> validFuzzReferences = {
@@ -64,7 +64,7 @@ TEST(Package, Reference)
         auto refer = FuzzyReference::parse(validCase.first);
         ASSERT_EQ(refer.has_value(), true)
           << validCase.first << " is valid fuzz reference. Error: "
-          << (refer.has_value() ? "no error" : refer.error().message().toStdString());
+          << (refer.has_value() ? "no error" : refer.error().message());
         ASSERT_EQ(refer->toString(), validCase.second);
     }
 }

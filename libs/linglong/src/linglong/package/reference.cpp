@@ -7,9 +7,12 @@
 #include "linglong/package/reference.h"
 
 #include <fmt/format.h>
-#include <qregularexpression.h>
 
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QRegularExpression>
 #include <QStringList>
+#include <QVariantMap>
 
 namespace linglong::package {
 

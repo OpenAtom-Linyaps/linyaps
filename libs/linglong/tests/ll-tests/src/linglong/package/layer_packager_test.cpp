@@ -61,8 +61,7 @@ public:
         emptyFile.close();
         auto layerDir = package::LayerDir(layerDirPath.string().c_str());
         auto ret = packager.pack(layerDir, layerFilePath.string().c_str());
-        ASSERT_TRUE(ret.has_value())
-          << "Failed to pack layer file" << ret.error().message().toStdString();
+        ASSERT_TRUE(ret.has_value()) << "Failed to pack layer file" << ret.error().message();
         ASSERT_TRUE(std::filesystem::exists(layerFilePath)) << "Failed to pack layer file";
         // 删除layer目录
         std::error_code ec;
@@ -94,12 +93,11 @@ TEST_F(LayerPackagerTest, LayerPackagerUnpackFuseOffset)
 {
     auto layerFileRet = package::LayerFile::New((layerFilePath).string().c_str());
     ASSERT_TRUE(layerFileRet.has_value())
-      << "Failed to create layer file" << layerFileRet.error().message().toStdString();
+      << "Failed to create layer file" << layerFileRet.error().message();
     auto layerFile = *layerFileRet;
     package::LayerPackager packager;
     auto ret = packager.unpack(*layerFile);
-    ASSERT_TRUE(ret.has_value()) << "Failed to unpack layer file"
-                                 << ret.error().message().toStdString();
+    ASSERT_TRUE(ret.has_value()) << "Failed to unpack layer file" << ret.error().message();
     ASSERT_TRUE(std::filesystem::exists(ret->filePath("info.json").toStdString()))
       << "'info.json' not found in unpack dir" << ret->filePath("info.json").toStdString();
     auto filesDir = ret->filesDirPath().toStdString();
@@ -126,7 +124,7 @@ TEST_F(LayerPackagerTest, LayerPackagerUnpackFuse)
     }
     auto layerFileRet = package::LayerFile::New((layerFilePath).string().c_str());
     ASSERT_TRUE(layerFileRet.has_value())
-      << "Failed to create layer file" << layerFileRet.error().message().toStdString();
+      << "Failed to create layer file" << layerFileRet.error().message();
     auto layerFile = *layerFileRet;
     MockLayerPackager packager;
     packager.wrapCheckErofsFuseExistsFunc = []() {
@@ -136,8 +134,7 @@ TEST_F(LayerPackagerTest, LayerPackagerUnpackFuse)
         return false;
     };
     auto ret = packager.unpack(*layerFile);
-    ASSERT_TRUE(ret.has_value()) << "Failed to unpack layer file"
-                                 << ret.error().message().toStdString();
+    ASSERT_TRUE(ret.has_value()) << "Failed to unpack layer file" << ret.error().message();
     ASSERT_TRUE(std::filesystem::exists(ret->filePath("info.json").toStdString()))
       << "'info.json' not found in unpack dir" << ret->filePath("info.json").toStdString();
     auto filesDir = ret->filesDirPath().toStdString();
@@ -154,15 +151,14 @@ TEST_F(LayerPackagerTest, LayerPackagerUnpackFsck)
 {
     auto layerFileRet = package::LayerFile::New(layerFilePath.string().c_str());
     ASSERT_TRUE(layerFileRet.has_value())
-      << "Failed to create layer file" << layerFileRet.error().message().toStdString();
+      << "Failed to create layer file" << layerFileRet.error().message();
     auto layerFile = *layerFileRet;
     MockLayerPackager packager;
     packager.wrapCheckErofsFuseExistsFunc = []() {
         return false;
     };
     auto ret = packager.unpack(*layerFile);
-    ASSERT_TRUE(ret.has_value()) << "Failed to unpack layer file"
-                                 << ret.error().message().toStdString();
+    ASSERT_TRUE(ret.has_value()) << "Failed to unpack layer file" << ret.error().message();
     ASSERT_TRUE(std::filesystem::exists(ret->filePath("info.json").toStdString()))
       << "'info.json' not found in unpack dir" << ret->filePath("info.json").toStdString();
     auto filesDir = ret->filesDirPath().toStdString();
@@ -185,7 +181,7 @@ TEST_F(LayerPackagerTest, InitWorkDir)
     };
     // 测试initWorkDir
     auto ret = packager.initWorkDir();
-    ASSERT_TRUE(ret.has_value()) << "Failed to init workdir" << ret.error().message().toStdString();
+    ASSERT_TRUE(ret.has_value()) << "Failed to init workdir" << ret.error().message();
     ASSERT_NE(packager.getWorkDir().string(), tmpPath / "not-exists")
       << "workdir should be temporary directory";
     // 删除临时目录

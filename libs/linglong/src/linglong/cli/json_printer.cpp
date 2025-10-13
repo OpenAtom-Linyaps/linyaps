@@ -18,10 +18,8 @@ namespace linglong::cli {
 
 void JSONPrinter::printErr(const utils::error::Error &err)
 {
-    std::cout << nlohmann::json{
-        { "code", err.code() },
-        { "message", err.message().toStdString() }
-    }.dump() << std::endl;
+    std::cout << nlohmann::json{ { "code", err.code() }, { "message", err.message() } }.dump()
+              << std::endl;
 }
 
 void JSONPrinter::printPackage(const api::types::v1::PackageInfoV2 &info)

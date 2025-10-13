@@ -35,8 +35,8 @@ RepoCache::create(const std::filesystem::path &cacheFile,
     std::error_code ec;
     if (!std::filesystem::exists(repoCache->cacheFile, ec)) {
         if (ec) {
-            return LINGLONG_ERR(QString{ "checking file existence failed: " }
-                                % ec.message().c_str());
+            return LINGLONG_ERR(
+              QString{ "checking file existence failed: %1" }.arg(ec.message().c_str()));
         }
 
         auto ret = repoCache->rebuildCache(repoConfig, repo);

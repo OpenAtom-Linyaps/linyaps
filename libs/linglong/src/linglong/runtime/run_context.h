@@ -59,6 +59,7 @@ struct ResolveOptions
     std::optional<std::vector<std::string>> appModules;
     std::optional<std::string> baseRef;
     std::optional<std::string> runtimeRef;
+    std::optional<std::vector<std::string>> extensionRefs;
 };
 
 class RunContext
@@ -103,8 +104,14 @@ private:
     utils::error::Result<void> resolveLayer(bool depsBinaryOnly,
                                             const std::vector<std::string> &appModules);
     utils::error::Result<void> resolveExtension(RuntimeLayer &layer);
+    utils::error::Result<void>
+    resolveExtension(const std::vector<api::types::v1::ExtensionDefine> &extDefs,
+                     std::optional<std::string> channel = std::nullopt,
+                     bool skipOnNotFound = false);
     utils::error::Result<void> fillExtraAppMounts(generator::ContainerCfgBuilder &builder);
     void detectDisplaySystem(generator::ContainerCfgBuilder &builder) noexcept;
+    utils::error::Result<std::vector<api::types::v1::ExtensionDefine>>
+    makeManualExtensionDefine(const std::vector<std::string> &refs);
 
     repo::OSTreeRepo &repo;
     std::unordered_map<SecurityContextType, std::unique_ptr<SecurityContext>> securityContexts;

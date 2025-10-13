@@ -29,6 +29,7 @@ struct RunCommandOptions
     std::vector<std::string> execModules;
     std::vector<std::string> commands;
     bool debugMode = false;
+    std::vector<std::string> extensions;
 };
 
 struct ListCommandOptions

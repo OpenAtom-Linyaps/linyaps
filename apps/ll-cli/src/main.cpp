@@ -200,6 +200,14 @@ ll-cli run org.deepin.demo -- bash -x /path/to/bash/script)"));
                    _("Specify the runtime used by the application to run"))
       ->type_name("REF")
       ->check(validatorString);
+    cliRun
+      ->add_option("--extensions",
+                   runOptions.extensions,
+                   _("Specify extension(s) used by the application to run"))
+      ->type_name("REF")
+      ->delimiter(',')          // 支持以逗号分隔
+      ->allow_extra_args(false) //避免吞掉后面的参数
+      ->check(validatorString);
     cliRun->add_option("COMMAND", runOptions.commands, _("Run commands in a running sandbox"));
 }
 

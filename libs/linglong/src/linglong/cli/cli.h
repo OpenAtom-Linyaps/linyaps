@@ -47,6 +47,7 @@ struct RunOptions
     std::vector<std::string> commands;
     std::optional<std::string> base;
     std::optional<std::string> runtime;
+    std::vector<std::string> extensions;
 };
 
 struct EnterOptions

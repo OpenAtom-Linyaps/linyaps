@@ -8,6 +8,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 
 namespace linglong::utils::error::details {
 
@@ -16,12 +17,11 @@ class ErrorImpl
 public:
     ErrorImpl(const char *file,
               int line,
-              const char *category,
-              const int &code,
-              const std::string &msg,
+              int code,
+              std::string msg,
               std::unique_ptr<ErrorImpl> cause = nullptr)
         : _code(code)
-        , _msg(msg)
+        , _msg(std::move(msg))
         , _file(file)
         , _line(line)
         , cause(std::move(cause))
@@ -43,10 +43,10 @@ public:
     }
 
 private:
-    const int _code;
-    const std::string _msg;
-    const std::string _file;
-    const int _line;
+    int _code;
+    std::string _msg;
+    std::string _file;
+    int _line;
     std::unique_ptr<ErrorImpl> cause;
 };
 

@@ -174,7 +174,7 @@ TEST_F(LayerPackagerTest, InitWorkDir)
     // 测试创建workdir失败时, initWorkDir 应该使用临时目录
     packager.wrapMkdirDirFunc = [](const std::string &path) -> utils::error::Result<void> {
         LINGLONG_TRACE("test workdir not exists");
-        if (common::strings::hasPrefix(path, "/var/tmp")) {
+        if (common::strings::starts_with(path, "/var/tmp")) {
             return LINGLONG_ERR("failed to create work dir");
         }
         return LINGLONG_OK;

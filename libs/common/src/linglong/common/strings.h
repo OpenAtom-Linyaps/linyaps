@@ -31,7 +31,7 @@ inline splitOption operator&(splitOption a, splitOption b)
 
 bool stringEqual(std::string_view str1, std::string_view str2, bool caseSensitive = false) noexcept;
 
-std::string trim(const std::string &str) noexcept;
+std::string trim(std::string_view str, std::string_view chars = " ") noexcept;
 
 std::vector<std::string> split(const std::string &str,
                                char delimiter,
@@ -43,9 +43,9 @@ std::string replaceSubstring(std::string_view str,
                              std::string_view from,
                              std::string_view to) noexcept;
 
-bool hasPrefix(std::string_view str, std::string_view prefix) noexcept;
+bool starts_with(std::string_view str, std::string_view prefix) noexcept;
 
-bool hasSuffix(std::string_view str, std::string_view suffix) noexcept;
+bool ends_with(std::string_view str, std::string_view suffix) noexcept;
 
 bool contains(std::string_view str, std::string_view suffix) noexcept;
 

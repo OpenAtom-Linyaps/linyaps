@@ -159,7 +159,7 @@ TEST_F(UabFileTest, UnpackFuse)
     };
     uab.wrapMkdirDirFunc = [](const std::string &path) -> utils::error::Result<void> {
         LINGLONG_TRACE("test");
-        if (common::strings::hasPrefix(path, "/var/tmp")) {
+        if (common::strings::starts_with(path, "/var/tmp")) {
             return LINGLONG_ERR("Cannot create directory in /var/tmp");
         }
         std::filesystem::create_directories(path);

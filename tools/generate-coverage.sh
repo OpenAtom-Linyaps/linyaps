@@ -32,6 +32,8 @@ mkdir -p "$builddir"/report || exit 255
 
 gcovr \
     --filter "apps/.*" \
+    --filter "libs/common/.*" \
+    --filter "libs/oci-cfg-generators/.*" \
     --filter "libs/utils/.*" \
     --filter "libs/linglong/src/.*" \
     --html-nested "$builddir"/report/index.html \

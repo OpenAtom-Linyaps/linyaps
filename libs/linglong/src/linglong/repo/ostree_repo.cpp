@@ -2056,7 +2056,7 @@ utils::error::Result<void> OSTreeRepo::exportDir(const std::string &appID,
         }
         if (is_regular_file) {
             // linyaps.original结尾的文件是重写之前的备份文件，不应该被导出
-            if (common::strings::hasSuffix(source_path.string(), ".linyaps.original")) {
+            if (common::strings::ends_with(source_path.string(), ".linyaps.original")) {
                 continue;
             }
             // 在导出桌面文件和dbus服务文件时，需要修改其中的Exec和TryExec字段
@@ -2128,8 +2128,8 @@ utils::error::Result<void> OSTreeRepo::exportDir(const std::string &appID,
                  target_path.string());
             // 如果配置了overlay并且是applications中的desktop文件，执行特殊的逻辑
             if (oldAppDir != newAppDir
-                && common::strings::hasPrefix(target_path.string(), oldAppDir)
-                && common::strings::hasSuffix(target_path.string(), ".desktop")) {
+                && common::strings::starts_with(target_path.string(), oldAppDir)
+                && common::strings::ends_with(target_path.string(), ".desktop")) {
                 auto desktopExists = false;
                 // 如果要导出的desktop已存在，则覆盖导出（无论是在default还是overlay中），避免桌面和任务栏的快捷方式失效
                 const std::string appDirs[] = { oldAppDir, newAppDir };

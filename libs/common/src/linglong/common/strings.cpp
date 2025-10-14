@@ -19,11 +19,15 @@ bool stringEqual(std::string_view str1, std::string_view str2, bool caseSensitiv
     });
 }
 
-std::string trim(const std::string &str) noexcept
+std::string trim(std::string_view str, std::string_view chars) noexcept
 {
-    auto first = str.find_first_not_of(' ');
-    auto last = str.find_last_not_of(' ');
-    return str.substr(first, last - first + 1);
+    auto first = str.find_first_not_of(chars);
+    if (first == std::string_view::npos) {
+        return "";
+    }
+
+    auto last = str.find_last_not_of(chars);
+    return std::string(str.substr(first, last - first + 1));
 }
 
 std::vector<std::string> split(const std::string &str, char delimiter, splitOption option) noexcept
@@ -61,12 +65,27 @@ std::vector<std::string> split(const std::string &str, char delimiter, splitOpti
 
 std::string join(const std::vector<std::string> &strs, char delimiter) noexcept
 {
-    std::string result;
-    for (size_t i = 0; i < strs.size() - 1; ++i) {
-        result += strs[i];
-        result += delimiter;
+    if (strs.empty()) {
+        return "";
     }
-    result += strs[strs.size() - 1];
+
+    if (strs.size() == 1) {
+        return strs[0];
+    }
+
+    size_t total_len = strs.size() - 1;
+    for (const auto &s : strs) {
+        total_len += s.size();
+    }
+
+    std::string result;
+    result.reserve(total_len);
+    result.append(strs[0]);
+    for (size_t i = 1; i < strs.size(); ++i) {
+        result.push_back(delimiter);
+        result.append(strs[i]);
+    }
+
     return result;
 }
 
@@ -97,7 +116,7 @@ std::string replaceSubstring(std::string_view str,
     return result;
 }
 
-bool hasPrefix(std::string_view str, std::string_view prefix) noexcept
+bool starts_with(std::string_view str, std::string_view prefix) noexcept
 {
     if (str.size() < prefix.size()) {
         return false;
@@ -106,11 +125,12 @@ bool hasPrefix(std::string_view str, std::string_view prefix) noexcept
     return str.substr(0, prefix.size()) == prefix;
 }
 
-bool hasSuffix(std::string_view str, std::string_view suffix) noexcept
+bool ends_with(std::string_view str, std::string_view suffix) noexcept
 {
     if (str.size() < suffix.size()) {
         return false;
     }
+
     return str.substr(str.size() - suffix.size()) == suffix;
 }
 

@@ -12,6 +12,7 @@ pfl_add_executable(
   DISABLE_INSTALL
   SOURCES
   # find -regex '\./src/.+\.[ch]\(pp\)?' -type f -printf '%P\n'| sort
+  src/linglong/common/strings_test.cpp
   src/linglong/common/xdg_test.cpp
   src/linglong/package/architecture_test.cpp
   src/linglong/package/fallback_version_test.cpp

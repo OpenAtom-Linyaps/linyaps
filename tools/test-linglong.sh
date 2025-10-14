@@ -53,7 +53,7 @@ ll-cli uninstall org.deepin.demo || true
 ./org.deepin.demo_x86_64_0.0.0.1_main.uab
 
 #安装构建的应用
-ll-cli install org.deepin.demo_x86_64_0.0.0.1_main.uab
+ll-cli install org.deepin.demo_0.0.0.1_x86_64_main.uab
 ll-cli uninstall org.deepin.demo || true
 ll-cli install org.deepin.demo_0.0.0.1_x86_64_binary.layer
 

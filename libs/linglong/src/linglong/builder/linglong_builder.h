@@ -88,8 +88,10 @@ public:
     static auto importLayer(repo::OSTreeRepo &repo, const QString &path)
       -> utils::error::Result<void>;
 
-    auto run(std::vector<std::string> modules, std::vector<std::string> args, bool debug = false, std::vector<std::string> extensions = {})
-      -> utils::error::Result<void>;
+    auto run(std::vector<std::string> modules,
+             std::vector<std::string> args,
+             bool debug = false,
+             std::vector<std::string> extensions = {}) -> utils::error::Result<void>;
     auto runtimeCheck() -> utils::error::Result<void>;
     auto runFromRepo(const package::Reference &ref, const std::vector<std::string> &args)
       -> utils::error::Result<void>;

@@ -1941,7 +1941,7 @@ void PackageManager::Update(PackageTask &taskContext,
 
     auto oldRefLayerItem = this->repo.getLayerItem(oldRef);
 
-    auto msg = fmt::format("Upgrade % 1(from repo : % 2) to % 3(from repo : % 4) success",
+    auto msg = fmt::format("Upgrade {} (from repo : {}) to {} (from repo : {}) success",
                            oldRef.toString(),
                            oldRefLayerItem ? oldRefLayerItem->repo : "local",
                            newRef.toString(),

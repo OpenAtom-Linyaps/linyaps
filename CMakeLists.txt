@@ -225,6 +225,7 @@ if(BUILD_LINGLONG_BUILDER_UTILS_IN_BOX)
   pfl_add_libraries(
     LIBS
     api
+    common
     ocppi
     oci-cfg-generators
     APPS

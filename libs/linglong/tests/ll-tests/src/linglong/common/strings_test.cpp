@@ -101,4 +101,17 @@ TEST(StringsTest, Contains)
     EXPECT_TRUE(contains("", ""));
 }
 
+TEST(StringsTest, QuoteBashArg)
+{
+    EXPECT_EQ(quoteBashArg(""), "''");
+    EXPECT_EQ(quoteBashArg("hello"), "'hello'");
+    EXPECT_EQ(quoteBashArg("hello world"), "'hello world'");
+    EXPECT_EQ(quoteBashArg("let's go"), "'let'\\''s go'");
+    EXPECT_EQ(quoteBashArg("a'b'c"), "'a'\\''b'\\''c'");
+    EXPECT_EQ(quoteBashArg("'test"), "''\\''test'");
+    EXPECT_EQ(quoteBashArg("test'"), "'test'\\'''");
+    EXPECT_EQ(quoteBashArg("'"), "''\\'''");
+    EXPECT_EQ(quoteBashArg("hello $world"), "'hello $world'");
+}
+
 } // namespace linglong::common::strings

@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 #include "linglong/api/types/v1/Generators.hpp" // IWYU pragma: keep
+#include "linglong/common/strings.h"
 #include "linglong/oci-cfg-generators/container_cfg_builder.h"
 #include "ocppi/runtime/config/types/Generators.hpp" // IWYU pragma: keep
 #include "ocppi/runtime/config/types/Hook.hpp"
@@ -260,20 +261,9 @@ bool processProfile(const std::filesystem::path &extraDir,
 bool generateEntrypoint(linglong::generator::ContainerCfgBuilder &builder,
                         std::vector<std::string> originalArgs) noexcept
 {
-    // FIXME: use linglong::utils::quoteBashArg
-    std::for_each(originalArgs.begin(), originalArgs.end(), [](std::string &arg) {
-        constexpr std::string_view quotePrefix = "'\\";
-        for (auto it = arg.begin(); it != arg.end(); it++) {
-            if (*it == '\'') {
-                it = arg.insert(it, quotePrefix.cbegin(), quotePrefix.cend());
-                it = arg.insert(it + quotePrefix.size() + 1, 1, '\'');
-            }
-        }
-    });
-
-    std::string content = "#!/bin/env bash\nsource /etc/profile\nexec ";
+    std::string content = "#!/usr/bin/env bash\nsource /etc/profile\nexec ";
     for (const auto &arg : originalArgs) {
-        content.append(arg);
+        content.append(linglong::common::strings::quoteBashArg(arg));
         content.push_back(' ');
     }
 
@@ -388,7 +378,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv) // NOLINT
     }
 
     auto containerID = genRandomString();
-    auto containerBundleDir = bundleDir.parent_path().parent_path() / containerID;
+    auto containerBundleDir = bundleDir.parent_path() / containerID;
     if (!std::filesystem::create_directories(containerBundleDir, ec) && ec) {
         std::cerr << "couldn't create directory " << containerBundleDir << " :" << ec.message()
                   << std::endl;
@@ -553,8 +543,11 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv) // NOLINT
     }
 
     // generate entrypoint
-    if (!generateEntrypoint(builder,
-                            appInfo->command.value_or(std::vector<std::string>{ "/bin/bash" }))) {
+    auto command = appInfo->command.value_or(std::vector<std::string>{ "/bin/bash" });
+    for (int i = 1; i < argc; ++i) {
+        command.push_back(argv[i]);
+    }
+    if (!generateEntrypoint(builder, command)) {
         std::cerr << "failed to generate entrypoint" << std::endl;
         return -1;
     }

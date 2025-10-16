@@ -49,4 +49,6 @@ bool ends_with(std::string_view str, std::string_view suffix) noexcept;
 
 bool contains(std::string_view str, std::string_view suffix) noexcept;
 
+std::string quoteBashArg(std::string arg) noexcept;
+
 } // namespace linglong::common::strings

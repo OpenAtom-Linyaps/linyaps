@@ -46,6 +46,7 @@ uabBundle [uabOptions...] [-- loaderOptions...]
 
 Options:
     --extract=PATH extract the read-only filesystem image which is in the 'linglong.bundle' segment of uab to PATH. [exclusive]
+    --mount=PATH mount the read-only filesystem image which is in the 'linglong.bundle' segment of uab to PATH, use ctrl+c to stop. [exclusive]
     --print-meta print content of json which from the 'linglong.meta' segment of uab to STDOUT [exclusive]
     --help print usage of uab [exclusive]
 )";
@@ -53,6 +54,7 @@ Options:
 enum uabOption : std::uint8_t {
     Help = 1,
     Extract,
+    Mount,
     Meta,
 };
 
@@ -61,6 +63,7 @@ struct argOption
     bool help{ false };
     bool printMeta{ false };
     std::string extractPath;
+    std::string mountPath;
     std::vector<std::string_view> loaderArgs;
 };
 
@@ -543,9 +546,10 @@ argOption parseArgs(const std::vector<std::string_view> &args)
         opts.loaderArgs.assign(splitter + 1, args.cend());
     }
 
-    std::array<struct option, 4> long_options{
+    std::array<struct option, 5> long_options{
         { { "print-meta", no_argument, nullptr, uabOption::Meta },
           { "extract", required_argument, nullptr, uabOption::Extract },
+          { "mount", required_argument, nullptr, uabOption::Mount },
           { "help", no_argument, nullptr, uabOption::Help },
           { nullptr, 0, nullptr, 0 } }
     };
@@ -572,6 +576,10 @@ argOption parseArgs(const std::vector<std::string_view> &args)
             opts.extractPath = optarg;
             ++counter;
         } break;
+        case uabOption::Mount: {
+            opts.mountPath = optarg;
+            ++counter;
+        } break;
         case uabOption::Help: {
             opts.help = true;
             ++counter;
@@ -592,16 +600,31 @@ argOption parseArgs(const std::vector<std::string_view> &args)
 }
 
 int mountSelf(const lightElf::native_elf &elf,
-              const linglong::api::types::v1::UabMetaInfo &metaInfo) noexcept
+              const linglong::api::types::v1::UabMetaInfo &metaInfo,
+              const std::filesystem::path &mp = {}) noexcept
 {
     if (mountFlag.load(std::memory_order_relaxed)) {
         std::cout << "bundle already has been mounted" << std::endl;
         return 0;
     }
 
-    const auto &uuid = metaInfo.uuid;
-    if (auto ret = createMountPoint(uuid); ret != 0) {
-        return ret;
+    if (mp.empty()) {
+        const auto &uuid = metaInfo.uuid;
+        if (auto ret = createMountPoint(uuid); ret != 0) {
+            return ret;
+        }
+    } else {
+        std::error_code ec;
+        auto state = std::filesystem::status(mp, ec);
+        if (ec) {
+            std::cerr << "failed to status " + mp.string() + ": " + ec.message() << std::endl;
+            return -1;
+        }
+        if (!std::filesystem::is_directory(state)) {
+            std::cerr << mp.string() << "is not a directory" << std::endl;
+            return -1;
+        }
+        mountPoint = mp;
     }
 
     if (auto ret = mountSelfBundle(elf, metaInfo); ret != 0) {
@@ -655,16 +678,19 @@ int main(int argc, char **argv)
         std::abort();
     });
 
-    if (!opts.extractPath.empty()) {
-        if (auto ret = mountSelf(elf, metaInfo); ret != 0) {
-            return ret;
-        }
-
-        return extractBundle(opts.extractPath);
+    if (auto ret = mountSelf(elf, metaInfo, opts.mountPath); ret != 0) {
+        return ret;
     }
 
-    if (auto ret = mountSelf(elf, metaInfo); ret != 0) {
-        return ret;
+    bool mountOnly = !opts.mountPath.empty();
+    if (mountOnly) {
+        while (true) {
+            pause();
+        }
+    }
+
+    if (!opts.extractPath.empty()) {
+        return extractBundle(opts.extractPath);
     }
 
     const bool onlyApp = metaInfo.onlyApp.value_or(false);

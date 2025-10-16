@@ -5,7 +5,7 @@ version: '1'
 package:
   id: cn.org.linyaps.builder.utils
   name: ll-builder-utils
-  version: 0.0.2.0
+  version: 0.0.3.0
   kind: app
   description: |
     Utils for ll-builder
@@ -15,17 +15,20 @@ sources:
   - kind: archive
     url: https://github.com/erofs/erofs-utils/archive/refs/tags/v1.8.6.tar.gz
     digest: 5b221dc3fd6d151425b30534ede46fb7a90dc233a8659cba0372796b0a066547
+    name: erofs-utils
   - kind: archive
     url: https://github.com/libfuse/libfuse/releases/download/fuse-3.17.1/fuse-3.17.1.tar.gz
     digest: 2d8ae87a4525fbfa1db5e5eb010ff6f38140627a7004554ed88411c1843d51b2
+    name: fuse
   - kind: archive
     url: https://github.com/OpenAtom-Linyaps/linyaps-box/archive/refs/tags/2.1.2.tar.gz
     digest: 70c908e3a2397d195d64d606b886c9635b13a461beea70a6cc5317e0bb6e9589
+    name: linyaps-box
 build: |
   echo "$PREFIX"
 
   # build libfuse static library
-  cd /project/linglong/sources/fuse-3.17.1.tar.gz/fuse-3.17.1
+  cd /project/linglong/sources/fuse/fuse-3.17.1
   patch lib/mount.c /project/apps/ll-builder-utils/patch/libfuse.patch
   mkdir build || true
   cd build
@@ -34,14 +37,14 @@ build: |
   ninja && ninja install
 
   # build erofsfuse static library
-  cd /project/linglong/sources/v1.8.6.tar.gz/erofs-utils-1.8.6
+  cd /project/linglong/sources/erofs-utils/erofs-utils-1.8.6
   ./autogen.sh
   ./configure -with-libzstd --enable-fuse --enable-static-fuse --with-libdeflate --without-xxhash libdeflate_LIBS=-ldeflate libdeflate_CFLAGS=-ldeflate
   make -j$(nproc)
   make install
 
   # build static ll-box
-  cd /project/linglong/sources/2.1.2.tar.gz/linyaps-box-2.1.2/
+  cd /project/linglong/sources/linyaps-box/linyaps-box-2.1.2/
   cmake --preset static
   cmake --build build-static -j$(nproc)
   cmake --install build-static --prefix=$PREFIX

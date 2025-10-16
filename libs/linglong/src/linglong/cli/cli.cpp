@@ -27,6 +27,7 @@
 #include "linglong/api/types/v1/UpgradeListResult.hpp"
 #include "linglong/cli/printer.h"
 #include "linglong/common/dir.h"
+#include "linglong/common/strings.h"
 #include "linglong/oci-cfg-generators/container_cfg_builder.h"
 #include "linglong/package/layer_file.h"
 #include "linglong/package/reference.h"
@@ -34,7 +35,6 @@
 #include "linglong/runtime/container_builder.h"
 #include "linglong/runtime/run_context.h"
 #include "linglong/utils/bash_command_helper.h"
-#include "linglong/utils/bash_quote.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/finally/finally.h"
 #include "linglong/utils/gettext.h"
@@ -277,7 +277,7 @@ bool delegateToContainerInit(const std::string &containerID,
 
     std::string bashContent;
     for (const auto &command : commands) {
-        bashContent.append(linglong::utils::quoteBashArg(command));
+        bashContent.append(linglong::common::strings::quoteBashArg(command));
         bashContent.push_back(' ');
     }
 

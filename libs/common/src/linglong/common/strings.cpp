@@ -139,4 +139,20 @@ bool contains(std::string_view str, std::string_view suffix) noexcept
     return str.find(suffix) != std::string_view::npos;
 }
 
+// Quotes a string for serializing arguments to a bash script.
+// Example:
+//   Input:  "let's go"
+//   Output: "'let'\''s go'"
+std::string quoteBashArg(std::string arg) noexcept
+{
+    const std::string quotePrefix = "'\\";
+    for (auto it = arg.begin(); it != arg.end(); it++) {
+        if (*it == '\'') {
+            it = arg.insert(it, quotePrefix.cbegin(), quotePrefix.cend());
+            it = arg.insert(it + quotePrefix.size() + 1, 1, '\'');
+        }
+    }
+    return "'" + arg + "'";
+}
+
 } // namespace linglong::common::strings

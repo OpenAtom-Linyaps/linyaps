@@ -377,8 +377,11 @@ utils::error::Result<package::Reference> Builder::ensureUtils(const std::string 
 
     // always try to get newest version from remote
     auto ref = clearDependency(id, true, true);
-    if (!ref) {
-        ref = clearDependency(id, false, false);
+    auto localRef = clearDependency(id, false, false);
+    if (localRef) {
+        if (!ref || localRef->version > ref->version) {
+            ref = std::move(localRef);
+        }
     }
     if (ref && pullDependency(*ref, this->repo, "binary")) {
         auto appLayerDir = this->repo.getMergedModuleDir(*ref);

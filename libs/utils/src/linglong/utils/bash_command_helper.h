@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "linglong/utils/bash_quote.h"
+#include "linglong/common/strings.h"
 
 #include <sstream>
 #include <string>
@@ -96,7 +96,7 @@ public:
         script << "source /etc/profile\n";
         script << "exec ";
         for (const auto &arg : args) {
-            script << quoteBashArg(arg) << " ";
+            script << common::strings::quoteBashArg(arg) << " ";
         }
         return script.str();
     }

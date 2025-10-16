@@ -2493,11 +2493,12 @@ utils::error::Result<void> PackageManager::generateCache(const package::Referenc
       std::vector<std::string>{ "/sbin/ldconfig", "-X", "-C", appCacheDest + "/ld.so.cache" };
 #ifdef LINGLONG_FONT_CACHE_GENERATOR
     // Usage: font-cache-generator [cacheRoot] [id]
-    const std::string fontGenerateCmd = utils::quoteBashArg(fontGenerator) + " "
-      + utils::quoteBashArg(appCacheDest) + " " + utils::quoteBashArg(ref.id.toStdString());
+    const std::string fontGenerateCmd = common::strings::quoteBashArg(fontGenerator) + " "
+      + common::strings::quoteBashArg(appCacheDest) + " "
+      + common::strings::quoteBashArg(ref.id.toStdString());
     auto ldGenerateCmdstr;
     for (const auto &c : ldGenerateCmd) {
-        ldGenerateCmdstr.append(utils::quoteBashArg(c));
+        ldGenerateCmdstr.append(common::strings::quoteBashArg(c));
         ldGenerateCmdstr.append(" ");
     }
     process.args =

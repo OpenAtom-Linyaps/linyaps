@@ -11,7 +11,101 @@
 
 #include <utility>
 
+#include <nlohmann/json.hpp>
+#include <fstream>
+
 namespace linglong::runtime {
+
+static std::vector<std::string> loadExtensionsFromConfig(const std::string &appId)
+{
+    namespace fs = std::filesystem;
+    std::vector<std::string> result;
+    
+    // 1. 获取配置目录：优先使用 XDG_CONFIG_HOME，否则使用 $HOME/.config
+    const char *xdgConfigHome = ::getenv("XDG_CONFIG_HOME");
+    std::string baseConfigDir;
+    if (xdgConfigHome && xdgConfigHome[0] != '\0') {
+        baseConfigDir = xdgConfigHome;
+    } else {
+        const char *homeEnv = ::getenv("HOME");
+        if (!homeEnv || homeEnv[0] == '\0') {
+            return result;
+        }
+        baseConfigDir = std::string(homeEnv) + "/.config";
+    }
+    
+    fs::path basePath = fs::path(baseConfigDir) / "linglong";
+    
+    // 2. 定义解析函数：从指定 JSON 文件提取 "extensions" 数组，并加入 result
+    auto parseExtensions = [&](const fs::path &p) {
+        try {
+            if (!fs::exists(p)) return;
+            std::ifstream in(p);
+            if (!in.is_open()) return;
+            nlohmann::json j;
+            in >> j;
+            if (!j.contains("extensions") || !j.at("extensions").is_array()) return;
+            for (const auto &elem : j.at("extensions")) {
+                if (elem.is_string()) {
+                    std::string ext = elem.get<std::string>();
+                    if (std::find(result.begin(), result.end(), ext) == result.end()) {
+                        result.emplace_back(std::move(ext));
+                    }
+                }
+            }
+        } catch (...) {
+            // 文件不存在或解析失败时忽略
+        }
+    };
+    
+    // 3. 依次解析全局配置与应用配置
+    parseExtensions(basePath / "config.json");
+    if (!appId.empty()) {
+        parseExtensions(basePath / "apps" / appId / "config.json");
+    }
+    
+    return result;
+}
+
+static std::vector<std::string> loadExtensionsFromBase(const std::string &baseId)
+{
+    namespace fs = std::filesystem;
+    std::vector<std::string> result;
+
+    // 获取 XDG 基础目录：优先使用 XDG_CONFIG_HOME；否则 $HOME/.config
+    const char *xdgConfigHome = ::getenv("XDG_CONFIG_HOME");
+    std::string baseConfigDir;
+    if (xdgConfigHome && xdgConfigHome[0] != '\0') {
+        baseConfigDir = xdgConfigHome;
+    } else {
+        const char *homeEnv = ::getenv("HOME");
+        if (!homeEnv || homeEnv[0] == '\0') return result;
+        baseConfigDir = std::string(homeEnv) + "/.config";
+    }
+    fs::path cfgPath = fs::path(baseConfigDir) / "linglong" / "base" / baseId / "config.json";
+
+    // 读取 JSON 文件并解析 extensions 数组
+    try {
+        if (!fs::exists(cfgPath)) return result;
+        std::ifstream in(cfgPath);
+        if (!in.is_open()) return result;
+        nlohmann::json j;
+        in >> j;
+        if (!j.contains("extensions") || !j.at("extensions").is_array()) return result;
+        for (const auto &elem : j.at("extensions")) {
+            if (elem.is_string()) {
+                std::string ext = elem.get<std::string>();
+                if (std::find(result.begin(), result.end(), ext) == result.end()) {
+                    result.emplace_back(std::move(ext));
+                }
+            }
+        }
+    } catch (...) {
+        // 遇到异常（文件不存在或解析失败）直接返回空列表
+    }
+    return result;
+}
+
 
 RuntimeLayer::RuntimeLayer(package::Reference ref, RunContext &context)
     : reference(std::move(ref))
@@ -155,8 +249,46 @@ utils::error::Result<void> RunContext::resolve(const linglong::package::Referenc
     }
 
     // 手动解析多个扩展
+    // 先从命令行选项或配置文件获取扩展列表
+    // 先从命令行选项或应用/全局配置获取扩展列表
+    std::vector<std::string> extRefs;
     if (options.extensionRefs && !options.extensionRefs->empty()) {
-        auto manualExtensionDef = makeManualExtensionDefine(*options.extensionRefs);
+        extRefs = *options.extensionRefs;
+    } else {
+        extRefs = loadExtensionsFromConfig(runnable.id);
+    }
+
+    // 如果未获取到扩展列表，则尝试根据 base 层加载
+    if (extRefs.empty()) {
+        // 获取 baseId
+        std::string baseId;
+
+        // 1. 优先使用 ResolveOptions::baseRef（如果提供）
+        if (options.baseRef && !options.baseRef->empty()) {
+            // 假设存在 FuzzyReference::parse，可解析出 id 部分
+            auto baseRef = linglong::package::FuzzyReference::parse(*options.baseRef);
+            if (baseRef) {
+                baseId = baseRef->id;
+            }
+        }
+
+        // 2. 否则从当前运行包信息中获取
+        if (baseId.empty()) {
+            auto item = repo.getLayerItem(runnable);
+            if (item && !item->info.base.empty()) {
+                baseId = item->info.base;
+            }
+        }
+
+        // 3. 若 baseId 非空，则读取 base 配置
+        if (!baseId.empty()) {
+            extRefs = loadExtensionsFromBase(baseId);
+        }
+    }
+
+    // 若 extRefs 非空，继续使用原有的手动解析逻辑
+    if (!extRefs.empty()) {
+        auto manualExtensionDef = makeManualExtensionDefine(extRefs);
         if (!manualExtensionDef) {
             return LINGLONG_ERR(manualExtensionDef);
         }

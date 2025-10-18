@@ -53,6 +53,12 @@ utils::error::Result<void> cmdRemoveApp(repo::OSTreeRepo &repo,
                                         std::vector<std::string> refs,
                                         bool prune);
 
+namespace detail {
+void mergeOutput(const std::vector<std::filesystem::path> &src,
+                 const std::filesystem::path &dest,
+                 const std::vector<std::string> &targets);
+}
+
 class Builder
 {
 public:
@@ -128,9 +134,6 @@ private:
     auto generateBuildDependsScript() noexcept -> utils::error::Result<bool>;
     auto generateDependsScript() noexcept -> utils::error::Result<bool>;
     void takeTerminalForeground();
-    void mergeOutput(const std::vector<std::filesystem::path> &src,
-                     const std::filesystem::path &dest,
-                     const std::vector<std::string> &targets);
     void printBasicInfo();
     void printRepo();
     bool checkDeprecatedInstallFile();

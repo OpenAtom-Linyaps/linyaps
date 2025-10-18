@@ -138,6 +138,53 @@ TEST(LinglongBuilder, installModule)
     EXPECT_EQ(installedFiles, expectedFiles);
 }
 
+TEST(LinglongBuilder, mergeOutput)
+{
+    TempDir srcDir1;
+    ASSERT_TRUE(srcDir1.isValid());
+    TempDir srcDir2;
+    ASSERT_TRUE(srcDir2.isValid());
+    TempDir destDir;
+    ASSERT_TRUE(destDir.isValid());
+
+    // Create test files and directories
+    const auto &srcPath1 = srcDir1.path();
+    std::filesystem::create_directories(srcPath1 / "bin");
+    std::filesystem::create_directories(srcPath1 / "lib");
+    std::filesystem::create_directories(srcPath1 / "share");
+
+    std::ofstream(srcPath1 / "bin/tool1");
+    std::ofstream(srcPath1 / "lib/libfoo.so");
+    std::ofstream(srcPath1 / "share/data1");
+    std::ofstream(srcPath1 / ".wh.somefile");
+
+    const auto &srcPath2 = srcDir2.path();
+    std::filesystem::create_directories(srcPath2 / "bin");
+    std::filesystem::create_directories(srcPath2 / "lib");
+    std::filesystem::create_directories(srcPath2 / "share");
+
+    std::ofstream(srcPath2 / "bin/tool2");
+    std::ofstream(srcPath2 / "lib/libbar.so");
+    std::ofstream(srcPath2 / "share/data2");
+
+    // Define merge targets
+    std::vector<std::string> targets = { "bin/", "share/data1" };
+
+    linglong::builder::detail::mergeOutput({ srcPath1, srcPath2 }, destDir.path(), targets);
+
+    const auto &destPath = destDir.path();
+    // Check files are merged
+    EXPECT_TRUE(std::filesystem::exists(destPath / "bin/tool1"));
+    EXPECT_TRUE(std::filesystem::exists(destPath / "bin/tool2"));
+    EXPECT_TRUE(std::filesystem::exists(destPath / "share/data1"));
+
+    // Check files are NOT merged
+    EXPECT_FALSE(std::filesystem::exists(destPath / "lib/libfoo.so"));
+    EXPECT_FALSE(std::filesystem::exists(destPath / "lib/libbar.so"));
+    EXPECT_FALSE(std::filesystem::exists(destPath / "share/data2"));
+    EXPECT_FALSE(std::filesystem::exists(destPath / ".wh.somefile"));
+}
+
 TEST(LinglongBuilder, UabExportFilename)
 {
     linglong::builder::BuilderMock builder;

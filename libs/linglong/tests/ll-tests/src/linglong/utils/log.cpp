@@ -224,3 +224,20 @@ TEST_F(LoggerTest, MessageFormattingWorksCorrectly)
     ASSERT_TRUE(mock_journal_data.called);
     EXPECT_EQ(mock_journal_data.fields["MESSAGE"], "Hello, world! The number is 42.");
 }
+
+TEST_F(LoggerTest, LogFormat)
+{
+    logger_.setLogLevel(LogLevel::Debug);
+    logger_.setLogBackend(LogBackend::Console);
+
+    std::string captured_output;
+    {
+        StderrRedirector redirector;
+        EXPECT_TRUE(redirector.init());
+        std::string message = "message is {}";
+        logger_.log(context_, LogLevel::Debug, "Debug: {}", message);
+        captured_output = redirector.getOutput();
+    }
+
+    EXPECT_EQ("Debug: message is {}\n", captured_output);
+}

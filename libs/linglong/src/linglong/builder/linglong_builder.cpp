@@ -142,6 +142,41 @@ utils::error::Result<void> pullDependency(const package::Reference &ref,
 
 } // namespace
 
+namespace detail {
+void mergeOutput(const std::vector<std::filesystem::path> &src,
+                 const std::filesystem::path &dest,
+                 const std::vector<std::string> &targets)
+{
+    for (const auto &dir : src) {
+        LogD("merge {} to {}", dir, dest);
+        auto matcher = [&dir, &targets](const std::filesystem::path &path) {
+            if (common::strings::starts_with(path.filename().string(), ".wh.")) {
+                return false;
+            }
+
+            struct stat st;
+            if (-1 == lstat((dir / path).c_str(), &st)) {
+                return false;
+            }
+            if (st.st_size == 0 && st.st_rdev == 0 && st.st_mode == S_IFCHR) {
+                return false;
+            }
+
+            for (const auto &target : targets) {
+                if (common::strings::starts_with(path.string(), target)) {
+                    return true;
+                }
+            }
+
+            return false;
+        };
+
+        utils::copyDirectory(dir, dest, matcher);
+    }
+}
+
+} // namespace detail
+
 // install module files by rules
 // files will be moved from buildOutput to moduleOutput
 utils::error::Result<std::vector<std::filesystem::path>>
@@ -904,7 +939,7 @@ utils::error::Result<void> Builder::buildStagePreCommit() noexcept
             src.push_back(runtimeOverlay->upperDirPath());
         }
     }
-    mergeOutput(src, buildOutput, { "bin/", "sbin/", "lib/" });
+    detail::mergeOutput(src, buildOutput, { "bin/", "sbin/", "lib/" });
 
     return LINGLONG_OK;
 }
@@ -2186,38 +2221,6 @@ void Builder::takeTerminalForeground()
         }
 
         close(tty);
-    }
-}
-
-void Builder::mergeOutput(const std::vector<std::filesystem::path> &src,
-                          const std::filesystem::path &dest,
-                          const std::vector<std::string> &targets)
-{
-
-    for (const auto &dir : src) {
-        auto matcher = [&dir, &targets](const std::filesystem::path &path) {
-            if (path.filename().string().rfind(".wh.", 0) == 0) {
-                return false;
-            }
-
-            struct stat st;
-            if (-1 == lstat(path.c_str(), &st)) {
-                return false;
-            }
-            if (st.st_size == 0 && st.st_rdev == 0 && st.st_mode == S_IFCHR) {
-                return false;
-            }
-
-            for (const auto &target : targets) {
-                if (path.lexically_relative(dir).string().rfind(target, 0) == 0) {
-                    return true;
-                }
-            }
-
-            return false;
-        };
-
-        utils::copyDirectory(dir, dest, matcher);
     }
 }
 

@@ -41,6 +41,9 @@ pfl_add_executable(
   src/linglong/utils/transaction_test.cpp
   src/linglong/utils/command_test.cpp
   src/linglong/utils/bash_command_helper_test.cpp
+  src/linglong/utils/packageinfo_handler_test.cpp
+  src/linglong/utils/gkeyfile_wrapper_test.cpp
+  src/linglong/utils/xdg/directory_test.cpp
   src/linglong/repo/config_test.cpp
   src/linglong/repo/ostree_repo_test.cpp
   src/linglong/repo/client_factory_test.cpp

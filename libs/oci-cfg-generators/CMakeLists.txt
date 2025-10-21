@@ -19,6 +19,7 @@ pfl_add_library(
   linglong::ocppi
   linglong::api
   linglong::common
+  fmt::fmt
   )
 
 get_real_target_name(GEN linglong::oci-cfg-generators)

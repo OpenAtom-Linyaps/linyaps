@@ -46,6 +46,7 @@ public:
         BUILD_NETWORK_CONF_ERROR,
         BUILD_XDGRUNTIME_ERROR,
         BUILD_INTERNAL_ERROR,
+        BUILD_CONTAINER_INFO_ERROR,
     };
 
     class Error
@@ -161,6 +162,8 @@ public:
 
     ContainerCfgBuilder &enableQuirkVolatile() noexcept;
 
+    ContainerCfgBuilder &disableContainerInfo() noexcept;
+
     ContainerCfgBuilder &
       setExtensionMounts(std::vector<ocppi::runtime::config::types::Mount>) noexcept;
     ContainerCfgBuilder &addExtraMount(ocppi::runtime::config::types::Mount) noexcept;
@@ -227,6 +230,7 @@ private:
     bool buildQuirkVolatile() noexcept;
     bool buildXDGRuntime() noexcept;
     bool buildEnv() noexcept;
+    bool buildContainerInfo() noexcept;
     bool applyPatch() noexcept;
     bool applyPatchFile(const std::filesystem::path &patchFile) noexcept;
     bool applyJsonPatchFile(const std::filesystem::path &patchFile) noexcept;
@@ -268,6 +272,7 @@ private:
     std::optional<std::vector<ocppi::runtime::config::types::IdMapping>> gidMappings;
 
     // mount
+    std::optional<ocppi::runtime::config::types::Mount> infoMount;
     std::optional<ocppi::runtime::config::types::Mount> runtimeMount;
     std::optional<std::vector<ocppi::runtime::config::types::Mount>> appMount;
     std::optional<ocppi::runtime::config::types::Mount> sysMount;
@@ -325,6 +330,7 @@ private:
 
     bool isolateNetWorkEnabled = false;
     bool disableUserNamespaceEnabled = false;
+    bool disableGenerateContainerInfo{false};
     bool applyPatchEnabled = true;
     bool isolateTmp{ false };
 

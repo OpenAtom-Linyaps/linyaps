@@ -10,11 +10,11 @@
 #include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/api/types/v1/OciConfigurationPatch.hpp"
 #include "linglong/common/dir.h"
-#include "linglong/common/display.h"
 #include "linglong/common/xdg.h"
 #include "ocppi/runtime/config/types/Generators.hpp"
 #include "sha256.h"
 
+#include <fmt/format.h>
 #include <linux/limits.h>
 
 #include <algorithm>
@@ -1401,6 +1401,57 @@ bool ContainerCfgBuilder::buildEnv() noexcept
     return true;
 }
 
+ContainerCfgBuilder &ContainerCfgBuilder::disableContainerInfo() noexcept
+{
+    disableGenerateContainerInfo = true;
+    return *this;
+}
+
+bool ContainerCfgBuilder::buildContainerInfo() noexcept
+{
+    if (disableGenerateContainerInfo) {
+        return true;
+    }
+
+    const auto *iniTemplate = R"([General]
+Linyaps-version={}
+
+[Application]
+Id={}
+
+[Instance]
+Id={}
+
+[Context]
+Network={}
+
+)";
+
+    const auto content = fmt::format(iniTemplate,
+                                     LINGLONG_VERSION,
+                                     getAppId(),
+                                     getContainerId(),
+                                     isolateNetWorkEnabled ? "unshared" : "shared");
+    auto containerInfoFile = bundlePath / ".linyaps";
+
+    {
+        std::ofstream ofs(containerInfoFile);
+        if (!ofs.is_open()) {
+            error_.reason = containerInfoFile.string() + " can't be created";
+            error_.code = BUILD_CONTAINER_INFO_ERROR;
+            return false;
+        }
+
+        ofs << content;
+    }
+
+    infoMount = Mount{ .destination = "/.linyaps",
+                       .options = string_list{ "rbind", "ro" },
+                       .source = containerInfoFile,
+                       .type = "bind" };
+    return true;
+}
+
 bool ContainerCfgBuilder::applyPatch() noexcept
 {
     if (!applyPatchEnabled) {
@@ -1661,7 +1712,7 @@ bool ContainerCfgBuilder::mergeMount() noexcept
 {
     // merge all mounts here, the order of mounts is relevant
     if (runtimeMount) {
-        mounts.insert(mounts.end(), std::move(*runtimeMount));
+        mounts.emplace_back(std::move(runtimeMount).value());
     }
 
     if (appMount) {
@@ -1673,11 +1724,11 @@ bool ContainerCfgBuilder::mergeMount() noexcept
     }
 
     if (sysMount) {
-        mounts.insert(mounts.end(), std::move(*sysMount));
+        mounts.insert(mounts.end(), std::move(sysMount).value());
     }
 
     if (procMount) {
-        mounts.insert(mounts.end(), std::move(*procMount));
+        mounts.insert(mounts.end(), std::move(procMount).value());
     }
 
     if (devMount) {
@@ -1689,7 +1740,7 @@ bool ContainerCfgBuilder::mergeMount() noexcept
     }
 
     if (cgroupMount) {
-        mounts.insert(mounts.end(), std::move(*cgroupMount));
+        mounts.insert(mounts.end(), std::move(cgroupMount).value());
     }
 
     if (runMount) {
@@ -1697,7 +1748,7 @@ bool ContainerCfgBuilder::mergeMount() noexcept
     }
 
     if (tmpMount) {
-        mounts.insert(mounts.end(), std::move(*tmpMount));
+        mounts.insert(mounts.end(), std::move(tmpMount).value());
     }
 
     if (UGMount) {
@@ -1726,6 +1777,10 @@ bool ContainerCfgBuilder::mergeMount() noexcept
         std::move(displayMount->begin(), displayMount->end(), std::back_inserter(mounts));
     }
 
+    if (infoMount) {
+        mounts.emplace_back(std::move(infoMount).value());
+    }
+
     if (ipcMount) {
         std::move(ipcMount->begin(), ipcMount->end(), std::back_inserter(mounts));
     }
@@ -1751,7 +1806,7 @@ bool ContainerCfgBuilder::mergeMount() noexcept
     }
 
     if (envMount) {
-        mounts.insert(mounts.end(), std::move(*envMount));
+        mounts.emplace_back(std::move(envMount).value());
     }
 
     if (extraMount) {
@@ -2139,6 +2194,10 @@ bool ContainerCfgBuilder::build() noexcept
     }
 
     if (!buildDisplaySystem()) {
+        return false;
+    }
+
+    if (!buildContainerInfo()) {
         return false;
     }
 

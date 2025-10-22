@@ -54,7 +54,7 @@ public:
                api::types::v1::RepoConfigV2 cfg,
                ClientFactory &clientFactory) noexcept;
 
-    ~OSTreeRepo() override;
+    virtual ~OSTreeRepo() override;
 
     [[nodiscard]] const api::types::v1::RepoConfigV2 &getConfig() const noexcept;
     [[nodiscard]] api::types::v1::RepoConfigV2 getOrderedConfig() noexcept;
@@ -87,7 +87,7 @@ public:
               const std::string &module = "binary",
               const std::optional<api::types::v1::Repo> &repo = std::nullopt) noexcept;
 
-    [[nodiscard]] utils::error::Result<package::Reference>
+    [[nodiscard]] virtual utils::error::Result<package::Reference>
     clearReference(const package::FuzzyReference &fuzzy,
                    const clearReferenceOption &opts,
                    const std::string &module = "binary",
@@ -151,6 +151,8 @@ public:
       const std::optional<api::types::v1::Repo> &repo = std::nullopt) noexcept;
     utils::error::Result<package::ReferenceWithRepo>
     latestRemoteReference(package::FuzzyReference &fuzzyRef) noexcept;
+    virtual utils::error::Result<package::Reference>
+    latestLocalReference(const package::FuzzyReference &fuzzyRef) const noexcept;
 
     [[nodiscard]] utils::error::Result<api::types::v1::RepositoryCacheLayersItem>
     getLayerItem(const package::Reference &ref,
@@ -163,11 +165,7 @@ private:
 
     struct OstreeRepoDeleter
     {
-        void operator()(OstreeRepo *repo)
-        {
-            qDebug() << "delete OstreeRepo" << repo;
-            g_clear_object(&repo);
-        }
+        void operator()(OstreeRepo *repo) { g_clear_object(&repo); }
     };
 
     std::unique_ptr<OstreeRepo, OstreeRepoDeleter> ostreeRepo = nullptr;

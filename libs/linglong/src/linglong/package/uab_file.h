@@ -24,7 +24,7 @@ class UABFile : public QFile
     friend class MockUabFile;
 
 public:
-    static utils::error::Result<std::shared_ptr<UABFile>> loadFromFile(int fd) noexcept;
+    static utils::error::Result<std::unique_ptr<UABFile>> loadFromFile(int fd) noexcept;
     UABFile(UABFile &&) = delete;
     UABFile &operator=(UABFile &&) = delete;
     ~UABFile() override;

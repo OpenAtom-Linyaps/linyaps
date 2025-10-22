@@ -8,10 +8,14 @@
 
 #include "linglong/api/types/v1/CommonOptions.hpp"
 #include "linglong/api/types/v1/ContainerProcessStateInfo.hpp"
+#include "linglong/api/types/v1/InteractionMessageType.hpp"
+#include "linglong/api/types/v1/PackageManager1RequestInteractionAdditionalMessage.hpp"
 #include "linglong/api/types/v1/Repo.hpp"
+#include "linglong/api/types/v1/UabLayer.hpp"
 #include "linglong/package/reference.h"
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/runtime/container_builder.h"
+#include "linglong/utils/log/log.h"
 #include "package_task.h"
 
 #include <QDBusArgument>
@@ -100,6 +104,20 @@ public
     // Nothing to do here, Permissions() will be rejected in org.deepin.linglong.PackageManager.conf
     void Permissions() { }
 
+    bool waitConfirm(PackageTask &taskRef,
+                     api::types::v1::InteractionMessageType msgType,
+                     const api::types::v1::PackageManager1RequestInteractionAdditionalMessage
+                       &additionalMessage) noexcept;
+
+    utils::error::Result<void> removeAfterInstall(const package::Reference &oldRef,
+                                                  const package::Reference &newRef,
+                                                  const std::vector<std::string> &modules) noexcept;
+    utils::error::Result<void> tryGenerateCache(const package::Reference &ref) noexcept;
+    utils::error::Result<void> executePostInstallHooks(const package::Reference &ref) noexcept;
+    void pullDependency(PackageTask &taskContext,
+                        const api::types::v1::PackageInfoV2 &info,
+                        const std::string &module) noexcept;
+
 Q_SIGNALS:
     void TaskAdded(QDBusObjectPath object_path);
     void TaskRemoved(QDBusObjectPath object_path,
@@ -136,11 +154,10 @@ private:
                       const std::vector<std::string> &modules) noexcept;
     QVariantMap installFromLayer(const QDBusUnixFileDescriptor &fd,
                                  const api::types::v1::CommonOptions &options) noexcept;
+
     QVariantMap installFromUAB(const QDBusUnixFileDescriptor &fd,
                                const api::types::v1::CommonOptions &options) noexcept;
-    void pullDependency(PackageTask &taskContext,
-                        const api::types::v1::PackageInfoV2 &info,
-                        const std::string &module) noexcept;
+
     [[nodiscard]] utils::error::Result<void> lockRepo() noexcept;
     [[nodiscard]] utils::error::Result<void> unlockRepo() noexcept;
     [[nodiscard]] static utils::error::Result<
@@ -148,16 +165,12 @@ private:
     getAllRunningContainers() noexcept;
     utils::error::Result<bool> isRefBusy(const package::Reference &ref) noexcept;
     void deferredUninstall() noexcept;
-    utils::error::Result<void> removeAfterInstall(const package::Reference &oldRef,
-                                                  const package::Reference &newRef,
-                                                  const std::vector<std::string> &modules) noexcept;
     utils::error::Result<void>
     Prune(std::vector<api::types::v1::PackageInfoV2> &removedInfo) noexcept;
     utils::error::Result<void> generateCache(const package::Reference &ref) noexcept;
-    utils::error::Result<void> tryGenerateCache(const package::Reference &ref) noexcept;
     utils::error::Result<void> removeCache(const package::Reference &ref) noexcept;
-    utils::error::Result<void> executePostInstallHooks(const package::Reference &ref) noexcept;
     utils::error::Result<void> executePostUninstallHooks(const package::Reference &ref) noexcept;
+
     linglong::repo::OSTreeRepo &repo; // NOLINT
     PackageTaskQueue tasks;
 

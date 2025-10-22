@@ -1011,10 +1011,6 @@ OSTreeRepo::importLayerDir(const package::LayerDir &dir,
         return LINGLONG_ERR(reference);
     }
 
-    if (this->getLayerDir(*reference, info->packageInfoV2Module, subRef)) {
-        return LINGLONG_ERR(reference->toString() + " exists.", 0);
-    }
-
     overlays.insert(overlays.begin(), dir.absolutePath().toStdString());
 
     std::vector<GFile *> dirs;
@@ -3249,6 +3245,18 @@ OSTreeRepo::latestRemoteReference(package::FuzzyReference &fuzzyRef) noexcept
 
     fuzzyRef.version.reset();
     auto ref = this->getRemoteReferenceByPriority(fuzzyRef, { .semanticMatching = false });
+    if (!ref) {
+        return LINGLONG_ERR(ref);
+    }
+    return ref;
+}
+
+utils::error::Result<package::Reference>
+OSTreeRepo::latestLocalReference(const package::FuzzyReference &fuzzyRef) const noexcept
+{
+    LINGLONG_TRACE("get latest local reference");
+
+    auto ref = clearReferenceLocal(*cache, fuzzyRef, true );
     if (!ref) {
         return LINGLONG_ERR(ref);
     }

@@ -12,41 +12,42 @@ pfl_add_executable(
   DISABLE_INSTALL
   SOURCES
   # find -regex '\./src/.+\.[ch]\(pp\)?' -type f -printf '%P\n'| sort
+  src/linglong/builder/linglong_builder_test.cpp
+  src/linglong/builder/source_fetcher_test.cpp
   src/linglong/common/strings_test.cpp
   src/linglong/common/xdg_test.cpp
+  src/linglong/mocks/command_mock.h
+  src/linglong/mocks/layer_packager_mock.h
+  src/linglong/mocks/linglong_builder_mock.h
+  src/linglong/mocks/ostree_repo_mock.h
+  src/linglong/mocks/uab_file_mock.h
   src/linglong/package/architecture_test.cpp
   src/linglong/package/fallback_version_test.cpp
+  src/linglong/package/layer_packager_test.cpp
   src/linglong/package/reference_test.cpp
-  src/linglong/package/version_test.cpp
-  src/linglong/package/versionv2_test.cpp
   src/linglong/package/semver_compare_test.cpp
   src/linglong/package/semver_increment_test.cpp
   src/linglong/package/semver_prerelease_test.cpp
   src/linglong/package/semver_serialization_test.cpp
   src/linglong/package/semver_version_test.cpp
   src/linglong/package/uab_file_test.cpp
-  src/linglong/package/layer_packager_test.cpp
-  src/linglong/builder/source_fetcher_test.cpp
-  src/linglong/builder/linglong_builder_test.cpp
-  src/linglong/mocks/command_mock.h
-  src/linglong/mocks/ostree_repo_mock.h
-  src/linglong/mocks/linglong_builder_mock.h
-  src/linglong/mocks/layer_packager_mock.h
-  src/linglong/mocks/uab_file_mock.h
-  src/linglong/utils/error/error_test.cpp
-  src/linglong/utils/file.cpp
-  src/linglong/utils/namespce.cpp
-  src/linglong/utils/log.cpp
-  src/linglong/utils/sha256_test.cpp
-  src/linglong/utils/transaction_test.cpp
-  src/linglong/utils/command_test.cpp
-  src/linglong/utils/bash_command_helper_test.cpp
-  src/linglong/utils/packageinfo_handler_test.cpp
-  src/linglong/utils/gkeyfile_wrapper_test.cpp
-  src/linglong/utils/xdg/directory_test.cpp
+  src/linglong/package/version_test.cpp
+  src/linglong/package/versionv2_test.cpp
+  src/linglong/package_manager/uab_installation_test.cpp
+  src/linglong/repo/client_factory_test.cpp
   src/linglong/repo/config_test.cpp
   src/linglong/repo/ostree_repo_test.cpp
-  src/linglong/repo/client_factory_test.cpp
+  src/linglong/utils/bash_command_helper_test.cpp
+  src/linglong/utils/command_test.cpp
+  src/linglong/utils/error/error_test.cpp
+  src/linglong/utils/file.cpp
+  src/linglong/utils/gkeyfile_wrapper_test.cpp
+  src/linglong/utils/log.cpp
+  src/linglong/utils/namespce.cpp
+  src/linglong/utils/packageinfo_handler_test.cpp
+  src/linglong/utils/sha256_test.cpp
+  src/linglong/utils/transaction_test.cpp
+  src/linglong/utils/xdg/directory_test.cpp
   src/main.cpp
   COMPILE_FEATURES
   PUBLIC
@@ -54,6 +55,7 @@ pfl_add_executable(
   LINK_LIBRARIES
   PRIVATE
   GTest::gtest
+  GTest::gmock
   linglong::linglong
   PkgConfig::CRYPTO)
 

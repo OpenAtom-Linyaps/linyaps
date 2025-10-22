@@ -10,6 +10,7 @@
 #include "linglong/api/types/v1/LayerInfo.hpp"
 #include "linglong/utils/command/cmd.h"
 #include "linglong/utils/command/env.h"
+#include "linglong/utils/log/log.h"
 
 #include <QDataStream>
 #include <QSysInfo>
@@ -91,7 +92,7 @@ LayerPackager::~LayerPackager()
         }
     }
     if (!std::filesystem::remove_all(this->workDir)) {
-        qCritical() << "remove" << this->workDir.c_str() << "failed";
+        LogE("failed to remove {}", this->workDir);
         Q_ASSERT(false);
     }
 }

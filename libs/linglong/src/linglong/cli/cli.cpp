@@ -36,6 +36,7 @@
 #include "linglong/runtime/run_context.h"
 #include "linglong/utils/bash_command_helper.h"
 #include "linglong/utils/error/error.h"
+#include "linglong/utils/file.h"
 #include "linglong/utils/finally/finally.h"
 #include "linglong/utils/gettext.h"
 #include "linglong/utils/log/log.h"
@@ -72,106 +73,7 @@
 
 using namespace linglong::utils::error;
 
-const auto permissionNotifyMsg =
-  _("Permission denied, please check whether you are running as root.");
-
 namespace {
-
-linglong::utils::error::Result<bool> isChildProcess(pid_t parent, pid_t pid) noexcept
-{
-    LINGLONG_TRACE(fmt::format("check if {} is child of {}", pid, parent));
-
-    auto getppid = [](pid_t pid) -> Result<pid_t> {
-        LINGLONG_TRACE(fmt::format("get ppid of {}", pid));
-        std::error_code ec;
-        auto stat = std::filesystem::path("/proc/" + std::to_string(pid) + "/stat");
-        auto fd = ::open(stat.c_str(), O_RDONLY);
-        if (fd == -1) {
-            return LINGLONG_ERR(
-              QString{ "failed to open %1: %2" }.arg(stat.c_str(), ::strerror(errno)));
-        }
-        auto closeFd = linglong::utils::finally::finally([fd] {
-            ::close(fd);
-        });
-
-        // FIXME: Parsing /proc/pid/stat isn't an good idea, the consistency of file contents
-        // which in /proc is not guaranteed and the format may change. so we read all the content at
-        // first and then parse it.
-        // use read instead of std::ifstream to get more detailed error information the size
-        // of /proc/pid/stat is zero and we can't get the content size by stat,
-        // so we use 1024 as the buffer size.
-        std::array<char, 1024> buf{};
-        std::string content;
-        while (true) {
-            auto readBytes = ::read(fd, buf.data(), buf.size());
-            if (readBytes == -1) {
-                return LINGLONG_ERR(
-                  QString{ "failed to read from %1: %2" }.arg(stat.c_str(), ::strerror(errno)));
-            }
-
-            if (readBytes == 0) {
-                break;
-            }
-
-            content.append(buf.data(), readBytes);
-        }
-
-        auto ppidOffset = 3;
-        std::string::size_type left = 0;
-        std::string::size_type right = 0;
-        for (std::string::size_type i = 0; i < content.size(); i++) {
-            if (ppidOffset == 0) {
-                left = i;
-                right = i;
-
-                while (content[right] != ' ') {
-                    right += 1;
-                }
-
-                break;
-            }
-
-            if (content[i] == ' ') {
-                ppidOffset -= 1;
-            }
-        }
-
-        pid_t ppid{ -1 };
-        auto [_, err] = std::from_chars(content.c_str() + left, content.c_str() + right, ppid);
-        if (err != std::errc()) {
-            return LINGLONG_ERR(QString{ "failed to parse %1: %2" }.arg(
-              std::string_view(content.c_str() + left, right - left).data(),
-              ::strerror(static_cast<int>(err))));
-        }
-
-        return ppid;
-    };
-
-    while (pid != parent) {
-        auto ppid = getppid(pid);
-        if (!ppid) {
-            return LINGLONG_ERR(ppid.error());
-        }
-
-        pid = *ppid;
-        if (pid < parent) {
-            return false;
-        }
-    }
-
-    return true;
-}
-
-linglong::utils::error::Result<void> ensureDirectory(const std::filesystem::path &dir)
-{
-    LINGLONG_TRACE("ensure runtime directory");
-    std::error_code ec;
-    if (!std::filesystem::create_directory(dir, ec) && ec) {
-        return LINGLONG_ERR("failed to create runtime directory", ec);
-    }
-
-    return LINGLONG_OK;
-}
 
 std::vector<std::string> getAutoModuleList() noexcept
 {
@@ -464,15 +366,6 @@ void Cli::interaction(const QDBusObjectPath &object_path,
       this->pkgMan.ReplyInteraction(object_path, utils::serialize::toQVariantMap(reply));
     dbusReply.waitForFinished();
     if (dbusReply.isError()) {
-        if (dbusReply.error().type() == QDBusError::AccessDenied) {
-            auto ret = this->notifier->notify(
-              api::types::v1::InteractionRequest{ .summary = permissionNotifyMsg });
-            if (!ret) {
-                this->printer.printErr(ret.error());
-            }
-            return;
-        }
-
         this->printer.printErr(
           LINGLONG_ERRV(dbusReply.error().message(), dbusReply.error().type()));
     }
@@ -627,7 +520,7 @@ int Cli::run(const RunOptions &options)
     auto pid = getpid();
 
     auto userContainerDir = std::filesystem::path{ "/run/linglong" } / std::to_string(uid);
-    if (auto ret = ensureDirectory(userContainerDir); !ret) {
+    if (auto ret = utils::ensureDirectory(userContainerDir); !ret) {
         this->printer.printErr(ret.error());
         return -1;
     }
@@ -1084,7 +977,7 @@ int Cli::installFromFile(const QFileInfo &fileInfo,
         return -1;
     }
 
-    qInfo() << "install from file" << filePath;
+    LogI("install from file {}", filePath);
     QFile file{ filePath };
     if (!file.open(QIODevice::ReadOnly | QIODevice::ExistingOnly)) {
         auto err = LINGLONG_ERR(file);
@@ -1112,15 +1005,6 @@ int Cli::installFromFile(const QFileInfo &fileInfo,
                                    utils::serialize::toQVariantMap(commonOptions));
     pendingReply.waitForFinished();
     if (pendingReply.isError()) {
-        if (pendingReply.error().type() == QDBusError::AccessDenied) {
-            auto ret = this->notifier->notify(
-              api::types::v1::InteractionRequest{ .summary = permissionNotifyMsg });
-            if (!ret) {
-                this->printer.printErr(ret.error());
-            }
-
-            return -1;
-        }
         auto err = LINGLONG_ERRV(pendingReply.error().message());
         this->printer.printErr(err);
         return -1;
@@ -1240,15 +1124,6 @@ int Cli::install(const InstallOptions &options)
     pendingReply.waitForFinished();
 
     if (pendingReply.isError()) {
-        if (pendingReply.error().type() == QDBusError::AccessDenied) {
-            auto ret = this->notifier->notify(
-              api::types::v1::InteractionRequest{ .summary = permissionNotifyMsg });
-            if (!ret) {
-                this->printer.printErr(ret.error());
-            }
-            return -1;
-        }
-
         this->printer.printErr(
           LINGLONG_ERRV(pendingReply.error().message(), pendingReply.error().type()));
         return -1;
@@ -1416,15 +1291,6 @@ int Cli::upgrade(const UpgradeOptions &options)
     pendingReply.waitForFinished();
 
     if (pendingReply.isError()) {
-        if (pendingReply.error().type() == QDBusError::AccessDenied) {
-            auto ret = this->notifier->notify(
-              api::types::v1::InteractionRequest{ .summary = permissionNotifyMsg });
-            if (!ret) {
-                this->printer.printErr(ret.error());
-            }
-            return -1;
-        }
-
         auto err = LINGLONG_ERRV(pendingReply.error().message());
         this->printer.printErr(err);
         return -1;
@@ -1516,15 +1382,6 @@ int Cli::search(const SearchOptions &options)
 
     pendingReply.waitForFinished();
     if (pendingReply.isError()) {
-        if (pendingReply.error().type() == QDBusError::AccessDenied) {
-            auto ret = this->notifier->notify(
-              api::types::v1::InteractionRequest{ .summary = permissionNotifyMsg });
-            if (!ret) {
-                this->printer.printErr(ret.error());
-            }
-            return -1;
-        }
-
         auto err = LINGLONG_ERRV(pendingReply.error().message());
         this->printer.printErr(err);
         return -1;
@@ -1664,15 +1521,6 @@ int Cli::prune()
     pendingReply.waitForFinished();
 
     if (pendingReply.isError()) {
-        if (pendingReply.error().type() == QDBusError::AccessDenied) {
-            auto ret = this->notifier->notify(
-              api::types::v1::InteractionRequest{ .summary = permissionNotifyMsg });
-            if (!ret) {
-                this->printer.printErr(ret.error());
-            }
-            return -1;
-        }
-
         auto err = LINGLONG_ERRV(pendingReply.error().message());
         this->printer.printErr(err);
         return -1;
@@ -1725,15 +1573,6 @@ int Cli::uninstall(const UninstallOptions &options)
     pendingReply.waitForFinished();
 
     if (pendingReply.isError()) {
-        if (pendingReply.error().type() == QDBusError::AccessDenied) {
-            auto ret = this->notifier->notify(
-              api::types::v1::InteractionRequest{ .summary = permissionNotifyMsg });
-            if (!ret) {
-                this->printer.printErr(ret.error());
-            }
-            return -1;
-        }
-
         auto err = LINGLONG_ERRV(pendingReply.error().message());
         this->printer.printErr(err);
         return -1;
@@ -1942,18 +1781,7 @@ int Cli::repo(CLI::App *app, const RepoOptions &options)
     LINGLONG_TRACE("command repo");
 
     auto propCfg = this->pkgMan.configuration();
-    // check error here, this operation could be failed
     if (this->pkgMan.lastError().isValid()) {
-        if (this->pkgMan.lastError().type() == QDBusError::AccessDenied) {
-            auto ret = this->notifier->notify(
-              api::types::v1::InteractionRequest{ .summary = permissionNotifyMsg });
-            if (!ret) {
-                this->printer.printErr(ret.error());
-            }
-
-            return -1;
-        }
-
         auto err = LINGLONG_ERRV(this->pkgMan.lastError().message());
         this->printer.printErr(err);
         return -1;
@@ -2120,15 +1948,6 @@ int Cli::setRepoConfig(const QVariantMap &config)
 
     this->pkgMan.setConfiguration(config);
     if (this->pkgMan.lastError().isValid()) {
-        if (this->pkgMan.lastError().type() == QDBusError::AccessDenied) {
-            auto ret = this->notifier->notify(
-              api::types::v1::InteractionRequest{ .summary = permissionNotifyMsg });
-            if (!ret) {
-                this->printer.printErr(ret.error());
-            }
-            return -1;
-        }
-
         auto err = LINGLONG_ERRV(this->pkgMan.lastError().message());
         this->printer.printErr(err);
         return -1;

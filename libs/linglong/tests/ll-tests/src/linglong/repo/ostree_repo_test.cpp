@@ -36,7 +36,6 @@ protected:
 
 TEST_F(RepoTest, exportDir)
 {
-    linglong::utils::global::initLinyapsLogSystem("");
     // 准备测试环境
     fs::path tempDir = fs::temp_directory_path() / "repo_test";
     std::error_code ec;

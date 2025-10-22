@@ -20,8 +20,6 @@ class FileTest : public ::testing::Test
 protected:
     void SetUp() override
     {
-        linglong::utils::global::initLinyapsLogSystem("");
-
         char src_template[] = "/tmp/linglong-file-test-src-XXXXXX";
         src_dir = mkdtemp(src_template);
         ASSERT_FALSE(src_dir.empty());
@@ -248,4 +246,24 @@ TEST_F(FileTest, GetFiles)
     std::sort(expected_files.begin(), expected_files.end());
 
     EXPECT_EQ(files, expected_files);
+}
+
+TEST_F(FileTest, EnsureDirectory)
+{
+    // Test creating a new directory
+    fs::path new_dir = dest_dir / "new_dir";
+    auto result = linglong::utils::ensureDirectory(new_dir);
+    ASSERT_TRUE(result.has_value());
+    EXPECT_TRUE(fs::is_directory(new_dir));
+
+    // Test with an existing directory
+    result = linglong::utils::ensureDirectory(new_dir);
+    ASSERT_TRUE(result.has_value());
+    EXPECT_TRUE(fs::is_directory(new_dir));
+
+    // Test with an existing file
+    fs::path file_path = dest_dir / "file.txt";
+    std::ofstream(file_path) << "test";
+    result = linglong::utils::ensureDirectory(file_path);
+    EXPECT_FALSE(result.has_value());
 }

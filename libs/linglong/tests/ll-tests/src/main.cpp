@@ -14,6 +14,7 @@ int main(int argc, char **argv)
 {
     qputenv("QT_FORCE_STDERR_LOGGING", QByteArray("1"));
     linglong::utils::global::installMessageHandler();
+    linglong::utils::global::initLinyapsLogSystem(argv[0]);
     testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }

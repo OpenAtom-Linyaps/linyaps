@@ -499,6 +499,7 @@ auto PackageManager::getConfiguration() const noexcept -> QVariantMap
 
 void PackageManager::setConfiguration(const QVariantMap &parameters) noexcept
 {
+    LogI("set configuration for package manager");
     auto cfg = utils::serialize::fromQVariantMap<api::types::v1::RepoConfigV2>(parameters);
     if (!cfg) {
         sendErrorReply(QDBusError::InvalidArgs, QString::fromStdString(cfg.error().message()));
@@ -508,10 +509,12 @@ void PackageManager::setConfiguration(const QVariantMap &parameters) noexcept
     const auto &cfgRef = *cfg;
     const auto &curCfg = repo.getConfig();
 
+    LogD("new config: {}", nlohmann::json(cfgRef).dump());
+    LogD("cur config: {}", nlohmann::json(curCfg).dump());
     if (cfgRef == curCfg) {
+        LogI("configuration not changed, ignore setting.");
         return;
     }
-
     if (const auto &defaultRepo = cfg->defaultRepo;
         std::find_if(cfg->repos.begin(),
                      cfg->repos.end(),

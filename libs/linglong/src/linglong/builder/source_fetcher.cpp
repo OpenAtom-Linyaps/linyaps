@@ -10,6 +10,7 @@
 #include "linglong/utils/command/cmd.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/global/initialize.h"
+#include "linglong/utils/log/log.h"
 
 #include <QDir>
 #include <QTemporaryDir>
@@ -51,7 +52,7 @@ auto SourceFetcher::fetch(QDir destination) noexcept -> utils::error::Result<voi
         // 便于在执行失败时进行调试
         dir->setAutoRemove(false);
         scriptFile = dir->filePath(scriptName);
-        qDebug() << "Dumping " << scriptName << "from qrc to" << scriptFile;
+        LogD("Dumping {} from qrc to {}", scriptName, scriptFile);
         QFile::copy(":/scripts/" + scriptName, scriptFile);
     }
     auto output =
@@ -64,7 +65,7 @@ auto SourceFetcher::fetch(QDir destination) noexcept -> utils::error::Result<voi
           this->cacheDir.absolutePath(),
         });
     if (!output.has_value()) {
-        qDebug() << "output error:" << output.error();
+        LogE("output error: {}", output.error());
         return LINGLONG_ERR("stderr:", output);
     }
 

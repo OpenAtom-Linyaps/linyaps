@@ -6,6 +6,8 @@
 
 #include "cmd.h"
 
+#include "linglong/utils/log/log.h"
+
 #include <fmt/format.h>
 
 #include <QProcess>
@@ -31,7 +33,7 @@ linglong::utils::error::Result<QString> Cmd::exec(const QStringList &args) noexc
 {
     LINGLONG_TRACE(
       fmt::format("exec {} {}", m_command.toStdString(), args.join(" ").toStdString()));
-    qDebug() << "exec" << m_command << args;
+    LogD("exec {} {}", m_command, args);
     QProcess process;
     process.setProgram(m_command);
     if (!m_envs.isEmpty()) {

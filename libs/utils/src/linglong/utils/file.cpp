@@ -235,4 +235,16 @@ getFiles(const std::filesystem::path &dir)
     return files;
 }
 
+linglong::utils::error::Result<void> ensureDirectory(const std::filesystem::path &dir)
+{
+    LINGLONG_TRACE(fmt::format("ensure directory {}", dir));
+
+    std::error_code ec;
+    if (!std::filesystem::create_directory(dir, ec) && ec) {
+        return LINGLONG_ERR("failed to create directory", ec);
+    }
+
+    return LINGLONG_OK;
+}
+
 } // namespace linglong::utils

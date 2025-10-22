@@ -5,10 +5,8 @@
 #pragma once
 #include "linglong/utils/error/error.h"
 
-#include <cstdint>
 #include <filesystem>
 #include <string>
-#include <unordered_set>
 
 namespace linglong::utils {
 
@@ -34,5 +32,7 @@ moveFiles(const std::filesystem::path &src,
 
 linglong::utils::error::Result<std::vector<std::filesystem::path>>
 getFiles(const std::filesystem::path &dir);
+
+linglong::utils::error::Result<void> ensureDirectory(const std::filesystem::path &dir);
 
 } // namespace linglong::utils

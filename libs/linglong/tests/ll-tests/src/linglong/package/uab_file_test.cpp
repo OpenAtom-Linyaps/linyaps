@@ -132,8 +132,7 @@ TEST_F(UabFileTest, UnpackFuseOffset)
     // 初始化UABFile对象
     auto uab = linglong::package::UABFile::loadFromFile(fd);
     ASSERT_TRUE(uab.has_value()) << "Failed to load uab file";
-    auto uabValue = *uab;
-    auto unpackRet = uabValue->unpack();
+    auto unpackRet = (*uab)->unpack();
     ASSERT_TRUE(unpackRet.has_value())
       << "Failed to unpack uab file" << unpackRet.error().message();
 

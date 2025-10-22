@@ -20,6 +20,7 @@
 #include "linglong/package/reference.h"
 #include "linglong/package/uab_file.h"
 #include "linglong/package_manager/package_task.h"
+#include "linglong/package_manager/uab_installation.h"
 #include "linglong/repo/config.h"
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/runtime/run_context.h"
@@ -781,348 +782,38 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
 QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd,
                                            const api::types::v1::CommonOptions &options) noexcept
 {
-    if (!fd.isValid()) {
-        return toDBusReply(utils::error::ErrorCode::Failed, "invalid file descriptor");
-    }
-
     std::unique_ptr<utils::InstallHookManager> installHookManager =
       std::make_unique<utils::InstallHookManager>();
     auto ret = installHookManager->parseInstallHooks();
     if (!ret) {
         return toDBusReply(ret);
     }
-
     ret = installHookManager->executeInstallHooks(fd.fileDescriptor());
     if (!ret) {
         return toDBusReply(utils::error::ErrorCode::Failed,
                            "uab package signature verification failed.");
     }
 
-    auto uabRet = package::UABFile::loadFromFile(fd.fileDescriptor());
-    if (!uabRet) {
-        return toDBusReply(uabRet);
-    }
-
-    const auto &uab = *uabRet;
-    auto verifyRet = uab->verify();
-    if (!verifyRet) {
-        return toDBusReply(verifyRet);
-    }
-    if (!*verifyRet) {
-        return toDBusReply(utils::error::ErrorCode::Failed, "couldn't pass uab verification");
-    }
-
-    auto realFile = uab->symLinkTarget();
-
-    auto metaInfoRet = uab->getMetaInfo();
-    if (!metaInfoRet) {
-        return toDBusReply(metaInfoRet);
-    }
-
-    const auto &metaInfo = *metaInfoRet;
-    auto layerInfos = metaInfo.get().layers;
-    auto appLayerIt = std::find_if(layerInfos.cbegin(),
-                                   layerInfos.cend(),
-                                   [](const api::types::v1::UabLayer &layer) {
-                                       return layer.info.kind == "app";
-                                   });
-    if (appLayerIt == layerInfos.cend()) {
+    auto action = UabInstallationAction::create(fd.fileDescriptor(), *this, repo, options);
+    if (!action) {
         return toDBusReply(utils::error::ErrorCode::Failed,
-                           "couldn't find application layer in this uab");
+                           "failed to create uab installation action");
     }
 
-    auto appLayer = *appLayerIt;
-    layerInfos.erase(appLayerIt);
-    auto app =
-      layerInfos.insert(layerInfos.begin(),
-                        std::move(appLayer)); // app layer should place to the first of vector
-
-    auto architectureRet = package::Architecture::parse(app->info.arch[0]);
-    if (!architectureRet) {
-        return toDBusReply(architectureRet);
+    auto prepared = action->prepare();
+    if (!prepared) {
+        return toDBusReply(prepared);
     }
 
-    auto currentArch = package::Architecture::currentCPUArchitecture();
-    if (!currentArch) {
-        return toDBusReply(currentArch);
-    }
-
-    if (*architectureRet != *currentArch) {
-        return toDBusReply(utils::error::ErrorCode::Failed,
-                           "app arch:" + architectureRet->toStdString()
-                             + " not match host architecture");
-    }
-
-    auto versionRet = package::Version::parse(app->info.version);
-    if (!versionRet) {
-        return toDBusReply(versionRet);
-    }
-
-    auto appRefRet = package::Reference::fromPackageInfo(app->info);
-    if (!appRefRet) {
-        return toDBusReply(appRefRet);
-    }
-
-    const auto &appRef = *appRefRet;
-    api::types::v1::PackageManager1RequestInteractionAdditionalMessage additionalMessage;
-    api::types::v1::InteractionMessageType msgType =
-      api::types::v1::InteractionMessageType::Install;
-    additionalMessage.remoteRef = appRef.toString();
-
-    // Note: same as InstallRef, we should fuzzy the id instead of version
-    auto fuzzyRef = package::FuzzyReference::parse(appRef.id);
-    if (!fuzzyRef) {
-        return toDBusReply(fuzzyRef);
-    }
-
-    auto localAppRef = this->repo.clearReference(*fuzzyRef,
-                                                 {
-                                                   .fallbackToRemote = false // NOLINT
-                                                 });
-    if (localAppRef) {
-        auto layerDir = this->repo.getLayerDir(*localAppRef, app->info.packageInfoV2Module);
-        if (layerDir && layerDir->valid()) {
-            additionalMessage.localRef = localAppRef->toString();
-        }
-    }
-
-    if (!additionalMessage.localRef.empty()) {
-        if (appRef.version == localAppRef->version) {
-            return toDBusReply(utils::error::ErrorCode::Failed,
-                               localAppRef->toString() + " is already installed");
-        }
-
-        if (appRef.version > localAppRef->version) {
-            msgType = api::types::v1::InteractionMessageType::Upgrade;
-        } else if (!options.force) {
-            auto uabName = fmt::format("{}_{}_{}_{}.uab",
-                                       appRef.id,
-                                       architectureRet->toStdString(),
-                                       appRef.version.toString(),
-                                       app->info.packageInfoV2Module.c_str());
-            auto err = fmt::format("The latest version has been installed. If you want to "
-                                   "replace it, try using 'll-cli install {} --force'",
-                                   std::move(uabName));
-            return toDBusReply(utils::error::ErrorCode::Failed, err);
-        }
-    }
-
-    auto installer = [this,
-                      fdDup = fd, // keep file descriptor don't close by the destructor of
-                                  // QDBusUnixFileDescriptor
-                      uab = std::move(uabRet).value(),
-                      layerInfos = std::move(layerInfos),
-                      metaInfo = std::move(metaInfoRet).value(),
-                      options,
-                      msgType,
-                      additionalMessage,
-                      newAppRef = std::move(appRefRet).value(),
-                      oldAppRef = localAppRef.has_value()
-                        ? std::make_optional(std::move(localAppRef).value())
-                        : std::nullopt](PackageTask &taskRef) {
-        if (msgType == api::types::v1::InteractionMessageType::Upgrade
-            && !options.skipInteraction) {
-            Q_EMIT RequestInteraction(QDBusObjectPath(taskRef.taskObjectPath()),
-                                      static_cast<int>(msgType),
-                                      utils::serialize::toQVariantMap(additionalMessage));
-            QEventLoop loop;
-            auto conn = connect(
-              this,
-              &PackageManager::ReplyReceived,
-              [&taskRef, &loop](const QVariantMap &reply) {
-                  // handle reply
-                  auto interactionReply =
-                    utils::serialize::fromQVariantMap<api::types::v1::InteractionReply>(reply);
-                  if (interactionReply->action != "yes") {
-                      taskRef.updateState(linglong::api::types::v1::State::Canceled, "canceled");
-                  }
-
-                  loop.exit(0);
-              });
-            loop.exec();
-            disconnect(conn);
-        }
-        if (isTaskDone(taskRef.subState())) {
-            return;
-        }
-
-        taskRef.updateState(linglong::api::types::v1::State::Processing, "installing uab");
-        taskRef.updateSubState(linglong::api::types::v1::SubState::PreAction,
-                               "prepare environment");
-
-        auto mountPoint = uab->unpack();
-        if (!mountPoint) {
-            taskRef.reportError(std::move(mountPoint).error());
-            return;
-        }
-
-        if (isTaskDone(taskRef.subState())) {
-            return;
-        }
-
-        auto uabLayersDir = *mountPoint / "layers";
-        const auto &uabLayersDirInfo = QFileInfo{ uabLayersDir.c_str() };
-        if (!uabLayersDirInfo.exists() || !uabLayersDirInfo.isDir()) {
-            taskRef.updateState(linglong::api::types::v1::State::Failed,
-                                "the contents of this uab file are invalid");
-            return;
-        }
-
-        auto appLayerInfo = std::find_if(layerInfos.begin(),
-                                         layerInfos.end(),
-                                         [](const linglong::api::types::v1::UabLayer &layer) {
-                                             return layer.info.kind == "app";
-                                         });
-        if (appLayerInfo == layerInfos.end()) {
-            taskRef.updateState(linglong::api::types::v1::State::Failed,
-                                "the contents of this uab file are invalid");
-            return;
-        }
-
-        bool onlyApp = metaInfo.get().onlyApp && metaInfo.get().onlyApp.value();
-        utils::Transaction transaction;
-        for (const auto &layer : layerInfos) {
-            if (isTaskDone(taskRef.subState())) {
-                return;
-            }
-
-            std::error_code ec;
-            auto layerDirPath = uabLayersDir / layer.info.id / layer.info.packageInfoV2Module;
-            if (!std::filesystem::exists(layerDirPath, ec)) {
-                if (ec) {
-                    auto msg = fmt::format("get status of {} failed: {}",
-                                           layerDirPath.c_str(),
-                                           ec.message());
-                    taskRef.updateState(linglong::api::types::v1::State::Failed, msg);
-                    return;
-                }
-
-                auto msg = fmt::format("layer directory {} doesn't exist", layerDirPath.c_str());
-                taskRef.updateState(linglong::api::types::v1::State::Failed, msg);
-                return;
-            }
-
-            const auto &layerDir = package::LayerDir{ layerDirPath.c_str() };
-            std::optional<std::string> subRef{ std::nullopt };
-            if (layer.minified) {
-                subRef = metaInfo.get().uuid;
-            }
-
-            auto infoRet = layerDir.info();
-            if (!infoRet) {
-                taskRef.reportError(std::move(infoRet).error());
-                return;
-            }
-            auto &info = *infoRet;
-
-            auto refRet = package::Reference::fromPackageInfo(info);
-            if (!refRet) {
-                taskRef.reportError(std::move(refRet).error());
-                return;
-            }
-            auto &ref = *refRet;
-
-            std::vector<std::filesystem::path> overlays;
-            bool isAppLayer = layer.info.kind == "app";
-            if (isAppLayer) { // it's meaningless for app layer that declare minified is true
-                subRef = std::nullopt;
-                auto ret = uab->extractSignData();
-                if (!ret) {
-                    taskRef.reportError(std::move(ret).error());
-                    return;
-                }
-
-                if (!ret->empty()) {
-                    overlays.emplace_back(std::move(ret).value());
-                }
-
-                if (onlyApp) {
-                    pullDependency(taskRef, info, "binary");
-                }
-            } else {
-                if (onlyApp) { // ignore all non-app layers if onlyApp is true
-                    continue;
-                }
-
-                auto fuzzyString = refRet->id + "/" + refRet->version.toString();
-                auto fuzzyRef = package::FuzzyReference::parse(fuzzyString);
-                auto localRef = this->repo.clearReference(*fuzzyRef,
-                                                          {
-                                                            .fallbackToRemote = false // NOLINT
-                                                          });
-                if (localRef) {
-                    auto layerDir = this->repo.getLayerDir(*localRef, info.packageInfoV2Module);
-                    if (layerDir && layerDir->valid() && refRet->version == localRef->version) {
-                        // if the completed reference of local installed has the same version,
-                        // skip it
-                        continue;
-                    }
-                }
-            }
-
-            auto ret = this->repo.importLayerDir(layerDir, overlays, subRef);
-            if (!ret) {
-                taskRef.reportError(std::move(ret).error());
-                return;
-            }
-
-            std::for_each(overlays.begin(), overlays.end(), [](const std::filesystem::path &dir) {
-                std::error_code ec;
-                if (std::filesystem::remove_all(dir, ec) == static_cast<std::uintmax_t>(-1) && ec) {
-                    qWarning() << "failed to remove temporary directory" << dir.c_str();
-                }
-            });
-
-            transaction.addRollBack(
-              [this, layerInfo = std::move(info), layerRef = ref, subRef]() noexcept {
-                  auto ret = this->repo.remove(layerRef, layerInfo.packageInfoV2Module, subRef);
-                  if (!ret) {
-                      qCritical() << "rollback importLayerDir failed:" << ret.error().message();
-                  }
-              });
-        }
-
-        if (oldAppRef) {
-            auto ret =
-              removeAfterInstall(*oldAppRef, newAppRef, this->repo.getModuleList(*oldAppRef));
-            if (!ret) {
-                qCritical() << "remove old reference after install newer version failed:"
-                            << ret.error().message();
-            }
-        } else {
-            // export directly
-            auto mergeRet = this->repo.mergeModules();
-            if (!mergeRet.has_value()) {
-                qCritical() << "merge modules failed: " << mergeRet.error().message();
-            }
-
-            this->repo.exportReference(newAppRef);
-            auto result = this->tryGenerateCache(newAppRef);
-            if (!result) {
-                auto msg =
-                  fmt::format("Failed to generate some cache: {}", result.error().message());
-                taskRef.updateState(linglong::api::types::v1::State::Failed, msg);
-                return;
-            }
-        }
-
-        auto ret = executePostInstallHooks(newAppRef);
-        if (!ret) {
-            taskRef.reportError(std::move(ret).error());
-            return;
-        }
-
-        transaction.commit();
-        taskRef.updateState(linglong::api::types::v1::State::Succeed, "install uab successfully");
-    };
-
-    auto refSpec = fmt::format("{}:{}/{}/{}/{}",
-                               "local",
-                               appRef.channel,
-                               appRef.id,
-                               appRef.arch.toStdString(),
-                               QString::fromStdString(app->info.packageInfoV2Module));
-    auto taskRet = tasks.addNewTask({ refSpec }, std::move(installer), connection());
+    auto taskRet = tasks.addNewTask(
+      { action->getTaskName() },
+      [action](PackageTask &task) {
+          auto res = action->doAction(task);
+          if (!res) {
+              LogD("uab installation failed: {}", res.error());
+          }
+      },
+      connection());
     if (!taskRet) {
         return toDBusReply(taskRet);
     }
@@ -1133,7 +824,7 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd,
     return utils::serialize::toQVariantMap(api::types::v1::PackageManager1PackageTaskResult{
       .taskObjectPath = taskRef.taskObjectPath().toStdString(),
       .code = 0,
-      .message = (realFile + " is now installing").toStdString(),
+      .message = action->getTaskName() + " is now installing",
     });
 }
 
@@ -1141,6 +832,10 @@ auto PackageManager::InstallFromFile(const QDBusUnixFileDescriptor &fd,
                                      const QString &fileType,
                                      const QVariantMap &options) noexcept -> QVariantMap
 {
+    if (!fd.isValid()) {
+        return toDBusReply(utils::error::ErrorCode::Failed, "invalid file descriptor");
+    }
+
     auto opts = utils::serialize::fromQVariantMap<api::types::v1::CommonOptions>(options);
     if (!opts) {
         return toDBusReply(opts);
@@ -2643,6 +2338,32 @@ PackageManager::executePostUninstallHooks(const package::Reference &ref) noexcep
     }
 
     return LINGLONG_OK;
+}
+
+bool PackageManager::waitConfirm(
+  PackageTask &taskRef,
+  api::types::v1::InteractionMessageType msgType,
+  const api::types::v1::PackageManager1RequestInteractionAdditionalMessage
+    &additionalMessage) noexcept
+{
+    Q_EMIT RequestInteraction(QDBusObjectPath(taskRef.taskObjectPath()),
+                              static_cast<int>(msgType),
+                              utils::serialize::toQVariantMap(additionalMessage));
+    QEventLoop loop;
+    auto conn =
+      connect(this, &PackageManager::ReplyReceived, [&taskRef, &loop](const QVariantMap &reply) {
+          auto interactionReply =
+            utils::serialize::fromQVariantMap<api::types::v1::InteractionReply>(reply);
+          if (interactionReply->action != "yes") {
+              taskRef.updateState(linglong::api::types::v1::State::Canceled, "canceled");
+          }
+          loop.exit(0);
+      });
+    loop.exec();
+
+    disconnect(conn);
+
+    return !isTaskDone(taskRef.subState());
 }
 
 } // namespace linglong::service

@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 #include <gtest/gtest.h>
 
+#include "../../common/tempdir.h"
 #include "../mocks/linglong_builder_mock.h"
 #include "linglong/builder/linglong_builder.h"
 #include "linglong/utils/error/error.h"
@@ -16,48 +17,8 @@
 
 #include <unistd.h>
 
-// A RAII wrapper for a temporary directory created with mkdtemp.
-class TempDir
-{
-public:
-    TempDir(const std::string &prefix = "linglong-test-")
-    {
-        std::string tmppath_template =
-          (std::filesystem::temp_directory_path() / (prefix + "XXXXXX")).string();
-        std::vector<char> tmppath_c(tmppath_template.begin(), tmppath_template.end());
-        tmppath_c.push_back('\0');
-
-        char *result = mkdtemp(tmppath_c.data());
-        if (result != nullptr) {
-            _path = result;
-        }
-    }
-
-    ~TempDir()
-    {
-        if (!_path.empty()) {
-            std::error_code ec;
-            std::filesystem::remove_all(_path, ec);
-        }
-    }
-
-    TempDir(const TempDir &) = delete;
-    TempDir &operator=(const TempDir &) = delete;
-    TempDir(TempDir &&) = delete;
-    TempDir &operator=(TempDir &&) = delete;
-
-    const std::filesystem::path &path() const { return _path; }
-
-    bool isValid() const { return !_path.empty(); }
-
-private:
-    std::filesystem::path _path;
-};
-
 TEST(LinglongBuilder, installModule)
 {
-    linglong::utils::global::initLinyapsLogSystem("");
-
     TempDir buildOutput;
     ASSERT_TRUE(buildOutput.isValid());
     TempDir moduleOutput;

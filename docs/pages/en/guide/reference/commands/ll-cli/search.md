@@ -1,0 +1,117 @@
+% ll-cli-search 1
+
+## NAME
+
+ll\-cli\-search - Search for applications/runtimes containing specified keywords from remote repositories
+
+## SYNOPSIS
+
+**ll-cli search** [*options*] *keywords*
+
+## DESCRIPTION
+
+The `ll-cli search` command can query application information from Linyaps remote repositories. This command is used to search for applications, runtimes, or base environments containing specified keywords from remote repositories.
+
+## OPTIONS
+
+**-h, --help**
+: Print help information and exit
+
+**--help-all**
+: Expand all help
+
+**--type** *TYPE* [*all*]
+: Filter results by specified type. Available types: "runtime", "base", "app", or "all".
+
+**--repo** *REPO*
+: Specify repository
+
+**--dev**
+: Include application debug packages in results
+
+**--show-all-version**
+: Show all versions of applications, base, or runtime
+
+## POSITIONAL ARGUMENTS
+
+**KEYWORDS** *TEXT* *REQUIRED*
+: Specify search keywords
+
+## EXAMPLES
+
+Use the `ll-cli search` command to find application information from remote repositories:
+
+```bash
+ll-cli search calculator
+```
+
+This command will return all application information containing the calculator keyword, including complete `appid`, application name, version, platform, and application description information.
+
+`ll-cli search calculator` output as follows:
+
+```text
+ID                                         Name                             Version         Channel         Module      Repository Description
+com.bixense.passwordcalculator             com.bixense.passwordcalculator   1.1.0.0         main            binary      nightly   flatpak runtime environment on linglong
+com.expidusos.calculator                   com.expidusos.calculator         0.1.1.0         main            binary      nightly   flatpak runtime environment on linglong
+dev.edfloreshz.calculator                  dev.edfloreshz.calculator        0.1.1.0         main            binary      nightly   flatpak runtime environment on linglong
+io.github.deaen.awesomecalculator          io.github.deaen.awesomecalculator 2.2.0.0         main            binary      nightly   flatpak runtime environment on linglong
+org.deepin.calculator                      deepin-calculator                6.5.26.1        main            binary      nightly   Calculator for UOS
+org.gnome.calculator                       org.gnome.calculator             48.1.0.0        main            binary      nightly   flatpak runtime environment on linglong
+uno.platform.uno-calculator                uno.platform.uno-calculator      1.2.9.0         main            binary      nightly   flatpak runtime environment on linglong
+com.github.matrix-calculator.linyaps       com.github.matrix-calculator     3.3.0.0         main            runtime     stable    convert from 3.3 build uos https://chinauos.com \Pyth...
+com.github.thatonecalculator.discordrpcmaker discordrpcmaker                  2.1.1.0         main            binary      stable    The best way to create and manage custom Discord rich presence with buttons!
+com.poki.true-love-calculator              True Love Calculator             34.4.1.20250423 main            binary      stable    True Love Calculator is an online mini-game provided ...
+com.poki.your-love-calculator              Your Love Calculator             34.4.1.20250423 main            binary      stable    Your Love Calculator is an online mini-game provided ...
+dev.edfloreshz.calculator                  dev.edfloreshz.calculator        0.1.1.0         main            binary      stable    flatpak runtime environment on linglong
+io.github.Calculator                       Calculator                       0.0.1.1         main            runtime     stable    C++ GUI Calculator app.
+io.github.Huawei_modem_calculator_v2       Huawei_modem_calculator_v2       1.0.0.0         main            runtime     stable    Is it Huawei modem unlock code calculator from forth3...
+io.github.QT_GraphingCalculator            QT_GraphingCalculator            0.0.1.0         main            runtime     stable    Graphing calculator using QT and QTcustomplot
+io.github.Qt-calculator                    Qt-calculator                    1.0.0.0         main            runtime     stable    A simple GUI calculator🧮 built using C++.
+io.github.SolarCalculator                  SolarCalculator                  1.0.0.0         main            runtime     stable    Small app to calculate sunrise and sunset based on da...
+io.github.StringCalculator                 StringCalculator                 0.0.1.0         main            runtime     stable    Full-featured calculator written in C++ with Qt frame...
+io.github.cupcalculator                    cupcalculator                    1.1.2.0         main            runtime     stable    A program which calculates scorings from orienteering...
+io.github.cyber-calculator                 cyber-calculator                 1.0.0.0         main            runtime     stable    CyberOS Calculator.
+io.github.euduardop.faultcalculator-app    io.github.euduardop.faultcalc... 31.7.24.0       main            binary      stable    appimage convert
+io.github.galaxy-calculator                galaxy-calculator                0.0.2.0         main            runtime     stable    Galaxy Calculator: Given the size of the Galaxy you c...
+io.github.johannesboehler2.BmiCalculator   io.github.johannesboehler2.Bm... 1.3.1.0         main            binary      stable    Calculate your body mass index from weight, height an...
+org.deepin.calculator                      deepin-calculator                6.5.26.1        main            binary      stable    Calculator for UOS
+uno.platform.uno-calculator                uno.platform.uno-calculator      1.2.9.0         main            binary      stable    flatpak runtime environment on linglong
+```
+
+If you need to find all remote base environments, you can use the following command:
+
+```bash
+ll-cli search . --type=base
+```
+
+If you need to find all remote runtimes, you can use the following command:
+
+```bash
+ll-cli search . --type=runtime
+```
+
+Search for remote base by name:
+
+```bash
+ll-cli search org.deepin.base --type=base
+```
+
+Search for remote runtime by name:
+
+```bash
+ll-cli search org.deepin.runtime.dtk --type=runtime
+```
+
+Search for all remote packages:
+
+```bash
+ll-cli search .
+```
+
+## SEE ALSO
+
+**[ll-cli(1)](./ll-cli.md)**, **[ll-cli-list(1)](./list.md)**, **[ll-cli-install(1)](./install.md)**
+
+## HISTORY
+
+Developed in 2023 by UnionTech Software Technology Co., Ltd.

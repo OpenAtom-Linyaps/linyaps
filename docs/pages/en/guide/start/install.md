@@ -4,35 +4,33 @@ SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
 SPDX-License-Identifier: LGPL-3.0-or-later
 -->
 
-# Install linyaps
+# Install Linyaps
 
 linyaps is composed of three parts:
 
-- ll-builder is used to build and debug linyaps applications, provided by linglong-builder.
-- ll-box is a sandbox container, provided by linglong-box.
-- ll-cli manages and runs linyaps applications, provided by linglong-bin.
+- ll-builder is used to build and debug Linyaps applications, provided by linglong-builder.
+- ll-box sandbox container, provided by linglong-box.
+- ll-cli manages and runs Linyaps applications, provided by linglong-bin.
 
 ## Repository Usage Instructions
 
-### Release Repository
+### release repository
 
-Automatically built based on the latest tag.
+Automatically built based on the latest tag
 
-Repository URL: <https://ci.deepin.com/repo/obs/linglong:/CI:/release>
+1.  Repository address <https://ci.deepin.com/repo/obs/linglong:/CI:/release>
+2.  Build address <https://build.deepin.com/project/show/linglong:CI:release>
 
-Build URL: <https://build.deepin.com/project/show/linglong:CI:release>
+### latest repository
 
-### Latest Repository
+Automatically built based on the latest commit
 
-Automatically built based on the latest commits.
-
-Repository URL: <https://ci.deepin.com/repo/obs/linglong:/CI:/latest>
-
-Build URL: <https://build.deepin.com/project/show/linglong:CI:latest>
+1.  Repository address <https://ci.deepin.com/repo/obs/linglong:/CI:/latest>
+2.  Build address <https://build.deepin.com/project/show/linglong:CI:latest>
 
 :::tip
 
-The installation steps below are based on the release repository. If you'd like to experience unreleased features, you can replace release in the repository URL with latest to install the preview version built from the master branch.
+The following installation steps all use the release repository. If you want to experience features that have not yet been released, change "release" to "latest" in the repository address to install the preview version built based on the master branch
 
 :::
 
@@ -44,7 +42,7 @@ The installation steps below are based on the release repository. If you'd like 
 sudo pacman -Syu linyaps
 ```
 
-The Linyaps Web Store installation tool needs to be installed through the [AUR repository](https://aur.archlinux.org/packages/linyaps-web-store-installer) or [self-built source repository](https://github.com/taotieren/aur-repo).
+Linyaps web store installer needs to be installed through [AUR repository](https://aur.archlinux.org/packages/linyaps-web-store-installer) or [self-built repository](https://github.com/taotieren/aur-repo).
 
 ```bash
 # AUR
@@ -153,13 +151,13 @@ sudo apt install linglong-bin linglong-installer
 
 ## Linyaps Build Tool Installation Instructions
 
-### Debian Base
+### Debian-based
 
 ```bash
 sudo apt install linglong-builder
 ```
 
-### RPM Base
+### RPM-based
 
 ```bash
 sudo dnf install linglong-builder

@@ -14,7 +14,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ### 在调试环境运行应用
 
-在 [运行编译后的应用](../ll-builder/run.md) 一节中，我们已经知道使用`ll-builder run --exec /bin/bash`可以运行编译后的应用并进入容器的终端。只需要再 run 后面加上 `--debug` 参数即可以调试环境运行容器并进入容器。调试环境和非调试环境的区别主要有以下几点：
+在 [运行编译后的应用](../reference/commands/ll-builder/run.md) 一节中，我们已经知道使用`ll-builder run --exec /bin/bash`可以运行编译后的应用并进入容器的终端。只需要再 run 后面加上 `--debug` 参数即可以调试环境运行容器并进入容器。调试环境和非调试环境的区别主要有以下几点：
 
 1. 调试环境会使用 base 和 runtime 的 binary+develop 模块，而非调试环境会使用 binary 模块，gdb 工具就在 base 的 develop 模块中。
 2. 调试环境会使用 app 的 binary+develop 模块，而非调试环境默认使用 binary 模块（一般会将应用的调试符号保存到 develop 模块）。

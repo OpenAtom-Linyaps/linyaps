@@ -75,7 +75,7 @@ wmctrl x11-utils
 4. 由于 `deepin 23` 下提供了兼容性测试结果截图功能, 因此需要安装相关的软件包:
 
 ```
-deepin-screen-recorder imagemagick-6.q16
+deepin-screen-recorder imagesmagick-6.q16
 ```
 
 5. 手动启动一次 `deepin-screen-recorder`, 确认系统截图保存路径为当前用户的~/Pictures/Screenshots中,且该目录为空
@@ -144,13 +144,13 @@ ziggy@linyaps23:/media/szbt/Data/linyaps-testing-toolchains$ ./linyaps-auto-scre
 
 9. 在脚本启动后, 将该终端设置为最小化窗口保留在背景运行, 测试套件将会判断应用安装情况、desktop文件存在情况来 `启动` 和 `关闭` 应用窗口
 
-![test-1](image/5-test-1.png)
-![test-2](image/5-test-2.png)
+![test-1](images/5-test-1.png)
+![test-2](images/5-test-2.png)
 
 10. 在满足运行要求后, 套件将会模拟通过desktop文件启动程序并在约 30s 延时后对窗口进行判断, 检查应用运行后是否生成新窗口
 
-![test-3](image/5-test-3.png)
-![test-4](image/5-test-4.png)
+![test-3](images/5-test-3.png)
+![test-4](images/5-test-4.png)
 
 11. 应用成功运行后, 将会依次完成截图、图标检测&获取操作
 
@@ -179,6 +179,6 @@ res/
         └── 3.png
 ```
 
-![test-5](image/5-test-5.png)
+![test-5](images/5-test-5.png)
 
 至此, 我们成功通过玲珑应用自动化测试套件, 完成了针对历史课时中产出的玲珑应用的兼容性测试

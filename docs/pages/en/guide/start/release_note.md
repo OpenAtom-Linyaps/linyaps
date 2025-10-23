@@ -6,20 +6,20 @@
 
 ### **New Features**
 
-- **Container Process Management Optimization:** We've integrated **`dumb-init`** as the container's `init` process. This significantly optimizes container internal process management by handling signal forwarding and zombie process cleanup more efficiently.
-- **UAB File Generation Refactoring:** The logic for generating UAB files has been completely refactored. All related dependencies are now encapsulated within the **`ll-builder-utils`** toolchain, resolving compatibility issues encountered during export on some distributions.
-- **Qt Version Compatibility:** The project now supports both **Qt5 and Qt6**. Applications will automatically compile using the appropriate Qt version, enhancing flexibility.
-- **Command-Line Tool Multi-Language Support:** The command-line tool now supports more languages and regional variations, bolstering its internationalization capabilities.
-- **Architecture-Specific Configuration Loading:** We've added support for loading architecture-specific configuration files (e.g., `linglong.arm64.yaml`) via **`ll-builder`**, enabling automatic adaptation to different hardware architectures.
-- **Build Artifact Compression Algorithm Selection:** The Linglong build tool now allows users to specify the compression algorithm when exporting target artifacts.
-- **Local Multi-Repository Support:** We've introduced support for managing multiple local repositories, which can be used for installing and searching applications.
+- **Container Process Management Optimization:** Introduced **`dumb-init`** as the container `init` process, responsible for signal forwarding and zombie process cleanup, significantly optimizing container internal process management efficiency.
+- **UAB File Generation Refactoring:** Completely refactored the UAB file generation logic, encapsulating all related dependencies into the **`ll-builder-utils`** toolchain, resolving compatibility issues during export on some distributions.
+- **Qt Version Compatibility:** The project now supports both **Qt5 and Qt6**, automatically selecting the appropriate Qt version when compiling applications, improving flexibility.
+- **Command Line Tool Multi-language Support:** Command line tools now support more languages from different countries and regions, enhancing internationalization capabilities.
+- **Architecture-specific Configuration Loading:** Supports loading architecture-specific configuration files (e.g., `linglong.arm64.yaml`) through **`ll-builder`**, enabling automatic adaptation for different hardware architectures.
+- **Build Product Compression Algorithm Selection:** Linyaps build tools now allow users to specify compression algorithms when exporting target products.
+- **Local Multi-repository Support:** Added support for local multi-repository management, which can be used for installing and searching applications.
 
 ### **Bug Fixes**
 
-- Resolved issues where error messages were vague; they are now clearer and more informative.
-- Fixed abnormal behavior in application cache loading and update logic.
-- Addressed a defect where update tasks would abnormally terminate during application runtime.
-- Rectified an issue causing abnormal errors when uninstalling applications.
+- Fixed the issue where error messages were too vague, now the prompts are clearer and more explicit.
+- Fixed anomalies in application cache loading and update logic.
+- Fixed defects where update tasks would abnormally terminate during application runtime.
+- Fixed potential abnormal error reporting issues when uninstalling applications.
 
 ---
 
@@ -28,18 +28,18 @@
 ### **New Features**
 
 - **Enhanced Build Capabilities:**
-  - **Dependency Management Optimization:** Improved dependency management, now supporting the installation of build toolchain dependencies via the **APT package manager**.
-  - **Expanded Compression Algorithms:** When exporting applications, you can now choose from more compression algorithms, including **LZ4, LZMA, and ZSTD**.
-  - **Build Environment Upgrade:** The Linglong client now supports building in a **Qt6 environment**.
-- **Internationalization Support:** The command-line tool now includes support for additional languages: English (en_US/en_GB), Spanish (es), Simplified Chinese (zh_CN), Catalan (ca), Finnish (fi), Polish (pl), Brazilian Portuguese (pt_BR), Albanian (sq), and Ukrainian (uk).
+  - **Dependency Management Optimization:** Improved dependency management mechanism, supporting installation of build toolchain dependencies through **APT package manager**.
+  - **Compression Algorithm Extension:** When exporting applications, now supports more compression algorithms, including **LZ4, LZMA, and ZSTD**.
+  - **Build Environment Upgrade:** Linyaps client now supports building in **Qt6 environment**.
+- **Internationalization Support:** Command line tools added support for multiple languages, including English (en_US/en_GB), Spanish (es), Simplified Chinese (zh_CN), Catalan (ca), Finnish (fi), Polish (pl), Brazilian Portuguese (pt_BR), Albanian (sq), and Ukrainian (uk).
 
 ### **Bug Fixes**
 
 - **Stability Improvements:**
-  - Fixed an issue where mount directories were not fully cleaned up after installing a layer.
-  - Resolved failed upgrades for `base` and `runtime` components.
-  - Optimized the application uninstallation logic to ensure complete removal of residual directories.
-- **Improved Symlink Handling:** Fixed an anomaly where relative path symbolic links were incorrectly converted to empty directories. We also corrected an issue where invalid symbolic links were not properly copied.
+  - Fixed the issue where mounted directories were not completely cleaned up after installing layers.
+  - Resolved defects in upgrading base environment and runtime components.
+  - Optimized application uninstall logic to ensure residual directories can be thoroughly cleaned.
+- **Symbolic Link Processing Mechanism Improvement:** Fixed the anomaly where relative path symbolic links were incorrectly converted to empty directories; also corrected the issue where invalid symbolic links were not properly copied.
 
 ---
 
@@ -47,22 +47,22 @@
 
 ### **New Features**
 
-- **Optimized Repository Storage Layer Structure:** The repository's storage layer structure has been optimized, meaning application management no longer strictly depends on the file system, increasing flexibility.
-- **Optimized Linglong Data File Export:** The Linglong data file export function no longer exports all files under the `share` directory, reducing export size.
-- **Loongson New World Architecture Support:** Ruyi Linglong now supports application packaging and execution on the **Loongson New World architecture**.
-- **Adjusted and Optimized Installation, Uninstallation, and Update Behavior:**
-  - The new version no longer supports installing multiple versions of the same application locally. For multiple older versions retained after a client upgrade, all package management operations (except uninstallation) will only apply to the highest version.
-  - When an application is upgraded or downgraded while running, the uninstallation of the old version will be delayed to ensure a smooth transition.
-- **Internationalization of Ruyi Linglong Command-Line Tool Help Information:** The command-line tool's help information has begun internationalization, currently supporting Chinese, English, and Spanish. We plan to integrate a professional internationalization translation platform in the future.
-- **Optimized Linglong Command-Line Argument Parsing:** A new command-line argument parsing framework has been adopted, making parameter information clearer and easier to read.
-- **Optimized Linglong Application Packaging and Building:** When using the new build tool to package applications, debugging symbols will be stripped to effectively reduce the final application package size.
-- **`runtime/base` Management Command Adjustment:** `runtime/base` no longer supports uninstallation using the `uninstall` command. Instead, the `prune` command is provided for cleaning up unused `runtime` and `base` components.
-- **New `ll-cli list --upgradable` Command:** This command is now available to display a list of all upgradable versions for currently installed applications.
+- **Repository Storage Layer Structure Optimization:** Optimized the repository's storage layer structure, making application management no longer forcibly dependent on the file system, improving flexibility.
+- **Linyaps Data File Export Optimization:** Linyaps data file export function no longer exports all files under the `share` directory, reducing export volume.
+- **Loongson New World Architecture Support:** Linyaps now supports application packaging and running on **Loongson New World architecture**.
+- **Installation, Uninstallation, and Update Behavior Adjustment and Optimization:**
+  - The new version no longer supports installing multiple versions of the same application locally. For multiple old versions retained after client upgrade, all package management operations will only take effect on the highest version except for uninstall operations.
+  - When upgrading or downgrading while the application is running, the uninstall action of the old version will be delayed to ensure smooth transition.
+- **Linyaps Command Line Tool Help Information Internationalization:** Command line tool help information has begun internationalization, currently supporting Chinese, English, and Spanish, with professional internationalization translation platforms to be integrated later.
+- **Linyaps Command Line Parameter Parsing Optimization:** Adopted a new command line parameter parsing framework, making parameter information display clearer and more readable.
+- **Linyaps Application Packaging Build Optimization:** When using the new build tool to package applications, application debug symbols will be stripped to effectively reduce the final application package size.
+- **`runtime/base` Management Command Adjustment:** `runtime/base` no longer supports uninstallation using the `uninstall` command, instead providing the `prune` command for cleaning up unused `runtime` and `base` components.
+- **New `ll-cli list --upgradable` Command:** This command is used to display all upgradeable version lists of currently installed applications.
 
 ### **Bug Fixes**
 
-- Resolved issues preventing successful debugging of Linglong applications.
-- Fixed a bug that caused the `ll-cli search` command to crash when searching for applications with a system proxy enabled.
+- Solved the problem of Linyaps application debugging failure.
+- Fixed the defect that could cause application crashes when using the `ll-cli search` command to find applications after enabling system proxy.
 
 ---
 
@@ -70,11 +70,11 @@
 
 ### **New Features**
 
-- **USB Drive Directory and File Access:** Linglong applications now support direct reading of directories and files from USB drives.
-- **New `ll-pica-flatpak` Tool:** We've introduced the **`ll-pica-flatpak`** tool, which supports converting `Flatpak` format applications to Linglong format.
+- **USB Drive Directory File Reading:** Linyaps applications now support direct reading of directories and files in USB drives.
+- **New `ll-pica-flatpak` Tool:** Added the **`ll-pica-flatpak`** tool, supporting conversion of `Flatpak` format applications to Linyaps format.
 
 ### **Bug Fixes**
 
-- Fixed an issue where scripts failed to execute during Linglong package upgrades.
-- Resolved a problem where other commands would be blocked when installing Linglong applications.
-- Fixed display issues in the application list when an application name was too long.
+- Fixed the issue where script execution failed when upgrading Linyaps packages.
+- Fixed the defect where executing other commands might be blocked when installing Linyaps applications.
+- Fixed the problem where application names were too long and displayed incompletely when viewing the application list.

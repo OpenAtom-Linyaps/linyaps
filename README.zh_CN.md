@@ -148,73 +148,114 @@ ll-cli run cn.org.linyaps.demo
 
 ### 命令行工具
 
-- [introduction](./docs/pages/en/guide/ll-cli/introduction.md)
-- [install](./docs/pages/en/guide/ll-cli/install.md)
-- [run](./docs/pages/en/guide/ll-cli/run.md)
-- [uninstall](./docs/pages/en/guide/ll-cli/uninstall.md)
-- [upgrade](./docs/pages/en/guide/ll-cli/update.md)
-- [list](./docs/pages/en/guide/ll-cli/list.md)
-- [prune](./docs/pages/en/guide/ll-cli/prune.md)
-- [exec](./docs/pages/en/guide/ll-cli/exec.md)
-- [content](./docs/pages/en/guide/ll-cli/content.md)
-- [info](./docs/pages/en/guide/ll-cli/info.md)
-- [ps](./docs/pages/en/guide/ll-cli/ps.md)
-- [kill](./docs/pages/en/guide/ll-cli/kill.md)
-- [search](./docs/pages/en/guide/ll-cli/query.md)
+- [介绍](./docs/pages/guide/reference/commands/ll-cli/ll-cli.md)
+- [安装](./docs/pages/guide/reference/commands/ll-cli/install.md)
+- [运行](./docs/pages/guide/reference/commands/ll-cli/run.md)
+- [卸载](./docs/pages/guide/reference/commands/ll-cli/uninstall.md)
+- [升级](./docs/pages/guide/reference/commands/ll-cli/upgrade.md)
+- [列表](./docs/pages/guide/reference/commands/ll-cli/list.md)
+- [清理](./docs/pages/guide/reference/commands/ll-cli/prune.md)
+- [进入](./docs/pages/guide/reference/commands/ll-cli/enter.md)
+- [内容](./docs/pages/guide/reference/commands/ll-cli/content.md)
+- [信息](./docs/pages/guide/reference/commands/ll-cli/info.md)
+- [进程](./docs/pages/guide/reference/commands/ll-cli/ps.md)
+- [终止](./docs/pages/guide/reference/commands/ll-cli/kill.md)
+- [搜索](./docs/pages/guide/reference/commands/ll-cli/search.md)
 
 ### 构建工具
 
-- [introduction](./docs/pages/en/guide/ll-builder/introduction.md)
-- [demo](./docs/pages/en/guide/ll-builder/demo.md)
-- [create](./docs/pages/en/guide/ll-builder/create.md)
-- [run](./docs/pages/en/guide/ll-builder/run.md)
-- [push](./docs/pages/en/guide/ll-builder/push.md)
-- [export](./docs/pages/en/guide/ll-builder/export.md)
+- [介绍](./docs/pages/guide/reference/commands/ll-builder/ll-builder.md)
+- [演示](./docs/pages/guide/building/demo.md)
+- [创建](./docs/pages/guide/reference/commands/ll-builder/create.md)
+- [运行](./docs/pages/guide/reference/commands/ll-builder/run.md)
+- [推送](./docs/pages/guide/reference/commands/ll-builder/push.md)
+- [导出](./docs/pages/guide/reference/commands/ll-builder/export.md)
+- [构建](./docs/pages/guide/reference/commands/ll-builder/build.md)
+- [提取](./docs/pages/guide/reference/commands/ll-builder/extract.md)
+- [导入](./docs/pages/guide/reference/commands/ll-builder/import.md)
+- [列表](./docs/pages/guide/reference/commands/ll-builder/list.md)
+- [删除](./docs/pages/guide/reference/commands/ll-builder/remove.md)
+- [仓库](./docs/pages/guide/reference/commands/ll-builder/repo.md)
 
 ### 包转换工具
 
 #### deb 包转换
 
-- [introduction](./docs/pages/en/guide/ll-pica/introduction.md)
-- [init](./docs/pages/en/guide/ll-pica/init.md)
-- [convert](./docs/pages/en/guide/ll-pica/convert.md)
-- [adep](./docs/pages/en/guide/ll-pica/adep.md)
+- [介绍](./docs/pages/guide/reference/commands/ll-pica/ll-pica.md)
+- [初始化](./docs/pages/guide/reference/commands/ll-pica/ll-pica-init.md)
+- [转换](./docs/pages/guide/reference/commands/ll-pica/ll-pica-convert.md)
+- [依赖](./docs/pages/guide/reference/commands/ll-pica/ll-pica-adep.md)
+- [安装](./docs/pages/guide/reference/commands/ll-pica/install.md)
 
 #### AppImage 包转换
 
-- [introduction](./docs/pages/en/guide/ll-appimage-convert/introduction.md)
-- [convert](./docs/pages/en/guide/ll-appimage-convert/convert-appimage.md)
+- [介绍](./docs/pages/guide/reference/commands/ll-appimage-convert/ll-appimage-convert.md)
+- [转换](./docs/pages/guide/reference/commands/ll-appimage-convert/ll-appimage-convert-convert.md)
 
 #### Flatpak 包转换
 
-- [introduction](./docs/pages/en/guide/ll-flatpak-convert/introduction.md)
-- [convert](./docs/pages/en/guide/ll-flatpak-convert/convert-flatpak.md)
+- [介绍](./docs/pages/guide/reference/commands/ll-pica-flatpak/ll-pica-flatpak.md)
+- [转换](./docs/pages/guide/reference/commands/ll-pica-flatpak/ll-pica-flatpak-convert.md)
 
 ### 调试
 
-- [debug](/docs/pages/en/guide/debug/debug.md)
+- [调试指南](./docs/pages/guide/debug/debug.md)
 
 ### 常见问题
 
-- [运行相关常见问题](/docs/pages/en/guide/debug/faq.md)
-- [如意玲珑构建工具常见问题](/docs/pages/en/guide/debug/ll-builder-faq.md)
-- [如意玲珑转换工具常见问题](/docs/pages/en/guide/debug/ll-pica-faq.md)
+- [运行相关常见问题](./docs/pages/guide/tips-and-faq/faq.md)
+- [如意玲珑构建工具常见问题](./docs/pages/guide/tips-and-faq/ll-builder-faq.md)
+- [如意玲珑转换工具常见问题](./docs/pages/guide/tips-and-faq/ll-pica-faq.md)
+
 
 ## :book: 学习和参考
+
+### 入门指南
+
+- [概述](./docs/pages/guide/start/whatis.md) - 如意玲珑基本概念介绍
+- [安装指南](./docs/pages/guide/start/install.md) - 详细安装说明
+- [构建第一个应用](./docs/pages/guide/start/build_your_first_app.md) - 初学者完整教程
+
+### 构建和打包
+
+- [包规范](./docs/pages/guide/building/linyaps_package_spec.md) - 详细打包标准
+- [构建配置](./docs/pages/guide/building/manifests.md) - 理解 linglong.yaml
+- [模块管理](./docs/pages/guide/building/modules.md) - 模块拆分和管理
+- [多架构支持](./docs/pages/guide/building/multiarch.md) - 多架构构建
+- [演示示例](./docs/pages/guide/building/demo.md) - 实际构建演示
+
+### 参考文档
+
+- [基本概念](./docs/pages/guide/reference/basic-concepts.md) - 核心概念和术语
+- [运行时组件](./docs/pages/guide/reference/runtime.md) - 运行时系统详情
+- [驱动文档](./docs/pages/guide/reference/driver.md) - 驱动相关信息
+
+### 高级主题
+
+- [桌面集成](./docs/pages/guide/desktop-integration/README.md) - 桌面环境集成
+- [单元测试](./docs/pages/guide/extra/unit-testing.md) - 测试框架和实践
+- [包格式](./docs/pages/guide/extra/bundle-format.md) - 包格式规范
+- [系统助手](./docs/pages/guide/extra/system-helper.md) - 系统工具文档
+- [应用配置](./docs/pages/guide/extra/app-conf.md) - 应用配置指南
+- [根文件系统](./docs/pages/guide/extra/rootfs.md) - 根文件系统管理
+- [UAB 构建](./docs/pages/guide/extra/uab-build.md) - UAB 格式构建
+- [仓库管理](./docs/pages/guide/publishing/repositories.md) - 仓库操作
+- [UAB 发布](./docs/pages/guide/publishing/uab.md) - UAB 格式发布
+- [镜像站点](./docs/pages/guide/publishing/mirrors.md) - 镜像配置
+
+### 系列教程
+
+- [玲珑应用构建工程基础知识](./docs/pages/guide/lessons/basic-notes.md)
+- [容器内手动编译应用](./docs/pages/guide/lessons/build-in-env.md)
+- [本地源码手动编译应用](./docs/pages/guide/lessons/build-offline-src.md)
+- [使用 git&patch 编译应用](./docs/pages/guide/lessons/build-git-patch.md)
+- [玲珑应用自动化测试套件](./docs/pages/guide/lessons/test-with-toolchains.md)
 
 ### 相关项目
 
 - [OStree](https://github.com/ostreedev/ostree)
 - [如意玲珑打包工具 - ll-killer-go](https://github.com/System233/ll-killer-go)
 - [如意玲珑网页商店](https://github.com/yoloke/Linglong-Shop)
-
-### 系列教程
-
-- [玲珑应用构建工程基础知识](/docs/pages/guide/lessons/basic-notes.md)
-- [容器内手动编译应用](/docs/pages/guide/lessons/build-in-env.md)
-- [本地源码手动编译应用](/docs/pages/guide/lessons/build-offline-src.md)
-- [使用 git&patch 编译应用](/docs/pages/guide/lessons/build-git-patch.md)
-- [玲珑应用自动化测试套件](/docs/pages/guide/lessons/test-with-toolchains.md)
 
 更多课程可参考如意玲珑官网：<https://linyaps.org.cn/learn>
 

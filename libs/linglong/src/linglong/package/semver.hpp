@@ -42,6 +42,19 @@ const auto version_pattern =
 const auto loose_version_pattern =
   (R"(^v?(0|[1-9]\d*)\.(0|[1-9]\d*)(?:\.(0|[1-9]\d*))?(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$)");
 
+static const QRegularExpression &getRegex(bool strict) noexcept
+{
+    if (strict) {
+        static const QRegularExpression strictRegExp(version_pattern);
+        strictRegExp.optimize();
+        return strictRegExp;
+    }
+
+    static const QRegularExpression looseRegExp(loose_version_pattern);
+    looseRegExp.optimize();
+    return looseRegExp;
+}
+
 struct semver_exception : public std::runtime_error
 {
     explicit semver_exception(const std::string &message)
@@ -55,25 +68,26 @@ inline uint64_t parse_numeric_part(const std::string &version_part)
     return static_cast<uint64_t>(std::stoull(version_part));
 }
 
-inline std::vector<std::string> split(const std::string &text, const char &delimiter)
+inline std::vector<std::string_view> split(const std::string &text, const char &delimiter)
 {
-    std::size_t pos_start = 0, pos_end, delim_len = 1;
-    std::string current;
-    std::vector<std::string> result;
+    std::vector<std::string_view> result;
+    size_t start = 0;
+    size_t end = text.find(delimiter);
 
-    while ((pos_end = text.find(delimiter, pos_start)) != std::string::npos) {
-        current = text.substr(pos_start, pos_end - pos_start);
-        pos_start = pos_end + delim_len;
-        result.push_back(current);
+    while (end != std::string_view::npos) {
+        result.emplace_back(text.data() + start, end - start);
+        start = end + 1;
+        end = text.find(delimiter, start);
     }
-
-    result.push_back(text.substr(pos_start));
+    result.emplace_back(text.data() + start, text.size() - start);
     return result;
 }
 
 inline bool is_numeric(const std::string &text)
 {
-    return text.find_first_not_of(numbers) == std::string::npos;
+    return std::all_of(text.cbegin(), text.cend(), [](char c) {
+        return c >= '0' && c <= '9';
+    });
 }
 
 inline bool is_valid_prerelease(const std::string &text)
@@ -90,7 +104,7 @@ private:
     uint64_t m_numeric_value;
 
 public:
-    explicit prerelease_part(const std::string &part)
+    explicit prerelease_part(std::string part)
     {
         if (part.empty()) {
             throw semver_exception("Pre-release identity contains an empty part.");
@@ -104,11 +118,13 @@ public:
             m_numeric_value = parse_numeric_part(part);
             m_numeric = true;
         }
+
         if (!is_valid_prerelease(part)) {
             throw semver_exception("Pre-release part '" + part
                                    + "' contains an invalid character.");
         }
-        m_value = part;
+
+        m_value = std::move(part);
     }
 
     [[nodiscard]] bool numeric() const { return m_numeric; }
@@ -185,16 +201,25 @@ public:
 
     [[nodiscard]] int compare(const prerelease_descriptor &other) const
     {
-        auto this_size = m_parts.size();
-        auto other_size = other.m_parts.size();
+        const size_t count = std::min(m_parts.size(), other.m_parts.size());
 
-        auto count = std::min(this_size, other_size);
         for (size_t i = 0; i < count; ++i) {
-            int cmp = m_parts[i].compare(other.m_parts[i]);
-            if (cmp != 0)
+            const auto &lhs = m_parts[i];
+            const auto &rhs = other.m_parts[i];
+            const int cmp = lhs.compare(rhs);
+            if (cmp != 0) {
                 return cmp;
+            }
         }
-        return (this_size < other_size) ? -1 : (this_size > other_size);
+
+        if (m_parts.size() < other.m_parts.size()) {
+            return -1;
+        }
+
+        if (m_parts.size() > other.m_parts.size()) {
+            return 1;
+        }
+        return 0;
     }
 
     bool operator<(const prerelease_descriptor &other) const { return compare(other) == -1; }
@@ -216,9 +241,11 @@ public:
         if (prerelease_part_str.empty())
             return empty();
         std::vector<prerelease_part> prerelease_parts;
-        std::vector<std::string> parts = split(prerelease_part_str, '.');
-        for (auto &part : parts) {
-            prerelease_parts.emplace_back(part);
+        const auto parts = split(prerelease_part_str, '.');
+        prerelease_parts.reserve(parts.size());
+
+        for (auto part : parts) {
+            prerelease_parts.emplace_back(std::string{ part });
         }
         return prerelease_descriptor(prerelease_parts);
     }
@@ -410,8 +437,8 @@ public:
 
     static version parse(const std::string &version_str, bool strict = true)
     {
-        QRegularExpression regex(strict ? version_pattern : loose_version_pattern);
-        QRegularExpressionMatch match = regex.match(QString::fromStdString(version_str));
+        const auto &regex = getRegex(strict);
+        const QRegularExpressionMatch match = regex.match(QString::fromStdString(version_str));
 
         if (!match.hasMatch()) {
             throw semver_exception("Invalid version: " + version_str);

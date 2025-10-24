@@ -1433,13 +1433,6 @@ void PackageManager::Install(PackageTask &taskContext,
                         utils::error::ErrorCode::AppInstallModuleNotFound));
         return;
     }
-    transaction.addRollBack([this, &newRef, installModules = *installModules]() noexcept {
-        auto tmp = PackageTask::createTemporaryTask();
-        UninstallRef(tmp, newRef, installModules.second);
-        if (tmp.state() != linglong::api::types::v1::State::Succeed) {
-            qCritical() << "failed to rollback install " << newRef.toString();
-        }
-    });
     InstallRef(taskContext,
                newRef,
                installModules->second,
@@ -1447,6 +1440,14 @@ void PackageManager::Install(PackageTask &taskContext,
     if (isTaskDone(taskContext.subState())) {
         return;
     }
+
+    transaction.addRollBack([this, &newRef, installModules = *installModules]() noexcept {
+        auto tmp = PackageTask::createTemporaryTask();
+        UninstallRef(tmp, newRef, installModules.second);
+        if (tmp.state() != linglong::api::types::v1::State::Succeed) {
+            LogE("failed to rollback install {}", newRef.toString());
+        }
+    });
 
     taskContext.updateSubState(linglong::api::types::v1::SubState::PostAction,
                                "processing after install");
@@ -1912,6 +1913,7 @@ void PackageManager::Update(PackageTask &taskContext,
 {
     LINGLONG_TRACE("update " + oldRef.toString());
 
+    utils::Transaction transaction;
     const auto &newRef = refWithRepo.reference;
     taskContext.updateState(api::types::v1::State::Processing, "start to uninstalling package");
     auto modules = this->repo.getModuleList(oldRef);
@@ -1930,10 +1932,19 @@ void PackageManager::Update(PackageTask &taskContext,
                         utils::error::ErrorCode::AppUpgradeFailed));
         return;
     }
+
     this->InstallRef(taskContext, newRef, installModules->second, installModules->first);
     if (isTaskDone(taskContext.subState())) {
         return;
     }
+
+    transaction.addRollBack([this, &newRef, installModules = *installModules]() noexcept {
+        auto tmp = PackageTask::createTemporaryTask();
+        UninstallRef(tmp, newRef, installModules.second);
+        if (tmp.state() != linglong::api::types::v1::State::Succeed) {
+            LogE("failed to rollback install {}", newRef.toString());
+        }
+    });
 
     auto oldRefLayerItem = this->repo.getLayerItem(oldRef);
 
@@ -1988,6 +1999,8 @@ void PackageManager::Update(PackageTask &taskContext,
     if (!mergeRet.has_value()) {
         qCritical() << "merge modules failed: " << mergeRet.error().message();
     }
+
+    transaction.commit();
 }
 
 auto PackageManager::Search(const QVariantMap &parameters) noexcept -> QVariantMap

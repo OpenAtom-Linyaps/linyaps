@@ -1381,7 +1381,6 @@ void OSTreeRepo::pull(service::PackageTask &taskContext,
     }
     LINGLONG_TRACE(fmt::format("pull {} from {}", refString, pullRepo.name));
 
-    utils::Transaction transaction;
     auto *cancellable = taskContext.cancellable();
 
     ostreeUserData data{ .taskContext = &taskContext };
@@ -1488,8 +1487,6 @@ void OSTreeRepo::pull(service::PackageTask &taskContext,
         taskContext.reportError(LINGLONG_ERRV(result));
         return;
     }
-
-    transaction.commit();
 }
 
 utils::error::Result<package::Reference>

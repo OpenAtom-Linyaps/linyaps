@@ -1614,6 +1614,7 @@ void PackageManager::Update(PackageTask &taskContext,
 {
     LINGLONG_TRACE("update " + oldRef.toString());
 
+    utils::Transaction transaction;
     const auto &newRef = refWithRepo.reference;
     taskContext.updateState(api::types::v1::State::Processing, "start to uninstalling package");
     auto modules = this->repo.getModuleList(oldRef);
@@ -1632,6 +1633,14 @@ void PackageManager::Update(PackageTask &taskContext,
                         utils::error::ErrorCode::AppUpgradeFailed));
         return;
     }
+
+    transaction.addRollBack([this, &newRef, installModules = *installModules]() noexcept {
+        auto tmp = PackageTask::createTemporaryTask();
+        UninstallRef(tmp, newRef, installModules.second);
+        if (tmp.state() != linglong::api::types::v1::State::Succeed) {
+            LogE("failed to rollback install {}", newRef.toString());
+        }
+    });
     this->InstallRef(taskContext, newRef, installModules->second, installModules->first);
     if (isTaskDone(taskContext.subState())) {
         return;

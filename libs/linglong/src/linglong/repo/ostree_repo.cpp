@@ -3256,7 +3256,7 @@ OSTreeRepo::latestLocalReference(const package::FuzzyReference &fuzzyRef) const 
 {
     LINGLONG_TRACE("get latest local reference");
 
-    auto ref = clearReferenceLocal(*cache, fuzzyRef, true );
+    auto ref = clearReferenceLocal(*cache, fuzzyRef, true);
     if (!ref) {
         return LINGLONG_ERR(ref);
     }

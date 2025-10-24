@@ -1436,6 +1436,7 @@ void PackageManager::Install(PackageTask &taskContext,
                         utils::error::ErrorCode::AppInstallModuleNotFound));
         return;
     }
+
     InstallRef(taskContext,
                newRef,
                installModules->second,

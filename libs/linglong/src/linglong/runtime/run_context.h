@@ -16,6 +16,9 @@
 
 #include <filesystem>
 #include <list>
+#include <optional>
+#include <string>
+#include <vector>
 
 namespace linglong::runtime {
 
@@ -65,6 +68,13 @@ struct ResolveOptions
 class RunContext
 {
 public:
+    struct FilesystemPolicy
+    {
+        bool allowListConfigured{ false };
+        std::vector<ocppi::runtime::config::types::Mount> allowList;
+        std::vector<ocppi::runtime::config::types::Mount> extra;
+    };
+
     RunContext(repo::OSTreeRepo &r)
         : repo(r)
     {
@@ -82,6 +92,9 @@ public:
     api::types::v1::ContainerProcessStateInfo stateInfo();
 
     repo::OSTreeRepo &getRepo() const { return repo; }
+
+    std::string currentAppId() const;
+    const FilesystemPolicy &filesystemPolicy() const;
 
     const std::string &getContainerId() const { return containerID; }
 
@@ -128,6 +141,7 @@ private:
     std::string containerID;
     std::filesystem::path bundle;
     std::map<std::string, std::string> environment;
+    mutable std::optional<FilesystemPolicy> filesystemPolicyCache;
 };
 
 } // namespace linglong::runtime

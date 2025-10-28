@@ -168,7 +168,7 @@ base: org.deepin.foundation/23.0.0
 那么在启动玲珑应用构建工程时, 将会默认采用最高版本号的 `23.0.0.29`
 
 5. 玲珑应用构建工程配置文件目前不直接兼容其他包构建工具的配置文件，需要根据构建工程配置文件案例来进行适配修改：
-https://linglong.dev/guide/ll-builder/manifests.html
+   https://linglong.dev/guide/ll-builder/manifests.html
 
 ### 定制化字段
 

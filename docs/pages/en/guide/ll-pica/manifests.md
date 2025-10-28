@@ -48,9 +48,9 @@ file:
       ref: /tmp/com.baidu.baidunetdisk_4.17.7_amd64.deb
 ```
 
-| name | description                                                                                                                |
-| ---- | -------------------------------------------------------------------------------------------------------------------------- |
+| name | description                                                                                                               |
+| ---- | ------------------------------------------------------------------------------------------------------------------------- |
 | type | The method of acquisition: 'local' requires specifying a reference, while 'repo' does not require specifying a reference. |
-| id   | Unique name of the build product                                                                                           |
-| name | Specify the correct package name that apt can search for.                                                                  |
-| ref  | The path of the deb package on the host machine.                                                                           |
+| id   | Unique name of the build product                                                                                          |
+| name | Specify the correct package name that apt can search for.                                                                 |
+| ref  | The path of the deb package on the host machine.                                                                          |

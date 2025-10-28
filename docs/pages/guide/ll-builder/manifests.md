@@ -60,7 +60,7 @@ package:
 | kind         | 构建产物的类型：`app` (应用)、`runtime` (运行时)   | 是   |
 | description  | 构建产物的详细描述                                 | 是   |
 | architecture | 构建产物的目标架构 (例如：`x86_64`, `arm64`)       | 否   |
-| channel      | 构建产物的通道 (例如：`main`)            | 否   |
+| channel      | 构建产物的通道 (例如：`main`)                      | 否   |
 
 ### 启动命令 (`command`)
 

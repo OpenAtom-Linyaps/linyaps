@@ -60,7 +60,7 @@ package:
 | kind         | Type of the build artifact: `app` (Application), `runtime` (Runtime)      | Yes      |
 | description  | Detailed description of the build artifact                                | Yes      |
 | architecture | Target architecture of the build artifact (e.g., `x86_64`, `arm64`)       | No       |
-| channel      | Channel of the build artifact (e.g., `main`)                    | No       |
+| channel      | Channel of the build artifact (e.g., `main`)                              | No       |
 
 ### Command (`command`)
 

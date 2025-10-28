@@ -4,7 +4,7 @@ SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
 SPDX-License-Identifier: LGPL-3.0-or-later
 -->
 
-# Run compiled App
+# Run Compiled App
 
 Use `ll-builder run` to run the compiled executable program.
 
@@ -17,7 +17,7 @@ ll-builder run --help
 Here is the output:
 
 ```text
-Run builded linyaps app
+Run built linyaps app
 Usage: ll-builder run [OPTIONS] [COMMAND...]
 
 Positionals:
@@ -51,4 +51,4 @@ To facilitate debugging, use an additional `--exec /bin/bash` parameter to repla
 ll-builder run --exec /bin/bash
 ```
 
-With this option, `ll-builder` will enter the `bash` terminal after creating the container, and can perform other operations inside the container.
+With this option, `ll-builder` will enter the `bash` terminal after creating the container, and you can perform other operations inside the container.

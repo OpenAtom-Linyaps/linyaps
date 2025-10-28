@@ -30,7 +30,7 @@ Options:
 
 使用`ll-cli prune`移除未使用的最小系统或运行时。
 
-`ll-cli prune`输出如下:
+`ll-cli prune` 输出如下:
 
 ```text
 Unused base or runtime:

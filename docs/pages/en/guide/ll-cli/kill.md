@@ -27,11 +27,11 @@ Options:
   -h,--help                   Print this help message and exit
   --help-all                  Expand all help
 
-If you found any problems during use,
+If you find any problems during use,
 You can report bugs to the linyaps team under this project: https://github.com/OpenAtom-Linyaps/linyaps/issues
 ```
 
-Example of the `ll-cli kill` command to force quit running linyaps apps:
+Example of using the `ll-cli kill` command to force quit running linyaps apps:
 
 ```bash
 ll-cli kill  org.deepin.calculator

@@ -33,7 +33,7 @@ Options:
 
 使用 `ll-cli info`显示已安装的应用程序或运行时的信息。
 
-`ll-cli info org.dde.calendar`输出如下:
+`ll-cli info org.dde.calendar` 输出如下:
 
 ```text
 {

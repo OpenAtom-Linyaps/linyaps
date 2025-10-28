@@ -28,7 +28,7 @@ Options:
   --help-all                  展开所有帮助
 ```
 
-`ll-builder create`命令根据输入的项目名称在当前目录创建对应的文件夹，同时生成构建所需的 `linglong.yaml`模板文件。示例如下：
+`ll-builder create`命令根据输入的项目名称在当前目录创建相应的文件夹，同时生成构建所需的 `linglong.yaml`模板文件。示例如下：
 
 ```bash
 ll-builder create org.deepin.demo
@@ -41,9 +41,9 @@ org.deepin.demo/
 └── linglong.yaml
 ```
 
-## 编辑 linglong.yaml
+## 配置 linglong.yaml
 
-### linglong.yaml 文件语法的版本
+### linglong.yaml 文件语法版本
 
 ```text
 version: "1"

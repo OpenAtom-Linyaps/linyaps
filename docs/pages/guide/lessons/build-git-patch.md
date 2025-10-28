@@ -110,7 +110,7 @@ origin  https://ghp.ci/https://github.com/qbittorrent/qBittorrent.git (push)
 5. 确认无误后, 将此差异保存到本地中, 形成patch文件
 
 ```bash
-ziggy@linyaps23:/media/szbt/Data/ll-build/QT/qBittorrent-local$ git diff > ./
+ziggy@linyaps23:/media/szbt/Data/ll-build/QT/qBittorrent-local$ git diff > ./qBittorrent.patch
 ```
 
 6. 在得到patch文件后, 我们将应用patch的内容添加到已有的 `build` 构建规则中:
@@ -160,18 +160,18 @@ ziggy@linyaps23:/media/szbt/Data/ll-build/QT/qBittorrent-local$ ll-builder expor
 
 ### deepin 23
 
-#![deepin 23](image/4-test-1.png)
+![deepin 23](image/4-test-1.png)
 
 ### openKylin 2.0
 
-#![openKylin 2.0](image/4-test-2.png)
+![openKylin 2.0](image/4-test-2.png)
 
 ### Ubuntu 2404
 
-#![Ubuntu 2404](image/4-test-3.png)
+![Ubuntu 2404](image/4-test-3.png)
 
 ### OpenEuler 2403
 
-#![OpenEuler 2403](image/4-test-4.png)
+![OpenEuler 2403](image/4-test-4.png)
 
 至此, 足以证明 `基于Qt5的开源应用--qBittorrent` 在添加定制补丁以及修改构建规则后可以实现一站拉取项目源码并编译成可执行的二进制文件, 并在其他发行版上也可以使用 !

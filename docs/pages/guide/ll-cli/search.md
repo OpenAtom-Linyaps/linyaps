@@ -25,7 +25,7 @@ ll-cli search --help
 ll-cli search org.deepin.demo
 # 按名称搜索远程 runtime
 ll-cli search org.deepin.base --type=runtime
-#  搜索远程所有软件包
+# 搜索远程所有软件包
 ll-cli search .
 # 搜索远程所有的base
 ll-cli search . --type=base

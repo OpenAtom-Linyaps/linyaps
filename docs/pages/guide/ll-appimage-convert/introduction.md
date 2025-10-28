@@ -1,6 +1,6 @@
 # ll-appimage-convert简介
 
-本工具由`linglong-pica`包提供。它提供将appimage包转换为如意玲珑包的能力，生成构建如意玲珑应用需要的linglong.yaml文件，并依赖 ll-builder 来实现应用构建和导出。
+本工具由`linglong-pica`包提供。它提供将AppImage包转换为如意玲珑包的能力，生成构建如意玲珑应用需要的linglong.yaml文件，并依赖 ll-builder 来实现应用构建和导出。
 
 :::tip
 

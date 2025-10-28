@@ -5,7 +5,7 @@ be addressed by adding the corresponding package dependencies in the `linglong.y
 
 The `ll-pica adep` command is used to add package dependencies to the `linglong.yaml` file.
 
-View the help information for the `ll-cli adep` command:
+View the help information for the `ll-pica adep` command:
 
 ```bash
 ll-pica adep --help

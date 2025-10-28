@@ -25,7 +25,7 @@ ll-cli install --help
 ll-cli install org.deepin.demo
 # 通过如意玲珑.layer文件安装应用程序
 ll-cli install demo_0.0.0.1_x86_64_binary.layer
-# 通过通过如意玲珑.uab文件安装应用程序
+# 通过如意玲珑.uab文件安装应用程序
 ll-cli install demo_x86_64_0.0.0.1_main.uab
 # 安装应用的指定模块
 ll-cli install org.deepin.demo --module=binary
@@ -64,7 +64,7 @@ ll-cli install <org.deepin.calculator>
 ll-cli install <org.deepin.calculator/5.1.2>
 ```
 
-`ll-cli install org.deepin.calculator`输出如下：
+`ll-cli install org.deepin.calculator` 输出如下：
 
 ```text
 Install main:org.deepin.calculator/5.7.21.4/x86_64 success:100%

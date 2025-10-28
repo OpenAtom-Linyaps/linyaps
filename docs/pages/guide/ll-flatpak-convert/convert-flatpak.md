@@ -40,7 +40,7 @@ ll-pica-flatpak 使用 ostree 命令拉取 org.videolan.VLC 应用数据，根�
 
 :::
 
-转换应用默认生成，uab 文件。转换出 layer 文件，需要添加 --layer 参数。
+转换应用默认生成 uab 文件。转换出 layer 文件，需要添加 --layer 参数。
 
 ```bash
 ll-pica-flatpak convert org.videolan.VLC --build --layer
@@ -64,8 +64,7 @@ ll-pica-flatpak convert org.videolan.VLC --base "org.deepin.base.flatpak.kde" --
 ├── org.videolan.VLC
 │   ├── org.videolan.VLC_1.0.0.0_x86_64_develop.layer
 │   ├── org.videolan.VLC_1.0.0.0_x86_64_binary.layer
-    or
-│   ├── org.videolan.VLC_x86_64_1.0.0.0_main.uab
+│   └── org.videolan.VLC_x86_64_1.0.0.0_main.uab
 ```
 
 玲珑应用的产物 ：

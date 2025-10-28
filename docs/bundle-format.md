@@ -1,51 +1,50 @@
 # Bundle Format
 
-## Introduce
+## Introduction
 
-Green software, known as some binary does not install any file to the system.
+Green software refers to binaries that do not install any files to the system.
 
-The base constraint of green software is:
+The basic constraints of green software are:
 
-- Path unrelated, means has nothing to do with local files.
+- Path independence, meaning it has nothing to do with local files
+- High compatibility, so the software should contain all dependencies that the system does not have
 
-- highly compatibility, so the software should contain all dependencies that the system does not have.
+The well-known technology for building green software on Linux is AppImage.
 
-The famous technology to build green software is AppImage on Linux.
+However, there are many problems with that technology. The biggest problem is that the host system ABI cannot stay stable and differs from one system to another. Linglong cannot solve that problem either. We should maintain a baseline of supported systems or ABIs.
 
-However, there are many problems with that technology, the biggest problem is that the host system ABI can not stay stable and differ from one another. The linglong can not solve that problem either. We should keep a baseline of support system or ABI.
-
-A trick on uniontech os or deepin is just support system after uniontech os 1020, which reduces the testing work for the different base systems.
+A trick on UnionTech OS or Deepin is to only support systems after UnionTech OS 1020, which reduces the testing work for different base systems.
 
 ## Target
 
-The green bundle is not just simple support for application run path independently. It is also designed to be the offline maintainer package format on office system service package support self-run and install. so keep the changeability of the bundle format when designing.
+The green bundle is not just simple support for running applications independently. It is also designed to be the offline maintainer package format for office system services that support self-running and installation. Therefore, keep the changeability of the bundle format in mind when designing.
 
-When a user has internet, we mostly use online diff update or install by repo. we do not use bundle if we can access the repo when distributing applications.
+When a user has internet access, we mostly use online differential updates or install from repositories. We do not use bundles if we can access the repository when distributing applications.
 
 ## Specification
 
-The spec of the export bundle:
+The specification for the export bundle:
 
-- MUST be an ELF, can be FlatELF
+- MUST be an ELF file, which can be FlatELF
 - MUST be statically-linked
-- MUST contain a data segment that can mount with fuse
-- MUST contain a loader executable on the root of fuse mount filesystem
+- MUST contain a data segment that can be mounted with FUSE
+- MUST contain a loader executable at the root of the FUSE-mounted filesystem
 
 ## Implementation
 
-**The implementation change with time，If you change the implement, update this selection as soon as possible !!!**
+**The implementation changes over time. If you change the implementation, update this section as soon as possible!**
 
-### prototype
+### Prototype
 
-- The bundle is a sample elf loader that joins a readonly filesystem with cat.
-- The loader simply calls read_elf64 to calc the offset of readonly filesystem.
-- The loader mount readonly filesystem with `squashfuse -o ro,offset=xxx`
-- The filesystem now is readonly filesystem
-  - The root of the filesystem should contain a file name loader(by the way, now is .loader)
-  - the directory structure should be: /{id}/{version}/{arch}/
-- The readonly filesystem should support erofs, and MAY support suqashfs
+- The bundle is a sample ELF loader that joins a read-only filesystem with cat
+- The loader simply calls read_elf64 to calculate the offset of the read-only filesystem
+- The loader mounts the read-only filesystem with `squashfuse -o ro,offset=xxx`
+- The filesystem is now a read-only filesystem
+  - The root of the filesystem should contain a file named loader (by the way, currently it's .loader)
+  - The directory structure should be: /{id}/{version}/{arch}/
+- The read-only filesystem should support EROFS, and MAY support squashfs
 
-a full example of the filesystem is:
+A full example of the filesystem is:
 
 ```bash
 

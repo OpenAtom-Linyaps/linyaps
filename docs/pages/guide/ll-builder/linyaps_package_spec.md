@@ -2,7 +2,7 @@
 
 本文中的关键词**必须**、**禁止**、**必要的**、**应当**、**不应**、**推荐的**、**允许**以及**可选的**[^rfc2119-keywords]的解释见于[RFC 2119][rfc-2119]中的描述。
 
-这些关键词与原文中的英语词汇的对应关系如下表所示：
+这些关键词与原文中的英文词汇的对应关系如下表所示：
 
 | 中文       | 英语        |
 | ---------- | ----------- |
@@ -17,7 +17,7 @@
 
 [rfc-2119]: https://datatracker.ietf.org/doc/html/rfc2119
 
-本文档旨在帮助应用开发者规范应用程序的构建过程中的行为，以迁移到玲珑包管理系统中。
+本文档旨在帮助应用开发者规范应用程序的构建过程中的行为，以便迁移到玲珑包管理系统中。
 
 ## 通用
 
@@ -31,17 +31,17 @@
 
 - 开发者**应当**使用自己确实拥有的域名的倒置作为应用名称的前缀，并在之后跟上应用程序名称
 
-  **注意**：若开发者无法证明其确实拥有该域名，有可能导致应用包从仓库中移除。
+**注意**：如果开发者无法证明其确实拥有该域名，有可能导致应用包从仓库中移除。
 
-- 对于github上开发的第三方应用而言，如果该应用程序所在的组织有额外的域名，则应当优先使用，否则应当采用`io.github.<GITHUB_ID>.`作为前缀。
+- 对于GitHub上开发的第三方应用而言，如果该应用程序所在的组织有额外的域名，则应当优先使用，否则应当采用`io.github.<GITHUB_ID>.`作为前缀。
 
-  特别的，如果该应用的组织名和应用名称一致，例如<https://github.com/neovim/neovim>，打包者**不应当**省略重复的应用名称与组织名，这个应用的ID**应当**为`io.github.neovim.neovim`。
+  特别的，如果该应用的组织名和应用名称一致，例如<https://github.com/neovim/neovim>，打包者**不应当**省略重复的应用名称和组织名，这个应用的ID**应当**为`io.github.neovim.neovim`。
 
-  **注意**：实际上该组织拥有域名`neovim.io`，故最合理的的应用名称**应当**为`io.neovim.neovim`。
+  **注意**：实际上该组织拥有域名`neovim.io`，故最合理的应用名称**应当**为`io.neovim.neovim`。
 
-- **不推荐**使用含有`-`的应用名称，如果域名/应用名称确实含有`-`，**推荐**使用`_`代替
+- **不推荐**使用包含`-`的应用名称，如果域名/应用名称确实包含`-`，**推荐**使用`_`代替
 
-- **不推荐**应用名称以`.desktop`结尾
+- **不推荐**应用名称以`.desktop`结束
 
 以上规范来自[Desktop Entry Specification][desktop-entry-specification]。
 
@@ -49,7 +49,7 @@
 
 拓展阅读：<https://docs.flatpak.org/en/latest/conventions.html#application-ids>
 
-### `prefix`与`$DESTDIR`
+### `prefix`和`$DESTDIR`
 
 在编写应用程序的构建过程时，开发者**不应当**假设自己安装的位置是固定的。在Makefile/CMakeLists.txt中将可执行文件安装到硬编码的路径，例如`/usr/bin`是不规范的行为。
 
@@ -57,10 +57,10 @@
 
 `prefix`指的是构建/安装时指定给构建系统的、应用最终会被安装到系统中的具体位置。
 
-当开发者没有指定安装位置时，其默认值**应当**为`/usr/local`，
+当开发者没有指定安装位置时，默认值**应当**为`/usr/local`，
 通过包管理系统打包时，包管理系统会配置其值。当使用dpkg相关工具进行打包时，其值会被配置为`/usr`。但编写构建/安装过程时，开发者应当考虑`prefix`被配置成任意值的情况。
 
-`$DESTDIR`是指构建系统进行安装时，为了方便发行版打包等过程，约定的一个环境变量。其大致工作逻辑如下：
+`$DESTDIR`是构建系统进行安装时，为了方便发行版打包等过程，约定的一个环境变量。其大致工作逻辑如下：
 
 若构建系统完成了构建工作后，执行安装过程时，被指定了`prefix=/usr`，且`$DESTDIR=./tmp`，则其完成安装后，所有的产物文件都应当出现在`./tmp/usr`目录中。打包工具随后会将`./tmp`视为根目录将其中的文件进行压缩打包等工作。
 
@@ -102,7 +102,7 @@ PKG_CONFIG ?= pkg-config
 
 - 内部可执行文件
 
-  指不应当由用户在终端中直接调用的可执行文件，这些可执行文件**不应当**可以通过`$PATH`找到
+  指的是不应当由用户在终端中直接调用的可执行文件，这些可执行文件**不应当**可以通过`$PATH`找到
 
   ```makefile
   install:
@@ -185,7 +185,7 @@ PKG_CONFIG ?= pkg-config
   参见：<https://specifications.freedesktop.org/icon-theme-spec/latest/#install_icons>
   - 如果安装的图标为固定大小的版本，那么**推荐**使用png格式
 
-    至少**需要**安装一个48x48大小的png才能保证桌面环境中图标相关的基础功能正常
+    至少**需要**安装一个48x48大小的PNG才能保证桌面环境中图标相关的基础功能正常
 
   - 如果安装的图标为矢量版本，那么**推荐**使用svg格式
 
@@ -201,9 +201,9 @@ PKG_CONFIG ?= pkg-config
 
 #### CMake
 
-本节主要参考<https://cmake.org/cmake/help/v3.30/module/GNUInstallDirs.html#module:GNUInstallDirs>以及<https://wiki.debian.org/Multiarch/Implementation>中的相关内容编写。
+本节主要参考<https://cmake.org/cmake/help/v3.30/module/GNUInstallDirs.html#module:GNUInstallDirs>和<https://wiki.debian.org/Multiarch/Implementation>中的相关内容编写。
 
-这里定义一些变量的默认值以及其他公共部分以便后文编写示例，这些变量默认值的相关说明可以在上方链接中查找。
+这里定义一些变量的默认值以及其它公共部分以便后文编写示例，这些变量默认值的相关说明可以在上方链接中查找。
 
 编写逻辑与Makefile一节中的相关内容一致。
 

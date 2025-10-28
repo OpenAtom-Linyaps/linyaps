@@ -24,11 +24,11 @@ Options:
   -h,--help                   Print this help message and exit
   --help-all                  Expand all help
 
-If you found any problems during use,
+If you find any problems during use,
 You can report bugs to the linyaps team under this project: https://github.com/OpenAtom-Linyaps/linyaps/issues
 ```
 
-Use `ll-cli prune` to remove the unused base or runtime
+Use `ll-cli prune` to remove the unused base or runtime:
 
 Here is the output:
 

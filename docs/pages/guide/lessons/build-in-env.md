@@ -86,8 +86,8 @@ szbt@szbt-linyaps23:/media/szbt/Data/ll-build/QT/qBittorrent-git$ tar -xvf qBitt
    根据[玲珑应用目录结构规范], 我们将 `DCMAKE_INSTALL_PREFIX` 赋予 `$PREFIX` 的值, 最终我在本地执行了以下操作:
 
 ```
-	cmake -DCMAKE_BUILD_TYPE=Release\
- -DCMAKE_INSTALL_PREFIX=$PREFIX ..
+	cmake -DCMAKE_BUILD_TYPE=Release \
+	-DCMAKE_INSTALL_PREFIX=$PREFIX ..
 ```
 
 7. 可以从图中看到, 这里出现了一个错误导致无法完成配置. 我们看到 `pkg-config` 出现错误: `libtorrent-rasterbar>=1.2.19` 库不能满足条件:
@@ -117,8 +117,8 @@ szbt@szbt-linyaps23:/project/src/qBittorrent-release-4.6.7-szbt2/build$ pkg-conf
     根据[玲珑应用目录结构规范], 我们将 `DCMAKE_INSTALL_PREFIX` 赋予 `$PREFIX` 的值, 最终我在本地执行了以下操作:
 
 ```
-	cmake -DCMAKE_BUILD_TYPE=Release\
- -DCMAKE_INSTALL_PREFIX=$PREFIX ..
+	cmake -DCMAKE_BUILD_TYPE=Release \
+	-DCMAKE_INSTALL_PREFIX=$PREFIX ..
 	make -j$(nproc)
 	make install
 ```

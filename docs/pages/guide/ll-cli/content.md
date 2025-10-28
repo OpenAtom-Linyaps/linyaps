@@ -31,9 +31,9 @@ Options:
 您可以通过此项目向如意玲珑项目团队报告错误：https://github.com/OpenAtom-Linyaps/linyaps/issues
 ```
 
-使用 `ll-cli content org.dde.calendar` 显示日历应用的导出的文件。
+使用 `ll-cli content org.dde.calendar` 显示日历应用导出的文件。
 
-`ll-cli content org.dde.calendar`输出如下:
+`ll-cli content org.dde.calendar` 输出如下:
 
 ```text
 /var/lib/linglong/entries/share/applications

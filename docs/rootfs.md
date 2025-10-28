@@ -1,8 +1,8 @@
 # Rootfs
 
-As oci runtime specification, the runtime start from an rootfs, but in linglong, it prepare rootfs in ll-box. so we put the information of construction rootfs in annotations to ll-box.
+As per the OCI runtime specification, the runtime starts from a rootfs. However, in Linglong, it prepares the rootfs in ll-box. Therefore, we put the information for constructing the rootfs in annotations to ll-box.
 
-The example of annotations is：
+An example of annotations is:
 
 ```json
   "annotations": {
@@ -77,6 +77,6 @@ The example of annotations is：
   }
 ```
 
-The ll-box support two method to build rootfs, use native ro bind mount or with overlayfs.
+The ll-box supports two methods to build rootfs: using native read-only bind mount or with overlayfs.
 
-`container_root_path` is the work directory of ll-box.
+`container_root_path` is the working directory of ll-box.

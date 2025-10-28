@@ -1,8 +1,8 @@
-## Conversion application
+## Convert application
 
 The `ll-pica convert` command is used to generate the `linglong.yaml` file required by linyaps.
 
-View the help information for the `ll-cli convert` command:
+View the help information for the `ll-pica convert` command:
 
 ```bash
 ll-pica convert --help
@@ -31,7 +31,7 @@ Global Flags:
   -V, --verbose   verbose output
 ```
 
-Translation: After executing the `ll-pica init -w w --pi com.baidu.baidunetdisk --pn com.baidu.baidunetdisk -t repo` command
+After executing the `ll-pica init -w w --pi com.baidu.baidunetdisk --pn com.baidu.baidunetdisk -t repo` command
 
 We only need to execute the command `ll-pica convert -w w -b` to convert the linyaps application. Here, we will use the `apt download` command to download the deb package named `com.baidu.baidunetdisk`.
 
@@ -52,10 +52,10 @@ apt download com.baidu.baidunetdisk
 ll-pica convert -c com.baidu.baidunetdisk_4.17.7_amd64.deb -w w -b  --exportFile layer
 ```
 
-- -w working directory。
+- -w working directory.
 - -c The configuration method employed here utilizes deb files.
 - -b It indicates that a build is required; without adding this parameter, neither building nor exporting the layer file will take place.
-- --exportFile layer exports the output as a layer file. If you want to export a uab file, use --exportFile uab.
+- --exportFile layer exports the output as a layer file. If you want to export a UAB file, use --exportFile uab.
 
 The constructed products are as follows:
 
@@ -71,6 +71,6 @@ The constructed products are as follows:
 
 Layer files are divided into two categories: `binary` and `develop`. The `binary` includes the application's execution environment, while the `develop` layer, built upon the `binary`, retains the debugging environment.
 
-The uab file is an offline distribution format used by the linyaps software package, which is not suitable for systems that can normally connect to the linyaps repository. Instead, one should utilize the delta transfer scheme provided by the linyaps software repository to reduce the network transmission size.
+The UAB file is an offline distribution format used by the linyaps software package, which is not suitable for systems that can normally connect to the linyaps repository. Instead, one should utilize the delta transfer scheme provided by the linyaps software repository to reduce the network transmission size.
 
-Installing Layer Files and Running the Application Reference：[Install linyaps Apps](../ll-cli/install.md)
+Installing Layer Files and Running the Application Reference: [Install linyaps Apps](../ll-cli/install.md)

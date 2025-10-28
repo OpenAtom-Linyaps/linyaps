@@ -97,7 +97,7 @@ ll-builder build
 ll-builder run
 ```
 
-the successful output of `ll-builder run` is as follows:
+The successful output of `ll-builder run` is as follows:
 
 ![org.deepin.calculator.png](./images/org.deepin.calculator.png)
 
@@ -109,7 +109,7 @@ ll-builder run --exec /bin/bash
 
 # Conversion application
 
-Here, we use baidunetdisk as an example. We will introduce the process of converting DEB packages into linyaps packages
+Here, we use baidunetdisk as an example. We will introduce the process of converting DEB packages into linyaps packages.
 
 ## Obtain software package
 
@@ -133,12 +133,12 @@ Enter the directory
 cd work/package/com.baidu.baidunetdisk/amd64
 ```
 
-Installed using the `ll-cli install` command.
+Install using the `ll-cli install` command.
 
 ```bash
 ll-cli install ./com.baidu.baidunetdisk_4.17.7.0_x86_64_runtime.layer
 ```
 
-Successful execution output as follows:
+Successful execution output is as follows:
 
 ![img](images/com.baidu.baidunetdisk.png)

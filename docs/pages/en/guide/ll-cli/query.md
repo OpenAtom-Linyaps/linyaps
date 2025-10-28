@@ -21,12 +21,12 @@ Search the applications/runtimes containing the specified text from the remote r
 Usage: ll-cli search [OPTIONS] KEYWORDS
 
 Example:
-# find remotely app by name                                                                                                                                                                     ll-cli search org.deepin.demo
-# find remotely runtime by name
+# find remote app by name                                                                                                                                                                     ll-cli search org.deepin.demo
+# find remote runtime by name
 ll-cli search org.deepin.base --type=runtime
-# find all off app of remote
+# find all remote apps
 ll-cli search .
-# find all off runtime of remote
+# find all remote runtimes
 ll-cli search . --type=runtime
 
 Positionals:
@@ -34,10 +34,10 @@ Positionals:
 
 Options:
   -h,--help                   Print this help message and exit                                                                                                                                    --help-all                  Expand all help
-  --type TYPE [app]           Filter result with specify type. One of "runtime", "app" or "all"
-  --dev                       include develop application in result
+  --type TYPE [app]           Filter result with specific type. One of "runtime", "app" or "all"
+  --dev                       include development application in result
 
-If you found any problems during use,
+If you find any problems during use,
 You can report bugs to the linyaps team under this project: https://github.com/OpenAtom-Linyaps/linyaps/issues
 ```
 
@@ -47,7 +47,7 @@ Use `ll-cli search` to search app meta info from remote repository and local cac
 ll-cli search calculator
 ```
 
-This command returns the info of all apps whose `appid` (appid is the app's unique identifier) contains the keyword "calculator", including the complete `appid`, application name, version, CPU architecture and descriptions.
+This command returns the info of all apps whose `appid` (appid is the app's unique identifier) contains the keyword "calculator", including the complete `appid`, application name, version, CPU architecture and description.
 
 Here is the output:
 

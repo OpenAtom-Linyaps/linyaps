@@ -6,7 +6,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Conversion appimage application
 
-convert `appimage` format( `.appimage` or `.AppImage` ) application to linyaps format( `.layer` or `.uab` ) application
+convert `appimage` format (`.appimage` or `.AppImage`) application to linyaps format (`.layer` or `.uab`) application
 
 View the help information for the `ll-appimage-convert convert --help` command:
 
@@ -36,20 +36,20 @@ Global Flags:
   -V, --verbose   verbose output
 ```
 
-The `ll-appimage-convert convert` command will generate a directory according to specified app name( `--name` option), it will as a root directory of the linyaps project, where the `linglong.yaml` file is located. and it supports two convert methods:
+The `ll-appimage-convert convert` command will generate a directory according to the specified app name (`--name` option), which will serve as the root directory of the linyaps project where the `linglong.yaml` file is located. It supports two conversion methods:
 
-1. you can use `--file` option to convert to linyaps application according to specified appimage file;
-2. you can use `--url` and `--hash` option to convert to linyaps application according to specified appimage url and hash value;
-3. you can use `--layer` option to export `.layer`, or it will export `.uab` default.
+1. you can use the `--file` option to convert to linyaps application according to the specified appimage file;
+2. you can use the `--url` and `--hash` option to convert to linyaps application according to the specified appimage url and hash value;
+3. you can use the `--layer` option to export `.layer`, or it will export `.uab` by default.
 
-`Tips: When the linglong version is greater than 1.5.7, the default convert package format is `.uab`, if you want to export a `.layer` file, you need to add the --layer option.`
+`Tips: When the linyaps version is greater than 1.5.7, the default converted package format is `.uab`. If you want to export a `.layer` file, you need to add the --layer option.`
 
-you can use `--output` option to generate config file( `linglong.yaml` ) of linyaps project and a script of build linyaps `.layer`(`.uab`)
-then you can execute script file to generate after you modify the `linglong.yaml` file. if you do not specify this option, it will export linyaps `.layer` or `.uab` directly.
+you can use the `--output` option to generate the configuration file (`linglong.yaml`) of the linyaps project and a script for building linyaps `.layer` (`.uab`)
+then you can execute the script file to generate after you modify the `linglong.yaml` file. If you do not specify this option, it will export linyaps `.layer` or `.uab` directly.
 
-Take converting [BrainWaves](https://github.com/makebrainwaves/BrainWaves/releases/download/v0.15.1/BrainWaves-0.15.1.AppImage) into linyaps `.layer` through `--url` as an example, the main steps as follows:
+Take converting [BrainWaves](https://github.com/makebrainwaves/BrainWaves/releases/download/v0.15.1/BrainWaves-0.15.1.AppImage) into linyaps `.layer` through `--url` as an example, the main steps are as follows:
 
-Specify the relevant parameters of the linyaps package you want to convert, you can acquire `io.github.brainwaves_0.15.1.0_x86_64_runtime.layer` or `io.github.brainwaves_0.15.1.0_x86_64_runtime.uab` wait a moment.
+Specify the relevant parameters of the linyaps package you want to convert, and you will obtain `io.github.brainwaves_0.15.1.0_x86_64_runtime.layer` or `io.github.brainwaves_0.15.1.0_x86_64_runtime.uab` after a short wait.
 
 ```bash
 ll-appimage-convert convert --url "https://github.com/makebrainwaves/BrainWaves/releases/download/v0.15.1/BrainWaves-0.15.1.AppImage" --hash "04fcfb9ccf5c0437cd3007922fdd7cd1d0a73883fd28e364b79661dbd25a4093" --name "io.github.brainwaves" --id "io.github.brainwaves" --version "0.15.1.0" --description "io.github.brainwaves" -b
@@ -85,4 +85,4 @@ The converted directory structure is as follows:
 ```
 
 `.uab` or `.layer` file verification
-The exported `.uab` or `.layer` needs to be installed and verified. install the layer file and run the application, you can refer to: [Install the application](../ll-cli/install.md)
+The exported `.uab` or `.layer` files need to be installed and verified. Install the layer files and run the application. You can refer to: [Install the application](../ll-cli/install.md)

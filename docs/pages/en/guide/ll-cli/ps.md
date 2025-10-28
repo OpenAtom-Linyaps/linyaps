@@ -6,7 +6,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 # View Running Apps
 
-Use `ll-cli ps` to view running linyaps Apps.
+Use `ll-cli ps` to view running linyaps apps.
 
 View the help information for the `ll-cli ps` command:
 
@@ -24,11 +24,11 @@ Options:
   -h,--help                   Print this help message and exit
   --help-all                  Expand all help
 
-If you found any problems during use,
+If you find any problems during use,
 You can report bugs to the linyaps team under this project: https://github.com/OpenAtom-Linyaps/linyaps/issues
 ```
 
-Use `ll-cli ps` to view running linyaps Apps:
+Use `ll-cli ps` to view running linyaps apps:
 
 ```bash
 ll-cli ps

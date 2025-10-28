@@ -37,7 +37,7 @@ runtime:
 | distro_version | The codename of a distribution."                                                           |
 | arch           | The architecture required by a deb package.                                                |
 
-### Deb package informationeb
+### Deb package information
 
 ```bash
 file:
@@ -50,7 +50,7 @@ file:
 
 | name | description                                                                                                                |
 | ---- | -------------------------------------------------------------------------------------------------------------------------- |
-| type | The method of acquisition: 'local' requires specifying a reference, while 'repo' does not require specifying a reference." |
+| type | The method of acquisition: 'local' requires specifying a reference, while 'repo' does not require specifying a reference. |
 | id   | Unique name of the build product                                                                                           |
 | name | Specify the correct package name that apt can search for.                                                                  |
 | ref  | The path of the deb package on the host machine.                                                                           |

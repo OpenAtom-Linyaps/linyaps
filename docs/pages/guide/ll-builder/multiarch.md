@@ -47,7 +47,7 @@ ll-builder -f arm64/linglong.yaml
 ll-builder -f loongarch64/linglong.yaml
 ```
 
-需要注意项目配置文件（即由 -f 指定的 linglong.yaml 文件），需要在项目目录（运行 ll-builder 的当前目录）的目录或者子目录下。
+需要注意项目配置文件（即由 -f 指定的 linglong.yaml 文件），需要在项目目录（运行 ll-builder 的当前目录）或其子目录下。
 
 ## 龙芯
 

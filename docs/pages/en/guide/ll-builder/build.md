@@ -40,10 +40,10 @@ Options:
 
 The `ll-builder build` command can be run in two ways:
 
-1. the root directory of the project, where the `linglong.yaml` file is located.
-2. specify the linglong.yaml file path with the `--file` parameter.
+1. In the root directory of the project, where the `linglong.yaml` file is located.
+2. Specify the linglong.yaml file path with the `--file` parameter.
 
-Taking the linyaps project `org.deepin.demo`, as an example, the main steps to build a linyaps application would be as follows:
+Taking the linyaps project `org.deepin.demo` as an example, the main steps to build a linyaps application would be as follows:
 
 Go to the `org.deepin.demo` project directory:
 
@@ -67,4 +67,4 @@ ll-builder build --exec /bin/bash
 
 After entering the container, you can execute `shell` commands, such as `gdb`, `strace`, etc.
 
-For more debugging information of linyaps application `debug` version, please refer to: [Debug App](../debug/debug.md).
+For more debugging information about linyaps application `debug` version, please refer to: [Debug App](../debug/debug.md).

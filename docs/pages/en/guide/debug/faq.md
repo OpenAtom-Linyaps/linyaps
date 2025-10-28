@@ -36,7 +36,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 8. Why is the Icon displayed as a small black dot?
 
-   The desktop file has an 'Icon' field written, but the Icon field name is incorrect or an absolute path is being used."。
+   The desktop file has an 'Icon' field written, but the Icon field name is incorrect or an absolute path is being used.
 
 9. Why is the Icon field as a gear?
 
@@ -48,7 +48,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
     Other formats are stored according to resolution, such as 16x16.
 
-    png/xpm → $PREFIX/share/icons/hicolor/16X16/apps/
+    png/xpm → $PREFIX/share/icons/hicolor/16x16/apps/
 
 11. Why do `xdg-open` and `xdg-email` that come with the application fail?
 
@@ -80,7 +80,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 18. Can the input method of uab offline package format not be used under Debian and Ubuntu?
 
-    It is recommended to install the `fictx` input method to experience it.
+    It is recommended to install the `fcitx` input method to experience it.
 
 19. How can I know which packages are installed in a container environment?
 

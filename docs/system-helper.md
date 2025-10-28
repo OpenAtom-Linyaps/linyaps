@@ -1,6 +1,6 @@
 # System Helper
 
-User with no privilege can mount erofs to dir with:
+User with no privileges can mount erofs to directory with:
 
 ```bash
 busctl --system call org.deepin.linglong.SystemHelper \

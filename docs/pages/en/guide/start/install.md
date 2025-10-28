@@ -6,7 +6,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 # Install linyaps
 
-linyaps is composed of three parts.
+linyaps is composed of three parts:
 
 - ll-builder is used to build and debug linyaps applications, provided by linglong-builder.
 - ll-box is a sandbox container, provided by linglong-box.
@@ -49,7 +49,7 @@ The Linyaps Web Store installation tool needs to be installed through the [AUR r
 ```bash
 # AUR
 yay -Syu linyaps-web-store-installer
-# 或自建源
+# or self-built source
 sudo pacman -Syu linyaps-web-store-installer
 ```
 

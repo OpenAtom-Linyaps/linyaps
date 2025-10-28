@@ -18,7 +18,7 @@ sudo apt install linglong-pica
 
 ## Arch Linux
 
-通过 [AUR 仓库](https://aur.archlinux.org/packages/linglong-pica)或[自建源仓库](https://github.com/taotieren/aur-repo)安装。
+通过 [AUR 仓库](https://aur.archlinux.org/packages/linglong-pica) 或 [自建源仓库](https://github.com/taotieren/aur-repo) 安装。
 
 ```bash
 # AUR

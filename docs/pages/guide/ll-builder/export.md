@@ -81,7 +81,7 @@ bundle 模式在导出时，会尝试自动解析应用的依赖，并导出必�
 
 如果应用开发者需要依赖自运行功能，请保证应用带上必要的运行时依赖。
 
-### Bustom Loader 模式
+### Custom Loader 模式
 
 custom loader 模式导出的 UAB 文件仅包含应用数据，以及传入的 custom loader。UAB 文件在解压挂载后将控制器交给 custom loader，此时 loader 不在容器环境内。环境变量 `LINGLONG_UAB_APPROOT` 保存了应用所在目录，custom loader 负责初始化应用程序所需要的运行环境，比如库路径的搜索。
 

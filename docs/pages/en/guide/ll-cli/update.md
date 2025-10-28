@@ -21,16 +21,16 @@ Upgrade the application or runtimes
 Usage: ll-cli upgrade [OPTIONS] [APP]
 
 Positionals:
-  APP TEXT                    Specify the application ID.If it not be specified, all applications will be upgraded
+  APP TEXT                    Specify the application ID. If it is not specified, all applications will be upgraded
 
 Options:
   -h,--help                   Print this help message and exit
   --help-all                  Expand all help
 
-If you found any problems during use,                                                                                                                                                           You can report bugs to the linyaps team under this project: https://github.com/OpenAtom-Linyaps/linyaps/issues
+If you find any problems during use,                                                                                                                                                           You can report bugs to the linyaps team under this project: https://github.com/OpenAtom-Linyaps/linyaps/issues
 ```
 
-Use `ll-cli upgrade ` to upgrade all installed apps to the latest version
+Use `ll-cli upgrade` to upgrade all installed apps to the latest version:
 
 Here is the output:
 

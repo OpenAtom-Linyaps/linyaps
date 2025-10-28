@@ -65,6 +65,6 @@ ll-builder build
 ll-builder build --exec /bin/bash
 ```
 
-进入容器后，可执行 `shell`命令，如 `ps`、`ls` 等。
+进入容器后，可以执行 `shell`命令，如 `ps`、`ls` 等。
 
 如意玲珑应用 `debug`版本更多调试信息请参考：[DEBUG](../debug/debug.md)。

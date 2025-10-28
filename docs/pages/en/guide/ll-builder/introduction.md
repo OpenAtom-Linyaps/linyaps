@@ -8,15 +8,15 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Introduction to ll-builder
 
-`ll-builder` is a tool for developers for building linyaps applications.
+`ll-builder` is a tool for developers to build linyaps applications.
 
 The main functions are as follows:
 
-- Supports building in a standalone sandbox.
+- Supports building in a standalone sandbox
 
-<!-- - Defined a version management system. -->
+<!-- - Defines a version management system. -->
 
-- Provides DTK software development kits.
+- Provides DTK software development kits
 
 <!-- - Contains a complete release process. -->
 
@@ -42,7 +42,7 @@ Options:
 Subcommands:
   create                      Create linyaps build template project
   build                       Build a linyaps project
-  run                         Run builded linyaps app
+  run                         Run built linyaps app
   export                      Export to linyaps layer or uab
   push                        Push linyaps app to remote repo
   import                      Import linyaps layer to build repo

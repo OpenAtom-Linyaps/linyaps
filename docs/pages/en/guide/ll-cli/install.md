@@ -41,15 +41,15 @@ Positionals:
 Options:
   -h,--help                   Print this help message and exit
   --help-all                  Expand all help
-  --module MODULE             Install a specify module
+  --module MODULE             Install a specific module
   --force                     Force install the application
   -y                          Automatically answer yes to all questions
 
-If you found any problems during use,
+If you find any problems during use,
 You can report bugs to the linyaps team under this project: https://github.com/OpenAtom-Linyaps/linyaps/issues
 ```
 
-Example of the `ll-cli install` command to install a linyaps app:
+Example of using the `ll-cli install` command to install a linyaps app:
 
 ```bash
 ll-cli install <org.deepin.calculator>
@@ -57,7 +57,7 @@ ll-cli install <org.deepin.calculator>
 
 Enter the complete `appid` after `ll-cli install`. If the repository has multiple versions, the highest version will be installed by default.
 
-To install a specified version, append the corresponding version number after `appid`:
+To install a specific version, append the corresponding version number after `appid`:
 
 ```bash
 ll-cli install <org.deepin.calculator/5.1.2>
@@ -71,7 +71,7 @@ Install main:org.deepin.calculator/5.7.21.4/x86_64 success:100%
 
 After the application is installed, the installation result will be displayed.
 
-The layer or uab files we export using the `ll-builder export` command can be installed using the `ll-cli install` command.
+The layer or UAB files exported using the `ll-builder export` command can be installed using the `ll-cli install` command.
 
 `.layer`
 
@@ -80,15 +80,15 @@ ll-cli install ./com.baidu.baidunetdisk_4.17.7.0_x86_64_runtime.layer
 ```
 
 `.uab`
-There are two ways to install uab files
+There are two ways to install UAB files:
 
-- use `ll-cli install` to install
+- Use `ll-cli install` to install
 
 ```bash
 ll-cli install com.baidu.baidunetdisk_x86_64_4.17.7.0_main.uab
 ```
 
-- Execute `uab` on a machine with linyaps environment to install the application.
+- Execute the UAB file on a machine with linyaps environment to install the application.
 
 ```bash
 ./com.baidu.baidunetdisk_x86_64_4.17.7.0_main.uab

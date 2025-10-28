@@ -50,7 +50,7 @@ ll-builder run -- bash -c "export" | grep DBUS_SYSTEM_BUS_ADDRESS | grep test=2
 
 #运行并安装uab
 ll-cli uninstall org.deepin.demo || true
-./org.deepin.demo_x86_64_0.0.0.1_main.uab
+./org.deepin.demo_0.0.0.1_x86_64_main.uab
 
 #安装构建的应用
 ll-cli install org.deepin.demo_0.0.0.1_x86_64_main.uab

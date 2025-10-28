@@ -31,7 +31,7 @@ Options:
 您可以通过此项目向如意玲珑项目团队报告错误：https://github.com/OpenAtom-Linyaps/linyaps/issues
 ```
 
-使用 `ll-cli upgrade`将所有已安装的应用程序升级到最新版本
+使用 `ll-cli upgrade` 将所有已安装的应用程序升级到最新版本
 
 `ll-cli upgrade`命令输出如下：
 

@@ -28,7 +28,7 @@ Options:
   --help-all                  Expand all help
 ```
 
-The `ll-builder create` command creates a folder in the current directory according to the project name, and generates the `linglong.yaml` template file required for the build. Here is an example:
+The `ll-builder create` command creates a folder in the current directory according to the project name and generates the `linglong.yaml` template file required for the build. Here is an example:
 
 ```bash
 ll-builder create org.deepin.demo

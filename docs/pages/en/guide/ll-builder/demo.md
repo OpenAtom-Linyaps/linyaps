@@ -99,7 +99,7 @@ build: |
   make install
 ```
 
-For more details on configuration file fields, please refer to [Configuration File Description](https://www.google.com/search?q=./manifests.md)
+For more details on configuration file fields, please refer to [Configuration File Description](./manifests.md)
 
 ## Execute the Build Process
 
@@ -152,4 +152,4 @@ The directory structure after export is as follows:
 
 ## More Complete Examples
 
-[Complete Example](https://www.google.com/search?q=../start/how_to_use.md) - a complete example that includes how to build an application, export build content, install, and run.
+[Complete Example](../start/how_to_use.md) - a complete example that includes how to build an application, export build content, install, and run.

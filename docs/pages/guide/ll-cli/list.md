@@ -73,7 +73,7 @@ org.deepin.foundation            deepin-foundation                23.0.0.27     
 
 显示当前已安装应用程序的最新版本列表，仅适用于应用程序。运行 `ll-cli list --upgradable`:
 
-`ll-cli list --upgradable`输出如下:
+`ll-cli list --upgradable` 输出如下:
 
 ```text
 id                               installed       new

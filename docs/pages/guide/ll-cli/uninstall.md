@@ -33,7 +33,7 @@ Options:
 您可以通过此项目向如意玲珑项目团队报告错误：https://github.com/OpenAtom-Linyaps/linyaps/issues
 ```
 
-使用`ll-cli uninstall`命令卸载玲珑应用：
+使用 `ll-cli uninstall` 命令卸载玲珑应用：
 
 ```bash
 ll-cli uninstall <org.deepin.calculator>

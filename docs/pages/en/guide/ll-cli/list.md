@@ -31,10 +31,10 @@ ll-cli list --upgradable
 Options:
   -h,--help                   Print this help message and exit
   --help-all                  Expand all help
-  --type TYPE [app]           Filter result with specify type. One of "runtime", "app" or "all"
+  --type TYPE [app]           Filter result with specific type. One of "runtime", "app" or "all"
   --upgradable                Show the list of latest version of the currently installed applications, it only works for app
 
-If you found any problems during use,
+If you find any problems during use,
 You can report bugs to the linyaps team under this project: https://github.com/OpenAtom-Linyaps/linyaps/issues
 ```
 
@@ -68,7 +68,7 @@ org.deepin.Runtime               deepin runtime                   23.0.1.2      
 org.deepin.foundation            deepin-foundation                23.0.0.27       x86_64      main            runtime     deepin base environment.
 ```
 
-To view the list of latest version of the currently installed applications, run `ll-cli list --upgradable`:
+To view the list of latest versions of the currently installed applications, run `ll-cli list --upgradable`:
 
 Here is the output:
 

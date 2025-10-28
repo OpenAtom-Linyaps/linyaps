@@ -54,7 +54,7 @@ ll-cli run org.deepin.calculator
 ll-cli run org.deepin.calculator --exec /bin/bash
 ```
 
-进入后可执行 `shell` 命令，如 `gdb`、`strace`、`ls`、`find`等。
+进入后可执行 `shell` 命令，如 `gdb`、`strace`、`ls`、`find` 等。
 
 由于如意玲珑应用都是在容器内运行，无法通过常规的方式直接调试，需要在容器内运行调试工具，如 `gdb`：
 

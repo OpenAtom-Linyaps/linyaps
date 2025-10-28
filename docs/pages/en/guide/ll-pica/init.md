@@ -2,7 +2,7 @@
 
 The `ll-pica init` command is used to initialize the configuration information for the conversion package.
 
-View the help information for the `ll-cli init` command:
+View the help information for the `ll-pica init` command:
 
 ```bash
 ll-pica init --help
@@ -32,7 +32,7 @@ Global Flags:
   -V, --verbose   verbose output
 ```
 
-The specific command as follows:
+The specific command is as follows:
 
 ```bash
 ll-pica init -w w --pi com.baidu.baidunetdisk --pn com.baidu.baidunetdisk -t repo

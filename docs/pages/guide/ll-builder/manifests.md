@@ -6,7 +6,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 # 构建配置文件简介
 
-`linglong.yaml` 是如意玲珑项目工程的描述文件，记录构建所需的相关信息。如构建产物的名称、版本、源码地址、构建依赖等。
+`linglong.yaml` 是如意玲珑项目的描述文件，记录构建所需信息。如构建产物的名称、版本、源码地址、构建依赖等。
 
 ## 工程目录结构
 
@@ -24,7 +24,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## 字段定义
 
-`linglong.yaml` 文件结构遵循特定的规范。首先，需要在文件顶层声明配置文件的版本：
+`linglong.yaml` 文件结构遵循特定规范。首先，需要在文件顶部声明配置文件的版本：
 
 ```yaml
 version: "1"
@@ -60,7 +60,7 @@ package:
 | kind         | 构建产物的类型：`app` (应用)、`runtime` (运行时)   | 是   |
 | description  | 构建产物的详细描述                                 | 是   |
 | architecture | 构建产物的目标架构 (例如：`x86_64`, `arm64`)       | 否   |
-| channel      | 构建产物的通道 (例如：`stable`, `beta`)            | 否   |
+| channel      | 构建产物的通道 (例如：`main`)            | 否   |
 
 ### 启动命令 (`command`)
 

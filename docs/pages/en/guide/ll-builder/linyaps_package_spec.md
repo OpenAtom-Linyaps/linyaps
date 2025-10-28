@@ -39,7 +39,7 @@ In particular, if the organization name and application name of the application 
 
 **Note**: In fact, the organization owns the domain name `neovim.io`, so the most reasonable application name **should** be `io.neovim.neovim`.
 
-- **Not recommended** to use application names containing `-`, if the domain name/application name does contain `-`, **recommend** to use `_` instead
+- **Not recommended** to use application names containing `-`. If the domain name/application name does contain `-`, **recommend** using `_` instead
 
 - **Not recommended** application names ending with `.desktop`
 

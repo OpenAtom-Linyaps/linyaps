@@ -16,7 +16,7 @@ We can use the `gdbserver` provided by the distribution, using `apt` as an examp
 sudo apt install gdbserver gdb -y
 ```
 
-Next, refer to the tutorial in "Run compiled App", run `bash` in the container through the `ll-build run` command, and run the application to be debugged through `gdbserver`:
+Next, refer to the tutorial in "Run compiled App", run `bash` in the container through the `ll-builder run` command, and run the application to be debugged through `gdbserver`:
 
 ```bash
 ll-build run --exec /bin/bash

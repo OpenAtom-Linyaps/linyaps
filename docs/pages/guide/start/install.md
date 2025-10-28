@@ -42,7 +42,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 sudo pacman -Syu linyaps
 ```
 
-如意玲珑网页商店安装工具需要通过 [AUR 仓库](https://aur.archlinux.org/packages/linyaps-web-store-installer)或[自建源仓库](https://github.com/taotieren/aur-repo)安装。
+如意玲珑网页商店安装工具需要通过 [AUR 仓库](https://aur.archlinux.org/packages/linyaps-web-store-installer) 或 [自建源仓库](https://github.com/taotieren/aur-repo) 安装。
 
 ```bash
 # AUR

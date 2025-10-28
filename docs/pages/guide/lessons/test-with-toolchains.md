@@ -78,11 +78,11 @@ wmctrl x11-utils
 deepin-screen-recorder imagemagick-6.q16
 ```
 
-5. 手动启动一次 `deepin-screen-recorder`, 确系统截图保存路径为当前用户的~/Pictures/Screenshots中,且该目录为空
+5. 手动启动一次 `deepin-screen-recorder`, 确认系统截图保存路径为当前用户的~/Pictures/Screenshots中,且该目录为空
 
 ### 启动测试功能
 
-1. 在上节实操课时中, 我们得到了 `qBittorrent--4.6.7` 的玲珑安装包 `org.qbittorrent.qBittorrent_4.6.7.22_x86_64_binary.layer`, 为了方便演示套件的批量支持能力, 我这里单独另找一个安装包
+1. 在上节实操课时中, 我们得到了 `qBittorrent-4.6.7` 的玲珑安装包 `org.qbittorrent.qBittorrent_4.6.7.22_x86_64_binary.layer`, 为了方便演示套件的批量支持能力, 我这里单独另找一个安装包
 
 2. 现在我们有两款玲珑应用的安装包, 首先执行 `linyaps-auto-optimize.sh` 脚本来整理目录
    此脚本主要使用两个参数, 用于指向当前存放玲珑应用安装包 `binary.layer` 的目录 `$ll_origin_pool` 及 需要整理的终点目录 `$ll_stored_pool`

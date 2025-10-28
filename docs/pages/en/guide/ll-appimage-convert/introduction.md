@@ -1,6 +1,6 @@
 # ll-appimage-convert introduction
 
-This tool is provided by the `linglong-pica` package.which provides the ability to convert appimage packages into linyaps packages, generate the linglong.yaml file required to build linyaps applications, and rely on ll-builder to implement application building and export.
+This tool is provided by the `linglong-pica` package, which provides the ability to convert appimage packages into linyaps packages, generate the linglong.yaml file required to build linyaps applications, and relies on ll-builder to implement application building and export.
 
 :::tip
 
@@ -21,7 +21,7 @@ ll-appimage-convert --help
 Here is the output:
 
 ```bash
-Convert the appimage to uab. For example:
+Convert appimage to uab. For example:
  Simple:
          ll-appimage-convert  convert -f xxx.appimage -i "io.github.demo" -n "io.github.demo" -v "1.0.0.0" -d "this is a appimage convert demo" -b
          ll-appimage-convert help

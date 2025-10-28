@@ -1,11 +1,11 @@
 # Unit Testing
 
-Linglong use gtest for unit test, just pull test code and testdata in test/ directory of project root.
+Linglong uses gtest for unit testing, just pull test code and test data in test/ directory of project root.
 
-Seem some test is hard to run in ci envionment, we disable it by default.
+Some tests are hard to run in CI environment, we disable them by default.
 
-Here are some envionment variables to control if test run, all of them are empty by default.
+Here are some environment variables to control if tests run, all of them are empty by default.
 
-| name              | vaule                              |
+| name              | value                              |
 | ----------------- | ---------------------------------- |
-| LINGLONG_TEST_ALL | If set, will run all unit testing. |
+| LINGLONG_TEST_ALL | If set, will run all unit tests. |

@@ -64,7 +64,7 @@ file:
 详细字段参考：[转换配置文件简介](../manifests.md)。
 
 :::tip
-默认使用的 `~/.pica/config.json` 使用的是 deepin v23，如果需要指定 UOS 20 版本作为 BASE 和 RUNTIME 使用以下命令修改默认配置。
+默认使用的 `~/.pica/config.json` 是基于 deepin v23，如果需要指定 UOS 20 版本作为 BASE 和 RUNTIME，使用以下命令修改默认配置。
 下面的 <https://professional-packages.chinauos.com/desktop-professional> 请修改成不需要鉴权的地址。
 :::
 

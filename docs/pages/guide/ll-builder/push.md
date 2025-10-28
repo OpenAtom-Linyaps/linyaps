@@ -4,7 +4,7 @@ SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
 SPDX-License-Identifier: LGPL-3.0-or-later
 -->
 
-# 推送uab到远程仓库
+# 推送UAB到远程仓库
 
 `ll-builder push`命令用来将如意玲珑软件包推送至如意玲珑远程仓库。
 

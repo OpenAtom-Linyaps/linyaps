@@ -4,11 +4,11 @@ SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
 SPDX-License-Identifier: LGPL-3.0-or-later
 -->
 
-# 如意玲珑构建工具介绍
+# 如意玲珑构建工具简介
 
 ## ll-builder简介
 
-`ll-builder`是为应用开发者提供的一款构建如意玲珑应用工具。
+`ll-builder`是为应用开发者提供的一款用于构建如意玲珑应用的工具。
 
 主要功能如下：
 
@@ -61,6 +61,6 @@ Subcommands:
 
 [linglong-tools](https://github.com/myml/linglong-tools) 一个玲珑的命令行辅助工具
 
-[linglong-tools](https://github.com/System233/linglong-tools) 玲珑自动化deb转制工具
+[linglong-tools](https://github.com/System233/linglong-tools) 玲珑自动化 deb 转制工具
 
-[linglong-builder-action](https://github.com/myml/linglong-builder-action) github action构建玲珑包
+[linglong-builder-action](https://github.com/myml/linglong-builder-action) GitHub Action 构建玲珑包

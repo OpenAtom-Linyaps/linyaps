@@ -1,6 +1,6 @@
 # ll-flatpak-convert introduction
 
-This tool is provided by the `linglong-pica` package.which provides the ability to convert flatpak packages into linyaps packages, generate the linglong.yaml file required to build linyaps applications, and rely on ll-builder to implement application building and export.
+This tool is provided by the `linglong-pica` package, which provides the ability to convert flatpak packages into linyaps packages, generate the linglong.yaml file required to build linyaps applications, and rely on ll-builder to implement application building and export.
 
 :::tip
 
@@ -26,7 +26,7 @@ Simple:
         ll-pica-flatpak convert [flatpak name] --build
 
 Usage:
-  ll-pica [command]
+  ll-pica-flatpak [command]
 
 Available Commands:
   convert     Convert flatpak to uab

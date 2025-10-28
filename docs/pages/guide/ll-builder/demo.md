@@ -6,13 +6,13 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 # 构建示例演示
 
-## 初始化玲珑应用项目
+## 初始化如意玲珑应用项目
 
 ```bash
 ll-builder create org.deepin.demo
 ```
 
-## 编辑 linglong.yaml 配置文件
+## 配置 linglong.yaml 配置文件
 
 ### 配置软件包元数据信息
 
@@ -100,7 +100,7 @@ build: |
   make install
 ```
 
-更多配置文件字段定义请参考[配置文件说明](./manifests.md)
+更多配置文件字段定义请参考[配置文件说明文档](./manifests.md)
 
 ## 执行构建流程
 

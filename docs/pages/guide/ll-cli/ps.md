@@ -28,7 +28,7 @@ Options:
 您可以通过此项目向如意玲珑项目团队报告错误：https://github.com/OpenAtom-Linyaps/linyaps/issues
 ```
 
-查看正在运行的应用，运行`ll-cli ps`命令：
+查看正在运行的应用，运行 `ll-cli ps` 命令：
 
 ```bash
 ll-cli ps

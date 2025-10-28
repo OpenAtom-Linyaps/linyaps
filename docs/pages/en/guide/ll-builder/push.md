@@ -30,7 +30,7 @@ Options:
   --module TEXT               Push single module
 ```
 
-The `ll-builder push` command reads the content of the `bundle` format package according to the file path, and transfers the software data and `bundle` format package to the server.
+The `ll-builder push` command reads the content of the `bundle` format package according to the file path and transfers the software data and `bundle` format package to the server.
 
 ```bash
 ll-builder push <org.deepin.demo-1.0.0_x86_64.uab>

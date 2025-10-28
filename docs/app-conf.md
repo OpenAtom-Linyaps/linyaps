@@ -1,8 +1,8 @@
-# Application run conf
+# Application Run Configuration
 
-Application run conf is the file how linglong runtime module load the app,
+Application run configuration is the file that the Linglong runtime module uses to load the app.
 
-and the conf is machine related, the user can set mount path, permisson control file to the app.
+The configuration is machine-related, and the user can set mount paths and permission control files for the app.
 
 ## File Format
 
@@ -10,7 +10,7 @@ Should be a yaml file.
 
 ## Storage
 
-The config is highly user related, it should store in ~/.linglong/{appid}/app.yaml
+The config is highly user related, it should be stored in ~/.linglong/{appid}/app.yaml
 
 If not exist, create it first from info.json.
 
@@ -26,15 +26,15 @@ package:
 runtime:
   ref: org.deepin.Runtime/20/x86_64
 
-# the section only can set by develop, and only work with debug enable
-debug:
-  # override entrypoint
-  args:
-    - /opt/apps/com.qq.weixin.work.deepin/files/run.sh
-    - --debug
-  # override the base, casefully set the debug args
-  mount-bottom:
-    - /usr:/usr
+  # This section can only be set by developers and only works with debug enabled
+  debug:
+    # Override entrypoint
+    args:
+      - /opt/apps/com.qq.weixin.work.deepin/files/run.sh
+      - --debug
+    # Override the base, carefully set the debug args
+    mount-bottom:
+      - /usr:/usr
 
 permissions:
   # mount after all runtime container build
@@ -44,7 +44,7 @@ permissions:
     - ${HOME}/Documents:${HOME}/Documents
     - ${HOME}/Desktop:${HOME}/Desktop
     - ${HOME}/Downloads:${HOME}/Downloads
-  # todo: session and system bus
+  # TODO: session and system bus
   dbus:
     owner:
       - com.qq.weixin.work.deepin

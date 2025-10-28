@@ -6,7 +6,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 # Attach To Container
 
-Use `ll-cli exec` to enter the inside of the running linyaps container.
+Use `ll-cli exec` to enter the running linyaps container.
 
 View the help information for the `ll-cli exec` command:
 
@@ -21,7 +21,7 @@ Execute commands in the currently running sandbox
 Usage: ll-cli [OPTIONS] [SUBCOMMAND]
 
 Positionals:
-  INSTANCE TEXT REQUIRED      Specify the application running instance(you can get it by ps command)
+  INSTANCE TEXT REQUIRED      Specify the application running instance (you can get it by ps command)
   COMMAND TEXT ...            Run commands in a running sandbox
 
 Options:
@@ -30,7 +30,7 @@ Options:
   --working-directory PATH:DIR
                               Specify working directory
 
-If you found any problems during use,
+If you find any problems during use,
 You can report bugs to the linyaps team under this project: https://github.com/OpenAtom-Linyaps/linyaps/issues
 ```
 
@@ -38,14 +38,14 @@ Open a new terminal window and run these commands:
 
 Example of using `ll-cli exec` to get inside org.dde.calendar container:
 
-1. using `ll-cli ps` to get container id:
+1. Use `ll-cli ps` to get container ID:
 
 ```bash
 App                                       ContainerID      Pid
 main:org.dde.calendar/5.14.5.0/x86_64     c3b5ce363172     539537
 ```
 
-2. enter the org.dde.calendar container
+2. Enter the org.dde.calendar container
 
 ```bash
 ll-cli exec main:org.dde.calendar/5.14.5.0/x86_64 /bin/bash

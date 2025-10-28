@@ -21,9 +21,9 @@ Run an application
 Usage: ll-cli run [OPTIONS] APP [COMMAND...]
 
 Example:
-# run application by appid
+# Run application by appid
 ll-cli run org.deepin.demo
-# execute commands in the container rather than running the application
+# Execute commands in the container rather than running the application
 ll-cli run org.deepin.demo bash
 ll-cli run org.deepin.demo -- bash
 ll-cli run org.deepin.demo -- bash -x /path/to/bash/script
@@ -38,6 +38,6 @@ Options:
   --file FILE:FILE            Pass file to applications running in a sandbox
   --url URL                   Pass url to applications running in a sandbox
 
-If you found any problems during use,
+If you find any problems during use,
 You can report bugs to the linyaps team under this project: https://github.com/OpenAtom-Linyaps/linyaps/issues
 ```

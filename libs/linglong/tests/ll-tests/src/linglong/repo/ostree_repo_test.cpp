@@ -4,8 +4,10 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "../../common/tempdir.h"
 #include "../mocks/ostree_repo_mock.h"
 #include "linglong/package/reference.h"
 #include "linglong/repo/client_factory.h"
@@ -51,12 +53,11 @@ TEST_F(RepoTest, exportDir)
     std::string ostreeRepoPath = repoPath + "/repo";
     std::string remoteEndpoint = "https://store-llrepo.deepin.com/repos/";
     std::string remoteRepoName = "repo";
-    ClientFactory clientFactory(std::string("http://localhost"));
 
     // 初始化配置和repo对象
     auto config = api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 };
     QDir repoDir = QString(repoPath.c_str());
-    auto ostreeRepo = std::make_unique<MockOstreeRepo>(repoDir, config, clientFactory);
+    auto ostreeRepo = std::make_unique<MockOstreeRepo>(repoDir, config);
 
     // 创建测试文件和目录结构，包括XDG标准文件
     fs::path srcDirPath = tempDir / "src";
@@ -203,4 +204,232 @@ TEST_F(RepoTest, exportDir)
 }
 
 } // namespace
+
+namespace {
+
+using ::testing::_;
+using ::testing::Return;
+
+struct AppData
+{
+    const char *app_id;
+    const char *arch;
+    const char *base;
+    const char *channel;
+    const char *description;
+    const char *id;
+    const char *kind;
+    const char *module;
+    const char *name;
+    const char *repo_name;
+    const char *runtime;
+    long size;
+    const char *uab_url;
+    const char *version;
+};
+
+auto create_response_from_data(const std::vector<AppData> &app_data_list)
+{
+    list_t *list = list_createList();
+    for (const auto &data : app_data_list) {
+        auto *item = request_register_struct_create(
+          strdup(data.app_id ? data.app_id : "com.example.app"),
+          strdup(data.arch ? data.arch : "x86_64"),
+          strdup(data.base ? data.base : "base"),
+          strdup(data.channel ? data.channel : "main"),
+          strdup(data.description ? data.description : "description"),
+          strdup(data.id ? data.id : "id"),
+          strdup(data.kind ? data.kind : "app"),
+          strdup(data.module ? data.module : "binary"),
+          strdup(data.name ? data.name : "name"),
+          strdup(data.repo_name ? data.repo_name : "stable"),
+          strdup(data.runtime ? data.runtime : "runtime"),
+          data.size,
+          strdup(data.uab_url ? data.uab_url : "localhost"),
+          strdup(data.version ? data.version : "1.0.0"));
+        list_addElement(list, item);
+    }
+    return fuzzy_search_app_200_response_create(200, list, nullptr, nullptr);
+}
+
+class OSTreeRepoMock : public repo::OSTreeRepo
+{
+public:
+    OSTreeRepoMock(const std::filesystem::path &path)
+        : repo::OSTreeRepo(
+            QDir(path.c_str()),
+            api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 })
+    {
+    }
+
+    MOCK_METHOD(std::unique_ptr<ClientAPIWrapper>,
+                createClientV2,
+                (const std::string &url),
+                (override, const));
+};
+
+class MockClientAPIWrapper : public ClientAPIWrapper
+{
+public:
+    MockClientAPIWrapper(apiClient_t *client)
+        : ClientAPIWrapper(client)
+    {
+    }
+
+    MOCK_METHOD((std::unique_ptr<fuzzy_search_app_200_response_t,
+                                 decltype(&fuzzy_search_app_200_response_free)>),
+                fuzzySearch,
+                (request_fuzzy_search_req_t * req),
+                (override));
+};
+
+TEST(OSTreeRepoTest, searchRemote_Search)
+{
+    TempDir tempDir;
+    OSTreeRepoMock mockRepo(tempDir.path());
+    repo::OSTreeRepo &repo = mockRepo;
+
+    auto fuzzyRef = package::FuzzyReference::parse("com.example.app");
+    auto repoConfig = api::types::v1::Repo{ .name = "test", .url = "http://localhost:8080" };
+    auto client = apiClient_create_with_base_path(repoConfig.url.c_str(), nullptr, nullptr);
+    auto clientAPI = new MockClientAPIWrapper(client);
+
+    std::vector<AppData> test_data = { { .app_id = "com.example.cpp", .version = "1.0.0" } };
+    auto resp = create_response_from_data(test_data);
+
+    EXPECT_CALL(*clientAPI, fuzzySearch(_))
+      .WillOnce(Return(std::unique_ptr<fuzzy_search_app_200_response_t,
+                                       decltype(&fuzzy_search_app_200_response_free)>(
+        resp,
+        &fuzzy_search_app_200_response_free)));
+    EXPECT_CALL(mockRepo, createClientV2(repoConfig.url))
+      .WillOnce(Return(std::unique_ptr<ClientAPIWrapper>(clientAPI)));
+
+    auto result = repo.searchRemote(*fuzzyRef, repoConfig);
+
+    EXPECT_TRUE(result.has_value());
+    EXPECT_EQ(result->size(), 1);
+    EXPECT_EQ((*result)[0].id, "com.example.cpp");
+    EXPECT_EQ((*result)[0].version, "1.0.0");
+}
+
+TEST(OSTreeRepoTest, searchRemote_MatchVersion)
+{
+    TempDir tempDir;
+    OSTreeRepoMock mockRepo(tempDir.path());
+    repo::OSTreeRepo &repo = mockRepo;
+
+    auto fuzzyRef = package::FuzzyReference::parse("com.example.app/1.0");
+    auto repoConfig = api::types::v1::Repo{ .name = "test", .url = "http://localhost:8080" };
+    auto client = apiClient_create_with_base_path(repoConfig.url.c_str(), nullptr, nullptr);
+    auto clientAPI = new MockClientAPIWrapper(client);
+
+    std::vector<AppData> test_data = { { .app_id = "com.example.app", .version = "1.0.0" },
+                                       { .app_id = "com.example.app", .version = "2.0.0" },
+                                       { .app_id = "com.example.app", .version = "2.1.0" } };
+    auto resp = create_response_from_data(test_data);
+
+    EXPECT_CALL(*clientAPI, fuzzySearch(_))
+      .WillOnce(Return(std::unique_ptr<fuzzy_search_app_200_response_t,
+                                       decltype(&fuzzy_search_app_200_response_free)>(
+        resp,
+        &fuzzy_search_app_200_response_free)));
+    EXPECT_CALL(mockRepo, createClientV2(repoConfig.url))
+      .WillOnce(Return(std::unique_ptr<ClientAPIWrapper>(clientAPI)));
+
+    auto result = repo.searchRemote(*fuzzyRef, repoConfig, true);
+
+    EXPECT_TRUE(result.has_value());
+    EXPECT_EQ(result->size(), 1);
+    EXPECT_EQ((*result)[0].id, "com.example.app");
+    EXPECT_EQ((*result)[0].version, "1.0.0");
+}
+
+TEST(OSTreeRepoTest, searchRemote_MatchId)
+{
+    TempDir tempDir;
+    OSTreeRepoMock mockRepo(tempDir.path());
+    repo::OSTreeRepo &repo = mockRepo;
+
+    auto fuzzyRef = package::FuzzyReference::parse("example");
+    auto repoConfig = api::types::v1::Repo{ .name = "test", .url = "http://localhost:8080" };
+    auto client = apiClient_create_with_base_path(repoConfig.url.c_str(), nullptr, nullptr);
+    auto clientAPI = new MockClientAPIWrapper(client);
+
+    std::vector<AppData> test_data = { { .app_id = "com.example", .version = "1.0.0" },
+                                       { .app_id = "example.app2", .version = "2.0.0" },
+                                       { .app_id = "com.example.app3", .version = "1.0.0" },
+                                       { .app_id = "example", .version = "1.0.0" } };
+    auto resp = create_response_from_data(test_data);
+
+    EXPECT_CALL(*clientAPI, fuzzySearch(_))
+      .WillOnce(Return(std::unique_ptr<fuzzy_search_app_200_response_t,
+                                       decltype(&fuzzy_search_app_200_response_free)>(
+        resp,
+        &fuzzy_search_app_200_response_free)));
+    EXPECT_CALL(mockRepo, createClientV2(repoConfig.url))
+      .WillOnce(Return(std::unique_ptr<ClientAPIWrapper>(clientAPI)));
+
+    auto result = repo.searchRemote(*fuzzyRef, repoConfig, true);
+
+    EXPECT_TRUE(result.has_value());
+    EXPECT_EQ(result->size(), 1);
+    EXPECT_EQ((*result)[0].id, "example");
+    EXPECT_EQ((*result)[0].version, "1.0.0");
+}
+
+TEST(OSTreeRepoTest, searchRemote_Empty)
+{
+    TempDir tempDir;
+    OSTreeRepoMock mockRepo(tempDir.path());
+    repo::OSTreeRepo &repo = mockRepo;
+
+    auto fuzzyRef = package::FuzzyReference::parse("com.nonexistent.app");
+    auto repoConfig = api::types::v1::Repo{ .name = "test", .url = "http://localhost:8080" };
+    auto client = apiClient_create_with_base_path(repoConfig.url.c_str(), nullptr, nullptr);
+    auto clientAPI = new MockClientAPIWrapper(client);
+
+    std::vector<AppData> test_data = {};
+    auto resp = create_response_from_data(test_data);
+
+    EXPECT_CALL(*clientAPI, fuzzySearch(_))
+      .WillOnce(Return(std::unique_ptr<fuzzy_search_app_200_response_t,
+                                       decltype(&fuzzy_search_app_200_response_free)>(
+        resp,
+        &fuzzy_search_app_200_response_free)));
+    EXPECT_CALL(mockRepo, createClientV2(repoConfig.url))
+      .WillOnce(Return(std::unique_ptr<ClientAPIWrapper>(clientAPI)));
+
+    auto result = repo.searchRemote(*fuzzyRef, repoConfig, true);
+
+    EXPECT_TRUE(result.has_value());
+    EXPECT_TRUE(result->empty());
+}
+
+TEST(OSTreeRepoTest, searchRemote_RemoteError)
+{
+    TempDir tempDir;
+    OSTreeRepoMock mockRepo(tempDir.path());
+    repo::OSTreeRepo &repo = mockRepo;
+
+    auto fuzzyRef = package::FuzzyReference::parse("com.example.app");
+    auto repoConfig = api::types::v1::Repo{ .name = "test", .url = "http://localhost:8080" };
+    auto client = apiClient_create_with_base_path(repoConfig.url.c_str(), nullptr, nullptr);
+    auto clientAPI = new MockClientAPIWrapper(client);
+
+    EXPECT_CALL(*clientAPI, fuzzySearch(_))
+      .WillOnce(Return(std::unique_ptr<fuzzy_search_app_200_response_t,
+                                       decltype(&fuzzy_search_app_200_response_free)>(
+        nullptr,
+        &fuzzy_search_app_200_response_free)));
+    EXPECT_CALL(mockRepo, createClientV2(repoConfig.url))
+      .WillOnce(Return(std::unique_ptr<ClientAPIWrapper>(clientAPI)));
+
+    auto result = repo.searchRemote(*fuzzyRef, repoConfig, true);
+
+    EXPECT_FALSE(result.has_value());
+}
+
+} // namespace
+
 } // namespace linglong::repo::test

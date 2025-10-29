@@ -20,32 +20,9 @@ protected:
     void TearDown() override { }
 };
 
-TEST_F(ClientFactoryTest, CreateWithQString)
-{
-    ClientFactory factory(QString("http://localhost:8081"));
-    auto client = factory.createClientV2();
-    EXPECT_NE(client, nullptr);
-}
-
 TEST_F(ClientFactoryTest, CreateWithStdString)
 {
     ClientFactory factory(std::string("http://localhost:8081"));
-    auto client = factory.createClientV2();
-    EXPECT_NE(client, nullptr);
-}
-
-TEST_F(ClientFactoryTest, SetServerWithQString)
-{
-    ClientFactory factory(QString("http://localhost:8080"));
-    factory.setServer(QString("http://localhost:8084"));
-    auto client = factory.createClientV2();
-    EXPECT_NE(client, nullptr);
-}
-
-TEST_F(ClientFactoryTest, SetServerWithStdString)
-{
-    ClientFactory factory(std::string("http://localhost:8080"));
-    factory.setServer(std::string("http://localhost:8083"));
     auto client = factory.createClientV2();
     EXPECT_NE(client, nullptr);
 }

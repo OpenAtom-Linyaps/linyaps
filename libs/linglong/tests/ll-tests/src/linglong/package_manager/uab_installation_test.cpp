@@ -24,11 +24,10 @@ using ::testing::Return;
 class MockOSTreeRepo : public repo::OSTreeRepo
 {
 public:
-    MockOSTreeRepo(const std::filesystem::path &path, repo::ClientFactory &clientFactory)
+    MockOSTreeRepo(const std::filesystem::path &path)
         : repo::OSTreeRepo(
             QDir(path.c_str()),
-            api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 },
-            clientFactory)
+            api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 })
     {
     }
 
@@ -67,8 +66,7 @@ api::types::v1::UabLayer create_layer(const std::string &id,
 TEST(CheckUABLayersConstrain, EmptyLayers)
 {
     TempDir tempDir;
-    repo::ClientFactory clientFactory(std::string("http://localhost"));
-    MockOSTreeRepo mockRepo(tempDir.path(), clientFactory);
+    MockOSTreeRepo mockRepo(tempDir.path());
     repo::OSTreeRepo &repo = mockRepo;
     EXPECT_CALL(mockRepo, clearReference(_, _, _, _)).Times(0);
     std::vector<api::types::v1::UabLayer> layers;
@@ -79,8 +77,7 @@ TEST(CheckUABLayersConstrain, EmptyLayers)
 TEST(CheckUABLayersConstrain, ArchMismatch)
 {
     TempDir tempDir;
-    repo::ClientFactory clientFactory(std::string("http://localhost"));
-    MockOSTreeRepo mockRepo(tempDir.path(), clientFactory);
+    MockOSTreeRepo mockRepo(tempDir.path());
     repo::OSTreeRepo &repo = mockRepo;
     std::vector<api::types::v1::UabLayer> layers;
     api::types::v1::UabLayer layer;
@@ -98,8 +95,7 @@ TEST(CheckUABLayersConstrain, ArchMismatch)
 TEST(CheckUABLayersConstrain, DifferentIds)
 {
     TempDir tempDir;
-    repo::ClientFactory clientFactory(std::string("http://localhost"));
-    MockOSTreeRepo mockRepo(tempDir.path(), clientFactory);
+    MockOSTreeRepo mockRepo(tempDir.path());
     repo::OSTreeRepo &repo = mockRepo;
     std::vector<api::types::v1::UabLayer> layers;
     auto currentArch = package::Architecture::currentCPUArchitecture()->toStdString();
@@ -123,8 +119,7 @@ TEST(CheckUABLayersConstrain, DifferentIds)
 TEST(CheckUABLayersConstrain, DifferentVersions)
 {
     TempDir tempDir;
-    repo::ClientFactory clientFactory(std::string("http://localhost"));
-    MockOSTreeRepo mockRepo(tempDir.path(), clientFactory);
+    MockOSTreeRepo mockRepo(tempDir.path());
     repo::OSTreeRepo &repo = mockRepo;
     std::vector<api::types::v1::UabLayer> layers;
     auto currentArch = package::Architecture::currentCPUArchitecture()->toStdString();
@@ -152,8 +147,7 @@ TEST(CheckUABLayersConstrain, ExtraModuleNoBinaryAndNotInstalled)
     LINGLONG_TRACE("ExtraModuleNoBinaryAndNotInstalled");
 
     TempDir tempDir;
-    repo::ClientFactory clientFactory(std::string("http://localhost"));
-    MockOSTreeRepo mockRepo(tempDir.path(), clientFactory);
+    MockOSTreeRepo mockRepo(tempDir.path());
     repo::OSTreeRepo &repo = mockRepo;
     std::vector<api::types::v1::UabLayer> layers;
     auto currentArch = package::Architecture::currentCPUArchitecture()->toStdString();
@@ -176,8 +170,7 @@ TEST(CheckUABLayersConstrain, ExtraModuleNoBinaryAndNotInstalled)
 TEST(CheckUABLayersConstrain, ExtraModuleNoBinaryAndWrongVersionInstalled)
 {
     TempDir tempDir;
-    repo::ClientFactory clientFactory(std::string("http://localhost"));
-    MockOSTreeRepo mockRepo(tempDir.path(), clientFactory);
+    MockOSTreeRepo mockRepo(tempDir.path());
     repo::OSTreeRepo &repo = mockRepo;
     std::vector<api::types::v1::UabLayer> layers;
     auto currentArch = package::Architecture::currentCPUArchitecture()->toStdString();
@@ -203,8 +196,7 @@ TEST(CheckUABLayersConstrain, ExtraModuleNoBinaryAndWrongVersionInstalled)
 TEST(CheckUABLayersConstrain, ExtraModuleNoBinaryButInstalled)
 {
     TempDir tempDir;
-    repo::ClientFactory clientFactory(std::string("http://localhost"));
-    MockOSTreeRepo mockRepo(tempDir.path(), clientFactory);
+    MockOSTreeRepo mockRepo(tempDir.path());
     repo::OSTreeRepo &repo = mockRepo;
     std::vector<api::types::v1::UabLayer> layers;
     auto currentArch = package::Architecture::currentCPUArchitecture()->toStdString();
@@ -230,8 +222,7 @@ TEST(CheckUABLayersConstrain, ExtraModuleNoBinaryButInstalled)
 TEST(CheckUABLayersConstrain, ExtraModuleWithBinary)
 {
     TempDir tempDir;
-    repo::ClientFactory clientFactory(std::string("http://localhost"));
-    MockOSTreeRepo mockRepo(tempDir.path(), clientFactory);
+    MockOSTreeRepo mockRepo(tempDir.path());
     repo::OSTreeRepo &repo = mockRepo;
     std::vector<api::types::v1::UabLayer> layers;
     auto currentArch = package::Architecture::currentCPUArchitecture()->toStdString();
@@ -263,8 +254,7 @@ TEST(GetTaskAction, InstallNewApp)
     LINGLONG_TRACE("InstallNewApp");
 
     TempDir tempDir;
-    repo::ClientFactory clientFactory(std::string("http://localhost"));
-    MockOSTreeRepo mockRepo(tempDir.path(), clientFactory);
+    MockOSTreeRepo mockRepo(tempDir.path());
     repo::OSTreeRepo &repo = mockRepo;
 
     std::vector<api::types::v1::UabLayer> appLayers = {
@@ -283,8 +273,7 @@ TEST(GetTaskAction, InstallNewApp)
 TEST(GetTaskAction, OverwriteApp)
 {
     TempDir tempDir;
-    repo::ClientFactory clientFactory(std::string("http://localhost"));
-    MockOSTreeRepo mockRepo(tempDir.path(), clientFactory);
+    MockOSTreeRepo mockRepo(tempDir.path());
     repo::OSTreeRepo &repo = mockRepo;
     auto currentArch = package::Architecture::currentCPUArchitecture()->toStdString();
 
@@ -306,8 +295,7 @@ TEST(GetTaskAction, OverwriteApp)
 TEST(GetTaskAction, UpgradeApp)
 {
     TempDir tempDir;
-    repo::ClientFactory clientFactory(std::string("http://localhost"));
-    MockOSTreeRepo mockRepo(tempDir.path(), clientFactory);
+    MockOSTreeRepo mockRepo(tempDir.path());
     repo::OSTreeRepo &repo = mockRepo;
     auto currentArch = package::Architecture::currentCPUArchitecture()->toStdString();
 
@@ -329,8 +317,7 @@ TEST(GetTaskAction, UpgradeApp)
 TEST(GetTaskAction, DowngradeApp)
 {
     TempDir tempDir;
-    repo::ClientFactory clientFactory(std::string("http://localhost"));
-    MockOSTreeRepo mockRepo(tempDir.path(), clientFactory);
+    MockOSTreeRepo mockRepo(tempDir.path());
     repo::OSTreeRepo &repo = mockRepo;
     auto currentArch = package::Architecture::currentCPUArchitecture()->toStdString();
 
@@ -352,8 +339,7 @@ TEST(GetTaskAction, DowngradeApp)
 TEST(GetTaskAction, InstallLowVersionRuntime)
 {
     TempDir tempDir;
-    repo::ClientFactory clientFactory(std::string("http://localhost"));
-    MockOSTreeRepo mockRepo(tempDir.path(), clientFactory);
+    MockOSTreeRepo mockRepo(tempDir.path());
     repo::OSTreeRepo &repo = mockRepo;
     auto currentArch = package::Architecture::currentCPUArchitecture()->toStdString();
 
@@ -375,8 +361,7 @@ TEST(GetTaskAction, InstallLowVersionRuntime)
 TEST(GetTaskAction, InstallHighVersionRuntime)
 {
     TempDir tempDir;
-    repo::ClientFactory clientFactory(std::string("http://localhost"));
-    MockOSTreeRepo mockRepo(tempDir.path(), clientFactory);
+    MockOSTreeRepo mockRepo(tempDir.path());
     repo::OSTreeRepo &repo = mockRepo;
     auto currentArch = package::Architecture::currentCPUArchitecture()->toStdString();
 
@@ -399,8 +384,7 @@ TEST(GetTaskAction, InstallHighVersionRuntime)
 TEST(CheckExecModeUABLayers, NoAppLayers)
 {
     TempDir tempDir;
-    repo::ClientFactory clientFactory(std::string("http://localhost"));
-    MockOSTreeRepo mockRepo(tempDir.path(), clientFactory);
+    MockOSTreeRepo mockRepo(tempDir.path());
     repo::OSTreeRepo &repo = mockRepo;
     std::vector<api::types::v1::UabLayer> layers = {
         create_layer("id1", "1.0.0", "main", "runtime")
@@ -412,8 +396,7 @@ TEST(CheckExecModeUABLayers, NoAppLayers)
 TEST(CheckExecModeUABLayers, AppLayerNoRuntime)
 {
     TempDir tempDir;
-    repo::ClientFactory clientFactory(std::string("http://localhost"));
-    MockOSTreeRepo mockRepo(tempDir.path(), clientFactory);
+    MockOSTreeRepo mockRepo(tempDir.path());
     repo::OSTreeRepo &repo = mockRepo;
     auto layer = create_layer("id1", "1.0.0", "main", "app");
     layer.info.packageInfoV2Module = "binary";
@@ -425,8 +408,7 @@ TEST(CheckExecModeUABLayers, AppLayerNoRuntime)
 TEST(CheckExecModeUABLayers, AppLayerWithRuntimeNoRuntimeLayer)
 {
     TempDir tempDir;
-    repo::ClientFactory clientFactory(std::string("http://localhost"));
-    MockOSTreeRepo mockRepo(tempDir.path(), clientFactory);
+    MockOSTreeRepo mockRepo(tempDir.path());
     repo::OSTreeRepo &repo = mockRepo;
     auto layer = create_layer("id1", "1.0.0", "main", "app");
     layer.info.runtime = "runtime.id/1.0.0";
@@ -438,8 +420,7 @@ TEST(CheckExecModeUABLayers, AppLayerWithRuntimeNoRuntimeLayer)
 TEST(CheckExecModeUABLayers, AppLayerWithRuntimeIdMismatch)
 {
     TempDir tempDir;
-    repo::ClientFactory clientFactory(std::string("http://localhost"));
-    MockOSTreeRepo mockRepo(tempDir.path(), clientFactory);
+    MockOSTreeRepo mockRepo(tempDir.path());
     repo::OSTreeRepo &repo = mockRepo;
     auto app_layer = create_layer("id1", "1.0.0", "main", "app");
     app_layer.info.runtime = "runtime.id/1.0.0";
@@ -452,8 +433,7 @@ TEST(CheckExecModeUABLayers, AppLayerWithRuntimeIdMismatch)
 TEST(CheckExecModeUABLayers, AppLayerWithRuntimeChannelMismatch)
 {
     TempDir tempDir;
-    repo::ClientFactory clientFactory(std::string("http://localhost"));
-    MockOSTreeRepo mockRepo(tempDir.path(), clientFactory);
+    MockOSTreeRepo mockRepo(tempDir.path());
     repo::OSTreeRepo &repo = mockRepo;
     auto app_layer = create_layer("id1", "1.0.0", "main", "app");
     app_layer.info.runtime = "runtime.id/1.0.0";
@@ -466,8 +446,7 @@ TEST(CheckExecModeUABLayers, AppLayerWithRuntimeChannelMismatch)
 TEST(CheckExecModeUABLayers, AppLayerWithRuntimeVersionMismatch)
 {
     TempDir tempDir;
-    repo::ClientFactory clientFactory(std::string("http://localhost"));
-    MockOSTreeRepo mockRepo(tempDir.path(), clientFactory);
+    MockOSTreeRepo mockRepo(tempDir.path());
     repo::OSTreeRepo &repo = mockRepo;
     auto app_layer = create_layer("id1", "1.0.0", "main", "app");
     app_layer.info.runtime = "runtime.id/2.0.0";
@@ -480,8 +459,7 @@ TEST(CheckExecModeUABLayers, AppLayerWithRuntimeVersionMismatch)
 TEST(CheckExecModeUABLayers, AppLayerWithRuntimeOk)
 {
     TempDir tempDir;
-    repo::ClientFactory clientFactory(std::string("http://localhost"));
-    MockOSTreeRepo mockRepo(tempDir.path(), clientFactory);
+    MockOSTreeRepo mockRepo(tempDir.path());
     repo::OSTreeRepo &repo = mockRepo;
     auto app_layer = create_layer("id1", "1.0.0", "main", "app");
     app_layer.info.runtime = "runtime.id/1.0";
@@ -496,8 +474,7 @@ TEST(CheckExecModeUABLayers, AppLayerWithRuntimeOk)
 TEST(CheckExecModeUABLayers, ConstrainFailOnAppLayers)
 {
     TempDir tempDir;
-    repo::ClientFactory clientFactory(std::string("http://localhost"));
-    MockOSTreeRepo mockRepo(tempDir.path(), clientFactory);
+    MockOSTreeRepo mockRepo(tempDir.path());
     repo::OSTreeRepo &repo = mockRepo;
     std::vector<api::types::v1::UabLayer> layers = { create_layer("id1", "1.0.0", "main", "app"),
                                                      create_layer("id2", "1.0.0", "main", "app") };
@@ -508,8 +485,7 @@ TEST(CheckExecModeUABLayers, ConstrainFailOnAppLayers)
 TEST(CheckExecModeUABLayers, ConstrainFailOnOtherLayers)
 {
     TempDir tempDir;
-    repo::ClientFactory clientFactory(std::string("http://localhost"));
-    MockOSTreeRepo mockRepo(tempDir.path(), clientFactory);
+    MockOSTreeRepo mockRepo(tempDir.path());
     repo::OSTreeRepo &repo = mockRepo;
     auto app_layer = create_layer("app_id", "1.0.0", "main", "app");
     app_layer.info.runtime = "main:runtime.id/1.0.0";
@@ -530,8 +506,7 @@ TEST(CheckExecModeUABLayers, ConstrainFailOnOtherLayers)
 TEST(CheckDistributionModeUABLayers, NoLayers)
 {
     TempDir tempDir;
-    repo::ClientFactory clientFactory(std::string("http://localhost"));
-    MockOSTreeRepo mockRepo(tempDir.path(), clientFactory);
+    MockOSTreeRepo mockRepo(tempDir.path());
     repo::OSTreeRepo &repo = mockRepo;
     std::vector<api::types::v1::UabLayer> layers;
     auto result = UabInstallationAction::checkDistributionModeUABLayers(repo, layers);
@@ -541,8 +516,7 @@ TEST(CheckDistributionModeUABLayers, NoLayers)
 TEST(CheckDistributionModeUABLayers, BothAppAndOtherLayers)
 {
     TempDir tempDir;
-    repo::ClientFactory clientFactory(std::string("http://localhost"));
-    MockOSTreeRepo mockRepo(tempDir.path(), clientFactory);
+    MockOSTreeRepo mockRepo(tempDir.path());
     repo::OSTreeRepo &repo = mockRepo;
     std::vector<api::types::v1::UabLayer> layers = {
         create_layer("id1", "1.0.0", "main", "app"),
@@ -555,8 +529,7 @@ TEST(CheckDistributionModeUABLayers, BothAppAndOtherLayers)
 TEST(CheckDistributionModeUABLayers, OnlyAppLayers)
 {
     TempDir tempDir;
-    repo::ClientFactory clientFactory(std::string("http://localhost"));
-    MockOSTreeRepo mockRepo(tempDir.path(), clientFactory);
+    MockOSTreeRepo mockRepo(tempDir.path());
     repo::OSTreeRepo &repo = mockRepo;
     auto layer = create_layer("id1", "1.0.0", "main", "app");
     layer.info.packageInfoV2Module = "binary";
@@ -568,8 +541,7 @@ TEST(CheckDistributionModeUABLayers, OnlyAppLayers)
 TEST(CheckDistributionModeUABLayers, OnlyOtherLayers)
 {
     TempDir tempDir;
-    repo::ClientFactory clientFactory(std::string("http://localhost"));
-    MockOSTreeRepo mockRepo(tempDir.path(), clientFactory);
+    MockOSTreeRepo mockRepo(tempDir.path());
     repo::OSTreeRepo &repo = mockRepo;
     auto layer = create_layer("id1", "1.0.0", "main", "runtime");
     layer.info.packageInfoV2Module = "runtime";
@@ -581,8 +553,7 @@ TEST(CheckDistributionModeUABLayers, OnlyOtherLayers)
 TEST(CheckDistributionModeUABLayers, ConstrainFailOnAppLayers)
 {
     TempDir tempDir;
-    repo::ClientFactory clientFactory(std::string("http://localhost"));
-    MockOSTreeRepo mockRepo(tempDir.path(), clientFactory);
+    MockOSTreeRepo mockRepo(tempDir.path());
     repo::OSTreeRepo &repo = mockRepo;
     std::vector<api::types::v1::UabLayer> layers = { create_layer("id1", "1.0.0", "main", "app"),
                                                      create_layer("id2", "1.0.0", "main", "app") };
@@ -593,8 +564,7 @@ TEST(CheckDistributionModeUABLayers, ConstrainFailOnAppLayers)
 TEST(CheckDistributionModeUABLayers, ConstrainFailOnOtherLayers)
 {
     TempDir tempDir;
-    repo::ClientFactory clientFactory(std::string("http://localhost"));
-    MockOSTreeRepo mockRepo(tempDir.path(), clientFactory);
+    MockOSTreeRepo mockRepo(tempDir.path());
     repo::OSTreeRepo &repo = mockRepo;
     std::vector<api::types::v1::UabLayer> layers = {
         create_layer("id1", "1.0.0", "main", "runtime"),

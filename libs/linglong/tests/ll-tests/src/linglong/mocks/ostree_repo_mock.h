@@ -17,10 +17,8 @@ using namespace linglong;
 class MockOstreeRepo : public repo::OSTreeRepo
 {
 public:
-    MockOstreeRepo(const QDir &path,
-                   api::types::v1::RepoConfigV2 cfg,
-                   repo::ClientFactory &clientFactory) noexcept
-        : OSTreeRepo(path, cfg, clientFactory)
+    MockOstreeRepo(const QDir &path, api::types::v1::RepoConfigV2 cfg) noexcept
+        : OSTreeRepo(path, cfg)
     {
     }
 

@@ -20,7 +20,11 @@ utils::error::Result<void> saveConfig(const api::types::v1::RepoConfigV2 &cfg,
                                       const QString &path) noexcept;
 int64_t getRepoMinPriority(const api::types::v1::RepoConfigV2 &cfg) noexcept;
 int64_t getRepoMaxPriority(const api::types::v1::RepoConfigV2 &cfg) noexcept;
-api::types::v1::Repo getDefaultRepo(const api::types::v1::RepoConfigV2 &cfg) noexcept;
+const api::types::v1::Repo &getDefaultRepo(const api::types::v1::RepoConfigV2 &cfg) noexcept;
+
+std::vector<api::types::v1::Repo> getPrioritySortedRepos(api::types::v1::RepoConfigV2 cfg) noexcept;
+std::vector<std::vector<api::types::v1::Repo>>
+getPriorityGroupedRepos(api::types::v1::RepoConfigV2 cfg) noexcept;
 
 api::types::v1::RepoConfigV2 convertToV2(const api::types::v1::RepoConfig &cfg) noexcept;
 

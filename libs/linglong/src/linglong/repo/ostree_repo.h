@@ -14,6 +14,7 @@
 #include "linglong/package/reference.h"
 #include "linglong/package_manager/package_task.h"
 #include "linglong/repo/client_factory.h"
+#include "linglong/repo/config.h"
 #include "linglong/repo/repo_cache.h"
 #include "linglong/utils/error/error.h"
 
@@ -50,17 +51,17 @@ public:
     OSTreeRepo(OSTreeRepo &&) = delete;
     OSTreeRepo &operator=(const OSTreeRepo &) = delete;
     OSTreeRepo &operator=(OSTreeRepo &&) = delete;
-    OSTreeRepo(const QDir &path,
-               api::types::v1::RepoConfigV2 cfg,
-               ClientFactory &clientFactory) noexcept;
+    OSTreeRepo(const QDir &path, api::types::v1::RepoConfigV2 cfg) noexcept;
 
-    virtual ~OSTreeRepo() override;
+    ~OSTreeRepo() override;
 
     [[nodiscard]] const api::types::v1::RepoConfigV2 &getConfig() const noexcept;
-    [[nodiscard]] api::types::v1::RepoConfigV2 getOrderedConfig() noexcept;
+    [[nodiscard]] api::types::v1::RepoConfigV2 getOrderedConfig() const noexcept;
     [[nodiscard]] utils::error::Result<api::types::v1::Repo>
     getRepoByAlias(const std::string &alias) const noexcept;
-    [[nodiscard]] std::vector<api::types::v1::Repo> getHighestPriorityRepos() noexcept;
+    [[nodiscard]] std::vector<api::types::v1::Repo> getHighestPriorityRepos() const noexcept;
+    [[nodiscard]] std::vector<std::vector<api::types::v1::Repo>>
+    getPriorityGroupedRepos() const noexcept;
     repoPriority_t promotePriority(const std::string &alias) noexcept;
     void recoverPriority(const std::string &alias, const repoPriority_t &priority) noexcept;
     utils::error::Result<void> setConfig(const api::types::v1::RepoConfigV2 &cfg) noexcept;
@@ -84,8 +85,8 @@ public:
                  const std::string &module = "binary") const noexcept;
     void pull(service::PackageTask &taskContext,
               const package::Reference &reference,
-              const std::string &module = "binary",
-              const std::optional<api::types::v1::Repo> &repo = std::nullopt) noexcept;
+              const std::string &module,
+              const api::types::v1::Repo &repo) noexcept;
 
     [[nodiscard]] virtual utils::error::Result<package::Reference>
     clearReference(const package::FuzzyReference &fuzzy,
@@ -100,9 +101,12 @@ public:
     utils::error::Result<std::vector<api::types::v1::PackageInfoV2>> listLocal() const noexcept;
     utils::error::Result<std::vector<api::types::v1::PackageInfoV2>>
     listLocalLatest() const noexcept;
-    utils::error::Result<std::vector<api::types::v1::PackageInfoV2>>
-    listRemote(const package::FuzzyReference &fuzzyRef,
-               const std::optional<api::types::v1::Repo> &repo = std::nullopt) const noexcept;
+    utils::error::Result<std::vector<api::types::v1::PackageInfoV2>> virtual searchRemote(
+      std::string searching, const api::types::v1::Repo &repo) const noexcept;
+    utils::error::Result<std::vector<api::types::v1::PackageInfoV2>> virtual searchRemote(
+      const package::FuzzyReference &fuzzyRef,
+      const api::types::v1::Repo &repo,
+      bool semanticMatching = false) const noexcept;
 
     utils::error::Result<std::vector<api::types::v1::RepositoryCacheLayersItem>>
     listLayerItem() const noexcept;
@@ -160,6 +164,16 @@ public:
                  const std::optional<std::string> &subRef = std::nullopt) const noexcept;
     utils::error::Result<void> fixExportAllEntries() noexcept;
 
+    virtual std::unique_ptr<ClientAPIWrapper> createClientV2(const std::string &url) const
+    {
+        return ClientFactory(url).createClientV2();
+    }
+
+    const api::types::v1::Repo &getDefaultRepo() const
+    {
+        return linglong::repo::getDefaultRepo(cfg);
+    }
+
 private:
     api::types::v1::RepoConfigV2 cfg;
 
@@ -171,7 +185,6 @@ private:
     std::unique_ptr<OstreeRepo, OstreeRepoDeleter> ostreeRepo = nullptr;
     QDir repoDir;
     std::unique_ptr<linglong::repo::RepoCache> cache{ nullptr };
-    ClientFactory &m_clientFactory;
 
     utils::error::Result<void> updateConfig(const api::types::v1::RepoConfigV2 &newCfg) noexcept;
     QDir ostreeRepoDir() const noexcept;

@@ -93,7 +93,7 @@ utils::error::Result<void> saveConfig(const api::types::v1::RepoConfigV2 &cfg,
     }
 }
 
-api::types::v1::Repo getDefaultRepo(const api::types::v1::RepoConfigV2 &cfg) noexcept
+const api::types::v1::Repo &getDefaultRepo(const api::types::v1::RepoConfigV2 &cfg) noexcept
 {
     const auto &defaultRepo =
       std::find_if(cfg.repos.begin(), cfg.repos.end(), [&cfg](const auto &repo) {
@@ -101,6 +101,32 @@ api::types::v1::Repo getDefaultRepo(const api::types::v1::RepoConfigV2 &cfg) noe
       });
 
     return *defaultRepo;
+}
+
+std::vector<api::types::v1::Repo> getPrioritySortedRepos(api::types::v1::RepoConfigV2 cfg) noexcept
+{
+    std::stable_sort(cfg.repos.begin(), cfg.repos.end(), [](const auto &repo1, const auto &repo2) {
+        return repo1.priority > repo2.priority;
+    });
+    return cfg.repos;
+}
+
+std::vector<std::vector<api::types::v1::Repo>>
+getPriorityGroupedRepos(api::types::v1::RepoConfigV2 cfg) noexcept
+{
+    auto sortedRepos = getPrioritySortedRepos(std::move(cfg));
+    if (sortedRepos.empty()) {
+        return {};
+    }
+
+    std::vector<std::vector<api::types::v1::Repo>> groupedRepos;
+    for (const auto &repo : sortedRepos) {
+        if (groupedRepos.empty() || groupedRepos.back().front().priority != repo.priority) {
+            groupedRepos.emplace_back();
+        }
+        groupedRepos.back().emplace_back(repo);
+    }
+    return groupedRepos;
 }
 
 api::types::v1::RepoConfigV2 convertToV2(const api::types::v1::RepoConfig &cfg) noexcept

@@ -202,6 +202,12 @@ void PackageTask::run() noexcept
     m_job(*this);
 }
 
+bool PackageTask::isTaskDone() const noexcept
+{
+    return m_subState == static_cast<int>(linglong::api::types::v1::SubState::AllDone)
+      || m_subState == static_cast<int>(linglong::api::types::v1::SubState::PackageManagerDone);
+}
+
 PackageTaskQueue::PackageTaskQueue(QObject *parent)
     : QObject(parent)
 {

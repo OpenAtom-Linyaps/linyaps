@@ -117,6 +117,13 @@ public
     void pullDependency(PackageTask &taskContext,
                         const api::types::v1::PackageInfoV2 &info,
                         const std::string &module) noexcept;
+    void InstallRef(PackageTask &taskContext,
+                    const package::Reference &ref,
+                    std::vector<std::string> modules,
+                    const api::types::v1::Repo &repo) noexcept;
+    void UninstallRef(PackageTask &taskContext,
+                      const package::Reference &ref,
+                      const std::vector<std::string> &modules) noexcept;
 
 Q_SIGNALS:
     void TaskAdded(QDBusObjectPath object_path);
@@ -142,16 +149,9 @@ private:
                  std::optional<package::Reference> oldRef,
                  const std::vector<std::string> &modules,
                  const std::optional<api::types::v1::Repo> &repo) noexcept;
-    void InstallRef(PackageTask &taskContext,
-                    const package::Reference &ref,
-                    std::vector<std::string> modules,
-                    const api::types::v1::Repo &repo) noexcept;
     void Update(PackageTask &taskContext,
                 const package::Reference &ref,
                 const package::ReferenceWithRepo &newRef) noexcept;
-    void UninstallRef(PackageTask &taskContext,
-                      const package::Reference &ref,
-                      const std::vector<std::string> &modules) noexcept;
     QVariantMap installFromLayer(const QDBusUnixFileDescriptor &fd,
                                  const api::types::v1::CommonOptions &options) noexcept;
 

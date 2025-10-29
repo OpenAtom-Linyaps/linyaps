@@ -616,11 +616,6 @@ linglong::utils::error::Result<linglong::repo::OSTreeRepo *> initOSTreeRepo()
         return LINGLONG_ERR("load repo config failed", repoConfig);
     }
 
-    // get default repo
-    auto defaultRepo = linglong::repo::getDefaultRepo(*repoConfig);
-    auto clientFactory = new linglong::repo::ClientFactory(std::move(defaultRepo.url));
-    clientFactory->setParent(QCoreApplication::instance());
-
     // check repo root
     auto repoRoot = QDir(LINGLONG_ROOT);
     if (!repoRoot.exists()) {
@@ -628,7 +623,7 @@ linglong::utils::error::Result<linglong::repo::OSTreeRepo *> initOSTreeRepo()
     }
 
     // create repo
-    auto repo = new linglong::repo::OSTreeRepo(repoRoot, std::move(*repoConfig), *clientFactory);
+    auto repo = new linglong::repo::OSTreeRepo(repoRoot, std::move(*repoConfig));
     repo->setParent(QCoreApplication::instance());
     return repo;
 }

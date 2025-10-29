@@ -120,7 +120,9 @@ public:
         return m_totalPercentage
           + (m_curStagePercentage
              * m_subStateMap[static_cast<api::types::v1::SubState>(m_subState)]);
-    };
+    }
+
+    bool isTaskDone() const noexcept;
 
 public Q_SLOTS:
     void Cancel() noexcept;

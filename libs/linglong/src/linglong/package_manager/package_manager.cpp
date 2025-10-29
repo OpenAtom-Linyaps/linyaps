@@ -331,16 +331,9 @@ PackageManager::removeAfterInstall(const package::Reference &oldRef,
 
     // 更新时先导出新版本，再删除旧版本。
     // 避免因软链接删除导致任务栏和桌面的图标丢失
-    transaction.addRollBack([this, &newRef]() noexcept {
-        this->repo.unexportReference(newRef);
-    });
     LogI("export new reference", newRef.toString());
     this->repo.exportReference(newRef);
 
-    // 保存layer位置，以便后续删除导出
-    transaction.addRollBack([this, &oldRef]() noexcept {
-        this->repo.exportReference(oldRef);
-    });
     LogI("unexport old reference {}", oldRef.toString());
     this->repo.unexportReference(oldRef);
 
@@ -356,32 +349,16 @@ PackageManager::removeAfterInstall(const package::Reference &oldRef,
         LogI("remove old reference {} from ostree", oldRef.toString());
         auto ret = this->repo.remove(oldRef, module);
         if (!ret) {
-            auto msg = fmt::format("Failed to remove old reference {} from ostree: {}",
-                                   oldRef.toString(),
-                                   module);
-            return LINGLONG_ERR(QString::fromStdString(msg), ret);
+            LogE("Failed to remove old reference {} {} from ostree: {}",
+                 oldRef.toString(),
+                 module,
+                 ret.error());
         }
-
-        transaction.addRollBack([this, &oldRef, module]() noexcept {
-            auto tmp = PackageTask::createTemporaryTask();
-            this->repo.pull(tmp, oldRef, module);
-            if (tmp.state() != linglong::api::types::v1::State::Succeed) {
-                LogW("failed to rollback remove old reference {}: {}",
-                     oldRef.toString(),
-                     tmp.message());
-            }
-            if (module == "binary" || module == "runtime") {
-                auto ret = this->tryGenerateCache(oldRef);
-                if (!ret) {
-                    qCritical() << ret.error().message();
-                }
-            }
-        });
     }
 
     auto mergeRet = this->repo.mergeModules();
     if (!mergeRet.has_value()) {
-        qCritical() << "merge modules failed: " << mergeRet.error().message();
+        LogE("merge modules failed: {}", mergeRet.error());
     }
     transaction.commit();
     return LINGLONG_OK;
@@ -1395,9 +1372,7 @@ auto PackageManager::Uninstall(const QVariantMap &parameters) noexcept -> QVaria
     }
 
     auto curModule = paras->package.packageManager1PackageModule.value_or("binary");
-    const auto defaultRepo = linglong::repo::getDefaultRepo(this->repo.getConfig());
-    auto refSpec = fmt::format("{}:{}/{}/{}/{}",
-                               defaultRepo.name,
+    auto refSpec = fmt::format("{}/{}/{}/{}",
                                mainRef->channel,
                                mainRef->id,
                                mainRef->arch.toStdString(),
@@ -1437,38 +1412,19 @@ void PackageManager::UninstallRef(PackageTask &taskContext,
     }
 
     taskContext.updateSubState(linglong::api::types::v1::SubState::Uninstall, "Remove layer files");
-    utils::Transaction transaction;
 
     for (const auto &module : modules) {
         if (module == "binary" || module == "runtime") {
             auto ret = this->removeCache(ref);
             if (!ret) {
-                qCritical() << ret.error().message();
+                LogE("failed to remove cache of ref {}: {}", ref.toString(), ret.error());
             }
         }
         auto result = this->repo.remove(ref, module);
         if (!result) {
-            taskContext.reportError(
-              LINGLONG_ERRV(result.error().message(), utils::error::ErrorCode::AppUninstallFailed));
-            return;
+            LogE("failed to remove ref {} {}: {}", ref.toString(), module, result.error());
         }
-
-        transaction.addRollBack([this, &ref, &module]() noexcept {
-            auto tmpTask = PackageTask::createTemporaryTask();
-            this->repo.pull(tmpTask, ref, module);
-            if (tmpTask.state() != linglong::api::types::v1::State::Succeed) {
-                LogE("failed to rollback module {} of ref {}", module, ref.toString());
-            }
-            if (module == "binary" || module == "runtime") {
-                auto ret = this->tryGenerateCache(ref);
-                if (!ret) {
-                    qCritical() << ret.error().message();
-                }
-            }
-        });
     }
-
-    transaction.commit();
 }
 
 void PackageManager::Uninstall(PackageTask &taskContext,
@@ -1713,19 +1669,9 @@ auto PackageManager::Search(const QVariantMap &parameters) noexcept -> QVariantM
         return toDBusReply(paras);
     }
 
-    auto fuzzyRef =
-      package::FuzzyReference::create(std::nullopt, paras->id.c_str(), std::nullopt, std::nullopt);
-    if (!fuzzyRef) {
-        return toDBusReply(fuzzyRef);
-    }
     auto jobID = QUuid::createUuid().toString();
-    auto repoConfig = this->repo.getConfig();
 
-    m_search_queue.runTask([this,
-                            jobID,
-                            params = std::move(paras).value(),
-                            ref = std::move(*fuzzyRef),
-                            repo = std::move(repoConfig)]() {
+    m_search_queue.runTask([this, jobID, params = std::move(paras).value()]() {
         std::map<std::string, std::vector<api::types::v1::PackageInfoV2>> pkgs;
         for (const auto &repoAlias : params.repos) {
             auto repoRet = this->repo.getRepoByAlias(repoAlias);
@@ -1734,7 +1680,7 @@ auto PackageManager::Search(const QVariantMap &parameters) noexcept -> QVariantM
                 continue;
             }
 
-            auto pkgInfosRet = this->repo.listRemote(ref, *repoRet);
+            auto pkgInfosRet = this->repo.searchRemote(params.id, *repoRet);
             if (!pkgInfosRet) {
                 qWarning() << "list remote failed: " << pkgInfosRet.error().message();
                 Q_EMIT this->SearchFinished(

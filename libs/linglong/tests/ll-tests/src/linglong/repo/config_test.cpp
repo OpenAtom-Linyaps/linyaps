@@ -88,3 +88,50 @@ TEST(Repo, ConventToV2)
     EXPECT_EQ(configV2.repos[1].url, "http://example.com/repo1");
     EXPECT_EQ(configV2.repos[1].priority, -100);
 }
+
+TEST(Repo, GetPrioritySortedRepos)
+{
+    RepoConfigV2 cfg;
+    EXPECT_TRUE(getPrioritySortedRepos(cfg).empty());
+
+    cfg.repos = { { std::nullopt, false, "repo2", 100, "http://example.com/repo2" },
+                  { std::nullopt, false, "repo3", 300, "http://example.com/repo3" },
+                  { std::nullopt, false, "repo1", 200, "http://example.com/repo1" } };
+
+    auto sortedRepos = getPrioritySortedRepos(cfg);
+    ASSERT_EQ(sortedRepos.size(), 3);
+    EXPECT_EQ(sortedRepos[0].name, "repo3");
+    EXPECT_EQ(sortedRepos[0].priority, 300);
+    EXPECT_EQ(sortedRepos[1].name, "repo1");
+    EXPECT_EQ(sortedRepos[1].priority, 200);
+    EXPECT_EQ(sortedRepos[2].name, "repo2");
+    EXPECT_EQ(sortedRepos[2].priority, 100);
+}
+
+TEST(Repo, GetPriorityGroupedRepos)
+{
+    RepoConfigV2 cfg;
+    EXPECT_TRUE(getPriorityGroupedRepos(cfg).empty());
+
+    cfg.repos = { { std::nullopt, false, "repo2", 100, "http://example.com/repo2" },
+                  { std::nullopt, false, "repo4", 200, "http://example.com/repo4" },
+                  { std::nullopt, false, "repo3", 300, "http://example.com/repo3" },
+                  { std::nullopt, false, "repo1", 200, "http://example.com/repo1" } };
+
+    auto groupedRepos = getPriorityGroupedRepos(cfg);
+    ASSERT_EQ(groupedRepos.size(), 3);
+
+    ASSERT_EQ(groupedRepos[0].size(), 1);
+    EXPECT_EQ(groupedRepos[0][0].name, "repo3");
+    EXPECT_EQ(groupedRepos[0][0].priority, 300);
+
+    ASSERT_EQ(groupedRepos[1].size(), 2);
+    EXPECT_EQ(groupedRepos[1][0].name, "repo4");
+    EXPECT_EQ(groupedRepos[1][0].priority, 200);
+    EXPECT_EQ(groupedRepos[1][1].name, "repo1");
+    EXPECT_EQ(groupedRepos[1][1].priority, 200);
+
+    ASSERT_EQ(groupedRepos[2].size(), 1);
+    EXPECT_EQ(groupedRepos[2][0].name, "repo2");
+    EXPECT_EQ(groupedRepos[2][0].priority, 100);
+}

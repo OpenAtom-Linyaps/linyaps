@@ -32,10 +32,6 @@ void withDBusDaemon(ocppi::cli::CLI &cli)
         QCoreApplication::exit(-1);
         return;
     }
-    const auto defaultRepo = linglong::repo::getDefaultRepo(*config);
-    qWarning() << "server" << defaultRepo.url.c_str();
-    auto *clientFactory = new linglong::repo::ClientFactory(defaultRepo.url);
-    clientFactory->setParent(QCoreApplication::instance());
 
     auto repoRoot = QDir(LINGLONG_ROOT);
     if (!repoRoot.exists() && !repoRoot.mkpath(".")) {
@@ -48,7 +44,7 @@ void withDBusDaemon(ocppi::cli::CLI &cli)
         qCritical() << "failed to migrate repository";
         QCoreApplication::exit(-1);
     }
-    auto *ostreeRepo = new linglong::repo::OSTreeRepo(repoRoot, *config, *clientFactory);
+    auto *ostreeRepo = new linglong::repo::OSTreeRepo(repoRoot, *config);
     ostreeRepo->setParent(QCoreApplication::instance());
     auto result = ostreeRepo->fixExportAllEntries();
     if (!result.has_value()) {
@@ -101,17 +97,13 @@ void withoutDBusDaemon(ocppi::cli::CLI &cli)
         return;
     }
 
-    const auto defaultRepo = linglong::repo::getDefaultRepo(*config);
-    auto *clientFactory = new linglong::repo::ClientFactory(defaultRepo.url);
-    clientFactory->setParent(QCoreApplication::instance());
-
     auto repoRoot = QDir(LINGLONG_ROOT);
     if (!repoRoot.exists() && !repoRoot.mkpath(".")) {
         qCritical() << "failed to create repository directory" << repoRoot.absolutePath();
         std::abort();
     }
 
-    auto *ostreeRepo = new linglong::repo::OSTreeRepo(repoRoot, *config, *clientFactory);
+    auto *ostreeRepo = new linglong::repo::OSTreeRepo(repoRoot, *config);
     ostreeRepo->setParent(QCoreApplication::instance());
     auto result = ostreeRepo->fixExportAllEntries();
     if (!result.has_value()) {

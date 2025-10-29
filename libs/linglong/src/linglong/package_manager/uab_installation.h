@@ -8,6 +8,7 @@
 #include "linglong/api/types/v1/PackageManager1RequestInteractionAdditionalMessage.hpp"
 #include "linglong/api/types/v1/UabLayer.hpp"
 #include "linglong/package/uab_file.h"
+#include "linglong/package_manager/action.h"
 #include "linglong/package_manager/package_manager.h"
 #include "linglong/package_manager/package_task.h"
 #include "linglong/repo/ostree_repo.h"
@@ -18,25 +19,7 @@
 
 namespace linglong::service {
 
-struct TaskAction
-{
-    enum Policy {
-        Upgrade,
-        Install,
-        Remove,
-        Overwrite,
-        Downgrade,
-    } policy;
-
-    api::types::v1::InteractionMessageType msgType;
-    api::types::v1::PackageManager1RequestInteractionAdditionalMessage additionalMessage;
-
-    std::string kind;
-    std::optional<package::Reference> oldRef;
-    std::optional<package::Reference> newRef;
-};
-
-class UabInstallationAction
+class UabInstallationAction : public Action
 {
 public:
     static std::shared_ptr<UabInstallationAction> create(int uabFD,
@@ -52,8 +35,7 @@ public:
       repo::OSTreeRepo &repo, const std::vector<linglong::api::types::v1::UabLayer> &layers);
     static utils::error::Result<void> checkUABLayersConstrain(
       repo::OSTreeRepo &repo, const std::vector<api::types::v1::UabLayer> &layers);
-    static utils::error::Result<TaskAction> getTaskAction(repo::OSTreeRepo &repo,
-                                                          const CheckedLayers &checkedLayers);
+    static bool extraModuleOnly(const std::vector<api::types::v1::UabLayer> &layers);
 
     virtual ~UabInstallationAction();
 
@@ -79,13 +61,10 @@ private:
                                                std::optional<std::string> subRef = std::nullopt);
 
     int fd;
-    PackageManager &pm;
-    repo::OSTreeRepo &repo;
-    api::types::v1::CommonOptions options;
-
-    TaskAction action;
+    ActionOperation operation;
     std::string taskName;
     CheckedLayers checkedLayers;
+    bool extraOnly = false;
     std::unique_ptr<package::UABFile> uabFile;
     utils::Transaction transaction;
     std::filesystem::path uabMountPoint;

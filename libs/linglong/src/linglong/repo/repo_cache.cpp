@@ -251,11 +251,8 @@ RepoCache::queryLayerItem(const repoCacheQuery &query) const noexcept
         }
 
         if (query.deleted) {
-            if (!layer.deleted) {
-                continue;
-            }
-
-            if (query.deleted.value() != layer.deleted.value()) {
+            auto layerDeleted = layer.deleted.value_or(false);
+            if (query.deleted.value() != layerDeleted) {
                 continue;
             }
         }

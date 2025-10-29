@@ -125,8 +125,6 @@ utils::error::Result<void> UabInstallationAction::checkUABLayersConstrain(
     }
 
     const auto &front = layers.front().info;
-    bool hasBinary = false;
-    bool extraModule = false;
     for (const auto &layer : layers) {
         auto arch = package::Architecture::parse(layer.info.arch[0]);
         if (!arch) {
@@ -144,21 +142,15 @@ utils::error::Result<void> UabInstallationAction::checkUABLayersConstrain(
         if (layer.info.version != front.version) {
             return LINGLONG_ERR("modules have different version");
         }
+    }
 
-        const auto &module = layer.info.packageInfoV2Module;
-        if (module == "binary" || module == "runtime") {
-            hasBinary = true;
-        } else {
-            extraModule = true;
+    if (extraModuleOnly(layers)) {
+        auto fuzzyRef =
+          package::FuzzyReference::create(front.channel, front.id, front.version, std::nullopt);
+        if (!fuzzyRef) {
+            return LINGLONG_ERR(fuzzyRef);
         }
-    }
 
-    auto fuzzyRef =
-      package::FuzzyReference::create(front.channel, front.id, front.version, std::nullopt);
-    if (!fuzzyRef) {
-        return LINGLONG_ERR(fuzzyRef);
-    }
-    if (extraModule && !hasBinary) {
         auto localRef = repo.clearReference(*fuzzyRef,
                                             {
                                               .forceRemote = false,
@@ -178,70 +170,23 @@ utils::error::Result<void> UabInstallationAction::checkUABLayersConstrain(
     return LINGLONG_OK;
 }
 
-utils::error::Result<TaskAction>
-UabInstallationAction::getTaskAction(repo::OSTreeRepo &repo, const CheckedLayers &checkedLayers)
+bool UabInstallationAction::extraModuleOnly(const std::vector<api::types::v1::UabLayer> &layers)
 {
-    LINGLONG_TRACE("get task action");
-
-    const api::types::v1::UabLayer &toCheck =
-      checkedLayers.first.empty() ? checkedLayers.second.front() : checkedLayers.first.front();
-
-    auto fuzzyRef = package::FuzzyReference::create(toCheck.info.channel,
-                                                    toCheck.info.id,
-                                                    std::nullopt,
-                                                    std::nullopt);
-    if (!fuzzyRef) {
-        return LINGLONG_ERR(fuzzyRef);
-    }
-
-    auto checkRef = package::Reference::fromPackageInfo(toCheck.info);
-    if (!checkRef) {
-        return LINGLONG_ERR(checkRef);
-    }
-
-    const auto &kind = toCheck.info.kind;
-    TaskAction action;
-    action.additionalMessage.remoteRef = checkRef->toString();
-    auto installedRef = repo.latestLocalReference(*fuzzyRef);
-    if (installedRef) {
-        action.additionalMessage.localRef = installedRef->toString();
-        if (checkRef->version == installedRef->version) {
-            action.policy = TaskAction::Policy::Overwrite;
-        } else if (checkRef->version > installedRef->version) {
-            if (kind == "app") {
-                action.policy = TaskAction::Policy::Upgrade;
-                action.msgType = api::types::v1::InteractionMessageType::Upgrade;
-            } else {
-                action.policy = TaskAction::Policy::Install;
-            }
-        } else {
-            if (kind == "app") {
-                action.policy = TaskAction::Policy::Downgrade;
-            } else {
-                action.policy = TaskAction::Policy::Install;
-            }
+    for (const auto &layer : layers) {
+        const auto &module = layer.info.packageInfoV2Module;
+        if (module == "binary" || module == "runtime") {
+            return false;
         }
-    } else {
-        action.policy = TaskAction::Policy::Install;
     }
-
-    action.kind = kind;
-    action.newRef = std::move(checkRef).value();
-    if (installedRef) {
-        action.oldRef = std::move(installedRef).value();
-    }
-
-    return action;
+    return true;
 }
 
 UabInstallationAction::UabInstallationAction(int uabFD,
                                              PackageManager &pm,
                                              repo::OSTreeRepo &repo,
                                              api::types::v1::CommonOptions opts)
-    : fd(dup(uabFD))
-    , pm(pm)
-    , repo(repo)
-    , options(std::move(opts))
+    : Action(pm, repo, opts)
+    , fd(dup(uabFD))
 {
 }
 
@@ -292,22 +237,6 @@ utils::error::Result<void> UabInstallationAction::prepare()
         checkedLayers = std::move(res).value();
     }
 
-    auto action = getTaskAction(repo, checkedLayers);
-    if (!action) {
-        return LINGLONG_ERR(action);
-    }
-
-    if (action->policy == TaskAction::Policy::Overwrite) {
-        return LINGLONG_ERR("package already installed",
-                            utils::error::ErrorCode::AppInstallAlreadyInstalled);
-    }
-
-    if (action->policy == TaskAction::Policy::Downgrade && !options.force) {
-        return LINGLONG_ERR("latest version already installed",
-                            utils::error::ErrorCode::AppInstallNeedDowngrade);
-    }
-
-    this->action = std::move(action).value();
     this->taskName = fmt::format("Installing {}", uabFile->symLinkTarget());
     this->uabFile = std::move(uabFile);
 
@@ -342,11 +271,35 @@ utils::error::Result<void> UabInstallationAction::preInstall(PackageTask &task)
     task.updateState(linglong::api::types::v1::State::Processing, "installing uab");
     task.updateSubState(linglong::api::types::v1::SubState::PreAction, "prepare environment");
 
-    if (action.policy == TaskAction::Policy::Upgrade && !options.skipInteraction) {
-        if (!pm.waitConfirm(task, action.msgType, action.additionalMessage)) {
+    const auto &toCheck = checkedLayers.first.empty() ? checkedLayers.second : checkedLayers.first;
+    auto operation = getActionOperation(toCheck.front().info, extraModuleOnly(toCheck));
+    if (!operation) {
+        return LINGLONG_ERR(operation);
+    }
+
+    if (operation->operation == ActionOperation::Overwrite) {
+        return LINGLONG_ERR("package already installed",
+                            utils::error::ErrorCode::AppInstallAlreadyInstalled);
+    }
+
+    if (operation->operation == ActionOperation::Downgrade && !options.force) {
+        return LINGLONG_ERR("latest version already installed",
+                            utils::error::ErrorCode::AppInstallNeedDowngrade);
+    }
+
+    if (operation->operation == ActionOperation::Upgrade && !options.skipInteraction) {
+        auto additionalMessage = api::types::v1::PackageManager1RequestInteractionAdditionalMessage{
+            .localRef = operation->oldRef->toString(),
+            .remoteRef = operation->newRef->reference.toString()
+        };
+        if (!pm.waitConfirm(task,
+                            api::types::v1::InteractionMessageType::Upgrade,
+                            additionalMessage)) {
             return LINGLONG_ERR("action canceled");
         }
     }
+
+    this->operation = std::move(operation).value();
 
     return LINGLONG_OK;
 }
@@ -373,8 +326,8 @@ utils::error::Result<void> UabInstallationAction::postInstall(PackageTask &task)
 {
     LINGLONG_TRACE("uab installation postInstall");
 
-    const auto &newRef = action.newRef;
-    const auto &oldRef = action.oldRef;
+    const auto &newRef = operation.newRef->reference;
+    const auto &oldRef = operation.oldRef;
 
     if (!oldRef) {
         auto mergeRet = repo.mergeModules();
@@ -387,17 +340,17 @@ utils::error::Result<void> UabInstallationAction::postInstall(PackageTask &task)
     // 1. replace installed version
     // 2. export entries
     // 3. generate cache
-    if (action.kind == "app") {
+    if (operation.kind == "app") {
         if (oldRef) {
-            auto ret = pm.removeAfterInstall(*oldRef, *newRef, repo.getModuleList(*oldRef));
+            auto ret = pm.removeAfterInstall(*oldRef, newRef, repo.getModuleList(*oldRef));
             if (!ret) {
                 LogE("remove old reference after install newer version failed: {}", ret.error());
                 return LINGLONG_ERR(ret);
             }
         } else {
             // export directly
-            this->repo.exportReference(*newRef);
-            auto result = pm.tryGenerateCache(*newRef);
+            this->repo.exportReference(newRef);
+            auto result = pm.tryGenerateCache(newRef);
             if (!result) {
                 auto msg =
                   fmt::format("Failed to generate some cache: {}", result.error().message());
@@ -407,7 +360,7 @@ utils::error::Result<void> UabInstallationAction::postInstall(PackageTask &task)
         }
     }
 
-    auto ret = pm.executePostInstallHooks(*newRef);
+    auto ret = pm.executePostInstallHooks(newRef);
     if (!ret) {
         task.reportError(std::move(ret).error());
         return LINGLONG_ERR("failed to execute post install hooks");

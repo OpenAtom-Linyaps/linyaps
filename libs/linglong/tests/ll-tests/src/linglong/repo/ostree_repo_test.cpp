@@ -430,6 +430,249 @@ TEST(OSTreeRepoTest, searchRemote_RemoteError)
     EXPECT_FALSE(result.has_value());
 }
 
+namespace {
+
+class OSTreeRepoMock : public repo::OSTreeRepo
+{
+public:
+    OSTreeRepoMock(const std::filesystem::path &path)
+        : repo::OSTreeRepo(
+            QDir(path.c_str()),
+            api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 })
+    {
+    }
+
+    MOCK_METHOD(utils::error::Result<std::vector<api::types::v1::PackageInfoV2>>,
+                searchRemote,
+                (const package::FuzzyReference &fuzzyRef,
+                 const api::types::v1::Repo &repo,
+                 bool semanticMatching),
+                (override, const, noexcept));
+
+    MOCK_METHOD(std::vector<std::vector<api::types::v1::Repo>>,
+                getPriorityGroupedRepos,
+                (),
+                (override, const, noexcept));
+};
+
+TEST(OSTreeRepoTest, matchRemoteByPriority_SpecifiedRepo)
+{
+    TempDir tempDir;
+    OSTreeRepoMock mockRepo(tempDir.path());
+    repo::OSTreeRepo &repo = mockRepo;
+
+    auto fuzzyRef = package::FuzzyReference::parse("com.example.app");
+    auto repoConfig = api::types::v1::Repo{ .name = "test", .url = "http://localhost:8080" };
+
+    EXPECT_CALL(mockRepo, searchRemote(_, _, true))
+      .WillOnce(Return(std::vector<api::types::v1::PackageInfoV2>{
+        api::types::v1::PackageInfoV2{ .id = "com.example.app", .version = "1.0.0" },
+      }));
+
+    auto result = repo.matchRemoteByPriority(*fuzzyRef, repoConfig);
+
+    EXPECT_TRUE(result.has_value());
+    EXPECT_FALSE(result->empty());
+    const auto &repoPackages = result->getRepoPackages();
+    EXPECT_EQ(repoPackages.size(), 1);
+    EXPECT_EQ(repoPackages.front().first.name, "test");
+    EXPECT_EQ(repoPackages.front().second[0].id, "com.example.app");
+    EXPECT_EQ(repoPackages.front().second[0].version, "1.0.0");
+}
+
+TEST(OSTreeRepoTest, matchRemoteByPriority_NoRepoSpecified_Success)
+{
+    TempDir tempDir;
+    OSTreeRepoMock mockRepo(tempDir.path());
+    repo::OSTreeRepo &repo = mockRepo;
+
+    auto fuzzyRef = package::FuzzyReference::parse("com.example.app");
+
+    EXPECT_CALL(mockRepo, getPriorityGroupedRepos())
+      .WillOnce(Return(std::vector<std::vector<api::types::v1::Repo>>{
+        std::vector<api::types::v1::Repo>{
+          api::types::v1::Repo{ .name = "repo1", .priority = 2, .url = "http://localhost:8081" },
+        },
+        std::vector<api::types::v1::Repo>{
+          api::types::v1::Repo{ .name = "repo2", .priority = 1, .url = "http://localhost:8081" },
+          api::types::v1::Repo{ .name = "repo3", .priority = 1, .url = "http://localhost:8082" } },
+      }));
+
+    EXPECT_CALL(mockRepo, searchRemote(_, _, true))
+      .WillOnce(Return(std::vector<api::types::v1::PackageInfoV2>{
+        api::types::v1::PackageInfoV2{ .id = "com.example.app", .version = "1.0.0" },
+      }));
+
+    auto result = repo.matchRemoteByPriority(*fuzzyRef);
+
+    EXPECT_TRUE(result.has_value());
+    EXPECT_FALSE(result->empty());
+    const auto &repoPackages = result->getRepoPackages();
+    EXPECT_EQ(repoPackages.size(), 1);
+    EXPECT_EQ(repoPackages.front().first.name, "repo1");
+    EXPECT_EQ(repoPackages.front().second[0].id, "com.example.app");
+    EXPECT_EQ(repoPackages.front().second[0].version, "1.0.0");
+}
+
+TEST(OSTreeRepoTest, matchRemoteByPriority_FallbackToLowerPriority)
+{
+    TempDir tempDir;
+    OSTreeRepoMock mockRepo(tempDir.path());
+    repo::OSTreeRepo &repo = mockRepo;
+
+    auto fuzzyRef = package::FuzzyReference::parse("com.example.app");
+
+    EXPECT_CALL(mockRepo, getPriorityGroupedRepos())
+      .WillOnce(Return(std::vector<std::vector<api::types::v1::Repo>>{
+        std::vector<api::types::v1::Repo>{
+          api::types::v1::Repo{ .name = "repo1", .priority = 2, .url = "http://localhost:8081" },
+        },
+        std::vector<api::types::v1::Repo>{
+          api::types::v1::Repo{ .name = "repo2", .priority = 1, .url = "http://localhost:8081" },
+          api::types::v1::Repo{ .name = "repo3", .priority = 1, .url = "http://localhost:8082" } },
+      }));
+
+    EXPECT_CALL(mockRepo, searchRemote(_, _, true))
+      .WillOnce(Return(std::vector<api::types::v1::PackageInfoV2>{}))
+      .WillOnce(Return(std::vector<api::types::v1::PackageInfoV2>{
+        api::types::v1::PackageInfoV2{ .id = "com.example.app", .version = "1.0.0" },
+      }))
+      .WillOnce(Return(std::vector<api::types::v1::PackageInfoV2>{}));
+
+    auto result = repo.matchRemoteByPriority(*fuzzyRef);
+
+    EXPECT_TRUE(result.has_value());
+    EXPECT_FALSE(result->empty());
+    const auto &repoPackages = result->getRepoPackages();
+    EXPECT_EQ(repoPackages.size(), 1);
+    EXPECT_EQ(repoPackages.front().first.name, "repo2");
+    EXPECT_EQ(repoPackages.front().second[0].id, "com.example.app");
+    EXPECT_EQ(repoPackages.front().second[0].version, "1.0.0");
+}
+
+TEST(OSTreeRepoTest, matchRemoteByPriority_AllReposEmpty)
+{
+    TempDir tempDir;
+    OSTreeRepoMock mockRepo(tempDir.path());
+    repo::OSTreeRepo &repo = mockRepo;
+
+    auto fuzzyRef = package::FuzzyReference::parse("com.example.app");
+
+    EXPECT_CALL(mockRepo, getPriorityGroupedRepos())
+      .WillOnce(Return(std::vector<std::vector<api::types::v1::Repo>>{
+        std::vector<api::types::v1::Repo>{
+          api::types::v1::Repo{ .name = "repo1", .priority = 2, .url = "http://localhost:8081" },
+        },
+        std::vector<api::types::v1::Repo>{
+          api::types::v1::Repo{ .name = "repo2", .priority = 1, .url = "http://localhost:8081" },
+          api::types::v1::Repo{ .name = "repo3", .priority = 1, .url = "http://localhost:8082" } },
+      }));
+
+    EXPECT_CALL(mockRepo, searchRemote(_, _, true))
+      .WillOnce(Return(std::vector<api::types::v1::PackageInfoV2>{}))
+      .WillOnce(Return(std::vector<api::types::v1::PackageInfoV2>{}))
+      .WillOnce(Return(std::vector<api::types::v1::PackageInfoV2>{}));
+
+    auto result = repo.matchRemoteByPriority(*fuzzyRef);
+
+    EXPECT_TRUE(result.has_value());
+    EXPECT_TRUE(result->empty());
+}
+
+TEST(OSTreeRepoTest, matchRemoteByPriority_AllReposError)
+{
+    LINGLONG_TRACE("matchRemoteByPriority_AllReposError");
+    TempDir tempDir;
+    OSTreeRepoMock mockRepo(tempDir.path());
+    repo::OSTreeRepo &repo = mockRepo;
+
+    auto fuzzyRef = package::FuzzyReference::parse("com.example.app");
+
+    EXPECT_CALL(mockRepo, getPriorityGroupedRepos())
+      .WillOnce(Return(std::vector<std::vector<api::types::v1::Repo>>{
+        std::vector<api::types::v1::Repo>{
+          api::types::v1::Repo{ .name = "repo1", .priority = 2, .url = "http://localhost:8081" },
+        },
+        std::vector<api::types::v1::Repo>{
+          api::types::v1::Repo{ .name = "repo2", .priority = 1, .url = "http://localhost:8081" },
+          api::types::v1::Repo{ .name = "repo3", .priority = 1, .url = "http://localhost:8082" } },
+      }));
+
+    EXPECT_CALL(mockRepo, searchRemote(_, _, true))
+      .WillOnce(Return(LINGLONG_ERR("error")))
+      .WillOnce(Return(LINGLONG_ERR("error")))
+      .WillOnce(Return(LINGLONG_ERR("error")));
+
+    auto result = repo.matchRemoteByPriority(*fuzzyRef);
+
+    EXPECT_TRUE(result.has_value());
+    EXPECT_TRUE(result->empty());
+}
+
+TEST(OSTreeRepoTest, matchRemoteByPriority_NoReposConfigured)
+{
+    TempDir tempDir;
+    OSTreeRepoMock mockRepo(tempDir.path());
+    repo::OSTreeRepo &repo = mockRepo;
+
+    auto fuzzyRef = package::FuzzyReference::parse("com.example.app");
+
+    EXPECT_CALL(mockRepo, getPriorityGroupedRepos())
+      .WillOnce(Return(std::vector<std::vector<api::types::v1::Repo>>{}));
+
+    auto result = repo.matchRemoteByPriority(*fuzzyRef);
+
+    EXPECT_TRUE(result.has_value());
+    EXPECT_TRUE(result->empty());
+}
+
+TEST(OSTreeRepoTest, matchRemoteByPriority_UseHighestPriority)
+{
+    TempDir tempDir;
+    OSTreeRepoMock mockRepo(tempDir.path());
+    repo::OSTreeRepo &repo = mockRepo;
+
+    auto fuzzyRef = package::FuzzyReference::parse("com.example.app");
+
+    EXPECT_CALL(mockRepo, getPriorityGroupedRepos())
+      .WillOnce(Return(std::vector<std::vector<api::types::v1::Repo>>{
+        std::vector<api::types::v1::Repo>{
+          api::types::v1::Repo{ .name = "repo1", .priority = 3, .url = "http://localhost:8081" },
+        },
+        std::vector<api::types::v1::Repo>{
+          api::types::v1::Repo{ .name = "repo2", .priority = 2, .url = "http://localhost:8081" },
+          api::types::v1::Repo{ .name = "repo3", .priority = 2, .url = "http://localhost:8082" } },
+        std::vector<api::types::v1::Repo>{
+          api::types::v1::Repo{ .name = "repo4", .priority = 1, .url = "http://localhost:8081" },
+        },
+      }));
+
+    EXPECT_CALL(mockRepo, searchRemote(_, _, true))
+      .WillOnce(Return(std::vector<api::types::v1::PackageInfoV2>{}))
+      .WillOnce(Return(std::vector<api::types::v1::PackageInfoV2>{
+        api::types::v1::PackageInfoV2{ .id = "com.example.app", .version = "2.0.0" },
+      }))
+      .WillOnce(Return(std::vector<api::types::v1::PackageInfoV2>{
+        api::types::v1::PackageInfoV2{ .id = "com.example.app", .version = "3.0.0" },
+      }));
+
+    auto result = repo.matchRemoteByPriority(*fuzzyRef, std::nullopt);
+
+    EXPECT_TRUE(result.has_value());
+    EXPECT_FALSE(result->empty());
+
+    const auto &repoPackages = result->getRepoPackages();
+    EXPECT_EQ(repoPackages.size(), 2);
+    EXPECT_EQ(repoPackages.front().first.name, "repo2");
+    EXPECT_EQ(repoPackages.front().second[0].id, "com.example.app");
+    EXPECT_EQ(repoPackages.front().second[0].version, "2.0.0");
+    EXPECT_EQ(repoPackages.back().first.name, "repo3");
+    EXPECT_EQ(repoPackages.back().second[0].id, "com.example.app");
+    EXPECT_EQ(repoPackages.back().second[0].version, "3.0.0");
+}
+
+} // namespace
+
 } // namespace
 
 } // namespace linglong::repo::test

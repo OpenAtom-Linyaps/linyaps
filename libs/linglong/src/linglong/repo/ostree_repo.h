@@ -15,6 +15,7 @@
 #include "linglong/package_manager/package_task.h"
 #include "linglong/repo/client_factory.h"
 #include "linglong/repo/config.h"
+#include "linglong/repo/remote_packages.h"
 #include "linglong/repo/repo_cache.h"
 #include "linglong/utils/error/error.h"
 
@@ -60,7 +61,7 @@ public:
     [[nodiscard]] utils::error::Result<api::types::v1::Repo>
     getRepoByAlias(const std::string &alias) const noexcept;
     [[nodiscard]] std::vector<api::types::v1::Repo> getHighestPriorityRepos() const noexcept;
-    [[nodiscard]] std::vector<std::vector<api::types::v1::Repo>>
+    [[nodiscard]] virtual std::vector<std::vector<api::types::v1::Repo>>
     getPriorityGroupedRepos() const noexcept;
     repoPriority_t promotePriority(const std::string &alias) noexcept;
     void recoverPriority(const std::string &alias, const repoPriority_t &priority) noexcept;
@@ -107,10 +108,14 @@ public:
       const package::FuzzyReference &fuzzyRef,
       const api::types::v1::Repo &repo,
       bool semanticMatching = false) const noexcept;
+    utils::error::Result<repo::RemotePackages> virtual matchRemoteByPriority(
+      const package::FuzzyReference &fuzzyRef,
+      const std::optional<api::types::v1::Repo> &repo = std::nullopt) const noexcept;
 
     utils::error::Result<std::vector<api::types::v1::RepositoryCacheLayersItem>>
     listLayerItem() const noexcept;
-    [[nodiscard]] utils::error::Result<std::vector<api::types::v1::RepositoryCacheLayersItem>>
+    [[nodiscard]] virtual utils::error::Result<
+      std::vector<api::types::v1::RepositoryCacheLayersItem>>
     listLocalBy(const linglong::repo::repoCacheQuery &query) const noexcept;
     utils::error::Result<int64_t>
     getLayerCreateTime(const api::types::v1::RepositoryCacheLayersItem &item) const noexcept;

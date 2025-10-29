@@ -33,6 +33,7 @@ pfl_add_executable(
   src/linglong/package/uab_file_test.cpp
   src/linglong/package/version_test.cpp
   src/linglong/package/versionv2_test.cpp
+  src/linglong/package_manager/action_test.cpp
   src/linglong/package_manager/uab_installation_test.cpp
   src/linglong/repo/client_factory_test.cpp
   src/linglong/repo/config_test.cpp

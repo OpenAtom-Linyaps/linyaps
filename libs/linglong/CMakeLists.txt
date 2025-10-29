@@ -49,10 +49,14 @@ pfl_add_library(
   src/linglong/package/layer_file.h
   src/linglong/package/layer_packager.cpp
   src/linglong/package/layer_packager.h
+  src/linglong/package_manager/action.cpp
+  src/linglong/package_manager/action.h
   src/linglong/package_manager/package_manager.cpp
   src/linglong/package_manager/package_manager.h
   src/linglong/package_manager/package_task.cpp
   src/linglong/package_manager/package_task.h
+  src/linglong/package_manager/ref_installation.cpp
+  src/linglong/package_manager/ref_installation.h
   src/linglong/package_manager/uab_installation.cpp
   src/linglong/package_manager/uab_installation.h
   src/linglong/package/reference.cpp
@@ -76,6 +80,8 @@ pfl_add_library(
   src/linglong/repo/migrate.h
   src/linglong/repo/ostree_repo.cpp
   src/linglong/repo/ostree_repo.h
+  src/linglong/repo/remote_packages.cpp
+  src/linglong/repo/remote_packages.h
   src/linglong/repo/repo_cache.cpp
   src/linglong/repo/repo_cache.h
   src/linglong/runtime/container_builder.cpp

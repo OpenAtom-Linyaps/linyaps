@@ -1755,49 +1755,33 @@ OSTreeRepo::searchRemote(const package::FuzzyReference &fuzzyRef,
 {
     LINGLONG_TRACE("list remote packages");
 
-    auto client = this->createClientV2(repo.url);
-    request_fuzzy_search_req_t req{ nullptr, nullptr, nullptr, nullptr, nullptr };
-    auto freeIfNotNull = utils::finally::finally([&req] {
-        if (req.app_id != nullptr) {
-            free(req.app_id); // NOLINT
-        }
-        if (req.channel != nullptr) {
-            free(req.channel); // NOLINT
-        }
-        if (req.version != nullptr) {
-            free(req.version); // NOLINT
-        }
-        if (req.arch != nullptr) {
-            free(req.arch); // NOLINT
-        }
-        if (req.repo_name != nullptr) {
-            free(req.repo_name); // NOLINT
-        }
-    });
+    LogD("searchRemote use repo {}", nlohmann::json(repo).dump());
 
-    req.app_id = ::strndup(fuzzyRef.id.data(), fuzzyRef.id.size());
-    if (req.app_id == nullptr) {
+    auto client = this->createClientV2(repo.url);
+
+    char *app_id = strndup(fuzzyRef.id.data(), fuzzyRef.id.size());
+    if (app_id == nullptr) {
         return LINGLONG_ERR(fmt::format("strndup app_id failed: {}", fuzzyRef.id));
     }
-    req.repo_name = ::strndup(repo.name.data(), repo.name.size());
-    if (req.repo_name == nullptr) {
+    char *repo_name = strndup(repo.name.data(), repo.name.size());
+    if (repo_name == nullptr) {
         return LINGLONG_ERR(fmt::format("strndup repo_name failed: {}", repo.name));
     }
 
+    char *channel = nullptr;
     if (fuzzyRef.channel) {
-        auto channel = fuzzyRef.channel.value();
-        req.channel = strndup(channel.data(), channel.size());
-        if (req.channel == nullptr) {
-            return LINGLONG_ERR(QString{ "strndup channel failed: %1" }.arg(channel.data()));
+        channel = strndup(fuzzyRef.channel->data(), fuzzyRef.channel->size());
+        if (channel == nullptr) {
+            return LINGLONG_ERR(fmt::format("strndup channel failed: {}", *fuzzyRef.channel));
         }
     }
 
     // use prefix matching on version strings when searching the remote server
+    char *version = nullptr;
     if (fuzzyRef.version) {
-        auto version = fuzzyRef.version.value();
-        req.version = strndup(version.data(), version.size());
-        if (req.version == nullptr) {
-            return LINGLONG_ERR(QString{ "strndup version failed: %1" }.arg(version.data()));
+        version = strndup(fuzzyRef.version->data(), fuzzyRef.version->size());
+        if (version == nullptr) {
+            return LINGLONG_ERR(fmt::format("strndup version failed: {}", *fuzzyRef.version));
         }
     }
 
@@ -1806,14 +1790,20 @@ OSTreeRepo::searchRemote(const package::FuzzyReference &fuzzyRef,
         return LINGLONG_ERR(defaultArch);
     }
 
-    auto arch = fuzzyRef.arch.value_or(*defaultArch);
-    auto archStr = arch.toStdString();
-    req.arch = strndup(archStr.data(), archStr.size());
-    if (req.arch == nullptr) {
-        return LINGLONG_ERR(QString{ "strndup arch failed: %1" }.arg(archStr.data()));
+    auto arch = fuzzyRef.arch.value_or(*defaultArch).toStdString();
+    char *archStr = strndup(arch.data(), arch.size());
+    if (archStr == nullptr) {
+        return LINGLONG_ERR(fmt::format("strndup arch failed: {}", arch));
     }
 
-    auto response = client->fuzzySearch(&req);
+    auto req = request_fuzzy_search_req_create(app_id, archStr, channel, repo_name, version);
+    if (!req) {
+        return LINGLONG_ERR("failed to create request");
+    }
+    auto freeIfNotNull = utils::finally::finally([req] {
+        request_fuzzy_search_req_free(req);
+    });
+    auto response = client->fuzzySearch(req);
     if (!response) {
         return LINGLONG_ERR("failed to send request to remote server\nIf the network is slow, "
                             "set a longer timeout via the LINGLONG_CONNECT_TIMEOUT environment "
@@ -1834,11 +1824,7 @@ OSTreeRepo::searchRemote(const package::FuzzyReference &fuzzyRef,
                                                       : utils::error::ErrorCode::NetworkError));
     }
 
-    if (response->data == nullptr) {
-        return {};
-    }
-
-    if (response->data->count == 0) {
+    if (response->data == nullptr || response->data->count == 0) {
         return {};
     }
 
@@ -1879,6 +1865,49 @@ OSTreeRepo::searchRemote(const package::FuzzyReference &fuzzyRef,
     }
 
     return std::move(pkgInfos);
+}
+
+utils::error::Result<repo::RemotePackages>
+OSTreeRepo::matchRemoteByPriority(const package::FuzzyReference &fuzzyRef,
+                                  const std::optional<api::types::v1::Repo> &repo) const noexcept
+{
+    repo::RemotePackages remotePackages;
+
+    if (repo) {
+        auto list = this->searchRemote(fuzzyRef, *repo, true);
+        if (!list) {
+            LogW("failed to list remote packages from {}: {}", repo->name, list.error());
+            return remotePackages;
+        }
+
+        if (!list->empty()) {
+            remotePackages.addPackages(*repo, std::move(list).value());
+        }
+    } else {
+        auto repos = this->getPriorityGroupedRepos();
+        for (const auto &repoGroup : repos) {
+            for (const auto &repo : repoGroup) {
+                auto list = this->searchRemote(fuzzyRef, repo, true);
+                if (!list) {
+                    LogW("failed to list remote packages from {}: {}", repo.name, list.error());
+                    continue;
+                }
+
+                if (list->empty()) {
+                    continue;
+                }
+
+                remotePackages.addPackages(repo, std::move(list).value());
+            }
+
+            // try a lower-priority repo when no matched result
+            if (!remotePackages.empty()) {
+                break;
+            }
+        }
+    }
+
+    return remotePackages;
 }
 
 void OSTreeRepo::unexportReference(const std::string &layerDir) noexcept

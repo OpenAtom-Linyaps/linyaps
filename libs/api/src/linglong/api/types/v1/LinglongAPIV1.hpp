@@ -35,6 +35,9 @@
 #include "linglong/api/types/v1/InteractionReply.hpp"
 #include "linglong/api/types/v1/InteractionRequest.hpp"
 #include "linglong/api/types/v1/LayerInfo.hpp"
+#include "linglong/api/types/v1/LlCLICommandConfig.hpp"
+#include "linglong/api/types/v1/LlCLIConfig.hpp"
+#include "linglong/api/types/v1/LlCLIFilesystemEntry.hpp"
 #include "linglong/api/types/v1/OciConfigurationPatch.hpp"
 #include "linglong/api/types/v1/PackageInfo.hpp"
 #include "linglong/api/types/v1/PackageInfoDisplay.hpp"
@@ -106,6 +109,9 @@ std::optional<InteractionMessageType> interactionMessageType;
 std::optional<InteractionReply> interactionReply;
 std::optional<InteractionRequest> interactionRequest;
 std::optional<LayerInfo> layerInfo;
+std::optional<LlCLICommandConfig> llCLICommandConfig;
+std::optional<LlCLIConfig> llCLIConfig;
+std::optional<LlCLIFilesystemEntry> llCLIFilesystemEntry;
 std::optional<OciConfigurationPatch> ociConfigurationPatch;
 std::optional<PackageInfo> packageInfo;
 std::optional<PackageInfoDisplay> packageInfoDisplay;

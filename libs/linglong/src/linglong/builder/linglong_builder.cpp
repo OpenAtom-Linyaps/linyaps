@@ -1164,7 +1164,9 @@ utils::error::Result<void> Builder::commitToLocalRepo() noexcept
 
     auto info = api::types::v1::PackageInfoV2{
         .arch = { projectRef->arch.toStdString() },
+        .base = project.base,
         .channel = projectRef->channel,
+        .cliConfig = project.cliConfig,
         .command = project.command,
         .description = project.package.description,
         .id = project.package.id,
@@ -1176,7 +1178,6 @@ utils::error::Result<void> Builder::commitToLocalRepo() noexcept
         .version = project.package.version,
     };
 
-    info.base = project.base;
     if (project.runtime) {
         info.runtime = project.runtime;
     }

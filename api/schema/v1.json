@@ -105,6 +105,118 @@
         }
       }
     },
+    "LlCliFilesystemEntry": {
+      "title": "LlCliFilesystemEntry",
+      "description": "filesystem entry used by ll-cli configuration",
+      "type": "object",
+      "required": [
+        "host",
+        "target"
+      ],
+      "properties": {
+        "host": {
+          "type": "string",
+          "description": "source path on host"
+        },
+        "target": {
+          "type": "string",
+          "description": "mount target path inside container"
+        },
+        "mode": {
+          "type": "string",
+          "description": "mount mode, either ro or rw"
+        },
+        "persist": {
+          "type": "boolean",
+          "description": "whether this mount should persist in sandbox storage"
+        }
+      }
+    },
+    "LlCliCommandConfig": {
+      "title": "LlCliCommandConfig",
+      "description": "per-command overrides for ll-cli configuration",
+      "type": "object",
+      "properties": {
+        "env": {
+          "type": "object",
+          "description": "environment variables applied to command",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "filesystem": {
+          "type": "array",
+          "description": "filesystem entries applied to command",
+          "items": {
+            "$ref": "#/$defs/LlCliFilesystemEntry"
+          }
+        },
+        "args_prefix": {
+          "type": "array",
+          "description": "arguments prepended before command",
+          "items": {
+            "type": "string"
+          }
+        },
+        "args_suffix": {
+          "type": "array",
+          "description": "arguments appended after command",
+          "items": {
+            "type": "string"
+          }
+        },
+        "entrypoint": {
+          "type": "string",
+          "description": "override entrypoint for command"
+        },
+        "cwd": {
+          "type": "string",
+          "description": "working directory for command"
+        }
+      }
+    },
+    "LlCliConfig": {
+      "title": "LlCliConfig",
+      "description": "default ll-cli configuration provided by package",
+      "type": "object",
+      "properties": {
+        "filesystem_allow_only": {
+          "type": "array",
+          "description": "explicit mount allowlist; when present only these mounts are permitted",
+          "items": {
+            "$ref": "#/$defs/LlCliFilesystemEntry"
+          }
+        },
+        "filesystem": {
+          "type": "array",
+          "description": "additional filesystem mounts appended to defaults",
+          "items": {
+            "$ref": "#/$defs/LlCliFilesystemEntry"
+          }
+        },
+        "env": {
+          "type": "object",
+          "description": "default environment variables",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "commands": {
+          "type": "object",
+          "description": "command specific overrides",
+          "additionalProperties": {
+            "$ref": "#/$defs/LlCliCommandConfig"
+          }
+        },
+        "extensions": {
+          "type": "array",
+          "description": "default extensions applied when launching app",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "ContainerProcessStateInfo": {
       "description": "information about process which in container that start by ll-cli, all content\nwill write to /run/linglong/UID/PID\n",
       "type": "object",
@@ -378,6 +490,10 @@
         },
         "permissions": {
           "$ref": "#/$defs/ApplicationConfigurationPermissions"
+        },
+        "cli_config": {
+          "$ref": "#/$defs/LlCliConfig",
+          "description": "default ll-cli configuration delivered with package"
         },
         "runtime": {
           "type": "string",
@@ -772,6 +888,10 @@
           "items": {
             "$ref": "#/$defs/ExtensionDefine"
           }
+        },
+        "cli_config": {
+          "$ref": "#/$defs/LlCliConfig",
+          "description": "default ll-cli configuration provided by package"
         },
         "ext_impl": {
           "$ref": "#/$defs/ExtensionImpl"
@@ -1413,6 +1533,15 @@
     },
     "ApplicationConfigurationPermissions": {
       "$ref": "#/$defs/ApplicationConfigurationPermissions"
+    },
+    "LlCliFilesystemEntry": {
+      "$ref": "#/$defs/LlCliFilesystemEntry"
+    },
+    "LlCliCommandConfig": {
+      "$ref": "#/$defs/LlCliCommandConfig"
+    },
+    "LlCliConfig": {
+      "$ref": "#/$defs/LlCliConfig"
     },
     "ContainerProcessStateInfo": {
       "$ref": "#/$defs/ContainerProcessStateInfo"

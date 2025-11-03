@@ -20,7 +20,6 @@ ClientFactory::ClientFactory(std::string server)
 std::unique_ptr<ClientAPIWrapper> ClientFactory::createClientV2()
 {
     auto *client = apiClient_create_with_base_path(m_server.c_str(), nullptr, nullptr);
-    client->userAgent = m_user_agent.c_str();
     return std::make_unique<ClientAPIWrapper>(client);
 }
 

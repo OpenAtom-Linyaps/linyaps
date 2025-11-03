@@ -28,6 +28,7 @@ public:
     explicit ClientAPIWrapper(apiClient_t *client)
         : client(client)
     {
+        client->userAgent = m_user_agent.c_str();
     }
 
     virtual ~ClientAPIWrapper() { apiClient_free(client); }
@@ -86,6 +87,7 @@ public:
 
 private:
     apiClient_t *client;
+    std::string m_user_agent = "linglong/" LINGLONG_VERSION;
 };
 
 class ClientFactory
@@ -97,7 +99,6 @@ public:
 
 private:
     std::string m_server;
-    std::string m_user_agent = "linglong/" LINGLONG_VERSION;
 };
 
 } // namespace linglong::repo

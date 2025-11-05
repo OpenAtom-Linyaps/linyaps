@@ -135,6 +135,9 @@ void PackageTask::updateState(linglong::api::types::v1::State newState,
     if (curState == linglong::api::types::v1::State::Canceled
         || curState == linglong::api::types::v1::State::Failed
         || curState == linglong::api::types::v1::State::Succeed) {
+        if (curState == linglong::api::types::v1::State::Succeed) {
+            this->setProperty("Code", static_cast<int>(utils::error::ErrorCode::Success));
+        }
         auto subState = optDone.value_or(linglong::api::types::v1::SubState::AllDone);
         updateSubState(subState, message);
         return;

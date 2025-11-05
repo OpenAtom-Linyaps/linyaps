@@ -39,8 +39,6 @@
 #include "linglong/utils/file.h"
 #include "linglong/utils/finally/finally.h"
 #include "linglong/utils/gettext.h"
-#include "linglong/utils/log/log.h"
-#include "linglong/utils/serialize/json.h"
 #include "linglong/utils/xdg/directory.h"
 #include "ocppi/runtime/ExecOption.hpp"
 #include "ocppi/runtime/RunOption.hpp"
@@ -229,6 +227,17 @@ bool delegateToContainerInit(const std::string &containerID,
 
 namespace linglong::cli {
 
+bool operator!=(const PMTaskState &lhs, const PMTaskState &rhs)
+{
+    return lhs.state != rhs.state || lhs.subState != rhs.subState || lhs.message != rhs.message
+      || lhs.percentage != rhs.percentage || lhs.errorCode != rhs.errorCode;
+}
+
+bool operator==(const PMTaskState &lhs, const PMTaskState &rhs)
+{
+    return !(lhs != rhs);
+}
+
 void Cli::onTaskPropertiesChanged(
   const QString &interface,                                   // NOLINT
   const QVariantMap &changed_properties,                      // NOLINT
@@ -250,7 +259,7 @@ void Cli::onTaskPropertiesChanged(
                 continue;
             }
 
-            lastState = static_cast<api::types::v1::State>(val);
+            taskState.state = static_cast<api::types::v1::State>(val);
             continue;
         }
 
@@ -262,7 +271,7 @@ void Cli::onTaskPropertiesChanged(
                 continue;
             }
 
-            lastSubState = static_cast<api::types::v1::SubState>(val);
+            taskState.subState = static_cast<api::types::v1::SubState>(val);
             continue;
         }
 
@@ -274,7 +283,7 @@ void Cli::onTaskPropertiesChanged(
                 continue;
             }
 
-            lastPercentage = val > 100 ? 100 : val;
+            taskState.percentage = val > 100 ? 100 : val;
             continue;
         }
 
@@ -284,7 +293,7 @@ void Cli::onTaskPropertiesChanged(
                 continue;
             }
 
-            lastMessage = value.toString();
+            taskState.message = value.toString();
             continue;
         }
 
@@ -296,11 +305,11 @@ void Cli::onTaskPropertiesChanged(
                 continue;
             }
 
-            lastErrorCode = static_cast<utils::error::ErrorCode>(val);
+            taskState.errorCode = static_cast<utils::error::ErrorCode>(val);
         }
     }
 
-    printProgress();
+    printProgress(taskState);
 }
 
 void Cli::interaction(const QDBusObjectPath &object_path,
@@ -390,42 +399,39 @@ void Cli::onTaskRemoved(const QDBusObjectPath &object_path,
     delete task;
     task = nullptr;
 
-    // no change, skip
-    if (lastState == static_cast<api::types::v1::State>(state)
-        && lastSubState == static_cast<api::types::v1::SubState>(subState) && lastMessage == message
-        && lastPercentage == percentage) {
-        Q_EMIT taskDone();
-        return;
-    }
+    PMTaskState newState = {
+        .state = static_cast<api::types::v1::State>(state),
+        .subState = static_cast<api::types::v1::SubState>(subState),
+        .message = message,
+        .percentage = percentage,
+        .errorCode = static_cast<utils::error::ErrorCode>(code),
+    };
 
-    this->lastState = static_cast<api::types::v1::State>(state);
-    this->lastSubState = static_cast<api::types::v1::SubState>(subState);
-    this->lastMessage = message;
-    this->lastPercentage = percentage;
-    this->lastErrorCode = static_cast<utils::error::ErrorCode>(code);
-
-    if (this->lastSubState == api::types::v1::SubState::AllDone) {
-        this->printProgress();
-    } else if (this->lastSubState == api::types::v1::SubState::PackageManagerDone) {
-        auto ret = this->notifier->notify(
-          api::types::v1::InteractionRequest{ .summary = this->lastMessage.toStdString() });
-        if (!ret) {
-            this->printer.printErr(ret.error());
+    if (taskState != newState) {
+        taskState = newState;
+        if (taskState.subState == api::types::v1::SubState::AllDone) {
+            this->printProgress(taskState);
+        } else if (taskState.subState == api::types::v1::SubState::PackageManagerDone) {
+            auto ret = this->notifier->notify(
+              api::types::v1::InteractionRequest{ .summary = taskState.message.toStdString() });
+            if (!ret) {
+                this->printer.printErr(ret.error());
+            }
         }
     }
 
     Q_EMIT taskDone();
 }
 
-void Cli::printProgress() noexcept
+void Cli::printProgress(const PMTaskState &state) noexcept
 {
-    if (this->lastState == api::types::v1::State::Unknown) {
-        qInfo() << "task is invalid";
+    if (state.state == api::types::v1::State::Unknown) {
+        LogI("task is invalid");
         return;
     }
 
-    if (this->lastState == api::types::v1::State::Failed) {
-        switch (this->lastErrorCode) {
+    if (state.state == api::types::v1::State::Failed) {
+        switch (state.errorCode) {
         case utils::error::ErrorCode::AppInstallModuleRequireAppFirst:
             this->printer.printMessage(_("To install the module, one must first install the app."));
             break;
@@ -454,26 +460,23 @@ void Cli::printProgress() noexcept
             this->printer.printMessage(_("Latest version is already installed."));
             break;
         default:
-            this->printer.printTaskState(this->lastPercentage,
-                                         this->lastMessage,
-                                         this->lastState,
-                                         this->lastSubState);
+            this->printer.printTaskState(state.percentage,
+                                         state.message,
+                                         state.state,
+                                         state.subState);
             return;
         }
 
         if (this->globalOptions.verbose) {
-            this->printer.printTaskState(this->lastPercentage,
-                                         this->lastMessage,
-                                         this->lastState,
-                                         this->lastSubState);
+            this->printer.printTaskState(state.percentage,
+                                         state.message,
+                                         state.state,
+                                         state.subState);
         }
         return;
     }
 
-    this->printer.printTaskState(this->lastPercentage,
-                                 this->lastMessage,
-                                 this->lastState,
-                                 this->lastSubState);
+    this->printer.printTaskState(state.percentage, state.message, state.state, state.subState);
 }
 
 Cli::Cli(Printer &printer,
@@ -943,11 +946,11 @@ int Cli::kill(const KillOptions &options)
 
 void Cli::cancelCurrentTask()
 {
-    bool isRunning = this->lastSubState != linglong::api::types::v1::SubState::AllDone
-      && this->lastSubState != linglong::api::types::v1::SubState::PackageManagerDone;
+    bool isRunning = this->taskState.subState != linglong::api::types::v1::SubState::AllDone
+      && this->taskState.subState != linglong::api::types::v1::SubState::PackageManagerDone;
     if (isRunning && this->task != nullptr) {
         this->task->Cancel();
-        std::cout << "cancel running task." << std::endl;
+        LogD("cancel running task");
     }
 }
 
@@ -977,23 +980,17 @@ int Cli::installFromFile(const QFileInfo &fileInfo,
         return -1;
     }
 
+    auto res = this->initInteraction();
+    if (!res) {
+        this->printer.printErr(res.error());
+        return -1;
+    }
+
     LogI("install from file {}", filePath);
     QFile file{ filePath };
     if (!file.open(QIODevice::ReadOnly | QIODevice::ExistingOnly)) {
         auto err = LINGLONG_ERR(file);
         this->printer.printErr(err.value());
-        return -1;
-    }
-
-    auto conn = this->pkgMan.connection();
-    auto con = conn.connect(this->pkgMan.service(),
-                            this->pkgMan.path(),
-                            this->pkgMan.interface(),
-                            "RequestInteraction",
-                            this,
-                            SLOT(interaction(QDBusObjectPath, int, QVariantMap)));
-    if (!con) {
-        qCritical() << "Failed to connect signal: RequestInteraction. state may be incorrect.";
         return -1;
     }
 
@@ -1003,56 +1000,17 @@ int Cli::installFromFile(const QFileInfo &fileInfo,
       this->pkgMan.InstallFromFile(dbusFileDescriptor,
                                    fileInfo.suffix(),
                                    utils::serialize::toQVariantMap(commonOptions));
-    pendingReply.waitForFinished();
-    if (pendingReply.isError()) {
-        auto err = LINGLONG_ERRV(pendingReply.error().message());
-        this->printer.printErr(err);
+    res = waitTaskCreated(pendingReply);
+    if (!res) {
+        this->handleCommonError(res.error());
         return -1;
     }
 
-    auto result =
-      utils::serialize::fromQVariantMap<api::types::v1::PackageManager1PackageTaskResult>(
-        pendingReply.value());
-    if (!result) {
-        qCritical() << result.error();
-        qCritical() << "linglong bug detected.";
-        std::abort();
-    }
-
-    if (result->code != 0) {
-        auto err = LINGLONG_ERRV(QString::fromStdString(result->message), result->code);
-        this->printer.printErr(err);
-        return -1;
-    }
-
-    this->taskObjectPath = QString::fromStdString(result->taskObjectPath.value());
-    task = new api::dbus::v1::Task1(pkgMan.service(), taskObjectPath, conn);
-    this->lastState = linglong::api::types::v1::State::Queued;
-
-    if (!conn.connect(pkgMan.service(),
-                      taskObjectPath,
-                      "org.freedesktop.DBus.Properties",
-                      "PropertiesChanged",
-                      this,
-                      SLOT(onTaskPropertiesChanged(QString, QVariantMap, QStringList)))) {
-        qCritical() << "connect PropertiesChanged failed:" << conn.lastError();
-        Q_ASSERT(false);
-        return -1;
-    }
-
-    QEventLoop loop;
-    if (QObject::connect(this, &Cli::taskDone, &loop, &QEventLoop::quit) == nullptr) {
-        qCritical() << "connect taskDone failed";
-        return -1;
-    }
-    loop.exec();
-
-    if (this->lastState != linglong::api::types::v1::State::Succeed) {
-        return -1;
-    }
+    waitTaskDone();
 
     updateAM();
-    return this->lastState == linglong::api::types::v1::State::Succeed ? 0 : -1;
+
+    return this->taskState.state == linglong::api::types::v1::State::Succeed ? 0 : -1;
 }
 
 int Cli::install(const InstallOptions &options)
@@ -1066,36 +1024,26 @@ int Cli::install(const InstallOptions &options)
     params.options.skipInteraction = options.confirmOpt;
     params.repo = options.repo;
 
-    auto app = QString::fromStdString(options.appid);
-    QFileInfo info(app);
+    QFileInfo info(QString::fromStdString(options.appid));
 
     // 如果检测是文件，则直接安装
     if (info.exists() && info.isFile()) {
         return installFromFile(QFileInfo{ info.absoluteFilePath() }, params.options, options.appid);
     }
 
-    QDBusReply<QString> authReply = this->authorization();
-    if (!authReply.isValid() && authReply.error().type() == QDBusError::AccessDenied) {
-        auto ret = this->runningAsRoot();
-        if (!ret) {
-            this->printer.printErr(ret.error());
-        }
+    auto ret = this->ensureAuthorized();
+    if (!ret) {
+        this->printer.printErr(ret.error());
         return -1;
     }
 
-    auto conn = this->pkgMan.connection();
-    auto con = conn.connect(this->pkgMan.service(),
-                            this->pkgMan.path(),
-                            this->pkgMan.interface(),
-                            "RequestInteraction",
-                            this,
-                            SLOT(interaction(QDBusObjectPath, int, QVariantMap)));
-    if (!con) {
-        qCritical() << "Failed to connect signal: RequestInteraction. state may be incorrect.";
+    ret = this->initInteraction();
+    if (!ret) {
+        this->printer.printErr(ret.error());
         return -1;
     }
 
-    auto fuzzyRef = package::FuzzyReference::parse(app.toStdString());
+    auto fuzzyRef = package::FuzzyReference::parse(options.appid);
     if (!fuzzyRef) {
         this->printer.printErr(fuzzyRef.error());
         return -1;
@@ -1115,110 +1063,28 @@ int Cli::install(const InstallOptions &options)
         params.package.modules = getAutoModuleList();
     }
 
-    qDebug() << "Install modules";
-    for (const auto &module : *params.package.modules) {
-        qDebug() << module.c_str();
-    }
+    LogD("install module: {}", common::strings::join(*params.package.modules));
 
     auto pendingReply = this->pkgMan.Install(utils::serialize::toQVariantMap(params));
-    pendingReply.waitForFinished();
-
-    if (pendingReply.isError()) {
-        this->printer.printErr(
-          LINGLONG_ERRV(pendingReply.error().message(), pendingReply.error().type()));
+    auto res = waitTaskCreated(pendingReply);
+    if (!res) {
+        handleInstallError(res.error(), params);
         return -1;
     }
 
-    auto result =
-      utils::serialize::fromQVariantMap<api::types::v1::PackageManager1PackageTaskResult>(
-        pendingReply.value());
-    if (!result) {
-        qCritical() << "bug detected:" << result.error().message();
-        std::abort();
-    }
-
-    auto resultCode = static_cast<utils::error::ErrorCode>(result->code);
-
-    if (resultCode != utils::error::ErrorCode::Success) {
-        switch (resultCode) {
-
-        case utils::error::ErrorCode::NetworkError:
-            this->printer.printMessage(_("Network connection failed. Please:"
-                                         "\n1. Check your internet connection"
-                                         "\n2. Verify network proxy settings if used"));
-            break;
-        case utils::error::ErrorCode::AppInstallAlreadyInstalled:
-            this->printer.printMessage(
-              QString{ _("Application already installed, If you want to replace it, try using "
-                         "'ll-cli install %1 --force'") }
-                .arg(params.package.id.c_str()));
-            break;
-        case utils::error::ErrorCode::AppInstallNotFoundFromRemote:
-            this->printer.printMessage(
-              QString{ _("Application %1 is not found in remote repo.") }.arg(
-                params.package.id.c_str()));
-            break;
-        case utils::error::ErrorCode::AppInstallModuleNoVersion:
-            this->printer.printMessage(_("Cannot specify a version when installing a module."));
-            break;
-        case utils::error::ErrorCode::AppInstallNeedDowngrade:
-            this->printer.printMessage(
-              QString{ _("The latest version has been installed. If you want to "
-                         "replace it, try using 'll-cli install %1/version --force'") }
-                .arg(params.package.id.c_str()));
-            break;
-        case utils::error::ErrorCode::Unknown:
-        case utils::error::ErrorCode::AppInstallFailed:
-            this->printer.printMessage(_("Install failed"));
-            break;
-        default:
-            this->printer.printReply({ .code = result->code, .message = result->message });
-            return -1;
-        }
-
-        if (this->globalOptions.verbose) {
-            this->printer.printReply({ .code = result->code, .message = result->message });
-        }
-
-        return -1;
-    }
-
-    this->taskObjectPath = QString::fromStdString(result->taskObjectPath.value());
-    task = new api::dbus::v1::Task1(pkgMan.service(), taskObjectPath, conn);
-    this->lastState = linglong::api::types::v1::State::Queued;
-
-    if (!conn.connect(pkgMan.service(),
-                      taskObjectPath,
-                      "org.freedesktop.DBus.Properties",
-                      "PropertiesChanged",
-                      this,
-                      SLOT(onTaskPropertiesChanged(QString, QVariantMap, QStringList)))) {
-        qCritical() << "connect PropertiesChanged failed:" << conn.lastError();
-        Q_ASSERT(false);
-        return -1;
-    }
-
-    QEventLoop loop;
-    if (QObject::connect(this, &Cli::taskDone, &loop, &QEventLoop::quit) == nullptr) {
-        qCritical() << "connect taskDone failed";
-        return -1;
-    }
-    loop.exec();
+    waitTaskDone();
 
     updateAM();
-    return this->lastState == linglong::api::types::v1::State::Succeed ? 0 : -1;
+    return this->taskState.state == linglong::api::types::v1::State::Succeed ? 0 : -1;
 }
 
 int Cli::upgrade(const UpgradeOptions &options)
 {
     LINGLONG_TRACE("command upgrade");
 
-    QDBusReply<QString> authReply = this->authorization();
-    if (!authReply.isValid() && authReply.error().type() == QDBusError::AccessDenied) {
-        auto ret = this->runningAsRoot();
-        if (!ret) {
-            this->printer.printErr(ret.error());
-        }
+    auto ret = this->ensureAuthorized();
+    if (!ret) {
+        this->printer.printErr(ret.error());
         return -1;
     }
 
@@ -1270,7 +1136,7 @@ int Cli::upgrade(const UpgradeOptions &options)
     }
 
     if (fuzzyRefs.empty()) {
-        this->printer.printReply({ .code = 0, .message = "All software packages are up to date." });
+        this->printer.printMessage(_("All software packages are up to date."));
         return 0;
     }
 
@@ -1288,57 +1154,17 @@ int Cli::upgrade(const UpgradeOptions &options)
     }
 
     auto pendingReply = this->pkgMan.Update(utils::serialize::toQVariantMap(params));
-    pendingReply.waitForFinished();
-
-    if (pendingReply.isError()) {
-        auto err = LINGLONG_ERRV(pendingReply.error().message());
-        this->printer.printErr(err);
+    auto res = waitTaskCreated(pendingReply);
+    if (!res) {
+        handleCommonError(res.error());
         return -1;
     }
 
-    auto result =
-      utils::serialize::fromQVariantMap<api::types::v1::PackageManager1PackageTaskResult>(
-        pendingReply.value());
-    if (!result) {
-        this->printer.printErr(result.error());
-        return -1;
-    }
-
-    if (result->code != 0) {
-        auto err = LINGLONG_ERRV(QString::fromStdString(result->message), result->code);
-        this->printer.printErr(err);
-        return -1;
-    }
-
-    this->taskObjectPath = QString::fromStdString(result->taskObjectPath.value());
-    auto conn = pkgMan.connection();
-    task = new api::dbus::v1::Task1(pkgMan.service(), taskObjectPath, conn);
-    this->lastState = linglong::api::types::v1::State::Queued;
-
-    if (!conn.connect(pkgMan.service(),
-                      taskObjectPath,
-                      "org.freedesktop.DBus.Properties",
-                      "PropertiesChanged",
-                      this,
-                      SLOT(onTaskPropertiesChanged(QString, QVariantMap, QStringList)))) {
-        qCritical() << "connect PropertiesChanged failed:" << conn.lastError();
-        Q_ASSERT(false);
-        return -1;
-    }
-
-    QEventLoop loop;
-    if (QObject::connect(this, &Cli::taskDone, &loop, &QEventLoop::quit) == nullptr) {
-        qCritical() << "connect taskDone failed";
-        return -1;
-    }
-    loop.exec();
+    waitTaskDone();
 
     updateAM();
-    if (this->lastState != linglong::api::types::v1::State::Succeed) {
-        return -1;
-    }
 
-    return 0;
+    return this->taskState.state == linglong::api::types::v1::State::Succeed ? 0 : -1;
 }
 
 int Cli::search(const SearchOptions &options)
@@ -1377,24 +1203,6 @@ int Cli::search(const SearchOptions &options)
     }
 
     std::optional<QString> pendingJobID;
-
-    auto pendingReply = this->pkgMan.Search(utils::serialize::toQVariantMap(params));
-
-    pendingReply.waitForFinished();
-    if (pendingReply.isError()) {
-        auto err = LINGLONG_ERRV(pendingReply.error().message());
-        this->printer.printErr(err);
-        return -1;
-    }
-
-    auto result = utils::serialize::fromQVariantMap<api::types::v1::PackageManager1JobInfo>(
-      pendingReply.value());
-    if (!result) {
-        this->printer.printErr(result.error());
-        return -1;
-    }
-
-    pendingJobID = QString::fromStdString(result->id);
 
     QEventLoop loop;
     connect(
@@ -1473,6 +1281,16 @@ int Cli::search(const SearchOptions &options)
           this->printer.printSearchResult(allPackages);
           loop.exit(0);
       });
+
+    auto pendingReply = this->pkgMan.Search(utils::serialize::toQVariantMap(params));
+    auto result = waitDBusReply<api::types::v1::PackageManager1JobInfo>(pendingReply);
+    if (!result) {
+        this->printer.printErr(result.error());
+        return -1;
+    }
+
+    pendingJobID = QString::fromStdString(result->id);
+
     return loop.exec();
 }
 
@@ -1480,59 +1298,46 @@ int Cli::prune()
 {
     LINGLONG_TRACE("command prune");
 
-    QDBusReply<QString> authReply = this->authorization();
-    if (!authReply.isValid() && authReply.error().type() == QDBusError::AccessDenied) {
-        auto ret = this->runningAsRoot();
-        if (!ret) {
-            this->printer.printErr(ret.error());
-        }
+    auto ret = this->ensureAuthorized();
+    if (!ret) {
+        this->printer.printErr(ret.error());
         return -1;
     }
 
     QEventLoop loop;
     QString jobIDReply = "";
-    auto ret = connect(
-      &this->pkgMan,
-      &api::dbus::v1::PackageManager::PruneFinished,
-      [this, &loop, &jobIDReply](const QString &jobID, const QVariantMap &data) {
-          LINGLONG_TRACE("process prune result");
-          if (jobIDReply != jobID) {
-              return;
-          }
-          auto ret =
-            utils::serialize::fromQVariantMap<api::types::v1::PackageManager1PruneResult>(data);
-          if (!ret) {
-              this->printer.printErr(ret.error());
-              loop.exit(-1);
-              return;
-          }
+    connect(&this->pkgMan,
+            &api::dbus::v1::PackageManager::PruneFinished,
+            [this, &loop, &jobIDReply](const QString &jobID, const QVariantMap &data) {
+                LINGLONG_TRACE("process prune result");
+                if (jobIDReply != jobID) {
+                    return;
+                }
+                auto ret =
+                  utils::serialize::fromQVariantMap<api::types::v1::PackageManager1PruneResult>(
+                    data);
+                if (!ret) {
+                    this->printer.printErr(ret.error());
+                    loop.exit(-1);
+                    return;
+                }
 
-          if (!ret->packages) {
-              this->printer.printErr(LINGLONG_ERRV("No packages to prune."));
-              loop.exit(0);
-              return;
-          }
+                if (!ret->packages) {
+                    this->printer.printErr(LINGLONG_ERRV("No packages to prune."));
+                    loop.exit(0);
+                    return;
+                }
 
-          this->printer.printPruneResult(*ret->packages);
-          loop.exit(0);
-      });
+                this->printer.printPruneResult(*ret->packages);
+                loop.exit(0);
+            });
 
     auto pendingReply = this->pkgMan.Prune();
-    pendingReply.waitForFinished();
-
-    if (pendingReply.isError()) {
-        auto err = LINGLONG_ERRV(pendingReply.error().message());
-        this->printer.printErr(err);
-        return -1;
-    }
-
-    auto result = utils::serialize::fromQVariantMap<api::types::v1::PackageManager1JobInfo>(
-      pendingReply.value());
+    auto result = waitDBusReply<api::types::v1::PackageManager1JobInfo>(pendingReply);
     if (!result) {
         this->printer.printErr(result.error());
         return -1;
     }
-
     jobIDReply = QString::fromStdString(result->id);
 
     return loop.exec();
@@ -1542,12 +1347,9 @@ int Cli::uninstall(const UninstallOptions &options)
 {
     LINGLONG_TRACE("command uninstall");
 
-    QDBusReply<QString> authReply = this->authorization();
-    if (!authReply.isValid() && authReply.error().type() == QDBusError::AccessDenied) {
-        auto ret = this->runningAsRoot();
-        if (!ret) {
-            this->printer.printErr(ret.error());
-        }
+    auto ret = this->ensureAuthorized();
+    if (!ret) {
+        this->printer.printErr(ret.error());
         return -1;
     }
 
@@ -1570,95 +1372,15 @@ int Cli::uninstall(const UninstallOptions &options)
     }
 
     auto pendingReply = this->pkgMan.Uninstall(utils::serialize::toQVariantMap(params));
-    pendingReply.waitForFinished();
-
-    if (pendingReply.isError()) {
-        auto err = LINGLONG_ERRV(pendingReply.error().message());
-        this->printer.printErr(err);
+    auto res = waitTaskCreated(pendingReply);
+    if (!res) {
+        this->handleUninstallError(res.error());
         return -1;
     }
 
-    auto result =
-      utils::serialize::fromQVariantMap<api::types::v1::PackageManager1PackageTaskResult>(
-        pendingReply.value());
-    if (!result) {
-        this->printer.printErr(result.error());
-        return -1;
-    }
+    waitTaskDone();
 
-    auto resultCode = static_cast<utils::error::ErrorCode>(result->code);
-    if (resultCode != utils::error::ErrorCode::Success) {
-        auto err = LINGLONG_ERRV(QString::fromStdString(result->message), result->code);
-        if (result->type == "notification") {
-            auto ret = this->notifier->notify(
-              api::types::v1::InteractionRequest{ .appName = "ll-cli",
-                                                  .summary = result->message });
-            if (!ret) {
-                this->printer.printErr(ret.error());
-            }
-            return -1;
-        }
-
-        switch (resultCode) {
-        case utils::error::ErrorCode::AppUninstallNotFoundFromLocal:
-            this->printer.printMessage(_("Application is not installed."));
-            break;
-        case utils::error::ErrorCode::AppUninstallMultipleVersions:
-            this->printer.printMessage(
-              QString{ _("Multiple versions of the package are installed. Please specify a single "
-                         "version to uninstall:\n%1") }
-                .arg(result->message.c_str()));
-            break;
-        case utils::error::ErrorCode::AppUninstallAppIsRunning:
-            this->printer.printMessage(
-              _("The application is currently running and cannot be "
-                "uninstalled. Please turn off the application and try again."));
-            break;
-        case utils::error::ErrorCode::AppUninstallBaseOrRuntime:
-            this->printer.printMessage(
-              _("Base or runtime cannot be uninstalled, please use 'll-cli prune'."));
-            break;
-        case utils::error::ErrorCode::AppUninstallFailed:
-        case utils::error::ErrorCode::Unknown:
-            this->printer.printMessage(_("Uninstall failed"));
-            break;
-        default:
-            this->printer.printErr(err);
-            return -1;
-        }
-
-        if (this->globalOptions.verbose) {
-            this->printer.printErr(err);
-        }
-
-        return -1;
-    }
-
-    this->taskObjectPath = QString::fromStdString(result->taskObjectPath.value());
-    auto conn = pkgMan.connection();
-    task = new api::dbus::v1::Task1(pkgMan.service(), taskObjectPath, conn);
-    this->lastState = linglong::api::types::v1::State::Queued;
-
-    if (!conn.connect(pkgMan.service(),
-                      taskObjectPath,
-                      "org.freedesktop.DBus.Properties",
-                      "PropertiesChanged",
-                      this,
-                      SLOT(onTaskPropertiesChanged(QString, QVariantMap, QStringList)))) {
-        qCritical() << "connect PropertiesChanged failed:" << conn.lastError();
-        Q_ASSERT(false);
-        return -1;
-    }
-
-    QEventLoop loop;
-    if (QObject::connect(this, &Cli::taskDone, &loop, &QEventLoop::quit) == nullptr) {
-        qCritical() << "connect taskDone failed";
-        return -1;
-    }
-    loop.exec();
-
-    updateAM();
-    return this->lastState == linglong::api::types::v1::State::Succeed ? 0 : -1;
+    return this->taskState.state == linglong::api::types::v1::State::Succeed ? 0 : -1;
 }
 
 int Cli::list(const ListOptions &options)
@@ -1937,12 +1659,9 @@ int Cli::setRepoConfig(const QVariantMap &config)
 {
     LINGLONG_TRACE("set repo config");
 
-    QDBusReply<QString> authReply = this->authorization();
-    if (!authReply.isValid() && authReply.error().type() == QDBusError::AccessDenied) {
-        auto ret = this->runningAsRoot();
-        if (!ret) {
-            this->printer.printErr(ret.error());
-        }
+    auto ret = this->ensureAuthorized();
+    if (!ret) {
+        this->printer.printErr(ret.error());
         return -1;
     }
 
@@ -2289,6 +2008,23 @@ void Cli::filterPackageInfosByVersion(
     }
 }
 
+utils::error::Result<void> Cli::ensureAuthorized()
+{
+    LINGLONG_TRACE("ensure authorized");
+
+    QDBusReply<QString> authReply = this->authorization();
+    if (!authReply.isValid() && authReply.error().type() == QDBusError::AccessDenied) {
+        auto ret = this->runningAsRoot();
+        std::string message = "failed to authorize";
+        if (!ret) {
+            message += ": " + ret.error().message();
+        }
+        return LINGLONG_ERR(message);
+    }
+
+    return LINGLONG_OK;
+}
+
 utils::error::Result<void> Cli::runningAsRoot()
 {
     return runningAsRoot(QCoreApplication::instance()->arguments());
@@ -2524,35 +2260,27 @@ int Cli::generateCache(const package::Reference &ref)
     LINGLONG_TRACE("generate cache for " + ref.toString());
     QEventLoop loop;
     QString jobIDReply;
-    auto ret = connect(&this->pkgMan,
-                       &api::dbus::v1::PackageManager::GenerateCacheFinished,
-                       [&loop, &jobIDReply](const QString &jobID, bool success) {
-                           if (jobIDReply != jobID) {
-                               return;
-                           }
-                           if (!success) {
-                               loop.exit(-1);
-                               return;
-                           }
-                           loop.exit(0);
-                       });
+    connect(&this->pkgMan,
+            &api::dbus::v1::PackageManager::GenerateCacheFinished,
+            [&loop, &jobIDReply](const QString &jobID, bool success) {
+                if (jobIDReply != jobID) {
+                    return;
+                }
+                if (!success) {
+                    loop.exit(-1);
+                    return;
+                }
+                loop.exit(0);
+            });
 
     auto pendingReply = this->pkgMan.GenerateCache(QString::fromStdString(ref.toString()));
-    pendingReply.waitForFinished();
-    if (pendingReply.isError()) {
-        auto err = LINGLONG_ERRV(pendingReply.error().message());
-        this->printer.printErr(err);
-        return -1;
-    }
-
-    auto result = utils::serialize::fromQVariantMap<api::types::v1::PackageManager1JobInfo>(
-      pendingReply.value());
+    auto result = waitDBusReply<api::types::v1::PackageManager1JobInfo>(pendingReply);
     if (!result) {
         this->printer.printErr(result.error());
         return -1;
     }
-
     jobIDReply = QString::fromStdString(result->id);
+
     return loop.exec();
 }
 
@@ -2630,7 +2358,7 @@ void Cli::updateAM() noexcept
 {
     // NOTE: make sure AM refresh the cache of desktop
     if ((QSysInfo::productType() == "Deepin" || QSysInfo::productType() == "deepin")
-        && this->lastState == linglong::api::types::v1::State::Succeed) {
+        && this->taskState.state == linglong::api::types::v1::State::Succeed) {
         QDBusConnection conn = QDBusConnection::systemBus();
         if (!conn.isConnected()) {
             qWarning() << "Failed to connect to the system bus";
@@ -2731,6 +2459,169 @@ int Cli::getBundleDir(const InspectOptions &options)
     std::cout << bundleDir.string() << std::endl;
 
     return 0;
+}
+
+utils::error::Result<void> Cli::initInteraction()
+{
+    LINGLONG_TRACE("initInteraction");
+
+    auto conn = this->pkgMan.connection();
+    auto con = conn.connect(this->pkgMan.service(),
+                            this->pkgMan.path(),
+                            this->pkgMan.interface(),
+                            "RequestInteraction",
+                            this,
+                            SLOT(interaction(QDBusObjectPath, int, QVariantMap)));
+    if (!con) {
+        return LINGLONG_ERR("Failed to connect signal: RequestInteraction");
+    }
+
+    return LINGLONG_OK;
+}
+
+utils::error::Result<void> Cli::waitTaskCreated(QDBusPendingReply<QVariantMap> &reply)
+{
+    LINGLONG_TRACE("waitTaskCreated");
+
+    auto result = waitDBusReply<api::types::v1::PackageManager1PackageTaskResult>(reply);
+    if (!result) {
+        return LINGLONG_ERR(result.error());
+    }
+
+    auto resultCode = static_cast<utils::error::ErrorCode>(result->code);
+    if (resultCode != utils::error::ErrorCode::Success) {
+        return LINGLONG_ERR(result->message, result->code);
+    }
+
+    auto conn = pkgMan.connection();
+    this->taskObjectPath = QString::fromStdString(result->taskObjectPath.value());
+    this->task = new api::dbus::v1::Task1(pkgMan.service(), taskObjectPath, conn);
+    this->taskState.state = linglong::api::types::v1::State::Queued;
+
+    if (!conn.connect(pkgMan.service(),
+                      taskObjectPath,
+                      "org.freedesktop.DBus.Properties",
+                      "PropertiesChanged",
+                      this,
+                      SLOT(onTaskPropertiesChanged(QString, QVariantMap, QStringList)))) {
+        Q_ASSERT(false);
+        return LINGLONG_ERR(fmt::format("Failed to connect signal PropertiesChanged: {}",
+                                        conn.lastError().message()));
+    }
+
+    return LINGLONG_OK;
+}
+
+void Cli::waitTaskDone()
+{
+    QEventLoop loop;
+    if (QObject::connect(this, &Cli::taskDone, &loop, &QEventLoop::quit) == nullptr) {
+        LogE("connect taskDone failed");
+        return;
+    }
+    loop.exec();
+}
+
+void Cli::handleInstallError(const utils::error::Error &error,
+                             const api::types::v1::PackageManager1InstallParameters &params)
+{
+    auto errorCode = static_cast<utils::error::ErrorCode>(error.code());
+    switch (errorCode) {
+    case utils::error::ErrorCode::AppInstallAlreadyInstalled:
+        this->printer.printMessage(
+          fmt::format(_("Application already installed, If you want to replace it, try using "
+                        "'ll-cli install {} --force'"),
+                      params.package.id));
+        break;
+    case utils::error::ErrorCode::AppInstallNotFoundFromRemote:
+        this->printer.printMessage(
+          fmt::format(_("Application {} is not found in remote repo."), params.package.id));
+        break;
+    case utils::error::ErrorCode::AppInstallModuleNoVersion:
+        this->printer.printMessage(_("Cannot specify a version when installing a module."));
+        break;
+    case utils::error::ErrorCode::AppInstallNeedDowngrade:
+        this->printer.printMessage(
+          fmt::format(_("The latest version has been installed. If you want to "
+                        "replace it, try using 'll-cli install {} --force'"),
+                      params.package.id));
+        break;
+    case utils::error::ErrorCode::Unknown:
+    case utils::error::ErrorCode::AppInstallFailed:
+        this->printer.printMessage(_("Install failed"));
+        break;
+    default:
+        if (!handleCommonError(error)) {
+            return;
+        }
+        break;
+    }
+
+    if (this->globalOptions.verbose) {
+        this->printer.printErr(error);
+    }
+}
+
+void Cli::handleUninstallError(const utils::error::Error &error)
+{
+    auto errorCode = static_cast<utils::error::ErrorCode>(error.code());
+    switch (errorCode) {
+    case utils::error::ErrorCode::AppUninstallAppIsRunning: {
+        this->printer.printMessage(
+          _("The application is currently running and cannot be "
+            "uninstalled. Please turn off the application and try again."));
+
+        auto ret = this->notifier->notify(
+          api::types::v1::InteractionRequest{ .appName = "ll-cli", .summary = error.message() });
+        if (!ret) {
+            this->printer.printErr(ret.error());
+        }
+        break;
+    }
+    case utils::error::ErrorCode::AppUninstallNotFoundFromLocal:
+        this->printer.printMessage(_("Application is not installed."));
+        break;
+    case utils::error::ErrorCode::AppUninstallMultipleVersions:
+        this->printer.printMessage(
+          fmt::format(_("Multiple versions of the package are installed. Please specify a single "
+                        "version to uninstall:\n{}"),
+                      error.message()));
+        break;
+    case utils::error::ErrorCode::AppUninstallBaseOrRuntime:
+        this->printer.printMessage(
+          _("Base or runtime cannot be uninstalled, please use 'll-cli prune'."));
+        break;
+    case utils::error::ErrorCode::AppUninstallFailed:
+    case utils::error::ErrorCode::Unknown:
+        this->printer.printMessage(_("Uninstall failed"));
+        break;
+    default:
+        if (!handleCommonError(error)) {
+            return;
+        }
+        break;
+    }
+
+    if (this->globalOptions.verbose) {
+        this->printer.printErr(error);
+    }
+}
+
+bool Cli::handleCommonError(const utils::error::Error &error)
+{
+    auto errorCode = static_cast<utils::error::ErrorCode>(error.code());
+    switch (errorCode) {
+    case utils::error::ErrorCode::NetworkError:
+        this->printer.printMessage(_("Network connection failed. Please:"
+                                     "\n1. Check your internet connection"
+                                     "\n2. Verify network proxy settings if used"));
+        break;
+    default:
+        this->printer.printErr(error);
+        return false;
+    }
+
+    return true;
 }
 
 } // namespace linglong::cli

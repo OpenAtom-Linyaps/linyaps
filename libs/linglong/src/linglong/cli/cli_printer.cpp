@@ -226,12 +226,6 @@ void CLIPrinter::printContainers(const std::vector<api::types::v1::CliContainer>
     }
 }
 
-void CLIPrinter::printReply(const api::types::v1::CommonResult &reply)
-{
-    std::cout << "code: " << reply.code << std::endl;
-    std::cout << "message:" << std::endl << reply.message << std::endl;
-}
-
 void CLIPrinter::printRepoConfig(const api::types::v1::RepoConfigV2 &repoInfo)
 {
     std::cout << "Default: " << repoInfo.defaultRepo << std::endl;
@@ -342,9 +336,9 @@ void CLIPrinter::printInspect(const api::types::v1::InspectResult &result)
               << std::endl;
 }
 
-void CLIPrinter::printMessage(const QString &message)
+void CLIPrinter::printMessage(const std::string &message)
 {
-    std::cout << message.toStdString() << std::endl;
+    std::cout << message << std::endl;
 }
 
 } // namespace linglong::cli

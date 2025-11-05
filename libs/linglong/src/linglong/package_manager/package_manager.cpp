@@ -792,8 +792,7 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd,
           auto res = action->doAction(task);
           if (!res) {
               LogE("uab installation failed: {}", res.error());
-              task.reportError(LINGLONG_ERRV(std::move(res).error().message(),
-                                             utils::error::ErrorCode::AppInstallFailed));
+              task.reportError(std::move(res).error());
           }
       },
       connection());
@@ -893,8 +892,7 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
         auto res = action->doAction(task);
         if (!res) {
             LogE("ref installation failed: {}", res.error());
-            task.reportError(LINGLONG_ERRV(std::move(res).error().message(),
-                                           utils::error::ErrorCode::AppInstallFailed));
+            task.reportError(std::move(res).error());
         }
     };
 

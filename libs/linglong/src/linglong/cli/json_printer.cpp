@@ -76,11 +76,6 @@ void JSONPrinter::printContainers(const std::vector<api::types::v1::CliContainer
     std::cout << nlohmann::json(list).dump() << std::endl;
 }
 
-void JSONPrinter::printReply(const api::types::v1::CommonResult &reply)
-{
-    std::cout << nlohmann::json(reply).dump() << std::endl;
-}
-
 void JSONPrinter::printRepoConfig(const api::types::v1::RepoConfigV2 &config)
 {
     std::cout << nlohmann::json(config).dump() << std::endl;
@@ -122,9 +117,9 @@ void JSONPrinter::printInspect(const api::types::v1::InspectResult &result)
     std::cout << nlohmann::json(result).dump(4) << std::endl;
 }
 
-void JSONPrinter::printMessage(const QString &message)
+void JSONPrinter::printMessage(const std::string &message)
 {
-    std::cout << nlohmann::json{ { "message", message.toStdString() } }.dump() << std::endl;
+    std::cout << nlohmann::json{ { "message", message } }.dump() << std::endl;
 }
 
 } // namespace linglong::cli

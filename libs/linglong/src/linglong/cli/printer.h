@@ -82,7 +82,6 @@ public:
       printSearchResult(std::map<std::string, std::vector<api::types::v1::PackageInfoV2>>) = 0;
     virtual void printPruneResult(const std::vector<api::types::v1::PackageInfoV2> &) = 0;
     virtual void printContainers(const std::vector<api::types::v1::CliContainer> &) = 0;
-    virtual void printReply(const api::types::v1::CommonResult &) = 0;
     virtual void printRepoConfig(const api::types::v1::RepoConfigV2 &) = 0;
     virtual void printLayerInfo(const api::types::v1::LayerInfo &) = 0;
     virtual void printTaskState(double percentage,
@@ -92,7 +91,7 @@ public:
     virtual void printContent(const QStringList &filePaths) = 0;
     virtual void printUpgradeList(std::vector<api::types::v1::UpgradeListResult> &) = 0;
     virtual void printInspect(const api::types::v1::InspectResult &) = 0;
-    virtual void printMessage(const QString &message) = 0;
+    virtual void printMessage(const std::string &message) = 0;
 };
 
 } // namespace linglong::cli

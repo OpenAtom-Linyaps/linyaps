@@ -605,8 +605,7 @@ TEST(OSTreeRepoTest, matchRemoteByPriority_AllReposError)
 
     auto result = repo.matchRemoteByPriority(*fuzzyRef);
 
-    EXPECT_TRUE(result.has_value());
-    EXPECT_TRUE(result->empty());
+    EXPECT_FALSE(result.has_value());
 }
 
 TEST(OSTreeRepoTest, matchRemoteByPriority_NoReposConfigured)
@@ -622,8 +621,7 @@ TEST(OSTreeRepoTest, matchRemoteByPriority_NoReposConfigured)
 
     auto result = repo.matchRemoteByPriority(*fuzzyRef);
 
-    EXPECT_TRUE(result.has_value());
-    EXPECT_TRUE(result->empty());
+    EXPECT_FALSE(result.has_value());
 }
 
 TEST(OSTreeRepoTest, matchRemoteByPriority_UseHighestPriority)

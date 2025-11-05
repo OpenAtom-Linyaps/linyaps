@@ -1871,27 +1871,31 @@ utils::error::Result<repo::RemotePackages>
 OSTreeRepo::matchRemoteByPriority(const package::FuzzyReference &fuzzyRef,
                                   const std::optional<api::types::v1::Repo> &repo) const noexcept
 {
+    LINGLONG_TRACE("match remote packages by priority");
+
     repo::RemotePackages remotePackages;
 
     if (repo) {
         auto list = this->searchRemote(fuzzyRef, *repo, true);
         if (!list) {
-            LogW("failed to list remote packages from {}: {}", repo->name, list.error());
-            return remotePackages;
+            return LINGLONG_ERR(fmt::format("failed to search remote packages from {}", repo->name),
+                                utils::error::ErrorCode::NetworkError);
         }
 
         if (!list->empty()) {
             remotePackages.addPackages(*repo, std::move(list).value());
         }
     } else {
+        bool allError = true;
         auto repos = this->getPriorityGroupedRepos();
         for (const auto &repoGroup : repos) {
             for (const auto &repo : repoGroup) {
                 auto list = this->searchRemote(fuzzyRef, repo, true);
                 if (!list) {
-                    LogW("failed to list remote packages from {}: {}", repo.name, list.error());
+                    LogW("failed to search remote packages from {}: {}", repo.name, list.error());
                     continue;
                 }
+                allError = false;
 
                 if (list->empty()) {
                     continue;
@@ -1904,6 +1908,11 @@ OSTreeRepo::matchRemoteByPriority(const package::FuzzyReference &fuzzyRef,
             if (!remotePackages.empty()) {
                 break;
             }
+        }
+
+        if (allError) {
+            return LINGLONG_ERR("failed to search remote packages",
+                                utils::error::ErrorCode::NetworkError);
         }
     }
 

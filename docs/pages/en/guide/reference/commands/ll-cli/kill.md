@@ -6,7 +6,7 @@ ll\-cli\-kill - Stop running applications
 
 ## SYNOPSIS
 
-**ll-cli kill** [*options*] *app*
+**ll-cli kill** [*options*] _app_
 
 ## DESCRIPTION
 
@@ -20,12 +20,12 @@ The `ll-cli kill` command can forcefully exit running Linyaps applications. This
 **--help-all**
 : Expand all help
 
-**-s, --signal** *SIGNAL* [*SIGTERM*]
+**-s, --signal** _SIGNAL_ [*SIGTERM*]
 : Specify the signal to send to the application
 
 ## POSITIONAL ARGUMENTS
 
-**APP** *TEXT* *REQUIRED*
+**APP** _TEXT_ _REQUIRED_
 : Specify the name of the running application
 
 ## EXAMPLES

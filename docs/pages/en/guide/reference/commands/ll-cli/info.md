@@ -6,7 +6,7 @@ ll\-cli\-info - Display information about installed applications or runtimes
 
 ## SYNOPSIS
 
-**ll-cli info** [*options*] *app*
+**ll-cli info** [*options*] _app_
 
 ## DESCRIPTION
 
@@ -22,7 +22,7 @@ Use `ll-cli info` to display information about installed applications or runtime
 
 ## POSITIONAL ARGUMENTS
 
-**APP** *TEXT* *REQUIRED*
+**APP** _TEXT_ _REQUIRED_
 : Specify application name, can also be a Linyaps.layer file
 
 ## EXAMPLES

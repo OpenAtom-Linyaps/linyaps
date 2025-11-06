@@ -22,13 +22,13 @@ By default, the converted application generates a uab file. To convert to a laye
 **--layer**
 : Export layer file
 
-**--version** *string*
+**--version** _string_
 : Specify the version of the generated Linyaps application
 
-**--base** *string*
+**--base** _string_
 : Specify the base environment of the Linyaps application
 
-**--base-version** *string*
+**--base-version** _string_
 : Specify the base version of the Linyaps application
 
 ## EXAMPLES

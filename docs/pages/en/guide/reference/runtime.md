@@ -11,7 +11,7 @@ _Base and runtime version numbers follow the "major.minor.patch.build" specifica
 
 ## Base Introduction
 
-Linyaps base provides the most fundamental runtime environment, containing core operating system components (such as glibc, bash, and other basic toolchains). 
+Linyaps base provides the most fundamental runtime environment, containing core operating system components (such as glibc, bash, and other basic toolchains).
 As a containerized "minimal system image", it ensures applications maintain consistent underlying dependencies across different distributions. Base is typically maintained by the Linyaps official team, and developers can directly reference it without worrying about compatibility issues when applications run on different distributions.
 
 The following stable versions are recommended. Bases not listed in the documentation are generally experimental versions and are not recommended for use. For more detailed information, see [Base List](#base-list)

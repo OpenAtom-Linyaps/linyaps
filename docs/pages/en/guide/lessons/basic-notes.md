@@ -103,9 +103,9 @@ $PREFIX/share/icons/hicolor/scalable/apps/linyaps-app-demo.svg
 
 Linyaps applications are compatible with most `desktop startup files` that comply with the `Freedesktop XDG specification`. The following fields need special attention:
 
-| Field | Value Requirements                                                                                                        |
-|-------|---------------------------------------------------------------------------------------------------------------------------|
-| Exec  | This value is used to set the command executed when clicking this desktop file. It needs to be consistent with the `command` value in `linglong.yaml` |
+| Field | Value Requirements                                                                                                                                                                                                           |
+| ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Exec  | This value is used to set the command executed when clicking this desktop file. It needs to be consistent with the `command` value in `linglong.yaml`                                                                        |
 | Icon  | This value is used to set the application icon displayed by this desktop file. It needs to be consistent with the icon file name in the `Icons Directory Specification`. This value does not require the file name extension |
 
 Therefore, a desktop file that complies with Linyaps application specifications can refer to:
@@ -169,7 +169,7 @@ base: org.deepin.foundation/23.0.0
 Then when starting the Linyaps application build project, it will default to using the highest version number `23.0.0.29`
 
 5. The Linyaps application build project configuration file is currently not directly compatible with configuration files of other package build tools. It needs to be adapted and modified according to build project configuration file cases:
-https://linglong.dev/guide/ll-builder/manifests.html
+   https://linglong.dev/guide/ll-builder/manifests.html
 
 ### Custom Fields
 
@@ -197,12 +197,12 @@ sources:
     commit: 4b4003d0fdc09a257a0841ad965b22533ed87a0d
 ```
 
-| Name | Description |
-|------|-------------|
-| kind | Source file type |
-| url | Source code repository address that needs to be pulled through git. The repository needs to support git functionality. When the network condition is poor, mirror addresses can be used as alternatives |
-| version | Specify the version number of the source code repository, i.e., `tag label`, or pull the main line `master` |
-| commit | Pull source code based on the `commit` change history of the repository. Fill in the value corresponding to the commit here, which will apply all changes up to this commit in the repository. \*This field has higher priority than `version`. Please do not fill in any `commit` after the merge time of `version` |
+| Name    | Description                                                                                                                                                                                                                                                                                                          |
+| ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| kind    | Source file type                                                                                                                                                                                                                                                                                                     |
+| url     | Source code repository address that needs to be pulled through git. The repository needs to support git functionality. When the network condition is poor, mirror addresses can be used as alternatives                                                                                                              |
+| version | Specify the version number of the source code repository, i.e., `tag label`, or pull the main line `master`                                                                                                                                                                                                          |
+| commit  | Pull source code based on the `commit` change history of the repository. Fill in the value corresponding to the commit here, which will apply all changes up to this commit in the repository. \*This field has higher priority than `version`. Please do not fill in any `commit` after the merge time of `version` |
 
 \* Supports adding multiple git repositories as `sources` pulls simultaneously
 
@@ -234,9 +234,9 @@ source:
     name: "qBittorrent"
 ```
 
-| Name | Description |
-|------|-------------|
-| kind | Source file type |
+| Name | Description                                    |
+| ---- | ---------------------------------------------- |
+| kind | Source file type                               |
 | name | Source file name identifier, has no actual use |
 
 \* When the `kind` is set to `local` type, the build project will not perform any operations on source files

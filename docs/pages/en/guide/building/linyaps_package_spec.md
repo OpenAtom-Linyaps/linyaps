@@ -4,7 +4,7 @@ The keywords **MUST**, **MUST NOT**, **REQUIRED**, **SHALL**, **SHALL NOT**, **R
 
 The correspondence between these keywords and their English counterparts is shown in the following table:
 
-| Chinese       | English        |
+| Chinese    | English     |
 | ---------- | ----------- |
 | **必须**   | MUST        |
 | **禁止**   | MUST NOT    |
@@ -352,7 +352,6 @@ Terminal=false
 ```
 
 - Using Makefile as the build system.
-
   1. First, write the template file `org.deepin.demo.desktop.in` with the following content:
 
   ```ini
@@ -413,11 +412,11 @@ Terminal=false
 
 The Linyaps environment consists of up to three parts. Taking compiling `org.deepin.demo` under the `x86_64` architecture as an example, the default search paths for header files and library files include the following parts:
 
-| **Component**       | **Package Name**               | **Header Files**                              | **Library Files**                                                                                  |
-| -------------- | ---------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------- |
-| base           | org.deepin.base        | /usr/include                            | /usr/lib<br>/usr/lib/x86_64-linux-gnu                                                       |
+| **Component**      | **Package Name**       | **Header Files**                        | **Library Files**                                                                           |
+| ------------------ | ---------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------- |
+| base               | org.deepin.base        | /usr/include                            | /usr/lib<br>/usr/lib/x86_64-linux-gnu                                                       |
 | runtime (optional) | org.deepin.runtime.dtk | /runtime/include                        | /runtime/lib<br>/runtime/lib/x86_64-linux-gnu                                               |
-| app            | org.deepin.demo        | /opt/apps/org.deepin.demo/files/include | /opt/apps/org.deepin.demo/files/lib<br>/opt/apps/org.deepin.demo/files/lib/x86_64-linux-gnu |
+| app                | org.deepin.demo        | /opt/apps/org.deepin.demo/files/include | /opt/apps/org.deepin.demo/files/lib<br>/opt/apps/org.deepin.demo/files/lib/x86_64-linux-gnu |
 
 Priority is arranged from top to bottom. If a header file exists in both `org.deepin.base` and `org.deepin.demo`, the file in `org.deepin.demo` will be matched with higher priority during use. The same applies to library files.
 
@@ -581,13 +580,13 @@ The overall length of the version number after automatic supplementation to four
 
 Linyaps applications **MUST** select a base as the basic runtime environment. Available bases:
 
-| **Base Library**  | **Package Name/Version**            |
-| ----------- | ------------------------ |
-| glibc(2.38) | org.deepin.base/23.1.0.0 |
+| **Base Library** | **Package Name/Version** |
+| ---------------- | ------------------------ |
+| glibc(2.38)      | org.deepin.base/23.1.0.0 |
 
 If frameworks beyond the basic environment need to be used additionally, **SHALL** use appropriate runtime. Available runtime:
 
-| **Framework**            | **Package Name/Version**                   |
+| **Framework**       | **Package Name/Version**        |
 | ------------------- | ------------------------------- |
 | QT(5.15) + DTK(5.6) | org.deepin.runtime.dtk/23.1.0.0 |
 
@@ -785,7 +784,7 @@ Applications can have multiple desktop files.
 
 **Path correspondence:**
 
-| **Packaging Path**                                       | **Installation Path**                                              |
+| **Packaging Path**                                 | **Installation Path**                                     |
 | -------------------------------------------------- | --------------------------------------------------------- |
 | $PREFIX/share/applications/org.deepin.demo.desktop | $XDG_DATA_DIRS/share/applications/org.deepin.demo.desktop |
 
@@ -811,7 +810,7 @@ An application can configure multiple services. Service names must be subdomains
 
 **Path correspondence:**
 
-| **Packaging Path**                                         | **Installation Path**                                                |
+| **Packaging Path**                                   | **Installation Path**                                       |
 | ---------------------------------------------------- | ----------------------------------------------------------- |
 | $PREFIX/share/services/org.deepin.demo.service       | $XDG_DATA_DIRS/dbus-1/service/org.deepin.demo.service       |
 | $PREFIX/share/services/org.deepin.demo.hello.service | $XDG_DATA_DIRS/dbus-1/service/org.deepin.demo.hello.service |
@@ -852,7 +851,7 @@ Unlike dbus service, files installed to `$PREFIX/lib/systemd/user` will be autom
 
 **Path correspondence:**
 
-| **Packaging Path**                                     | **Installation Path**                                        |
+| **Packaging Path**                               | **Installation Path**                               |
 | ------------------------------------------------ | --------------------------------------------------- |
 | $PREFIX/lib/systemd/user/org.deepin.demo.service | $XDG_DATA_DIRS/systemd/user/org.deepin.demo.service |
 
@@ -862,7 +861,7 @@ Directory for application icons. The structure should be consistent with the sys
 
 **Path correspondence:**
 
-| **Packaging Path**                                                  | **Installation Path**                                                   |
+| **Packaging Path**                                            | **Installation Path**                                          |
 | ------------------------------------------------------------- | -------------------------------------------------------------- |
 | $PREFIX/share/icons/hicolor/scalable/apps/org.deepin.demo.svg | $XDG_DATA_DIRS/icons/hicolor/scalable/apps/org.deepin.demo.svg |
 | $PREFIX/share/icons/hicolor/24x24/apps/org.deepin.demo.png    | $XDG_DATA_DIRS/icons/hicolor/24x24/apps/org.deepin.demo.png    |
@@ -874,7 +873,7 @@ MIME (Multipurpose Internet Mail Extensions) multipurpose internet mail extensio
 
 **Path correspondence:**
 
-| **Packaging Path**                                    | **Installation Path**                                     |
+| **Packaging Path**                              | **Installation Path**                            |
 | ----------------------------------------------- | ------------------------------------------------ |
 | $PREFIX/share/mime/packages/org.deepin.demo.xml | $XDG_DATA_DIRS/mime/packages/org.deepin.demo.xml |
 

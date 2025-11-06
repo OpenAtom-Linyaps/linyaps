@@ -6,7 +6,7 @@ ll\-pica - Tool for converting deb packages to Linyaps packages
 
 ## SYNOPSIS
 
-**ll-pica** *subcommand*
+**ll-pica** _subcommand_
 
 ## DESCRIPTION
 
@@ -23,11 +23,11 @@ The following situations are likely to fail to run successfully:
 
 ## COMMANDS
 
-| Command  | Man Page                                             | Description                                                                   |
-| -------  | ---------------------------------------------------- | ----------------------------------------------------------------------------- |
-| adep     | [ll-pica-adep(1)](ll-pica-adep.md)                 | Add package dependencies to linglong.yaml file                           |
-| convert  | [ll-pica-convert(1)](ll-pica-convert.md)           | Convert deb packages to Linyaps packages                               |
-| init     | [ll-pica-init(1)](ll-pica-init.md)                 | Initialize conversion package configuration information                 |
+| Command | Man Page                                 | Description                                             |
+| ------- | ---------------------------------------- | ------------------------------------------------------- |
+| adep    | [ll-pica-adep(1)](ll-pica-adep.md)       | Add package dependencies to linglong.yaml file          |
+| convert | [ll-pica-convert(1)](ll-pica-convert.md) | Convert deb packages to Linyaps packages                |
+| init    | [ll-pica-init(1)](ll-pica-init.md)       | Initialize conversion package configuration information |
 
 ## SEE ALSO
 

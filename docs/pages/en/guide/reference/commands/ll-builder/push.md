@@ -20,16 +20,16 @@ The `ll-builder push` command is used to push Linyaps packages to the Linyaps re
 **--help-all**
 : Expand all help
 
-**-f, --file** *file* [./linglong.yaml]
+**-f, --file** _file_ [./linglong.yaml]
 : Path to the linglong.yaml file
 
-**--repo-url** *url*
+**--repo-url** _url_
 : Remote repository URL
 
-**--repo-name** *name*
+**--repo-name** _name_
 : Remote repository name
 
-**--module** *module*
+**--module** _module_
 : Push a single module
 
 ## Module Push Description

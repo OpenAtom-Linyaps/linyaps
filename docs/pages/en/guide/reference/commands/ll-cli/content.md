@@ -6,7 +6,7 @@ ll\-cli\-content - Display application exported files
 
 ## SYNOPSIS
 
-**ll-cli content** [*options*] *app*
+**ll-cli content** [*options*] _app_
 
 ## DESCRIPTION
 
@@ -22,7 +22,7 @@ Use `ll-cli content` to display application exported files. This command is used
 
 ## POSITIONAL ARGUMENTS
 
-**APP** *TEXT* *REQUIRED*
+**APP** _TEXT_ _REQUIRED_
 : Specify installed application name
 
 ## EXAMPLES

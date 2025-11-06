@@ -48,3 +48,4 @@ permissions:
       - com.qq.weixin.work.deepin
     talk:
       - org.freedesktop.Notifications
+```

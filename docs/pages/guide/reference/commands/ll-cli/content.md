@@ -6,7 +6,7 @@ ll\-cli\-content - 显示应用导出文件
 
 ## SYNOPSIS
 
-**ll-cli content** [*options*] *app*
+**ll-cli content** [*options*] _app_
 
 ## DESCRIPTION
 
@@ -22,7 +22,7 @@ ll\-cli\-content - 显示应用导出文件
 
 ## POSITIONAL ARGUMENTS
 
-**APP** *TEXT* *REQUIRED*
+**APP** _TEXT_ _REQUIRED_
 : 指定已安装应用程序名
 
 ## EXAMPLES

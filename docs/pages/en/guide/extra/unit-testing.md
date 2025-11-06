@@ -6,6 +6,6 @@ Since some tests are difficult to run in CI environments, they are disabled by d
 
 Here are some environment variables to control test execution. All of them are empty by default.
 
-| Variable Name      | Value                                | Description                       |
-| ------------------ | ------------------------------------ | --------------------------------- |
-| LINGLONG_TEST_ALL  | If set, will run all unit tests      | Enables all unit test execution   |
+| Variable Name     | Value                           | Description                     |
+| ----------------- | ------------------------------- | ------------------------------- |
+| LINGLONG_TEST_ALL | If set, will run all unit tests | Enables all unit test execution |

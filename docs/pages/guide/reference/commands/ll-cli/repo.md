@@ -6,7 +6,7 @@ ll\-cli\-repo - 显示或修改当前使用的仓库信息
 
 ## SYNOPSIS
 
-**ll-cli repo** *subcommand* [*options*]
+**ll-cli repo** _subcommand_ [*options*]
 
 ## DESCRIPTION
 
@@ -22,9 +22,9 @@ ll\-cli\-repo - 显示或修改当前使用的仓库信息
 
 **参数**:
 
-- **NAME** *TEXT* *REQUIRED*: 指定仓库名称
-- **URL** *TEXT* *REQUIRED*: 仓库的URL地址
-- **--alias** *ALIAS*: 仓库名称的别名
+- **NAME** _TEXT_ _REQUIRED_: 指定仓库名称
+- **URL** _TEXT_ _REQUIRED_: 仓库的URL地址
+- **--alias** _ALIAS_: 仓库名称的别名
 
 **示例**:
 
@@ -40,7 +40,7 @@ ll-cli repo add myrepo https://repo.example.com
 
 **参数**:
 
-- **ALIAS** *TEXT* *REQUIRED*: 仓库名称的别名
+- **ALIAS** _TEXT_ _REQUIRED_: 仓库名称的别名
 
 **示例**:
 
@@ -56,8 +56,8 @@ ll-cli repo remove myrepo
 
 **参数**:
 
-- **ALIAS** *TEXT* *REQUIRED*: 仓库名称的别名
-- **URL** *TEXT* *REQUIRED*: 新的仓库URL地址
+- **ALIAS** _TEXT_ _REQUIRED_: 仓库名称的别名
+- **URL** _TEXT_ _REQUIRED_: 新的仓库URL地址
 
 **示例**:
 
@@ -73,7 +73,7 @@ ll-cli repo update myrepo https://updated-repo.example.com
 
 **参数**:
 
-- **Alias** *TEXT* *REQUIRED*: 仓库名称的别名
+- **Alias** _TEXT_ _REQUIRED_: 仓库名称的别名
 
 **示例**:
 
@@ -101,8 +101,8 @@ ll-cli repo show
 
 **参数**:
 
-- **ALIAS** *TEXT* *REQUIRED*: 仓库名称的别名
-- **PRIORITY** *TEXT* *REQUIRED*: 仓库的优先级
+- **ALIAS** _TEXT_ _REQUIRED_: 仓库名称的别名
+- **PRIORITY** _TEXT_ _REQUIRED_: 仓库的优先级
 
 **示例**:
 
@@ -118,7 +118,7 @@ ll-cli repo set-priority myrepo 100
 
 **参数**:
 
-- **ALIAS** *TEXT* *REQUIRED*: 仓库名称的别名
+- **ALIAS** _TEXT_ _REQUIRED_: 仓库名称的别名
 
 **示例**:
 
@@ -134,7 +134,7 @@ ll-cli repo enable-mirror myrepo
 
 **参数**:
 
-- **ALIAS** *TEXT* *REQUIRED*: 仓库名称的别名
+- **ALIAS** _TEXT_ _REQUIRED_: 仓库名称的别名
 
 **示例**:
 

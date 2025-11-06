@@ -6,7 +6,7 @@ ll\-cli\-run - Run applications
 
 ## SYNOPSIS
 
-**ll-cli run** [*options*] *app* [*command*...]
+**ll-cli run** [*options*] _app_ [*command*...]
 
 ## DESCRIPTION
 
@@ -20,30 +20,30 @@ The `ll-cli run` command can start a Linyaps application. This command supports 
 **--help-all**
 : Expand all help information
 
-**--file** *FILES:FILE*...
+**--file** _FILES:FILE_...
 : Pass files to the application running in the sandbox
 
-**--url** *URLS*...
+**--url** _URLS_...
 : Pass URLs to the application running in the sandbox
 
-**--env** *ENV*...
+**--env** _ENV_...
 : Set environment variables for the application (format: KEY=VALUE)
 
-**--base** *REF*
+**--base** _REF_
 : Specify the base environment used for application execution
 
-**--runtime** *REF*
+**--runtime** _REF_
 : Specify the runtime used for application execution
 
-**--extensions** *REF*...
+**--extensions** _REF_...
 : Specify extensions used for application execution (multiple extensions separated by commas)
 
 ## POSITIONAL ARGUMENTS
 
-**APP** *TEXT* *REQUIRED*
+**APP** _TEXT_ _REQUIRED_
 : Specify the application name
 
-**COMMAND** *TEXT*...
+**COMMAND** _TEXT_...
 : Run commands in the running sandbox
 
 ## EXAMPLES

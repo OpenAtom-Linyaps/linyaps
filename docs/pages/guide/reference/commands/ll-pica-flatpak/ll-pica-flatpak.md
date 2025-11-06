@@ -6,7 +6,7 @@ ll\-pica\-flatpak - 将 Flatpak 应用转换为玲珑应用
 
 ## SYNOPSIS
 
-**ll-pica-flatpak** *subcommand*
+**ll-pica-flatpak** _subcommand_
 
 ## DESCRIPTION
 
@@ -16,9 +16,9 @@ ll-pica-flatpak 命令用于将 Flatpak 应用转换为玲珑应用。该工具�
 
 ## COMMANDS
 
-| Command  | Man Page                                             | Description                                                                   |
-| -------  | ---------------------------------------------------- | ----------------------------------------------------------------------------- |
-| convert  | [ll-pica-flatpak-convert(1)](ll-pica-flatpak-convert.md) | 将 Flatpak 应用转换为玲珑应用                                         |
+| Command | Man Page                                                 | Description                   |
+| ------- | -------------------------------------------------------- | ----------------------------- |
+| convert | [ll-pica-flatpak-convert(1)](ll-pica-flatpak-convert.md) | 将 Flatpak 应用转换为玲珑应用 |
 
 ## SEE ALSO
 

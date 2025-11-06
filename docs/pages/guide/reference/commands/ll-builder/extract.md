@@ -6,7 +6,7 @@ ll-builder-extract - 将如意玲珑 layer 文件解压到目录
 
 ## SYNOPSIS
 
-**ll-builder extract** *file* *directory*
+**ll-builder extract** _file_ _directory_
 
 ## DESCRIPTION
 

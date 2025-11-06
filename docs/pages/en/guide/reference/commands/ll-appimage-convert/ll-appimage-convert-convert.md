@@ -25,28 +25,28 @@ You can use the `--output` option to generate Linyaps project configuration file
 **-b, --build**
 : Build Linyaps package
 
-**-d, --description** *string*
+**-d, --description** _string_
 : Detailed description of the package
 
-**-f, --file** *string*
+**-f, --file** _string_
 : App package file, this option is not required when --url option and --hash option are set
 
-**--hash** *string*
+**--hash** _string_
 : Package hash value, must be used together with --url option
 
-**-i, --id** *string*
+**-i, --id** _string_
 : Unique name of the package
 
 **-l, --layer**
 : Export layer file
 
-**-n, --name** *string*
+**-n, --name** _string_
 : Descriptive name of the package
 
-**-u, --url** *string*
+**-u, --url** _string_
 : Package URL, this option is not required when -f option is set
 
-**-v, --version** *string*
+**-v, --version** _string_
 : Version of the package
 
 **-V, --verbose**

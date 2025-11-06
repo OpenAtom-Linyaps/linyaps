@@ -6,7 +6,7 @@ ll\-cli\-exec - Execute commands in the currently running sandbox
 
 ## SYNOPSIS
 
-**ll-cli enter** [*options*] *instance* *command*...
+**ll-cli enter** [*options*] _instance_ _command_...
 
 ## DESCRIPTION
 
@@ -20,15 +20,15 @@ The `ll-cli enter` command can enter the interior of a running container. This c
 **--help-all**
 : Expand all help information
 
-**--working-directory** *PATH:DIR*
+**--working-directory** _PATH:DIR_
 : Specify the working directory
 
 ## POSITIONAL ARGUMENTS
 
-**INSTANCE** *TEXT* *REQUIRED*
+**INSTANCE** _TEXT_ _REQUIRED_
 : Specify the running application instance (can be obtained through the ps command)
 
-**COMMAND** *TEXT*...
+**COMMAND** _TEXT_...
 : Run commands in the running sandbox
 
 ## EXAMPLES

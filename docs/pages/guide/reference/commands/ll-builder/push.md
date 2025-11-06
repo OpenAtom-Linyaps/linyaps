@@ -20,16 +20,16 @@ ll-builder-push - 推送如意玲珑应用到远程仓库
 **--help-all**
 : 展开所有帮助
 
-**-f, --file** *file* [./linglong.yaml]
+**-f, --file** _file_ [./linglong.yaml]
 : linglong.yaml 的文件路径
 
-**--repo-url** *url*
+**--repo-url** _url_
 : 远程仓库 URL
 
-**--repo-name** *name*
+**--repo-name** _name_
 : 远程仓库名
 
-**--module** *module*
+**--module** _module_
 : 推送单个模块
 
 ## 推送模块说明

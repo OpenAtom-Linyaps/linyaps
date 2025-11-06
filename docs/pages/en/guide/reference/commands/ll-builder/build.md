@@ -20,7 +20,7 @@ The `ll-builder build` command is used to build Linyaps applications. After the 
 **--help-all**
 : Expand all help
 
-**-f, --file** *file* [./linglong.yaml]
+**-f, --file** _file_ [./linglong.yaml]
 : Path to the linglong.yaml file
 
 **--offline**
@@ -47,7 +47,7 @@ The `ll-builder build` command is used to build Linyaps applications. After the 
 **--isolate-network**
 : Build in isolated network environment
 
-**command** -- *COMMAND* ...
+**command** -- _COMMAND_ ...
 : Enter container to execute commands instead of building application
 
 ## EXAMPLES

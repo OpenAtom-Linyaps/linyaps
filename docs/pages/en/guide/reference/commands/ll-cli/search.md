@@ -6,7 +6,7 @@ ll\-cli\-search - Search for applications/runtimes containing specified keywords
 
 ## SYNOPSIS
 
-**ll-cli search** [*options*] *keywords*
+**ll-cli search** [*options*] _keywords_
 
 ## DESCRIPTION
 
@@ -20,10 +20,10 @@ The `ll-cli search` command can query application information from Linyaps remot
 **--help-all**
 : Expand all help
 
-**--type** *TYPE* [*all*]
+**--type** _TYPE_ [*all*]
 : Filter results by specified type. Available types: "runtime", "base", "app", or "all".
 
-**--repo** *REPO*
+**--repo** _REPO_
 : Specify repository
 
 **--dev**
@@ -34,7 +34,7 @@ The `ll-cli search` command can query application information from Linyaps remot
 
 ## POSITIONAL ARGUMENTS
 
-**KEYWORDS** *TEXT* *REQUIRED*
+**KEYWORDS** _TEXT_ _REQUIRED_
 : Specify search keywords
 
 ## EXAMPLES

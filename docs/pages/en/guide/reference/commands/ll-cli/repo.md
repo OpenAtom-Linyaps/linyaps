@@ -6,7 +6,7 @@ ll\-cli\-repo - Display or modify current repository information
 
 ## SYNOPSIS
 
-**ll-cli repo** *subcommand* [*options*]
+**ll-cli repo** _subcommand_ [*options*]
 
 ## DESCRIPTION
 
@@ -22,9 +22,9 @@ Add a new repository.
 
 **Parameters**:
 
-- **NAME** *TEXT* *REQUIRED*: Specify repository name
-- **URL** *TEXT* *REQUIRED*: Repository URL address
-- **--alias** *ALIAS*: Repository name alias
+- **NAME** _TEXT_ _REQUIRED_: Specify repository name
+- **URL** _TEXT_ _REQUIRED_: Repository URL address
+- **--alias** _ALIAS_: Repository name alias
 
 **Examples**:
 
@@ -40,7 +40,7 @@ Remove a repository.
 
 **Parameters**:
 
-- **ALIAS** *TEXT* *REQUIRED*: Repository name alias
+- **ALIAS** _TEXT_ _REQUIRED_: Repository name alias
 
 **Examples**:
 
@@ -56,8 +56,8 @@ Update repository URL.
 
 **Parameters**:
 
-- **ALIAS** *TEXT* *REQUIRED*: Repository name alias
-- **URL** *TEXT* *REQUIRED*: New repository URL address
+- **ALIAS** _TEXT_ _REQUIRED_: Repository name alias
+- **URL** _TEXT_ _REQUIRED_: New repository URL address
 
 **Examples**:
 
@@ -73,7 +73,7 @@ Set default repository name.
 
 **Parameters**:
 
-- **Alias** *TEXT* *REQUIRED*: Repository name alias
+- **Alias** _TEXT_ _REQUIRED_: Repository name alias
 
 **Examples**:
 
@@ -101,8 +101,8 @@ Set repository priority.
 
 **Parameters**:
 
-- **ALIAS** *TEXT* *REQUIRED*: Repository name alias
-- **PRIORITY** *TEXT* *REQUIRED*: Repository priority
+- **ALIAS** _TEXT_ _REQUIRED_: Repository name alias
+- **PRIORITY** _TEXT_ _REQUIRED_: Repository priority
 
 **Examples**:
 
@@ -118,7 +118,7 @@ Enable mirror for repository.
 
 **Parameters**:
 
-- **ALIAS** *TEXT* *REQUIRED*: Repository name alias
+- **ALIAS** _TEXT_ _REQUIRED_: Repository name alias
 
 **Examples**:
 
@@ -134,7 +134,7 @@ Disable mirror for repository.
 
 **Parameters**:
 
-- **ALIAS** *TEXT* *REQUIRED*: Repository name alias
+- **ALIAS** _TEXT_ _REQUIRED_: Repository name alias
 
 **Examples**:
 

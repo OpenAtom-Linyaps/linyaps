@@ -14,31 +14,31 @@ ll-pica init 命令用来初始化转换包的配置信息。该命令会读取 
 
 ## OPTIONS
 
-**-a, --arch** *string*
+**-a, --arch** _string_
 : 运行时架构
 
-**-c, --config** *string*
+**-c, --config** _string_
 : 配置文件
 
-**--dv** *string*
+**--dv** _string_
 : 发行版版本
 
-**--pi** *string*
+**--pi** _string_
 : 包 ID
 
-**--pn** *string*
+**--pn** _string_
 : 包名称
 
-**-s, --source** *string*
+**-s, --source** _string_
 : 运行时源
 
-**-t, --type** *string*
+**-t, --type** _string_
 : 获取类型
 
-**-v, --version** *string*
+**-v, --version** _string_
 : 运行时版本
 
-**-w, --workdir** *string*
+**-w, --workdir** _string_
 : 工作目录
 
 **-V, --verbose**

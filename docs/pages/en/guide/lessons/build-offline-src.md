@@ -142,7 +142,7 @@ build: |
   cp -rf /project/template_app/* ${PREFIX}/share/
 ```
 
-After completing this build rule block, we can start trying to compile local source code into binary programs through automated building and export Linyaps application installation package `binary.layer`. * Since this version of configuration file doesn't provide extract and delete functions, these directories need to be cleared and re-extracted before each rebuild
+After completing this build rule block, we can start trying to compile local source code into binary programs through automated building and export Linyaps application installation package `binary.layer`. \* Since this version of configuration file doesn't provide extract and delete functions, these directories need to be cleared and re-extracted before each rebuild
 
 ### Local One-Stop Build Test
 

@@ -6,7 +6,7 @@ ll\-appimage\-convert - 将 AppImage 包转换为如意玲珑包格式
 
 ## SYNOPSIS
 
-**ll-appimage-convert** *subcommand*
+**ll-appimage-convert** _subcommand_
 
 ## DESCRIPTION
 
@@ -16,9 +16,9 @@ ll-appimage-convert 命令用于将 AppImage 包格式（.appimage 或 .AppImage
 
 ## COMMANDS
 
-| Command  | Man Page                                             | Description                                                                   |
-| -------  | ---------------------------------------------------- | ----------------------------------------------------------------------------- |
-| convert  | [ll-appimage-convert-convert(1)](ll-appimage-convert-convert.md) | 将 AppImage 包转换为如意玲珑包格式                                     |
+| Command | Man Page                                                         | Description                        |
+| ------- | ---------------------------------------------------------------- | ---------------------------------- |
+| convert | [ll-appimage-convert-convert(1)](ll-appimage-convert-convert.md) | 将 AppImage 包转换为如意玲珑包格式 |
 
 ## SEE ALSO
 

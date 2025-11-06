@@ -6,7 +6,7 @@ ll-builder-remove - Remove built applications
 
 ## SYNOPSIS
 
-**ll-builder remove** [*options*] *package*
+**ll-builder remove** [*options*] _package_
 
 ## DESCRIPTION
 

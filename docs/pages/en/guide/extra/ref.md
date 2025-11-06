@@ -23,6 +23,7 @@ deepin/project1:org.deepin.calculator/1.2.2/x86_64
 ```
 
 Where:
+
 - `deepin` is the name of the remote repository to which the software package belongs
 - `main` and `project1` are distribution channels, which can be empty by default
 - `org.deepin.calculator` is the ID
@@ -31,13 +32,13 @@ Where:
 
 ### Value Range
 
-| Field   | Allowed Values                                                                                                    |
-|---------|-------------------------------------------------------------------------------------------------------------------|
-| repo    | Lowercase letters + underscore                                                                                    |
-| channel | Lowercase letters + underscore                                                                                    |
-| id      | Reverse domain name                                                                                               |
+| Field   | Allowed Values                                                                                                  |
+| ------- | --------------------------------------------------------------------------------------------------------------- |
+| repo    | Lowercase letters + underscore                                                                                  |
+| channel | Lowercase letters + underscore                                                                                  |
+| id      | Reverse domain name                                                                                             |
 | version | 4 digits separated by `.`. Pad with 0 if less than 4 digits, append subsequent numeric strings to the 4th digit |
-| arch    | Architecture description string, currently supports x86_64/arm/loongarch                                         |
+| arch    | Architecture description string, currently supports x86_64/arm/loongarch                                        |
 
 ## Usage
 

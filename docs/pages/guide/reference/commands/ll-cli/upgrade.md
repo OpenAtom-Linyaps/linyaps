@@ -22,7 +22,7 @@ ll\-cli\-upgrade - 升级应用程序或运行时
 
 ## POSITIONAL ARGUMENTS
 
-**APP** *TEXT*
+**APP** _TEXT_
 : 指定应用程序名。如果未指定，将升级所有可升级的应用程序
 
 ## EXAMPLES

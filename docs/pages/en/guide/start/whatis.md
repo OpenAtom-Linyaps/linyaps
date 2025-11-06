@@ -25,30 +25,30 @@ linyaps, an open source package format developed by UnionTech Software, is desig
 
 ## Comparison
 
-| Feature                      | Linyaps                        | Flatpak       | Snap             | AppImage                               |
-| ------------------------- | ------------------------------- | ------------- | ---------------- | -------------------------------------- |
-| Desktop Application Packaging | ✔                              | ✔            | ✔               | ✔                                     |
-| Terminal Application Packaging | ✔                              | ✔            | ✔               | ✔                                     |
-| Server Application Handling | ✔                              | ✘             | ✔               | ✘                                      |
-| System Service Packaging (root privileges) | ✘                               | ✘             | ✔               | ✘                                      |
-| Theme Functionality Normal | ✔                              | ✔            | ✔               | ✔                                     |
-| Library Hosting Service Provided | ✔                              | ✘             | ✘                | ✘                                      |
-| Library/Dependency Source | Package carries its own        |               |                  |                                        |
-| Host System                  | Package carries its own        |               |                  |                                        |
-| SDK                       | Package carries its own        |               |                  |                                        |
-| Snap Base                 |                                 |               |                  |                                        |
-| Commercial Support                  | ✔                              | ✘             | ✔               | ✘                                      |
-| Number of App Stores              | Estimated 4700+                      | 1400+         | 6600+            | 1300+                                  |
-| Development Tool Support              | linglong-builder                | GNOME Builder | electron-builder |                                        |
-| Container Support                  | ✔                              | ✔            | ✔               | ◐ (Not officially provided, technically feasible)           |
-| Rootless Container             | ✔                              | ✘             | ✘                | ✘                                      |
-| Run Without Installation                | ✔ (Provides Bundle Mode)         | ✘             | ✘                | ✔                                     |
-| Run Without Extraction                | ✔ (Provides Bundle Mode)         | ✘             | ✔               | ✔                                     |
-| Self-distribution/Green Format Distribution       | ✔                              | ✘             | ✘                | ✔                                     |
-| Wine Application Support        | ✔                              | ◐ (Theoretically feasible  | ◐ (Theoretically feasible)   | ◐ (Uses LD to modify open calls, poor compatibility) |
-| Offline Environment Support              | ✔                              | ✔            | ✔               | ✔                                     |
-| Permission Management                  | ✔                              | ✔            | ✔               | ✘                                      |
-| Central Repository                  | mirror-repo-linglong.deepin.com | FlatHub       | Snap Store       | AppImageHub                            |
-| Multi-version Coexistence                | ✔                              | ✔            | ✔               | ✔                                     |
-| Peer-to-peer Distribution                | ✔                              | ✔            | ✔               | ✔                                     |
-| Application Upgrade                  | Repository upgrade                        | Repository upgrade      | Repository upgrade         | Official tool upgrade                           |
+| Feature                                     | Linyaps                         | Flatpak                   | Snap                       | AppImage                                             |
+| ------------------------------------------- | ------------------------------- | ------------------------- | -------------------------- | ---------------------------------------------------- |
+| Desktop Application Packaging               | ✔                              | ✔                        | ✔                         | ✔                                                   |
+| Terminal Application Packaging              | ✔                              | ✔                        | ✔                         | ✔                                                   |
+| Server Application Handling                 | ✔                              | ✘                         | ✔                         | ✘                                                    |
+| System Service Packaging (root privileges)  | ✘                               | ✘                         | ✔                         | ✘                                                    |
+| Theme Functionality Normal                  | ✔                              | ✔                        | ✔                         | ✔                                                   |
+| Library Hosting Service Provided            | ✔                              | ✘                         | ✘                          | ✘                                                    |
+| Library/Dependency Source                   | Package carries its own         |                           |                            |                                                      |
+| Host System                                 | Package carries its own         |                           |                            |                                                      |
+| SDK                                         | Package carries its own         |                           |                            |                                                      |
+| Snap Base                                   |                                 |                           |                            |                                                      |
+| Commercial Support                          | ✔                              | ✘                         | ✔                         | ✘                                                    |
+| Number of App Stores                        | Estimated 4700+                 | 1400+                     | 6600+                      | 1300+                                                |
+| Development Tool Support                    | linglong-builder                | GNOME Builder             | electron-builder           |                                                      |
+| Container Support                           | ✔                              | ✔                        | ✔                         | ◐ (Not officially provided, technically feasible)    |
+| Rootless Container                          | ✔                              | ✘                         | ✘                          | ✘                                                    |
+| Run Without Installation                    | ✔ (Provides Bundle Mode)       | ✘                         | ✘                          | ✔                                                   |
+| Run Without Extraction                      | ✔ (Provides Bundle Mode)       | ✘                         | ✔                         | ✔                                                   |
+| Self-distribution/Green Format Distribution | ✔                              | ✘                         | ✘                          | ✔                                                   |
+| Wine Application Support                    | ✔                              | ◐ (Theoretically feasible | ◐ (Theoretically feasible) | ◐ (Uses LD to modify open calls, poor compatibility) |
+| Offline Environment Support                 | ✔                              | ✔                        | ✔                         | ✔                                                   |
+| Permission Management                       | ✔                              | ✔                        | ✔                         | ✘                                                    |
+| Central Repository                          | mirror-repo-linglong.deepin.com | FlatHub                   | Snap Store                 | AppImageHub                                          |
+| Multi-version Coexistence                   | ✔                              | ✔                        | ✔                         | ✔                                                   |
+| Peer-to-peer Distribution                   | ✔                              | ✔                        | ✔                         | ✔                                                   |
+| Application Upgrade                         | Repository upgrade              | Repository upgrade        | Repository upgrade         | Official tool upgrade                                |

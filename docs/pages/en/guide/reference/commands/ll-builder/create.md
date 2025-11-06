@@ -6,7 +6,7 @@ ll-builder-create - Create Linyaps build template
 
 ## SYNOPSIS
 
-**ll-builder create** [*options*] *name*
+**ll-builder create** [*options*] _name_
 
 ## DESCRIPTION
 

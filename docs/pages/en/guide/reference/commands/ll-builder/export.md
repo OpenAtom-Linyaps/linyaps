@@ -20,19 +20,19 @@ The `ll-builder export` command is used to export applications from the local bu
 **--help-all**
 : Expand all help
 
-**-f, --file** *file* [./linglong.yaml]
+**-f, --file** _file_ [./linglong.yaml]
 : Specify the path to the `linglong.yaml` configuration file. The directory where the `linglong.yaml` file is located is the project's working directory
 
-**-o, --output** *file*
+**-o, --output** _file_
 : Specify the path for the output file. For UAB, this is usually the full path or filename of the `.uab` file. For layer, this is the prefix for the output filename
 
-**-z, --compressor** *x*
+**-z, --compressor** _x_
 : Specify the compression algorithm. Supports `lz4` (UAB default), `lzma` (layer default), `zstd`
 
-**--icon** *file*
+**--icon** _file_
 : Specify an icon for the exported UAB file (UAB mode only, mutually exclusive with `--layer`)
 
-**--loader** *file*
+**--loader** _file_
 : Specify a custom loader for the exported UAB file (UAB mode only, mutually exclusive with `--layer`)
 
 **--layer**
@@ -41,10 +41,10 @@ The `ll-builder export` command is used to export applications from the local bu
 **--no-develop**
 : Do not export the `develop` module when exporting layer files
 
-**--ref** *ref*
+**--ref** _ref_
 : Specify package reference
 
-**--modules** *modules*
+**--modules** _modules_
 : Specify modules to export
 
 ## EXAMPLES

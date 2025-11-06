@@ -6,7 +6,7 @@ ll\-cli\-uninstall - 卸载应用程序或运行时
 
 ## SYNOPSIS
 
-**ll-cli uninstall** [*options*] *app*
+**ll-cli uninstall** [*options*] _app_
 
 ## DESCRIPTION
 
@@ -20,12 +20,12 @@ ll\-cli\-uninstall - 卸载应用程序或运行时
 **--help-all**
 : 展开所有帮助
 
-**--module** *MODULE*
+**--module** _MODULE_
 : 卸载指定模块
 
 ## POSITIONAL ARGUMENTS
 
-**APP** *TEXT* *REQUIRED*
+**APP** _TEXT_ _REQUIRED_
 : 指定应用程序名
 
 ## EXAMPLES

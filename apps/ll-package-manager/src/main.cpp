@@ -151,7 +151,7 @@ auto main(int argc, char *argv[]) -> int
     QCoreApplication app(argc, argv);
 
     applicationInitialize();
-    initLinyapsLogSystem(argv[0]);
+    initLinyapsLogSystem(linglong::utils::log::LogBackend::Journal);
 
     auto ociRuntimeCLI = qgetenv("LINGLONG_OCI_RUNTIME");
     if (ociRuntimeCLI.isEmpty()) {

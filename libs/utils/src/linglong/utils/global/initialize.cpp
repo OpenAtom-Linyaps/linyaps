@@ -8,7 +8,6 @@
 
 #include "configure.h"
 #include "linglong/common/strings.h"
-#include "linglong/utils/log/log.h"
 
 #include <qcoreapplication.h>
 #include <qloggingcategory.h>
@@ -158,7 +157,7 @@ LogBackend parseLogBackend(const char *backends)
 
 } // namespace
 
-void initLinyapsLogSystem(const char *command)
+void initLinyapsLogSystem(linglong::utils::log::LogBackend backend)
 {
     LogLevel logLevel = LogLevel::Info;
     LogBackend logBackend = LogBackend::None;
@@ -172,13 +171,7 @@ void initLinyapsLogSystem(const char *command)
     if (logBackendEnv) {
         logBackend = parseLogBackend(logBackendEnv);
     } else {
-        if (command == std::string("ll-builder")) {
-            logBackend = LogBackend::Console;
-        } else if (command == std::string("ll-cli")) {
-            logBackend = LogBackend::Journal;
-        } else if (command == std::string("ll-package-manager")) {
-            logBackend = LogBackend::Journal;
-        }
+        logBackend = backend;
 
         if (isatty(STDERR_FILENO)) {
             logBackend = logBackend | LogBackend::Console;

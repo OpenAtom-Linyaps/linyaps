@@ -280,14 +280,8 @@ utils::error::Result<void> UABPackager::packIcon() noexcept
 {
     LINGLONG_TRACE("add icon to uab")
 
-    auto iconAchieve = this->uab.parentDir().absoluteFilePath("icon.a");
-    if (auto ret = utils::command::Cmd("ar").exec({ "q", iconAchieve, icon->absoluteFilePath() });
-        !ret) {
-        return LINGLONG_ERR(ret);
-    }
-
     QByteArray iconSection{ "linglong.icon" };
-    if (auto ret = this->uab.addNewSection(iconSection, QFileInfo{ iconAchieve }); !ret) {
+    if (auto ret = this->uab.addNewSection(iconSection, icon.value()); !ret) {
         return LINGLONG_ERR(ret);
     }
 

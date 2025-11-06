@@ -6,6 +6,8 @@
 
 #pragma once
 
+#include "linglong/utils/log/log.h"
+
 #include <QObject>
 
 #include <atomic>
@@ -16,7 +18,7 @@ void applicationInitialize(bool appForceStderrLogging = false);
 void installMessageHandler();
 bool linglongInstalled();
 void cancelAllTask() noexcept;
-void initLinyapsLogSystem(const char *command);
+void initLinyapsLogSystem(linglong::utils::log::LogBackend backend);
 
 class GlobalTaskControl : public QObject
 {

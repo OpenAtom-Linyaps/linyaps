@@ -930,7 +930,7 @@ int main(int argc, char **argv)
     QCoreApplication app(argc, argv);
     // application initialize
     applicationInitialize();
-    initLinyapsLogSystem(argv[0]);
+    initLinyapsLogSystem(linglong::utils::log::LogBackend::Journal);
 
     // invoke method
     auto ret = QMetaObject::invokeMethod(

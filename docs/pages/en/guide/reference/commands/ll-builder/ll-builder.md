@@ -6,7 +6,7 @@ ll-builder - Linyaps application build tool
 
 ## SYNOPSIS
 
-**ll-builder** *subcommand*
+**ll-builder** _subcommand_
 
 ## DESCRIPTION
 
@@ -19,18 +19,18 @@ Main features include:
 
 ## COMMANDS
 
-| Command  | Man Page                                             | Description                                                                   |
-| -------  | ---------------------------------------------------- | ----------------------------------------------------------------------------- |
-| create   | [ll-builder-create(1)](./create.md)         | Create Linyaps build template                                                 |
-| build    | [ll-builder-build(1)](./build.md)           | Build Linyaps project                                                         |
-| run      | [ll-builder-run(1)](./run.md)               | Run the built application                                                     |
-| list     | [ll-builder-list(1)](./list.md)             | List built applications                                                       |
-| remove   | [ll-builder-remove(1)](./remove.md)         | Remove built applications                                                     |
-| export   | [ll-builder-export(1)](./export.md)          | Export Linyaps layer or UAB file                                              |
-| push     | [ll-builder-push(1)](./push.md)             | Push Linyaps application to remote repository                                 |
-| import   | [ll-builder-import(1)](./import.md)         | Import Linyaps layer file to build repository                                 |
-| extract  | [ll-builder-extract(1)](./extract.md)       | Extract Linyaps layer file to directory                                       |
-| repo     | [ll-builder-repo(1)](./repo.md)             | Display and manage repository                                                 |
+| Command | Man Page                              | Description                                   |
+| ------- | ------------------------------------- | --------------------------------------------- |
+| create  | [ll-builder-create(1)](./create.md)   | Create Linyaps build template                 |
+| build   | [ll-builder-build(1)](./build.md)     | Build Linyaps project                         |
+| run     | [ll-builder-run(1)](./run.md)         | Run the built application                     |
+| list    | [ll-builder-list(1)](./list.md)       | List built applications                       |
+| remove  | [ll-builder-remove(1)](./remove.md)   | Remove built applications                     |
+| export  | [ll-builder-export(1)](./export.md)   | Export Linyaps layer or UAB file              |
+| push    | [ll-builder-push(1)](./push.md)       | Push Linyaps application to remote repository |
+| import  | [ll-builder-import(1)](./import.md)   | Import Linyaps layer file to build repository |
+| extract | [ll-builder-extract(1)](./extract.md) | Extract Linyaps layer file to directory       |
+| repo    | [ll-builder-repo(1)](./repo.md)       | Display and manage repository                 |
 
 ## SEE ALSO
 

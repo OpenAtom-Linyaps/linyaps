@@ -20,19 +20,19 @@ ll-builder-export - 导出如意玲珑 layer 或 UAB 文件
 **--help-all**
 : 展开所有帮助
 
-**-f, --file** *file* [./linglong.yaml]
+**-f, --file** _file_ [./linglong.yaml]
 : 指定 `linglong.yaml` 配置文件的路径，`linglong.yaml` 文件所在的目录为项目的工作目录
 
-**-o, --output** *file*
+**-o, --output** _file_
 : 指定输出文件的路径。对于 UAB，这通常是 `.uab` 文件的完整路径或文件名。对于 layer 这是输出文件名的前缀
 
-**-z, --compressor** *x*
+**-z, --compressor** _x_
 : 指定压缩算法。支持 `lz4` (UAB 默认), `lzma` (layer 默认), `zstd`
 
-**--icon** *file*
+**--icon** _file_
 : 为导出的 UAB 文件指定图标 (仅 UAB 模式，与 `--layer` 互斥)
 
-**--loader** *file*
+**--loader** _file_
 : 为导出的 UAB 文件指定自定义加载器 (仅 UAB 模式，与 `--layer` 互斥)
 
 **--layer**
@@ -41,10 +41,10 @@ ll-builder-export - 导出如意玲珑 layer 或 UAB 文件
 **--no-develop**
 : 在导出 layer 文件时，不导出 `develop` 模块
 
-**--ref** *ref*
+**--ref** _ref_
 : 指定包的引用
 
-**--modules** *modules*
+**--modules** _modules_
 : 指定要导出的模块
 
 ## EXAMPLES

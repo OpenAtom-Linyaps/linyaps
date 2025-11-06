@@ -6,7 +6,7 @@ ll\-cli\-install - Install applications or runtimes
 
 ## SYNOPSIS
 
-**ll-cli install** [*options*] *app*
+**ll-cli install** [*options*] _app_
 
 ## DESCRIPTION
 
@@ -20,10 +20,10 @@ The `ll-cli install` command is used to install Linyaps applications. This comma
 **--help-all**
 : Expand all help
 
-**--module** *MODULE*
+**--module** _MODULE_
 : Install specified module
 
-**--repo** *REPO*
+**--repo** _REPO_
 : Install from specified repository
 
 **--force**
@@ -34,7 +34,7 @@ The `ll-cli install` command is used to install Linyaps applications. This comma
 
 ## POSITIONAL ARGUMENTS
 
-**APP** *TEXT* *REQUIRED*
+**APP** _TEXT_ _REQUIRED_
 : Specify application name, can also be .uab or .layer file
 
 ## EXAMPLES

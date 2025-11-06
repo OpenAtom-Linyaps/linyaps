@@ -142,7 +142,6 @@ For assistance, use the following channels:
 - [Forum](https://bbs.deepin.org/module/detail/230)
 - [Contact Us](https://linyaps.org.cn/contactus)
 
-
 ## :memo: Documentation
 
 ### Command-line Tools
@@ -205,7 +204,6 @@ For assistance, use the following channels:
 - [Runtime FAQs](./docs/pages/en/guide/tips-and-faq/faq.md)
 - [Linyaps Builder FAQs](./docs/pages/en/guide/tips-and-faq/ll-builder-faq.md)
 - [Linyaps Conversion Tool FAQs](./docs/pages/en/guide/tips-and-faq/ll-pica-faq.md)
-
 
 ## :book: Learning Resources
 

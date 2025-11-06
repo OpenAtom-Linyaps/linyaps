@@ -14,31 +14,31 @@ The ll-pica init command is used to initialize conversion package configuration 
 
 ## OPTIONS
 
-**-a, --arch** *string*
+**-a, --arch** _string_
 : Runtime architecture
 
-**-c, --config** *string*
+**-c, --config** _string_
 : Configuration file
 
-**--dv** *string*
+**--dv** _string_
 : Distribution version
 
-**--pi** *string*
+**--pi** _string_
 : Package ID
 
-**--pn** *string*
+**--pn** _string_
 : Package name
 
-**-s, --source** *string*
+**-s, --source** _string_
 : Runtime source
 
-**-t, --type** *string*
+**-t, --type** _string_
 : Acquisition type
 
-**-v, --version** *string*
+**-v, --version** _string_
 : Runtime version
 
-**-w, --workdir** *string*
+**-w, --workdir** _string_
 : Working directory
 
 **-V, --verbose**

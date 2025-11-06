@@ -6,7 +6,7 @@ ll\-cli\-search - 从远程仓库中搜索包含指定关键词的应用程序/�
 
 ## SYNOPSIS
 
-**ll-cli search** [*options*] *keywords*
+**ll-cli search** [*options*] _keywords_
 
 ## DESCRIPTION
 
@@ -20,10 +20,10 @@ ll\-cli\-search - 从远程仓库中搜索包含指定关键词的应用程序/�
 **--help-all**
 : 展开所有帮助
 
-**--type** *TYPE* [*all*]
+**--type** _TYPE_ [*all*]
 : 按指定类型过滤结果。可选类型："runtime"、"base"、"app"或 "all"。
 
-**--repo** *REPO*
+**--repo** _REPO_
 : 指定仓库
 
 **--dev**
@@ -34,7 +34,7 @@ ll\-cli\-search - 从远程仓库中搜索包含指定关键词的应用程序/�
 
 ## POSITIONAL ARGUMENTS
 
-**KEYWORDS** *TEXT* *REQUIRED*
+**KEYWORDS** _TEXT_ _REQUIRED_
 : 指定搜索关键词
 
 ## EXAMPLES

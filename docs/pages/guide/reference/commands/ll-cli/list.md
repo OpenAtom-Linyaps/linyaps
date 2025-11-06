@@ -20,7 +20,7 @@ ll\-cli\-list - 列出已安装的应用程序或运行时
 **--help-all**
 : 展开所有帮助
 
-**--type** *TYPE* [*all*]
+**--type** _TYPE_ [*all*]
 : 使用指定类型过滤结果。"runtime"、"base"、"app"或 "all"之一
 
 **--upgradable**

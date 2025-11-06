@@ -22,7 +22,7 @@ The `ll-cli upgrade` command can update Linyaps applications. This command is us
 
 ## POSITIONAL ARGUMENTS
 
-**APP** *TEXT*
+**APP** _TEXT_
 : Specify application name. If not specified, all upgradeable applications will be upgraded
 
 ## EXAMPLES

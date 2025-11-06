@@ -20,7 +20,7 @@ The `ll-cli list` command can view installed Linyaps applications. This command 
 **--help-all**
 : Expand all help
 
-**--type** *TYPE* [*all*]
+**--type** _TYPE_ [*all*]
 : Filter results using specified type. One of "runtime", "base", "app", or "all"
 
 **--upgradable**

@@ -14,10 +14,10 @@ ll-pica adep 命令用于给 linglong.yaml 文件添加包依赖。玲珑应用�
 
 ## OPTIONS
 
-**-d, --deps** *string*
+**-d, --deps** _string_
 : 要添加的依赖项，分隔符为 ','
 
-**-p, --path** *string*
+**-p, --path** _string_
 : linglong.yaml 的路径（默认为 "linglong.yaml"）
 
 **-V, --verbose**

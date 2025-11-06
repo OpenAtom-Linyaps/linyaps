@@ -6,7 +6,7 @@ ll\-pica\-flatpak - Convert Flatpak applications to Linyaps applications
 
 ## SYNOPSIS
 
-**ll-pica-flatpak** *subcommand*
+**ll-pica-flatpak** _subcommand_
 
 ## DESCRIPTION
 
@@ -16,9 +16,9 @@ Note: The conversion tool is only an auxiliary tool and cannot guarantee that th
 
 ## COMMANDS
 
-| Command  | Man Page                                             | Description                                                                   |
-| -------  | ---------------------------------------------------- | ----------------------------------------------------------------------------- |
-| convert  | [ll-pica-flatpak-convert(1)](ll-pica-flatpak-convert.md) | Convert Flatpak applications to Linyaps applications                 |
+| Command | Man Page                                                 | Description                                          |
+| ------- | -------------------------------------------------------- | ---------------------------------------------------- |
+| convert | [ll-pica-flatpak-convert(1)](ll-pica-flatpak-convert.md) | Convert Flatpak applications to Linyaps applications |
 
 ## SEE ALSO
 

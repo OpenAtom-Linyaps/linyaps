@@ -1,2 +1,1 @@
-This directory contains documentation related to how Linyaps integrates with the desktop environment. (To be supplemented)
-    - portals: Introduces how to create desktop portals for Linyaps to achieve seamless integration with the desktop environment.
+This directory contains documentation related to how Linyaps integrates with the desktop environment. (To be supplemented) - portals: Introduces how to create desktop portals for Linyaps to achieve seamless integration with the desktop environment.

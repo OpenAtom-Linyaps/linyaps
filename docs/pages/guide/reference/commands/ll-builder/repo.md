@@ -6,7 +6,7 @@ ll-builder-repo - 显示和管理仓库
 
 ## SYNOPSIS
 
-**ll-builder repo** [*options*] *subcommand*
+**ll-builder repo** [*options*] _subcommand_
 
 ## DESCRIPTION
 
@@ -25,22 +25,22 @@ ll-builder-repo - 显示和管理仓库
 **show**
 : 显示仓库信息
 
-**add** *name* *url* [*options*]
+**add** _name_ _url_ [*options*]
 : 添加新的仓库配置
 
-**remove** *alias*
+**remove** _alias_
 : 移除仓库配置
 
-**update** *alias* *url*
+**update** _alias_ _url_
 : 更新仓库 URL
 
-**set-default** *alias*
+**set-default** _alias_
 : 设置默认仓库名称
 
-**enable-mirror** *alias*
+**enable-mirror** _alias_
 : 启用仓库镜像
 
-**disable-mirror** *alias*
+**disable-mirror** _alias_
 : 禁用仓库镜像
 
 ## EXAMPLES

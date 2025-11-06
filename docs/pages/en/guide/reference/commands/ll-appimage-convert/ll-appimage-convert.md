@@ -6,7 +6,7 @@ ll\-appimage\-convert - Convert AppImage packages to Linyaps package format
 
 ## SYNOPSIS
 
-**ll-appimage-convert** *subcommand*
+**ll-appimage-convert** _subcommand_
 
 ## DESCRIPTION
 
@@ -16,9 +16,9 @@ Note: The conversion tool is only an auxiliary tool and cannot guarantee that th
 
 ## COMMANDS
 
-| Command  | Man Page                                             | Description                                                                   |
-| -------  | ---------------------------------------------------- | ----------------------------------------------------------------------------- |
-| convert  | [ll-appimage-convert-convert(1)](ll-appimage-convert-convert.md) | Convert AppImage packages to Linyaps package format                                     |
+| Command | Man Page                                                         | Description                                         |
+| ------- | ---------------------------------------------------------------- | --------------------------------------------------- |
+| convert | [ll-appimage-convert-convert(1)](ll-appimage-convert-convert.md) | Convert AppImage packages to Linyaps package format |
 
 ## SEE ALSO
 

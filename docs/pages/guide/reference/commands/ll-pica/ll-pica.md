@@ -6,7 +6,7 @@ ll\-pica - 将 deb 包转换为玲珑包的工具
 
 ## SYNOPSIS
 
-**ll-pica** *subcommand*
+**ll-pica** _subcommand_
 
 ## DESCRIPTION
 
@@ -23,11 +23,11 @@ ll-pica 命令提供将 deb 包转换为玲珑包的能力，生成构建玲珑�
 
 ## COMMANDS
 
-| Command  | Man Page                                             | Description                                                                   |
-| -------  | ---------------------------------------------------- | ----------------------------------------------------------------------------- |
-| adep     | [ll-pica-adep(1)](ll-pica-adep.md)                 | 给 linglong.yaml 文件添加包依赖                                       |
-| convert  | [ll-pica-convert(1)](ll-pica-convert.md)           | 将 deb 包转换为玲珑包                                                 |
-| init     | [ll-pica-init(1)](ll-pica-init.md)                 | 初始化转换包的配置信息                                                 |
+| Command | Man Page                                 | Description                     |
+| ------- | ---------------------------------------- | ------------------------------- |
+| adep    | [ll-pica-adep(1)](ll-pica-adep.md)       | 给 linglong.yaml 文件添加包依赖 |
+| convert | [ll-pica-convert(1)](ll-pica-convert.md) | 将 deb 包转换为玲珑包           |
+| init    | [ll-pica-init(1)](ll-pica-init.md)       | 初始化转换包的配置信息          |
 
 ## SEE ALSO
 

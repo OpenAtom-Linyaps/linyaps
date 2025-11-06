@@ -6,7 +6,7 @@ ll\-cli\-exec - 在当前运行的沙盒中执行命令
 
 ## SYNOPSIS
 
-**ll-cli enter** [*options*] *instance* *command*...
+**ll-cli enter** [*options*] _instance_ _command_...
 
 ## DESCRIPTION
 
@@ -20,15 +20,15 @@ ll\-cli\-exec - 在当前运行的沙盒中执行命令
 **--help-all**
 : 展开所有帮助
 
-**--working-directory** *PATH:DIR*
+**--working-directory** _PATH:DIR_
 : 指定工作目录
 
 ## POSITIONAL ARGUMENTS
 
-**INSTANCE** *TEXT* *REQUIRED*
+**INSTANCE** _TEXT_ _REQUIRED_
 : 指定正在运行的应用程序实例（可以通过 ps 命令获取）
 
-**COMMAND** *TEXT*...
+**COMMAND** _TEXT_...
 : 在正在运行的沙盒中运行命令
 
 ## EXAMPLES

@@ -6,7 +6,7 @@ ll\-cli\-run - 运行应用程序
 
 ## SYNOPSIS
 
-**ll-cli run** [*options*] *app* [*command*...]
+**ll-cli run** [*options*] _app_ [*command*...]
 
 ## DESCRIPTION
 
@@ -20,30 +20,30 @@ ll\-cli\-run - 运行应用程序
 **--help-all**
 : 展开所有帮助
 
-**--file** *FILES:FILE*...
+**--file** _FILES:FILE_...
 : 将文件传递到沙盒中运行的应用程序
 
-**--url** *URLS*...
+**--url** _URLS_...
 : 将URL传递到沙盒中运行的应用程序
 
-**--env** *ENV*...
+**--env** _ENV_...
 : 为应用程序设置环境变量（格式：KEY=VALUE）
 
-**--base** *REF*
+**--base** _REF_
 : 指定应用程序运行使用的基础环境
 
-**--runtime** *REF*
+**--runtime** _REF_
 : 指定应用程序运行使用的运行时
 
-**--extensions** *REF*...
+**--extensions** _REF_...
 : 指定应用程序运行使用的扩展（多个扩展用逗号分隔）
 
 ## POSITIONAL ARGUMENTS
 
-**APP** *TEXT* *REQUIRED*
+**APP** _TEXT_ _REQUIRED_
 : 指定应用程序名
 
-**COMMAND** *TEXT*...
+**COMMAND** _TEXT_...
 : 在正在运行的沙盒中运行命令
 
 ## EXAMPLES

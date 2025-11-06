@@ -6,7 +6,7 @@ ll-builder-create - 创建如意玲珑构建模板
 
 ## SYNOPSIS
 
-**ll-builder create** [*options*] *name*
+**ll-builder create** [*options*] _name_
 
 ## DESCRIPTION
 

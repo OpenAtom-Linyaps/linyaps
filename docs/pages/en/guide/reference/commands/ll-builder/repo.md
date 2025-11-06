@@ -6,7 +6,7 @@ ll-builder-repo - Display and manage repositories
 
 ## SYNOPSIS
 
-**ll-builder repo** [*options*] *subcommand*
+**ll-builder repo** [*options*] _subcommand_
 
 ## DESCRIPTION
 
@@ -25,22 +25,22 @@ The `ll-builder repo` command is used to display and manage Linyaps repositories
 **show**
 : Display repository information
 
-**add** *name* *url* [*options*]
+**add** _name_ _url_ [*options*]
 : Add new repository configuration
 
-**remove** *alias*
+**remove** _alias_
 : Remove repository configuration
 
-**update** *alias* *url*
+**update** _alias_ _url_
 : Update repository URL
 
-**set-default** *alias*
+**set-default** _alias_
 : Set default repository name
 
-**enable-mirror** *alias*
+**enable-mirror** _alias_
 : Enable repository mirror
 
-**disable-mirror** *alias*
+**disable-mirror** _alias_
 : Disable repository mirror
 
 ## EXAMPLES

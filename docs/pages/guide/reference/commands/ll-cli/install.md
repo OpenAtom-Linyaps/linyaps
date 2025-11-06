@@ -6,7 +6,7 @@ ll\-cli\-install - 安装应用程序或运行时
 
 ## SYNOPSIS
 
-**ll-cli install** [*options*] *app*
+**ll-cli install** [*options*] _app_
 
 ## DESCRIPTION
 
@@ -20,10 +20,10 @@ ll\-cli\-install - 安装应用程序或运行时
 **--help-all**
 : 展开所有帮助
 
-**--module** *MODULE*
+**--module** _MODULE_
 : 安装指定模块
 
-**--repo** *REPO*
+**--repo** _REPO_
 : 从指定的仓库安装
 
 **--force**
@@ -34,7 +34,7 @@ ll\-cli\-install - 安装应用程序或运行时
 
 ## POSITIONAL ARGUMENTS
 
-**APP** *TEXT* *REQUIRED*
+**APP** _TEXT_ _REQUIRED_
 : 指定应用名，也可以是 .uab 或 .layer 文件
 
 ## EXAMPLES

@@ -25,28 +25,28 @@ ll-appimage-convert convert 命令根据指定的应用名称生成一个目录�
 **-b, --build**
 : 构建玲珑包
 
-**-d, --description** *string*
+**-d, --description** _string_
 : 包的详细描述
 
-**-f, --file** *string*
+**-f, --file** _string_
 : app 包文件，当设置了 --url 选项和 --hash 选项时，此选项不是必需的
 
-**--hash** *string*
+**--hash** _string_
 : 包哈希值，必须与 --url 选项一起使用
 
-**-i, --id** *string*
+**-i, --id** _string_
 : 包的唯一名称
 
 **-l, --layer**
 : 导出 layer 文件
 
-**-n, --name** *string*
+**-n, --name** _string_
 : 包的描述名称
 
-**-u, --url** *string*
+**-u, --url** _string_
 : 包 URL，当设置了 -f 选项时，此选项不是必需的
 
-**-v, --version** *string*
+**-v, --version** _string_
 : 包的版本
 
 **-V, --verbose**

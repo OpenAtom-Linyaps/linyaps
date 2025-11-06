@@ -22,82 +22,82 @@ docs/pages/en/guide/
 
 ### Getting Started (start/)
 
-| Document Name | File Path | Description |
-|--------------|-----------|-------------|
-| Overview | `start/whatis.md` | Introduction to Linyaps basic concepts, advantages, and comparison with other package management tools |
-| Install Linyaps | `start/install.md` | Detailed steps for installing Linyaps on different Linux distributions |
+| Document Name                | File Path                       | Description                                                                                                          |
+| ---------------------------- | ------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Overview                     | `start/whatis.md`               | Introduction to Linyaps basic concepts, advantages, and comparison with other package management tools               |
+| Install Linyaps              | `start/install.md`              | Detailed steps for installing Linyaps on different Linux distributions                                               |
 | Build Your First Linyaps App | `start/build_your_first_app.md` | Complete tutorial for building Linyaps packages from source, including calculator example and deb package conversion |
-| ll-pica Installation | `start/ll-pica-install.md` | Installation guide for ll-pica package conversion tool |
-| Release Notes | `start/release_note.md` | Version release notes and changelog |
+| ll-pica Installation         | `start/ll-pica-install.md`      | Installation guide for ll-pica package conversion tool                                                               |
+| Release Notes                | `start/release_note.md`         | Version release notes and changelog                                                                                  |
 
 ### Build Related (building/)
 
-| Document Name | File Path | Description |
-|--------------|-----------|-------------|
-| Linyaps Package Specification | `building/linyaps_package_spec.md` | Detailed application packaging specifications, including naming conventions, build configuration, directory structure, etc. |
-| Build Configuration File Introduction | `building/manifests.md` | Detailed explanation and field definitions for `linglong.yaml` configuration file |
-| Module Management | `building/modules.md` | Module splitting and management instructions |
-| Multi-architecture Support | `building/multiarch.md` | Multi-architecture build support instructions |
-| Demo Example | `building/demo.md` | Build demonstration example with practical use cases |
+| Document Name                         | File Path                          | Description                                                                                                                 |
+| ------------------------------------- | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Linyaps Package Specification         | `building/linyaps_package_spec.md` | Detailed application packaging specifications, including naming conventions, build configuration, directory structure, etc. |
+| Build Configuration File Introduction | `building/manifests.md`            | Detailed explanation and field definitions for `linglong.yaml` configuration file                                           |
+| Module Management                     | `building/modules.md`              | Module splitting and management instructions                                                                                |
+| Multi-architecture Support            | `building/multiarch.md`            | Multi-architecture build support instructions                                                                               |
+| Demo Example                          | `building/demo.md`                 | Build demonstration example with practical use cases                                                                        |
 
 ### Debug Related (debug/)
 
-| Document Name | File Path | Description |
-|--------------|-----------|-------------|
+| Document Name              | File Path        | Description                                                                                     |
+| -------------------------- | ---------------- | ----------------------------------------------------------------------------------------------- |
 | Debug Linyaps Applications | `debug/debug.md` | Detailed guide for debugging Linyaps applications using gdb, vscode, Qt Creator and other tools |
 
 ### Desktop Integration (desktop-integration/)
 
-| Document Name | File Path | Description |
-|--------------|-----------|-------------|
+| Document Name                    | File Path                       | Description                                                       |
+| -------------------------------- | ------------------------------- | ----------------------------------------------------------------- |
 | Desktop Integration Instructions | `desktop-integration/README.md` | Linyaps and desktop environment integration related documentation |
 
 ### Tutorials and Examples (lessons/)
 
-| Document Name | File Path | Description |
-|--------------|-----------|-------------|
-| Basic Notes | `lessons/basic-notes.md` | Basic usage notes and best practices |
-| Build Git Patches | `lessons/build-git-patch.md` | Git patch building tutorial for version management |
-| Build in Environment | `lessons/build-in-env.md` | Tutorial for building in specific environments |
-| Build Offline Source | `lessons/build-offline-src.md` | Tutorial for building source code in offline environments |
-| Test with Toolchains | `lessons/test-with-toolchains.md` | Tutorial for testing with different toolchains |
+| Document Name        | File Path                         | Description                                               |
+| -------------------- | --------------------------------- | --------------------------------------------------------- |
+| Basic Notes          | `lessons/basic-notes.md`          | Basic usage notes and best practices                      |
+| Build Git Patches    | `lessons/build-git-patch.md`      | Git patch building tutorial for version management        |
+| Build in Environment | `lessons/build-in-env.md`         | Tutorial for building in specific environments            |
+| Build Offline Source | `lessons/build-offline-src.md`    | Tutorial for building source code in offline environments |
+| Test with Toolchains | `lessons/test-with-toolchains.md` | Tutorial for testing with different toolchains            |
 
 ### Developer Documentation (linyaps-devel/)
 
-| Document Name | File Path | Description |
-|--------------|-----------|-------------|
+| Document Name           | File Path                 | Description                                        |
+| ----------------------- | ------------------------- | -------------------------------------------------- |
 | Developer Documentation | `linyaps-devel/README.md` | Developer-related documentation and API references |
 
 ### Publishing Related (publishing/)
 
-| Document Name | File Path | Description |
-|--------------|-----------|-------------|
+| Document Name         | File Path                    | Description                                                                      |
+| --------------------- | ---------------------------- | -------------------------------------------------------------------------------- |
 | Repository Management | `publishing/repositories.md` | Linyaps repository basic concepts, management and publishing update instructions |
-| UAB Format Publishing | `publishing/uab.md` | UAB format publishing instructions and best practices |
-| Mirrors | `publishing/mirrors.md` | Mirror site configuration and management |
+| UAB Format Publishing | `publishing/uab.md`          | UAB format publishing instructions and best practices                            |
+| Mirrors               | `publishing/mirrors.md`      | Mirror site configuration and management                                         |
 
 ### Additional Documentation (extra/)
 
-| Document Name | File Path | Description |
-|--------------|-----------|-------------|
-| Unit Testing | `extra/unit-testing.md` | Unit testing documentation and testing frameworks |
-| Bundle Format | `extra/bundle-format.md` | Bundle format documentation and specifications |
-| System Helper | `extra/system-helper.md` | System helper documentation and utilities |
-| Application Configuration | `extra/app-conf.md` | Application configuration documentation |
-| Root Filesystem | `extra/rootfs.md` | Root filesystem documentation and management |
-| Reference | `extra/ref.md` | Reference documentation and quick lookup guides |
-| UAB Build | `extra/uab-build.md` | UAB build documentation and build process |
-| README | `extra/README.md` | Additional documentation overview |
+| Document Name             | File Path                | Description                                       |
+| ------------------------- | ------------------------ | ------------------------------------------------- |
+| Unit Testing              | `extra/unit-testing.md`  | Unit testing documentation and testing frameworks |
+| Bundle Format             | `extra/bundle-format.md` | Bundle format documentation and specifications    |
+| System Helper             | `extra/system-helper.md` | System helper documentation and utilities         |
+| Application Configuration | `extra/app-conf.md`      | Application configuration documentation           |
+| Root Filesystem           | `extra/rootfs.md`        | Root filesystem documentation and management      |
+| Reference                 | `extra/ref.md`           | Reference documentation and quick lookup guides   |
+| UAB Build                 | `extra/uab-build.md`     | UAB build documentation and build process         |
+| README                    | `extra/README.md`        | Additional documentation overview                 |
 
 ### Reference Documentation (reference/)
 
 #### Basic Concepts
 
-| Document Name | File Path | Description |
-|--------------|-----------|-------------|
+| Document Name               | File Path                     | Description                                                                 |
+| --------------------------- | ----------------------------- | --------------------------------------------------------------------------- |
 | Basic Concepts Introduction | `reference/basic-concepts.md` | Introduction to core concepts like Base, Runtime, sandbox, repository, etc. |
-| Runtime Component | `reference/runtime.md` | Detailed introduction to Runtime component |
-| Driver | `reference/driver.md` | Driver-related documentation and specifications |
+| Runtime Component           | `reference/runtime.md`        | Detailed introduction to Runtime component                                  |
+| Driver                      | `reference/driver.md`         | Driver-related documentation and specifications                             |
 
 #### Command Reference
 
@@ -152,11 +152,11 @@ docs/pages/en/guide/
 
 ### Tips and FAQ (tips-and-faq/)
 
-| Document Name | File Path | Description |
-|--------------|-----------|-------------|
-| Common Issues | `tips-and-faq/faq.md` | Common runtime issues and solutions |
+| Document Name  | File Path                        | Description                                  |
+| -------------- | -------------------------------- | -------------------------------------------- |
+| Common Issues  | `tips-and-faq/faq.md`            | Common runtime issues and solutions          |
 | ll-builder FAQ | `tips-and-faq/ll-builder-faq.md` | Build tool common issues and troubleshooting |
-| ll-pica FAQ | `tips-and-faq/ll-pica-faq.md` | Package conversion tool common issues |
+| ll-pica FAQ    | `tips-and-faq/ll-pica-faq.md`    | Package conversion tool common issues        |
 
 ## Quick Navigation
 

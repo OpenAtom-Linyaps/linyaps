@@ -17,25 +17,25 @@ The ll-pica convert command is used to generate the linglong.yaml file needed by
 **-b, --build**
 : Build Linyaps package
 
-**-c, --config** *string*
+**-c, --config** _string_
 : Configuration file
 
-**--exportFile** *string*
+**--exportFile** _string_
 : Export uab or layer (defaults to "uab")
 
-**--pi** *string*
+**--pi** _string_
 : Package ID
 
-**--pn** *string*
+**--pn** _string_
 : Package name
 
-**-t, --type** *string*
+**-t, --type** _string_
 : Get application type (defaults to "local")
 
 **--withDep**
 : Add dependency tree
 
-**-w, --workdir** *string*
+**-w, --workdir** _string_
 : Working directory
 
 **-V, --verbose**

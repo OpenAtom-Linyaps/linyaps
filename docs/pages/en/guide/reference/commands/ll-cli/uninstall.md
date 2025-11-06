@@ -6,7 +6,7 @@ ll\-cli\-uninstall - Uninstall applications or runtimes
 
 ## SYNOPSIS
 
-**ll-cli uninstall** [*options*] *app*
+**ll-cli uninstall** [*options*] _app_
 
 ## DESCRIPTION
 
@@ -20,12 +20,12 @@ The `ll-cli uninstall` command can uninstall Linyaps applications. This command 
 **--help-all**
 : Expand all help
 
-**--module** *MODULE*
+**--module** _MODULE_
 : Uninstall specified module
 
 ## POSITIONAL ARGUMENTS
 
-**APP** *TEXT* *REQUIRED*
+**APP** _TEXT_ _REQUIRED_
 : Specify application name
 
 ## EXAMPLES

@@ -14,10 +14,10 @@ The ll-pica adep command is used to add package dependencies to the linglong.yam
 
 ## OPTIONS
 
-**-d, --deps** *string*
+**-d, --deps** _string_
 : Dependencies to be added, separated by ','
 
-**-p, --path** *string*
+**-p, --path** _string_
 : Path to linglong.yaml (defaults to "linglong.yaml")
 
 **-V, --verbose**

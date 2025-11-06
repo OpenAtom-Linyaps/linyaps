@@ -20,7 +20,7 @@ ll-builder-build - 构建如意玲珑项目
 **--help-all**
 : 展开所有帮助
 
-**-f, --file** *file* [./linglong.yaml]
+**-f, --file** _file_ [./linglong.yaml]
 : linglong.yaml 的文件路径
 
 **--offline**
@@ -47,7 +47,7 @@ ll-builder-build - 构建如意玲珑项目
 **--isolate-network**
 : 在隔离的网络环境中构建
 
-**command** -- *COMMAND* ...
+**command** -- _COMMAND_ ...
 : 进入容器执行命令而不是构建应用
 
 ## EXAMPLES

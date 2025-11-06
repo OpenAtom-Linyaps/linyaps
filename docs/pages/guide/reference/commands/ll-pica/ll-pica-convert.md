@@ -17,25 +17,25 @@ ll-pica convert 命令用来生成玲珑需要使用的 linglong.yaml 文件，�
 **-b, --build**
 : 构建玲珑包
 
-**-c, --config** *string*
+**-c, --config** _string_
 : 配置文件
 
-**--exportFile** *string*
+**--exportFile** _string_
 : 导出 uab 或 layer（默认为 "uab"）
 
-**--pi** *string*
+**--pi** _string_
 : 包 ID
 
-**--pn** *string*
+**--pn** _string_
 : 包名称
 
-**-t, --type** *string*
+**-t, --type** _string_
 : 获取应用类型（默认为 "local"）
 
 **--withDep**
 : 添加依赖树
 
-**-w, --workdir** *string*
+**-w, --workdir** _string_
 : 工作目录
 
 **-V, --verbose**

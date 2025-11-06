@@ -6,7 +6,7 @@ ll\-cli\-kill - 停止运行的应用程序
 
 ## SYNOPSIS
 
-**ll-cli kill** [*options*] *app*
+**ll-cli kill** [*options*] _app_
 
 ## DESCRIPTION
 
@@ -20,12 +20,12 @@ ll\-cli\-kill - 停止运行的应用程序
 **--help-all**
 : 展开所有帮助
 
-**-s, --signal** *SIGNAL* [*SIGTERM*]
+**-s, --signal** _SIGNAL_ [*SIGTERM*]
 : 指定发送给应用程序的信号
 
 ## POSITIONAL ARGUMENTS
 
-**APP** *TEXT* *REQUIRED*
+**APP** _TEXT_ _REQUIRED_
 : 指定正在运行的应用程序名
 
 ## EXAMPLES

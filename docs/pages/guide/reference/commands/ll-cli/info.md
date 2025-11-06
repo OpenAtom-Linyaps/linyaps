@@ -6,7 +6,7 @@ ll\-cli\-info - 显示已安装的应用程序或运行时的信息
 
 ## SYNOPSIS
 
-**ll-cli info** [*options*] *app*
+**ll-cli info** [*options*] _app_
 
 ## DESCRIPTION
 
@@ -22,7 +22,7 @@ ll\-cli\-info - 显示已安装的应用程序或运行时的信息
 
 ## POSITIONAL ARGUMENTS
 
-**APP** *TEXT* *REQUIRED*
+**APP** _TEXT_ _REQUIRED_
 : 指定应用程序名，也可以是如意玲珑.layer文件
 
 ## EXAMPLES

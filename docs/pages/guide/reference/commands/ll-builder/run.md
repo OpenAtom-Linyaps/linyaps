@@ -20,19 +20,19 @@ ll-builder-run - 运行构建好的应用程序
 **--help-all**
 : 展开所有帮助
 
-**-f, --file** *file* [./linglong.yaml]
+**-f, --file** _file_ [./linglong.yaml]
 : linglong.yaml 的文件路径
 
-**--modules** *modules*...
+**--modules** _modules_...
 : 运行指定模块。例如: --modules binary,develop
 
 **--debug**
 : 在调试模式下运行（启用开发模块）
 
-**--extensions** *extensions*
+**--extensions** _extensions_
 : 指定应用运行时使用的扩展
 
-**COMMAND** *TEXT*...
+**COMMAND** _TEXT_...
 : 进入容器执行命令而不是运行应用
 
 ## EXAMPLES

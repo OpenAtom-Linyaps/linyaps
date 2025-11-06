@@ -20,19 +20,19 @@ The `ll-builder run` command reads the runtime environment information related t
 **--help-all**
 : Expand all help
 
-**-f, --file** *file* [./linglong.yaml]
+**-f, --file** _file_ [./linglong.yaml]
 : Path to the linglong.yaml file
 
-**--modules** *modules*...
+**--modules** _modules_...
 : Run specified modules. For example: --modules binary,develop
 
 **--debug**
 : Run in debug mode (enable development modules)
 
-**--extensions** *extensions*
+**--extensions** _extensions_
 : Specify extensions used by the application at runtime
 
-**COMMAND** *TEXT*...
+**COMMAND** _TEXT_...
 : Enter container to execute commands instead of running application
 
 ## EXAMPLES

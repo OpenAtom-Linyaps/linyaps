@@ -22,13 +22,13 @@ ll-pica-flatpak convert 命令用于将 Flatpak 应用转换为玲珑应用。�
 **--layer**
 : 导出 layer 文件
 
-**--version** *string*
+**--version** _string_
 : 指定生成玲珑应用的版本
 
-**--base** *string*
+**--base** _string_
 : 指定玲珑应用的 base 环境
 
-**--base-version** *string*
+**--base-version** _string_
 : 指定玲珑应用的 base 版本
 
 ## EXAMPLES

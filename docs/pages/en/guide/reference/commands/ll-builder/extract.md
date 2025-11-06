@@ -6,7 +6,7 @@ ll-builder-extract - Extract Linyaps layer file to directory
 
 ## SYNOPSIS
 
-**ll-builder extract** [*options*] *file* *directory*
+**ll-builder extract** [*options*] _file_ _directory_
 
 ## DESCRIPTION
 

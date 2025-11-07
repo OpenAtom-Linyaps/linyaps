@@ -1,8 +1,8 @@
-# Ref
+# 引用（Ref）
 
 ## 定义
 
-组件：组件一般等价于其他系统中的 artifacts/component/module/package 等，在玲珑中，我们使用 layer 来表示一个组件。
+组件：组件通常等同于其他系统中的 artifacts/component/module/package 等，在玲珑中，我们使用 layer 来表示一个组件。
 
 ## 格式
 
@@ -40,7 +40,7 @@ org.deepin.calculator 为 ID，1.2.2 为版本，x86_64 为架构。
 
 Ref 包含两个部分，远程地址标识和本地标识。其中`:`前用分割远程标识和本地标识。
 
-运程标识主要用于定义这个 layer 是如何获取的。其中 channel 暂时没有用到，可以为空。repo 表示远程仓库（URL）在本地的映射的别名。
+远程标识主要用于定义这个 layer 是如何获取的。其中 channel 暂时没有用到，可以为空。repo 表示远程仓库（URL）在本地的映射的别名。
 
 在安装过程中，使用完整的 ref 可以唯一标识一个 layer。例如：
 

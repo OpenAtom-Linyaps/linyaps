@@ -1,0 +1,35 @@
+# SPDX-FileCopyrightText: None
+#
+# SPDX-License-Identifier: CC0-1.0
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-toml
+      - id: check-added-large-files
+      - id: check-xml
+
+  - repo: https://github.com/pre-commit/mirrors-clang-format
+    rev: v21.1.5
+    hooks:
+      - id: clang-format
+        name: clang-format (C/C++)
+        files: \.(c|cc|cpp|cxx|h|hpp)$
+        args: ['-i', '--sort-includes', '--style=file']
+        exclude: |
+          (?x)^(
+            build/|
+            external/|
+            libs/api/src/linglong/api/types/v1/
+          )
+
+  - repo: https://github.com/scop/pre-commit-shfmt
+    rev: v3.12.0-2
+    hooks:
+      - id: shfmt
+        args: ['-i', '4', '-ci', '-sr']

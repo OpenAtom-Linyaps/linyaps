@@ -1,52 +1,50 @@
-# Bundle Format
+# 捆绑包格式
 
-## Introduce
+## 介绍
 
-Green software, known as some binary does not install any file to the system.
+绿色软件，指的是一些不向系统安装任何文件的二进制程序。
 
-The base constraint of green software is:
+绿色软件的基本约束是：
 
-- Path unrelated, means has nothing to do with local files.
+- 路径无关，意味着与本地文件无关。
 
-- highly compatibility, so the software should contain all dependencies that the system does not have.
+- 高度兼容性，因此软件应包含系统所没有的所有依赖项。
 
-The famous technology to build green software is AppImage on Linux.
+在 Linux 上构建绿色软件的著名技术是 AppImage。
 
-However, there are many problems with that technology, the biggest problem is that the host system ABI can not stay stable and differ from one another. The linglong can not solve that problem either. We should keep a baseline of support system or ABI.
+然而，该技术存在许多问题，最大的问题是主机系统 ABI 无法保持稳定，并且彼此不同。玲珑也无法解决这个问题。我们应该保持对支持系统或 ABI 的基线。
 
-A trick on uniontech os or deepin is just support system after uniontech os 1020, which reduces the testing work for the different base systems.
+在统信操作系统或深度操作系统上的一个技巧是仅支持统信操作系统 1020 之后的系统，这减少了针对不同基础系统的测试工作。
 
-## Target
+## 目标
 
-The green bundle is not just simple support for application run path independently. It is also designed to be the offline maintainer package format on office system service package support self-run and install. so keep the changeability of the bundle format when designing.
+绿色捆绑包不仅仅是简单支持应用程序运行路径独立。它还被设计为办公系统服务包支持的离线维护包格式，支持自运行和安装。因此在设计时保持捆绑包格式的可变性。
 
-When a user has internet, we mostly use online diff update or install by repo. we do not use bundle if we can access the repo when distributing applications.
+当用户有互联网时，我们主要使用在线差异更新或通过仓库安装。如果我们可以在分发应用程序时访问仓库，则不会使用捆绑包。
 
-## Specification
+## 规范
 
-The spec of the export bundle:
+导出捆绑包的规范：
 
-- MUST be an ELF, can be FlatELF
-- MUST be statically-linked
-- MUST contain a data segment that can mount with fuse
-- MUST contain a loader executable on the root of fuse mount filesystem
+- 必须是 ELF，可以是 FlatELF
+- 必须是静态链接的
+- 必须包含一个可以使用 fuse 挂载的数据段
+- 必须包含一个在 fuse 挂载文件系统根目录下的加载器可执行文件
 
-## Implementation
+## 实现
 
-**The implementation change with time，If you change the implement, update this selection as soon as possible !!!**
+**实现会随时间变化，如果您更改了实现，请尽快更新此部分！！！**
 
-### prototype
+### 原型
 
-- The bundle is a sample elf loader that joins a readonly filesystem with cat.
-- The loader simply calls read_elf64 to calc the offset of readonly filesystem.
-- The loader mount readonly filesystem with `squashfuse -o ro,offset=xxx`
-- The filesystem now is readonly filesystem
-  - The root of the filesystem should contain a file name loader(by the way, now is .loader)
-  - the directory structure should be: /{id}/{version}/{arch}/
-- The readonly filesystem should support erofs, and MAY support suqashfs
+- 捆绑包是一个简单的 ELF 加载器，通过 cat 连接只读文件系统。
+- 加载器简单地调用 read_elf64 来计算只读文件系统的偏移量。
+- 加载器使用 `squashfuse -o ro,offset=xxx` 挂载只读文件系统
+- 文件系统现在是只读文件系统
+  - 文件系统的根目录应该包含一个名为 loader 的文件（顺便说一下，现在是 .loader）
+  - 目录结构应该是：/{id}/{version}/{arch}/
+- 只读文件系统应该支持 erofs，并且可能支持 squashfs
 
-a full example of the filesystem is:
+文件系统的完整示例是：
 
 ```bash
-
-```

@@ -1025,11 +1025,15 @@
       "type": "object",
       "description": "package manager uninstall parameters",
       "required": [
-        "package"
+        "package",
+        "options"
       ],
       "properties": {
         "package": {
           "$ref": "#/$defs/PackageManager1Package"
+        },
+        "options": {
+          "$ref": "#/$defs/CommonOptions"
         }
       }
     },

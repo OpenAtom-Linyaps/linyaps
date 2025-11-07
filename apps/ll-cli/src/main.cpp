@@ -326,6 +326,9 @@ void addUninstallCommand(CLI::App &commandParser,
     cliUninstall->add_option("--module", uninstallOptions.module, _("Uninstall a specify module"))
       ->type_name("MODULE")
       ->check(validatorString);
+    cliUninstall->add_flag("--force",
+                           uninstallOptions.forceOpt,
+                           _("Force uninstall base or runtime"));
 
     // below options are used for compatibility with old ll-cli
     const auto &pruneDescription = std::string{ _("Remove all unused modules") };

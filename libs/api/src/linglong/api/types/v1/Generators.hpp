@@ -1047,11 +1047,13 @@ j["type"] = x.type;
 }
 
 inline void from_json(const json & j, PackageManager1UninstallParameters& x) {
+x.options = j.at("options").get<CommonOptions>();
 x.package = j.at("package").get<PackageManager1Package>();
 }
 
 inline void to_json(json & j, const PackageManager1UninstallParameters & x) {
 j = json::object();
+j["options"] = x.options;
 j["package"] = x.package;
 }
 

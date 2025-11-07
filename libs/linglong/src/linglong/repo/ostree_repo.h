@@ -94,10 +94,6 @@ public:
                    const clearReferenceOption &opts,
                    const std::string &module = "binary",
                    const std::optional<std::string> &repo = std::nullopt) const noexcept;
-    [[nodiscard]] utils::error::Result<linglong::package::ReferenceWithRepo>
-    getRemoteReferenceByPriority(const package::FuzzyReference &fuzzy,
-                                 const getRemoteReferenceByPriorityOption &opts,
-                                 const std::string &module = "binary") noexcept;
 
     utils::error::Result<std::vector<api::types::v1::PackageInfoV2>> listLocal() const noexcept;
     utils::error::Result<std::vector<api::types::v1::PackageInfoV2>>

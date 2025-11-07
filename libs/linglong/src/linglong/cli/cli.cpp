@@ -583,7 +583,7 @@ int Cli::run(const RunOptions &options)
 
     auto res = runContext.resolve(*curAppRef, opts);
     if (!res) {
-        this->printer.printErr(res.error());
+        handleCommonError(res.error());
         return -1;
     }
 
@@ -1360,6 +1360,10 @@ int Cli::uninstall(const UninstallOptions &options)
     }
 
     auto params = api::types::v1::PackageManager1UninstallParameters{};
+    params.options = api::types::v1::CommonOptions{
+        .force = options.forceOpt,
+        .skipInteraction = false,
+    };
     params.package.id = fuzzyRef->id;
     if (fuzzyRef->channel) {
         params.package.channel = fuzzyRef->channel;
@@ -2615,6 +2619,9 @@ bool Cli::handleCommonError(const utils::error::Error &error)
         this->printer.printMessage(_("Network connection failed. Please:"
                                      "\n1. Check your internet connection"
                                      "\n2. Verify network proxy settings if used"));
+        break;
+    case utils::error::ErrorCode::LayerCompatibilityError:
+        this->printer.printMessage(_("Package not found"));
         break;
     default:
         this->printer.printErr(error);

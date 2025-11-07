@@ -790,9 +790,12 @@ $defs:
     description: package manager uninstall parameters
     required:
       - package
+      - options
     properties:
       package:
         $ref: '#/$defs/PackageManager1Package'
+      options:
+        $ref: '#/$defs/CommonOptions'
   PackageManager1UpdateParameters:
     type: object
     description: package manager update result

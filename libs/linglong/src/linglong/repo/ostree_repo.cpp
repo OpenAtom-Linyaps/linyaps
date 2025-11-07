@@ -1590,68 +1590,6 @@ OSTreeRepo::clearReference(const package::FuzzyReference &fuzzy,
     return reference;
 }
 
-utils::error::Result<linglong::package::ReferenceWithRepo>
-OSTreeRepo::getRemoteReferenceByPriority(const package::FuzzyReference &fuzzy,
-                                         const getRemoteReferenceByPriorityOption &opts,
-                                         const std::string &module) noexcept
-{
-    LINGLONG_TRACE("get remote reference by priority")
-    auto repos = this->getHighestPriorityRepos();
-
-    // 指定了repo，则不需要按照优先级来查找
-    if (opts.onlyClearHighestPriority) {
-        if (repos.empty()) {
-            return LINGLONG_ERR("No repositories available",
-                                utils::error::ErrorCode::AppInstallNotFoundFromRemote);
-        }
-
-        // 找到优先级最高的第一个仓库
-        const auto &highestPriorityRepo = repos.front();
-        auto refRet =
-          this->clearReference(fuzzy,
-                               { .forceRemote = true, .semanticMatching = opts.semanticMatching },
-                               module,
-                               highestPriorityRepo.alias.value_or(highestPriorityRepo.name));
-
-        if (!refRet) {
-            return LINGLONG_ERR(refRet);
-        }
-        return linglong::package::ReferenceWithRepo{ .repo = highestPriorityRepo,
-                                                     .reference = *refRet };
-    }
-
-    // 未指定repo，则只找优先级最高的仓库，可以有多个
-    std::vector<linglong::package::ReferenceWithRepo> results;
-    for (const auto &repo : repos) {
-        auto refRet =
-          this->clearReference(fuzzy,
-                               { .forceRemote = true, .semanticMatching = opts.semanticMatching },
-                               module,
-                               repo.alias.value_or(repo.name));
-        if (!refRet) {
-            if (static_cast<utils::error::ErrorCode>(refRet.error().code())
-                == utils::error::ErrorCode::AppNotFoundFromRemote) {
-                continue;
-            }
-            return LINGLONG_ERR(refRet);
-        }
-
-        results.emplace_back(
-          linglong::package::ReferenceWithRepo{ .repo = repo, .reference = *refRet });
-    }
-
-    // 寻找最新的版本
-    auto it = std::max_element(results.begin(), results.end(), [](const auto &a, const auto &b) {
-        return a.reference.version < b.reference.version;
-    });
-    if (it != results.end()) {
-        return *it;
-    }
-
-    return LINGLONG_ERR(fmt::format("not found {} in all repos", fuzzy.toString()),
-                        utils::error::ErrorCode::AppInstallNotFoundFromRemote);
-}
-
 utils::error::Result<std::vector<api::types::v1::PackageInfoV2>>
 OSTreeRepo::listLocal() const noexcept
 {
@@ -3289,12 +3227,25 @@ OSTreeRepo::latestRemoteReference(package::FuzzyReference &fuzzyRef) noexcept
 {
     LINGLONG_TRACE("get latest reference");
 
-    fuzzyRef.version.reset();
-    auto ref = this->getRemoteReferenceByPriority(fuzzyRef, { .semanticMatching = false });
+    auto candidates = this->matchRemoteByPriority(fuzzyRef);
+    if (!candidates) {
+        return LINGLONG_ERR(candidates);
+    }
+
+    auto latestPackage = candidates->getLatestPackage();
+    if (!latestPackage) {
+        return LINGLONG_ERR(latestPackage);
+    }
+
+    auto ref = package::Reference::fromPackageInfo(latestPackage->second);
     if (!ref) {
         return LINGLONG_ERR(ref);
     }
-    return ref;
+
+    return package::ReferenceWithRepo{
+        .repo = latestPackage->first,
+        .reference = std::move(ref).value(),
+    };
 }
 
 utils::error::Result<package::Reference>

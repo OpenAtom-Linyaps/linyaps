@@ -17,6 +17,7 @@
 #include <nlohmann/json.hpp>
 #include "linglong/api/types/v1/helper.hpp"
 
+#include "linglong/api/types/v1/CommonOptions.hpp"
 #include "linglong/api/types/v1/PackageManager1Package.hpp"
 
 namespace linglong {
@@ -33,6 +34,7 @@ using nlohmann::json;
 * package manager uninstall parameters
 */
 struct PackageManager1UninstallParameters {
+CommonOptions options;
 PackageManager1Package package;
 };
 }

@@ -1072,7 +1072,7 @@ auto PackageManager::Uninstall(const QVariantMap &parameters) noexcept -> QVaria
         }
     }
 
-    if (mainKind == "base" || mainKind == "runtime") {
+    if ((mainKind == "base" || mainKind == "runtime") && !paras->options.force) {
         return toDBusReply(utils::error::ErrorCode::AppUninstallBaseOrRuntime,
                            "base or runtime package cannot be uninstalled");
     }
@@ -1468,145 +1468,88 @@ void PackageManager::pullDependency(PackageTask &taskContext,
     LINGLONG_TRACE("pull dependencies of " + info.id);
 
     utils::Transaction transaction;
-    if (info.runtime) {
-        auto fuzzyRuntime = package::FuzzyReference::parse(*info.runtime);
-        if (!fuzzyRuntime) {
+    auto tryPull = [this, &transaction, &taskContext](const std::string &refStr,
+                                                      const std::string &module) {
+        LINGLONG_TRACE("try pull dependency");
+
+        auto fuzzyRef = package::FuzzyReference::parse(refStr);
+        if (!fuzzyRef) {
             taskContext.updateState(linglong::api::types::v1::State::Failed,
-                                    LINGLONG_ERRV(fuzzyRuntime).message());
+                                    LINGLONG_ERRV(fuzzyRef).message());
+            return false;
+        }
+
+        auto remote = this->repo.latestRemoteReference(*fuzzyRef);
+        auto local = this->repo.clearReference(*fuzzyRef,
+                                               {
+                                                 .forceRemote = false,
+                                                 .fallbackToRemote = false,
+                                                 .semanticMatching = true,
+                                               });
+        bool remotePulled = false;
+
+        // if remote is newer than local , pull remote
+        if (remote && (!local || remote->reference.version > local->version)) {
+            this->repo.pull(taskContext, remote->reference, module, remote->repo);
+
+            remotePulled = !isTaskDone(taskContext.subState());
+            if (remotePulled) {
+                auto ret = executePostInstallHooks(remote->reference);
+                if (!ret) {
+                    taskContext.updateState(linglong::api::types::v1::State::Failed,
+                                            LINGLONG_ERRV(ret).message());
+                    return false;
+                }
+
+                transaction.addRollBack([this, remoteRef = *remote, module]() noexcept {
+                    auto result = this->repo.remove(remoteRef.reference, module);
+                    if (!result) {
+                        qCritical() << result.error();
+                        Q_ASSERT(false);
+                    }
+
+                    result = executePostUninstallHooks(remoteRef.reference);
+                    if (!result) {
+                        qCritical() << result.error();
+                        Q_ASSERT(false);
+                    }
+                });
+            }
+        }
+
+        if (!local) {
+            if (!remote) {
+                taskContext.updateState(linglong::api::types::v1::State::Failed,
+                                        fmt::format("dependency {} not found", refStr));
+                return false;
+            }
+
+            if (!remotePulled) {
+                return false;
+            }
+        }
+
+        return true;
+    };
+
+    if (info.runtime) {
+        taskContext.updateSubState(linglong::api::types::v1::SubState::InstallRuntime,
+                                   "Installing runtime " + *info.runtime);
+        if (!tryPull(*info.runtime, "binary")) {
             return;
-        }
-
-        auto runtime = this->repo.getRemoteReferenceByPriority(*fuzzyRuntime,
-                                                               {
-                                                                 .semanticMatching = true,
-                                                               });
-        // 如果远程没有获取到runtime(可能是网络原因或者离线场景)， 应该再从本地查找，
-        // 如果本地也找不到再返回
-        if (!runtime) {
-            auto localRuntime = this->repo.clearReference(*fuzzyRuntime,
-                                                          {
-                                                            .forceRemote = false,
-                                                            .fallbackToRemote = false,
-                                                            .semanticMatching = true,
-                                                          });
-            if (!localRuntime) {
-                taskContext.updateState(linglong::api::types::v1::State::Failed,
-                                        runtime.error().message());
-                return;
-            }
-
-            runtime =
-              linglong::package::ReferenceWithRepo{ .repo =
-                                                      this->repo.getHighestPriorityRepos().front(),
-                                                    .reference = *localRuntime };
-        }
-
-        // 如果runtime已存在，则直接使用, 否则从远程拉取
-        auto runtimeLayerDir = repo.getLayerDir(runtime->reference);
-        if (!runtimeLayerDir) {
-            if (isTaskDone(taskContext.subState())) {
-                return;
-            }
-
-            taskContext.updateSubState(linglong::api::types::v1::SubState::InstallRuntime,
-                                       "Installing runtime " + runtime->reference.toString());
-
-            this->repo.pull(taskContext, runtime->reference, module, runtime->repo);
-            if (isTaskDone(taskContext.subState())) {
-                return;
-            }
-
-            auto ret = executePostInstallHooks(runtime->reference);
-            if (!ret) {
-                taskContext.updateState(linglong::api::types::v1::State::Failed,
-                                        LINGLONG_ERRV(ret).message());
-                return;
-            }
-
-            transaction.addRollBack([this, runtimeRef = *runtime, module]() noexcept {
-                auto result = this->repo.remove(runtimeRef.reference, module);
-                if (!result) {
-                    qCritical() << result.error();
-                    Q_ASSERT(false);
-                }
-
-                result = executePostUninstallHooks(runtimeRef.reference);
-                if (!result) {
-                    qCritical() << result.error();
-                    Q_ASSERT(false);
-                }
-            });
         }
     }
 
-    auto fuzzyBase = package::FuzzyReference::parse(info.base);
-    if (!fuzzyBase) {
-        taskContext.updateState(linglong::api::types::v1::State::Failed,
-                                LINGLONG_ERRV(fuzzyBase).message());
+    taskContext.updateSubState(linglong::api::types::v1::SubState::InstallBase,
+                               "Installing base " + info.base);
+    if (!tryPull(info.base, "binary")) {
         return;
     }
 
-    auto base = this->repo.getRemoteReferenceByPriority(*fuzzyBase,
-                                                        {
-                                                          .semanticMatching = true,
-                                                        });
-    // 如果远程没有获取到base(可能是网络原因或者离线场景)， 应该再从本地查找，
-    // 如果本地也找不到再返回
-    if (!base) {
-        auto localBase = this->repo.clearReference(*fuzzyBase,
-                                                   {
-                                                     .forceRemote = false,
-                                                     .fallbackToRemote = false,
-                                                     .semanticMatching = true,
-                                                   });
-        if (!localBase) {
-            taskContext.updateState(linglong::api::types::v1::State::Failed,
-                                    LINGLONG_ERRV(base).message());
-            return;
-        }
-
-        base = linglong::package::ReferenceWithRepo{ .repo =
-                                                       this->repo.getHighestPriorityRepos().front(),
-                                                     .reference = *localBase };
-    }
-
-    // 如果base已存在，则直接使用, 否则从远程拉取
-    auto baseLayerDir = repo.getLayerDir(base->reference, module);
-    if (!baseLayerDir) {
-        if (isTaskDone(taskContext.subState())) {
-            return;
-        }
-
-        taskContext.updateSubState(linglong::api::types::v1::SubState::InstallBase,
-                                   "Installing base " + base->reference.toString());
-        this->repo.pull(taskContext, base->reference, module, base->repo);
-        if (isTaskDone(taskContext.subState())) {
-            return;
-        }
-
-        auto ret = executePostInstallHooks(base->reference);
-        if (!ret) {
-            taskContext.updateState(linglong::api::types::v1::State::Failed,
-                                    LINGLONG_ERRV(ret).message());
-            return;
-        }
-
-        transaction.addRollBack([this, baseRef = *base, module]() noexcept {
-            auto result = this->repo.remove(baseRef.reference, module);
-            if (!result) {
-                qCritical() << result.error();
-                Q_ASSERT(false);
-            }
-
-            result = executePostUninstallHooks(baseRef.reference);
-            if (!result) {
-                qCritical() << result.error();
-                Q_ASSERT(false);
-            }
-        });
-    }
-
     transaction.commit();
+
+    // state may be error in pull, update state to processing
+    taskContext.updateState(linglong::api::types::v1::State::Processing, "Dependency installed");
 }
 
 auto PackageManager::Prune() noexcept -> QVariantMap

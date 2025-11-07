@@ -98,6 +98,7 @@ struct UninstallOptions
 {
     std::string appid;
     std::string module;
+    bool forceOpt{ false };
 };
 
 struct ListOptions

@@ -66,7 +66,7 @@ ll-pica init -a "arm64"
 
 ## NOTES
 
-package.yaml 文件生成后，用户可以根据需要进行修改。详细字段参考：[转换配置文件简介](./manifests.md)。
+package.yaml 文件生成后，用户可以根据需要进行修改。详细字段参考：[转换配置文件简介](./ll-pica-manifests.md)。
 
 ## SEE ALSO
 

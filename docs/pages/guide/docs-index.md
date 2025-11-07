@@ -172,11 +172,11 @@ docs/pages/guide/
 
 ### 命令参考
 
-- 构建工具: [`reference/commands/ll-builder/`](reference/commands/ll-builder/) 目录
-- 命令行工具: [`reference/commands/ll-cli/`](reference/commands/ll-cli/) 目录
-- deb包转换工具: [`reference/commands/ll-pica/`](reference/commands/ll-pica/) 目录
-- AppImage转换工具: [`reference/commands/ll-appimage-convert/`](reference/commands/ll-appimage-convert/) 目录
-- Flatpak转换工具: [`reference/commands/ll-pica-flatpak/`](reference/commands/ll-pica-flatpak/) 目录
+- 构建工具: [`reference/commands/ll-builder/`](reference/commands/ll-builder/ll-builder.md) 目录
+- 命令行工具: [`reference/commands/ll-cli/`](reference/commands/ll-cli/ll-cli.md) 目录
+- deb包转换工具: [`reference/commands/ll-pica/`](reference/commands/ll-pica/ll-pica.md) 目录
+- AppImage转换工具: [`reference/commands/ll-appimage-convert/`](reference/commands/ll-appimage-convert/ll-appimage-convert.md) 目录
+- Flatpak转换工具: [`reference/commands/ll-pica-flatpak/`](reference/commands/ll-pica-flatpak/ll-pica-flatpak.md) 目录
 
 ### 常见问题
 

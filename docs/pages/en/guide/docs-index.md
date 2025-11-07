@@ -174,11 +174,11 @@ docs/pages/en/guide/
 
 ### Command Reference
 
-- Build Tool: [`reference/commands/ll-builder/`](reference/commands/ll-builder/) directory
-- CLI Tool: [`reference/commands/ll-cli/`](reference/commands/ll-cli/) directory
-- Deb Package Conversion Tool: [`reference/commands/ll-pica/`](reference/commands/ll-pica/) directory
-- AppImage Conversion Tool: [`reference/commands/ll-appimage-convert/`](reference/commands/ll-appimage-convert/) directory
-- Flatpak Conversion Tool: [`reference/commands/ll-pica-flatpak/`](reference/commands/ll-pica-flatpak/) directory
+- Build Tool: [`reference/commands/ll-builder/`](reference/commands/ll-builder/ll-builder.md) directory
+- CLI Tool: [`reference/commands/ll-cli/`](reference/commands/ll-cli/ll-cli.md) directory
+- Deb Package Conversion Tool: [`reference/commands/ll-pica/`](reference/commands/ll-pica/ll-pica.md) directory
+- AppImage Conversion Tool: [`reference/commands/ll-appimage-convert/`](reference/commands/ll-appimage-convert/ll-appimage-convert.md) directory
+- Flatpak Conversion Tool: [`reference/commands/ll-pica-flatpak/`](reference/commands/ll-pica-flatpak/ll-pica-flatpak.md) directory
 
 ### Common Issues
 

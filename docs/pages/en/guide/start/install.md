@@ -18,15 +18,15 @@ linyaps is composed of three parts:
 
 Automatically built based on the latest tag
 
-1.  Repository address <https://ci.deepin.com/repo/obs/linglong:/CI:/release>
-2.  Build address <https://build.deepin.com/project/show/linglong:CI:release>
+1. Repository address <https://ci.deepin.com/repo/obs/linglong:/CI:/release>
+2. Build address <https://build.deepin.com/project/show/linglong:CI:release>
 
 ### latest repository
 
 Automatically built based on the latest commit
 
-1.  Repository address <https://ci.deepin.com/repo/obs/linglong:/CI:/latest>
-2.  Build address <https://build.deepin.com/project/show/linglong:CI:latest>
+1. Repository address <https://ci.deepin.com/repo/obs/linglong:/CI:/latest>
+2. Build address <https://build.deepin.com/project/show/linglong:CI:latest>
 
 :::tip
 
@@ -161,4 +161,28 @@ sudo apt install linglong-builder
 
 ```bash
 sudo dnf install linglong-builder
+```
+
+## Linyaps Conversion Tool Installation Instructions
+
+### Deepin 23/25
+
+```bash
+sudo apt install linglong-pica
+
+```
+
+### Arch Linux
+
+Install via [AUR repository](https://aur.archlinux.org/packages/linglong-pica) or [self-hosted repository](https://github.com/taotieren/aur-repo).
+
+```bash
+
+# AUR
+yay -Syu linglong-pica
+
+# or self-hosted repository
+
+sudo pacman -Syu linglong-pica
+
 ```

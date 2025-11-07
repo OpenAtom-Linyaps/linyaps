@@ -183,7 +183,6 @@ For assistance, use the following channels:
 - [Init](./docs/pages/en/guide/reference/commands/ll-pica/ll-pica-init.md)
 - [Convert](./docs/pages/en/guide/reference/commands/ll-pica/ll-pica-convert.md)
 - [Adep](./docs/pages/en/guide/reference/commands/ll-pica/ll-pica-adep.md)
-- [Install](./docs/pages/en/guide/reference/commands/ll-pica/install.md)
 
 #### AppImage Conversion
 

@@ -29,14 +29,14 @@ runtime:
   arch: amd64
 ```
 
-| Name           | Description                                                                 |
-| -------------- | --------------------------------------------------------------------------- |
-| runtime        | Runtime environment                                                         |
-| version        | Runtime version, three-digit version can fuzzy match the fourth digit       |
-| base_version   | Base version number, three-digit version can fuzzy match the fourth digit   |
-| source         | Source used when obtaining deb package dependencies                         |
-| distro_version | Distribution code name                                                      |
-| arch           | Architecture required for obtaining deb packages                            |
+| Name           | Description                                                               |
+| -------------- | ------------------------------------------------------------------------- |
+| runtime        | Runtime environment                                                       |
+| version        | Runtime version, three-digit version can fuzzy match the fourth digit     |
+| base_version   | Base version number, three-digit version can fuzzy match the fourth digit |
+| source         | Source used when obtaining deb package dependencies                       |
+| distro_version | Distribution code name                                                    |
+| arch           | Architecture required for obtaining deb packages                          |
 
 ### Deb Package Information
 
@@ -49,9 +49,9 @@ file:
       ref: /tmp/com.baidu.baidunetdisk_4.17.7_amd64.deb
 ```
 
-| Name | Description                                                                                   |
-| ---- | --------------------------------------------------------------------------------------------- |
-| type | Acquisition method, local requires specifying ref, repo does not require specifying ref.      |
-| id   | Unique name of the build product                                                              |
-| name | Specify the correct package name that apt can search for                                      |
-| ref  | Path of the deb package on the host machine                                                   |
+| Name | Description                                                                              |
+| ---- | ---------------------------------------------------------------------------------------- |
+| type | Acquisition method, local requires specifying ref, repo does not require specifying ref. |
+| id   | Unique name of the build product                                                         |
+| name | Specify the correct package name that apt can search for                                 |
+| ref  | Path of the deb package on the host machine                                              |

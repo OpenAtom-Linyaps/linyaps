@@ -38,7 +38,7 @@ ll-cli is a package manager frontend for managing Linyaps application installati
 | --------- | ------------------------------------- | --------------------------------------------------------------------------------------- |
 | run       | [ll-cli-run(1)](./run.md)             | Run applications                                                                        |
 | ps        | [ll-cli-ps(1)](./ps.md)               | List running applications                                                               |
-| enter     | [ll-cli-exec(1)](./enter.md)           | Enter the namespace of a running application                                            |
+| enter     | [ll-cli-exec(1)](./enter.md)          | Enter the namespace of a running application                                            |
 | kill      | [ll-cli-kill(1)](./kill.md)           | Stop running applications                                                               |
 | prune     | [ll-cli-prune(1)](./prune.md)         | Remove unused base systems or runtimes                                                  |
 | install   | [ll-cli-install(1)](./install.md)     | Install applications or runtimes                                                        |

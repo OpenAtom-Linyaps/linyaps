@@ -85,7 +85,7 @@ build: |
 
 The linglong.yaml file follows YAML syntax specifications.
 
-For detailed explanation of fields in linglong.yaml, refer to: [Build Configuration File Introduction](../ll-builder/manifests.md)
+For detailed explanation of fields in linglong.yaml, refer to: [Build Configuration File Introduction](../building/manifests.md)
 
 ## Build
 

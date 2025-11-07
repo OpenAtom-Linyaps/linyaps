@@ -185,7 +185,6 @@ ll-cli run cn.org.linyaps.demo
 - [初始化](./docs/pages/guide/reference/commands/ll-pica/ll-pica-init.md)
 - [转换](./docs/pages/guide/reference/commands/ll-pica/ll-pica-convert.md)
 - [依赖](./docs/pages/guide/reference/commands/ll-pica/ll-pica-adep.md)
-- [安装](./docs/pages/guide/reference/commands/ll-pica/install.md)
 
 #### AppImage 包转换
 

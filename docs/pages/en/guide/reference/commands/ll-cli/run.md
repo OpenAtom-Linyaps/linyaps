@@ -64,7 +64,7 @@ ll-cli run org.deepin.demo -- bash -x /path/to/bash/script
 
 ## SEE ALSO
 
-**[ll-cli(1)](./ll-cli.md)**, **[ll-cli-ps(1)](./ps.md)**, **[ll-cli-exec(1)](./exec.md)**
+**[ll-cli(1)](./ll-cli.md)**, **[ll-cli-ps(1)](./ps.md)**, **[ll-cli-exec(1)](./enter.md)**
 
 ## HISTORY
 

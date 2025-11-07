@@ -66,7 +66,7 @@ ll-pica init -a "arm64"
 
 ## NOTES
 
-After the package.yaml file is generated, users can modify it as needed. For detailed fields, refer to: [Conversion Configuration File Introduction](./manifests.md).
+After the package.yaml file is generated, users can modify it as needed. For detailed fields, refer to: [Conversion Configuration File Introduction](./ll-pica-manifests.md).
 
 ## SEE ALSO
 

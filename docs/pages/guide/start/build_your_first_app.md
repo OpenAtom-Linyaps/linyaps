@@ -85,7 +85,7 @@ build: |
 
 linglong.yaml 文件遵循 yaml 语法规范。
 
-linglong.yaml 中字段的详细解释参考：[构建配置文件简介](../ll-builder/manifests.md)
+linglong.yaml 中字段的详细解释参考：[构建配置文件简介](../building/manifests.md)
 
 ## 构建
 

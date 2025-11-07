@@ -18,15 +18,15 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 基于最新tag自动构建
 
-1.  仓库地址 <https://ci.deepin.com/repo/obs/linglong:/CI:/release>
-2.  构建地址 <https://build.deepin.com/project/show/linglong:CI:release>
+1. 仓库地址 <https://ci.deepin.com/repo/obs/linglong:/CI:/release>
+2. 构建地址 <https://build.deepin.com/project/show/linglong:CI:release>
 
 ### latest 仓库
 
 基于最新提交自动构建
 
-1.  仓库地址 <https://ci.deepin.com/repo/obs/linglong:/CI:/latest>
-2.  构建地址 <https://build.deepin.com/project/show/linglong:CI:latest>
+1. 仓库地址 <https://ci.deepin.com/repo/obs/linglong:/CI:/latest>
+2. 构建地址 <https://build.deepin.com/project/show/linglong:CI:latest>
 
 :::tip
 
@@ -161,4 +161,23 @@ sudo apt install linglong-builder
 
 ```bash
 sudo dnf install linglong-builder
+```
+
+## 如意玲珑转换工具安装说明
+
+### Deepin 23/25
+
+```bash
+sudo apt install linglong-pica
+```
+
+### Arch Linux
+
+通过 [AUR 仓库](https://aur.archlinux.org/packages/linglong-pica) 或 [自建源仓库](https://github.com/taotieren/aur-repo) 安装。
+
+```bash
+# AUR
+yay -Syu linglong-pica
+# 或自建源
+sudo pacman -Syu linglong-pica
 ```

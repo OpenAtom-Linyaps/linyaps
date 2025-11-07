@@ -7,6 +7,7 @@
 #include <gtest/gtest.h>
 
 #include "linglong/common/strings.h"
+#include "linglong/utils/command/env.h"
 #include "linglong/utils/error/error.h"
 
 #include <filesystem>
@@ -14,9 +15,11 @@
 using namespace linglong::utils::error;
 
 using namespace linglong::common;
+using linglong::utils::command::EnvironmentVariableGuard;
 
 TEST(Error, New)
 {
+    EnvironmentVariableGuard guard("LINYAPS_BACKTRACE", "1");
     auto res = []() -> Result<void> {
         LINGLONG_TRACE("test LINGLONG_ERR");
         return LINGLONG_ERR("message", -1);
@@ -31,6 +34,7 @@ TEST(Error, New)
 
 TEST(Error, WrapResult)
 {
+    EnvironmentVariableGuard guard("LINYAPS_BACKTRACE", "1");
     auto res = []() -> Result<void> {
         LINGLONG_TRACE("test LINGLONG_ERR");
         auto res = []() -> Result<void> {
@@ -59,6 +63,7 @@ TEST(Error, WrapResult)
 
 TEST(Error, WrapError)
 {
+    EnvironmentVariableGuard guard("LINYAPS_BACKTRACE", "1");
     auto res = []() -> Result<void> {
         LINGLONG_TRACE("test LINGLONG_ERR");
         auto res = []() -> Result<void> {
@@ -82,6 +87,7 @@ TEST(Error, WrapError)
 
 TEST(Error, WarpErrorCode)
 {
+    EnvironmentVariableGuard guard("LINYAPS_BACKTRACE", "1");
     auto res = []() -> Result<void> {
         LINGLONG_TRACE("test LINGLONG_ERR");
         return LINGLONG_ERR("app install failed", ErrorCode::AppInstallFailed);
@@ -95,6 +101,7 @@ TEST(Error, WarpErrorCode)
 
 TEST(Error, WarpStdErrorCode)
 {
+    EnvironmentVariableGuard guard("LINYAPS_BACKTRACE", "1");
     auto res = []() -> Result<void> {
         LINGLONG_TRACE("test LINGLONG_ERR");
         std::error_code ec;
@@ -112,6 +119,7 @@ TEST(Error, WarpStdErrorCode)
 
 TEST(Error, WarpQtFile)
 {
+    EnvironmentVariableGuard guard("LINYAPS_BACKTRACE", "1");
     auto res = []() -> Result<void> {
         LINGLONG_TRACE("test LINGLONG_ERR");
         QFile file("/not_exists_file");
@@ -127,10 +135,9 @@ TEST(Error, WarpQtFile)
     ASSERT_TRUE(strings::contains(msg, "No such file or directory")) << msg;
 }
 
-// 在现有的 error_test.cpp 文件末尾添加以下测试
-
 TEST(Error, WarpGError)
 {
+    EnvironmentVariableGuard guard("LINYAPS_BACKTRACE", "1");
     auto res = []() -> Result<void> {
         LINGLONG_TRACE("test LINGLONG_ERR with GError");
         g_autoptr(GError) gErr =
@@ -147,6 +154,7 @@ TEST(Error, WarpGError)
 
 TEST(Error, WarpSystemError)
 {
+    EnvironmentVariableGuard guard("LINYAPS_BACKTRACE", "1");
     auto res = []() -> Result<void> {
         LINGLONG_TRACE("test LINGLONG_ERR with std::system_error");
         try {
@@ -166,6 +174,7 @@ TEST(Error, WarpSystemError)
 
 TEST(Error, WarpExceptionPtr)
 {
+    EnvironmentVariableGuard guard("LINYAPS_BACKTRACE", "1");
     auto res = []() -> Result<void> {
         LINGLONG_TRACE("test LINGLONG_ERR with std::exception_ptr");
         std::exception_ptr eptr;
@@ -202,6 +211,7 @@ TEST(Error, WarpExceptionPtr)
 
 TEST(Error, WarpStdException)
 {
+    EnvironmentVariableGuard guard("LINYAPS_BACKTRACE", "1");
     auto res = []() -> Result<void> {
         LINGLONG_TRACE("test LINGLONG_ERR with std::exception");
         std::invalid_argument e("Invalid argument provided");
@@ -217,6 +227,7 @@ TEST(Error, WarpStdException)
 
 TEST(Error, WarpNestedError)
 {
+    EnvironmentVariableGuard guard("LINYAPS_BACKTRACE", "1");
     auto res = []() -> Result<void> {
         auto innerFn = []() -> Result<void> {
             LINGLONG_TRACE("inner function");
@@ -242,6 +253,7 @@ TEST(Error, WarpNestedError)
 
 TEST(Error, WarpErrorWithCustomCode)
 {
+    EnvironmentVariableGuard guard("LINYAPS_BACKTRACE", "1");
     auto res = []() -> Result<void> {
         LINGLONG_TRACE("test LINGLONG_ERR with custom error code");
         return LINGLONG_ERR("Custom error occurred", 12345);
@@ -256,6 +268,7 @@ TEST(Error, WarpErrorWithCustomCode)
 
 TEST(Error, WarpQStringMessage)
 {
+    EnvironmentVariableGuard guard("LINYAPS_BACKTRACE", "1");
     auto res = []() -> Result<void> {
         LINGLONG_TRACE("test LINGLONG_ERR with QString message");
         QString errorMsg = QString("Error occurred at line %1").arg(__LINE__);
@@ -271,6 +284,7 @@ TEST(Error, WarpQStringMessage)
 
 TEST(Error, WarpStdStringMessage)
 {
+    EnvironmentVariableGuard guard("LINYAPS_BACKTRACE", "1");
     auto res = []() -> Result<void> {
         LINGLONG_TRACE("test LINGLONG_ERR with std::string message");
         std::string errorMsg = "Standard string error message";
@@ -286,6 +300,7 @@ TEST(Error, WarpStdStringMessage)
 
 TEST(Error, WarpEmptyFile)
 {
+    EnvironmentVariableGuard guard("LINYAPS_BACKTRACE", "1");
     auto res = []() -> Result<void> {
         LINGLONG_TRACE("test LINGLONG_ERR with empty QFile");
         QFile emptyFile;
@@ -301,6 +316,7 @@ TEST(Error, WarpEmptyFile)
 
 TEST(Error, SuccessCase)
 {
+    EnvironmentVariableGuard guard("LINYAPS_BACKTRACE", "1");
     auto res = []() -> Result<void> {
         LINGLONG_TRACE("test successful operation");
         // 模拟成功操作
@@ -312,6 +328,7 @@ TEST(Error, SuccessCase)
 
 TEST(Error, ErrorCodeEnumValues)
 {
+    EnvironmentVariableGuard guard("LINYAPS_BACKTRACE", "1");
     // 测试各种错误码枚举值
     auto testErrorCode = [](ErrorCode code, const std::string &description) -> Result<void> {
         LINGLONG_TRACE("test error code : " + description);
@@ -330,4 +347,46 @@ TEST(Error, ErrorCodeEnumValues)
     auto res3 = testErrorCode(ErrorCode::Success, "This should not happen");
     ASSERT_FALSE(res3.has_value());
     ASSERT_EQ(res3.error().code(), 0); // Success 错误码为0
+}
+
+TEST(Error, NoBacktrace)
+{
+    auto res = []() -> Result<void> {
+        LINGLONG_TRACE("trace");
+        return LINGLONG_ERR("error");
+    }();
+
+    ASSERT_FALSE(res.has_value());
+    auto msg = res.error().message();
+    ASSERT_FALSE(strings::contains(msg, "trace")) << msg;
+    ASSERT_TRUE(strings::contains(msg, "error")) << msg;
+}
+
+TEST(Error, DefaultError)
+{
+    auto res1 = []() -> Result<void> {
+        LINGLONG_TRACE("trace 1");
+        return LINGLONG_ERR("error 1", 1);
+    };
+
+    auto res2 = [&res1]() -> Result<void> {
+        LINGLONG_TRACE("trace 2");
+        return LINGLONG_ERR(res1());
+    }();
+
+    ASSERT_FALSE(res2.has_value());
+    auto msg = res2.error().message();
+    ASSERT_FALSE(strings::contains(msg, "trace")) << msg;
+    ASSERT_TRUE(strings::contains(msg, "error 1")) << msg;
+    ASSERT_EQ(res2.error().code(), 1);
+
+    auto res3 = [&res1]() -> Result<void> {
+        LINGLONG_TRACE("trace 3");
+        return LINGLONG_ERR("error 3", res1());
+    }();
+    ASSERT_FALSE(res3.has_value());
+    msg = res3.error().message();
+    ASSERT_FALSE(strings::contains(msg, "trace")) << msg;
+    ASSERT_TRUE(strings::contains(msg, "error 3")) << msg;
+    ASSERT_EQ(res3.error().code(), 1);
 }

@@ -83,7 +83,8 @@ public:
         return Error(std::make_unique<details::ErrorImpl>(file,
                                                           line,
                                                           static_cast<int>(code),
-                                                          trace_msg + ": " + msg.toStdString(),
+                                                          trace_msg,
+                                                          msg.toStdString(),
                                                           nullptr));
     }
 
@@ -96,7 +97,8 @@ public:
         return Error(std::make_unique<details::ErrorImpl>(file,
                                                           line,
                                                           static_cast<int>(code),
-                                                          trace_msg + ": " + msg,
+                                                          trace_msg,
+                                                          msg,
                                                           nullptr));
     }
 
@@ -109,7 +111,8 @@ public:
         return Error(std::make_unique<details::ErrorImpl>(file,
                                                           line,
                                                           static_cast<int>(code),
-                                                          trace_msg + ": " + msg,
+                                                          trace_msg,
+                                                          msg,
                                                           nullptr));
     }
 
@@ -120,7 +123,8 @@ public:
         return Error(std::make_unique<details::ErrorImpl>(file,
                                                           line,
                                                           code,
-                                                          trace_msg + ": " + msg.toStdString(),
+                                                          trace_msg,
+                                                          msg.toStdString(),
                                                           nullptr));
     }
 
@@ -131,7 +135,7 @@ public:
                     int code = -1) -> Error
     {
         return Error(
-          std::make_unique<details::ErrorImpl>(file, line, code, trace_msg + ": " + msg, nullptr));
+          std::make_unique<details::ErrorImpl>(file, line, code, trace_msg, msg, nullptr));
     }
 
     static auto
@@ -139,7 +143,7 @@ public:
       -> Error
     {
         return Error(
-          std::make_unique<details::ErrorImpl>(file, line, code, trace_msg + ": " + msg, nullptr));
+          std::make_unique<details::ErrorImpl>(file, line, code, trace_msg, msg, nullptr));
     }
 
     static auto Err(const char *file,
@@ -148,12 +152,13 @@ public:
                     const QString &msg,
                     const QFile &qfile) -> Error
     {
-        return Error(std::make_unique<details::ErrorImpl>(
-          file,
-          line,
-          qfile.error(),
-          trace_msg + ": " + msg.toStdString() + ": " + qfile.errorString().toStdString(),
-          nullptr));
+        return Error(std::make_unique<details::ErrorImpl>(file,
+                                                          line,
+                                                          qfile.error(),
+                                                          trace_msg,
+                                                          msg.toStdString() + ": "
+                                                            + qfile.errorString().toStdString(),
+                                                          nullptr));
     }
 
     static auto Err(const char *file, int line, const std::string &trace_msg, const QFile &qfile)
@@ -162,8 +167,8 @@ public:
         return Error(std::make_unique<details::ErrorImpl>(file,
                                                           line,
                                                           qfile.error(),
-                                                          trace_msg + ": "
-                                                            + qfile.fileName().toStdString() + ": "
+                                                          trace_msg,
+                                                          qfile.fileName().toStdString() + ": "
                                                             + qfile.errorString().toStdString(),
                                                           nullptr));
     }
@@ -174,16 +179,17 @@ public:
                     std::exception_ptr err,
                     int code = -1) -> Error
     {
-        std::string what = trace_msg + ": ";
+        std::string what;
         try {
             std::rethrow_exception(std::move(err));
         } catch (const std::exception &e) {
-            what += e.what();
+            what = e.what();
         } catch (...) {
-            what += "unknown";
+            what = "unknown";
         }
 
-        return Error(std::make_unique<details::ErrorImpl>(file, line, code, what, nullptr));
+        return Error(
+          std::make_unique<details::ErrorImpl>(file, line, code, trace_msg, what, nullptr));
     }
 
     static auto Err(const char *file,
@@ -193,7 +199,7 @@ public:
                     std::exception_ptr err,
                     int code = -1) -> Error
     {
-        std::string what = trace_msg + ": " + msg.toStdString() + ": ";
+        std::string what = msg.toStdString() + ": ";
         try {
             std::rethrow_exception(std::move(err));
         } catch (const std::exception &e) {
@@ -202,18 +208,15 @@ public:
             what += "unknown";
         }
 
-        return Error(std::make_unique<details::ErrorImpl>(file, line, code, what, nullptr));
+        return Error(
+          std::make_unique<details::ErrorImpl>(file, line, code, trace_msg, what, nullptr));
     }
 
     static auto
     Err(const char *file, int line, const std::string &trace_msg, const std::exception &e) -> Error
     {
-        return Error(std::make_unique<details::ErrorImpl>(file,
-                                                          line,
-
-                                                          -1,
-                                                          trace_msg + ": " + e.what(),
-                                                          nullptr));
+        return Error(
+          std::make_unique<details::ErrorImpl>(file, line, -1, trace_msg, e.what(), nullptr));
     }
 
     static auto Err(const char *file,
@@ -223,9 +226,10 @@ public:
                     const std::exception &e,
                     int code = -1) -> Error
     {
-        std::string what = trace_msg + ": " + msg.toStdString() + ": " + e.what();
+        std::string what = msg.toStdString() + ": " + e.what();
 
-        return Error(std::make_unique<details::ErrorImpl>(file, line, code, what, nullptr));
+        return Error(
+          std::make_unique<details::ErrorImpl>(file, line, code, trace_msg, what, nullptr));
     }
 
     static auto Err(const char *file,
@@ -281,7 +285,8 @@ public:
         return Error(std::make_unique<details::ErrorImpl>(file,
                                                           line,
                                                           cause.error().code(),
-                                                          trace_msg + ": " + msg.toStdString(),
+                                                          trace_msg,
+                                                          msg.toStdString(),
                                                           std::move(cause.error().pImpl)));
     }
 
@@ -297,7 +302,8 @@ public:
         return Error(std::make_unique<details::ErrorImpl>(file,
                                                           line,
                                                           cause.error().code(),
-                                                          trace_msg + ": " + msg,
+                                                          trace_msg,
+                                                          msg,
                                                           std::move(cause.error().pImpl)));
     }
 
@@ -313,7 +319,8 @@ public:
         return Error(std::make_unique<details::ErrorImpl>(file,
                                                           line,
                                                           cause.error().code(),
-                                                          trace_msg + ": " + msg,
+                                                          trace_msg,
+                                                          msg,
                                                           std::move(cause.error().pImpl)));
     }
 
@@ -329,6 +336,7 @@ public:
                                                           line,
                                                           cause.error().code(),
                                                           trace_msg,
+                                                          std::nullopt,
                                                           std::move(cause.error().pImpl)));
     }
 
@@ -341,7 +349,8 @@ public:
         return Error(std::make_unique<details::ErrorImpl>(file,
                                                           line,
                                                           cause.code(),
-                                                          trace_msg + ": " + msg,
+                                                          trace_msg,
+                                                          msg,
                                                           std::move(cause.pImpl)));
     }
 
@@ -353,6 +362,7 @@ public:
                                                           line,
                                                           cause.code(),
                                                           trace_msg,
+                                                          std::nullopt,
                                                           std::move(cause.pImpl)));
     }
 

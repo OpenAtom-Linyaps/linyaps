@@ -1,8 +1,8 @@
 # Rootfs
 
-As oci runtime specification, the runtime start from an rootfs, but in linglong, it prepare rootfs in ll-box. so we put the information of construction rootfs in annotations to ll-box.
+根据 OCI 运行时规范，运行时从 rootfs 开始，但在玲珑中，它在 ll-box 中准备 rootfs。因此我们将构建 rootfs 的信息放在 ll-box 的注释中。
 
-The example of annotations is：
+注释的示例是：
 
 ```json
   "annotations": {
@@ -77,6 +77,6 @@ The example of annotations is：
   }
 ```
 
-The ll-box support two method to build rootfs, use native ro bind mount or with overlayfs.
+ll-box 支持两种构建 rootfs 的方法，使用原生只读绑定挂载或使用 overlayfs。
 
-`container_root_path` is the work directory of ll-box.
+`container_root_path` 是 ll-box 的工作目录。

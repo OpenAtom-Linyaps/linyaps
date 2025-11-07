@@ -1,6 +1,6 @@
-# System Helper
+# 系统助手
 
-User with no privilege can mount erofs to dir with:
+无特权的用户可以通过以下方式将 erofs 挂载到目录：
 
 ```bash
 busctl --system call org.deepin.linglong.SystemHelper \
@@ -12,4 +12,3 @@ busctl --system call org.deepin.linglong.SystemHelper \
     '/run/user/1000/linglong/vfs/layers/com.qq.music/1.1.3/x86_64/' \
     'erofs' \
     0
-```

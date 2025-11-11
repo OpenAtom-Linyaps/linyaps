@@ -18,11 +18,6 @@ namespace linglong::package {
 
 utils::error::Result<Reference> Reference::parse(const std::string &raw) noexcept
 {
-    return parse(QString::fromStdString(raw));
-}
-
-utils::error::Result<Reference> Reference::parse(const QString &raw) noexcept
-{
     LINGLONG_TRACE("parse reference string");
 
     static auto referenceRegExp = []() noexcept {
@@ -32,7 +27,7 @@ utils::error::Result<Reference> Reference::parse(const QString &raw) noexcept
         return referenceRegExp;
     }();
 
-    auto matches = referenceRegExp.match(raw);
+    auto matches = referenceRegExp.match(QString::fromStdString(raw));
     if (not(matches.isValid() and matches.hasMatch())) {
         return LINGLONG_ERR("regexp mismatched.", -1);
     }
@@ -128,54 +123,6 @@ bool operator!=(const Reference &lhs, const Reference &rhs) noexcept
 bool operator==(const Reference &lhs, const Reference &rhs) noexcept
 {
     return !(lhs != rhs);
-}
-
-QVariantMap Reference::toVariantMap(const Reference &ref) noexcept
-{
-    nlohmann::json json;
-    json["channel"] = ref.channel;
-    json["id"] = ref.id;
-    json["version"] = ref.version.toString();
-    json["arch"] = ref.arch.toStdString();
-
-    QJsonDocument doc = QJsonDocument::fromJson(json.dump().data());
-    Q_ASSERT(doc.isObject());
-    return doc.object().toVariantMap();
-}
-
-utils::error::Result<Reference> Reference::fromVariantMap(const QVariantMap &data) noexcept
-{
-    LINGLONG_TRACE("parse reference VariantMap");
-
-    QJsonDocument doc(QJsonObject::fromVariantMap(data));
-    nlohmann::json json;
-    try {
-        json = nlohmann::json::parse(doc.toJson().constData());
-    } catch (const std::exception &e) {
-        return LINGLONG_ERR("parse json failed", e);
-    }
-
-    auto channel = json["channel"];
-    auto id = json["id"];
-    auto rawVersion = json["version"];
-    auto rawArch = json["arch"];
-
-    auto version = Version::parse(rawVersion);
-    if (!version) {
-        return LINGLONG_ERR(version);
-    }
-
-    auto arch = Architecture::parse(rawArch);
-    if (!arch) {
-        return LINGLONG_ERR(arch);
-    }
-
-    auto reference = create(channel, id, *version, *arch);
-    if (!reference) {
-        return LINGLONG_ERR(reference);
-    }
-
-    return *reference;
 }
 
 utils::error::Result<Reference>

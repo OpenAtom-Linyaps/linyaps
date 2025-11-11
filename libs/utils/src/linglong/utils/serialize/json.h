@@ -61,7 +61,8 @@ error::Result<T> LoadJSON(const Source &content) noexcept
 template <typename T>
 error::Result<T> LoadJSONFile(GFile *file) noexcept
 {
-    LINGLONG_TRACE(fmt::format("load json from {}", g_file_get_path(file)));
+    g_autofree char *path = g_file_get_path(file);
+    LINGLONG_TRACE(fmt::format("load json from {}", path));
 
     g_autoptr(GError) gErr = nullptr;
     g_autofree gchar *content = nullptr;

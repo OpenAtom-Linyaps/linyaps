@@ -450,9 +450,6 @@ void Cli::printProgress(const PMTaskState &state) noexcept
         case utils::error::ErrorCode::AppUpgradeFailed:
             this->printer.printMessage(_("Upgrade failed"));
             break;
-        case utils::error::ErrorCode::AppUpgradeLocalNotFound:
-            this->printer.printMessage(_("Application is not installed."));
-            break;
         case utils::error::ErrorCode::AppUpgradeRemoteNotFound:
             this->printer.printMessage(_("Remote application is not found."));
             break;
@@ -501,7 +498,7 @@ Cli::Cli(Printer &printer,
                       "TaskAdd",
                       this,
                       SLOT(onTaskAdded(QDBusObjectPath)))) {
-        qFatal("couldn't connect to package manager signal 'TaskAdded'");
+        LogE("couldn't connect to package manager signal 'TaskAdded'");
     }
 
     if (!conn.connect(pkgMan.service(),
@@ -510,7 +507,7 @@ Cli::Cli(Printer &printer,
                       "TaskRemoved",
                       this,
                       SLOT(onTaskRemoved(QDBusObjectPath, int, int, QString, double, int)))) {
-        qFatal("couldn't connect to package manager signal 'TaskRemoved'");
+        LogE("couldn't connect to package manager signal 'TaskRemoved'");
     }
 }
 
@@ -1088,7 +1085,7 @@ int Cli::upgrade(const UpgradeOptions &options)
         return -1;
     }
 
-    std::vector<package::FuzzyReference> fuzzyRefs;
+    std::vector<package::Reference> toUpgrade;
     if (!options.appid.empty()) {
         auto fuzzyRef = package::FuzzyReference::parse(options.appid);
         if (!fuzzyRef) {
@@ -1096,67 +1093,42 @@ int Cli::upgrade(const UpgradeOptions &options)
             return -1;
         }
 
-        auto localRefRet = this->repository.clearReference(*fuzzyRef,
-                                                           {
-                                                             .forceRemote = false,
-                                                             .fallbackToRemote = false,
-                                                           });
-        if (!localRefRet) {
-            this->printer.printErr(localRefRet.error());
+        auto localRef = this->repository.clearReference(*fuzzyRef,
+                                                        {
+                                                          .forceRemote = false,
+                                                          .fallbackToRemote = false,
+                                                        });
+        if (!localRef) {
+            this->printer.printMessage(
+              fmt::format(_("Application {} is not installed."), options.appid));
             return -1;
         }
 
-        auto layerItemRet = this->repository.getLayerItem(*localRefRet);
+        auto layerItemRet = this->repository.getLayerItem(*localRef);
         if (!layerItemRet) {
             this->printer.printErr(layerItemRet.error());
             return -1;
         }
         if (layerItemRet->info.kind != "app") {
-            this->printer.printErr(
-              LINGLONG_ERRV(std::string{ "package " + options.appid + " is not an app" }.c_str()));
+            this->printer.printMessage(fmt::format(_("{} is not an application."), options.appid));
             return -1;
         }
-        fuzzyRefs.emplace_back(std::move(*fuzzyRef));
-    } else {
-        // Note: upgrade all apps for now.
-        auto list = this->listUpgradable();
-        if (!list) {
-            this->printer.printErr(list.error());
-            return -1;
-        }
-        for (const auto &item : *list) {
-            auto fuzzyRef =
-              package::FuzzyReference::parse(fmt::format("{}/{}", item.id, item.oldVersion));
-            if (!fuzzyRef) {
-                this->printer.printErr(fuzzyRef.error());
-                return -1;
-            }
-            fuzzyRefs.emplace_back(std::move(*fuzzyRef));
-        }
-    }
-
-    if (fuzzyRefs.empty()) {
-        this->printer.printMessage(_("All software packages are up to date."));
-        return 0;
+        toUpgrade.emplace_back(std::move(localRef).value());
     }
 
     api::types::v1::PackageManager1UpdateParameters params;
-    for (const auto &fuzzyRef : fuzzyRefs) {
+    params.depsOnly = options.depsOnly;
+    for (const auto &ref : toUpgrade) {
         api::types::v1::PackageManager1Package package;
-        package.id = fuzzyRef.id;
-        if (fuzzyRef.channel) {
-            package.channel = fuzzyRef.channel;
-        }
-        if (fuzzyRef.version) {
-            package.version = fuzzyRef.version;
-        }
+        package.id = ref.id;
+        package.channel = ref.channel;
         params.packages.emplace_back(std::move(package));
     }
 
     auto pendingReply = this->pkgMan.Update(utils::serialize::toQVariantMap(params));
     auto res = waitTaskCreated(pendingReply);
     if (!res) {
-        handleCommonError(res.error());
+        handleUpgradeError(res.error());
         return -1;
     }
 
@@ -1428,76 +1400,22 @@ int Cli::list(const ListOptions &options)
     return 0;
 }
 
-utils::error::Result<std::vector<api::types::v1::UpgradeListResult>>
-Cli::listUpgradable(const std::string &type)
+utils::error::Result<std::vector<api::types::v1::UpgradeListResult>> Cli::listUpgradable()
 {
     LINGLONG_TRACE("list upgradable");
-    auto pkgs = this->repository.listLocalLatest();
-    if (!pkgs) {
-        return LINGLONG_ERR(pkgs);
+
+    // only applications can be upgraded
+    auto upgradablePkgs = this->repository.upgradableApps();
+    if (!upgradablePkgs) {
+        return LINGLONG_ERR(upgradablePkgs);
     }
-
-    auto localPkgs = std::map<std::string, std::vector<api::types::v1::PackageInfoV2>>{
-        { "all", std::move(pkgs).value() }
-    };
-
-    filterPackageInfosByType(localPkgs, type);
 
     std::vector<api::types::v1::UpgradeListResult> upgradeList;
-    auto fullFuzzyRef = package::FuzzyReference::parse(".");
-    if (!fullFuzzyRef) {
-        return LINGLONG_ERR(fullFuzzyRef);
-    }
-
-    auto remoteRepos = this->repository.getHighestPriorityRepos();
-    if (remoteRepos.empty()) {
-        return LINGLONG_ERR("No remote repository found.");
-    }
-
-    auto archRet = package::Architecture::currentCPUArchitecture();
-    if (!archRet) {
-        return LINGLONG_ERR(archRet);
-    }
-
-    std::optional<package::Reference> reference;
-    for (const auto &pkg : localPkgs["all"]) {
-        auto fuzzy = package::FuzzyReference::create(pkg.channel.c_str(),
-                                                     pkg.id.c_str(),
-                                                     std::nullopt,
-                                                     *archRet);
-        if (!fuzzy) {
-            this->printer.printErr(fuzzy.error());
-            continue;
-        }
-
-        reference.reset();
-
-        auto newRef = this->repository.latestRemoteReference(*fuzzy);
-
-        if (!newRef) {
-            qDebug() << "Failed to find remote latest reference:" << newRef.error().message();
-            continue;
-        }
-
-        auto oldVersion = package::Version::parse(pkg.version);
-        if (!oldVersion) {
-            qDebug() << "failed to parse old version:" << oldVersion.error().message();
-            continue;
-        }
-
-        if (newRef->reference.version > *oldVersion) {
-            reference = newRef->reference;
-        }
-
-        if (!reference) {
-            LogD("Failed to find the package: {}, maybe it is local package, skip it.", fuzzy->id);
-            continue;
-        }
-
+    for (const auto &pkg : *upgradablePkgs) {
         upgradeList.emplace_back(
-          api::types::v1::UpgradeListResult{ .id = pkg.id,
-                                             .newVersion = reference->version.toString(),
-                                             .oldVersion = oldVersion->toString() });
+          api::types::v1::UpgradeListResult{ .id = pkg.first.id,
+                                             .newVersion = pkg.second.reference.version.toString(),
+                                             .oldVersion = pkg.first.version.toString() });
     }
     return upgradeList;
 }
@@ -2598,6 +2516,26 @@ void Cli::handleUninstallError(const utils::error::Error &error)
     case utils::error::ErrorCode::AppUninstallFailed:
     case utils::error::ErrorCode::Unknown:
         this->printer.printMessage(_("Uninstall failed"));
+        break;
+    default:
+        if (!handleCommonError(error)) {
+            return;
+        }
+        break;
+    }
+
+    if (this->globalOptions.verbose) {
+        this->printer.printErr(error);
+    }
+}
+
+void Cli::handleUpgradeError(const utils::error::Error &error)
+{
+    auto errorCode = static_cast<utils::error::ErrorCode>(error.code());
+    switch (errorCode) {
+    case utils::error::ErrorCode::AppUpgradeFailed:
+    case utils::error::ErrorCode::Unknown:
+        this->printer.printMessage(_("Upgrade failed"));
         break;
     default:
         if (!handleCommonError(error)) {

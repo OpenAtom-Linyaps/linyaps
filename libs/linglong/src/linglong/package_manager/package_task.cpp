@@ -149,20 +149,17 @@ void PackageTask::updateState(linglong::api::types::v1::State newState,
 void PackageTask::updateSubState(linglong::api::types::v1::SubState newSubState,
                                  const std::string &message) noexcept
 {
+    m_totalPercentage += m_subStateMap[subState()];
+    m_curStagePercentage = 0;
+
     this->setProperty("SubState", static_cast<int>(newSubState));
     this->setProperty("Message", QString::fromStdString(message));
 
-    auto curSubState = subState();
-    if (curSubState == linglong::api::types::v1::SubState::AllDone
-        || curSubState == linglong::api::types::v1::SubState::PackageManagerDone) {
+    if (newSubState == linglong::api::types::v1::SubState::AllDone
+        || newSubState == linglong::api::types::v1::SubState::PackageManagerDone) {
         m_totalPercentage = TASK_DONE;
-        Q_EMIT PercentageChanged(getPercentage());
-        changePropertiesDone();
-        return;
     }
 
-    m_totalPercentage += m_subStateMap[curSubState];
-    m_curStagePercentage = 0;
     Q_EMIT PercentageChanged(getPercentage());
     changePropertiesDone();
 }

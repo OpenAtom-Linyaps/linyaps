@@ -261,7 +261,7 @@ utils::error::Result<void> cmdRemoveApp(repo::OSTreeRepo &repo,
                                         bool prune)
 {
     for (const auto &ref : refs) {
-        auto r = package::Reference::parse(QString::fromStdString(ref));
+        auto r = package::Reference::parse(ref);
         if (!r.has_value()) {
             std::cerr << ref << ": " << r.error().message() << std::endl;
             continue;

@@ -112,7 +112,7 @@ public
     utils::error::Result<void> removeAfterInstall(const package::Reference &oldRef,
                                                   const package::Reference &newRef,
                                                   const std::vector<std::string> &modules) noexcept;
-    utils::error::Result<void> tryGenerateCache(const package::Reference &ref) noexcept;
+    virtual utils::error::Result<void> tryGenerateCache(const package::Reference &ref) noexcept;
     utils::error::Result<void> executePostInstallHooks(const package::Reference &ref) noexcept;
     utils::error::Result<void> executePostUninstallHooks(const package::Reference &ref) noexcept;
     void pullDependency(PackageTask &taskContext,
@@ -125,6 +125,11 @@ public
     void UninstallRef(PackageTask &taskContext,
                       const package::Reference &ref,
                       const std::vector<std::string> &modules) noexcept;
+    virtual utils::error::Result<void> installRef(PackageTask &taskContext,
+                                                  const package::ReferenceWithRepo &ref,
+                                                  std::vector<std::string> modules) noexcept;
+    virtual utils::error::Result<void> tryUninstallRef(const package::Reference &ref) noexcept;
+    utils::error::Result<void> uninstallRef(const package::Reference &ref) noexcept;
 
 Q_SIGNALS:
     void TaskAdded(QDBusObjectPath object_path);
@@ -150,9 +155,6 @@ private:
                  std::optional<package::Reference> oldRef,
                  const std::vector<std::string> &modules,
                  const std::optional<api::types::v1::Repo> &repo) noexcept;
-    void Update(PackageTask &taskContext,
-                const package::Reference &ref,
-                const package::ReferenceWithRepo &newRef) noexcept;
     QVariantMap installFromLayer(const QDBusUnixFileDescriptor &fd,
                                  const api::types::v1::CommonOptions &options) noexcept;
 

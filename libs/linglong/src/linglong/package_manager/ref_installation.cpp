@@ -190,6 +190,15 @@ utils::error::Result<void> RefInstallationAction::install(PackageTask &task)
     for (const auto &module : modules) {
         if (std::find(remoteModules.begin(), remoteModules.end(), module) != remoteModules.end()) {
             installModules.emplace_back(module);
+            continue;
+        }
+
+        // install runtime module if binary module is not found
+        if (module == "binary"
+            && std::find(remoteModules.begin(), remoteModules.end(), "runtime")
+              != remoteModules.end()) {
+            installModules.emplace_back("runtime");
+            continue;
         }
     }
     if (installModules.empty()) {

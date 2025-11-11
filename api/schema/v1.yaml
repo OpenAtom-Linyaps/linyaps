@@ -801,12 +801,16 @@ $defs:
     description: package manager update result
     required:
       - packages
+      - depsOnly
     properties:
       packages:
         type: array
         description: packages of package manager update
         items:
           $ref: '#/$defs/PackageManager1Package'
+      depsOnly:
+        type: boolean
+        description: upgrade dependencies only
   PackageManager1ModifyRepoParameters:
     type: object
     required:

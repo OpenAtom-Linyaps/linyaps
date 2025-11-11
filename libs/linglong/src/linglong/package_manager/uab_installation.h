@@ -64,7 +64,6 @@ private:
     ActionOperation operation;
     std::string taskName;
     CheckedLayers checkedLayers;
-    bool extraOnly = false;
     std::unique_ptr<package::UABFile> uabFile;
     utils::Transaction transaction;
     std::filesystem::path uabMountPoint;

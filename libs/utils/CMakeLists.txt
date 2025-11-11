@@ -9,10 +9,11 @@ pfl_add_library(
   STATIC
   SOURCES
   # find -regex '\.\/*.+\.[ch]\(pp\)?\(.in\)?' -type f -printf '%P\n'| sort
-  src/linglong/utils/command/env.cpp
-  src/linglong/utils/command/env.h
+  src/linglong/utils/bash_command_helper.h
   src/linglong/utils/command/cmd.cpp
   src/linglong/utils/command/cmd.h
+  src/linglong/utils/command/env.cpp
+  src/linglong/utils/command/env.h
   src/linglong/utils/command/ocppi-helper.cpp
   src/linglong/utils/command/ocppi-helper.h
   src/linglong/utils/dbus/log.cpp
@@ -25,11 +26,18 @@ pfl_add_library(
   src/linglong/utils/error/details/error_impl.h
   src/linglong/utils/error/error.cpp
   src/linglong/utils/error/error.h
+  src/linglong/utils/file.cpp
+  src/linglong/utils/file.h
+  src/linglong/utils/filelock.cpp
+  src/linglong/utils/filelock.h
   src/linglong/utils/finally/finally.cpp
   src/linglong/utils/finally/finally.h
   src/linglong/utils/gettext.h
+  src/linglong/utils/gkeyfile_wrapper.h
   src/linglong/utils/global/initialize.cpp
   src/linglong/utils/global/initialize.h
+  src/linglong/utils/hooks.cpp
+  src/linglong/utils/hooks.h
   src/linglong/utils/log/formatter.cpp
   src/linglong/utils/log/formatter.h
   src/linglong/utils/log/log.cpp
@@ -46,14 +54,8 @@ pfl_add_library(
   src/linglong/utils/serialize/yaml.h
   src/linglong/utils/transaction.cpp
   src/linglong/utils/transaction.h
-  src/linglong/utils/file.cpp
-  src/linglong/utils/file.h
-  src/linglong/utils/xdg/directory.h
   src/linglong/utils/xdg/directory.cpp
-  src/linglong/utils/gkeyfile_wrapper.h
-  src/linglong/utils/hooks.cpp
-  src/linglong/utils/hooks.h
-  src/linglong/utils/bash_command_helper.h
+  src/linglong/utils/xdg/directory.h
   COMPILE_FEATURES
   PUBLIC
   cxx_std_17

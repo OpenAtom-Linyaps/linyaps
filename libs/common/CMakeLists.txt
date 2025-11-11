@@ -9,6 +9,7 @@ pfl_add_library(
   STATIC
   SOURCES
   # find -regex '\.\/*.+\.[ch]\(pp\)?\(.in\)?' -type f -printf '%P\n'| sort
+  src/linglong/common/constants.h
   src/linglong/common/dir.cpp
   src/linglong/common/dir.h
   src/linglong/common/display.cpp

@@ -12,6 +12,7 @@ pfl_add_executable(
   DISABLE_INSTALL
   SOURCES
   # find -regex '\./src/.+\.[ch]\(pp\)?' -type f -printf '%P\n'| sort
+  src/common/tempdir.h
   src/linglong/builder/linglong_builder_test.cpp
   src/linglong/builder/source_fetcher_test.cpp
   src/linglong/common/strings_test.cpp
@@ -24,6 +25,8 @@ pfl_add_executable(
   src/linglong/package/architecture_test.cpp
   src/linglong/package/fallback_version_test.cpp
   src/linglong/package/layer_packager_test.cpp
+  src/linglong/package_manager/action_test.cpp
+  src/linglong/package_manager/uab_installation_test.cpp
   src/linglong/package/reference_test.cpp
   src/linglong/package/semver_compare_test.cpp
   src/linglong/package/semver_increment_test.cpp
@@ -33,8 +36,6 @@ pfl_add_executable(
   src/linglong/package/uab_file_test.cpp
   src/linglong/package/version_test.cpp
   src/linglong/package/versionv2_test.cpp
-  src/linglong/package_manager/action_test.cpp
-  src/linglong/package_manager/uab_installation_test.cpp
   src/linglong/repo/client_factory_test.cpp
   src/linglong/repo/config_test.cpp
   src/linglong/repo/ostree_repo_test.cpp
@@ -42,6 +43,7 @@ pfl_add_executable(
   src/linglong/utils/command_test.cpp
   src/linglong/utils/error/error_test.cpp
   src/linglong/utils/file.cpp
+  src/linglong/utils/filelock_test.cpp
   src/linglong/utils/gkeyfile_wrapper_test.cpp
   src/linglong/utils/log.cpp
   src/linglong/utils/namespce.cpp

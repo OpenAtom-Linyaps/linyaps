@@ -19,15 +19,12 @@ class Reference final
 {
 public:
     static utils::error::Result<Reference> parse(const std::string &raw) noexcept;
-    static utils::error::Result<Reference> parse(const QString &raw) noexcept;
     static utils::error::Result<Reference> create(const std::string &channel,
                                                   const std::string &id,
                                                   const Version &version,
                                                   const Architecture &architecture) noexcept;
     static utils::error::Result<Reference>
     fromPackageInfo(const api::types::v1::PackageInfoV2 &info) noexcept;
-    static QVariantMap toVariantMap(const Reference &ref) noexcept;
-    static utils::error::Result<Reference> fromVariantMap(const QVariantMap &data) noexcept;
     static utils::error::Result<Reference>
     fromBuilderProject(const api::types::v1::BuilderProject &project) noexcept;
 

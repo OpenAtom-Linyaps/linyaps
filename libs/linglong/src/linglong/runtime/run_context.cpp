@@ -59,7 +59,7 @@ utils::error::Result<api::types::v1::RepositoryCacheLayersItem> RuntimeLayer::ge
         auto &repo = runContext.get().getRepo();
         auto item = repo.getLayerItem(reference);
         if (!item) {
-            return LINGLONG_ERR("no cached item found: " + reference.toString());
+            return LINGLONG_ERR("no cached item found: " + reference.toString(), item);
         }
         cachedItem = std::move(item).value();
     }
@@ -86,7 +86,7 @@ utils::error::Result<void> RunContext::resolve(const linglong::package::Referenc
 
     auto item = repo.getLayerItem(runnable);
     if (!item) {
-        return LINGLONG_ERR("no cached item found: " + runnable.toString());
+        return LINGLONG_ERR("no cached item found: " + runnable.toString(), item);
     }
     const auto &info = item->info;
 
@@ -230,7 +230,8 @@ utils::error::Result<void> RunContext::resolve(const api::types::v1::BuilderProj
 
         auto layer = runtimeLayer->getCachedItem();
         if (!layer) {
-            return LINGLONG_ERR("no cached item found: " + runtimeLayer->getReference().toString());
+            return LINGLONG_ERR("no cached item found: " + runtimeLayer->getReference().toString(),
+                                layer);
         }
 
         auto fuzzyRef = package::FuzzyReference::parse(layer->info.base);
@@ -357,7 +358,7 @@ utils::error::Result<void> RunContext::resolveExtension(RuntimeLayer &layer)
 
     auto item = layer.getCachedItem();
     if (!item) {
-        return LINGLONG_ERR("no cached item found: " + layer.getReference().toString());
+        return LINGLONG_ERR("no cached item found: " + layer.getReference().toString(), item);
     }
 
     const auto &info = item->info;

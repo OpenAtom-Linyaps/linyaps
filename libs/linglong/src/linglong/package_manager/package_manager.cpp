@@ -688,13 +688,19 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
               return;
           }
 
-          if (!localRef) {
-              auto newRef = package::Reference::fromPackageInfo(*info);
-              if (!newRef) {
-                  taskRef.reportError(std::move(newRef).error());
-                  return;
-              }
+          auto newRef = package::Reference::fromPackageInfo(*info);
+          if (!newRef) {
+              taskRef.reportError(std::move(newRef).error());
+              return;
+          }
 
+          auto ret = executePostInstallHooks(*newRef);
+          if (!ret) {
+              taskRef.reportError(std::move(ret).error());
+              return;
+          }
+
+          if (!localRef) {
               auto generateCacheRet = this->tryGenerateCache(*newRef);
               if (!generateCacheRet) {
                   taskRef.reportError(std::move(generateCacheRet).error());
@@ -710,30 +716,18 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
               return;
           }
 
-          auto newRef = package::Reference::fromPackageInfo(*info);
-          if (!newRef) {
-              taskRef.reportError(std::move(newRef).error());
-              return;
-          }
-
           auto generateCacheRet = this->tryGenerateCache(*newRef);
           if (!generateCacheRet) {
               taskRef.reportError(std::move(generateCacheRet).error());
               return;
           }
 
-          auto ret = removeAfterInstall(*localRef, *newRef, std::vector{ module });
+          ret = removeAfterInstall(*localRef, *newRef, std::vector{ module });
           if (!ret) {
               LogE("failed to remove old reference {} after install {}: {}",
                    localRef->toString(),
                    packageRef.toString(),
                    ret.error().message());
-          }
-
-          ret = executePostInstallHooks(*newRef);
-          if (!ret) {
-              taskRef.reportError(std::move(ret).error());
-              return;
           }
       };
 
@@ -1342,7 +1336,20 @@ void PackageManager::Update(PackageTask &taskContext,
         if (tmp.state() != linglong::api::types::v1::State::Succeed) {
             LogE("failed to rollback install {}", newRef.toString());
         }
+
+        auto ret = executePostUninstallHooks(newRef);
+        if (!ret) {
+            LogE("failed to rollback execute uninstall hooks: {}", ret.error());
+        }
     });
+
+    auto result = executePostInstallHooks(newRef);
+    if (!result) {
+        taskContext.updateState(linglong::api::types::v1::State::Failed,
+                                "Failed to execute postInstall hooks.\n"
+                                  + result.error().message());
+        return;
+    }
 
     auto oldRefLayerItem = this->repo.getLayerItem(oldRef);
 
@@ -1374,12 +1381,6 @@ void PackageManager::Update(PackageTask &taskContext,
             LogE("remove after install of ref {} failed: {}",
                  oldRef.toString(),
                  ret.error().message());
-            return;
-        }
-
-        ret = executePostInstallHooks(newRef);
-        if (!ret) {
-            qCritical() << "failed to execute post install hooks" << ret.error().message();
             return;
         }
 
@@ -1504,14 +1505,14 @@ void PackageManager::pullDependency(PackageTask &taskContext,
                 transaction.addRollBack([this, remoteRef = *remote, module]() noexcept {
                     auto result = this->repo.remove(remoteRef.reference, module);
                     if (!result) {
-                        qCritical() << result.error();
-                        Q_ASSERT(false);
+                        LogE("failed to remove remote reference: {} : {}",
+                             remoteRef.reference.toString(),
+                             result.error().message());
                     }
 
                     result = executePostUninstallHooks(remoteRef.reference);
                     if (!result) {
-                        qCritical() << result.error();
-                        Q_ASSERT(false);
+                        LogE("failed to rollback execute uninstall hooks: {}", result.error());
                     }
                 });
             }

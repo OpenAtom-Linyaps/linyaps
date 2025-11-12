@@ -206,6 +206,11 @@ utils::error::Result<void> RefInstallationAction::install(PackageTask &task)
         if (tmp.state() != linglong::api::types::v1::State::Succeed) {
             LogE("failed to rollback install {}", newRef.toString());
         }
+
+        auto result = pm.executePostUninstallHooks(newRef);
+        if (!result) {
+            LogE("failed to rollback execute uninstall hooks: {}", result.error());
+        }
     });
 
     return LINGLONG_OK;
@@ -224,6 +229,14 @@ utils::error::Result<void> RefInstallationAction::postInstall(PackageTask &task)
 
     const auto &newRef = operation.newRef->reference;
     const auto &oldRef = operation.oldRef;
+
+    auto ret = pm.executePostInstallHooks(newRef);
+    if (!ret) {
+        task.updateState(linglong::api::types::v1::State::Failed,
+                         "Failed to execute postInstall hooks.\n" + ret.error().message());
+        return LINGLONG_ERR(ret);
+    }
+
     auto layer = this->repo.getLayerItem(newRef);
     if (!layer) {
         task.reportError(
@@ -254,13 +267,6 @@ utils::error::Result<void> RefInstallationAction::postInstall(PackageTask &task)
                             utils::error::ErrorCode::AppInstallFailed));
             return LINGLONG_ERR(result);
         }
-    }
-
-    auto ret = pm.executePostInstallHooks(newRef);
-    if (!ret) {
-        task.updateState(linglong::api::types::v1::State::Failed,
-                         "Failed to execute postInstall hooks.\n" + ret.error().message());
-        return LINGLONG_ERR(ret);
     }
 
     transaction.commit();

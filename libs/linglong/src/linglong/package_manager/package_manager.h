@@ -100,6 +100,9 @@ public
     // Nothing to do here, Permissions() will be rejected in org.deepin.linglong.PackageManager.conf
     void Permissions() { }
 
+    utils::error::Result<void> executePostInstallHooks(const package::Reference &ref) noexcept;
+    utils::error::Result<void> executePostUninstallHooks(const package::Reference &ref) noexcept;
+
 Q_SIGNALS:
     void TaskAdded(QDBusObjectPath object_path);
     void TaskRemoved(QDBusObjectPath object_path,
@@ -156,8 +159,6 @@ private:
     utils::error::Result<void> generateCache(const package::Reference &ref) noexcept;
     utils::error::Result<void> tryGenerateCache(const package::Reference &ref) noexcept;
     utils::error::Result<void> removeCache(const package::Reference &ref) noexcept;
-    utils::error::Result<void> executePostInstallHooks(const package::Reference &ref) noexcept;
-    utils::error::Result<void> executePostUninstallHooks(const package::Reference &ref) noexcept;
     linglong::repo::OSTreeRepo &repo; // NOLINT
     PackageTaskQueue tasks;
 

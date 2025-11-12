@@ -17,6 +17,7 @@
 #include <nlohmann/json.hpp>
 #include "linglong/api/types/v1/helper.hpp"
 
+#include "linglong/api/types/v1/LlCLIConfig.hpp"
 #include "linglong/api/types/v1/ExtensionImpl.hpp"
 #include "linglong/api/types/v1/ExtensionDefine.hpp"
 #include "linglong/api/types/v1/ApplicationConfigurationPermissions.hpp"
@@ -51,6 +52,10 @@ std::string base;
 * channel of package info
 */
 std::string channel;
+/**
+* default ll-cli configuration provided by package
+*/
+std::optional<LlCLIConfig> cliConfig;
 /**
 * command of package info
 */

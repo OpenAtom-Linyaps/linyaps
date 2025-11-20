@@ -5,6 +5,8 @@
  */
 #include "configure.h"
 #include "linglong/api/dbus/v1/dbus_peer.h"
+#include "linglong/api/types/v1/Generators.hpp"
+#include "linglong/api/types/v1/PackageInfoV2.hpp"
 #include "linglong/cli/cli.h"
 #include "linglong/cli/cli_printer.h"
 #include "linglong/cli/dbus_notifier.h"
@@ -33,10 +35,20 @@
 #include <memory>
 #include <thread>
 
+#include <cstdio>
+#include <string>
+
 #include <fcntl.h>
 #include <unistd.h>
 #include <wordexp.h>
 
+#include <nlohmann/json.hpp>
+#include <filesystem>
+#include <fstream>
+#include <optional>
+#include <sstream>
+#include <tuple>
+#include <unordered_set>
 using namespace linglong::utils::error;
 using namespace linglong::package;
 using namespace linglong::cli;
@@ -631,22 +643,887 @@ linglong::utils::error::Result<linglong::repo::OSTreeRepo *> initOSTreeRepo()
     return repo;
 }
 
+
+// ===== begin: ll-cli config helpers =====
+using json = nlohmann::json;
+
+static std::string configUsageLines()
+{
+    return std::string{
+        _("  ll-cli config set-extensions [--global | <appid> | --base <baseid>] ext1,ext2\n"
+           "  ll-cli config add-extensions [--global | <appid> | --base <baseid>] ext1,ext2\n"
+           "  ll-cli config set-env        [--global | <appid> | --base <baseid>] KEY=VAL [KEY=VAL ...]\n"
+           "  ll-cli config unset-env      [--global | <appid> | --base <baseid>] KEY [KEY ...]\n"
+           "  ll-cli config add-fs         [--global | <appid> | --base <baseid>] --host PATH --target PATH [--mode "
+           "ro|rw] [--persist]\n"
+           "  ll-cli config rm-fs          [--global | <appid> | --base <baseid>] (--target PATH | --index N)\n"
+           "  ll-cli config add-fs-allow   [--global | <appid> | --base <baseid>] --host PATH --target PATH [--mode "
+           "ro|rw] [--persist]\n"
+           "  ll-cli config rm-fs-allow    [--global | <appid> | --base <baseid>] (--target PATH | --index N)\n"
+           "  ll-cli config clear-fs-allow [--global | <appid> | --base <baseid>]\n"
+           "  ll-cli config set-command    [--global | <appid> | --base <baseid>] <cmd> [--entrypoint P] [--cwd D] "
+           "[--args-prefix \"...\"] [--args-suffix \"...\"] [KEY=VAL ...]\n"
+           "  ll-cli config unset-command  [--global | <appid> | --base <baseid>] <cmd>\n") };
+}
+
+static std::string configShortHelp()
+{
+    return std::string{ _("Configuration commands:\n"
+                          "  config                      Manage ll-cli configuration (see `ll-cli config --help`)\n") };
+}
+
+static std::string configFooterMessage()
+{
+    return std::string{ _("If you found any problems during use,\n"
+                          "You can report bugs to the linyaps team under this project: "
+                          "https://github.com/OpenAtom-Linyaps/linyaps/issues") };
+}
+
+static void printConfigUsage(FILE *stream = stderr)
+{
+    auto usageLines = configUsageLines();
+    std::fprintf(stream, "%s\n%s", _("Usage:"), usageLines.c_str());
+}
+
+enum class Scope { Global, App, Base };
+
+static std::filesystem::path getBaseConfigDir()
+{
+    const char *xdg = ::getenv("XDG_CONFIG_HOME");
+    if (xdg && xdg[0]) {
+        return std::filesystem::path(xdg) / "linglong";
+    }
+    const char *home = ::getenv("HOME");
+    if (home && home[0]) {
+        return std::filesystem::path(home) / ".config" / "linglong";
+    }
+    return {};
+}
+
+static std::filesystem::path getSystemConfigDir()
+{
+    return std::filesystem::path(LINGLONG_DATA_DIR) / "config";
+}
+
+static std::filesystem::path buildConfigPath(const std::filesystem::path &base,
+                                             Scope scope,
+                                             const std::string &appId,
+                                             const std::string &baseId)
+{
+    if (base.empty()) {
+        return {};
+    }
+    switch (scope) {
+    case Scope::Global:
+        return base / "config.json";
+    case Scope::App:
+        return base / "apps" / appId / "config.json";
+    case Scope::Base:
+        return base / "base" / baseId / "config.json";
+    }
+    return {};
+}
+
+static std::filesystem::path getConfigPath(Scope scope,
+                                           const std::string &appId,
+                                           const std::string &baseId)
+{
+    return buildConfigPath(getBaseConfigDir(), scope, appId, baseId);
+}
+
+static std::vector<std::filesystem::path> getConfigSearchPaths(Scope scope,
+                                                               const std::string &appId,
+                                                               const std::string &baseId)
+{
+    std::vector<std::filesystem::path> paths;
+    std::unordered_set<std::string> seen;
+    auto addPath = [&](const std::filesystem::path &candidate) {
+        if (candidate.empty()) {
+            return;
+        }
+        auto normalized = candidate.lexically_normal();
+        auto key = normalized.string();
+        if (!key.empty() && seen.insert(key).second) {
+            paths.emplace_back(std::move(normalized));
+        }
+    };
+
+    addPath(buildConfigPath(getBaseConfigDir(), scope, appId, baseId));
+    addPath(buildConfigPath(getSystemConfigDir(), scope, appId, baseId));
+
+    return paths;
+}
+
+static bool ensureParentDir(const std::filesystem::path &p)
+{
+    std::error_code ec;
+    auto parent = p.parent_path();
+    if (parent.empty()) {
+        return true;
+    }
+    return std::filesystem::create_directories(parent, ec) || std::filesystem::exists(parent);
+}
+
+static std::optional<json> readJsonIfExists(const std::filesystem::path &p, bool *existed = nullptr)
+{
+    try {
+        std::error_code ec;
+        if (!std::filesystem::exists(p, ec)) {
+            if (existed) {
+                *existed = false;
+            }
+            return json::object();
+        }
+        std::ifstream in(p);
+        if (!in.is_open()) {
+            return std::nullopt;
+        }
+        if (existed) {
+            *existed = true;
+        }
+        json j;
+        in >> j;
+        return j.is_null() ? json::object() : j;
+    } catch (...) {
+        return std::nullopt;
+    }
+}
+
+static bool writeJsonAtomic(const std::filesystem::path &p, const json &j)
+{
+    try {
+        if (!ensureParentDir(p)) {
+            return false;
+        }
+        auto tmp = p;
+        tmp += ".tmp";
+        {
+            std::ofstream out(tmp);
+            if (!out.is_open()) {
+                return false;
+            }
+            out << j.dump(2) << "\n";
+        }
+        std::error_code ec;
+        std::filesystem::rename(tmp, p, ec);
+        if (ec) {
+            std::filesystem::remove(p, ec);
+            std::filesystem::rename(tmp, p, ec);
+        }
+        return !ec;
+    } catch (...) {
+        return false;
+    }
+}
+
+static std::vector<std::string> splitCsv(const std::string &s)
+{
+    std::vector<std::string> out;
+    std::stringstream ss(s);
+    std::string tok;
+    while (std::getline(ss, tok, ',')) {
+        if (!tok.empty()) {
+            out.push_back(tok);
+        }
+    }
+    return out;
+}
+
+static std::string trim(const std::string &s)
+{
+    const char *ws = " \t\r\n";
+    size_t b = s.find_first_not_of(ws);
+    if (b == std::string::npos) {
+        return "";
+    }
+    size_t e = s.find_last_not_of(ws);
+    return s.substr(b, e - b + 1);
+}
+
+static void jsonSetExtensions(json &root, const std::vector<std::string> &exts, bool overwrite)
+{
+    auto &arr = root["extensions"];
+    if (!arr.is_array() || overwrite) {
+        arr = json::array();
+    }
+    std::unordered_set<std::string> exist;
+    if (arr.is_array()) {
+        for (auto &e : arr) {
+            if (e.is_string()) {
+                exist.insert(e.get<std::string>());
+            }
+        }
+    }
+    for (auto &s : exts) {
+        if (!s.empty() && !exist.count(s)) {
+            arr.push_back(s);
+            exist.insert(s);
+        }
+    }
+}
+
+static void jsonSetEnv(json &root, const std::vector<std::string> &kvs)
+{
+    auto &obj = root["env"];
+    if (!obj.is_object()) {
+        obj = json::object();
+    }
+    for (auto &kv : kvs) {
+        auto pos = kv.find('=');
+        if (pos == std::string::npos) {
+            continue;
+        }
+        auto k = trim(kv.substr(0, pos));
+        auto v = kv.substr(pos + 1);
+        if (k.empty()) {
+            continue;
+        }
+        obj[k] = v;
+    }
+}
+
+static void jsonUnsetEnv(json &root, const std::vector<std::string> &keys)
+{
+    if (!root.contains("env") || !root["env"].is_object()) {
+        return;
+    }
+    for (auto &k : keys) {
+        root["env"].erase(k);
+    }
+}
+
+struct FsArg {
+    std::string host, target, mode;
+    bool persist = false;
+};
+
+static void jsonAddFsTo(json &root, const FsArg &fs, const char *field)
+{
+    auto &arr = root[field];
+    if (!arr.is_array()) {
+        arr = json::array();
+    }
+    for (auto &e : arr) {
+        if (!e.is_object()) {
+            continue;
+        }
+        if (e.value("host", "") == fs.host && e.value("target", "") == fs.target) {
+            return;
+        }
+    }
+    json o = json::object();
+    o["host"] = fs.host;
+    o["target"] = fs.target;
+    o["mode"] = (fs.mode == "rw" ? "rw" : "ro");
+    if (fs.persist) {
+        o["persist"] = true;
+    }
+    arr.push_back(std::move(o));
+}
+
+static void jsonAddFs(json &root, const FsArg &fs)
+{
+    jsonAddFsTo(root, fs, "filesystem");
+}
+
+static void jsonAddFsAllow(json &root, const FsArg &fs)
+{
+    jsonAddFsTo(root, fs, "filesystem_allow_only");
+}
+
+static bool jsonRmFsByTargetFrom(json &root, const std::string &target, const char *field)
+{
+    if (!root.contains(field) || !root[field].is_array()) {
+        return false;
+    }
+    auto &arr = root[field];
+    auto old = arr.size();
+    arr.erase(std::remove_if(arr.begin(), arr.end(), [&](const json &e) {
+        return e.is_object() && e.value("target", "") == target;
+    }),
+              arr.end());
+    return arr.size() != old;
+}
+
+static bool jsonRmFsByTarget(json &root, const std::string &target)
+{
+    return jsonRmFsByTargetFrom(root, target, "filesystem");
+}
+
+static bool jsonRmFsAllowByTarget(json &root, const std::string &target)
+{
+    return jsonRmFsByTargetFrom(root, target, "filesystem_allow_only");
+}
+
+static bool jsonRmFsByIndexFrom(json &root, size_t idx, const char *field)
+{
+    if (!root.contains(field) || !root[field].is_array()) {
+        return false;
+    }
+    auto &arr = root[field];
+    if (idx >= arr.size()) {
+        return false;
+    }
+    arr.erase(arr.begin() + idx);
+    return true;
+}
+
+static bool jsonRmFsByIndex(json &root, size_t idx)
+{
+    return jsonRmFsByIndexFrom(root, idx, "filesystem");
+}
+
+static bool jsonRmFsAllowByIndex(json &root, size_t idx)
+{
+    return jsonRmFsByIndexFrom(root, idx, "filesystem_allow_only");
+}
+
+static void jsonClearFsAllow(json &root)
+{
+    root["filesystem_allow_only"] = json::array();
+}
+
+struct CmdSetArg {
+    std::string cmd;
+    std::optional<std::string> entrypoint;
+    std::optional<std::string> cwd;
+    std::vector<std::string> argsPrefix;
+    std::vector<std::string> argsSuffix;
+    std::vector<std::string> envKVs;
+};
+
+static void jsonSetCommand(json &root, const CmdSetArg &a)
+{
+    if (a.cmd.empty()) {
+        return;
+    }
+    auto &cmds = root["commands"];
+    if (!cmds.is_object()) {
+        cmds = json::object();
+    }
+    auto &node = cmds[a.cmd];
+    if (!node.is_object()) {
+        node = json::object();
+    }
+    if (a.entrypoint) {
+        node["entrypoint"] = *a.entrypoint;
+    }
+    if (a.cwd) {
+        node["cwd"] = *a.cwd;
+    }
+    if (!a.argsPrefix.empty()) {
+        auto &arr = node["args_prefix"];
+        arr = json::array();
+        for (auto &s : a.argsPrefix) {
+            arr.push_back(s);
+        }
+    }
+    if (!a.argsSuffix.empty()) {
+        auto &arr = node["args_suffix"];
+        arr = json::array();
+        for (auto &s : a.argsSuffix) {
+            arr.push_back(s);
+        }
+    }
+    if (!a.envKVs.empty()) {
+        auto &env = node["env"];
+        if (!env.is_object()) {
+            env = json::object();
+        }
+        for (auto &kv : a.envKVs) {
+            auto pos = kv.find('=');
+            if (pos == std::string::npos) {
+                continue;
+            }
+            auto k = trim(kv.substr(0, pos));
+            auto v = kv.substr(pos + 1);
+            if (!k.empty()) {
+                env[k] = v;
+            }
+        }
+    }
+}
+
+static void jsonUnsetCommand(json &root, const std::string &cmd)
+{
+    if (!root.contains("commands") || !root["commands"].is_object()) {
+        return;
+    }
+    root["commands"].erase(cmd);
+}
+// ===== end: ll-cli config helpers =====
+
+class ConfigAwareFormatter : public CLI::Formatter {
+public:
+    ConfigAwareFormatter(std::string shortSection, std::string fullSection, std::string footerMessage)
+      : shortSection_(std::move(shortSection))
+      , fullSection_(std::move(fullSection))
+      , footerMessage_(std::move(footerMessage))
+    {}
+
+    std::string make_help(const CLI::App *app, std::string name, CLI::AppFormatMode mode) const override
+    {
+        std::string result = Formatter::make_help(app, std::move(name), mode);
+
+        const std::string &section = (mode == CLI::AppFormatMode::All) ? fullSection_ : shortSection_;
+        if (!section.empty()) {
+            if (!result.empty() && result.back() != '\n') {
+                result.push_back('\n');
+            }
+            result += section;
+            if (!section.empty() && result.back() != '\n') {
+                result.push_back('\n');
+            }
+        }
+
+        if (!footerMessage_.empty()) {
+            if (!result.empty() && result.back() != '\n') {
+                result.push_back('\n');
+            }
+            result += footerMessage_;
+            if (result.back() != '\n') {
+                result.push_back('\n');
+            }
+        }
+
+        return result;
+    }
+
+private:
+    std::string shortSection_;
+    std::string fullSection_;
+    std::string footerMessage_;
+};
+
 int runCliApplication(int argc, char **mainArgv)
 {
+    // ===== begin: "ll-cli config ..." dispatcher =====
+    {
+        if (argc >= 2 && std::string(mainArgv[1]) == "config") {
+            if (argc < 3) {
+                printConfigUsage();
+                return 1;
+            }
+            std::string sub = mainArgv[2];
+
+            auto parseScope = [&](int start) -> std::tuple<Scope, std::string, std::string, int> {
+                if (start >= argc) {
+                    return { Scope::Global, "", "", start };
+                }
+                std::string t = mainArgv[start];
+                if (t == "--global") {
+                    return { Scope::Global, "", "", start + 1 };
+                }
+                if (t == "--base") {
+                    if (start + 1 >= argc) {
+                        fprintf(stderr, "--base requires <baseid>\n");
+                        return { Scope::Global, "", "", argc };
+                    }
+                    return { Scope::Base, "", mainArgv[start + 1], start + 2 };
+                }
+                return { Scope::App, t, "", start + 1 };
+            };
+
+            auto loadCliConfigFromPackage = [&](Scope scope,
+                                                const std::string &appId,
+                                                const std::string &baseId)
+              -> std::optional<json> {
+                if (scope == Scope::Global) {
+                    return std::nullopt;
+                }
+
+                auto repoResult = initOSTreeRepo();
+                if (!repoResult) {
+                    qWarning() << "load cli config from package failed:" << repoResult.error();
+                    return std::nullopt;
+                }
+
+                auto *repoPtr = *repoResult;
+                auto list = repoPtr->listLocal();
+                if (!list) {
+                    qWarning() << "list local packages failed:" << list.error();
+                    return std::nullopt;
+                }
+
+                const auto matcher = [&](const linglong::api::types::v1::PackageInfoV2 &info) -> bool {
+                    if (scope == Scope::App) {
+                        return info.id == appId && info.kind == "app";
+                    }
+                    if (scope == Scope::Base) {
+                        return info.id == baseId && info.kind == "base";
+                    }
+                    return false;
+                };
+
+                auto it = std::find_if(list->begin(), list->end(), matcher);
+                if (it == list->end() || !it->cliConfig) {
+                    return std::nullopt;
+                }
+
+                json packaged = *(it->cliConfig);
+                return packaged;
+            };
+
+            auto openConfig = [&](Scope scope,
+                                  const std::string &appId,
+                                  const std::string &baseId) -> std::optional<json> {
+                auto userPath = getConfigPath(scope, appId, baseId);
+                if (userPath.empty()) {
+                    fprintf(stderr, "invalid config path\n");
+                    return std::nullopt;
+                }
+                bool userExists = false;
+                auto userJson = readJsonIfExists(userPath, &userExists);
+                if (!userJson) {
+                    fprintf(stderr, "failed to read %s\n", userPath.string().c_str());
+                    return std::nullopt;
+                }
+                if (!userExists) {
+                    auto searchPaths = getConfigSearchPaths(scope, appId, baseId);
+                    for (size_t idx = 1; idx < searchPaths.size(); ++idx) {
+                        bool existed = false;
+                        auto fallback = readJsonIfExists(searchPaths[idx], &existed);
+                        if (!fallback || !existed) {
+                            continue;
+                        }
+                        return fallback;
+                    }
+                    if (auto packaged = loadCliConfigFromPackage(scope, appId, baseId)) {
+                        return packaged;
+                    }
+                }
+                return userJson;
+            };
+            auto saveConfig = [&](Scope scope,
+                                  const std::string &appId,
+                                  const std::string &baseId,
+                                  const json &j) -> bool {
+                auto path = getConfigPath(scope, appId, baseId);
+                if (path.empty()) {
+                    return false;
+                }
+                if (!writeJsonAtomic(path, j)) {
+                    fprintf(stderr, "failed to write %s\n", path.string().c_str());
+                    return false;
+                }
+                printf("Written %s\n", path.string().c_str());
+                return true;
+            };
+
+            if (sub == "set-extensions" || sub == "add-extensions") {
+                auto [scope, appId, baseId, i] = parseScope(3);
+                if (i >= argc) {
+                    printConfigUsage();
+                    return 1;
+                }
+                std::vector<std::string> exts = splitCsv(mainArgv[i]);
+                auto j = openConfig(scope, appId, baseId);
+                if (!j) {
+                    return 1;
+                }
+                jsonSetExtensions(*j, exts, sub == "set-extensions");
+                if (!saveConfig(scope, appId, baseId, *j)) {
+                    return 1;
+                }
+                return 0;
+            }
+            if (sub == "set-env") {
+                auto [scope, appId, baseId, i] = parseScope(3);
+                if (i >= argc) {
+                    printConfigUsage();
+                    return 1;
+                }
+                std::vector<std::string> kvs;
+                for (; i < argc; ++i) {
+                    kvs.push_back(mainArgv[i]);
+                }
+                auto j = openConfig(scope, appId, baseId);
+                if (!j) {
+                    return 1;
+                }
+                jsonSetEnv(*j, kvs);
+                if (!saveConfig(scope, appId, baseId, *j)) {
+                    return 1;
+                }
+                return 0;
+            }
+            if (sub == "unset-env") {
+                auto [scope, appId, baseId, i] = parseScope(3);
+                if (i >= argc) {
+                    printConfigUsage();
+                    return 1;
+                }
+                std::vector<std::string> keys;
+                for (; i < argc; ++i) {
+                    keys.push_back(mainArgv[i]);
+                }
+                auto j = openConfig(scope, appId, baseId);
+                if (!j) {
+                    return 1;
+                }
+                jsonUnsetEnv(*j, keys);
+                if (!saveConfig(scope, appId, baseId, *j)) {
+                    return 1;
+                }
+                return 0;
+            }
+            if (sub == "add-fs") {
+                auto [scope, appId, baseId, i] = parseScope(3);
+                FsArg fs;
+                fs.mode = "ro";
+                fs.persist = false;
+                for (; i < argc; ++i) {
+                    std::string a = mainArgv[i];
+                    if (a == "--persist") {
+                        fs.persist = true;
+                    } else if (a == "--host" && i + 1 < argc) {
+                        fs.host = mainArgv[++i];
+                    } else if (a == "--target" && i + 1 < argc) {
+                        fs.target = mainArgv[++i];
+                    } else if (a == "--mode" && i + 1 < argc) {
+                        fs.mode = mainArgv[++i];
+                    } else {
+                        fprintf(stderr, "unknown arg: %s\n", a.c_str());
+                        return 1;
+                    }
+                }
+                if (fs.host.empty() || fs.target.empty()) {
+                    printConfigUsage();
+                    return 1;
+                }
+                auto j = openConfig(scope, appId, baseId);
+                if (!j) {
+                    return 1;
+                }
+                jsonAddFs(*j, fs);
+                if (!saveConfig(scope, appId, baseId, *j)) {
+                    return 1;
+                }
+                return 0;
+            }
+            if (sub == "add-fs-allow") {
+                auto [scope, appId, baseId, i] = parseScope(3);
+                FsArg fs;
+                fs.mode = "ro";
+                fs.persist = false;
+                for (; i < argc; ++i) {
+                    std::string a = mainArgv[i];
+                    if (a == "--persist") {
+                        fs.persist = true;
+                    } else if (a == "--host" && i + 1 < argc) {
+                        fs.host = mainArgv[++i];
+                    } else if (a == "--target" && i + 1 < argc) {
+                        fs.target = mainArgv[++i];
+                    } else if (a == "--mode" && i + 1 < argc) {
+                        fs.mode = mainArgv[++i];
+                    } else {
+                        fprintf(stderr, "unknown arg: %s\n", a.c_str());
+                        return 1;
+                    }
+                }
+                if (fs.host.empty() || fs.target.empty()) {
+                    printConfigUsage();
+                    return 1;
+                }
+                auto j = openConfig(scope, appId, baseId);
+                if (!j) {
+                    return 1;
+                }
+                jsonAddFsAllow(*j, fs);
+                if (!saveConfig(scope, appId, baseId, *j)) {
+                    return 1;
+                }
+                return 0;
+            }
+            if (sub == "rm-fs") {
+                auto [scope, appId, baseId, i] = parseScope(3);
+                std::optional<std::string> target;
+                std::optional<size_t> index;
+                for (; i < argc; ++i) {
+                    std::string a = mainArgv[i];
+                    if (a == "--target" && i + 1 < argc) {
+                        target = mainArgv[++i];
+                    } else if (a == "--index" && i + 1 < argc) {
+                        index = static_cast<size_t>(std::stoul(mainArgv[++i]));
+                    } else {
+                        fprintf(stderr, "unknown arg: %s\n", a.c_str());
+                        return 1;
+                    }
+                }
+                if (!target && !index) {
+                    printConfigUsage();
+                    return 1;
+                }
+                auto j = openConfig(scope, appId, baseId);
+                if (!j) {
+                    return 1;
+                }
+                bool ok = false;
+                if (target) {
+                    ok = jsonRmFsByTarget(*j, *target);
+                }
+                if (!ok && index) {
+                    ok = jsonRmFsByIndex(*j, *index);
+                }
+                if (!ok) {
+                    fprintf(stderr, "no filesystem entry removed\n");
+                    return 1;
+                }
+                if (!saveConfig(scope, appId, baseId, *j)) {
+                    return 1;
+                }
+                return 0;
+            }
+            if (sub == "rm-fs-allow") {
+                auto [scope, appId, baseId, i] = parseScope(3);
+                std::optional<std::string> target;
+                std::optional<size_t> index;
+                for (; i < argc; ++i) {
+                    std::string a = mainArgv[i];
+                    if (a == "--target" && i + 1 < argc) {
+                        target = mainArgv[++i];
+                    } else if (a == "--index" && i + 1 < argc) {
+                        index = static_cast<size_t>(std::stoul(mainArgv[++i]));
+                    } else {
+                        fprintf(stderr, "unknown arg: %s\n", a.c_str());
+                        return 1;
+                    }
+                }
+                if (!target && !index) {
+                    printConfigUsage();
+                    return 1;
+                }
+                auto j = openConfig(scope, appId, baseId);
+                if (!j) {
+                    return 1;
+                }
+                bool ok = false;
+                if (target) {
+                    ok = jsonRmFsAllowByTarget(*j, *target);
+                }
+                if (!ok && index) {
+                    ok = jsonRmFsAllowByIndex(*j, *index);
+                }
+                if (!ok) {
+                    fprintf(stderr, "no filesystem_allow entry removed\n");
+                    return 1;
+                }
+                if (!saveConfig(scope, appId, baseId, *j)) {
+                    return 1;
+                }
+                return 0;
+            }
+            if (sub == "clear-fs-allow") {
+                auto [scope, appId, baseId, i] = parseScope(3);
+                auto j = openConfig(scope, appId, baseId);
+                if (!j) {
+                    return 1;
+                }
+                jsonClearFsAllow(*j);
+                if (!saveConfig(scope, appId, baseId, *j)) {
+                    return 1;
+                }
+                return 0;
+            }
+            if (sub == "set-command") {
+                auto [scope, appId, baseId, i] = parseScope(3);
+                if (i >= argc) {
+                    printConfigUsage();
+                    return 1;
+                }
+                CmdSetArg a;
+                a.cmd = mainArgv[i++];
+                for (; i < argc; ++i) {
+                    std::string t = mainArgv[i];
+                    if (t == "--entrypoint" && i + 1 < argc) {
+                        a.entrypoint = mainArgv[++i];
+                    } else if (t == "--cwd" && i + 1 < argc) {
+                        a.cwd = mainArgv[++i];
+                    } else if (t == "--args-prefix" && i + 1 < argc) {
+                        std::stringstream ss(mainArgv[++i]);
+                        std::string tok;
+                        while (ss >> tok) {
+                            a.argsPrefix.push_back(tok);
+                        }
+                    } else if (t == "--args-suffix" && i + 1 < argc) {
+                        std::stringstream ss(mainArgv[++i]);
+                        std::string tok;
+                        while (ss >> tok) {
+                            a.argsSuffix.push_back(tok);
+                        }
+                    } else if (t.find('=') != std::string::npos) {
+                        a.envKVs.push_back(t);
+                    } else {
+                        fprintf(stderr, "unknown arg: %s\n", t.c_str());
+                        return 1;
+                    }
+                }
+                auto j = openConfig(scope, appId, baseId);
+                if (!j) {
+                    return 1;
+                }
+                jsonSetCommand(*j, a);
+                if (!saveConfig(scope, appId, baseId, *j)) {
+                    return 1;
+                }
+                return 0;
+            }
+            if (sub == "unset-command") {
+                auto [scope, appId, baseId, i] = parseScope(3);
+                if (i >= argc) {
+                    printConfigUsage();
+                    return 1;
+                }
+                std::string cmd = mainArgv[i];
+                auto j = openConfig(scope, appId, baseId);
+                if (!j) {
+                    return 1;
+                }
+                jsonUnsetCommand(*j, cmd);
+                if (!saveConfig(scope, appId, baseId, *j)) {
+                    return 1;
+                }
+                return 0;
+            }
+
+            printConfigUsage();
+            return 1;
+        }
+    }
+    // ===== end: "ll-cli config ..." dispatcher =====
+
     CLI::App commandParser{ _(
       "linyaps CLI\n"
       "A CLI program to run application and manage application and runtime\n") };
+    auto shortConfigHelp = configShortHelp();
+    auto fullConfigHelp = shortConfigHelp + configUsageLines();
+    commandParser.formatter(std::make_shared<ConfigAwareFormatter>(shortConfigHelp,
+                                                                   fullConfigHelp,
+                                                                   configFooterMessage()));
+    commandParser.option_defaults()->group(_("Options"));
+    if (auto formatter = commandParser.get_formatter()) {
+        formatter->label("OPTIONS", _("OPTIONS"));
+        formatter->label("SUBCOMMAND", _("SUBCOMMAND"));
+        formatter->label("SUBCOMMANDS", _("SUBCOMMANDS"));
+        formatter->label("POSITIONALS", _("POSITIONALS"));
+        formatter->label("Usage", _("Usage"));
+        formatter->label("REQUIRED", _("REQUIRED"));
+    }
     auto argv = commandParser.ensure_utf8(mainArgv);
     if (argc == 1) {
         std::cout << commandParser.help() << std::endl;
         return 0;
     }
 
-    commandParser.get_help_ptr()->description(_("Print this help message and exit"));
-    commandParser.set_help_all_flag("--help-all", _("Expand all help"));
+    if (auto *helpOption = commandParser.get_help_ptr()) {
+        helpOption->description(_("Print this help message and exit"));
+        helpOption->group(_("Options"));
+    }
+    if (auto *helpAllOption = commandParser.set_help_all_flag("--help-all", _("Expand all help"))) {
+        helpAllOption->group(_("Options"));
+    }
     commandParser.usage(_("Usage: ll-cli [OPTIONS] [SUBCOMMAND]"));
-    commandParser.footer(_(R"(If you found any problems during use,
-You can report bugs to the linyaps team under this project: https://github.com/OpenAtom-Linyaps/linyaps/issues)"));
+    commandParser.footer("");
 
     // group empty will hide command
     constexpr auto CliHiddenGroup = "";

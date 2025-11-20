@@ -9,7 +9,8 @@ filters:
     translation_files_expression: po/<lang>.po
   - filter_type: file
     source_file: misc/share/polkit-1/translations/policy.ts
-    file_format: TS
+    file_format: QT
     source_language: en_US
+    translation_files_expression: misc/share/polkit-1/translations/policy_<lang>.ts
 settings:
   pr_branch_name: transifex_update_<br_unique_id>

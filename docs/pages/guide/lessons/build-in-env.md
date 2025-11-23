@@ -76,7 +76,7 @@ szbt@szbt-linyaps23:/media/szbt/Data/ll-build/QT/qBittorrent-git$ tar -xvf qBitt
 ```
 
 4. 源码解压后, 根据 [玲珑应用构建基本步骤], 我们在编译任意源代码前应该正确选择使用何种编译系统/工具. 我们通过观察 `qBittorrent-4.6.7` 源码目录, 可以看到其存在 `CMakeLists.txt` 文件, 这是 `CMake` 构建项目.
-   ![1](images/2-1.png)
+  ![2-1.png](https://free.picui.cn/free/2025/11/24/69234a3575f6f.png)
 
 5. 由于 [qBittorrent INSTALL](https://github.com/qbittorrent/qBittorrent/blob/release-4.6.7/INSTALL) 中简要描述了本项目主要使用的运行库, 因此我们可以对照此文档来判断哪些运行库存在与玲珑提供的 `base`、 `runtime` 中或哪些运行库并未被提供的. 对于暂未被正式提供的运行库, 在编译主程序前我们可能需要先预编译必要的第三方库.
 
@@ -92,7 +92,7 @@ szbt@szbt-linyaps23:/media/szbt/Data/ll-build/QT/qBittorrent-git$ tar -xvf qBitt
 
 7. 可以从图中看到, 这里出现了一个错误导致无法完成配置. 我们看到 `pkg-config` 出现错误: `libtorrent-rasterbar>=1.2.19` 库不能满足条件:
 
-![error-1](images/2-error-1.png)
+  ![2-error-1.png](https://free.picui.cn/free/2025/11/24/69234a35d4640.png)
 
 ```
 -- Found PkgConfig: /bin/pkg-config (found version "1.8.1")
@@ -111,7 +111,7 @@ szbt@szbt-linyaps23:/project/src/qBittorrent-release-4.6.7-szbt2/build$ pkg-conf
 
 9. 源码解压后, 根据 [玲珑应用构建基本步骤], 我们在编译任意源代码前应该正确选择使用何种编译系统/工具. 我们通过观察 `libtorrent-rasterbar-2.0.9` 源码目录, 可以看到其存在 `CMakeLists.txt` 文件, 这是 `CMake` 构建项目.
 
-![2](images/2-2.png)
+  ![2-2.png](https://free.picui.cn/free/2025/11/24/69234a35a84bb.png)
 
 10. 我们通过 `玲珑容器操作` 窗口进入源码目录, 为了尽量避免对源目录的干扰, 我这里新建一个 `build` 目录用于编译. 进入 `build` 目录后我们输入CMake相关配置参数来配置构建工程.
     根据[玲珑应用目录结构规范], 我们将 `DCMAKE_INSTALL_PREFIX` 赋予 `$PREFIX` 的值, 最终我在本地执行了以下操作:
@@ -133,6 +133,6 @@ szbt@szbt-linyaps23:/project/src/qBittorrent-release-4.6.7-szbt2/build$ pkg-conf
 
 看起来因为并不是直接通过容器启动, 发生了运行库无法找到的问题, 因为报错的库也在$PREFIX中, 因此我们直接通过变量 `LD_LIBRARY_PATH` 来指定动态运行库寻找路径
 
-![test](images/2-test.png)
+  ![2-test.png](https://free.picui.cn/free/2025/11/24/69234a367aecf.png)
 
 至此, 足以证明 `基于Qt5的开源应用--qBittorrent` 可以在 `如意玲珑` 应用容器中成功编译并运行!

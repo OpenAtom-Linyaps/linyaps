@@ -144,13 +144,15 @@ ziggy@linyaps23:/media/szbt/Data/linyaps-testing-toolchains$ ./linyaps-auto-scre
 
 9. 在脚本启动后, 将该终端设置为最小化窗口保留在背景运行, 测试套件将会判断应用安装情况、desktop文件存在情况来 `启动` 和 `关闭` 应用窗口
 
-![test-1](images/5-test-1.png)
-![test-2](images/5-test-2.png)
+![5-test-1.png](https://free.picui.cn/free/2025/11/24/69234cbd2353f.png)
+
+![5-test-2.png](https://free.picui.cn/free/2025/11/24/69234cbd95b5d.png)
 
 10. 在满足运行要求后, 套件将会模拟通过desktop文件启动程序并在约 30s 延时后对窗口进行判断, 检查应用运行后是否生成新窗口
 
-![test-3](images/5-test-3.png)
-![test-4](images/5-test-4.png)
+![5-test-3.png](https://free.picui.cn/free/2025/11/24/69234cbdbb020.png)
+
+![5-test-4.png](https://free.picui.cn/free/2025/11/24/69234cbdd6788.png)
 
 11. 应用成功运行后, 将会依次完成截图、图标检测&获取操作
 
@@ -179,6 +181,6 @@ res/
         └── 3.png
 ```
 
-![test-5](images/5-test-5.png)
+![5-test-5.png](https://free.picui.cn/free/2025/11/24/69234cbd6ca3d.png)
 
 至此, 我们成功通过玲珑应用自动化测试套件, 完成了针对历史课时中产出的玲珑应用的兼容性测试

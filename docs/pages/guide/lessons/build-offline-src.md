@@ -208,18 +208,18 @@ ziggy@linyaps23:/media/szbt/Data/ll-build/QT/qBittorrent-local$ ll-builder expor
 
 ### deepin 23
 
-![deepin 23](images/3-test-1.png)
+![deepin 23](https://free.picui.cn/free/2025/11/24/69234b2085f30.png)
 
 ### openKylin 2.0
 
-![openKylin 2.0](images/3-test-2.png)
+![openKylin 2.0](https://free.picui.cn/free/2025/11/24/69234b206d8c6.png)
 
 ### Ubuntu 2404
 
-![Ubuntu 2404](images/3-test-3.png)
+![Ubuntu 2404](https://free.picui.cn/free/2025/11/24/69234b200d09f.png)
 
 ### OpenEuler 2403
 
-![OpenEuler 2403](images/3-test-4.png)
+![OpenEuler 2403](https://free.picui.cn/free/2025/11/24/69234b205dca1.png)
 
 至此, 足以证明 `基于Qt5的开源应用--qBittorrent` 可以构建完成后, 在支持 `如意玲珑` 应用方案的第三方发行版中成功运行!

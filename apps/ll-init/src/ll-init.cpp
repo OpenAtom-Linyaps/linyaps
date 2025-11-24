@@ -33,6 +33,7 @@ struct WaitPidResult
 {
     pid_t pid;
     int status;
+    bool exited{ false };
 };
 
 void print_sys_error(std::string_view msg) noexcept
@@ -296,6 +297,8 @@ bool handle_sigevent(const file_descriptor_wrapper &sigfd,
                      pid_t child,
                      struct WaitPidResult &waitChild) noexcept
 {
+    bool childAlive = child > 0;
+
     while (true) {
         signalfd_siginfo info{};
         auto ret = ::read(sigfd, &info, sizeof(info));
@@ -309,8 +312,9 @@ bool handle_sigevent(const file_descriptor_wrapper &sigfd,
         }
 
         if (info.ssi_signo != SIGCHLD) {
-            if (info.ssi_pid != 0) {
-                auto ret = ::kill(child, info.ssi_signo);
+            if (childAlive) {
+                // forward to the whole process group started by the child
+                auto ret = ::kill(-child, info.ssi_signo);
                 if (ret == -1) {
                     auto msg =
                       std::string("Failed to forward signal ") + ::strsignal(info.ssi_signo);
@@ -340,6 +344,11 @@ bool handle_sigevent(const file_descriptor_wrapper &sigfd,
             if (ret == child) {
                 waitChild.pid = child;
                 waitChild.status = status;
+
+                if (WIFEXITED(status) || WIFSIGNALED(status)) {
+                    childAlive = false;
+                    waitChild.exited = true;
+                }
             }
         }
     }
@@ -668,7 +677,7 @@ int main(int argc, char **argv) // NOLINT
                     return -1;
                 }
 
-                if (waitChild.pid == child) {
+                if (waitChild.exited) {
                     // Init process will propagate received signals to all child processes (using
                     // pid -1) after initial child exits
                     if (WIFEXITED(waitChild.status)) {
@@ -686,6 +695,7 @@ int main(int argc, char **argv) // NOLINT
                     if (!timerfd) {
                         return -1;
                     }
+                    waitChild.exited = false;
                 }
 
                 continue;

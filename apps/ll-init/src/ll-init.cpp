@@ -309,17 +309,11 @@ bool handle_sigevent(const file_descriptor_wrapper &sigfd,
         }
 
         if (info.ssi_signo != SIGCHLD) {
-            if (info.ssi_pid != 0) {
-                auto ret = ::kill(child, info.ssi_signo);
-                if (ret == -1) {
-                    auto msg =
-                      std::string("Failed to forward signal ") + ::strsignal(info.ssi_signo);
-                    print_sys_error(msg);
-                }
+            auto ret = ::kill(child, info.ssi_signo);
+            if (ret == -1) {
+                auto msg = std::string("Failed to forward signal ") + ::strsignal(info.ssi_signo);
+                print_sys_error(msg);
             }
-
-            print_info("Received signal " + std::to_string(info.ssi_signo)
-                       + " from kernel, just ignore it");
             continue;
         }
 

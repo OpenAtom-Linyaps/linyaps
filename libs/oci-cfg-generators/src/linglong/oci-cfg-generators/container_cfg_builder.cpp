@@ -769,11 +769,12 @@ bool ContainerCfgBuilder::buildMountHome() noexcept
                                    .type = "tmpfs" });
 
     auto containerHome = homePath->string();
-
-    homeMount->emplace_back(Mount{ .destination = containerHome,
-                                   .options = string_list{ "rbind" },
-                                   .source = *homePath,
-                                   .type = "bind" });
+    if (!skipHostHome) {
+        homeMount->emplace_back(Mount{ .destination = containerHome,
+                                       .options = string_list{ "rbind" },
+                                       .source = *homePath,
+                                       .type = "bind" });
+    }
     environment["HOME"] = containerHome;
 
     auto mountDir = [this](const std::filesystem::path &hostDir, const std::string &containerDir) {
@@ -803,7 +804,7 @@ bool ContainerCfgBuilder::buildMountHome() noexcept
       value ? std::filesystem::path{ value } : *homePath / ".local" / "share";
     std::string containerDataHome = containerHome + "/.local/share";
     if (XDG_DATA_HOME != containerDataHome) {
-        if (!mountDir(XDG_DATA_HOME, containerDataHome)) {
+        if (!skipHostHome && !mountDir(XDG_DATA_HOME, containerDataHome)) {
             error_.reason = XDG_DATA_HOME.string() + " can't be mount";
             error_.code = BUILD_MOUNT_HOME_ERROR;
             return false;
@@ -834,7 +835,7 @@ bool ContainerCfgBuilder::buildMountHome() noexcept
     }
     std::string containerConfigHome = containerHome + "/.config";
     if (XDGConfigHome != containerConfigHome) {
-        if (!mountDir(XDGConfigHome, containerConfigHome)) {
+        if (!skipHostHome && !mountDir(XDGConfigHome, containerConfigHome)) {
             error_.reason = XDGConfigHome.string() + " can't be mount";
             error_.code = BUILD_MOUNT_HOME_ERROR;
             return false;
@@ -852,7 +853,7 @@ bool ContainerCfgBuilder::buildMountHome() noexcept
     }
     std::string containerCacheHome = containerHome + "/.cache";
     if (XDGCacheHome != containerCacheHome) {
-        if (!mountDir(XDGCacheHome, containerCacheHome)) {
+        if (!skipHostHome && !mountDir(XDGCacheHome, containerCacheHome)) {
             error_.reason = XDGCacheHome.string() + " can't be mount";
             error_.code = BUILD_MOUNT_HOME_ERROR;
             return false;
@@ -869,7 +870,7 @@ bool ContainerCfgBuilder::buildMountHome() noexcept
     }
     std::string containerStateHome = containerHome + "/.local/state";
     if (XDG_STATE_HOME != containerStateHome) {
-        if (!mountDir(XDG_STATE_HOME, containerStateHome)) {
+        if (!skipHostHome && !mountDir(XDG_STATE_HOME, containerStateHome)) {
             error_.reason = XDG_STATE_HOME.string() + " can't be mount";
             error_.code = BUILD_MOUNT_HOME_ERROR;
             return false;
@@ -881,10 +882,12 @@ bool ContainerCfgBuilder::buildMountHome() noexcept
     auto hostSystemdUserDir = XDG_CONFIG_HOME / "systemd" / "user";
     if ((XDG_CONFIG_HOME != containerConfigHome)
         && std::filesystem::exists(hostSystemdUserDir, ec)) {
-        homeMount->emplace_back(Mount{ .destination = containerConfigHome + "/systemd/user",
+        if (!skipHostHome) {
+            homeMount->emplace_back(Mount{ .destination = containerConfigHome + "/systemd/user",
                                        .options = string_list{ "rbind" },
                                        .source = hostSystemdUserDir,
                                        .type = "bind" });
+        }
     }
 
     // FIXME: Many applications get configurations from dconf, so we expose dconf to all
@@ -893,15 +896,18 @@ bool ContainerCfgBuilder::buildMountHome() noexcept
     auto hostUserDconfPath = XDG_CONFIG_HOME / "dconf";
     if ((XDG_CONFIG_HOME != containerConfigHome)
         && std::filesystem::exists(hostUserDconfPath, ec)) {
-        homeMount->emplace_back(Mount{ .destination = containerConfigHome + "/dconf",
+        if (!skipHostHome) {
+            homeMount->emplace_back(Mount{ .destination = containerConfigHome + "/dconf",
                                        .options = string_list{ "rbind" },
                                        .source = hostUserDconfPath,
                                        .type = "bind" });
+        }
     }
 
     // for dde application theme
     auto hostDDEApiPath = XDG_CACHE_HOME / "deepin" / "dde-api";
-    if ((XDG_CACHE_HOME != containerCacheHome) && std::filesystem::exists(hostDDEApiPath, ec)) {
+    if (!skipHostHome && (XDG_CACHE_HOME != containerCacheHome)
+        && std::filesystem::exists(hostDDEApiPath, ec)) {
         homeMount->emplace_back(Mount{ .destination = containerCacheHome + "/deepin/dde-api",
                                        .options = string_list{ "rbind" },
                                        .source = hostDDEApiPath,
@@ -910,7 +916,8 @@ bool ContainerCfgBuilder::buildMountHome() noexcept
 
     // for xdg-user-dirs
     auto XDGUserDirs = XDG_CONFIG_HOME / "user-dirs.dirs";
-    if ((XDG_CONFIG_HOME != containerConfigHome) && std::filesystem::exists(XDGUserDirs, ec)) {
+    if (!skipHostHome && (XDG_CONFIG_HOME != containerConfigHome)
+        && std::filesystem::exists(XDGUserDirs, ec)) {
         homeMount->push_back(Mount{ .destination = containerConfigHome + "/user-dirs.dirs",
                                     .options = string_list{ "rbind" },
                                     .source = XDGUserDirs,
@@ -918,7 +925,8 @@ bool ContainerCfgBuilder::buildMountHome() noexcept
     }
 
     auto XDGUserLocale = XDG_CONFIG_HOME / "user-dirs.locale";
-    if ((XDG_CONFIG_HOME != containerConfigHome) && std::filesystem::exists(XDGUserLocale, ec)) {
+    if (!skipHostHome && (XDG_CONFIG_HOME != containerConfigHome)
+        && std::filesystem::exists(XDGUserLocale, ec)) {
         homeMount->push_back(Mount{ .destination = containerConfigHome + "/user-dirs.locale",
                                     .options = string_list{ "rbind" },
                                     .source = XDGUserLocale,

@@ -7,6 +7,7 @@
 
 #include "linglong/api/types/v1/RepoConfig.hpp"
 #include "linglong/api/types/v1/RepoConfigV2.hpp"
+#include "linglong/api/types/v1/UpgradeListResult.hpp"
 
 namespace linglong::api::types::v1 {
 
@@ -15,6 +16,7 @@ namespace linglong::api::types::v1 {
 static_assert(sizeof(struct Repo) == 120);
 static_assert(sizeof(struct RepoConfig) == 88);
 static_assert(sizeof(struct RepoConfigV2) == 64);
+static_assert(sizeof(struct UpgradeListResult) == 96);
 
 inline bool operator==(const Repo &cfg1, const Repo &cfg2) noexcept
 {
@@ -47,6 +49,11 @@ inline bool operator==(const RepoConfigV2 &cfg1, const RepoConfigV2 &cfg2) noexc
 inline bool operator!=(const RepoConfigV2 &cfg1, const RepoConfigV2 &cfg2) noexcept
 {
     return !(cfg1 == cfg2);
+}
+
+inline bool operator==(const UpgradeListResult &lhs, const UpgradeListResult &rhs)
+{
+    return lhs.id == rhs.id && lhs.newVersion == rhs.newVersion && lhs.oldVersion == rhs.oldVersion;
 }
 
 } // namespace linglong::api::types::v1

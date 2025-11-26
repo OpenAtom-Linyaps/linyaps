@@ -26,6 +26,8 @@ using namespace linglong;
 using ::testing::_;
 using ::testing::Return;
 
+namespace {
+
 class MockRepo : public repo::OSTreeRepo
 {
 public:
@@ -307,3 +309,5 @@ TEST_F(ActionTest, InstallSameRuntime)
     EXPECT_EQ(result->oldRef->toString(), "main:id1/1.0.0/x86_64");
     EXPECT_EQ(result->newRef->reference.toString(), "main:id1/1.0.0/x86_64");
 }
+
+} // namespace

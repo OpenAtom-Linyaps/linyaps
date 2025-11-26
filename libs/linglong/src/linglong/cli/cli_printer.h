@@ -47,7 +47,7 @@ public:
                         api::types::v1::State state,
                         api::types::v1::SubState subState) override;
     void printContent(const QStringList &filePaths) override;
-    void printUpgradeList(std::vector<api::types::v1::UpgradeListResult> &) override;
+    virtual void printUpgradeList(std::vector<api::types::v1::UpgradeListResult> &) override;
     void printInspect(const api::types::v1::InspectResult &result) override;
     void printMessage(const std::string &message) override;
 };

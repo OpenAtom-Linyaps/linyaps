@@ -15,6 +15,7 @@ pfl_add_executable(
   src/common/tempdir.h
   src/linglong/builder/linglong_builder_test.cpp
   src/linglong/builder/source_fetcher_test.cpp
+  src/linglong/cli/cli_test.cpp
   src/linglong/common/strings_test.cpp
   src/linglong/common/xdg_test.cpp
   src/linglong/mocks/command_mock.h
@@ -26,6 +27,7 @@ pfl_add_executable(
   src/linglong/package/fallback_version_test.cpp
   src/linglong/package/layer_packager_test.cpp
   src/linglong/package_manager/action_test.cpp
+  src/linglong/package_manager/package_update_test.cpp
   src/linglong/package_manager/uab_installation_test.cpp
   src/linglong/package/reference_test.cpp
   src/linglong/package/semver_compare_test.cpp

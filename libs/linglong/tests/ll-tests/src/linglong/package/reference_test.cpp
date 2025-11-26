@@ -33,7 +33,7 @@ TEST(Package, Reference)
         ASSERT_EQ(refer->toString(), validCase);
     }
 
-    const QStringList invalidReferences = {
+    const std::vector<std::string> invalidReferences = {
         "main:com.example.App//1.0.0.0/x86_64",
         "main:1111/1.0.0.0/ x86_64",
         "main:2222/1.0.0.0/unknown",
@@ -44,7 +44,7 @@ TEST(Package, Reference)
     for (const auto &invalidCase : invalidReferences) {
         auto refer = Reference::parse(invalidCase);
         ASSERT_EQ(refer.has_value(), false)
-          << invalidCase.toStdString() << " is invalid reference. Error: "
+          << invalidCase << " is invalid reference. Error: "
           << (refer.has_value() ? "no error" : refer.error().message());
     }
 

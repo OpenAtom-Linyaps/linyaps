@@ -1041,7 +1041,8 @@
       "type": "object",
       "description": "package manager update result",
       "required": [
-        "packages"
+        "packages",
+        "depsOnly"
       ],
       "properties": {
         "packages": {
@@ -1050,6 +1051,10 @@
           "items": {
             "$ref": "#/$defs/PackageManager1Package"
           }
+        },
+        "depsOnly": {
+          "type": "boolean",
+          "description": "upgrade dependencies only"
         }
       }
     },

@@ -40,7 +40,7 @@ auto fmt::formatter<linglong::utils::error::Error>::format(
 #endif
 {
     return formatter<std::string_view>::format(
-      fmt::format("[code {}] backtrace:\n{}", error.code(), error.message()),
+      fmt::format("[code {}]:\n{}", error.code(), error.message()),
       ctx);
 }
 

@@ -83,6 +83,7 @@ struct InstallOptions
 struct UpgradeOptions
 {
     std::string appid; // 可选，为空时升级所有应用
+    bool depsOnly{ false };
 };
 
 struct SearchOptions
@@ -205,10 +206,7 @@ private:
     utils::error::Result<void> ensureAuthorized();
     utils::error::Result<void> runningAsRoot();
     utils::error::Result<void> runningAsRoot(const QList<QString> &args);
-    utils::error::Result<std::vector<api::types::v1::UpgradeListResult>>
-    listUpgradable(const std::vector<api::types::v1::PackageInfoV2> &pkgs);
-    utils::error::Result<std::vector<api::types::v1::UpgradeListResult>>
-    listUpgradable(const std::string &type = "app");
+    utils::error::Result<std::vector<api::types::v1::UpgradeListResult>> listUpgradable();
     int generateCache(const package::Reference &ref);
     utils::error::Result<std::filesystem::path> ensureCache(
       runtime::RunContext &runContext, const generator::ContainerCfgBuilder &cfgBuilder) noexcept;
@@ -244,6 +242,7 @@ private:
     void handleInstallError(const utils::error::Error &error,
                             const api::types::v1::PackageManager1InstallParameters &params);
     void handleUninstallError(const utils::error::Error &error);
+    void handleUpgradeError(const utils::error::Error &error);
     bool handleCommonError(const utils::error::Error &error);
 
 private Q_SLOTS:

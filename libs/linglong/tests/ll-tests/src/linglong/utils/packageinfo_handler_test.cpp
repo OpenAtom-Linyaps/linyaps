@@ -18,9 +18,9 @@ class PackageInfoHandlerTest : public ::testing::Test
 protected:
     void SetUp() override
     {
-        // 创建临时目录用于测试
-        tempDir = std::filesystem::temp_directory_path() / "packageinfo_test";
-        std::filesystem::create_directories(tempDir);
+        char tempPath[] = "/var/tmp/linglong-uab-file-test-XXXXXX";
+        tempDir = mkdtemp(tempPath);
+        ASSERT_FALSE(tempDir.empty()) << "Failed to create temporary directory";
     }
 
     void TearDown() override

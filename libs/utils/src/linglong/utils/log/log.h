@@ -93,8 +93,12 @@ public:
         }
 
         if ((logBackend & LogBackend::Journal) != LogBackend::None) {
-            sd_journal_send_with_location(fmt::format("CODE_FILE={}", context.file).c_str(),
-                                          fmt::format("CODE_LINE={}", context.line).c_str(),
+            fmt::memory_buffer fileBuf;
+            fmt::memory_buffer lineBuf;
+            fmt::format_to(fmt::appender(fileBuf), "CODE_FILE={}", context.file.c_str());
+            fmt::format_to(fmt::appender(lineBuf), "CODE_LINE={}", context.line);
+            sd_journal_send_with_location(fmt::to_string(fileBuf).c_str(),
+                                          fmt::to_string(lineBuf).c_str(),
                                           context.function.c_str(),
                                           "MESSAGE=%s",
                                           message.c_str(),

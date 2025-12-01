@@ -181,7 +181,7 @@ ContainerCfgBuilder::bindDevNode(std::function<bool(const std::string &)> ifBind
 {
     if (!ifBind) {
         ifBind = [](const std::string &name) -> bool {
-            if (name == "snd" || name == "dri" || name.rfind("video", 0) == 0
+            if (name == "snd" || name == "dri" || name == "jmgpu" || name.rfind("video", 0) == 0
                 || name.rfind("nvidia", 0) == 0) {
                 return true;
             }

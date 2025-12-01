@@ -103,10 +103,10 @@ public:
         if ((logBackend & LogBackend::Journal) != LogBackend::None) {
             fmt::memory_buffer fileBuf;
             fmt::memory_buffer lineBuf;
-            fmt::format_to(fileBuf.begin(), "CODE_FILE={}\0", context.file);
-            fmt::format_to(lineBuf.begin(), "CODE_LINE={}\0", context.line);
-            sd_journal_send_with_location(fileBuf.data(),
-                                          lineBuf.data(),
+            fmt::format_to(fmt::appender(fileBuf), "CODE_FILE={}", context.file);
+            fmt::format_to(fmt::appender(lineBuf), "CODE_LINE={}", context.line);
+            sd_journal_send_with_location(fmt::to_string(fileBuf).c_str(),
+                                          fmt::to_string(lineBuf).c_str(),
                                           context.function,
                                           "MESSAGE=%s",
                                           message.c_str(),

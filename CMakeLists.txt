@@ -134,15 +134,28 @@ endif()
 
 set(linglong_EXTERNALS "ytj ytj::ytj")
 
-if(CMAKE_SYSTEM_PROCESSOR MATCHES "^mips" OR CMAKE_SYSTEM_PROCESSOR MATCHES
-                                             "^MIPS")
+if(NOT (${CMAKE_BUILD_TYPE} MATCHES "Debug"))
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Ofast")
+  message("release")
+endif()
+
+set(CMAKE_C_FLAGS
+    "${CMAKE_C_FLAGS} -fstack-protector-all -z now -z noexecstack -fpie -pie")
+set(CMAKE_CXX_FLAGS
+    "${CMAKE_CXX_FLAGS} -fstack-protector-all -z now -z noexecstack -fpie -pie")
+
+if(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "^mips" OR CMAKE_HOST_SYSTEM_PROCESSOR
+                                                  MATCHES "^MIPS")
   message(
     STATUS
       "MIPS architecture detected. Globally adding -mxgot to CMAKE_CXX_FLAGS.")
-
   set(CMAKE_CXX_FLAGS
-      "${CMAKE_CXX_FLAGS} -mxgot"
-      CACHE STRING "C++ compiler flags" FORCE)
+      "${CMAKE_CXX_FLAGS} -O3 -Wl,-O1 -Wl,--as-needed -Wl,-E -fPIE -ffunction-sections -fdata-sections -Wl,--gc-sections -ftree-vectorize -march=loongson3a -mhard-float -mno-micromips -mno-mips16 -flax-vector-conversions -mloongson-ext2 -mloongson-mmi -mxgot -z noexecstack"
+  )
+  set(CMAKE_C_FLAGS
+      "${CMAKE_C_FLAGS} -O3 -Wl,-O1 -Wl,--as-needed -Wl,-E -fPIE -ffunction-sections -fdata-sections -Wl,--gc-sections -ftree-vectorize -march=loongson3a -mhard-float -mno-micromips -mno-mips16 -flax-vector-conversions -mloongson-ext2 -mloongson-mmi -mxgot -z noexecstack"
+  )
+  set(CMAKE_EXE_LINKER_FLAGS "-pie")
 endif()
 
 find_package(fmt 5.2.1 QUIET)
@@ -197,7 +210,8 @@ endif()
 if(LINGLONG_ENABLE_WAYLAND_SEC_CTX_SUPPORT)
   message(STATUS "enable linglong wayland security context support")
   pkg_search_module(WAYLAND_CLIENT REQUIRED IMPORTED_TARGET wayland-client)
-  pkg_search_module(WAYLAND_PROTOCOLS REQUIRED IMPORTED_TARGET wayland-protocols)
+  pkg_search_module(WAYLAND_PROTOCOLS REQUIRED IMPORTED_TARGET
+                    wayland-protocols)
   find_program(WAYLAND_SCANNER wayland-scanner REQUIRED)
 endif()
 

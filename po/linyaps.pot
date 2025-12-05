@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-10-21 17:24+0800\n"
+"POT-Creation-Date: 2025-12-11 20:52+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,101 +17,109 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: ../libs/linglong/src/linglong/cli/cli.cpp:76
-msgid "Permission denied, please check whether you are running as root."
-msgstr ""
-
-#: ../libs/linglong/src/linglong/cli/cli.cpp:537
-msgid "To install the module, one must first install the app."
-msgstr ""
-
-#: ../libs/linglong/src/linglong/cli/cli.cpp:540
-msgid "Module is already installed."
-msgstr ""
-
-#: ../libs/linglong/src/linglong/cli/cli.cpp:543
-#: ../libs/linglong/src/linglong/cli/cli.cpp:1297
-msgid "Install failed"
-msgstr ""
-
-#: ../libs/linglong/src/linglong/cli/cli.cpp:546
-msgid "The module could not be found remotely."
-msgstr ""
-
-#: ../libs/linglong/src/linglong/cli/cli.cpp:549
-#: ../libs/linglong/src/linglong/cli/cli.cpp:1784
-msgid "Uninstall failed"
-msgstr ""
-
-#: ../libs/linglong/src/linglong/cli/cli.cpp:552
-msgid "Upgrade failed"
-msgstr ""
-
-#: ../libs/linglong/src/linglong/cli/cli.cpp:555
-#: ../libs/linglong/src/linglong/cli/cli.cpp:1765
-msgid "Application is not installed."
-msgstr ""
-
-#: ../libs/linglong/src/linglong/cli/cli.cpp:558
-msgid "Remote application is not found."
-msgstr ""
-
-#: ../libs/linglong/src/linglong/cli/cli.cpp:561
-msgid "Latest version is already installed."
-msgstr ""
-
-#: ../libs/linglong/src/linglong/cli/cli.cpp:796
+#: ../libs/linglong/src/linglong/cli/cli.cpp:640
 msgid "privileged mode requires running as root"
 msgstr ""
 
-#: ../libs/linglong/src/linglong/cli/cli.cpp:1271
-#: ../libs/linglong/src/linglong/cli/cli.cpp:1570
+#: ../libs/linglong/src/linglong/cli/cli.cpp:1053
+#, c++-format
+msgid "Application {} is not installed."
+msgstr ""
+
+#: ../libs/linglong/src/linglong/cli/cli.cpp:1063
+#, c++-format
+msgid "{} is not an application."
+msgstr ""
+
+#: ../libs/linglong/src/linglong/cli/cli.cpp:1157
+#: ../libs/linglong/src/linglong/cli/cli.cpp:2520
 msgid ""
 "Network connection failed. Please:\n"
 "1. Check your internet connection\n"
 "2. Verify network proxy settings if used"
 msgstr ""
 
-#: ../libs/linglong/src/linglong/cli/cli.cpp:1277
+#: ../libs/linglong/src/linglong/cli/cli.cpp:2219
+msgid ""
+"The cache generation failed, please uninstall and reinstall the application."
+msgstr ""
+
+#: ../libs/linglong/src/linglong/cli/cli.cpp:2405
+msgid "To install the module, one must first install the app."
+msgstr ""
+
+#: ../libs/linglong/src/linglong/cli/cli.cpp:2408
+msgid "Module is already installed."
+msgstr ""
+
+#: ../libs/linglong/src/linglong/cli/cli.cpp:2411
+msgid "The module could not be found remotely."
+msgstr ""
+
+#: ../libs/linglong/src/linglong/cli/cli.cpp:2415
+#, c++-format
 msgid ""
 "Application already installed, If you want to replace it, try using 'll-cli "
-"install %1 --force'"
+"install {} --force'"
 msgstr ""
 
-#: ../libs/linglong/src/linglong/cli/cli.cpp:1283
-msgid "Application %1 is not found in remote repo."
+#: ../libs/linglong/src/linglong/cli/cli.cpp:2421
+#, c++-format
+msgid "Application {} is not found in remote repo."
 msgstr ""
 
-#: ../libs/linglong/src/linglong/cli/cli.cpp:1287
+#: ../libs/linglong/src/linglong/cli/cli.cpp:2424
 msgid "Cannot specify a version when installing a module."
 msgstr ""
 
-#: ../libs/linglong/src/linglong/cli/cli.cpp:1291
+#: ../libs/linglong/src/linglong/cli/cli.cpp:2428
+#, c++-format
 msgid ""
 "The latest version has been installed. If you want to replace it, try using "
-"'ll-cli install %1/version --force'"
+"'ll-cli install {} --force'"
 msgstr ""
 
-#: ../libs/linglong/src/linglong/cli/cli.cpp:1769
-msgid ""
-"Multiple versions of the package are installed. Please specify a single "
-"version to uninstall:\n"
-"%1"
+#: ../libs/linglong/src/linglong/cli/cli.cpp:2434
+msgid "Install failed"
 msgstr ""
 
-#: ../libs/linglong/src/linglong/cli/cli.cpp:1775
+#: ../libs/linglong/src/linglong/cli/cli.cpp:2456
 msgid ""
 "The application is currently running and cannot be uninstalled. Please turn "
 "off the application and try again."
 msgstr ""
 
-#: ../libs/linglong/src/linglong/cli/cli.cpp:1780
+#: ../libs/linglong/src/linglong/cli/cli.cpp:2464
+#: ../libs/linglong/src/linglong/cli/cli.cpp:2497
+msgid "Application is not installed."
+msgstr ""
+
+#: ../libs/linglong/src/linglong/cli/cli.cpp:2468
+#, c++-format
+msgid ""
+"Multiple versions of the package are installed. Please specify a single "
+"version to uninstall:\n"
+"{}"
+msgstr ""
+
+#: ../libs/linglong/src/linglong/cli/cli.cpp:2474
 msgid "Base or runtime cannot be uninstalled, please use 'll-cli prune'."
 msgstr ""
 
-#: ../libs/linglong/src/linglong/cli/cli.cpp:2800
-msgid ""
-"The cache generation failed, please uninstall and reinstall the application."
+#: ../libs/linglong/src/linglong/cli/cli.cpp:2478
+msgid "Uninstall failed"
+msgstr ""
+
+#: ../libs/linglong/src/linglong/cli/cli.cpp:2501
+msgid "Upgrade failed"
+msgstr ""
+
+#: ../libs/linglong/src/linglong/cli/cli.cpp:2525
+msgid "Package not found"
+msgstr ""
+
+#: ../libs/linglong/src/linglong/cli/cli.cpp:2528
+msgid "Operation canceled"
 msgstr ""
 
 #: ../apps/ll-cli/src/main.cpp:146 ../apps/ll-builder/src/main.cpp:100
@@ -276,36 +284,44 @@ msgstr ""
 msgid "Uninstall a specify module"
 msgstr ""
 
-#. below options are used for compatibility with old ll-cli
 #: ../apps/ll-cli/src/main.cpp:331
+msgid "Force uninstall base or runtime"
+msgstr ""
+
+#. below options are used for compatibility with old ll-cli
+#: ../apps/ll-cli/src/main.cpp:334
 msgid "Remove all unused modules"
 msgstr ""
 
-#: ../apps/ll-cli/src/main.cpp:335
+#: ../apps/ll-cli/src/main.cpp:338
 msgid "Uninstall all modules"
 msgstr ""
 
-#: ../apps/ll-cli/src/main.cpp:345
+#: ../apps/ll-cli/src/main.cpp:348
 msgid "Upgrade the application or runtimes"
 msgstr ""
 
-#: ../apps/ll-cli/src/main.cpp:348
+#: ../apps/ll-cli/src/main.cpp:351
 msgid "Usage: ll-cli upgrade [OPTIONS] [APP]"
 msgstr ""
 
-#: ../apps/ll-cli/src/main.cpp:352
+#: ../apps/ll-cli/src/main.cpp:355
 msgid ""
 "Specify the application ID. If it not be specified, all applications will be "
 "upgraded"
 msgstr ""
 
-#: ../apps/ll-cli/src/main.cpp:364
+#: ../apps/ll-cli/src/main.cpp:360
+msgid "Only upgrade dependencies of application"
+msgstr ""
+
+#: ../apps/ll-cli/src/main.cpp:370
 msgid ""
 "Search the applications/runtimes containing the specified text from the "
 "remote repository"
 msgstr ""
 
-#: ../apps/ll-cli/src/main.cpp:368
+#: ../apps/ll-cli/src/main.cpp:374
 msgid ""
 "Usage: ll-cli search [OPTIONS] KEYWORDS\n"
 "\n"
@@ -320,33 +336,33 @@ msgid ""
 "ll-cli search . --type=runtime"
 msgstr ""
 
-#: ../apps/ll-cli/src/main.cpp:379
+#: ../apps/ll-cli/src/main.cpp:385
 msgid "Specify the Keywords"
 msgstr ""
 
-#: ../apps/ll-cli/src/main.cpp:386 ../apps/ll-cli/src/main.cpp:425
+#: ../apps/ll-cli/src/main.cpp:392 ../apps/ll-cli/src/main.cpp:431
 msgid ""
 "Filter result with specify type. One of \"runtime\", \"base\", \"app\" or "
 "\"all\""
 msgstr ""
 
-#: ../apps/ll-cli/src/main.cpp:390
+#: ../apps/ll-cli/src/main.cpp:396
 msgid "Specify the repo"
 msgstr ""
 
-#: ../apps/ll-cli/src/main.cpp:395
+#: ../apps/ll-cli/src/main.cpp:401
 msgid "Include develop application in result"
 msgstr ""
 
-#: ../apps/ll-cli/src/main.cpp:398
+#: ../apps/ll-cli/src/main.cpp:404
 msgid "Show all versions of an application(s), base(s) or runtime(s)"
 msgstr ""
 
-#: ../apps/ll-cli/src/main.cpp:406
+#: ../apps/ll-cli/src/main.cpp:412
 msgid "List installed application(s), base(s) or runtime(s)"
 msgstr ""
 
-#: ../apps/ll-cli/src/main.cpp:409
+#: ../apps/ll-cli/src/main.cpp:415
 msgid ""
 "Usage: ll-cli list [OPTIONS]\n"
 "\n"
@@ -361,44 +377,44 @@ msgid ""
 "ll-cli list --upgradable\n"
 msgstr ""
 
-#: ../apps/ll-cli/src/main.cpp:431
+#: ../apps/ll-cli/src/main.cpp:437
 msgid ""
 "Show the list of latest version of the currently installed application(s), "
 "base(s) or runtime(s)"
 msgstr ""
 
-#: ../apps/ll-cli/src/main.cpp:441
+#: ../apps/ll-cli/src/main.cpp:447
 msgid "Display or modify information of the repository currently using"
 msgstr ""
 
-#: ../apps/ll-cli/src/main.cpp:443
+#: ../apps/ll-cli/src/main.cpp:449
 msgid "Usage: ll-cli repo SUBCOMMAND [OPTIONS]"
 msgstr ""
 
 #. add repo sub command add
-#: ../apps/ll-cli/src/main.cpp:447 ../apps/ll-builder/src/main.cpp:959
+#: ../apps/ll-cli/src/main.cpp:453 ../apps/ll-builder/src/main.cpp:959
 msgid "Add a new repository"
 msgstr ""
 
-#: ../apps/ll-cli/src/main.cpp:448
+#: ../apps/ll-cli/src/main.cpp:454
 msgid "Usage: ll-cli repo add [OPTIONS] NAME URL"
 msgstr ""
 
-#: ../apps/ll-cli/src/main.cpp:449 ../apps/ll-cli/src/main.cpp:461
+#: ../apps/ll-cli/src/main.cpp:455 ../apps/ll-cli/src/main.cpp:467
 #: ../apps/ll-builder/src/main.cpp:961
 msgid "Specify the repo name"
 msgstr ""
 
-#: ../apps/ll-cli/src/main.cpp:452 ../apps/ll-cli/src/main.cpp:464
-#: ../apps/ll-cli/src/main.cpp:482 ../apps/ll-builder/src/main.cpp:964
+#: ../apps/ll-cli/src/main.cpp:458 ../apps/ll-cli/src/main.cpp:470
+#: ../apps/ll-cli/src/main.cpp:488 ../apps/ll-builder/src/main.cpp:964
 #: ../apps/ll-builder/src/main.cpp:987
 msgid "Url of the repository"
 msgstr ""
 
-#: ../apps/ll-cli/src/main.cpp:455 ../apps/ll-cli/src/main.cpp:471
-#: ../apps/ll-cli/src/main.cpp:479 ../apps/ll-cli/src/main.cpp:490
-#: ../apps/ll-cli/src/main.cpp:502 ../apps/ll-cli/src/main.cpp:512
-#: ../apps/ll-cli/src/main.cpp:519 ../apps/ll-builder/src/main.cpp:968
+#: ../apps/ll-cli/src/main.cpp:461 ../apps/ll-cli/src/main.cpp:477
+#: ../apps/ll-cli/src/main.cpp:485 ../apps/ll-cli/src/main.cpp:496
+#: ../apps/ll-cli/src/main.cpp:508 ../apps/ll-cli/src/main.cpp:518
+#: ../apps/ll-cli/src/main.cpp:525 ../apps/ll-builder/src/main.cpp:968
 #: ../apps/ll-builder/src/main.cpp:976 ../apps/ll-builder/src/main.cpp:984
 #: ../apps/ll-builder/src/main.cpp:996 ../apps/ll-builder/src/main.cpp:1005
 #: ../apps/ll-builder/src/main.cpp:1014
@@ -406,156 +422,156 @@ msgid "Alias of the repo name"
 msgstr ""
 
 #. add repo sub command modify
-#: ../apps/ll-cli/src/main.cpp:460
+#: ../apps/ll-cli/src/main.cpp:466
 msgid "Modify repository URL"
 msgstr ""
 
 #. add repo sub command remove
-#: ../apps/ll-cli/src/main.cpp:469 ../apps/ll-builder/src/main.cpp:973
+#: ../apps/ll-cli/src/main.cpp:475 ../apps/ll-builder/src/main.cpp:973
 msgid "Remove a repository"
 msgstr ""
 
-#: ../apps/ll-cli/src/main.cpp:470
+#: ../apps/ll-cli/src/main.cpp:476
 msgid "Usage: ll-cli repo remove [OPTIONS] NAME"
 msgstr ""
 
 #. add repo sub command update
 #. TODO: add --repo and --url options
 #. add repo sub command update
-#: ../apps/ll-cli/src/main.cpp:477 ../apps/ll-builder/src/main.cpp:981
+#: ../apps/ll-cli/src/main.cpp:483 ../apps/ll-builder/src/main.cpp:981
 msgid "Update the repository URL"
 msgstr ""
 
-#: ../apps/ll-cli/src/main.cpp:478
+#: ../apps/ll-cli/src/main.cpp:484
 msgid "Usage: ll-cli repo update [OPTIONS] NAME URL"
 msgstr ""
 
-#: ../apps/ll-cli/src/main.cpp:488 ../apps/ll-builder/src/main.cpp:993
+#: ../apps/ll-cli/src/main.cpp:494 ../apps/ll-builder/src/main.cpp:993
 msgid "Set a default repository name"
 msgstr ""
 
-#: ../apps/ll-cli/src/main.cpp:489
+#: ../apps/ll-cli/src/main.cpp:495
 msgid "Usage: ll-cli repo set-default [OPTIONS] NAME"
 msgstr ""
 
 #. add repo sub command show
-#: ../apps/ll-cli/src/main.cpp:495 ../apps/ll-builder/src/main.cpp:1019
+#: ../apps/ll-cli/src/main.cpp:501 ../apps/ll-builder/src/main.cpp:1019
 msgid "Show repository information"
 msgstr ""
 
-#: ../apps/ll-cli/src/main.cpp:496
+#: ../apps/ll-cli/src/main.cpp:502
 msgid "Usage: ll-cli repo show [OPTIONS]"
 msgstr ""
 
-#: ../apps/ll-cli/src/main.cpp:500
+#: ../apps/ll-cli/src/main.cpp:506
 msgid "Set the priority of the repo"
 msgstr ""
 
-#: ../apps/ll-cli/src/main.cpp:501
+#: ../apps/ll-cli/src/main.cpp:507
 msgid "Usage: ll-cli repo set-priority ALIAS PRIORITY"
 msgstr ""
 
-#: ../apps/ll-cli/src/main.cpp:505
+#: ../apps/ll-cli/src/main.cpp:511
 msgid "Priority of the repo"
 msgstr ""
 
-#: ../apps/ll-cli/src/main.cpp:510 ../apps/ll-builder/src/main.cpp:1002
+#: ../apps/ll-cli/src/main.cpp:516 ../apps/ll-builder/src/main.cpp:1002
 msgid "Enable mirror for the repo"
 msgstr ""
 
-#: ../apps/ll-cli/src/main.cpp:511
+#: ../apps/ll-cli/src/main.cpp:517
 msgid "Usage: ll-cli repo enable-mirror [OPTIONS] ALIAS"
 msgstr ""
 
-#: ../apps/ll-cli/src/main.cpp:517 ../apps/ll-builder/src/main.cpp:1011
+#: ../apps/ll-cli/src/main.cpp:523 ../apps/ll-builder/src/main.cpp:1011
 msgid "Disable mirror for the repo"
 msgstr ""
 
-#: ../apps/ll-cli/src/main.cpp:518
+#: ../apps/ll-cli/src/main.cpp:524
 msgid "Usage: ll-cli repo disable-mirror [OPTIONS] ALIAS"
 msgstr ""
 
-#: ../apps/ll-cli/src/main.cpp:529
+#: ../apps/ll-cli/src/main.cpp:535
 msgid "Display information about installed apps or runtimes"
 msgstr ""
 
-#: ../apps/ll-cli/src/main.cpp:532
+#: ../apps/ll-cli/src/main.cpp:538
 msgid "Usage: ll-cli info [OPTIONS] APP"
 msgstr ""
 
-#: ../apps/ll-cli/src/main.cpp:536
+#: ../apps/ll-cli/src/main.cpp:542
 msgid "Specify the application ID, and it can also be a .layer file"
 msgstr ""
 
-#: ../apps/ll-cli/src/main.cpp:548
+#: ../apps/ll-cli/src/main.cpp:554
 msgid "Display the exported files of installed application"
 msgstr ""
 
-#: ../apps/ll-cli/src/main.cpp:551
+#: ../apps/ll-cli/src/main.cpp:557
 msgid "Usage: ll-cli content [OPTIONS] APP"
 msgstr ""
 
-#: ../apps/ll-cli/src/main.cpp:552
+#: ../apps/ll-cli/src/main.cpp:558
 msgid "Specify the installed application ID"
 msgstr ""
 
-#: ../apps/ll-cli/src/main.cpp:560
+#: ../apps/ll-cli/src/main.cpp:566
 msgid "Remove the unused base or runtime"
 msgstr ""
 
-#: ../apps/ll-cli/src/main.cpp:562
+#: ../apps/ll-cli/src/main.cpp:568
 msgid "Usage: ll-cli prune [OPTIONS]"
 msgstr ""
 
-#: ../apps/ll-cli/src/main.cpp:573
+#: ../apps/ll-cli/src/main.cpp:579
 msgid "Display the inspect information of the installed application"
 msgstr ""
 
-#: ../apps/ll-cli/src/main.cpp:575
+#: ../apps/ll-cli/src/main.cpp:581
 msgid "Usage: ll-cli inspect SUBCOMMAND [OPTIONS]"
 msgstr ""
 
-#: ../apps/ll-cli/src/main.cpp:582
+#: ../apps/ll-cli/src/main.cpp:588
 msgid ""
 "Display the data(bundle) directory of the installed(running) application"
 msgstr ""
 
-#: ../apps/ll-cli/src/main.cpp:583
+#: ../apps/ll-cli/src/main.cpp:589
 msgid "Usage: ll-cli inspect dir [OPTIONS] APP"
 msgstr ""
 
-#: ../apps/ll-cli/src/main.cpp:587
+#: ../apps/ll-cli/src/main.cpp:593
 msgid "Specify the application ID, and it can also be reference"
 msgstr ""
 
-#: ../apps/ll-cli/src/main.cpp:593
+#: ../apps/ll-cli/src/main.cpp:599
 msgid "Specify the directory type (layer or bundle),the default is layer"
 msgstr ""
 
-#: ../apps/ll-cli/src/main.cpp:600
+#: ../apps/ll-cli/src/main.cpp:606
 msgid ""
 "Specify the module type (binary or develop). Only works when type is layer"
 msgstr ""
 
-#: ../apps/ll-cli/src/main.cpp:639
+#: ../apps/ll-cli/src/main.cpp:640
 msgid ""
 "linyaps CLI\n"
 "A CLI program to run application and manage application and runtime\n"
 msgstr ""
 
-#: ../apps/ll-cli/src/main.cpp:647 ../apps/ll-builder/src/main.cpp:747
+#: ../apps/ll-cli/src/main.cpp:648 ../apps/ll-builder/src/main.cpp:747
 msgid "Print this help message and exit"
 msgstr ""
 
-#: ../apps/ll-cli/src/main.cpp:648 ../apps/ll-builder/src/main.cpp:748
+#: ../apps/ll-cli/src/main.cpp:649 ../apps/ll-builder/src/main.cpp:748
 msgid "Expand all help"
 msgstr ""
 
-#: ../apps/ll-cli/src/main.cpp:649
+#: ../apps/ll-cli/src/main.cpp:650
 msgid "Usage: ll-cli [OPTIONS] [SUBCOMMAND]"
 msgstr ""
 
-#: ../apps/ll-cli/src/main.cpp:650
+#: ../apps/ll-cli/src/main.cpp:651
 msgid ""
 "If you found any problems during use,\n"
 "You can report bugs to the linyaps team under this project: https://github."
@@ -563,55 +579,55 @@ msgid ""
 msgstr ""
 
 #. version flag
-#: ../apps/ll-cli/src/main.cpp:657 ../apps/ll-builder/src/main.cpp:772
+#: ../apps/ll-cli/src/main.cpp:658 ../apps/ll-builder/src/main.cpp:772
 msgid "Show version"
 msgstr ""
 
-#: ../apps/ll-cli/src/main.cpp:662
+#: ../apps/ll-cli/src/main.cpp:663
 msgid ""
 "Use peer to peer DBus, this is used only in case that DBus daemon is not "
 "available"
 msgstr ""
 
 #. json flag
-#: ../apps/ll-cli/src/main.cpp:667
+#: ../apps/ll-cli/src/main.cpp:668
 msgid "Use json format to output result"
 msgstr ""
 
-#: ../apps/ll-cli/src/main.cpp:674
+#: ../apps/ll-cli/src/main.cpp:675
 msgid "Show debug info (verbose logs)"
 msgstr ""
 
 #. groups for subcommands
-#: ../apps/ll-cli/src/main.cpp:691
+#: ../apps/ll-cli/src/main.cpp:692
 msgid "Managing installed applications and runtimes"
 msgstr ""
 
-#: ../apps/ll-cli/src/main.cpp:692
+#: ../apps/ll-cli/src/main.cpp:693
 msgid "Managing running applications"
 msgstr ""
 
-#: ../apps/ll-cli/src/main.cpp:693
+#: ../apps/ll-cli/src/main.cpp:694
 msgid "Finding applications and runtimes"
 msgstr ""
 
-#: ../apps/ll-cli/src/main.cpp:694
+#: ../apps/ll-cli/src/main.cpp:695
 msgid "Managing remote repositories"
 msgstr ""
 
-#: ../apps/ll-cli/src/main.cpp:720
+#: ../apps/ll-cli/src/main.cpp:721
 msgid "linyaps CLI version "
 msgstr ""
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:71
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:134
-#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:329
+#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:310
 msgid "ID"
 msgstr ""
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:72
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:135
-#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:253
+#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:247
 msgid "Name"
 msgstr ""
 
@@ -659,27 +675,27 @@ msgstr ""
 msgid "Pid"
 msgstr ""
 
-#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:254
+#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:248
 msgid "Url"
 msgstr ""
 
-#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:255
+#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:249
 msgid "Alias"
 msgstr ""
 
-#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:256
+#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:250
 msgid "Priority"
 msgstr ""
 
-#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:317
+#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:298
 msgid "No apps available for update."
 msgstr ""
 
-#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:330
+#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:311
 msgid "Installed"
 msgstr ""
 
-#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:331
+#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:312
 msgid "New"
 msgstr ""
 
@@ -967,4 +983,45 @@ msgstr ""
 
 #: ../apps/ll-dialog/src/cache_dialog.cpp:54
 msgid "is starting"
+msgstr ""
+
+#. Define command line options
+#: ../apps/ll-driver-detect/src/main.cpp:141
+msgid "Force installation even if recently reminded"
+msgstr ""
+
+#: ../apps/ll-driver-detect/src/main.cpp:144
+msgid "Check for drivers only without installing or notifying"
+msgstr ""
+
+#: ../apps/ll-driver-detect/src/main.cpp:147
+msgid "Only install drivers without notifications"
+msgstr ""
+
+#: ../apps/ll-driver-detect/src/main.cpp:254
+msgid "Graphics Driver Available"
+msgstr ""
+
+#: ../apps/ll-driver-detect/src/main.cpp:256
+msgid ""
+"Graphics driver package is available that can improve performance for some "
+"Linyaps applications. Would you like to install it?"
+msgstr ""
+
+#: ../apps/ll-driver-detect/src/main.cpp:259
+msgid "Install Now"
+msgstr ""
+
+#: ../apps/ll-driver-detect/src/main.cpp:259
+msgid "Don't Remind"
+msgstr ""
+
+#: ../apps/ll-driver-detect/src/main.cpp:284
+msgid "Graphics Driver Installation Completed"
+msgstr ""
+
+#: ../apps/ll-driver-detect/src/main.cpp:286
+msgid ""
+"Graphics driver package has been installed. Restart the Linyaps app to "
+"experience the performance improvement."
 msgstr ""

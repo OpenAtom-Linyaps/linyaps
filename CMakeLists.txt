@@ -330,7 +330,8 @@ pfl_add_libraries(
   ll-cli
   ll-package-manager
   llpkg
-  ll-session-helper)
+  ll-session-helper
+  ll-driver-detect)
 
 if(ENABLE_LINGLONG_APP_BUILDER_UTILS)
   add_subdirectory(apps/ll-builder-utils)

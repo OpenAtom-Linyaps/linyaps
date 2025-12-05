@@ -71,33 +71,16 @@ namespace {
 
 struct ostreeUserData
 {
-    bool scanning{ false };
     bool caught_error{ false };
-    bool last_was_metadata{ false };
-    guint outstanding_fetches{ 0 };
-    guint outstanding_writes{ 0 };
     guint fetched{ 0 };
     guint requested{ 0 };
-    guint scanned_metadata{ 0 };
     guint bytes_transferred{ 0 };
-    guint fetched_delta_parts{ 0 };
-    guint total_delta_parts{ 0 };
-    guint fetched_delta_fallbacks{ 0 };
-    guint total_delta_fallbacks{ 0 };
-    guint total_delta_superblocks{ 0 };
-    guint outstanding_metadata_fetches{ 0 };
-    guint metadata_fetched{ 0 };
-    guint64 fetched_delta_part_size{ 0 };
-    guint64 total_delta_part_size{ 0 };
-    guint64 total_delta_part_usize{ 0 };
     char *ostree_status{ nullptr };
-    service::PackageTask *taskContext{ nullptr };
+    service::Task *taskContext{ nullptr };
     guint64 needed_archived{ 0 };
     guint64 needed_unpacked{ 0 };
     guint64 needed_objects{ 0 };
-    std::string status{ "Beginning to pull data" };
-    long double progress{ 0 };
-    long double last_total{ 0 };
+    double progress{ 0 };
 
     ~ostreeUserData() { g_clear_pointer(&ostree_status, g_free); }
 };
@@ -107,136 +90,45 @@ void progress_changed(OstreeAsyncProgress *progress, gpointer user_data)
     auto *data = static_cast<ostreeUserData *>(user_data);
     g_clear_pointer(&data->ostree_status, g_free);
 
-    if (data->caught_error) {
-        return;
-    }
-
     ostree_async_progress_get(progress,
-                              "outstanding-fetches",
-                              "u",
-                              &data->outstanding_fetches,
-                              "outstanding-writes",
-                              "u",
-                              &data->outstanding_writes,
                               "fetched",
                               "u",
                               &data->fetched,
                               "requested",
                               "u",
                               &data->requested,
-                              "scanning",
-                              "u",
-                              &data->scanning,
                               "caught-error",
                               "b",
                               &data->caught_error,
-                              "scanned-metadata",
-                              "u",
-                              &data->scanned_metadata,
                               "bytes-transferred",
                               "t",
                               &data->bytes_transferred,
-                              "fetched-delta-parts",
-                              "u",
-                              &data->fetched_delta_parts,
-                              "total-delta-parts",
-                              "u",
-                              &data->total_delta_parts,
-                              "fetched-delta-fallbacks",
-                              "u",
-                              &data->fetched_delta_fallbacks,
-                              "total-delta-fallbacks",
-                              "u",
-                              &data->total_delta_fallbacks,
-                              "fetched-delta-part-size",
-                              "t",
-                              &data->fetched_delta_part_size,
-                              "total-delta-part-size",
-                              "t",
-                              &data->total_delta_part_size,
-                              "total-delta-part-usize",
-                              "t",
-                              &data->total_delta_part_usize,
-                              "total-delta-superblocks",
-                              "u",
-                              &data->total_delta_superblocks,
-                              "outstanding-metadata-fetches",
-                              "u",
-                              &data->outstanding_metadata_fetches,
-                              "metadata-fetched",
-                              "u",
-                              &data->metadata_fetched,
                               "status",
                               "s",
                               &data->ostree_status,
                               nullptr);
 
-    long double total{ 0 };
-    long double new_progress{ 0 };
-    guint64 total_transferred{ 0 };
-    bool last_was_metadata{ data->last_was_metadata };
-
-    auto updateProgress = utils::finally::finally([&new_progress, data, &total] {
-        LINGLONG_TRACE("update progress status")
-
-        if (data->caught_error) {
-            data->taskContext->reportError(
-              LINGLONG_ERRV("Caught error during pulling data, waiting for outstanding task"));
-            return;
-        }
-
-        new_progress = std::max(new_progress, data->progress);
-        data->last_total = total;
-        if (new_progress > 100) {
-            qDebug() << "progress overflow, limiting to 100";
-            new_progress = 100;
-        }
-
-        data->progress = new_progress;
-        data->taskContext->updateTask(static_cast<double>(data->progress), 100, data->status);
-    });
-
     if (data->requested == 0) {
         return;
     }
 
-    if (*(data->ostree_status) != 0) {
-        new_progress = 100;
-        return;
-    }
-
-    total_transferred = data->bytes_transferred;
-    data->last_was_metadata = false;
-    if (data->total_delta_parts == 0
-        && (data->outstanding_metadata_fetches > 0 || last_was_metadata)
-        && data->metadata_fetched < 20) {
-        if (data->outstanding_metadata_fetches > 0) {
-            data->last_was_metadata = true;
-        }
-
-        data->status = "Downloading metadata";
-        new_progress = 0;
-        if (data->progress > 0) {
-            new_progress = (data->fetched * 5.0) / data->requested;
-        }
+    guint64 request, fetched;
+    // use needed_archived to calculate progress if possible
+    // otherwise use requested and fetched
+    if (data->needed_archived) {
+        request = data->needed_archived;
+        fetched = data->bytes_transferred;
     } else {
-        if (data->total_delta_parts > 0) {
-            total = data->total_delta_part_size - data->fetched_delta_part_size;
-            data->status = "Downloading delta part";
-        } else {
-            auto average_object_size{ 1.0 };
-            if (data->fetched > 0) {
-                average_object_size = static_cast<double>(data->bytes_transferred) / data->fetched;
-            }
-
-            total = average_object_size * data->requested;
-            data->status = "Downloading files";
-        }
+        request = data->requested;
+        fetched = data->fetched;
     }
-    auto requested = data->needed_objects ? data->needed_objects : data->requested;
-    Q_EMIT data->taskContext->PartChanged(data->fetched, requested);
-    new_progress = total > 0 ? 5 + ((total_transferred / total) * 92) : 97;
-    new_progress += (data->outstanding_writes > 0 ? (3.0 / data->outstanding_writes) : 3.0);
+
+    // report actual fetched and requestd data
+    data->taskContext->reportDataHandled(data->fetched, data->requested);
+
+    data->progress =
+      std::min(std::max(static_cast<double>(fetched) / request * 100.0, data->progress), 100.0);
+    data->taskContext->updateProgress(data->progress);
 }
 
 std::string ostreeRefFromLayerItem(const api::types::v1::RepositoryCacheLayersItem &layer)
@@ -1324,10 +1216,10 @@ OSTreeRepo::getCommitSize(const std::string &remote, const std::string &refStrin
 #endif
 }
 
-void OSTreeRepo::pull(service::PackageTask &taskContext,
-                      const package::Reference &reference,
-                      const std::string &module,
-                      const api::types::v1::Repo &repo) noexcept
+utils::error::Result<void> OSTreeRepo::pull(service::Task &taskContext,
+                                            const package::Reference &reference,
+                                            const std::string &module,
+                                            const api::types::v1::Repo &repo) noexcept
 {
     // Note: if module is runtime, refString will be channel:id/version/binary.
     // because we need considering update channel:id/version/runtime to channel:id/version/binary.
@@ -1369,10 +1261,9 @@ void OSTreeRepo::pull(service::PackageTask &taskContext,
     if (status == FALSE) {
         // gErr->code is 0, so we compare string here.
         if (!strstr(gErr->message, "No such branch")) {
-            taskContext.reportError(LINGLONG_ERRV("ostree_repo_pull", gErr));
-            return;
+            return LINGLONG_ERR("ostree_repo_pull_with_options", gErr);
         }
-        qWarning() << gErr->code << gErr->message;
+        LogW("ostree_repo_pull_with_options failed with [{}]: {}", gErr->code, gErr->message);
         shouldFallback = true;
     }
     // Note: this fallback is only for binary to runtime
@@ -1382,7 +1273,7 @@ void OSTreeRepo::pull(service::PackageTask &taskContext,
         Q_ASSERT(progress != nullptr);
         // fallback to old ref
         refString = ostreeSpecFromReference(reference, std::nullopt, module);
-        qWarning() << "fallback to module runtime, pull " << QString::fromStdString(refString);
+        LogW("fallback to module runtime, pull {}", refString);
 
         g_clear_error(&gErr);
 
@@ -1398,8 +1289,7 @@ void OSTreeRepo::pull(service::PackageTask &taskContext,
                                                &gErr);
         ostree_async_progress_finish(progress);
         if (status == FALSE) {
-            taskContext.reportError(LINGLONG_ERRV("ostree_repo_pull", gErr));
-            return;
+            return LINGLONG_ERR("ostree_repo_pull_with_options", gErr);
         }
     }
 
@@ -1415,15 +1305,13 @@ void OSTreeRepo::pull(service::PackageTask &taskContext,
                                 cancellable,
                                 &gErr)
         == 0) {
-        taskContext.reportError(LINGLONG_ERRV("ostree_repo_read_commit", gErr));
-        return;
+        return LINGLONG_ERR("ostree_repo_read_commit", gErr);
     }
 
     g_autoptr(GFile) infoFile = g_file_resolve_relative_path(layerRootDir, "info.json");
     auto info = utils::parsePackageInfo(infoFile);
     if (!info) {
-        taskContext.reportError(LINGLONG_ERRV(info));
-        return;
+        return LINGLONG_ERR(info);
     }
 
     item.commit = commit;
@@ -1432,15 +1320,15 @@ void OSTreeRepo::pull(service::PackageTask &taskContext,
 
     auto layerDir = this->ensureEmptyLayerDir(item.commit);
     if (!layerDir) {
-        taskContext.reportError(LINGLONG_ERRV(layerDir));
-        return;
+        return LINGLONG_ERR(layerDir);
     }
 
     auto result = this->handleRepositoryUpdate(*layerDir, item);
     if (!result) {
-        taskContext.reportError(LINGLONG_ERRV(result));
-        return;
+        return LINGLONG_ERR(result);
     }
+
+    return LINGLONG_OK;
 }
 
 utils::error::Result<package::Reference>
@@ -2451,13 +2339,13 @@ OSTreeRepo::getLayerItem(const package::Reference &ref,
         return LINGLONG_ERR(item);
     }
 
-    LogD("fallback to runtime: {}", query.to_string());
     query.module = "runtime";
     item = queryItem(query);
     if (!item) {
         return LINGLONG_ERR(item);
     }
 
+    LogD("fallback to runtime layer: {} {}", query.to_string(), item->commit);
     return *item;
 }
 
@@ -2499,7 +2387,7 @@ utils::error::Result<std::vector<std::string>> OSTreeRepo::getRemoteModuleList(
     if (!fuzzy.has_value()) {
         return LINGLONG_ERR("create fuzzy reference", fuzzy);
     }
-    auto list = this->searchRemote(*fuzzy, repo);
+    auto list = this->searchRemote(*fuzzy, repo, true);
     if (!list.has_value()) {
         return LINGLONG_ERR("list remote reference", fuzzy);
     }

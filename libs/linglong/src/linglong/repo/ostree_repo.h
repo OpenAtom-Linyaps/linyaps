@@ -73,10 +73,10 @@ public:
                  const std::string &url,
                  const package::Reference &reference,
                  const std::string &module = "binary") const noexcept;
-    void pull(service::PackageTask &taskContext,
-              const package::Reference &reference,
-              const std::string &module,
-              const api::types::v1::Repo &repo) noexcept;
+    [[nodiscard]] utils::error::Result<void> pull(service::Task &taskContext,
+                                                  const package::Reference &reference,
+                                                  const std::string &module,
+                                                  const api::types::v1::Repo &repo) noexcept;
 
     [[nodiscard]] virtual utils::error::Result<package::Reference>
     clearReference(const package::FuzzyReference &fuzzy,

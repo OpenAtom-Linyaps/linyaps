@@ -269,13 +269,14 @@ utils::error::Result<void> UabInstallationAction::preInstall(PackageTask &task)
     LINGLONG_TRACE("uab installation preInstall");
 
     task.updateState(linglong::api::types::v1::State::Processing, "installing uab");
-    task.updateSubState(linglong::api::types::v1::SubState::PreAction, "prepare environment");
 
     const auto &toCheck = checkedLayers.first.empty() ? checkedLayers.second : checkedLayers.first;
     auto operation = getActionOperation(toCheck.front().info, extraModuleOnly(toCheck));
     if (!operation) {
         return LINGLONG_ERR(operation);
     }
+
+    task.updateProgress(5);
 
     if (operation->operation == ActionOperation::Overwrite) {
         return LINGLONG_ERR("package already installed",
@@ -308,17 +309,21 @@ utils::error::Result<void> UabInstallationAction::install([[maybe_unused]] Packa
 {
     LINGLONG_TRACE("uab installation install");
 
+    task.updateProgress(10);
+
     auto mountPoint = uabFile->unpack();
     if (!mountPoint) {
         return LINGLONG_ERR(mountPoint);
     }
     uabMountPoint = std::move(mountPoint).value();
 
+    task.updateProgress(15);
+
     const auto &metaInfo = uabFile->getMetaInfo()->get();
     if (metaInfo.onlyApp && *metaInfo.onlyApp) {
         return installExecModeUAB(task);
     } else {
-        return installDistributionModeUAB();
+        return installDistributionModeUAB(task);
     }
 }
 
@@ -329,40 +334,21 @@ utils::error::Result<void> UabInstallationAction::postInstall(PackageTask &task)
     const auto &newRef = operation.newRef->reference;
     const auto &oldRef = operation.oldRef;
 
+    auto res = repo.mergeModules();
+    if (!res) {
+        LogE("merge modules failed: {}", res.error());
+    }
+
     auto ret = pm.executePostInstallHooks(newRef);
     if (!ret) {
         task.reportError(std::move(ret).error());
         return LINGLONG_ERR("failed to execute post install hooks");
     }
 
-    if (!oldRef) {
-        auto mergeRet = repo.mergeModules();
-        if (!mergeRet) {
-            LogE("merge modules failed: {}", mergeRet.error());
-        }
-    }
-
-    // only app should:
-    // 1. replace installed version
-    // 2. export entries
-    // 3. generate cache
     if (operation.kind == "app") {
-        if (oldRef) {
-            auto ret = pm.removeAfterInstall(*oldRef, newRef, repo.getModuleList(*oldRef));
-            if (!ret) {
-                LogE("remove old reference after install newer version failed: {}", ret.error());
-                return LINGLONG_ERR(ret);
-            }
-        } else {
-            // export directly
-            this->repo.exportReference(newRef);
-            auto result = pm.tryGenerateCache(newRef);
-            if (!result) {
-                auto msg =
-                  fmt::format("Failed to generate some cache: {}", result.error().message());
-                task.updateState(linglong::api::types::v1::State::Failed, msg);
-                return LINGLONG_ERR(msg, result);
-            }
+        auto res = oldRef ? pm.switchAppVersion(*oldRef, newRef, true) : pm.applyApp(newRef);
+        if (!res) {
+            return LINGLONG_ERR(res);
         }
     }
 
@@ -443,6 +429,14 @@ utils::error::Result<void> UabInstallationAction::installExecModeUAB(PackageTask
 
     const auto &appLayers = checkedLayers.first;
     const auto &appInfo = appLayers.front().info;
+
+    auto res = pm.installDependsRef(task, appInfo.base, appInfo.channel);
+    if (!res) {
+        return LINGLONG_ERR(res);
+    }
+
+    task.updateProgress(25);
+
     if (appInfo.runtime) {
         const auto &otherLayers = checkedLayers.second;
         auto fuzzyRef = package::FuzzyReference::parse(*appInfo.runtime);
@@ -450,32 +444,11 @@ utils::error::Result<void> UabInstallationAction::installExecModeUAB(PackageTask
             return LINGLONG_ERR(fuzzyRef);
         }
 
-        bool installRuntime = false;
         auto satisfiedRef = repo.latestLocalReference(*fuzzyRef);
-        // can't find satisfied runtime in local repo
+        // no compatible runtime found in local, install the one from the UAB file, the
+        // runtime is identified by a uuid, so it is exclusively usable by the currently
+        // installed application
         if (!satisfiedRef) {
-            const auto runtimeInfo = otherLayers.front().info;
-            auto toInstallVersion = package::Version::parse(runtimeInfo.version);
-            if (!toInstallVersion) {
-                return LINGLONG_ERR(toInstallVersion);
-            }
-
-            auto candidateRef = repo.latestRemoteReference(*fuzzyRef);
-            if (candidateRef) {
-                // runtime in remote repo has higher version than runtime in uab file or
-                if (candidateRef->reference.version >= *toInstallVersion) {
-                    pm.pullDependency(task, appInfo, "binary");
-                    // failed to fetch runtime from remote repo
-                    if (!repo.getLayerItem(candidateRef->reference)) {
-                        installRuntime = true;
-                    }
-                }
-            } else {
-                installRuntime = true;
-            }
-        }
-
-        if (installRuntime) {
             auto metaInfo = uabFile->getMetaInfo()->get();
             auto res = installUabLayer(otherLayers, metaInfo.uuid);
             if (!res) {
@@ -484,7 +457,9 @@ utils::error::Result<void> UabInstallationAction::installExecModeUAB(PackageTask
         }
     }
 
-    auto res = installUabLayer(appLayers);
+    task.updateProgress(35);
+
+    res = installUabLayer(appLayers);
     if (!res) {
         return LINGLONG_ERR(res);
     }
@@ -492,16 +467,26 @@ utils::error::Result<void> UabInstallationAction::installExecModeUAB(PackageTask
     return LINGLONG_OK;
 }
 
-utils::error::Result<void> UabInstallationAction::installDistributionModeUAB()
+utils::error::Result<void> UabInstallationAction::installDistributionModeUAB(PackageTask &task)
 {
     LINGLONG_TRACE("install distribution mode uab");
 
     if (!checkedLayers.first.empty()) {
-        auto res = installUabLayer(checkedLayers.first);
+        const auto &appInfo = checkedLayers.first.front().info;
+        auto res = pm.installAppDepends(task, appInfo);
+        if (!res) {
+            return LINGLONG_ERR(res);
+        }
+
+        task.updateProgress(25);
+
+        res = installUabLayer(checkedLayers.first);
         if (!res) {
             return LINGLONG_ERR(res);
         }
     }
+
+    task.updateProgress(80);
 
     if (!checkedLayers.second.empty()) {
         auto res = installUabLayer(checkedLayers.second);

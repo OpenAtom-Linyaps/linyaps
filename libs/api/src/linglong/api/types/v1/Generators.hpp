@@ -23,7 +23,6 @@
 #include "linglong/api/types/v1/Version.hpp"
 #include "linglong/api/types/v1/Sections.hpp"
 #include "linglong/api/types/v1/UabLayer.hpp"
-#include "linglong/api/types/v1/SubState.hpp"
 #include "linglong/api/types/v1/State.hpp"
 #include "linglong/api/types/v1/RepositoryCache.hpp"
 #include "linglong/api/types/v1/RepositoryCacheMergedItem.hpp"
@@ -251,9 +250,6 @@ void to_json(json & j, const InteractionMessageType & x);
 
 void from_json(const json & j, State & x);
 void to_json(json & j, const State & x);
-
-void from_json(const json & j, SubState & x);
-void to_json(json & j, const SubState & x);
 
 void from_json(const json & j, Version & x);
 void to_json(json & j, const Version & x);
@@ -1273,7 +1269,6 @@ x.repoConfig = get_stack_optional<RepoConfig>(j, "RepoConfig");
 x.repoConfigV2 = get_stack_optional<RepoConfigV2>(j, "RepoConfigV2");
 x.repositoryCache = get_stack_optional<RepositoryCache>(j, "RepositoryCache");
 x.state = get_stack_optional<State>(j, "State");
-x.subState = get_stack_optional<SubState>(j, "SubState");
 x.uabMetaInfo = get_stack_optional<UabMetaInfo>(j, "UABMetaInfo");
 x.upgradeListResult = get_stack_optional<UpgradeListResult>(j, "UpgradeListResult");
 x.xdgDirectoryPermissions = get_stack_optional<std::vector<XdgDirectoryPermission>>(j, "XDGDirectoryPermissions");
@@ -1407,9 +1402,6 @@ j["RepositoryCache"] = x.repositoryCache;
 if (x.state) {
 j["State"] = x.state;
 }
-if (x.subState) {
-j["SubState"] = x.subState;
-}
 if (x.uabMetaInfo) {
 j["UABMetaInfo"] = x.uabMetaInfo;
 }
@@ -1444,7 +1436,6 @@ default: throw std::runtime_error("Unexpected value in enumeration \"[object Obj
 inline void from_json(const json & j, State & x) {
 if (j == "Canceled") x = State::Canceled;
 else if (j == "Failed") x = State::Failed;
-else if (j == "PartCompleted") x = State::PartCompleted;
 else if (j == "Pending") x = State::Pending;
 else if (j == "Processing") x = State::Processing;
 else if (j == "Queued") x = State::Queued;
@@ -1457,40 +1448,11 @@ inline void to_json(json & j, const State & x) {
 switch (x) {
 case State::Canceled: j = "Canceled"; break;
 case State::Failed: j = "Failed"; break;
-case State::PartCompleted: j = "PartCompleted"; break;
 case State::Pending: j = "Pending"; break;
 case State::Processing: j = "Processing"; break;
 case State::Queued: j = "Queued"; break;
 case State::Succeed: j = "Succeed"; break;
 case State::Unknown: j = "Unknown"; break;
-default: throw std::runtime_error("Unexpected value in enumeration \"[object Object]\": " + std::to_string(static_cast<int>(x)));
-}
-}
-
-inline void from_json(const json & j, SubState & x) {
-if (j == "AllDone") x = SubState::AllDone;
-else if (j == "InstallApplication") x = SubState::InstallApplication;
-else if (j == "InstallBase") x = SubState::InstallBase;
-else if (j == "InstallRuntime") x = SubState::InstallRuntime;
-else if (j == "PackageManagerDone") x = SubState::PackageManagerDone;
-else if (j == "PostAction") x = SubState::PostAction;
-else if (j == "PreAction") x = SubState::PreAction;
-else if (j == "Uninstall") x = SubState::Uninstall;
-else if (j == "Unknown") x = SubState::Unknown;
-else { throw std::runtime_error("Input JSON does not conform to schema!"); }
-}
-
-inline void to_json(json & j, const SubState & x) {
-switch (x) {
-case SubState::AllDone: j = "AllDone"; break;
-case SubState::InstallApplication: j = "InstallApplication"; break;
-case SubState::InstallBase: j = "InstallBase"; break;
-case SubState::InstallRuntime: j = "InstallRuntime"; break;
-case SubState::PackageManagerDone: j = "PackageManagerDone"; break;
-case SubState::PostAction: j = "PostAction"; break;
-case SubState::PreAction: j = "PreAction"; break;
-case SubState::Uninstall: j = "Uninstall"; break;
-case SubState::Unknown: j = "Unknown"; break;
 default: throw std::runtime_error("Unexpected value in enumeration \"[object Object]\": " + std::to_string(static_cast<int>(x)));
 }
 }

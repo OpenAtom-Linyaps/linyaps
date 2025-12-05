@@ -5,11 +5,10 @@
 #pragma once
 
 #include "linglong/api/types/v1/State.hpp"
-#include "linglong/api/types/v1/SubState.hpp"
+#include "linglong/package_manager/task.h"
 #include "linglong/utils/dbus/properties_forwarder.h"
 #include "linglong/utils/error/error.h"
-
-#include <gio/gio.h>
+#include "linglong/utils/log/log.h"
 
 #include <QDBusContext>
 #include <QDBusObjectPath>
@@ -20,27 +19,25 @@
 #include <QUuid>
 
 #include <functional>
+#include <memory>
 #include <optional>
 
 Q_DECLARE_METATYPE(linglong::api::types::v1::State)
-Q_DECLARE_METATYPE(linglong::api::types::v1::SubState)
 
 namespace linglong::service {
 
 class PackageTaskQueue;
 
-class PackageTask : public QObject, protected QDBusContext
+class PackageTask : public QObject, protected QDBusContext, public Task, public TaskReporter
 {
     Q_OBJECT
 public:
-    Q_PROPERTY(int State MEMBER m_state NOTIFY StateChanged)
-    Q_PROPERTY(int SubState MEMBER m_subState NOTIFY SubStateChanged)
-    Q_PROPERTY(double Percentage READ getPercentage NOTIFY PercentageChanged)
-    Q_PROPERTY(QString Message MEMBER m_message NOTIFY MessageChanged)
-    Q_PROPERTY(int Code MEMBER m_code NOTIFY CodeChanged)
+    Q_PROPERTY(int State READ getPropertyState NOTIFY StateChanged)
+    Q_PROPERTY(QString Message READ getPropertyMessage NOTIFY MessageChanged)
+    Q_PROPERTY(int Code READ getPropertyCode NOTIFY CodeChanged)
+    Q_PROPERTY(double Percentage READ percentage NOTIFY PercentageChanged)
 
     explicit PackageTask(const QDBusConnection &connection,
-                         std::vector<std::string> refs,
                          std::function<void(PackageTask &)> job,
                          QObject *parent);
     PackageTask(PackageTask &&other) = delete;
@@ -49,87 +46,42 @@ public:
 
     static PackageTask createTemporaryTask() noexcept;
 
-    friend bool operator==(const PackageTask &lhs, const PackageTask &rhs)
+    void onProgress() noexcept override;
+    void onStateChanged() noexcept override;
+
+    // message report when progress or state changed
+    void onMessage() noexcept override { }
+
+    void onHandled(uint handled, uint total) noexcept override
     {
-        return lhs.m_refs == rhs.m_refs;
+        Q_EMIT PartChanged(handled, total);
     }
 
-    friend bool operator!=(const PackageTask &lhs, const PackageTask &rhs) { return !(lhs == rhs); }
+    [[nodiscard]] int getPropertyState() const noexcept { return static_cast<int>(state()); }
 
-    void updateTask(uint part, uint whole, const std::string &message) noexcept;
-    void
-    updateState(linglong::api::types::v1::State newState,
-                const std::string &message,
-                std::optional<linglong::api::types::v1::SubState> optDone = std::nullopt) noexcept;
-    void updateSubState(linglong::api::types::v1::SubState newSubState,
-                        const std::string &message) noexcept;
-    void reportError(linglong::utils::error::Error &&err) noexcept;
-
-    [[nodiscard]] utils::error::Error &&takeError() && noexcept { return std::move(m_err); }
-
-    [[nodiscard]] linglong::api::types::v1::State state() const noexcept
+    [[nodiscard]] QString getPropertyMessage() const noexcept
     {
-        return static_cast<linglong::api::types::v1::State>(m_state);
+        return QString::fromStdString(Task::message());
     }
 
-    void setState(linglong::api::types::v1::State newState) noexcept
-    {
-        m_state = static_cast<int>(newState);
-    }
+    [[nodiscard]] int getPropertyCode() const noexcept { return static_cast<int>(code()); }
 
-    [[nodiscard]] linglong::api::types::v1::SubState subState() const noexcept
-    {
-        return static_cast<linglong::api::types::v1::SubState>(m_subState);
-    }
+    [[nodiscard]] std::string taskID() const noexcept { return m_taskID; }
 
-    void setSubState(linglong::api::types::v1::SubState newSubState) noexcept
-    {
-        m_subState = static_cast<int>(newSubState);
-    }
-
-    [[nodiscard]] QString message() const noexcept { return m_message; }
-
-    void setMessage(const QString &message) noexcept { m_message = message; }
-
-    [[nodiscard]] utils::error::ErrorCode code() const noexcept
-    {
-        return static_cast<utils::error::ErrorCode>(m_code);
-    }
-
-    void setCode(utils::error::ErrorCode code) noexcept { m_code = static_cast<int>(code); }
-
-    [[nodiscard]] QString taskID() const noexcept { return m_taskID.toString(QUuid::Id128); }
-
-    [[nodiscard]] QString taskObjectPath() const noexcept
+    [[nodiscard]] std::string taskObjectPath() const noexcept
     {
         return "/org/deepin/linglong/Task1/" + taskID();
     }
 
-    auto cancellable() noexcept { return m_cancelFlag; }
+    virtual GCancellable *cancellable() noexcept override { return m_cancelFlag; }
 
     void run() noexcept;
-
-    [[nodiscard]] double getPercentage() const noexcept
-    {
-        if (m_subState == static_cast<int>(linglong::api::types::v1::SubState::AllDone)
-            || m_subState
-              == static_cast<int>(linglong::api::types::v1::SubState::PackageManagerDone)) {
-            return 100;
-        }
-
-        return m_totalPercentage
-          + (m_curStagePercentage
-             * m_subStateMap[static_cast<api::types::v1::SubState>(m_subState)]);
-    }
-
-    bool isTaskDone() const noexcept;
 
 public Q_SLOTS:
     void Cancel() noexcept;
 
 Q_SIGNALS:
     void StateChanged(int newState);
-    void SubStateChanged(int newSubState);
     void PercentageChanged(double newPercentage);
     void MessageChanged(QString newMessage);
     void PartChanged(uint fetched, uint request);
@@ -138,31 +90,10 @@ Q_SIGNALS:
 private:
     friend class PackageTaskQueue;
     PackageTask();
-    int m_state{ static_cast<int>(linglong::api::types::v1::State::Queued) };
-    int m_subState{ static_cast<int>(linglong::api::types::v1::SubState::Unknown) };
-    int m_code{ static_cast<int>(linglong::utils::error::ErrorCode::Unknown) };
-    utils::error::Error m_err;
-    double m_totalPercentage{ 0 };
-    double m_curStagePercentage{ 0 };
-    QString m_message;
-    QUuid m_taskID;
-    std::vector<std::string> m_refs;
-    uint m_taskParts{ 0 };
+    std::string m_taskID;
     GCancellable *m_cancelFlag{ nullptr };
     std::function<void(PackageTask &)> m_job;
     utils::dbus::PropertiesForwarder *m_forwarder{ nullptr };
-
-    inline static QMap<linglong::api::types::v1::SubState, double> m_subStateMap{
-        { linglong::api::types::v1::SubState::PreAction, 10 },
-        // install
-        { linglong::api::types::v1::SubState::InstallBase, 20 },
-        { linglong::api::types::v1::SubState::InstallRuntime, 20 },
-        { linglong::api::types::v1::SubState::InstallApplication, 20 },
-        // uninstall
-        { linglong::api::types::v1::SubState::Uninstall, 80 },
-        // export/unexportReference
-        { linglong::api::types::v1::SubState::PostAction, 5 },
-    };
 
     void changePropertiesDone() const noexcept;
 };
@@ -176,21 +107,19 @@ public:
 
     template <typename Func>
     utils::error::Result<std::reference_wrapper<PackageTask>>
-    addNewTask(const std::vector<std::string> &refs,
-               Func &&job,
-               const QDBusConnection &conn = QDBusConnection::sessionBus()) noexcept
+    addNewTask(Func &&job, const QDBusConnection &conn = QDBusConnection::sessionBus()) noexcept
     {
         static_assert(std::is_invocable_r_v<void, Func, PackageTask &>,
                       "mismatch function signature");
 
-        auto &ref = m_taskQueue.emplace_back(conn, refs, std::forward<Func>(job), this);
+        auto &ref = m_taskQueue.emplace_back(conn, std::forward<Func>(job), this);
 
         Q_EMIT taskAdded();
         return ref;
     }
 
 Q_SIGNALS:
-    void taskDone(const QString &id);
+    void taskDone(const std::string &id);
     void startTask();
     void taskAdded();
 

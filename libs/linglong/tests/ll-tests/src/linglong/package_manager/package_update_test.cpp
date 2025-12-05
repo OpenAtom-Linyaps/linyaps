@@ -34,19 +34,16 @@ public:
 
     MOCK_METHOD(utils::error::Result<void>,
                 installRef,
-                (service::PackageTask & task,
+                (service::Task & task,
                  const package::ReferenceWithRepo &ref,
                  std::vector<std::string> modules),
                 (override, noexcept));
 
     MOCK_METHOD(utils::error::Result<void>,
-                tryGenerateCache,
-                (const package::Reference &ref),
-                (override, noexcept));
-
-    MOCK_METHOD(utils::error::Result<void>,
-                tryUninstallRef,
-                (const package::Reference &ref),
+                switchAppVersion,
+                (const package::Reference &oldRef,
+                 const package::Reference &newRef,
+                 bool removeOld),
                 (override, noexcept));
 };
 
@@ -301,14 +298,16 @@ TEST_F(PackageUpdateActionTest, Update)
                              _))
       .WillOnce(Return(appId2Item));
 
-    EXPECT_CALL(*pm,
-                tryGenerateCache(AllOf(Field(&package::Reference::id, "id2"),
-                                       Field(&package::Reference::channel, "main"))))
-      .WillOnce(Return(utils::error::Result<void>{}));
-
-    EXPECT_CALL(*pm,
-                tryUninstallRef(AllOf(Field(&package::Reference::id, "id2"),
-                                      Field(&package::Reference::channel, "main"))))
+    EXPECT_CALL(
+      *pm,
+      switchAppVersion(
+        AllOf(Field(&package::Reference::id, "id2"),
+              Field(&package::Reference::channel, "main"),
+              Field(&package::Reference::version, package::Version::parse("1.0.0").value())),
+        AllOf(Field(&package::Reference::id, "id2"),
+              Field(&package::Reference::channel, "main"),
+              Field(&package::Reference::version, package::Version::parse("1.1.0").value())),
+        true))
       .WillOnce(Return(utils::error::Result<void>{}));
 
     auto task = service::PackageTask::createTemporaryTask();

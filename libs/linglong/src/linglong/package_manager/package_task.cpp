@@ -28,23 +28,19 @@ PackageTask PackageTask::createTemporaryTask() noexcept
 }
 
 PackageTask::PackageTask()
-    : m_state(static_cast<int>(linglong::api::types::v1::State::Processing))
-    , m_taskID(QUuid::createUuid())
+    : m_taskID(QUuid::createUuid().toString(QUuid::Id128).toStdString())
     , m_cancelFlag(g_cancellable_new())
 {
-    connect(utils::global::GlobalTaskControl::instance(),
-            &utils::global::GlobalTaskControl::OnCancel,
-            this,
-            &PackageTask::Cancel);
+    setReporter(this);
+    setState(linglong::api::types::v1::State::Processing);
+    LogD("task created: {}", m_taskID);
 }
 
 PackageTask::PackageTask(const QDBusConnection &connection,
-                         std::vector<std::string> refs,
                          std::function<void(PackageTask &)> job,
                          QObject *parent)
     : QObject(parent)
-    , m_taskID(QUuid::createUuid())
-    , m_refs(std::move(refs))
+    , m_taskID(QUuid::createUuid().toString(QUuid::Id128).toStdString())
     , m_cancelFlag(g_cancellable_new())
     , m_job(std::move(job))
 {
@@ -55,7 +51,8 @@ PackageTask::PackageTask(const QDBusConnection &connection,
         qFatal("internal adaptor error");
         return;
     }
-    auto ret = linglong::utils::dbus::registerDBusObject(connection, taskObjectPath(), this);
+    auto ret =
+      linglong::utils::dbus::registerDBusObject(connection, taskObjectPath().c_str(), this);
     if (!ret) {
         qCritical() << ret.error();
         return;
@@ -63,12 +60,10 @@ PackageTask::PackageTask(const QDBusConnection &connection,
 
     const auto *interface = mo->classInfo(interfaceIndex).value();
     m_forwarder =
-      new utils::dbus::PropertiesForwarder(connection, taskObjectPath(), interface, this);
+      new utils::dbus::PropertiesForwarder(connection, taskObjectPath().c_str(), interface, this);
 
-    connect(utils::global::GlobalTaskControl::instance(),
-            &utils::global::GlobalTaskControl::OnCancel,
-            this,
-            &PackageTask::Cancel);
+    setReporter(this);
+    LogD("task {} created on dbus", m_taskID);
 }
 
 PackageTask::~PackageTask()
@@ -76,7 +71,7 @@ PackageTask::~PackageTask()
     if (m_cancelFlag != nullptr) {
         g_object_unref(m_cancelFlag);
     }
-    qDebug() << "Task: " << taskObjectPath() << "finished...";
+    LogD("task {} finished", taskID());
 }
 
 void PackageTask::changePropertiesDone() const noexcept
@@ -91,104 +86,41 @@ void PackageTask::changePropertiesDone() const noexcept
     }
 }
 
-void PackageTask::updateTask(uint part, uint whole, const std::string &message) noexcept
+void PackageTask::onProgress() noexcept
 {
-    if (whole == 0) {
-        qWarning() << "divisor equals to zero, subState wouldn't be update";
-        return;
-    }
+    auto taskPercentage = percentage();
+    auto taskMessage = Task::message();
 
-    if (part > whole) {
-        qWarning() << "part is great than whole, subState wouldn't be update";
-        return;
-    }
+    LogD("task {} onProgress {} {}", taskID(), taskPercentage, taskMessage);
 
-    this->setProperty("Message", QString::fromStdString(message));
-    m_curStagePercentage = static_cast<double>(part) / whole;
-
-    Q_EMIT PercentageChanged(getPercentage());
+    Q_EMIT MessageChanged(QString::fromStdString(taskMessage));
+    Q_EMIT PercentageChanged(taskPercentage);
     changePropertiesDone();
 }
 
-void PackageTask::updateState(linglong::api::types::v1::State newState,
-                              const std::string &message,
-                              std::optional<linglong::api::types::v1::SubState> optDone) noexcept
+void PackageTask::onStateChanged() noexcept
 {
-    this->setProperty("State", static_cast<int>(newState));
-    auto curState = state();
-    // Each part is completed, count it and reset the percentage
-    if (curState == linglong::api::types::v1::State::PartCompleted) {
-        ++m_taskParts;
-        m_totalPercentage = TASK_DONE;
-        Q_EMIT PercentageChanged(m_totalPercentage);
+    auto taskState = static_cast<int>(state());
+    auto taskMessage = Task::message();
+    auto taskCode = static_cast<int>(code());
 
-        m_totalPercentage = 0;
-        m_curStagePercentage = 0;
-    }
+    LogD("task {} updateState {} {}", taskID(), taskState, taskMessage);
 
-    // Every part is completed, it means succeed
-    if (this->m_taskParts == this->m_refs.size()) {
-        this->setProperty("State", static_cast<int>(linglong::api::types::v1::State::Succeed));
-        curState = state();
-    }
-
-    if (curState == linglong::api::types::v1::State::Canceled
-        || curState == linglong::api::types::v1::State::Failed
-        || curState == linglong::api::types::v1::State::Succeed) {
-        if (curState == linglong::api::types::v1::State::Succeed) {
-            this->setProperty("Code", static_cast<int>(utils::error::ErrorCode::Success));
-        }
-        auto subState = optDone.value_or(linglong::api::types::v1::SubState::AllDone);
-        updateSubState(subState, message);
-        return;
-    }
-    this->setProperty("Message", QString::fromStdString(message));
-    changePropertiesDone();
-}
-
-void PackageTask::updateSubState(linglong::api::types::v1::SubState newSubState,
-                                 const std::string &message) noexcept
-{
-    m_totalPercentage += m_subStateMap[subState()];
-    m_curStagePercentage = 0;
-
-    this->setProperty("SubState", static_cast<int>(newSubState));
-    this->setProperty("Message", QString::fromStdString(message));
-
-    if (newSubState == linglong::api::types::v1::SubState::AllDone
-        || newSubState == linglong::api::types::v1::SubState::PackageManagerDone) {
-        m_totalPercentage = TASK_DONE;
-    }
-
-    Q_EMIT PercentageChanged(getPercentage());
-    changePropertiesDone();
-}
-
-void PackageTask::reportError(linglong::utils::error::Error &&err) noexcept
-{
-    m_totalPercentage = TASK_DONE;
-    m_curStagePercentage = 0;
-    Q_EMIT PercentageChanged(getPercentage());
-
-    this->setProperty("State", static_cast<int>(linglong::api::types::v1::State::Failed));
-    this->setProperty("SubState", static_cast<int>(linglong::api::types::v1::SubState::AllDone));
-    m_err = std::move(err);
-
-    this->setProperty("Message", m_err.message().c_str());
-    this->setProperty("Code", m_err.code());
+    Q_EMIT StateChanged(taskState);
+    Q_EMIT MessageChanged(QString::fromStdString(taskMessage));
+    Q_EMIT CodeChanged(taskCode);
     changePropertiesDone();
 }
 
 void PackageTask::Cancel() noexcept
 {
-    if (m_state == static_cast<int>(linglong::api::types::v1::State::Canceled)) {
+    if (isTaskDone()) {
         return;
     }
 
-    const auto &id = taskID();
-    qInfo() << "task " << id << "has been canceled by user";
-    updateState(linglong::api::types::v1::State::Canceled,
-                fmt::format("task {} has been canceled by user", id));
+    auto msg = fmt::format("task {} has been canceled by user", taskID());
+    LogI(msg);
+    updateState(linglong::api::types::v1::State::Canceled, msg);
 
     if (m_cancelFlag == nullptr || g_cancellable_is_cancelled(m_cancelFlag) == TRUE) {
         return;
@@ -200,12 +132,6 @@ void PackageTask::Cancel() noexcept
 void PackageTask::run() noexcept
 {
     m_job(*this);
-}
-
-bool PackageTask::isTaskDone() const noexcept
-{
-    return m_subState == static_cast<int>(linglong::api::types::v1::SubState::AllDone)
-      || m_subState == static_cast<int>(linglong::api::types::v1::SubState::PackageManagerDone);
 }
 
 PackageTaskQueue::PackageTaskQueue(QObject *parent)
@@ -232,14 +158,14 @@ PackageTaskQueue::PackageTaskQueue(QObject *parent)
           Qt::QueuedConnection);
     });
 
-    connect(this, &PackageTaskQueue::taskDone, [this](const QString &taskID) {
+    connect(this, &PackageTaskQueue::taskDone, [this](const std::string &taskID) {
         auto task =
           std::find_if(m_taskQueue.begin(), m_taskQueue.end(), [&taskID](const auto &task) {
               return task.taskID() == taskID;
           });
 
         if (task == m_taskQueue.end()) {
-            qCritical() << "task " << taskID << " not found";
+            LogE("task {} not found", taskID);
             return;
         }
 
@@ -247,12 +173,7 @@ PackageTaskQueue::PackageTaskQueue(QObject *parent)
         // otherwise, remove it and start next task
         bool isQueuedDone = task->state() == linglong::api::types::v1::State::Queued;
         Q_EMIT qobject_cast<PackageManager *>(this->parent())
-          ->TaskRemoved(QDBusObjectPath{ task->taskObjectPath() },
-                        static_cast<int>(task->state()),
-                        static_cast<int>(task->subState()),
-                        task->message(),
-                        task->getPercentage(),
-                        static_cast<int>(task->code()));
+          ->TaskRemoved(QDBusObjectPath{ task->taskObjectPath().c_str() });
         m_taskQueue.erase(task);
 
         if (!isQueuedDone) {

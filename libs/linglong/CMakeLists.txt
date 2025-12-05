@@ -59,6 +59,8 @@ pfl_add_library(
   src/linglong/package_manager/package_update.h
   src/linglong/package_manager/ref_installation.cpp
   src/linglong/package_manager/ref_installation.h
+  src/linglong/package_manager/task.cpp
+  src/linglong/package_manager/task.h
   src/linglong/package_manager/uab_installation.cpp
   src/linglong/package_manager/uab_installation.h
   src/linglong/package/reference.cpp

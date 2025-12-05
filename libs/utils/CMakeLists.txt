@@ -64,6 +64,7 @@ pfl_add_library(
   Qt${QT_VERSION_MAJOR}::Core
   Qt${QT_VERSION_MAJOR}::DBus
   PkgConfig::glib2
+  PkgConfig::systemd
   fmt::fmt
   tl::expected
   ytj::ytj

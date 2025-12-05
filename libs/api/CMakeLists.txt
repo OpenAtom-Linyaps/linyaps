@@ -55,7 +55,6 @@ pfl_add_library(
   src/linglong/api/types/v1/RepositoryCacheMergedItem.hpp
   src/linglong/api/types/v1/Sections.hpp
   src/linglong/api/types/v1/State.hpp
-  src/linglong/api/types/v1/SubState.hpp
   src/linglong/api/types/v1/UabLayer.hpp
   src/linglong/api/types/v1/UabMetaInfo.hpp
   src/linglong/api/types/v1/UpgradeListResult.hpp

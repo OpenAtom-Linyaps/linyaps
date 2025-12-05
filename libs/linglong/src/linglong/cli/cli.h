@@ -133,13 +133,22 @@ struct InspectOptions
     std::string dirType{ "layer" };
 };
 
+enum class TaskType : int {
+    None,
+    Install,
+    InstallFromFile,
+    Uninstall,
+    Upgrade,
+};
+
 struct PMTaskState
 {
     linglong::api::types::v1::State state{ linglong::api::types::v1::State::Unknown };
-    linglong::api::types::v1::SubState subState{ linglong::api::types::v1::SubState::Unknown };
-    QString message;
+    std::string message;
     double percentage{ 0 };
     linglong::utils::error::ErrorCode errorCode;
+    TaskType taskType{ TaskType::None };
+    std::variant<api::types::v1::PackageManager1InstallParameters> params;
 };
 
 bool operator!=(const PMTaskState &lhs, const PMTaskState &rhs);
@@ -196,7 +205,6 @@ private:
                                          const std::string &type);
     static void filterPackageInfosByVersion(
       std::map<std::string, std::vector<api::types::v1::PackageInfoV2>> &list) noexcept;
-    void printProgress(const PMTaskState &state) noexcept;
     [[nodiscard]] utils::error::Result<std::vector<api::types::v1::CliContainer>>
     getCurrentContainers() const noexcept;
     int installFromFile(const QFileInfo &fileInfo,
@@ -236,24 +244,23 @@ private:
         return result;
     }
 
-    utils::error::Result<void> waitTaskCreated(QDBusPendingReply<QVariantMap> &reply);
+    utils::error::Result<void> waitTaskCreated(QDBusPendingReply<QVariantMap> &reply,
+                                               TaskType type);
     void waitTaskDone();
 
+    void handleTaskState() noexcept;
     void handleInstallError(const utils::error::Error &error,
                             const api::types::v1::PackageManager1InstallParameters &params);
     void handleUninstallError(const utils::error::Error &error);
     void handleUpgradeError(const utils::error::Error &error);
     bool handleCommonError(const utils::error::Error &error);
+    void printOnTaskFailed();
+    void printOnTaskSuccess();
 
 private Q_SLOTS:
     // maybe use in the future
     void onTaskAdded(const QDBusObjectPath &object_path);
-    void onTaskRemoved(const QDBusObjectPath &object_path,
-                       int state,
-                       int subState,
-                       const QString &message,
-                       double percentage,
-                       int code);
+    void onTaskRemoved(const QDBusObjectPath &object_path);
     void onTaskPropertiesChanged(const QString &interface,
                                  const QVariantMap &changed_properties,
                                  const QStringList &invalidated_properties);

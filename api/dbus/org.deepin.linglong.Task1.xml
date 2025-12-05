@@ -8,7 +8,6 @@ SPDX-License-Identifier: LGPL-3.0-or-later
     <interface name="org.deepin.linglong.Task1">
         <method name="Cancel" />
         <property name="State" type="i" access="read" />
-        <property name="SubState" type="i" access="read" />
         <property name="Percentage" type="d" access="read" />
         <property name="Message" type="s" access="read" />
         <property name="Code" type="i" access="read" />

@@ -7,6 +7,7 @@
 #include "linglong/api/types/v1/CommonOptions.hpp"
 #include "linglong/extension/extension.h"
 #include "linglong/package_manager/package_manager.h"
+#include "linglong/package_manager/package_task.h"
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/utils/log/log.h"
 
@@ -73,7 +74,7 @@ utils::error::Result<void> PackageUpdateAction::doAction(PackageTask &task)
 {
     LINGLONG_TRACE("package update action");
 
-    task.updateSubState(linglong::api::types::v1::SubState::PreAction, "prepared");
+    task.updateState(linglong::api::types::v1::State::Processing, "updating applications");
 
     if (!prepared) {
         return LINGLONG_ERR("action not prepared");
@@ -84,18 +85,21 @@ utils::error::Result<void> PackageUpdateAction::doAction(PackageTask &task)
         return LINGLONG_ERR(res.error());
     }
 
-    return LINGLONG_OK;
+    return postUpdate(task);
 }
 
 utils::error::Result<void> PackageUpdateAction::update(PackageTask &task)
 {
     LINGLONG_TRACE("package update");
 
-    task.updateState(linglong::api::types::v1::State::Processing, "update apps");
-
+    TaskContainer container(task, appsToUpgrade.size());
     bool allFailed = true;
     for (const auto &app : appsToUpgrade) {
-        auto res = updateApp(task, app, depsOnly);
+        if (task.isTaskDone()) {
+            return LINGLONG_ERR("task was cancelled");
+        }
+
+        auto res = updateApp(container.next(), app, depsOnly);
         if (!res) {
             LogW("failed to update app {}: {}", app.id, res.error());
             continue;
@@ -113,18 +117,29 @@ utils::error::Result<void> PackageUpdateAction::update(PackageTask &task)
     return LINGLONG_OK;
 }
 
-utils::error::Result<void> PackageUpdateAction::updateApp(PackageTask &task,
+utils::error::Result<void> PackageUpdateAction::postUpdate([[maybe_unused]] Task &task)
+{
+    LINGLONG_TRACE("package update postUpdate");
+
+    auto res = repo.mergeModules();
+    if (!res) {
+        LogE("failed to merge modules: {}", res.error());
+    }
+
+    return LINGLONG_OK;
+}
+
+utils::error::Result<void> PackageUpdateAction::updateApp(Task &task,
                                                           const api::types::v1::PackageInfoV2 &app,
                                                           bool depsOnly)
 {
     LINGLONG_TRACE(fmt::format("update app: {} dpesOnly: {}", app.id, depsOnly));
 
+    task.updateProgress(1, fmt::format("updating {}", app.id));
+
     if (depsOnly) {
         return updateAppDepends(task, app);
     }
-
-    task.updateSubState(linglong::api::types::v1::SubState::InstallApplication,
-                        fmt::format("updating application {}", app.id));
 
     auto localRef = package::Reference::fromPackageInfo(app);
     if (!localRef) {
@@ -142,6 +157,8 @@ utils::error::Result<void> PackageUpdateAction::updateApp(PackageTask &task,
         return LINGLONG_ERR(remoteRef.error());
     }
 
+    task.updateProgress(5);
+
     if (remoteRef->get().reference.version <= localRef->version) {
         return updateAppDepends(task, app);
     }
@@ -149,15 +166,14 @@ utils::error::Result<void> PackageUpdateAction::updateApp(PackageTask &task,
     return updateApp(task, *localRef, remoteRef->get());
 }
 
-utils::error::Result<void>
-PackageUpdateAction::updateApp(PackageTask &task,
-                               const package::Reference &localRef,
-                               const package::ReferenceWithRepo &remoteRef)
+utils::error::Result<void> PackageUpdateAction::updateApp(
+  Task &task, const package::Reference &localRef, const package::ReferenceWithRepo &remoteRef)
 {
     LINGLONG_TRACE(
       fmt::format("update app from {} to {}", localRef.toString(), remoteRef.reference.toString()));
 
-    auto res = updateRef(task, localRef, remoteRef);
+    TaskContainer container(task, 3);
+    auto res = updateRef(container.next(), localRef, remoteRef);
     if (!res) {
         return LINGLONG_ERR(res);
     }
@@ -168,15 +184,15 @@ PackageUpdateAction::updateApp(PackageTask &task,
         return LINGLONG_ERR(app.error());
     }
 
-    res = updateAppDepends(task, app->info);
+    res = updateAppDepends(container.next(), app->info);
     if (!res) {
         return LINGLONG_ERR(res.error());
     }
 
-    return postUpdateApp(task, localRef, remoteRef);
+    return postUpdateApp(container.next(), localRef, remoteRef);
 }
 
-utils::error::Result<void> PackageUpdateAction::updateRef(PackageTask &task,
+utils::error::Result<void> PackageUpdateAction::updateRef(Task &task,
                                                           const package::Reference &local,
                                                           const package::ReferenceWithRepo &remote)
 {
@@ -193,6 +209,8 @@ utils::error::Result<void> PackageUpdateAction::updateRef(PackageTask &task,
         return LINGLONG_ERR(fmt::format("no modules found for {}", remote.reference.toString()),
                             utils::error::ErrorCode::AppUpgradeFailed);
     }
+
+    task.updateProgress(5);
 
     auto installModules = std::vector<std::string>{};
     for (const auto &module : modules) {
@@ -219,31 +237,30 @@ utils::error::Result<void> PackageUpdateAction::updateRef(PackageTask &task,
 }
 
 utils::error::Result<void>
-PackageUpdateAction::updateAppDepends(PackageTask &task, const api::types::v1::PackageInfoV2 &app)
+PackageUpdateAction::updateAppDepends(Task &task, const api::types::v1::PackageInfoV2 &app)
 {
     LINGLONG_TRACE(fmt::format("update app depends for {}", app.id));
 
-    task.updateSubState(linglong::api::types::v1::SubState::InstallBase, "updating base");
-    auto ret = updateDependsRef(task, app.base, app.channel);
+    TaskContainer container(task, 3);
+
+    auto ret = updateDependsRef(container.next(), app.base, app.channel);
     if (!ret) {
         return LINGLONG_ERR(ret);
     }
 
     if (app.runtime) {
-        task.updateSubState(linglong::api::types::v1::SubState::InstallRuntime, "updating runtime");
-        ret = updateDependsRef(task, *app.runtime, app.channel);
+        ret = updateDependsRef(container.next(), *app.runtime, app.channel);
         if (!ret) {
             return LINGLONG_ERR(ret.error());
         }
     }
 
-    updateExtensions(task, app);
+    updateExtensions(container.next(), app);
 
     return LINGLONG_OK;
 }
 
-void PackageUpdateAction::updateExtensions(PackageTask &task,
-                                           const api::types::v1::PackageInfoV2 &info)
+void PackageUpdateAction::updateExtensions(Task &task, const api::types::v1::PackageInfoV2 &info)
 {
     if (!info.extensions) {
         return;
@@ -263,7 +280,7 @@ void PackageUpdateAction::updateExtensions(PackageTask &task,
     }
 }
 
-utils::error::Result<void> PackageUpdateAction::updateDependsRef(PackageTask &task,
+utils::error::Result<void> PackageUpdateAction::updateDependsRef(Task &task,
                                                                  const std::string &refStr,
                                                                  std::optional<std::string> channel,
                                                                  std::optional<std::string> version,
@@ -320,27 +337,15 @@ utils::error::Result<void> PackageUpdateAction::updateDependsRef(PackageTask &ta
 }
 
 utils::error::Result<void>
-PackageUpdateAction::postUpdateApp([[maybe_unused]] PackageTask &task,
+PackageUpdateAction::postUpdateApp([[maybe_unused]] Task &task,
                                    const package::Reference &localRef,
                                    const package::ReferenceWithRepo &remoteRef)
 {
     LINGLONG_TRACE("post update app");
 
-    task.updateSubState(linglong::api::types::v1::SubState::PostAction, "post update app");
-
-    auto res = pm.tryGenerateCache(remoteRef.reference);
+    auto res = pm.switchAppVersion(localRef, remoteRef.reference, true);
     if (!res) {
-        return LINGLONG_ERR(res.error());
-    }
-
-    res = pm.tryUninstallRef(localRef);
-    if (!res) {
-        LogW("failed to try uninstall ref:{}", res.error());
-    }
-
-    auto mergeRes = repo.mergeModules();
-    if (!mergeRes) {
-        LogE("failed to merge modules: {}", mergeRes.error());
+        return LINGLONG_ERR(res);
     }
 
     return LINGLONG_OK;

@@ -943,24 +943,9 @@
         "Queued",
         "Pending",
         "Processing",
-        "PartCompleted",
         "Succeed",
         "Failed",
         "Canceled"
-      ]
-    },
-    "SubState": {
-      "description": "subState of current task,",
-      "enum": [
-        "Unknown",
-        "PreAction",
-        "InstallRuntime",
-        "InstallBase",
-        "InstallApplication",
-        "PostAction",
-        "Uninstall",
-        "AllDone",
-        "PackageManagerDone"
       ]
     },
     "PackageManager1InstallLayerFDResult": {
@@ -1488,9 +1473,6 @@
     },
     "State": {
       "$ref": "#/$defs/State"
-    },
-    "SubState": {
-      "$ref": "#/$defs/SubState"
     },
     "PackageManager1InstallLayerFDResult": {
       "$ref": "#/$defs/PackageManager1InstallLayerFDResult"

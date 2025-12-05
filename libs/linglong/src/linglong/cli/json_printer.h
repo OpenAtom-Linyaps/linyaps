@@ -27,10 +27,7 @@ public:
     void printContainers(const std::vector<api::types::v1::CliContainer> &) override;
     void printRepoConfig(const api::types::v1::RepoConfigV2 &) override;
     void printLayerInfo(const api::types::v1::LayerInfo &) override;
-    void printTaskState(double percentage,
-                        const QString &message,
-                        api::types::v1::State state,
-                        api::types::v1::SubState subState) override;
+    void printProgress(double percentage, const std::string &message) override;
     void printContent(const QStringList &desktopPaths) override;
     void printUpgradeList(std::vector<api::types::v1::UpgradeListResult> &) override;
     void printInspect(const api::types::v1::InspectResult &) override;

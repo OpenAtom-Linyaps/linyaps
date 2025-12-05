@@ -65,7 +65,6 @@ namespace types {
 namespace v1 {
 enum class InteractionMessageType : int;
 enum class State : int;
-enum class SubState : int;
 }
 }
 }
@@ -129,7 +128,6 @@ std::optional<RepoConfig> repoConfig;
 std::optional<RepoConfigV2> repoConfigV2;
 std::optional<RepositoryCache> repositoryCache;
 std::optional<State> state;
-std::optional<SubState> subState;
 std::optional<UabMetaInfo> uabMetaInfo;
 std::optional<UpgradeListResult> upgradeListResult;
 std::optional<std::vector<XdgDirectoryPermission>> xdgDirectoryPermissions;

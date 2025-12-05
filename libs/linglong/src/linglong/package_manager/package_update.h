@@ -15,6 +15,8 @@ class FuzzyReference;
 
 namespace linglong::service {
 
+class Task;
+
 class PackageUpdateAction : public Action
 {
 public:
@@ -33,6 +35,7 @@ public:
 
 protected:
     virtual utils::error::Result<void> update(PackageTask &task);
+    virtual utils::error::Result<void> postUpdate(Task &task);
 
 private:
     PackageUpdateAction(std::vector<api::types::v1::PackageManager1Package> toUpgrade,
@@ -40,24 +43,24 @@ private:
                         PackageManager &pm,
                         repo::OSTreeRepo &repo);
 
-    utils::error::Result<void> updateApp(PackageTask &task,
+    utils::error::Result<void> updateApp(Task &task,
                                          const api::types::v1::PackageInfoV2 &app,
                                          bool depsOnly);
-    utils::error::Result<void> updateApp(PackageTask &task,
+    utils::error::Result<void> updateApp(Task &task,
                                          const package::Reference &localRef,
                                          const package::ReferenceWithRepo &remoteRef);
-    utils::error::Result<void> updateRef(PackageTask &task,
+    utils::error::Result<void> updateRef(Task &task,
                                          const package::Reference &local,
                                          const package::ReferenceWithRepo &remote);
-    utils::error::Result<void> updateAppDepends(PackageTask &task,
+    utils::error::Result<void> updateAppDepends(Task &task,
                                                 const api::types::v1::PackageInfoV2 &app);
-    void updateExtensions(PackageTask &task, const api::types::v1::PackageInfoV2 &info);
-    utils::error::Result<void> updateDependsRef(PackageTask &task,
+    void updateExtensions(Task &task, const api::types::v1::PackageInfoV2 &info);
+    utils::error::Result<void> updateDependsRef(Task &task,
                                                 const std::string &refStr,
                                                 std::optional<std::string> channel = std::nullopt,
                                                 std::optional<std::string> version = std::nullopt,
                                                 bool isExtension = false);
-    utils::error::Result<void> postUpdateApp(PackageTask &task,
+    utils::error::Result<void> postUpdateApp(Task &task,
                                              const package::Reference &localRef,
                                              const package::ReferenceWithRepo &remoteRef);
 

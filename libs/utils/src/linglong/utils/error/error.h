@@ -23,7 +23,8 @@ namespace linglong::utils::error {
 enum class ErrorCode : int {
     Failed = -1, // 通用失败错误码
     Success = 0, // 成功
-    /* 通用错误层 */
+    Canceled = 1,
+
     Unknown = 1000,               // 未知错误
     AppNotFoundFromRemote = 1001, // 从远程找不到对应应用
     AppNotFoundFromLocal = 1002,  // 从本地找不到对应应用
@@ -48,10 +49,8 @@ enum class ErrorCode : int {
     AppUninstallMultipleVersions = 2105,
     AppUninstallBaseOrRuntime = 2106,
     /* 升级 */
-    AppUpgradeFailed = 2201,          // 升级失败
-    AppUpgradeLocalNotFound = 2202,   // 本地不存在对应应用
-    AppUpgradeLatestInstalled = 2203, // 已安装最新版本
-    AppUpgradeRemoteNotFound = 2204,  // 远程不存在对应应用
+    AppUpgradeFailed = 2201,        // 升级失败
+    AppUpgradeLocalNotFound = 2202, // 本地不存在对应应用
     /* 网络 */
     NetworkError = 3001, // 网络错误
 

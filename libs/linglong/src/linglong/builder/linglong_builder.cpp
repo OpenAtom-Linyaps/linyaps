@@ -132,10 +132,14 @@ utils::error::Result<void> pullDependency(const package::Reference &ref,
     printReplacedText(
       fmt::format("{:<35}{:<15}{:<15}waiting ...", ref.id, ref.version.toString(), module),
       2);
-    repo.pull(tmpTask, ref, module, repo.getDefaultRepo());
-    if (tmpTask.state() == linglong::api::types::v1::State::Failed) {
-        return LINGLONG_ERR(("pull " + ref.toString() + " failed").data(),
-                            std::move(tmpTask).takeError());
+    QObject::connect(utils::global::GlobalTaskControl::instance(),
+                     &utils::global::GlobalTaskControl::OnCancel,
+                     [&tmpTask]() {
+                         tmpTask.Cancel();
+                     });
+    auto res = repo.pull(tmpTask, ref, module, repo.getDefaultRepo());
+    if (!res) {
+        return LINGLONG_ERR(res);
     }
 
     return LINGLONG_OK;

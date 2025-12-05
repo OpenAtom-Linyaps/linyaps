@@ -11,6 +11,8 @@
 
 namespace linglong::service {
 
+class Task;
+
 class RefInstallationAction : public Action
 {
 public:
@@ -35,9 +37,9 @@ public:
     virtual std::string getTaskName() const override { return taskName; }
 
 protected:
-    virtual utils::error::Result<void> preInstall(PackageTask &task);
-    virtual utils::error::Result<void> install(PackageTask &task);
-    virtual utils::error::Result<void> postInstall(PackageTask &task);
+    virtual utils::error::Result<void> preInstall(Task &task);
+    virtual utils::error::Result<void> install(Task &task);
+    virtual utils::error::Result<void> postInstall(Task &task);
 
 private:
     RefInstallationAction(package::FuzzyReference fuzzyRef,
@@ -46,6 +48,8 @@ private:
                           repo::OSTreeRepo &repo,
                           api::types::v1::CommonOptions options,
                           std::optional<api::types::v1::Repo> usedRepo);
+
+    utils::error::Result<void> postInstallApp(Task &task);
 
     package::FuzzyReference fuzzyRef;
     std::vector<std::string> modules;
@@ -57,6 +61,7 @@ private:
     utils::Transaction transaction;
     std::optional<api::types::v1::Repo> usedRepo;
     repo::RemotePackages candidates;
+    PackageTask *mainTask;
 };
 
 } // namespace linglong::service

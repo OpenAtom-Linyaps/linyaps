@@ -92,9 +92,6 @@ public
                          const QString &fileType,
                          const QVariantMap &options) noexcept -> QVariantMap;
     auto Uninstall(const QVariantMap &parameters) noexcept -> QVariantMap;
-    void Uninstall(PackageTask &taskContext,
-                   const package::Reference &ref,
-                   const std::string &module) noexcept;
     auto Update(const QVariantMap &parameters) noexcept -> QVariantMap;
     auto Search(const QVariantMap &parameters) noexcept -> QVariantMap;
     auto Prune() noexcept -> QVariantMap;
@@ -109,37 +106,36 @@ public
                      const api::types::v1::PackageManager1RequestInteractionAdditionalMessage
                        &additionalMessage) noexcept;
 
-    utils::error::Result<void> removeAfterInstall(const package::Reference &oldRef,
-                                                  const package::Reference &newRef,
-                                                  const std::vector<std::string> &modules) noexcept;
+    virtual utils::error::Result<void> applyApp(const package::Reference &reference) noexcept;
+    virtual utils::error::Result<void> unapplyApp(const package::Reference &reference) noexcept;
+    virtual utils::error::Result<void> switchAppVersion(const package::Reference &oldRef,
+                                                        const package::Reference &newRef,
+                                                        bool removeOldRef = false) noexcept;
     virtual utils::error::Result<void> tryGenerateCache(const package::Reference &ref) noexcept;
     utils::error::Result<void> executePostInstallHooks(const package::Reference &ref) noexcept;
     utils::error::Result<void> executePostUninstallHooks(const package::Reference &ref) noexcept;
-    void pullDependency(PackageTask &taskContext,
-                        const api::types::v1::PackageInfoV2 &info,
-                        const std::string &module) noexcept;
-    void InstallRef(PackageTask &taskContext,
-                    const package::Reference &ref,
-                    std::vector<std::string> modules,
-                    const api::types::v1::Repo &repo) noexcept;
-    void UninstallRef(PackageTask &taskContext,
-                      const package::Reference &ref,
-                      const std::vector<std::string> &modules) noexcept;
-    virtual utils::error::Result<void> installRef(PackageTask &taskContext,
+
+    virtual utils::error::Result<void> installAppDepends(Task &task,
+                                                         const api::types::v1::PackageInfoV2 &app);
+    virtual utils::error::Result<void>
+    installDependsRef(Task &task,
+                      const std::string &refStr,
+                      std::optional<std::string> channel = std::nullopt,
+                      std::optional<std::string> version = std::nullopt);
+    virtual utils::error::Result<void> installRef(Task &task,
                                                   const package::ReferenceWithRepo &ref,
                                                   std::vector<std::string> modules) noexcept;
-    virtual utils::error::Result<void> tryUninstallRef(const package::Reference &ref) noexcept;
-    utils::error::Result<void> uninstallRef(const package::Reference &ref) noexcept;
+    utils::error::Result<void> Uninstall(PackageTask &taskContext,
+                                         const package::Reference &ref,
+                                         const std::string &module) noexcept;
+    virtual utils::error::Result<bool> tryUninstallRef(const package::Reference &ref) noexcept;
+    utils::error::Result<void>
+    uninstallRef(const package::Reference &ref,
+                 std::optional<std::vector<std::string>> modules = std::nullopt) noexcept;
 
 Q_SIGNALS:
     void TaskAdded(QDBusObjectPath object_path);
-    void TaskRemoved(QDBusObjectPath object_path,
-                     int state,
-                     int subState,
-                     QString message,
-                     double percentage,
-                     int code);
-    void TaskListChanged(const QString &taskObjectPath, const QString &taskDescription);
+    void TaskRemoved(QDBusObjectPath object_path);
     void RequestInteraction(QDBusObjectPath object_path,
                             int messageID,
                             QVariantMap additionalMessage);
@@ -149,12 +145,6 @@ Q_SIGNALS:
     void ReplyReceived(const QVariantMap &replies);
 
 private:
-    // passing multiple modules to install may use in the future
-    void Install(PackageTask &taskContext,
-                 const package::Reference &newRef,
-                 std::optional<package::Reference> oldRef,
-                 const std::vector<std::string> &modules,
-                 const std::optional<api::types::v1::Repo> &repo) noexcept;
     QVariantMap installFromLayer(const QDBusUnixFileDescriptor &fd,
                                  const api::types::v1::CommonOptions &options) noexcept;
 

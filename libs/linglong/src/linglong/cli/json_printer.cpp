@@ -93,16 +93,11 @@ void JSONPrinter::printContent(const QStringList &filePaths)
     std::cout << QString::fromUtf8(QJsonDocument(obj).toJson()).toStdString() << std::endl;
 }
 
-void JSONPrinter::printTaskState(const double percentage,
-                                 const QString &message,
-                                 api::types::v1::State state,
-                                 api::types::v1::SubState subState)
+void JSONPrinter::printProgress(const double percentage, const std::string &message)
 {
     nlohmann::json json;
     json["percentage"] = percentage;
-    json["message"] = message.toStdString();
-    json["state"] = linglong::cli::toString(state);
-    json["subState"] = linglong::cli::toString(subState);
+    json["message"] = message;
 
     std::cout << json.dump() << std::endl;
 }

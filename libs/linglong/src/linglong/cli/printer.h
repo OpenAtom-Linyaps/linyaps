@@ -14,36 +14,11 @@
 #include "linglong/api/types/v1/PackageInfoV2.hpp"
 #include "linglong/api/types/v1/RepoConfigV2.hpp"
 #include "linglong/api/types/v1/State.hpp"
-#include "linglong/api/types/v1/SubState.hpp"
 #include "linglong/api/types/v1/UpgradeListResult.hpp"
 #include "linglong/cli/cli.h"
 #include "linglong/utils/error/error.h"
 
 namespace linglong::cli {
-
-inline std::string toString(linglong::api::types::v1::SubState subState) noexcept
-{
-    switch (subState) {
-    case linglong::api::types::v1::SubState::AllDone:
-        return "AllDone";
-    case linglong::api::types::v1::SubState::PackageManagerDone:
-        return "PackageManagerDone";
-    case linglong::api::types::v1::SubState::InstallApplication:
-        return "InstallApplication";
-    case linglong::api::types::v1::SubState::InstallBase:
-        return "InstallBase";
-    case linglong::api::types::v1::SubState::InstallRuntime:
-        return "InstallRuntime";
-    case linglong::api::types::v1::SubState::PostAction:
-        return "PostAction";
-    case linglong::api::types::v1::SubState::PreAction:
-        return "PreAction";
-    case linglong::api::types::v1::SubState::Uninstall:
-        return "Uninstall";
-    default:
-        return "UnknownSubState";
-    }
-}
 
 inline std::string toString(linglong::api::types::v1::State state) noexcept
 {
@@ -84,14 +59,13 @@ public:
     virtual void printContainers(const std::vector<api::types::v1::CliContainer> &) = 0;
     virtual void printRepoConfig(const api::types::v1::RepoConfigV2 &) = 0;
     virtual void printLayerInfo(const api::types::v1::LayerInfo &) = 0;
-    virtual void printTaskState(double percentage,
-                                const QString &message,
-                                api::types::v1::State state,
-                                api::types::v1::SubState subState) = 0;
+    virtual void printProgress(double percentage, const std::string &message) = 0;
     virtual void printContent(const QStringList &filePaths) = 0;
     virtual void printUpgradeList(std::vector<api::types::v1::UpgradeListResult> &) = 0;
     virtual void printInspect(const api::types::v1::InspectResult &) = 0;
     virtual void printMessage(const std::string &message) = 0;
+
+    virtual void clearLine() { }
 };
 
 } // namespace linglong::cli

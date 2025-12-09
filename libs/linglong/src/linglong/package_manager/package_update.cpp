@@ -66,7 +66,7 @@ utils::error::Result<void> PackageUpdateAction::prepare()
     }
 
     prepared = true;
-    taskName = fmt::format("update {} apps", appsToUpgrade.size());
+    taskName = fmt::format("update apps");
     return LINGLONG_OK;
 }
 

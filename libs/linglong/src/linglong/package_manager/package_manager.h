@@ -27,45 +27,7 @@
 
 namespace linglong::service {
 
-class JobQueue : public QObject
-{
-    Q_OBJECT
-private:
-    uint runningJobsCount = 0;
-    uint runningJobsMax = 1;
-    std::list<std::function<void()>> taskList;
-
-    void run()
-    {
-        // 检查任务队列是否为空
-        if (taskList.size() == 0) {
-            runningJobsCount--;
-            return;
-        }
-        // 从队列中取出任务
-        auto func = taskList.front();
-        taskList.pop_front();
-        // 执行任务
-        func();
-
-        // 如果还有任务，继续执行
-        if (taskList.size() > 0) {
-            QMetaObject::invokeMethod(this, &JobQueue::run, Qt::QueuedConnection);
-        } else {
-            runningJobsCount--;
-        }
-    }
-
-public:
-    void runTask(std::function<void()> func)
-    {
-        taskList.emplace_back(func);
-        if (runningJobsCount < runningJobsMax) {
-            runningJobsCount++;
-            QMetaObject::invokeMethod(this, &JobQueue::run, Qt::QueuedConnection);
-        }
-    }
-};
+class Action;
 
 class PackageManager : public QObject, protected QDBusContext
 {
@@ -163,12 +125,12 @@ private:
     utils::error::Result<void> generateCache(const package::Reference &ref) noexcept;
     utils::error::Result<void> removeCache(const package::Reference &ref) noexcept;
 
+    QVariantMap runActionOnTaskQueue(std::shared_ptr<Action> action);
+
     linglong::repo::OSTreeRepo &repo; // NOLINT
     PackageTaskQueue tasks;
-
-    JobQueue m_search_queue = {};
-    JobQueue m_prune_queue = {};
-    JobQueue m_generator_queue = {};
+    PackageTaskQueue m_search_queue;
+    PackageTaskQueue m_generator_queue;
 
     int lockFd{ -1 };
     linglong::runtime::ContainerBuilder &containerBuilder;

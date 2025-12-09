@@ -115,7 +115,7 @@ utils::error::Result<void> pullDependency(const package::Reference &ref,
         return LINGLONG_OK;
     }
 
-    auto tmpTask = service::PackageTask::createTemporaryTask();
+    service::PackageTask tmpTask({});
     auto partChanged = [&ref, module](const uint fetched, const uint requested) {
         auto percentage = (uint)((((double)fetched) / requested) * 100);
         auto progress = fmt::format("({}/{} {}%)", fetched, requested, percentage);

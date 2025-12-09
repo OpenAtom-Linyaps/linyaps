@@ -9,6 +9,7 @@
 #include "linglong/common/strings.h"
 #include "linglong/utils/command/env.h"
 #include "linglong/utils/error/error.h"
+#include "linglong/utils/log/log.h"
 
 #include <filesystem>
 
@@ -102,19 +103,22 @@ TEST(Error, WarpErrorCode)
 TEST(Error, WarpStdErrorCode)
 {
     EnvironmentVariableGuard guard("LINYAPS_BACKTRACE", "1");
-    auto res = []() -> Result<void> {
+    std::system_error se;
+    auto res = [&se]() -> Result<void> {
         LINGLONG_TRACE("test LINGLONG_ERR");
         std::error_code ec;
         std::filesystem::create_directory("/no_permission_to_create", ec);
-        if (ec)
+        if (ec) {
+            se = std::system_error(ec);
             return LINGLONG_ERR("create directory failed", ec);
+        }
         return LINGLONG_OK;
     }();
     ASSERT_FALSE(res.has_value());
     auto msg = res.error().message();
     ASSERT_TRUE(strings::contains(msg, "test LINGLONG_ERR")) << msg;
     ASSERT_TRUE(strings::contains(msg, "create directory failed")) << msg;
-    ASSERT_TRUE(strings::contains(msg, "Permission denied")) << msg;
+    ASSERT_TRUE(strings::contains(msg, se.what())) << msg;
 }
 
 TEST(Error, WarpQtFile)

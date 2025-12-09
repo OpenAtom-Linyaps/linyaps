@@ -4,7 +4,19 @@
 
 #include "task.h"
 
+#include <fmt/format.h>
+#include <fmt/ranges.h>
+#include <uuid.h>
+
 namespace linglong::service {
+
+Task::Task(std::function<void(Task &)> job)
+    : m_job(std::move(job))
+{
+    uuid_t uuid;
+    uuid_generate_random(uuid);
+    m_taskID = fmt::format("{}", fmt::join(uuid, ""));
+}
 
 void Task::updateProgress(double percentage, std::optional<std::string> message)
 {

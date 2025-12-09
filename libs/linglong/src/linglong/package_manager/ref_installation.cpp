@@ -57,15 +57,35 @@ RefInstallationAction::RefInstallationAction(package::FuzzyReference fuzzyRef,
     , modules(std::move(modules))
     , usedRepo(std::move(usedRepo))
 {
+    taskName = fmt::format("Install {}", this->fuzzyRef.toString());
 }
 
-utils::error::Result<void> RefInstallationAction::prepare()
+utils::error::Result<void> RefInstallationAction::doAction(PackageTask &task)
 {
-    LINGLONG_TRACE("ref installation prepare");
+    LINGLONG_TRACE("ref installation do action");
 
-    if (prepared) {
-        return LINGLONG_OK;
+    mainTask = &task;
+    TaskContainer taskContainer(task, { 10, 85, 5 });
+
+    auto res = preInstall(taskContainer.next());
+    if (!res) {
+        return res;
     }
+
+    res = install(taskContainer.next());
+    if (!res) {
+        return res;
+    }
+
+    return postInstall(taskContainer.next());
+}
+
+utils::error::Result<void> RefInstallationAction::preInstall(Task &task)
+{
+    LINGLONG_TRACE("ref installation preInstall");
+
+    task.updateState(linglong::api::types::v1::State::Processing,
+                     fmt::format("Installing {}", fuzzyRef.toString()));
 
     auto extraOnly = extraModuleOnly(modules);
     auto localRef = repo.latestLocalReference(fuzzyRef);
@@ -97,44 +117,6 @@ utils::error::Result<void> RefInstallationAction::prepare()
         return LINGLONG_ERR("package already installed",
                             utils::error::ErrorCode::AppInstallAlreadyInstalled);
     }
-
-    this->taskName = fmt::format("Installing {}", fuzzyRef.toString());
-    this->extraOnly = extraOnly;
-
-    prepared = true;
-    return LINGLONG_OK;
-}
-
-utils::error::Result<void> RefInstallationAction::doAction(PackageTask &task)
-{
-    LINGLONG_TRACE("ref installation do action");
-
-    if (!prepared) {
-        return LINGLONG_ERR("action not prepared");
-    }
-
-    mainTask = &task;
-    TaskContainer taskContainer(task, { 10, 85, 5 });
-
-    auto res = preInstall(taskContainer.next());
-    if (!res) {
-        return res;
-    }
-
-    res = install(taskContainer.next());
-    if (!res) {
-        return res;
-    }
-
-    return postInstall(taskContainer.next());
-}
-
-utils::error::Result<void> RefInstallationAction::preInstall(Task &task)
-{
-    LINGLONG_TRACE("ref installation preInstall");
-
-    task.updateState(linglong::api::types::v1::State::Processing,
-                     fmt::format("Installing {}", fuzzyRef.toString()));
 
     // find all candidate remote packages
     auto candidates = repo.matchRemoteByPriority(fuzzyRef, usedRepo);

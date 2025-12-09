@@ -26,7 +26,7 @@ using ProgressReporter = std::function<void(double)>;
 class Task
 {
 public:
-    Task() = default;
+    Task(std::function<void(Task &)> job = {});
     Task(Task &&) = default;
     Task &operator=(Task &&) = default;
     Task(const Task &) = delete;
@@ -34,6 +34,13 @@ public:
     virtual ~Task() = default;
 
     void setReporter(TaskReporter *reporter) { m_reporter = reporter; }
+
+    virtual void run() noexcept
+    {
+        if (m_job) {
+            m_job(*this);
+        }
+    }
 
     virtual void updateProgress(double percentage,
                                 std::optional<std::string> message = std::nullopt);
@@ -45,6 +52,8 @@ public:
     [[nodiscard]] virtual bool isTaskDone() const noexcept;
 
     virtual GCancellable *cancellable() noexcept { return nullptr; }
+
+    [[nodiscard]] std::string taskID() const noexcept { return m_taskID; }
 
     [[nodiscard]] linglong::api::types::v1::State state() const noexcept { return m_state; }
 
@@ -61,6 +70,9 @@ public:
     double percentage() const noexcept { return m_percentage; }
 
 private:
+    std::string m_taskID;
+    std::function<void(Task &)> m_job;
+
     // progress
     double m_percentage{ 0 };
 

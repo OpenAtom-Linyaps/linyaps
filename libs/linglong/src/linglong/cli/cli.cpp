@@ -359,11 +359,12 @@ void Cli::interaction(const QDBusObjectPath &object_path,
 
 void Cli::onTaskAdded(const QDBusObjectPath &object_path)
 {
-    qDebug() << "task added" << object_path.path();
+    LogD("task added: {}", object_path.path());
 }
 
 void Cli::onTaskRemoved(const QDBusObjectPath &object_path)
 {
+    LogD("task removed: {}", object_path.path());
     if (object_path.path() != taskObjectPath) {
         return;
     }
@@ -376,7 +377,7 @@ void Cli::onTaskRemoved(const QDBusObjectPath &object_path)
 void Cli::handleTaskState() noexcept
 {
     if (taskState.state == api::types::v1::State::Unknown) {
-        LogI("task is invalid");
+        LogW("task state is unknown");
         return;
     }
 
@@ -907,22 +908,28 @@ int Cli::installFromFile(const QFileInfo &fileInfo,
     auto filePath = fileInfo.absoluteFilePath();
     LINGLONG_TRACE(fmt::format("install from file {}", filePath.toStdString()));
 
-    QDBusReply<QString> authReply = this->authorization();
-    if (!authReply.isValid() && authReply.error().type() == QDBusError::AccessDenied) {
-        auto args = QCoreApplication::instance()->arguments();
-        // pkexec在0.120版本之前没有keep-cwd选项，会将目录切换到/root
-        // 所以将layer或uab文件的相对路径转为绝对路径，再传给pkexec
-        auto path = fileInfo.absoluteFilePath();
-        for (auto i = 0; i < args.length(); i++) {
-            if (args[i] == QString::fromStdString(appid)) {
-                args[i] = path.toLocal8Bit().constData();
+    auto authReply = this->authorization();
+    if (!authReply.isValid()) {
+        if (authReply.error().type() == QDBusError::AccessDenied) {
+            auto args = QCoreApplication::instance()->arguments();
+            // pkexec在0.120版本之前没有keep-cwd选项，会将目录切换到/root
+            // 所以将layer或uab文件的相对路径转为绝对路径，再传给pkexec
+            auto path = fileInfo.absoluteFilePath();
+            for (auto i = 0; i < args.length(); i++) {
+                if (args[i] == QString::fromStdString(appid)) {
+                    args[i] = path.toLocal8Bit().constData();
+                }
             }
+
+            auto ret = this->runningAsRoot(args);
+            if (!ret) {
+                this->printer.printErr(ret.error());
+            }
+            return -1;
         }
 
-        auto ret = this->runningAsRoot(args);
-        if (!ret) {
-            this->printer.printErr(ret.error());
-        }
+        this->printer.printErr(LINGLONG_ERRV(authReply.error().message() + authReply.error().name(),
+                                             static_cast<int>(authReply.error().type())));
         return -1;
     }
 
@@ -1099,9 +1106,12 @@ int Cli::search(const SearchOptions &options)
     };
 
     auto repoConfig = this->repository.getOrderedConfig();
+    if (repoConfig.repos.empty()) {
+        this->printer.printErr(LINGLONG_ERRV("no repo found"));
+        return -1;
+    }
 
     if (options.repo) {
-        // 检查repo是否存在
         auto it = std::find_if(repoConfig.repos.begin(),
                                repoConfig.repos.end(),
                                [&options](const api::types::v1::Repo &repo) {
@@ -1109,17 +1119,13 @@ int Cli::search(const SearchOptions &options)
                                });
         if (it == repoConfig.repos.end()) {
             this->printer.printErr(
-              LINGLONG_ERRV(QString{ "repo %1 not found" }.arg(options.repo.value().c_str())));
+              LINGLONG_ERRV(fmt::format("repo {} not found", options.repo.value())));
             return -1;
         }
         params.repos.emplace_back(options.repo.value());
     } else {
-        // 如果没有指定repo，则搜索优先级最高的所有仓库, 仓库的优先级可以相同
-        assert(!repoConfig.repos.empty());
+        // search all repos
         for (const auto &repo : repoConfig.repos) {
-            if (repo.priority < repoConfig.repos[0].priority) {
-                break;
-            }
             params.repos.emplace_back(repo.alias.value_or(repo.name));
         }
     }
@@ -1884,14 +1890,19 @@ utils::error::Result<void> Cli::ensureAuthorized()
 {
     LINGLONG_TRACE("ensure authorized");
 
-    QDBusReply<QString> authReply = this->authorization();
-    if (!authReply.isValid() && authReply.error().type() == QDBusError::AccessDenied) {
-        auto ret = this->runningAsRoot();
-        std::string message = "failed to authorize";
-        if (!ret) {
-            message += ": " + ret.error().message();
+    auto authReply = this->authorization();
+    if (!authReply.isValid()) {
+        if (authReply.error().type() == QDBusError::AccessDenied) {
+            auto ret = this->runningAsRoot();
+            std::string message = "failed to authorize";
+            if (!ret) {
+                message += ": " + ret.error().message();
+            }
+            return LINGLONG_ERR(message);
         }
-        return LINGLONG_ERR(message);
+
+        return LINGLONG_ERR(authReply.error().message() + authReply.error().name(),
+                            static_cast<int>(authReply.error().type()));
     }
 
     return LINGLONG_OK;
@@ -1925,15 +1936,11 @@ utils::error::Result<void> Cli::runningAsRoot(const QList<QString> &args)
     return LINGLONG_ERR("execve error", ret);
 }
 
-QDBusReply<QString> Cli::authorization()
+QDBusReply<void> Cli::authorization()
 {
     // Note: we have marked the method Permissions of PM as rejected.
     // Use this method to determin that this client whether have permission to call PM.
-    QDBusInterface dbusIntrospect(this->pkgMan.service(),
-                                  this->pkgMan.path(),
-                                  this->pkgMan.service(),
-                                  this->pkgMan.connection());
-    return dbusIntrospect.call("Permissions");
+    return this->pkgMan.Permissions();
 }
 
 utils::error::Result<void>
@@ -2371,6 +2378,8 @@ utils::error::Result<void> Cli::waitTaskCreated(QDBusPendingReply<QVariantMap> &
     this->task = new api::dbus::v1::Task1(pkgMan.service(), taskObjectPath, conn);
     this->taskState.state = linglong::api::types::v1::State::Queued;
     this->taskState.taskType = taskType;
+
+    LogD("task object path: {}", this->taskObjectPath);
 
     if (!conn.connect(pkgMan.service(),
                       taskObjectPath,

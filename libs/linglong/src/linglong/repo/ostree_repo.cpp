@@ -2315,9 +2315,7 @@ OSTreeRepo::getLayerItem(const package::Reference &ref,
         auto items = this->cache->queryLayerItem(query);
         auto count = items.size();
         if (count > 0) {
-            if (count > 1) {
-                LogW("ambiguous ref has been detected, maybe underlying storage already broken.");
-            }
+            // relay on the cache to ensure the item is the latest one
             return items.front();
         }
         return LINGLONG_ERR(fmt::format("failed to query item {}", query.to_string()));

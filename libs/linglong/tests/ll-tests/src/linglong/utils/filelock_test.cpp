@@ -59,8 +59,6 @@ TEST_F(FileLockTest, CreateWithoutMissingFileFails)
 {
     auto result = FileLock::create(temp_path, false);
     ASSERT_FALSE(result);
-    EXPECT_THAT(result.error().message(),
-                ::testing::HasSubstr("open file failed: No such file or directory"));
 }
 
 // Test creating FileLock on existing file

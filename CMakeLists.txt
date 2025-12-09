@@ -306,6 +306,7 @@ pkg_search_module(ostree1 REQUIRED IMPORTED_TARGET ostree-1)
 pkg_search_module(systemd REQUIRED IMPORTED_TARGET libsystemd)
 pkg_search_module(ELF REQUIRED IMPORTED_TARGET libelf)
 pkg_search_module(cap REQUIRED IMPORTED_TARGET libcap)
+pkg_search_module(uuid REQUIRED IMPORTED_TARGET uuid)
 
 set(ytj_ENABLE_TESTING NO)
 set(ytj_ENABLE_INSTALL NO)

@@ -147,6 +147,9 @@ TEST_F(RefInstallationTest, InstallApp)
 
     EXPECT_CALL(*pm, installRef(_, _, _)).WillOnce(Return(utils::error::Result<void>{}));
 
+    EXPECT_CALL(*repo, listLocalBy(_))
+      .WillOnce(Return(std::vector<api::types::v1::RepositoryCacheLayersItem>{}));
+
     api::types::v1::RepositoryCacheLayersItem item;
     item.info.kind = "app";
     EXPECT_CALL(*repo, getLayerItem(_, _, _)).WillOnce(Return(item));
@@ -155,7 +158,7 @@ TEST_F(RefInstallationTest, InstallApp)
 
     EXPECT_CALL(*pm, applyApp(_)).WillOnce(Return(utils::error::Result<void>{}));
 
-    auto task = service::PackageTask::createTemporaryTask();
+    service::PackageTask task({});
     ASSERT_TRUE(action->prepare());
     ASSERT_TRUE(action->doAction(task));
 }
@@ -175,7 +178,7 @@ TEST_F(RefInstallationTest, InstallNoAppFound)
     repo::RemotePackages remote;
     EXPECT_CALL(*repo, matchRemoteByPriority(_, _)).WillOnce(Return(std::move(remote)));
 
-    auto task = service::PackageTask::createTemporaryTask();
+    service::PackageTask task({});
     ASSERT_TRUE(action->prepare());
     auto res = action->doAction(task);
     ASSERT_FALSE(res);
@@ -236,7 +239,7 @@ TEST_F(RefInstallationTest, InstallExtraOnly)
 
     EXPECT_CALL(*pm, applyApp(_)).WillOnce(Return(utils::error::Result<void>{}));
 
-    auto task = service::PackageTask::createTemporaryTask();
+    service::PackageTask task({});
     ASSERT_TRUE(action->prepare());
     ASSERT_TRUE(action->doAction(task));
 }
@@ -286,10 +289,13 @@ TEST_F(RefInstallationTest, InstallMultipleModules)
     item.info.kind = "app";
     EXPECT_CALL(*repo, getLayerItem(_, _, _)).WillOnce(Return(item));
 
+    EXPECT_CALL(*repo, listLocalBy(_))
+      .WillOnce(Return(std::vector<api::types::v1::RepositoryCacheLayersItem>{}));
+
     EXPECT_CALL(*pm, installAppDepends(_, _)).WillOnce(Return(utils::error::Result<void>{}));
     EXPECT_CALL(*pm, applyApp(_)).WillOnce(Return(utils::error::Result<void>{}));
 
-    auto task = service::PackageTask::createTemporaryTask();
+    service::PackageTask task({});
     ASSERT_TRUE(action->prepare());
     ASSERT_TRUE(action->doAction(task));
 }
@@ -349,7 +355,7 @@ TEST_F(RefInstallationTest, InstallDowngrade)
     EXPECT_CALL(*pm, installAppDepends(_, _)).WillOnce(Return(utils::error::Result<void>{}));
     EXPECT_CALL(*pm, switchAppVersion(_, _, true)).WillOnce(Return(utils::error::Result<void>{}));
 
-    auto task = service::PackageTask::createTemporaryTask();
+    service::PackageTask task({});
     ASSERT_TRUE(action->prepare());
     auto res = action->doAction(task);
     ASSERT_TRUE(res);

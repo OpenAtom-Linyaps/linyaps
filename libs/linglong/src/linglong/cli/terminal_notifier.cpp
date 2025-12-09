@@ -27,6 +27,7 @@ TerminalNotifier::request(const api::types::v1::InteractionRequest &request)
 {
     LINGLONG_TRACE("notify message through terminal")
     std::string msg;
+    msg.append("\n");
     msg.append(request.summary + "\n");
 
     if (request.body) {

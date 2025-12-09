@@ -531,7 +531,8 @@ utils::error::Result<void> Builder::buildStageFetchSource() noexcept
     return LINGLONG_OK;
 }
 
-utils::error::Result<package::Reference> Builder::ensureUtils(const std::string &id, const package::Architecture &arch) noexcept
+utils::error::Result<package::Reference>
+Builder::ensureUtils(const std::string &id, const package::Architecture &arch) noexcept
 {
     LINGLONG_TRACE("ensureUtils");
 
@@ -540,25 +541,25 @@ utils::error::Result<package::Reference> Builder::ensureUtils(const std::string 
         return LINGLONG_ERR(curArch);
     }
 
-    auto fuzzyRef = package::FuzzyReference::create(std::nullopt, QString::fromStdString(id), std::nullopt, arch);
+    auto fuzzyRef =
+      package::FuzzyReference::create(std::nullopt, QString::fromStdString(id), std::nullopt, arch);
     if (!fuzzyRef) {
         return LINGLONG_ERR(fuzzyRef);
     }
 
     // always try to get newest version from remote
-    auto ref = repo.clearReference(*fuzzyRef,
-                                { .forceRemote = true,
-                                    .fallbackToRemote = true,
-                                    .semanticMatching = true });
-    if (!ref) {
-        qDebug() << "failed to clear from remote, fallback to local";
-        ref = repo.clearReference(*fuzzyRef,
-                                { .forceRemote = false,
-                                    .fallbackToRemote = false,
-                                    .semanticMatching = true });
+    auto ref = repo.clearReference(
+      *fuzzyRef,
+      { .forceRemote = true, .fallbackToRemote = true, .semanticMatching = true });
+    auto localRef = clearDependency(id, false, false);
+    if (localRef) {
+        if (!ref || localRef->version > ref->version) {
+            ref = std::move(localRef);
+        }
+        qDebug() << "use local tools";
     }
     while (ref) {
-        auto res =pullDependency(*ref, this->repo, "binary");
+        auto res = pullDependency(*ref, this->repo, "binary");
         if (!res) {
             qDebug() << res.error();
             break;
@@ -582,7 +583,8 @@ utils::error::Result<package::Reference> Builder::ensureUtils(const std::string 
                 return LINGLONG_ERR("base not exist: " + QString::fromStdString(info.base));
             }
             if (!pullDependency(*baseRef, this->repo, "binary")) {
-                return LINGLONG_ERR("failed to pull base binary " + QString::fromStdString(info.base));
+                return LINGLONG_ERR("failed to pull base binary "
+                                    + QString::fromStdString(info.base));
             }
 
             if (info.runtime) {
@@ -1569,8 +1571,9 @@ utils::error::Result<void> Builder::exportUAB(const ExportOption &option,
 
     package::UABPackager packager{ workingDir, workingDir.absoluteFilePath(".uabBuild") };
 
-    // Retrieves static files from the ll-builder-utils matching the target architecture if available, including uab-header,
-    // uab-loader, ll-box. Fallback to defaults if ll-builder-utils is not found or fails.
+    // Retrieves static files from the ll-builder-utils matching the target architecture if
+    // available, including uab-header, uab-loader, ll-box. Fallback to defaults if ll-builder-utils
+    // is not found or fails.
     ref = ensureUtils("cn.org.linyaps.builder.utils", projectRef->arch);
     if (ref) {
         qDebug() << "using static file from cn.org.linyaps.builder.utils";

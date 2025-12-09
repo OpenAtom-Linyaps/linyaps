@@ -105,7 +105,6 @@ pfl_add_library(
   tl::expected
   linglong::oci-cfg-generators
   CLI11::CLI11
-  LIEF::LIEF
   ${YAML_CPP})
 
 function(

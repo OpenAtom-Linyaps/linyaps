@@ -28,6 +28,7 @@ enum class ErrorCode : int {
     Unknown = 1000,               // 未知错误
     AppNotFoundFromRemote = 1001, // 从远程找不到对应应用
     AppNotFoundFromLocal = 1002,  // 从本地找不到对应应用
+    RepoInOperation = 1003,
 
     /* 安装 */
     AppInstallFailed = 2001,                // 安装失败

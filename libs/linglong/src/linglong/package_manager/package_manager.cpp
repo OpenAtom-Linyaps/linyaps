@@ -549,6 +549,14 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
         return toDBusReply(fuzzyRef);
     }
 
+    if (taskRepoInOperation) {
+        return toDBusReply(utils::error::ErrorCode::RepoInOperation, "repo is in operation");
+    }
+    taskRepoInOperation = true;
+    auto taskDone = utils::finally::shared_finally([this]() {
+        taskRepoInOperation = false;
+    });
+
     auto localRef = this->repo.clearReference(*fuzzyRef,
                                               {
                                                 .fallbackToRemote = false // NOLINT
@@ -590,7 +598,8 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
        options,
        msgType,
        additionalMessage,
-       localRef = localRef ? std::make_optional(*localRef) : std::nullopt](PackageTask &taskRef) {
+       localRef = localRef ? std::make_optional(*localRef) : std::nullopt,
+       taskDone](PackageTask &taskRef) {
           if (msgType == api::types::v1::InteractionMessageType::Upgrade
               && !options.skipInteraction) {
               Q_EMIT RequestInteraction(QDBusObjectPath(taskRef.taskObjectPath().c_str()),
@@ -728,6 +737,14 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd,
                            "uab package signature verification failed.");
     }
 
+    if (taskRepoInOperation) {
+        return toDBusReply(utils::error::ErrorCode::RepoInOperation, "repo is in operation");
+    }
+    taskRepoInOperation = true;
+    auto taskDone = utils::finally::shared_finally([this]() {
+        taskRepoInOperation = false;
+    });
+
     auto action = UabInstallationAction::create(fd.fileDescriptor(), *this, repo, options);
     if (!action) {
         return toDBusReply(utils::error::ErrorCode::Failed,
@@ -740,7 +757,7 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd,
     }
 
     auto taskRet = tasks.addNewTask(
-      [action](PackageTask &task) {
+      [action, taskDone](PackageTask &task) {
           LINGLONG_TRACE("uab installation task")
 
           auto res = action->doAction(task);
@@ -820,6 +837,14 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
         usedRepo = std::move(repo).value();
     }
 
+    if (taskRepoInOperation) {
+        return toDBusReply(utils::error::ErrorCode::RepoInOperation, "repo is in operation");
+    }
+    taskRepoInOperation = true;
+    auto taskDone = utils::finally::shared_finally([this]() {
+        taskRepoInOperation = false;
+    });
+
     LogI("install {} {} from {}",
          fuzzyRef->toString(),
          common::strings::join(modules),
@@ -840,7 +865,7 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
         return toDBusReply(utils::error::ErrorCode::AppInstallFailed, res.error().message());
     }
 
-    auto installer = [action](PackageTask &task) {
+    auto installer = [action, taskDone](PackageTask &task) {
         LINGLONG_TRACE("ref installation task")
         LogD("ref installation task is running");
         auto res = action->doAction(task);
@@ -873,6 +898,14 @@ auto PackageManager::Uninstall(const QVariantMap &parameters) noexcept -> QVaria
     if (!paras) {
         return toDBusReply(utils::error::ErrorCode::AppUninstallFailed, paras.error().message());
     }
+
+    if (taskRepoInOperation) {
+        return toDBusReply(utils::error::ErrorCode::RepoInOperation, "repo is in operation");
+    }
+    taskRepoInOperation = true;
+    auto taskDone = utils::finally::shared_finally([this]() {
+        taskRepoInOperation = false;
+    });
 
     auto query = linglong::repo::repoCacheQuery{ .id = paras->package.id,
                                                  .channel = paras->package.channel,
@@ -950,7 +983,7 @@ auto PackageManager::Uninstall(const QVariantMap &parameters) noexcept -> QVaria
                                curModule);
 
     auto taskRet = tasks.addNewTask(
-      [this, mainRef = *mainRef, curModule](PackageTask &taskRef) {
+      [this, mainRef = *mainRef, curModule, taskDone](PackageTask &taskRef) {
           if (taskRef.isTaskDone()) {
               return;
           }
@@ -1033,6 +1066,14 @@ auto PackageManager::Update(const QVariantMap &parameters) noexcept -> QVariantM
                            currentArch.error().message());
     }
 
+    if (taskRepoInOperation) {
+        return toDBusReply(utils::error::ErrorCode::RepoInOperation, "repo is in operation");
+    }
+    taskRepoInOperation = true;
+    auto taskDone = utils::finally::shared_finally([this]() {
+        taskRepoInOperation = false;
+    });
+
     auto action = PackageUpdateAction::create(paras->packages, paras->depsOnly, *this, repo);
     if (!action) {
         return toDBusReply(utils::error::ErrorCode::AppUpgradeFailed,
@@ -1045,7 +1086,7 @@ auto PackageManager::Update(const QVariantMap &parameters) noexcept -> QVariantM
     }
 
     auto ret = tasks.addNewTask(
-      [action](PackageTask &taskRef) {
+      [action, taskDone](PackageTask &taskRef) {
           auto res = action->doAction(taskRef);
           if (!res) {
               LogE("update failed: {}", res.error());
@@ -1299,8 +1340,16 @@ utils::error::Result<void> PackageManager::installDependsRef(Task &task,
 
 auto PackageManager::Prune() noexcept -> QVariantMap
 {
+    if (taskRepoInOperation) {
+        return toDBusReply(utils::error::ErrorCode::RepoInOperation, "repo is in operation");
+    }
+    taskRepoInOperation = true;
+    auto taskDone = utils::finally::shared_finally([this]() {
+        taskRepoInOperation = false;
+    });
+
     auto jobID = QUuid::createUuid().toString();
-    m_prune_queue.runTask([this, jobID]() {
+    m_prune_queue.runTask([this, jobID, taskDone]() {
         std::vector<api::types::v1::PackageInfoV2> pkgs;
         auto ret = Prune(pkgs);
         if (!ret.has_value()) {

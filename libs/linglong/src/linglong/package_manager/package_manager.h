@@ -172,6 +172,8 @@ private:
 
     int lockFd{ -1 };
     linglong::runtime::ContainerBuilder &containerBuilder;
+
+    bool taskRepoInOperation = false;
 };
 
 } // namespace linglong::service

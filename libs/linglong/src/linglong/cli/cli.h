@@ -218,7 +218,7 @@ private:
     int generateCache(const package::Reference &ref);
     utils::error::Result<std::filesystem::path> ensureCache(
       runtime::RunContext &runContext, const generator::ContainerCfgBuilder &cfgBuilder) noexcept;
-    QDBusReply<QString> authorization();
+    QDBusReply<void> authorization();
     void updateAM() noexcept;
     std::vector<std::string> getRunningAppContainers(const std::string &appid);
     int getLayerDir(const InspectOptions &options);

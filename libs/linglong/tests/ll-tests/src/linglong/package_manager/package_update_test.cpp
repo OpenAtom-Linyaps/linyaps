@@ -310,7 +310,7 @@ TEST_F(PackageUpdateActionTest, Update)
         true))
       .WillOnce(Return(utils::error::Result<void>{}));
 
-    auto task = service::PackageTask::createTemporaryTask();
+    service::PackageTask task({});
     res = action->doAction(task);
     if (!res) {
         LogE("failed to update app {}", res.error());

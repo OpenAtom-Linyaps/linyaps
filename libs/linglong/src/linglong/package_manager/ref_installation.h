@@ -31,17 +31,17 @@ public:
 
     virtual ~RefInstallationAction() = default;
 
-    virtual utils::error::Result<void> prepare() override;
-    virtual utils::error::Result<void> doAction(PackageTask &task) override;
+    utils::error::Result<void> prepare() override { return LINGLONG_OK; }
 
-    virtual std::string getTaskName() const override { return taskName; }
+    utils::error::Result<void> doAction(PackageTask &task) override;
 
-protected:
-    virtual utils::error::Result<void> preInstall(Task &task);
-    virtual utils::error::Result<void> install(Task &task);
-    virtual utils::error::Result<void> postInstall(Task &task);
+    std::string getTaskName() const override { return taskName; }
 
 private:
+    utils::error::Result<void> preInstall(Task &task);
+    utils::error::Result<void> install(Task &task);
+    utils::error::Result<void> postInstall(Task &task);
+
     RefInstallationAction(package::FuzzyReference fuzzyRef,
                           std::vector<std::string> modules,
                           PackageManager &pm,
@@ -54,8 +54,6 @@ private:
     package::FuzzyReference fuzzyRef;
     std::vector<std::string> modules;
 
-    bool prepared = false;
-    bool extraOnly = false;
     ActionOperation operation;
     std::string taskName;
     utils::Transaction transaction;

@@ -21,6 +21,7 @@
 #include <functional>
 #include <memory>
 #include <optional>
+#include <thread>
 
 Q_DECLARE_METATYPE(linglong::api::types::v1::State)
 
@@ -37,14 +38,10 @@ public:
     Q_PROPERTY(int Code READ getPropertyCode NOTIFY CodeChanged)
     Q_PROPERTY(double Percentage READ percentage NOTIFY PercentageChanged)
 
-    explicit PackageTask(const QDBusConnection &connection,
-                         std::function<void(PackageTask &)> job,
-                         QObject *parent);
+    explicit PackageTask(std::function<void(Task &)> job, QObject *parent = nullptr);
     PackageTask(PackageTask &&other) = delete;
     PackageTask &operator=(PackageTask &&other) = delete;
     ~PackageTask() override;
-
-    static PackageTask createTemporaryTask() noexcept;
 
     void onProgress() noexcept override;
     void onStateChanged() noexcept override;
@@ -66,8 +63,6 @@ public:
 
     [[nodiscard]] int getPropertyCode() const noexcept { return static_cast<int>(code()); }
 
-    [[nodiscard]] std::string taskID() const noexcept { return m_taskID; }
-
     [[nodiscard]] std::string taskObjectPath() const noexcept
     {
         return "/org/deepin/linglong/Task1/" + taskID();
@@ -75,7 +70,7 @@ public:
 
     virtual GCancellable *cancellable() noexcept override { return m_cancelFlag; }
 
-    void run() noexcept;
+    utils::error::Result<void> exposeOnDBus(const QDBusConnection &connection) noexcept;
 
 public Q_SLOTS:
     void Cancel() noexcept;
@@ -87,44 +82,73 @@ Q_SIGNALS:
     void PartChanged(uint fetched, uint request);
     void CodeChanged(int newCode);
 
+    void changePropertiesDone();
+
 private:
     friend class PackageTaskQueue;
-    PackageTask();
-    std::string m_taskID;
     GCancellable *m_cancelFlag{ nullptr };
-    std::function<void(PackageTask &)> m_job;
     utils::dbus::PropertiesForwarder *m_forwarder{ nullptr };
-
-    void changePropertiesDone() const noexcept;
 };
 
+// PackageTaskQueue is used to manage tasks and run them in a separated thread
+// however, the queue itself is not thread-safe and must be used from a single thread
 class PackageTaskQueue : public QObject
 
 {
     Q_OBJECT
 public:
     explicit PackageTaskQueue(QObject *parent);
+    ~PackageTaskQueue();
 
     template <typename Func>
     utils::error::Result<std::reference_wrapper<PackageTask>>
-    addNewTask(Func &&job, const QDBusConnection &conn = QDBusConnection::sessionBus()) noexcept
-    {
-        static_assert(std::is_invocable_r_v<void, Func, PackageTask &>,
-                      "mismatch function signature");
+    addPackageTask(Func &&job, std::optional<QDBusConnection> conn = std::nullopt) noexcept;
 
-        auto &ref = m_taskQueue.emplace_back(conn, std::forward<Func>(job), this);
+    template <typename Func>
+    utils::error::Result<std::reference_wrapper<Task>> addTask(Func &&job) noexcept;
 
-        Q_EMIT taskAdded();
-        return ref;
-    }
+    utils::error::Result<std::reference_wrapper<Task>> getTask(const std::string &taskID) noexcept;
 
 Q_SIGNALS:
-    void taskDone(const std::string &id);
-    void startTask();
-    void taskAdded();
+    void taskDone(const QString &taskID);
 
 private:
-    std::list<PackageTask> m_taskQueue;
+    Task &enqueueTask(std::unique_ptr<Task> task);
+    void tryRunTask();
+
+    std::list<std::unique_ptr<Task>> m_taskQueue;
+    std::thread m_taskThread;
 };
+
+template <typename Func>
+utils::error::Result<std::reference_wrapper<PackageTask>>
+PackageTaskQueue::addPackageTask(Func &&job, std::optional<QDBusConnection> conn) noexcept
+{
+    LINGLONG_TRACE("add package task");
+    static_assert(std::is_invocable_r_v<void, Func, Task &>, "mismatch function signature");
+
+    PackageTask &task = dynamic_cast<PackageTask &>(
+      enqueueTask(std::make_unique<PackageTask>(std::forward<Func>(job), this)));
+
+    if (conn) {
+        auto ret = task.exposeOnDBus(*conn);
+        if (!ret) {
+            return LINGLONG_ERR(ret);
+        }
+    }
+
+    return task;
+}
+
+template <typename Func>
+utils::error::Result<std::reference_wrapper<Task>> PackageTaskQueue::addTask(Func &&job) noexcept
+{
+    LINGLONG_TRACE("add task");
+    static_assert(std::is_invocable_r_v<void, Func, Task &>, "mismatch function signature");
+
+    auto &task = enqueueTask(std::make_unique<Task>(std::forward<Func>(job)));
+
+    return task;
+}
 
 } // namespace linglong::service

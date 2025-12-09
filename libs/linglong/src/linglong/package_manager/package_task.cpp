@@ -12,6 +12,7 @@
 #include "linglong/utils/log/formatter.h" // IWYU pragma: keep
 
 #include <fmt/format.h>
+#include <sys/prctl.h>
 
 #include <QDebug>
 #include <QUuid>
@@ -22,67 +23,18 @@ const auto TASK_DONE = 100;
 
 namespace linglong::service {
 
-PackageTask PackageTask::createTemporaryTask() noexcept
-{
-    return {};
-}
-
-PackageTask::PackageTask()
-    : m_taskID(QUuid::createUuid().toString(QUuid::Id128).toStdString())
-    , m_cancelFlag(g_cancellable_new())
-{
-    setReporter(this);
-    setState(linglong::api::types::v1::State::Processing);
-    LogD("task created: {}", m_taskID);
-}
-
-PackageTask::PackageTask(const QDBusConnection &connection,
-                         std::function<void(PackageTask &)> job,
-                         QObject *parent)
+PackageTask::PackageTask(std::function<void(Task &)> job, QObject *parent)
     : QObject(parent)
-    , m_taskID(QUuid::createUuid().toString(QUuid::Id128).toStdString())
+    , Task(job)
     , m_cancelFlag(g_cancellable_new())
-    , m_job(std::move(job))
 {
-    auto *ptr = new linglong::adaptors::task::Task1(this);
-    const auto *mo = ptr->metaObject();
-    auto interfaceIndex = mo->indexOfClassInfo("D-Bus Interface");
-    if (interfaceIndex == -1) {
-        qFatal("internal adaptor error");
-        return;
-    }
-    auto ret =
-      linglong::utils::dbus::registerDBusObject(connection, taskObjectPath().c_str(), this);
-    if (!ret) {
-        qCritical() << ret.error();
-        return;
-    }
-
-    const auto *interface = mo->classInfo(interfaceIndex).value();
-    m_forwarder =
-      new utils::dbus::PropertiesForwarder(connection, taskObjectPath().c_str(), interface, this);
-
     setReporter(this);
-    LogD("task {} created on dbus", m_taskID);
 }
 
 PackageTask::~PackageTask()
 {
     if (m_cancelFlag != nullptr) {
         g_object_unref(m_cancelFlag);
-    }
-    LogD("task {} finished", taskID());
-}
-
-void PackageTask::changePropertiesDone() const noexcept
-{
-    if (m_forwarder == nullptr) {
-        return;
-    }
-
-    auto ret = m_forwarder->forward();
-    if (!ret) {
-        qCritical() << ret.error();
     }
 }
 
@@ -95,7 +47,7 @@ void PackageTask::onProgress() noexcept
 
     Q_EMIT MessageChanged(QString::fromStdString(taskMessage));
     Q_EMIT PercentageChanged(taskPercentage);
-    changePropertiesDone();
+    Q_EMIT changePropertiesDone();
 }
 
 void PackageTask::onStateChanged() noexcept
@@ -109,7 +61,7 @@ void PackageTask::onStateChanged() noexcept
     Q_EMIT StateChanged(taskState);
     Q_EMIT MessageChanged(QString::fromStdString(taskMessage));
     Q_EMIT CodeChanged(taskCode);
-    changePropertiesDone();
+    Q_EMIT changePropertiesDone();
 }
 
 void PackageTask::Cancel() noexcept
@@ -129,57 +81,132 @@ void PackageTask::Cancel() noexcept
     g_cancellable_cancel(m_cancelFlag);
 }
 
-void PackageTask::run() noexcept
+utils::error::Result<void> PackageTask::exposeOnDBus(const QDBusConnection &connection) noexcept
 {
-    m_job(*this);
+    LINGLONG_TRACE(fmt::format("expose task {} on dbus", taskID()));
+
+    if (m_forwarder != nullptr) {
+        return LINGLONG_OK;
+    }
+
+    auto *ptr = new linglong::adaptors::task::Task1(this);
+    const auto *mo = ptr->metaObject();
+    auto interfaceIndex = mo->indexOfClassInfo("D-Bus Interface");
+    if (interfaceIndex == -1) {
+        return LINGLONG_ERR("internal adaptor error");
+    }
+    auto ret =
+      linglong::utils::dbus::registerDBusObject(connection, taskObjectPath().c_str(), this);
+    if (!ret) {
+        return LINGLONG_ERR(ret);
+    }
+
+    const auto *interface = mo->classInfo(interfaceIndex).value();
+    m_forwarder =
+      new utils::dbus::PropertiesForwarder(connection, taskObjectPath().c_str(), interface, this);
+
+    QObject::connect(this, &PackageTask::changePropertiesDone, m_forwarder, [this]() {
+        auto ret = m_forwarder->forward();
+        if (!ret) {
+            LogE("forward propertiesChanged failed: {}", ret.error());
+        }
+    });
+
+    return LINGLONG_OK;
 }
 
 PackageTaskQueue::PackageTaskQueue(QObject *parent)
     : QObject(parent)
 {
-    connect(this, &PackageTaskQueue::taskAdded, &PackageTaskQueue::startTask);
-    connect(this, &PackageTaskQueue::startTask, [this]() {
+}
+
+PackageTaskQueue::~PackageTaskQueue()
+{
+    if (m_taskThread.joinable()) {
+        m_taskThread.join();
+    }
+}
+
+// tryRunTask runs on PackageTaskQueue's thread
+void PackageTaskQueue::tryRunTask()
+{
+    for (auto it = m_taskQueue.begin(); it != m_taskQueue.end();) {
+        // remove done task
+        if ((*it)->isTaskDone()) {
+            LogD("task {} is done, remove it", (*it)->taskID());
+            it = m_taskQueue.erase(it);
+            continue;
+        }
+
+        // skip non-queued task
+        if ((*it)->state() != linglong::api::types::v1::State::Queued) {
+            LogW("task {} at front is not in queued state, skip it", (*it)->taskID());
+            ++it;
+            continue;
+        }
+
+        // std::list::iterator is valid across insert/erase
+        if (m_taskThread.joinable()) {
+            m_taskThread.join();
+        }
+        m_taskThread = std::thread([this, it]() {
+            prctl(PR_SET_NAME, fmt::format("task-{}", (*it)->taskID()).c_str(), 0, 0, 0);
+
+            LogD("task {} started", (*it)->taskID());
+            (*it)->run();
+
+            if (!(*it)->isTaskDone()) {
+                LogW("task {} is not done", (*it)->taskID());
+            } else {
+                LogD("task {} is done", (*it)->taskID());
+            }
+
+            Q_EMIT taskDone(QString::fromStdString((*it)->taskID()));
+
+            QMetaObject::invokeMethod(
+              this,
+              [this, it]() {
+                  m_taskQueue.erase(it);
+                  tryRunTask();
+              },
+              Qt::QueuedConnection);
+        });
+
+        return;
+    }
+}
+
+Task &PackageTaskQueue::enqueueTask(std::unique_ptr<Task> task)
+{
+    LINGLONG_TRACE(fmt::format("enqueue task {}", task->taskID()));
+    bool isFirst = m_taskQueue.empty();
+    auto &ref = m_taskQueue.emplace_back(std::move(task));
+    if (isFirst) {
         QMetaObject::invokeMethod(
-          QCoreApplication::instance(),
+          this,
           [this]() {
-              if (m_taskQueue.empty()) {
-                  return;
-              }
-
-              auto &task = m_taskQueue.front();
-              if (task.state() != linglong::api::types::v1::State::Queued) {
-                  qDebug() << "other task is running, wait for it done";
-                  return;
-              }
-
-              task.run();
-              Q_EMIT taskDone(task.taskID());
+              tryRunTask();
           },
           Qt::QueuedConnection);
-    });
+    }
+    LogD("task {} enqueued", ref->taskID());
+    return *ref;
+}
 
-    connect(this, &PackageTaskQueue::taskDone, [this](const std::string &taskID) {
-        auto task =
-          std::find_if(m_taskQueue.begin(), m_taskQueue.end(), [&taskID](const auto &task) {
-              return task.taskID() == taskID;
-          });
+utils::error::Result<std::reference_wrapper<Task>>
+PackageTaskQueue::getTask(const std::string &taskID) noexcept
+{
+    LINGLONG_TRACE(fmt::format("get task {}", taskID));
 
-        if (task == m_taskQueue.end()) {
-            LogE("task {} not found", taskID);
-            return;
-        }
-
-        // if queued task is done, only remove it from queue
-        // otherwise, remove it and start next task
-        bool isQueuedDone = task->state() == linglong::api::types::v1::State::Queued;
-        Q_EMIT qobject_cast<PackageManager *>(this->parent())
-          ->TaskRemoved(QDBusObjectPath{ task->taskObjectPath().c_str() });
-        m_taskQueue.erase(task);
-
-        if (!isQueuedDone) {
-            Q_EMIT startTask();
-        }
-    });
+    auto it = std::find_if(m_taskQueue.begin(),
+                           m_taskQueue.end(),
+                           [taskID](const std::unique_ptr<Task> &task) {
+                               return task->taskID() == taskID;
+                           });
+    if (it == m_taskQueue.end()) {
+        return LINGLONG_ERR(fmt::format("task {} not found", taskID));
+    }
+    return *it->get();
 }
 
 } // namespace linglong::service

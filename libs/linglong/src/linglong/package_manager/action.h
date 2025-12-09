@@ -31,6 +31,8 @@ struct ActionOperation
     std::optional<package::ReferenceWithRepo> newRef;
 };
 
+// Action is used to run some operations
+// prepare and doAction may be run in different context
 class Action
 {
 public:
@@ -43,9 +45,7 @@ public:
 
     virtual ~Action() = default;
 
-    // prepare runs in DBus calling context, so it should not do long time operations
     virtual utils::error::Result<void> prepare() = 0;
-    // doAction runs in PM tasks context, it's application's main loop for now
     virtual utils::error::Result<void> doAction(PackageTask &task) = 0;
     virtual std::string getTaskName() const = 0;
 

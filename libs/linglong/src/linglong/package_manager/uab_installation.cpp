@@ -237,7 +237,7 @@ utils::error::Result<void> UabInstallationAction::prepare()
         checkedLayers = std::move(res).value();
     }
 
-    this->taskName = fmt::format("Installing {}", uabFile->symLinkTarget());
+    this->taskName = fmt::format("installing uab");
     this->uabFile = std::move(uabFile);
 
     return LINGLONG_OK;

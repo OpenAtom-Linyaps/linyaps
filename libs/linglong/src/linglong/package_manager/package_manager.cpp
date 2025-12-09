@@ -87,8 +87,23 @@ PackageManager::PackageManager(linglong::repo::OSTreeRepo &repo,
     : QObject(parent)
     , repo(repo)
     , tasks(this)
+    , m_search_queue(this)
+    , m_generator_queue(this)
     , containerBuilder(containerBuilder)
 {
+    // tasks and PackageManager are on a same thread, it's safe to getTask in slot
+    QObject::connect(&tasks, &PackageTaskQueue::taskDone, this, [this](const QString &taskID) {
+        auto ret = tasks.getTask(taskID.toStdString());
+        if (!ret) {
+            LogE("get task failed: {}", ret.error());
+            return;
+        }
+
+        if (PackageTask *task = dynamic_cast<PackageTask *>(&(*ret).get()); task != nullptr) {
+            Q_EMIT TaskRemoved(QDBusObjectPath{ task->taskObjectPath().c_str() });
+        }
+    });
+
     using namespace std::chrono_literals;
     auto deferredTimeOut = 3600s;
     auto *deferredTimeOutEnv = ::getenv("LINGLONG_DEFERRED_TIMEOUT");
@@ -590,7 +605,8 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
        options,
        msgType,
        additionalMessage,
-       localRef = localRef ? std::make_optional(*localRef) : std::nullopt](PackageTask &taskRef) {
+       localRef = localRef ? std::make_optional(*localRef) : std::nullopt](Task &task) {
+          PackageTask &taskRef = dynamic_cast<PackageTask &>(task);
           if (msgType == api::types::v1::InteractionMessageType::Upgrade
               && !options.skipInteraction) {
               Q_EMIT RequestInteraction(QDBusObjectPath(taskRef.taskObjectPath().c_str()),
@@ -698,7 +714,7 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
           }
       };
 
-    auto taskRet = tasks.addNewTask(std::move(installer), connection());
+    auto taskRet = tasks.addPackageTask(std::move(installer), connection());
     if (!taskRet) {
         return toDBusReply(taskRet);
     }
@@ -718,10 +734,12 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd,
 {
     std::unique_ptr<utils::InstallHookManager> installHookManager =
       std::make_unique<utils::InstallHookManager>();
+
     auto ret = installHookManager->parseInstallHooks();
     if (!ret) {
         return toDBusReply(ret);
     }
+
     ret = installHookManager->executeInstallHooks(fd.fileDescriptor());
     if (!ret) {
         return toDBusReply(utils::error::ErrorCode::Failed,
@@ -734,34 +752,7 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd,
                            "failed to create uab installation action");
     }
 
-    auto prepared = action->prepare();
-    if (!prepared) {
-        return toDBusReply(prepared);
-    }
-
-    auto taskRet = tasks.addNewTask(
-      [action](PackageTask &task) {
-          LINGLONG_TRACE("uab installation task")
-
-          auto res = action->doAction(task);
-          if (!res) {
-              LogE("uab installation failed: {}", res.error());
-              task.reportError(std::move(res).error());
-          }
-      },
-      connection());
-    if (!taskRet) {
-        return toDBusReply(taskRet);
-    }
-
-    auto &taskRef = taskRet->get();
-    Q_EMIT TaskAdded(QDBusObjectPath{ taskRef.taskObjectPath().c_str() });
-    taskRef.updateState(linglong::api::types::v1::State::Queued, "queued to install from uab");
-    return utils::serialize::toQVariantMap(api::types::v1::PackageManager1PackageTaskResult{
-      .taskObjectPath = taskRef.taskObjectPath(),
-      .code = 0,
-      .message = action->getTaskName() + " is now installing",
-    });
+    return runActionOnTaskQueue(action);
 }
 
 auto PackageManager::InstallFromFile(const QDBusUnixFileDescriptor &fd,
@@ -835,34 +826,7 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
         return toDBusReply(utils::error::ErrorCode::AppInstallFailed, "");
     }
 
-    auto res = action->prepare();
-    if (!res) {
-        return toDBusReply(utils::error::ErrorCode::AppInstallFailed, res.error().message());
-    }
-
-    auto installer = [action](PackageTask &task) {
-        LINGLONG_TRACE("ref installation task")
-        LogD("ref installation task is running");
-        auto res = action->doAction(task);
-        if (!res) {
-            LogE("ref installation failed: {}", res.error());
-            task.reportError(std::move(res).error());
-        }
-    };
-
-    auto taskRet = tasks.addNewTask(std::move(installer), connection());
-    if (!taskRet) {
-        return toDBusReply(utils::error::ErrorCode::Unknown, taskRet.error().message());
-    }
-
-    auto &taskRef = taskRet->get();
-    Q_EMIT TaskAdded(QDBusObjectPath{ taskRef.taskObjectPath().c_str() });
-    taskRef.updateState(linglong::api::types::v1::State::Queued, "queued to install from remote");
-    return utils::serialize::toQVariantMap(api::types::v1::PackageManager1PackageTaskResult{
-      .taskObjectPath = taskRef.taskObjectPath(),
-      .code = 0,
-      .message = action->getTaskName() + " is now installing",
-    });
+    return runActionOnTaskQueue(action);
 }
 
 auto PackageManager::Uninstall(const QVariantMap &parameters) noexcept -> QVariantMap
@@ -949,13 +913,13 @@ auto PackageManager::Uninstall(const QVariantMap &parameters) noexcept -> QVaria
                                mainRef->arch.toStdString(),
                                curModule);
 
-    auto taskRet = tasks.addNewTask(
-      [this, mainRef = *mainRef, curModule](PackageTask &taskRef) {
+    auto taskRet = tasks.addPackageTask(
+      [this, mainRef = *mainRef, curModule](Task &taskRef) {
           if (taskRef.isTaskDone()) {
               return;
           }
 
-          auto res = this->Uninstall(taskRef, mainRef, curModule);
+          auto res = this->Uninstall(dynamic_cast<PackageTask &>(taskRef), mainRef, curModule);
           if (!res) {
               LogE("uninstall failed: {}", res.error());
               taskRef.reportError(std::move(res.error()));
@@ -963,7 +927,7 @@ auto PackageManager::Uninstall(const QVariantMap &parameters) noexcept -> QVaria
       },
       connection());
     if (!taskRet) {
-        return toDBusReply(utils::error::ErrorCode::AppUninstallFailed, taskRet.error().message());
+        return toDBusReply(taskRet);
     }
 
     auto &taskRef = taskRet->get();
@@ -1039,32 +1003,7 @@ auto PackageManager::Update(const QVariantMap &parameters) noexcept -> QVariantM
                            "failed to create update action");
     }
 
-    auto res = action->prepare();
-    if (!res) {
-        return toDBusReply(utils::error::ErrorCode::AppUpgradeFailed, res.error().message());
-    }
-
-    auto ret = tasks.addNewTask(
-      [action](PackageTask &taskRef) {
-          auto res = action->doAction(taskRef);
-          if (!res) {
-              LogE("update failed: {}", res.error());
-              taskRef.reportError(std::move(res.error()));
-          }
-      },
-      connection());
-    if (!ret) {
-        return toDBusReply(utils::error::ErrorCode::AppUpgradeFailed, ret.error().message());
-    }
-
-    auto &taskRef = ret->get();
-    Q_EMIT TaskAdded(QDBusObjectPath{ taskRef.taskObjectPath().c_str() });
-    taskRef.updateState(linglong::api::types::v1::State::Queued, "queued to update");
-    return utils::serialize::toQVariantMap(api::types::v1::PackageManager1PackageTaskResult{
-      .taskObjectPath = taskRef.taskObjectPath(),
-      .code = 0,
-      .message = "updating",
-    });
+    return runActionOnTaskQueue(action);
 }
 
 utils::error::Result<void> PackageManager::installRef(Task &task,
@@ -1188,44 +1127,47 @@ auto PackageManager::Search(const QVariantMap &parameters) noexcept -> QVariantM
         return toDBusReply(paras);
     }
 
-    auto jobID = QUuid::createUuid().toString();
+    auto task =
+      m_search_queue.addPackageTask([this, params = std::move(paras).value()](Task &task) {
+          std::map<std::string, std::vector<api::types::v1::PackageInfoV2>> pkgs;
+          for (const auto &repoAlias : params.repos) {
+              auto repoRet = this->repo.getRepoByAlias(repoAlias);
+              if (!repoRet) {
+                  LogW("repo {} not found", repoAlias);
+                  continue;
+              }
 
-    m_search_queue.runTask([this, jobID, params = std::move(paras).value()]() {
-        std::map<std::string, std::vector<api::types::v1::PackageInfoV2>> pkgs;
-        for (const auto &repoAlias : params.repos) {
-            auto repoRet = this->repo.getRepoByAlias(repoAlias);
-            if (!repoRet) {
-                qWarning() << "repo" << repoAlias.c_str() << "not found";
-                continue;
-            }
+              auto pkgInfosRet = this->repo.searchRemote(params.id, *repoRet);
+              if (!pkgInfosRet) {
+                  LogW("failed to search remote: {}", pkgInfosRet.error());
+                  continue;
+              }
 
-            auto pkgInfosRet = this->repo.searchRemote(params.id, *repoRet);
-            if (!pkgInfosRet) {
-                qWarning() << "list remote failed: " << pkgInfosRet.error().message();
-                Q_EMIT this->SearchFinished(
-                  jobID,
-                  toDBusReply(utils::error::ErrorCode::Failed, pkgInfosRet.error().message()));
-                return;
-            }
+              if (pkgInfosRet->empty()) {
+                  continue;
+              }
 
-            if (pkgInfosRet->empty()) {
-                continue;
-            }
+              pkgs.emplace(repoRet->alias.value_or(repoRet->name), std::move(*pkgInfosRet));
+          }
 
-            pkgs.emplace(repoRet->alias.value_or(repoRet->name), std::move(*pkgInfosRet));
-        }
+          Q_EMIT this->SearchFinished(
+            QString::fromStdString(task.taskID()),
+            utils::serialize::toQVariantMap(api::types::v1::PackageManager1SearchResult{
+              .packages = std::move(pkgs),
+              .code = 0,
+              .message = "",
+              .type = "",
+            }));
+      });
+    if (!task) {
+        return toDBusReply(task);
+    }
 
-        Q_EMIT this->SearchFinished(
-          jobID,
-          utils::serialize::toQVariantMap(api::types::v1::PackageManager1SearchResult{
-            .packages = std::move(pkgs),
-            .code = 0,
-            .message = "",
-            .type = "",
-          }));
-    });
+    auto &taskRef = task->get();
+    taskRef.updateState(linglong::api::types::v1::State::Queued,
+                        fmt::format("search {}", paras->id));
     auto result = utils::serialize::toQVariantMap(api::types::v1::PackageManager1JobInfo{
-      .id = jobID.toStdString(),
+      .id = taskRef.taskID(),
       .code = 0,
       .message = "",
       .type = "",
@@ -1299,23 +1241,32 @@ utils::error::Result<void> PackageManager::installDependsRef(Task &task,
 
 auto PackageManager::Prune() noexcept -> QVariantMap
 {
-    auto jobID = QUuid::createUuid().toString();
-    m_prune_queue.runTask([this, jobID]() {
+    auto task = tasks.addTask([this](Task &task) {
         std::vector<api::types::v1::PackageInfoV2> pkgs;
         auto ret = Prune(pkgs);
         if (!ret.has_value()) {
-            Q_EMIT this->PruneFinished(jobID, toDBusReply(ret));
+            Q_EMIT PruneFinished(QString::fromStdString(task.taskID()), toDBusReply(ret));
+            task.reportError(std::move(ret).error());
             return;
         }
+
         auto result = api::types::v1::PackageManager1PruneResult{
             .packages = pkgs,
-            .code = 0,
+            .code = static_cast<int64_t>(utils::error::ErrorCode::Success),
             .message = "",
         };
-        Q_EMIT this->PruneFinished(jobID, utils::serialize::toQVariantMap(result));
+        Q_EMIT PruneFinished(QString::fromStdString(task.taskID()),
+                             utils::serialize::toQVariantMap(result));
+        task.updateState(linglong::api::types::v1::State::Succeed, "prune");
     });
+    if (!task) {
+        return toDBusReply(task);
+    }
+
+    auto &taskRef = task->get();
+    taskRef.updateState(linglong::api::types::v1::State::Queued, "prune");
     auto result = utils::serialize::toQVariantMap(api::types::v1::PackageManager1JobInfo{
-      .id = jobID.toStdString(),
+      .id = taskRef.taskID(),
       .code = 0,
       .message = "",
     });
@@ -1657,23 +1608,26 @@ auto PackageManager::GenerateCache(const QString &reference) noexcept -> QVarian
     if (!refRet) {
         return toDBusReply(refRet);
     }
-    auto ref = *refRet;
-    auto jobID = QUuid::createUuid().toString();
-    m_generator_queue.runTask([this, jobID, ref]() {
-        LogI("Generate cache for {}", ref.toString());
+    auto taskRet =
+      m_generator_queue.addPackageTask([this, ref = std::move(refRet).value()](Task &task) {
+          LogI("Generate cache for {}", ref.toString());
 
-        auto ret = this->generateCache(ref);
-        if (!ret) {
-            LogE("failed to generate cache for {}: {}", ref.toString(), ret.error().message());
-            Q_EMIT this->GenerateCacheFinished(jobID, false);
-            return;
-        }
+          auto ret = this->generateCache(ref);
+          if (!ret) {
+              LogE("failed to generate cache for {}: {}", ref.toString(), ret.error().message());
+              Q_EMIT this->GenerateCacheFinished(QString::fromStdString(task.taskID()), false);
+              return;
+          }
 
-        qInfo() << "Generate cache finished";
-        Q_EMIT this->GenerateCacheFinished(jobID, true);
-    });
+          qInfo() << "Generate cache finished";
+          Q_EMIT this->GenerateCacheFinished(QString::fromStdString(task.taskID()), true);
+      });
+    if (!taskRet) {
+        return toDBusReply(taskRet);
+    }
+
     auto result = utils::serialize::toQVariantMap(api::types::v1::PackageManager1JobInfo{
-      .id = jobID.toStdString(),
+      .id = taskRet->get().taskID(),
       .code = 0,
       .message = "",
     });
@@ -1751,6 +1705,43 @@ bool PackageManager::waitConfirm(
     disconnect(conn);
 
     return !taskRef.isTaskDone();
+}
+
+QVariantMap PackageManager::runActionOnTaskQueue(std::shared_ptr<Action> action)
+{
+    // prepare is run within the DBus calling context.
+    // doAction is run within the PM's packages task queue context.
+    // state consistency cannot be assumed between prepare and doAction.
+    // For now, DBus calling context runs on the application's main event loop,
+    // and PM's packages task runs on a temporary work thread.
+    auto prepared = action->prepare();
+    if (!prepared) {
+        return toDBusReply(prepared);
+    }
+
+    auto taskRet = tasks.addPackageTask(
+      [action](Task &task) {
+          auto res = action->doAction(dynamic_cast<PackageTask &>(task));
+          if (!res) {
+              LogE("action {} failed: {}", action->getTaskName(), res.error());
+              task.reportError(std::move(res).error());
+          } else {
+              LogI("action {} succeed: {}", action->getTaskName(), task.Task::message());
+          }
+      },
+      connection());
+    if (!taskRet) {
+        return toDBusReply(taskRet);
+    }
+
+    auto &taskRef = taskRet->get();
+    Q_EMIT TaskAdded(QDBusObjectPath{ taskRef.taskObjectPath().c_str() });
+    taskRef.updateState(linglong::api::types::v1::State::Queued, action->getTaskName());
+    return utils::serialize::toQVariantMap(api::types::v1::PackageManager1PackageTaskResult{
+      .taskObjectPath = taskRef.taskObjectPath(),
+      .code = 0,
+      .message = action->getTaskName() + " is queued",
+    });
 }
 
 } // namespace linglong::service

@@ -106,11 +106,12 @@ if(ENABLE_CPM)
   include(CPM)
   CPMFindPackage(
     NAME tl-expected
-    VERSION 1.0.0 # NOTE: Upstream cmake version doesn't match git tag, we need
-                  # https://github.com/TartanLlama/expected/pull/62 in v1.1.0,
+    VERSION 1.2.0 # NOTE: Upstream cmake version doesn't match git tag, we need https://github.com/TartanLlama/expected/pull/62 in v1.1.0,
                   # but cmake version of v1.1.0 is 1.0.0.
+                  # upstream fix this issue in https://github.com/TartanLlama/expected/commit/17d0058a5a5d3e0ea647884f9b29c518dd06f26e
+                  # so we require tl-expected >= 1.2.0
     GITHUB_REPOSITORY TartanLlama/expected
-    GIT_TAG v1.1.0
+    GIT_TAG v1.3.1
     GIT_SHALLOW ON
     OPTIONS "EXPECTED_BUILD_TESTS OFF"
     EXCLUDE_FROM_ALL ON)
@@ -162,7 +163,7 @@ if(NOT fmt_FOUND)
 endif()
 
 # NOTE: UOS v20 do not have tl-expected packaged.
-find_package(tl-expected 1.1.0 QUIET)
+find_package(tl-expected 1.2.0 QUIET)
 if(NOT tl-expected_FOUND)
   message(STATUS "tl-expected not found, using external tl-expected")
   # list(APPEND linglong_EXTERNALS tl-expected) # tl-expected requires 3.14

@@ -149,6 +149,14 @@ sudo apt update
 sudo apt install linglong-bin linglong-installer
 ```
 
+### NixOS
+
+In NixOS 25.11 or later versions, modify the configuration file (usually `/etc/nixos/configuration.nix`), and add:
+
+```nix
+  services.linyaps.enable = true;
+```
+
 ## Linyaps Build Tool Installation Instructions
 
 ### Debian-based

@@ -5,6 +5,7 @@
 #include "namespace.h"
 
 #include "linglong/utils/command/cmd.h"
+#include "linglong/utils/finally/finally.h"
 #include "linglong/utils/log/log.h"
 
 #include <sys/capability.h>
@@ -13,6 +14,7 @@
 
 #include <pwd.h>
 #include <sched.h>
+#include <sys/mman.h>
 #include <sys/socket.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -32,7 +34,7 @@ utils::error::Result<std::string> getUserName(uid_t uid)
 
     std::vector<char> buf(bufSize);
     struct passwd pw;
-    struct passwd *result;
+    struct passwd *result{ nullptr };
     auto res = getpwuid_r(uid, &pw, buf.data(), buf.size(), &result);
     if (res != 0) {
         return LINGLONG_ERR(fmt::format("failed to get user name {}", res).c_str());
@@ -78,7 +80,7 @@ utils::error::Result<std::vector<detail::SubuidRange>> getSubuidRange(uid_t uid,
         return LINGLONG_ERR("failed to get user name", username.error());
     }
 
-    auto filename = isUid ? "/etc/subuid" : "/etc/subgid";
+    const auto *filename = isUid ? "/etc/subuid" : "/etc/subgid";
     std::ifstream file(filename);
     if (!file.is_open()) {
         return {};
@@ -93,8 +95,8 @@ utils::error::Result<bool> needRunInNamespace()
 {
     LINGLONG_TRACE("check need run in namespace");
 
-    auto caps = cap_get_proc();
-    if (!caps) {
+    auto *caps = cap_get_proc();
+    if (caps == nullptr) {
         return LINGLONG_ERR("failed to get capabilities");
     }
 
@@ -113,54 +115,105 @@ utils::error::Result<bool> needRunInNamespace()
 // try to clone process with new user_namespaces and mount_namespaces
 // and map root/root in namespace to current user/group, /etc/subuid and
 // /etc/subgid file will be considered
-utils::error::Result<int> runInNamespace(int argc, char *argv[])
+utils::error::Result<int> runInNamespace(int argc, char **argv)
 {
     LINGLONG_TRACE("run in namespace");
 
     auto entry = [](void *args) {
         auto *runInNamespaceArgs = static_cast<detail::RunInNamespaceArgs *>(args);
-        const auto &fd = runInNamespaceArgs->fd;
+        auto &pair = runInNamespaceArgs->pair;
+        close(pair[0]);
 
-        write(fd, "1", 1);
+        auto closeFd = linglong::utils::finally::finally([&pair]() {
+            if (pair[1] != -1) {
+                close(pair[1]);
+            }
+        });
+
+        while (write(pair[1], "1", 1) != 1) {
+            if (errno == EINTR) {
+                continue;
+            }
+
+            LogW("failed to write data to sync socket: {}", ::strerror(errno));
+            return -1;
+        }
 
         LogD("waiting mapping");
 
-        char buf;
-        if (read(fd, &buf, 1) != 1) {
+        char buf{ 0 };
+        while (read(pair[1], &buf, 1) != 1) {
+            if (errno == EINTR) {
+                continue;
+            }
+
+            LogW("failed to read data from sync socket: {}", ::strerror(errno));
             return -1;
         }
-        close(fd);
+
+        close(pair[1]);
+        pair[1] = -1;
 
         LogD("run command");
 
         execvp(runInNamespaceArgs->argv[0], runInNamespaceArgs->argv);
 
-        LogD("execvp failed");
+        LogE("execvp failed: {}", ::strerror(errno));
         return -1;
     };
 
-    int pair[2];
-    if (socketpair(AF_UNIX, SOCK_STREAM, 0, pair) == -1) {
-        return LINGLONG_ERR("socketpair failed");
+    std::array<int, 2> pair{};
+    if (socketpair(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0, pair.data()) == -1) {
+        return LINGLONG_ERR(fmt::format("socketpair failed: {}", ::strerror(errno)));
     }
 
-    detail::RunInNamespaceArgs args{ argc, argv, pair[1] };
-    std::vector<char> stack(1024 * 1024);
-    auto pid = clone((int (*)(void *))entry,
-                     stack.data() + stack.size(),
+    auto closeSocket = linglong::utils::finally::finally([&pair]() {
+        if (pair[0] != -1) {
+            close(pair[0]);
+        }
+
+        if (pair[1] != -1) {
+            close(pair[1]);
+        }
+    });
+
+    constexpr auto stackSize = 1024 * 1024;
+    auto *addr = mmap(nullptr,
+                      stackSize,
+                      PROT_READ | PROT_WRITE,
+                      MAP_ANONYMOUS | MAP_PRIVATE | MAP_STACK,
+                      -1,
+                      0);
+    if (addr == MAP_FAILED) {
+        return LINGLONG_ERR(
+          fmt::format("failed to create stack for child process: {}", strerror(errno)));
+    }
+
+    auto recycle = linglong::utils::finally::finally([addr]() {
+        munmap(addr, stackSize);
+    });
+
+    detail::RunInNamespaceArgs args{ argc, argv, pair };
+    auto pid = clone(entry,
+                     static_cast<std::byte *>(addr) + stackSize,
                      CLONE_NEWNS | CLONE_NEWUSER | SIGCHLD,
                      &args);
-    if (pid < 0) {
-        return LINGLONG_ERR(fmt::format("clone failed {}", strerror(errno)).c_str(), errno);
-    }
-
     close(pair[1]);
+    pair[1] = -1;
+
+    if (pid < 0) {
+        return LINGLONG_ERR(fmt::format("clone failed: {}", strerror(errno)));
+    }
 
     LogD("waiting child {}", pid);
 
-    char buf;
-    if (read(pair[0], &buf, 1) != 1) {
-        return LINGLONG_ERR("read failed");
+    char buf{ 0 };
+    while (read(pair[0], &buf, 1) != 1) {
+        if (errno == EINTR) {
+            continue;
+        }
+
+        return LINGLONG_ERR(fmt::format("read failed: {}", ::strerror(errno)));
     }
 
     auto mappingTool = [](bool isUid, pid_t pid) -> utils::error::Result<void> {
@@ -175,14 +228,20 @@ utils::error::Result<int> runInNamespace(int argc, char *argv[])
         }
 
         utils::command::Cmd cmd(isUid ? "newuidmap" : "newgidmap");
-        int containerID = 0;
+        unsigned long containerID = 0;
         QStringList args = { QString::number(pid),
                              QString::number(containerID),
                              QString::number(id),
                              "1" };
         for (const auto &range : *ranges) {
             args << QString::number(containerID + 1) << range.subuid.c_str() << range.count.c_str();
-            containerID += std::stoi(range.count);
+            try {
+                containerID += std::stoul(range.count);
+            } catch (const std::invalid_argument &e) {
+                return LINGLONG_ERR(fmt::format("invalid subuid count: {}", range.count));
+            } catch (const std::out_of_range &e) {
+                return LINGLONG_ERR(fmt::format("subuid count out of range: {}", range.count));
+            }
         }
 
         auto res = cmd.exec(args);
@@ -207,8 +266,9 @@ utils::error::Result<int> runInNamespace(int argc, char *argv[])
         return LINGLONG_ERR("write failed");
     }
     close(pair[0]);
+    pair[0] = -1;
 
-    int status;
+    int status{ 0 };
     while (true) {
         auto res = waitpid(pid, &status, 0);
         if (res == -1) {
@@ -216,7 +276,7 @@ utils::error::Result<int> runInNamespace(int argc, char *argv[])
                 continue;
             }
 
-            return LINGLONG_ERR(fmt::format("waitpid failed {}", strerror(errno)).c_str());
+            return LINGLONG_ERR(fmt::format("waitpid failed {}", strerror(errno)));
         }
 
         if (WIFEXITED(status)) {

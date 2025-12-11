@@ -5,7 +5,6 @@
 #pragma once
 
 #include "linglong/utils/error/error.h"
-#include "ocppi/runtime/config/types/IdMapping.hpp"
 
 namespace linglong::utils {
 
@@ -15,7 +14,7 @@ struct RunInNamespaceArgs
 {
     int argc;
     char **argv;
-    int fd;
+    std::array<int, 2> pair;
 };
 
 struct SubuidRange
@@ -33,6 +32,6 @@ utils::error::Result<std::vector<SubuidRange>> getSubuidRange(uid_t uid, bool is
 } // namespace detail
 
 utils::error::Result<bool> needRunInNamespace();
-utils::error::Result<int> runInNamespace(int argc, char *argv[]);
+utils::error::Result<int> runInNamespace(int argc, char **argv);
 
 } // namespace linglong::utils

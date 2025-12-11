@@ -4,8 +4,6 @@
 
 #include "task.h"
 
-#include "linglong/utils/log/log.h"
-
 namespace linglong::service {
 
 void Task::updateProgress(double percentage, std::optional<std::string> message)
@@ -21,7 +19,7 @@ void Task::updateProgress(double percentage, std::optional<std::string> message)
             updateMessage(std::move(message).value());
         }
 
-        if (m_reporter) {
+        if (m_reporter != nullptr) {
             m_reporter->onProgress();
         }
     }
@@ -32,7 +30,7 @@ void Task::updateState(linglong::api::types::v1::State newState, const std::stri
     m_state = newState;
     m_message = message;
 
-    if (m_reporter) {
+    if (m_reporter != nullptr) {
         m_reporter->onStateChanged();
     }
 }
@@ -43,14 +41,14 @@ void Task::reportError(linglong::utils::error::Error &&err) noexcept
     m_message = err.message();
     m_code = static_cast<utils::error::ErrorCode>(err.code());
 
-    if (m_reporter) {
+    if (m_reporter != nullptr) {
         m_reporter->onStateChanged();
     }
 }
 
 void Task::reportDataHandled(uint handled, uint total) noexcept
 {
-    if (m_reporter) {
+    if (m_reporter != nullptr) {
         m_reporter->onHandled(handled, total);
     }
 }
@@ -59,7 +57,7 @@ void Task::updateMessage(const std::string &message) noexcept
 {
     setMessage(message);
 
-    if (m_reporter) {
+    if (m_reporter != nullptr) {
         m_reporter->onMessage();
     }
 }
@@ -79,9 +77,9 @@ TaskContainer::TaskContainer(Task &owner, int count)
 TaskContainer::TaskContainer(Task &owner, std::vector<int> weight)
     : m_owner(owner)
     , m_weight(std::move(weight))
+    , m_totalWeight(std::accumulate(m_weight.begin(), m_weight.end(), 0))
+    , m_totalPercentage(100 - owner.percentage())
 {
-    m_totalPercentage = 100 - owner.percentage();
-    m_totalWeight = std::accumulate(m_weight.begin(), m_weight.end(), 0);
     m_parts.reserve(m_weight.size());
     for (size_t i = 0; i < m_weight.size(); ++i) {
         auto &part = m_parts.emplace_back(new TaskPart(owner));
@@ -130,7 +128,7 @@ double TaskContainer::percentage() const noexcept
 
 double TaskContainer::ownerPercentage() const noexcept
 {
-    return (100 - m_totalPercentage) + percentage() / 100 * m_totalPercentage;
+    return (100 - m_totalPercentage) + (percentage() / 100 * m_totalPercentage);
 }
 
 } // namespace linglong::service

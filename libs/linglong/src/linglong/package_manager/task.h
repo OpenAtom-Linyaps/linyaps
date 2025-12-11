@@ -9,8 +9,6 @@
 
 #include <gio/gio.h>
 
-#include <memory>
-
 namespace linglong::service {
 
 class TaskReporter
@@ -31,6 +29,8 @@ public:
     Task() = default;
     Task(Task &&) = default;
     Task &operator=(Task &&) = default;
+    Task(const Task &) = delete;
+    Task &operator=(const Task &) = delete;
     virtual ~Task() = default;
 
     void setReporter(TaskReporter *reporter) { m_reporter = reporter; }
@@ -42,7 +42,7 @@ public:
     virtual void reportDataHandled(uint handled, uint total) noexcept;
     virtual void updateMessage(const std::string &message) noexcept;
 
-    virtual bool isTaskDone() const noexcept;
+    [[nodiscard]] virtual bool isTaskDone() const noexcept;
 
     virtual GCancellable *cancellable() noexcept { return nullptr; }
 
@@ -62,7 +62,7 @@ public:
 
 private:
     // progress
-    double m_percentage;
+    double m_percentage{ 0 };
 
     TaskReporter *m_reporter{ nullptr };
 
@@ -77,37 +77,39 @@ private:
 class TaskPart : public Task
 {
 public:
-    TaskPart(Task &owner)
+    explicit TaskPart(Task &owner)
         : m_owner(owner)
     {
     }
 
     TaskPart(TaskPart &&) = default;
     TaskPart &operator=(TaskPart &&) = default;
+    TaskPart(const TaskPart &) = delete;
+    TaskPart &operator=(const TaskPart &) = delete;
     ~TaskPart() override = default;
 
-    GCancellable *cancellable() noexcept override { return m_owner.cancellable(); }
+    GCancellable *cancellable() noexcept override { return m_owner.get().cancellable(); }
 
     void updateState(linglong::api::types::v1::State newState,
                      const std::string &message) noexcept override
     {
-        return m_owner.updateState(newState, message);
+        m_owner.get().updateState(newState, message);
     }
 
     void reportError(linglong::utils::error::Error &&err) noexcept override
     {
-        return m_owner.reportError(std::move(err));
+        m_owner.get().reportError(std::move(err));
     }
 
     void updateMessage(const std::string &message) noexcept override
     {
-        return m_owner.updateMessage(message);
+        m_owner.get().updateMessage(message);
     }
 
-    bool isTaskDone() const noexcept override { return m_owner.isTaskDone(); }
+    [[nodiscard]] bool isTaskDone() const noexcept override { return m_owner.get().isTaskDone(); }
 
 private:
-    Task &m_owner;
+    std::reference_wrapper<Task> m_owner;
 };
 
 // TaskPart in TaskContainer is used for report progress only,
@@ -118,14 +120,16 @@ public:
     TaskContainer(Task &owner, int count);
     TaskContainer(Task &owner, std::vector<int> weight);
 
-    TaskContainer(TaskContainer &&other) = default;
-    TaskContainer &operator=(TaskContainer &&other) = default;
-    ~TaskContainer();
+    TaskContainer(TaskContainer &&other) = delete;
+    TaskContainer &operator=(TaskContainer &&other) = delete;
+    TaskContainer(const TaskContainer &other) = delete;
+    TaskContainer &operator=(const TaskContainer &other) = delete;
+    ~TaskContainer() override;
 
-    bool hasNext() const;
+    [[nodiscard]] bool hasNext() const;
     Task &next();
 
-    double percentage() const noexcept;
+    [[nodiscard]] double percentage() const noexcept;
 
 private:
     void onProgress() noexcept override;
@@ -136,9 +140,8 @@ private:
 
     void onMessage() noexcept override { }
 
-    double ownerPercentage() const noexcept;
+    [[nodiscard]] double ownerPercentage() const noexcept;
 
-private:
     Task &m_owner;
     std::vector<int> m_weight;
     std::vector<Task *> m_parts;

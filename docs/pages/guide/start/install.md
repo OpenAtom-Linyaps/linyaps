@@ -151,26 +151,10 @@ sudo apt install linglong-bin linglong-installer
 
 ### NixOS
 
-需要NixOS 25.11及以上 或 NixOS unstable
-```sh
-sudo nano /etc/nixos/configuration.nix
-```
-
-将以下内容添加至 `/etc/nixos/configuration.nix` 文件中：
+在 NixOS 25.11或以上版本中，修改配置文件(一般是`/etc/nixos/configuration.nix`), 添加：
 
 ```nix
-  environment.systemPackages = with pkgs; [
-    # ... 其他软件包
-    linyaps
-    linyaps-box
-    linyaps-web-store-installer
-  ];
   services.linyaps.enable = true;
-```
-
-然后执行
-```sh
-sudo nixos-rebuild switch
 ```
 
 ## 如意玲珑构建工具安装说明

@@ -25,6 +25,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
+#include <memory>
 #include <utility>
 
 namespace linglong::utils::finally {
@@ -73,5 +74,11 @@ template <class F>
 [[nodiscard]] auto finally(F &&f) noexcept
 {
     return final_action<std::decay_t<F>>{ std::forward<F>(f) };
+}
+
+template <class F>
+[[nodiscard]] auto shared_finally(F &&f) noexcept
+{
+    return std::make_shared<final_action<std::decay_t<F>>>(std::forward<F>(f));
 }
 } // namespace linglong::utils::finally

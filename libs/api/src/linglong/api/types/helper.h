@@ -13,10 +13,20 @@ namespace linglong::api::types::v1 {
 
 // I added this size assertion because these structs overload == operator.
 // Adding new fields will make this fail, reminding me to update the == implementation.
-static_assert(sizeof(struct Repo) == 120);
-static_assert(sizeof(struct RepoConfig) == 88);
-static_assert(sizeof(struct RepoConfigV2) == 64);
-static_assert(sizeof(struct UpgradeListResult) == 96);
+// Architecture-specific size assertions to handle 32-bit vs 64-bit differences
+// x86_64: pointers are 8 bytes, typically aligned to 8 bytes
+// i386: pointers are 4 bytes, typically aligned to 4 bytes
+#ifdef __i386__
+static_assert(sizeof(struct Repo) == 64);              // 32-bit: 4-byte alignment
+static_assert(sizeof(struct RepoConfig) == 48);        // 32-bit: 4-byte alignment
+static_assert(sizeof(struct RepoConfigV2) == 32);      // 32-bit: 4-byte alignment
+static_assert(sizeof(struct UpgradeListResult) == 48); // 32-bit: 4-byte alignment
+#else
+static_assert(sizeof(struct Repo) == 120);             // 64-bit: 8-byte alignment
+static_assert(sizeof(struct RepoConfig) == 88);        // 64-bit: 8-byte alignment
+static_assert(sizeof(struct RepoConfigV2) == 64);      // 64-bit: 8-byte alignment
+static_assert(sizeof(struct UpgradeListResult) == 96); // 64-bit: 8-byte alignment
+#endif
 
 inline bool operator==(const Repo &cfg1, const Repo &cfg2) noexcept
 {

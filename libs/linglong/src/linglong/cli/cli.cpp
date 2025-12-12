@@ -50,6 +50,7 @@
 #include <QCryptographicHash>
 #include <QEventLoop>
 #include <QFileInfo>
+#include <QProcess>
 
 #include <algorithm>
 #include <cassert>
@@ -466,6 +467,8 @@ int Cli::run(const RunOptions &options)
     auto uid = getuid();
     auto gid = getgid();
     auto pid = getpid();
+
+    detectDrivers();
 
     auto userContainerDir = std::filesystem::path{ "/run/linglong" } / std::to_string(uid);
     if (auto ret = utils::ensureDirectory(userContainerDir); !ret) {
@@ -2530,6 +2533,19 @@ bool Cli::handleCommonError(const utils::error::Error &error)
     }
 
     return true;
+}
+
+void Cli::detectDrivers()
+{
+    QProcess process;
+    process.setProgram(QString(LINGLONG_LIBEXEC_DIR "/ll-driver-detect"));
+    // 禁用标准输入 (stdin)
+    process.setStandardInputFile("/dev/null");
+    // 禁用标准输出 (stdout)
+    process.setStandardOutputFile("/dev/null");
+    // 禁用标准错误输出 (stderr)
+    process.setStandardErrorFile("/dev/null");
+    process.startDetached();
 }
 
 } // namespace linglong::cli

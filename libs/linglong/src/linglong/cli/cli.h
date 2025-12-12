@@ -224,6 +224,7 @@ private:
     int getLayerDir(const InspectOptions &options);
     int getBundleDir(const InspectOptions &options);
     utils::error::Result<void> initInteraction();
+    void detectDrivers();
 
     template <typename T>
     utils::error::Result<T> waitDBusReply(QDBusPendingReply<QVariantMap> &reply)

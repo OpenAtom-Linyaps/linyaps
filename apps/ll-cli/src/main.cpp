@@ -30,8 +30,10 @@
 #include <QtGlobal>
 
 #include <algorithm>
+#include <cctype>
 #include <cstddef>
 #include <functional>
+#include <map>
 #include <memory>
 #include <thread>
 
@@ -660,7 +662,13 @@ static std::string configUsageLines()
            "  ll-cli config clear-fs-allow [--global | --app <appid> | --base <baseid>]\n"
            "  ll-cli config set-command    [--global | --app <appid> | --base <baseid>] <cmd> [--entrypoint P] [--cwd D] "
            "[--args-prefix \"...\"] [--args-suffix \"...\"] [KEY=VAL ...]\n"
-           "  ll-cli config unset-command  [--global | --app <appid> | --base <baseid>] <cmd>\n") };
+           "  ll-cli config unset-command  [--global | --app <appid> | --base <baseid>] <cmd>\n"
+           "  ll-cli config enable-permission  [--global | --app <appid> | --base <baseid>] --category NAME PERM [PERM ...]\n"
+           "  ll-cli config disable-permission [--global | --app <appid> | --base <baseid>] --category NAME PERM [PERM ...]\n"
+           "  ll-cli config add-udev-rule       [--global | --app <appid> | --base <baseid>] --name NAME --file PATH\n"
+           "  ll-cli config rm-udev-rule        [--global | --app <appid> | --base <baseid>] --name NAME\n"
+           "  ll-cli config allow-config-home   --global APPID [APPID ...]\n"
+           "  ll-cli config deny-config-home    --global APPID [APPID ...]\n") };
 }
 
 static std::string configShortHelp()
@@ -1043,6 +1051,189 @@ static void jsonUnsetCommand(json &root, const std::string &cmd)
         return;
     }
     root["commands"].erase(cmd);
+}
+
+static bool jsonAddUdevRule(json &root, const std::string &name, const std::string &content)
+{
+    if (name.empty() || content.empty()) {
+        return false;
+    }
+    auto &arr = root["udev_rules"];
+    if (!arr.is_array()) {
+        arr = json::array();
+    }
+    for (auto &item : arr) {
+        if (!item.is_object()) {
+            continue;
+        }
+        if (item.value("name", "") == name) {
+            item["content"] = content;
+            return true;
+        }
+    }
+    arr.push_back(json{ { "name", name }, { "content", content } });
+    return true;
+}
+
+static bool jsonRmUdevRule(json &root, const std::string &name)
+{
+    if (!root.contains("udev_rules") || !root["udev_rules"].is_array()) {
+        return false;
+    }
+    auto &arr = root["udev_rules"];
+    auto old = arr.size();
+    arr.erase(std::remove_if(arr.begin(), arr.end(), [&](const json &item) {
+                  return item.is_object() && item.value("name", "") == name;
+              }),
+              arr.end());
+    return arr.size() != old;
+}
+
+static std::optional<std::string> readTextFile(const std::filesystem::path &path)
+{
+    try {
+        std::ifstream in(path);
+        if (!in.is_open()) {
+            return std::nullopt;
+        }
+        std::stringstream buffer;
+        buffer << in.rdbuf();
+        return buffer.str();
+    } catch (...) {
+        return std::nullopt;
+    }
+}
+
+static json &ensureConfigWhitelist(json &root, const std::string &key)
+{
+    auto &arr = root[key];
+    if (!arr.is_array()) {
+        arr = json::array();
+    }
+    return arr;
+}
+
+static void jsonAllowConfigAccessImpl(json &root,
+                                      const std::vector<std::string> &apps,
+                                      const std::string &key)
+{
+    auto &arr = ensureConfigWhitelist(root, key);
+    std::unordered_set<std::string> existing;
+    for (const auto &entry : arr) {
+        if (entry.is_string()) {
+            existing.insert(entry.get<std::string>());
+        }
+    }
+    for (const auto &app : apps) {
+        if (!app.empty() && existing.insert(app).second) {
+            arr.push_back(app);
+        }
+    }
+}
+
+static bool jsonDenyConfigAccessImpl(json &root,
+                                     const std::vector<std::string> &apps,
+                                     const std::string &key)
+{
+    if (!root.contains(key) || !root[key].is_array()) {
+        return false;
+    }
+    auto &arr = root[key];
+    auto old = arr.size();
+    std::unordered_set<std::string> targets(apps.begin(), apps.end());
+    arr.erase(std::remove_if(arr.begin(), arr.end(), [&](const json &entry) {
+                  return entry.is_string() && targets.count(entry.get<std::string>()) > 0;
+              }),
+              arr.end());
+    return arr.size() != old;
+}
+
+static void jsonAllowConfigAccess(json &root, const std::vector<std::string> &apps)
+{
+    jsonAllowConfigAccessImpl(root, apps, "config_access_whitelist");
+}
+
+static bool jsonDenyConfigAccess(json &root, const std::vector<std::string> &apps)
+{
+    return jsonDenyConfigAccessImpl(root, apps, "config_access_whitelist");
+}
+
+static void jsonAllowHostRoot(json &root, const std::vector<std::string> &apps)
+{
+    jsonAllowConfigAccessImpl(root, apps, "host_root_whitelist");
+}
+
+static bool jsonDenyHostRoot(json &root, const std::vector<std::string> &apps)
+{
+    return jsonDenyConfigAccessImpl(root, apps, "host_root_whitelist");
+}
+
+static const std::map<std::string, std::vector<std::string>> &permissionDictionary()
+{
+    static const std::map<std::string, std::vector<std::string>> dict = {
+        { "filesystem", { "host", "host-os", "host-etc", "home" } },
+        { "sockets", { "cups", "pcsc" } },
+        { "portals", { "background", "notifications", "microphone", "speaker", "camera", "location" } },
+        { "devices", { "usb", "usb-hid", "udev" } },
+    };
+    return dict;
+}
+
+static std::string canonicalPermissionCategory(std::string raw)
+{
+    std::transform(raw.begin(), raw.end(), raw.begin(), [](unsigned char c) {
+        return static_cast<unsigned char>(std::tolower(c));
+    });
+    if (raw == "filesystem" || raw == "filesystems") {
+        return "filesystem";
+    }
+    if (raw == "socket" || raw == "sockets") {
+        return "sockets";
+    }
+    if (raw == "portal" || raw == "portals") {
+        return "portals";
+    }
+    if (raw == "device" || raw == "devices") {
+        return "devices";
+    }
+    return {};
+}
+
+static bool isValidPermissionName(const std::string &category, const std::string &name)
+{
+    auto it = permissionDictionary().find(category);
+    if (it == permissionDictionary().end()) {
+        return false;
+    }
+    return std::find(it->second.begin(), it->second.end(), name) != it->second.end();
+}
+
+static json &ensurePermissionsCategory(json &root, const std::string &category)
+{
+    auto &perms = root["permissions"];
+    if (!perms.is_object()) {
+        perms = json::object();
+    }
+    auto &node = perms[category];
+    if (!node.is_object()) {
+        node = json::object();
+    }
+    return node;
+}
+
+static void jsonSetPermission(json &root,
+                              const std::string &category,
+                              const std::vector<std::string> &names,
+                              bool enabled)
+{
+    auto canon = canonicalPermissionCategory(category);
+    if (canon.empty()) {
+        return;
+    }
+    auto &node = ensurePermissionsCategory(root, canon);
+    for (const auto &name : names) {
+        node[name] = enabled;
+    }
 }
 // ===== end: ll-cli config helpers =====
 
@@ -1522,6 +1713,153 @@ int runCliApplication(int argc, char **mainArgv)
             handleConfigResult(saveConfig(scope, appId, baseId, *j));
         });
     }
+
+    auto addPermissionCommand = [&](const char *name, bool enable) {
+        auto *sub = configCmd->add_subcommand(
+          name,
+          enable ? _("Enable sandbox permission preset") : _("Disable sandbox permission preset"));
+        auto scopeOpts = std::make_shared<ConfigScopeOptions>();
+        addConfigScopeOptions(sub, *scopeOpts);
+        auto category = std::make_shared<std::string>();
+        auto perms = std::make_shared<std::vector<std::string>>();
+        sub->add_option("--category",
+                        *category,
+                        _("Permission category (filesystem|sockets|portals|devices)"))->required();
+        sub->add_option("names",
+                        *perms,
+                        _("Permission names (repeat to toggle multiple entries)"))->required()->expected(1, -1);
+        sub->callback([&, scopeOpts, category, perms, enable]() {
+            auto canon = canonicalPermissionCategory(*category);
+            if (canon.empty()) {
+                throw CLI::ValidationError("category", "unknown permission category: " + *category);
+            }
+            for (const auto &perm : *perms) {
+                if (!isValidPermissionName(canon, perm)) {
+                    throw CLI::ValidationError(
+                      "permission", "invalid permission '" + perm + "' for " + canon);
+                }
+            }
+            auto [scope, appId, baseId] = resolveScopeOrThrow(*scopeOpts);
+            auto j = openConfig(scope, appId, baseId);
+            if (!j) {
+                handleConfigResult(false);
+                return;
+            }
+            jsonSetPermission(*j, canon, *perms, enable);
+            handleConfigResult(saveConfig(scope, appId, baseId, *j));
+        });
+    };
+
+    addPermissionCommand("enable-permission", true);
+    addPermissionCommand("disable-permission", false);
+
+    // config add-udev-rule
+    {
+        auto *sub = configCmd->add_subcommand("add-udev-rule",
+                                              _("Embed a custom udev rule into configuration"));
+        auto scopeOpts = std::make_shared<ConfigScopeOptions>();
+        addConfigScopeOptions(sub, *scopeOpts);
+        auto name = std::make_shared<std::string>();
+        auto filePath = std::make_shared<std::string>();
+        sub->add_option("--name", *name, _("Rule filename (e.g. 99-custom.rules)"))->required();
+        sub->add_option("--file", *filePath, _("Path to the rule file"))->required();
+        sub->callback([&, scopeOpts, name, filePath]() {
+            auto content = readTextFile(*filePath);
+            if (!content) {
+                throw CLI::RuntimeError("failed to read rule file: " + *filePath, 1);
+            }
+            auto [scope, appId, baseId] = resolveScopeOrThrow(*scopeOpts);
+            auto j = openConfig(scope, appId, baseId);
+            if (!j) {
+                handleConfigResult(false);
+                return;
+            }
+            jsonAddUdevRule(*j, *name, *content);
+            handleConfigResult(saveConfig(scope, appId, baseId, *j));
+        });
+    }
+
+    // config rm-udev-rule
+    {
+        auto *sub =
+          configCmd->add_subcommand("rm-udev-rule", _("Remove a previously embedded udev rule"));
+        auto scopeOpts = std::make_shared<ConfigScopeOptions>();
+        addConfigScopeOptions(sub, *scopeOpts);
+        auto name = std::make_shared<std::string>();
+        sub->add_option("--name", *name, _("Rule filename to remove"))->required();
+        sub->callback([&, scopeOpts, name]() {
+            auto [scope, appId, baseId] = resolveScopeOrThrow(*scopeOpts);
+            auto j = openConfig(scope, appId, baseId);
+            if (!j) {
+                handleConfigResult(false);
+                return;
+            }
+            if (!jsonRmUdevRule(*j, *name)) {
+                throw CLI::RuntimeError("rule not found: " + *name, 1);
+            }
+            handleConfigResult(saveConfig(scope, appId, baseId, *j));
+        });
+    }
+
+    auto addConfigHomeCommand = [&](const char *name, bool allow) {
+        auto *sub = configCmd->add_subcommand(
+          name,
+          allow ? _("Allow apps to access host ~/.config/linglong") :
+                  _("Remove apps from config directory whitelist"));
+        auto scopeOpts = std::make_shared<ConfigScopeOptions>();
+        addConfigScopeOptions(sub, *scopeOpts);
+        auto apps = std::make_shared<std::vector<std::string>>();
+        sub->add_option("apps", *apps, _("Application IDs"))->required()->expected(1, -1);
+        sub->callback([&, scopeOpts, apps, allow]() {
+            auto [scope, appId, baseId] = resolveScopeOrThrow(*scopeOpts);
+            auto j = openConfig(scope, appId, baseId);
+            if (!j) {
+                handleConfigResult(false);
+                return;
+            }
+            if (allow) {
+                jsonAllowConfigAccess(*j, *apps);
+            } else {
+                if (!jsonDenyConfigAccess(*j, *apps)) {
+                    throw CLI::RuntimeError(_("No entries were removed"), 1);
+                }
+            }
+            handleConfigResult(saveConfig(scope, appId, baseId, *j));
+        });
+    };
+
+    addConfigHomeCommand("allow-config-home", true);
+    addConfigHomeCommand("deny-config-home", false);
+
+    auto addHostRootCommand = [&](const char *name, bool allow) {
+        auto *sub = configCmd->add_subcommand(
+          name,
+          allow ? _("Allow apps to access host root (/run/host/rootfs)") :
+                  _("Remove apps from host root whitelist"));
+        auto scopeOpts = std::make_shared<ConfigScopeOptions>();
+        addConfigScopeOptions(sub, *scopeOpts);
+        auto apps = std::make_shared<std::vector<std::string>>();
+        sub->add_option("apps", *apps, _("Application IDs"))->required()->expected(1, -1);
+        sub->callback([&, scopeOpts, apps, allow]() {
+            auto [scope, appId, baseId] = resolveScopeOrThrow(*scopeOpts);
+            auto j = openConfig(scope, appId, baseId);
+            if (!j) {
+                handleConfigResult(false);
+                return;
+            }
+            if (allow) {
+                jsonAllowHostRoot(*j, *apps);
+            } else {
+                if (!jsonDenyHostRoot(*j, *apps)) {
+                    throw CLI::RuntimeError(_("No entries were removed"), 1);
+                }
+            }
+            handleConfigResult(saveConfig(scope, appId, baseId, *j));
+        });
+    };
+
+    addHostRootCommand("allow-host-root", true);
+    addHostRootCommand("deny-host-root", false);
 
     // add all subcommands using the new functions
     addRunCommand(commandParser, runOptions, CliAppManagingGroup);

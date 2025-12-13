@@ -126,6 +126,71 @@ StartupNotify=true
 Terminal=false
 ```
 
+## 通过配置文件管理沙箱权限
+
+`ll-cli config` 已经支持 Flatseal 风格的权限开关。用户级别的设置位于 `~/.config/linglong/config.json`，应用以及基础环境的覆盖配置分别位于 `~/.config/linglong/apps/<appid>/config.json` 与 `~/.config/linglong/base/<baseid>/config.json`，也可以在 `/var/lib/linglong/config/` 中提供系统级默认值。
+
+常用命令如下：
+
+```
+ll-cli config enable-permission --global --category filesystem host home
+ll-cli config disable-permission --app org.deepin.calculator --category sockets cups
+```
+
+配置文件中的 `permissions` 字段示例：
+
+```json
+{
+  "permissions": {
+    "filesystem": { "host": true, "home": true, "host-os": true },
+    "sockets": { "cups": true },
+    "portals": { "notifications": true, "background": false }
+  }
+}
+```
+
+支持的类别与名称如下：
+
+| 类别       | 名称                                                                                 | 含义（启用时）                                                             |
+| ---------- | ------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
+| filesystem | `host`、`host-os`、`host-etc`、`home`                                                | 共享完整宿主机目录、只读系统资源、`/etc` 或宿主机家目录（自动隔离敏感目录） |
+| sockets    | `cups`、`pcsc`                                                                        | 映射宿主机 `/run/cups`（打印）或 `/run/pcscd`（智能卡）                    |
+| portals    | `background`、`notifications`、`microphone`、`speaker`、`camera`、`location`         | 通过环境变量 `LINGLONG_PORTAL_<NAME>` 传入容器，供桌面门户读取              |
+| devices    | `usb`、`usb-hid`、`udev`                                                             | 共享 `/dev/bus/usb`、`/dev/hidraw*` 以及 `/run/udev`/udev 规则（导出 `LINGLONG_UDEV_RULES_DIR`） |
+
+如果某个类别没有出现在配置文件中，会采用旧版本相同的默认值（仍然共享主机根目录、系统资产以及宿主家目录）。也可以直接手动编辑 JSON 文件，方便与图形化工具联动。启用 `devices.udev` 后，宿主的 `/etc/udev/rules.d` 与 `/lib/udev/rules.d` 会以只读方式映射到容器的 `/run/host-udev-rules`，并通过 `LINGLONG_UDEV_RULES_DIR` 环境变量告知应用。
+
+自定义 udev 规则可通过：
+
+```
+ll-cli config add-udev-rule --global --name 99-my-device.rules --file ./my-device.rules
+ll-cli config rm-udev-rule --global --name 99-my-device.rules
+```
+
+`add-udev-rule` 会把文件内容直接写入配置，容器启动时会自动同步到 `/run/host-udev-rules/custom/` 目录，便于与 `devices.udev` 配合。
+
+### 限制对 `~/.config/linglong` 的访问
+
+为防止应用在容器内恶意修改宿主的 linyaps 配置，默认情况下容器会将 `~/.config/linglong` 隐藏到沙箱内部的私有目录。只有被加入白名单的应用才可以访问和修改该目录。使用下面的命令维护白名单（必须作用于 `--global` 配置）：
+
+```
+ll-cli config allow-config-home --global org.deepin.calculator
+ll-cli config deny-config-home  --global org.deepin.calculator
+```
+
+白名单支持多个 APPID，也可以直接在 `config_access_whitelist` 数组里手动编辑。没有在白名单中的应用即使启用了 `filesystem.home` 依旧会看到一个与宿主隔离的 `~/.config/linglong`。
+
+### 限制对宿主根目录 `/run/host/rootfs` 的访问
+
+宿主根文件系统默认同样被重映射，只有加入白名单的应用可以看到真实的 `/run/host/rootfs`：
+
+```
+ll-cli config allow-host-root --global org.deepin.calculator
+ll-cli config deny-host-root  --global org.deepin.calculator
+```
+
+白名单存储在 `host_root_whitelist`，匹配语义与配置目录白名单一致，可直接协同 `filesystem.host` 等权限使用。
+
 ## 玲珑应用构建工程 `linglong.yaml` 规范
 
 正如其他传统包管理套件一样，手动创建一个玲珑应用构建工程需要设置构建规则文件 `linglong.yaml`，在构建规则中，则根据用途划分为 `全局字段` 及 `定制化字段`。\* 案例中 `linglong.yaml` 正文内所有空格符号、占位符均为有效字符，请勿删除或变更格式

@@ -15,6 +15,7 @@
 #include <utility>
 
 #include <algorithm>
+#include <cctype>
 #include <filesystem>
 #include <fstream>
 #include <iterator>
@@ -23,6 +24,7 @@
 #include <optional>
 #include <sstream>
 #include <unordered_set>
+#include <unistd.h>
 #include <vector>
 
 namespace linglong::runtime {
@@ -226,6 +228,397 @@ static void collectEnvFromJson(const json &j, std::vector<std::string> &out)
         } else {
             out.emplace_back(key + "=" + val);
         }
+    }
+}
+
+static std::unordered_set<std::string> getPermissionSet(const json &root, const char *category)
+{
+    std::unordered_set<std::string> enabled;
+    auto it = root.find("permissions");
+    if (it == root.end() || !it->is_object()) {
+        return enabled;
+    }
+    auto cat = it->find(category);
+    if (cat == it->end()) {
+        return enabled;
+    }
+    if (cat->is_array()) {
+        for (const auto &entry : *cat) {
+            if (entry.is_string()) {
+                enabled.insert(entry.get<std::string>());
+            }
+        }
+    } else if (cat->is_object()) {
+        for (auto iter = cat->begin(); iter != cat->end(); ++iter) {
+            bool value = iter.value().is_boolean() ? iter.value().get<bool>() : false;
+            if (value) {
+                enabled.insert(iter.key());
+            }
+        }
+    } else if (cat->is_string()) {
+        enabled.insert(cat->get<std::string>());
+    }
+    return enabled;
+}
+
+static bool addReadonlyMount(generator::ContainerCfgBuilder &builder,
+                             const std::filesystem::path &source,
+                             const std::string &destination)
+{
+    std::error_code ec;
+    if (!std::filesystem::exists(source, ec)) {
+        if (ec) {
+            LogW("skip permission mount {} -> {}: {}", source.string(), destination, ec.message());
+        }
+        return false;
+    }
+
+    ocppi::runtime::config::types::Mount mount{
+        .destination = destination,
+        .options = std::vector<std::string>{ "rbind", "ro" },
+        .source = source.string(),
+        .type = "bind",
+    };
+    builder.addExtraMount(std::move(mount));
+    return true;
+}
+
+static void applyFilesystemPermissions(generator::ContainerCfgBuilder &builder,
+                                       const std::unordered_set<std::string> &enabled,
+                                       bool allowLinglongConfig,
+                                       bool allowHostRoot)
+{
+    bool wantsHost = enabled.count("host") > 0;
+    bool wantsHostOS = enabled.count("host-os") > 0;
+    bool wantsHostEtc = enabled.count("host-etc") > 0;
+    bool wantsHome = enabled.count("home") > 0;
+
+    if (!wantsHost && !wantsHostOS && !wantsHostEtc && !wantsHome) {
+        wantsHost = true;
+        wantsHostOS = true;
+        wantsHome = true;
+    }
+
+    if (wantsHost && allowHostRoot) {
+        builder.bindHostRoot();
+    }
+    if (wantsHostOS) {
+        builder.bindHostStatics();
+        if (!wantsHost) {
+            addReadonlyMount(builder, "/usr", "/run/host-os/usr");
+            addReadonlyMount(builder, "/lib", "/run/host-os/lib");
+            addReadonlyMount(builder, "/lib64", "/run/host-os/lib64");
+        }
+    }
+    if (wantsHostEtc) {
+        if (!addReadonlyMount(builder, "/etc", "/run/host-etc")) {
+            LogW("host-etc permission requested but /etc is not accessible");
+        }
+    }
+    if (wantsHome) {
+        const char *home = ::getenv("HOME");
+        if (!home || home[0] == '\0') {
+            LogW("HOME is not set, skip home permission");
+        } else {
+            builder.bindHome(home)
+              .enablePrivateDir()
+              .mapPrivate(std::string{ home } + "/.ssh", true)
+              .mapPrivate(std::string{ home } + "/.gnupg", true);
+            if (!allowLinglongConfig) {
+                builder.mapPrivate(std::string{ home } + "/.config/linglong", true);
+            }
+        }
+    }
+}
+
+static void applySocketPermissions(generator::ContainerCfgBuilder &builder,
+                                   const std::unordered_set<std::string> &enabled)
+{
+    auto mountRwDir = [&](const std::filesystem::path &source, const std::string &destination) {
+        std::error_code ec;
+        if (!std::filesystem::exists(source, ec)) {
+            if (ec) {
+                LogW("skip socket mount {} -> {}: {}", source.string(), destination, ec.message());
+            }
+            return;
+        }
+        ocppi::runtime::config::types::Mount mount{
+            .destination = destination,
+            .options = std::vector<std::string>{ "rbind" },
+            .source = source.string(),
+            .type = "bind",
+        };
+        builder.addExtraMount(std::move(mount));
+    };
+
+    if (enabled.count("pcsc") > 0) {
+        mountRwDir("/run/pcscd", "/run/pcscd");
+    }
+    if (enabled.count("cups") > 0) {
+        mountRwDir("/run/cups", "/run/cups");
+        mountRwDir("/var/run/cups", "/var/run/cups");
+    }
+}
+
+static void applyPortalPermissions(const std::unordered_set<std::string> &enabled,
+                                   std::map<std::string, std::string> &environment)
+{
+    const std::vector<std::string> known = {
+        "background", "notifications", "microphone", "speaker", "camera", "location"
+    };
+    for (const auto &name : known) {
+        std::string key = name;
+        std::transform(key.begin(), key.end(), key.begin(), [](unsigned char c) {
+            if (c == '-') {
+                return static_cast<unsigned char>('_');
+            }
+            return static_cast<unsigned char>(std::toupper(c));
+        });
+        auto envKey = "LINGLONG_PORTAL_" + key;
+        environment[envKey] = enabled.count(name) > 0 ? "1" : "0";
+    }
+}
+
+static bool isConfigWhitelistMatch(const json &entry, const std::string &appId)
+{
+    if (!entry.is_string() || appId.empty()) {
+        return false;
+    }
+    auto val = entry.get<std::string>();
+    if (val == "*" || val == appId) {
+        return true;
+    }
+    return false;
+}
+
+static bool allowHostConfigAccess(const json &root, const std::string &appId)
+{
+    if (appId.empty()) {
+        return false;
+    }
+    auto it = root.find("config_access_whitelist");
+    if (it == root.end()) {
+        return false;
+    }
+    if (it->is_boolean()) {
+        return it->get<bool>();
+    }
+    if (it->is_string()) {
+        return isConfigWhitelistMatch(*it, appId);
+    }
+    if (!it->is_array()) {
+        return false;
+    }
+    for (const auto &entry : *it) {
+        if (isConfigWhitelistMatch(entry, appId)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+static bool allowHostRootAccess(const json &root, const std::string &appId)
+{
+    auto it = root.find("host_root_whitelist");
+    if (it == root.end()) {
+        return false;
+    }
+    if (it->is_boolean()) {
+        return it->get<bool>();
+    }
+    if (it->is_string()) {
+        return isConfigWhitelistMatch(*it, appId);
+    }
+    if (!it->is_array()) {
+        return false;
+    }
+    for (const auto &entry : *it) {
+        if (isConfigWhitelistMatch(entry, appId)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+static bool bindPath(generator::ContainerCfgBuilder &builder,
+                     const std::filesystem::path &source,
+                     const std::string &destination,
+                     bool recursive,
+                     bool readOnly)
+{
+    std::error_code ec;
+    if (!std::filesystem::exists(source, ec)) {
+        if (ec) {
+            LogW("skip device mount {} -> {}: {}", source.string(), destination, ec.message());
+        }
+        return false;
+    }
+    std::vector<std::string> options;
+    options.push_back(recursive ? "rbind" : "bind");
+    if (readOnly) {
+        options.push_back("ro");
+    }
+    ocppi::runtime::config::types::Mount mount{
+        .destination = destination,
+        .options = options,
+        .source = source.string(),
+        .type = "bind",
+    };
+    builder.addExtraMount(std::move(mount));
+    return true;
+}
+
+static void bindHidrawNodes(generator::ContainerCfgBuilder &builder)
+{
+    std::error_code ec;
+    const std::filesystem::path devDir = "/dev";
+    if (!std::filesystem::exists(devDir, ec)) {
+        return;
+    }
+    for (const auto &entry : std::filesystem::directory_iterator(devDir, ec)) {
+        if (ec) {
+            break;
+        }
+        auto name = entry.path().filename().string();
+        if (name.rfind("hidraw", 0) != 0) {
+            continue;
+        }
+        bindPath(builder, entry.path(), entry.path().string(), false, false);
+    }
+}
+
+static std::vector<std::pair<std::string, std::string>> collectCustomUdevRules(const json &root)
+{
+    std::vector<std::pair<std::string, std::string>> rules;
+    auto it = root.find("udev_rules");
+    if (it == root.end() || !it->is_array()) {
+        return rules;
+    }
+    for (const auto &entry : *it) {
+        if (!entry.is_object()) {
+            continue;
+        }
+        auto nameIt = entry.find("name");
+        auto contentIt = entry.find("content");
+        if (nameIt == entry.end() || contentIt == entry.end()) {
+            continue;
+        }
+        if (!nameIt->is_string() || !contentIt->is_string()) {
+            continue;
+        }
+        auto name = nameIt->get<std::string>();
+        auto content = contentIt->get<std::string>();
+        if (!name.empty() && !content.empty()) {
+            rules.emplace_back(std::move(name), std::move(content));
+        }
+    }
+    return rules;
+}
+
+static std::string sanitizeUdevRuleName(std::string raw)
+{
+    if (raw.empty()) {
+        return {};
+    }
+    for (auto &ch : raw) {
+        unsigned char c = static_cast<unsigned char>(ch);
+        if (!std::isalnum(c) && ch != '-' && ch != '_' && ch != '.') {
+            ch = '_';
+        }
+    }
+    if (raw.size() < 6 || raw.substr(raw.size() - 6) != ".rules") {
+        if (!raw.empty() && raw.back() != '.') {
+            raw += ".rules";
+        } else {
+            raw += "rules";
+        }
+    }
+    return raw;
+}
+
+static std::filesystem::path prepareCustomUdevRulesDir()
+{
+    auto uid = ::getuid();
+    std::filesystem::path dir = std::filesystem::path("/run/linglong/custom-udev") / std::to_string(uid);
+    std::error_code ec;
+    std::filesystem::create_directories(dir, ec);
+    if (ec) {
+        LogW("failed to prepare custom udev dir {}: {}", dir.string(), ec.message());
+        return {};
+    }
+    return dir;
+}
+
+static bool syncCustomUdevRules(const json &root, std::filesystem::path &outDir)
+{
+    auto rules = collectCustomUdevRules(root);
+    if (rules.empty()) {
+        return false;
+    }
+    auto dir = prepareCustomUdevRulesDir();
+    if (dir.empty()) {
+        return false;
+    }
+    std::error_code ec;
+    for (const auto &entry : std::filesystem::directory_iterator(dir, ec)) {
+        if (ec) {
+            break;
+        }
+        std::filesystem::remove_all(entry.path(), ec);
+    }
+    for (const auto &[name, content] : rules) {
+        auto sanitized = sanitizeUdevRuleName(name);
+        if (sanitized.empty()) {
+            continue;
+        }
+        std::ofstream out(dir / sanitized, std::ios::trunc);
+        if (!out.is_open()) {
+            LogW("failed to write custom udev rule {}", sanitized);
+            continue;
+        }
+        out << content;
+    }
+    outDir = dir;
+    return true;
+}
+
+static void applyDevicePermissions(generator::ContainerCfgBuilder &builder,
+                                   std::map<std::string, std::string> &environment,
+                                   const std::unordered_set<std::string> &enabled,
+                                   const json &mergedCfg)
+{
+    if (enabled.empty()) {
+        return;
+    }
+
+    if (enabled.count("usb") > 0) {
+        bindPath(builder, "/dev/bus/usb", "/dev/bus/usb", true, false);
+    }
+    if (enabled.count("usb-hid") > 0) {
+        bindHidrawNodes(builder);
+    }
+    if (enabled.count("udev") > 0) {
+        bindPath(builder, "/run/udev", "/run/udev", true, false);
+        const std::filesystem::path hostRulesBase = "/run/host-udev-rules";
+        bindPath(builder,
+                 "/etc/udev/rules.d",
+                 (hostRulesBase / "etc").string(),
+                 true,
+                 true);
+        bindPath(builder,
+                 "/lib/udev/rules.d",
+                 (hostRulesBase / "lib").string(),
+                 true,
+                 true);
+        std::filesystem::path customDir;
+        if (syncCustomUdevRules(mergedCfg, customDir)) {
+            bindPath(builder,
+                     customDir,
+                     (hostRulesBase / "custom").string(),
+                     true,
+                     true);
+        }
+        environment["LINGLONG_UDEV_RULES_DIR"] = hostRulesBase.string();
     }
 }
 
@@ -1043,6 +1436,8 @@ RunContext::fillContextCfg(linglong::generator::ContainerCfgBuilder &builder)
         return res;
     }
 
+    builder.bindIPC();
+
     // === begin: merge Global->Base->App config ===
     std::string currentAppId;
     if (appLayer) currentAppId = appLayer->getReference().id;
@@ -1052,6 +1447,7 @@ RunContext::fillContextCfg(linglong::generator::ContainerCfgBuilder &builder)
     if (baseLayer) currentBaseId = baseLayer->getReference().id;
 
     auto mergedCfg = loadMergedJsonWithBase(currentAppId, currentBaseId);
+    bool allowConfigDir = allowHostConfigAccess(mergedCfg, currentAppId);
     std::optional<std::string> mergedPath;
 
     // 1) common env
@@ -1075,6 +1471,13 @@ RunContext::fillContextCfg(linglong::generator::ContainerCfgBuilder &builder)
         }
     }
     // === end: merge Global->Base->App config ===
+
+    bool allowHostRoot = allowHostRootAccess(mergedCfg, currentAppId);
+    applyFilesystemPermissions(
+      builder, getPermissionSet(mergedCfg, "filesystem"), allowConfigDir, allowHostRoot);
+    applySocketPermissions(builder, getPermissionSet(mergedCfg, "sockets"));
+    applyPortalPermissions(getPermissionSet(mergedCfg, "portals"), environment);
+    applyDevicePermissions(builder, environment, getPermissionSet(mergedCfg, "devices"), mergedCfg);
 
     if (!environment.empty()) {
         if (auto it = environment.find("PATH"); it != environment.end()) {

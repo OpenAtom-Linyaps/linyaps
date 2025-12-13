@@ -601,12 +601,6 @@ int Cli::run(const RunOptions &options)
         break;
     }
 
-    auto *homeEnv = ::getenv("HOME");
-    if (homeEnv == nullptr) {
-        qCritical() << "Couldn't get HOME env.";
-        return -1;
-    }
-
     runContext.enableSecurityContext(runtime::getDefaultSecurityContexts());
 
     linglong::generator::ContainerCfgBuilder cfgBuilder;
@@ -620,13 +614,6 @@ int Cli::run(const RunOptions &options)
       .bindXDGRuntime()
       .bindUserGroup()
       .bindRemovableStorageMounts()
-      .bindHostRoot()
-      .bindHostStatics()
-      .bindHome(homeEnv)
-      .enablePrivateDir()
-      .mapPrivate(std::string{ homeEnv } + "/.ssh", true)
-      .mapPrivate(std::string{ homeEnv } + "/.gnupg", true)
-      .bindIPC()
       .forwardDefaultEnv()
       .enableSelfAdjustingMount();
 

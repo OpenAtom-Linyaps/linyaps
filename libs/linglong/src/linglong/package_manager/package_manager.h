@@ -24,6 +24,7 @@
 #include <QObject>
 
 #include <optional>
+#include <chrono>
 
 namespace linglong::service {
 
@@ -172,6 +173,7 @@ private:
 
     int lockFd{ -1 };
     linglong::runtime::ContainerBuilder &containerBuilder;
+    std::chrono::steady_clock::time_point lockStart;
 };
 
 } // namespace linglong::service

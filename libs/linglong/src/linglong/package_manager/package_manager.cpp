@@ -47,6 +47,7 @@
 #include <QUuid>
 
 #include <algorithm>
+#include <chrono>
 #include <cstdint>
 #include <utility>
 
@@ -127,20 +128,6 @@ PackageManager::~PackageManager()
 utils::error::Result<bool> PackageManager::isRefBusy(const package::Reference &ref) noexcept
 {
     LINGLONG_TRACE(fmt::format("check if ref[{}] is used by some apps", ref.toString()));
-
-    auto ret = lockRepo();
-    if (!ret) {
-        return LINGLONG_ERR(
-          QStringLiteral("failed to lock repo, underlying data will not be removed: %1")
-            .arg(ret.error().message().c_str()));
-    }
-
-    auto unlock = utils::finally::finally([this] {
-        auto ret = unlockRepo();
-        if (!ret) {
-            qCritical() << "failed to unlock repo:" << ret.error().message();
-        }
-    });
 
     auto running = getAllRunningContainers();
     if (!running) {
@@ -235,7 +222,7 @@ PackageManager::getAllRunningContainers() noexcept
 
 [[nodiscard]] utils::error::Result<void> PackageManager::lockRepo() noexcept
 {
-    LINGLONG_TRACE("lock whole repo")
+    LINGLONG_TRACE("lock whole repo");
     lockFd = ::open(repoLockPath, O_RDWR | O_CREAT, 0644);
     if (lockFd == -1) {
         return LINGLONG_ERR(QStringLiteral("failed to create lock file %1: %2")
@@ -250,12 +237,13 @@ PackageManager::getAllRunningContainers() noexcept
           QStringLiteral("failed to lock %1: %2").arg(repoLockPath).arg(::strerror(errno)));
     }
 
+    lockStart = std::chrono::steady_clock::now();
     return LINGLONG_OK;
 }
 
 [[nodiscard]] utils::error::Result<void> PackageManager::unlockRepo() noexcept
 {
-    LINGLONG_TRACE("unlock whole repo")
+    LINGLONG_TRACE("unlock whole repo");
 
     if (lockFd == -1) {
         return LINGLONG_OK;
@@ -270,6 +258,14 @@ PackageManager::getAllRunningContainers() noexcept
 
     ::close(lockFd);
     lockFd = -1;
+    if (lockStart != std::chrono::steady_clock::time_point{}) {
+        auto elapsed = std::chrono::steady_clock::now() - lockStart;
+        lockStart = {};
+        auto seconds = std::chrono::duration_cast<std::chrono::seconds>(elapsed).count();
+        if (seconds > 5) {
+            qInfo() << "repository lock held for" << seconds << "seconds";
+        }
+    }
 
     return LINGLONG_OK;
 }
@@ -310,7 +306,7 @@ utils::error::Result<void> PackageManager::switchAppVersion(const package::Refer
                                                             const package::Reference &newRef,
                                                             bool removeOldRef) noexcept
 {
-    LINGLONG_TRACE("remove old reference after install")
+    LINGLONG_TRACE("remove old reference after install");
     LogI("switch app version from {} to {}", oldRef.toString(), newRef.toString());
 
     auto res = applyApp(newRef);
@@ -340,16 +336,7 @@ utils::error::Result<void> PackageManager::switchAppVersion(const package::Refer
 
 void PackageManager::deferredUninstall() noexcept
 {
-    if (auto ret = lockRepo(); !ret) {
-        qCritical() << "failed to lock repo:" << ret.error().message();
-        return;
-    }
-    auto unlock = utils::finally::finally([this] {
-        auto ret = unlockRepo();
-        if (!ret) {
-            qCritical() << "failed to unlock repo:" << ret.error().message();
-        }
-    });
+    const auto lockStart = std::chrono::steady_clock::now();
 
     // query layers which have been mark 'deleted'
     auto uninstalled = this->repo.listLocalBy(linglong::repo::repoCacheQuery{ .deleted = true });
@@ -396,6 +383,27 @@ void PackageManager::deferredUninstall() noexcept
     }
 
     // begin to uninstall
+    auto tryLock = [this, &lockStart]() -> bool {
+        if (auto ret = lockRepo(); !ret) {
+            auto elapsed = std::chrono::steady_clock::now() - lockStart;
+            qCritical() << "failed to lock repo:" << ret.error().message()
+                        << "elapsed" << std::chrono::duration_cast<std::chrono::seconds>(elapsed).count()
+                        << "s";
+            return false;
+        }
+        return true;
+    };
+
+    if (!tryLock()) {
+        return;
+    }
+    auto unlock = utils::finally::finally([this]() {
+        auto ret = unlockRepo();
+        if (!ret) {
+            qCritical() << "failed to unlock repo:" << ret.error().message();
+        }
+    });
+
     for (const auto &[ref, items] : uninstalledLayers) {
         auto pkgRef = package::Reference::parse(ref);
         if (!pkgRef) {

@@ -36,6 +36,7 @@
 #include <map>
 #include <memory>
 #include <thread>
+#include <chrono>
 
 #include <cstdio>
 #include <string>
@@ -151,6 +152,45 @@ int lockCheck() noexcept
     }
 
     return lock_info.l_pid;
+}
+
+static int waitForRepoLockRelease(std::chrono::seconds timeout)
+{
+    using namespace std::chrono_literals;
+    auto start = std::chrono::steady_clock::now();
+    int lastPid = -1;
+    bool printed = false;
+    while (true) {
+        int lockOwner = lockCheck();
+        if (lockOwner == -1) {
+            return -1;
+        }
+        if (lockOwner == 0) {
+            if (printed) {
+                std::fprintf(stderr, "\r\33[K");
+                std::fflush(stderr);
+            }
+            return 0;
+        }
+        if (lockOwner != lastPid) {
+            std::fprintf(stderr,
+                         "Repository is being operated by process %d, waiting for lock...\n",
+                         lockOwner);
+            std::fflush(stderr);
+            lastPid = lockOwner;
+            printed = true;
+        }
+        auto waited = std::chrono::steady_clock::now() - start;
+        if (waited >= timeout) {
+            std::fprintf(stderr,
+                         "Timed out waiting for repository lock held by PID %d.\n"
+                         "Please retry later or run 'systemctl restart ll-package-manager'.\n",
+                         lockOwner);
+            std::fflush(stderr);
+            return 1;
+        }
+        std::this_thread::sleep_for(1s);
+    }
 }
 
 // Validator for string inputs
@@ -1898,25 +1938,13 @@ int runCliApplication(int argc, char **mainArgv)
         linglong::utils::log::setLogLevel(linglong::utils::log::LogLevel::Debug);
     }
 
-    // check lock
-    while (true) {
-        auto lockOwner = lockCheck();
-        if (lockOwner == -1) {
+    // ensure repo lock is available before D-Bus requests
+    auto waitResult = waitForRepoLockRelease(std::chrono::seconds{ 60 });
+    if (waitResult != 0) {
+        if (waitResult < 0) {
             qCritical() << "lock check failed";
-            return -1;
         }
-
-        if (lockOwner > 0) {
-            qInfo() << "\r\33[K"
-                    << "\033[?25l"
-                    << "repository is being operated by another process, waiting for" << lockOwner
-                    << "\033[?25h";
-            using namespace std::chrono_literals;
-            std::this_thread::sleep_for(1s);
-            continue;
-        }
-
-        break;
+        return waitResult;
     }
 
     // connect to package manager

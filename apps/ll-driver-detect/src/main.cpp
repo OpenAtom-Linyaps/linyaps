@@ -258,6 +258,7 @@ int main(int argc, char *argv[])
     request.actions = QStringList()
       << kActionInstallNow << _("Install Now") << kActionNotRemind << _("Don't Remind");
     request.icon = kNotificationIcon;
+    request.timeout = 25000; // 25 seconds
 
     auto responseResult = notifier->sendInteractiveNotification(request);
     if (!responseResult) {

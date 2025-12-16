@@ -4,11 +4,11 @@
 
 #include "dbus_notifier.h"
 
-#include "linglong/utils/finally/finally.h"
 #include "linglong/utils/log/log.h"
 
 #include <QDBusReply>
 #include <QEventLoop>
+#include <QTimer>
 
 namespace linglong::driver::detect {
 
@@ -55,31 +55,46 @@ DBusNotifier::sendInteractiveNotification(const NotificationRequest &request)
 
     quint32 notificationID{ 0 };
     QString choice;
-    auto reason{ CloseReason::NoReason };
+    bool userInteracted = false;
+    QEventLoop loop;
 
-    auto invokeCon =
-      QObject::connect(this,
-                       &DBusNotifier::actionInvoked,
-                       [&notificationID, &choice](quint32 ID, const QString &action) {
-                           if (notificationID != 0 && notificationID == ID) {
-                               choice = action;
-                           }
-                       });
-    auto disInvokeCon = utils::finally::finally([&invokeCon] {
-        QObject::disconnect(invokeCon);
-    });
+    struct SignalGuard {
+        QMetaObject::Connection closeConn;
+        QMetaObject::Connection actionConn;
 
-    auto closedCon = QObject::connect(this,
-                                      &DBusNotifier::notificationClosed,
-                                      [&notificationID, &reason](quint32 ID, quint32 newReason) {
-                                          if (notificationID != 0 && notificationID == ID) {
-                                              reason = static_cast<CloseReason>(newReason);
-                                          }
-                                      });
-    auto disClosedCon = utils::finally::finally([&closedCon] {
-        QObject::disconnect(closedCon);
-    });
+        ~SignalGuard()
+        {
+            QObject::disconnect(closeConn);
+            QObject::disconnect(actionConn);
+        }
+    } signalGuard{{}, {}};
 
+    // 连接信号处理函数
+    signalGuard.closeConn = QObject::connect(this,
+                                                   &DBusNotifier::notificationClosed,
+                                                   [&](quint32 id, quint32 closeReason) {
+                                                       if (notificationID != 0 && id == notificationID) {
+                                                           LogD("Notification {} closed with reason: {}", id, closeReason);
+                                                           loop.quit();
+                                                       }
+                                                   });
+
+    signalGuard.actionConn = QObject::connect(this,
+                                                    &DBusNotifier::actionInvoked,
+                                                    [&](quint32 id, const QString &actionKey) {
+                                                        if (notificationID != 0 && id == notificationID) {
+                                                            LogD("Notification {} action invoked: {}", id, actionKey.toStdString());
+                                                            choice = actionKey;
+                                                            userInteracted = true;
+                                                        }
+                                                    });
+
+    // 检查信号连接是否成功
+    if (!signalGuard.closeConn || !signalGuard.actionConn) {
+        return LINGLONG_ERR("Failed to connect notification signals");
+    }
+
+    // 发送通知
     auto reply = sendDBusNotification(request.appName,
                                       0,            // replaceId
                                       request.icon, // icon
@@ -87,38 +102,28 @@ DBusNotifier::sendInteractiveNotification(const NotificationRequest &request)
                                       request.body,
                                       request.actions,
                                       QVariantMap(), // hints
-                                      0);
+                                      request.timeout);
 
     if (!reply) {
         return LINGLONG_ERR(reply.error().message());
     }
     notificationID = *reply;
+    LogD("Interactive notification sent with ID: {}", notificationID);
 
-    QEventLoop loop;
-    std::function<void()> checker = std::function{ [&loop, &reason, &checker]() {
-        if (reason != CloseReason::NoReason) {
-            loop.exit();
-        }
-        QMetaObject::invokeMethod(&loop, checker, Qt::QueuedConnection);
-    } };
+    // 设置事件循环超时处理
+    QTimer::singleShot(request.timeout, &loop, &QEventLoop::quit);
 
-    QMetaObject::invokeMethod(&loop, checker, Qt::QueuedConnection);
+    // 运行事件循环等待用户交互
     loop.exec();
 
-    switch (reason) {
-    case CloseReason::Expired:
-    case CloseReason::Dismissed:
-    case CloseReason::CloseByCall:
+    // 根据用户是否交互返回相应的结果
+    if (userInteracted) {
+        LogD("User selected action: {}", choice.toStdString());
         return NotificationResult(choice, true);
-    case CloseReason::Undefined:
-        return LINGLONG_ERR("server return an undefined reason");
-    case CloseReason::NoReason:
-        break;
+    } else {
+        LogD("Notification closed without user interaction");
+        return NotificationResult(choice, false);
     }
-
-    // This part of the code should not be reachable.
-    // To be safe, return an error instead of aborting.
-    return LINGLONG_ERR("Unhandled notification close reason");
 }
 
 utils::error::Result<void> DBusNotifier::sendSimpleNotification(const NotificationRequest &request)

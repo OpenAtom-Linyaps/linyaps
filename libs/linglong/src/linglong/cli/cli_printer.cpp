@@ -16,6 +16,7 @@
 
 #include <iomanip>
 #include <iostream>
+#include <unistd.h>
 
 namespace linglong::cli {
 
@@ -280,11 +281,12 @@ void CLIPrinter::printContent(const QStringList &filePaths)
 
 void CLIPrinter::printProgress(double percentage, const std::string &message)
 {
-    auto &stdout = std::cout;
-    stdout << "\r\33[K"
-           << "\033[?25l" << message << ": " << std::fixed << std::setprecision(2) << percentage
-           << "%" << std::defaultfloat << "\033[?25h";
-    stdout.flush();
+    if (::isatty(STDOUT_FILENO)) {
+        std::cout << "\r\33[K"
+                  << "\033[?25l" << message << ": " << std::fixed << std::setprecision(2)
+                  << percentage << "%" << std::defaultfloat << "\033[?25h";
+        std::cout.flush();
+    }
 }
 
 void CLIPrinter::printPackage(const api::types::v1::PackageInfoV2 &info)

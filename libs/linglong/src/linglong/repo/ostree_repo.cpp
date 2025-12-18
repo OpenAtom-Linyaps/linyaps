@@ -531,6 +531,11 @@ OSTreeRepo::removeOstreeRef(const api::types::v1::RepositoryCacheLayersItem &lay
                                     OstreeRepoResolveRevExtFlags::OSTREE_REPO_RESOLVE_REV_EXT_NONE,
                                     &rev,
                                     &gErr)) {
+        if (layer.commit != rev) {
+            LogD("skip unset ref on mismatched commit");
+            return LINGLONG_OK;
+        }
+
         if (ostree_repo_set_ref_immediate(this->ostreeRepo.get(),
                                           layer.repo.c_str(),
                                           ref.c_str(),
@@ -540,11 +545,6 @@ OSTreeRepo::removeOstreeRef(const api::types::v1::RepositoryCacheLayersItem &lay
             == FALSE) {
             return LINGLONG_ERR("ostree_repo_set_ref_immediate", gErr);
         }
-    }
-
-    auto ret = this->cache->deleteLayerItem(layer);
-    if (!ret) {
-        return LINGLONG_ERR(ret);
     }
 
     return LINGLONG_OK;
@@ -860,8 +860,6 @@ OSTreeRepo::importLayerDir(const package::LayerDir &dir,
         return LINGLONG_ERR(QString("layer directory %1 not exists").arg(dir.absolutePath()));
     }
 
-    utils::Transaction transaction;
-
     auto info = dir.info();
     if (!info) {
         return LINGLONG_ERR(info);
@@ -913,19 +911,6 @@ OSTreeRepo::importLayerDir(const package::LayerDir &dir,
         return LINGLONG_ERR(result);
     }
 
-    transaction.addRollBack([this, &layerDir, &item]() noexcept {
-        if (!layerDir->removeRecursively()) {
-            qCritical() << "remove layer dir failed: " << layerDir->absolutePath();
-            Q_ASSERT(false);
-        }
-        auto result = this->removeOstreeRef(item);
-        if (!result) {
-            qCritical() << result.error();
-            Q_ASSERT(false);
-        }
-    });
-
-    transaction.commit();
     return package::LayerDir{ layerDir->absolutePath() };
 }
 
@@ -1046,21 +1031,56 @@ utils::error::Result<void> OSTreeRepo::remove(const package::Reference &ref,
         return LINGLONG_ERR(layer);
     }
 
-    auto ret = this->removeOstreeRef(*layer);
-    if (!ret) {
-        return LINGLONG_ERR(ret);
+    return remove(*layer);
+}
+
+utils::error::Result<void>
+OSTreeRepo::remove(const api::types::v1::RepositoryCacheLayersItem &item) noexcept
+{
+    LINGLONG_TRACE(fmt::format("remove commit {}", item.commit));
+
+    // unset ostree ref
+    auto res = this->removeOstreeRef(item);
+    if (!res) {
+        return LINGLONG_ERR(res);
     }
 
-    auto layerDir = this->getLayerDir(*layer);
+    // delete from db
+    res = this->cache->deleteLayerItem(item);
+    if (!res) {
+        return LINGLONG_ERR(res);
+    }
+
+    // remove deployed layer
+    auto removed = undeployedLayer(item);
+    if (!removed) {
+        // continue anyway since we've already unset the ostree ref and deleted from db
+        LogW("failed to remove layer dir: {}", removed.error());
+    }
+
+    return LINGLONG_OK;
+}
+
+utils::error::Result<void>
+OSTreeRepo::undeployedLayer(const api::types::v1::RepositoryCacheLayersItem &layer) noexcept
+{
+    LINGLONG_TRACE(fmt::format("undeployed layer {}", layer.commit));
+
+    // It is crucial to remove the layer directory by commit
+    auto layerDir = getLayerDir(layer);
     if (!layerDir) {
-        qWarning() << layerDir.error().message();
+        LogW("layer dir not found, skip remove: {}", layerDir.error());
         return LINGLONG_OK;
     }
 
     if (!layerDir->removeRecursively()) {
-        qCritical() << "Failed to remove dir: " << layerDir->absolutePath();
+        return LINGLONG_ERR(fmt::format("failed to remove layer dir {}", layerDir->absolutePath()));
     }
 
+    // In older versions, LINGLONG_ROOT/layers/<commit> could be a symlink pointing to
+    // LINGLONG_ROOT/layers/<appid>/<version>/<arch>.
+    // This code attempts to clean up any empty parent directories up to `LINGLONG_ROOT/layers/
+    // for compatibility,
     QFileInfo dirInfo{ layerDir->absolutePath() };
     if (!dirInfo.isSymLink()) {
         return LINGLONG_OK;
@@ -1071,11 +1091,11 @@ utils::error::Result<void> OSTreeRepo::remove(const package::Reference &ref,
     target.cdUp();
     while (topLevel.relativeFilePath(target.absolutePath()) != ".") {
         if (target.isEmpty() && !QFile::remove(target.absolutePath())) {
-            qWarning() << "remove " << target.absolutePath() << "failed";
+            LogW("failed to remove {}", target.absolutePath());
         }
 
         if (!target.cdUp()) {
-            qCritical() << "failed to cd up from " << target.absolutePath();
+            LogW("failed to cd up from {}", target.absolutePath());
             break;
         }
     }
@@ -2350,7 +2370,7 @@ OSTreeRepo::getLayerItem(const package::Reference &ref,
 auto OSTreeRepo::getLayerDir(const api::types::v1::RepositoryCacheLayersItem &layer) const noexcept
   -> utils::error::Result<package::LayerDir>
 {
-    LINGLONG_TRACE("get dir from layer item " + ostreeRefSpecFromLayerItem(layer));
+    LINGLONG_TRACE(fmt::format("get dir from layer {}", layer.commit));
 
     QDir dir = this->repoDir.absoluteFilePath(QString::fromStdString("layers/" + layer.commit));
     if (!dir.exists()) {

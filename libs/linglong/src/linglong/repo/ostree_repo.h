@@ -107,6 +107,8 @@ public:
     remove(const package::Reference &ref,
            const std::string &module = "binary",
            const std::optional<std::string> &subRef = std::nullopt) noexcept;
+    utils::error::Result<void>
+    remove(const api::types::v1::RepositoryCacheLayersItem &item) noexcept;
 
     utils::error::Result<void> prune();
 
@@ -181,6 +183,8 @@ private:
       QDir layerDir, const api::types::v1::RepositoryCacheLayersItem &layer) noexcept;
     utils::error::Result<void>
     removeOstreeRef(const api::types::v1::RepositoryCacheLayersItem &layer) noexcept;
+    utils::error::Result<void>
+    undeployedLayer(const api::types::v1::RepositoryCacheLayersItem &layer) noexcept;
     [[nodiscard]] utils::error::Result<package::LayerDir>
     getLayerDir(const api::types::v1::RepositoryCacheLayersItem &layer) const noexcept;
 

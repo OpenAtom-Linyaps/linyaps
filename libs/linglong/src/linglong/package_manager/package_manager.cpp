@@ -369,7 +369,7 @@ void PackageManager::deferredUninstall() noexcept
     // query layers which have been mark 'deleted'
     auto uninstalled = this->repo.listLocalBy(linglong::repo::repoCacheQuery{ .deleted = true });
     if (!uninstalled) {
-        qCritical() << "failed to list deleted layers" << uninstalled.error().message();
+        LogE("failed to list deleted layers: {}", uninstalled.error());
         return;
     }
 
@@ -378,9 +378,10 @@ void PackageManager::deferredUninstall() noexcept
     for (const auto &item : *uninstalled) {
         auto ref = package::Reference::fromPackageInfo(item.info);
         if (!ref) {
-            qCritical() << "underlying storage was broken, exit.";
-            Q_ASSERT(false);
-            return;
+            LogE("underlying storage was broken: {}\n{}",
+                 ref.error(),
+                 nlohmann::json(item.info).dump());
+            continue;
         }
 
         auto [node, isNew] =
@@ -396,7 +397,7 @@ void PackageManager::deferredUninstall() noexcept
     // retrieve running info
     auto running = getAllRunningContainers();
     if (!running) {
-        qCritical() << "failed to get all running containers:" << running.error().message();
+        LogE("failed to get all running containers: {}", running.error());
         return;
     }
 
@@ -410,52 +411,25 @@ void PackageManager::deferredUninstall() noexcept
         return;
     }
 
-    // begin to uninstall
     for (const auto &[ref, items] : uninstalledLayers) {
-        auto pkgRef = package::Reference::parse(ref);
-        if (!pkgRef) {
-            qCritical() << "internal error:" << pkgRef.error().message();
-            Q_ASSERT(false);
-            return;
-        }
-
-        this->repo.unexportReference(*pkgRef);
         for (const auto &item : items) {
-            if (item.info.packageInfoV2Module == "binary"
-                || item.info.packageInfoV2Module == "runtime") {
-                auto removeCacheRet = this->removeCache(*pkgRef);
-                if (!removeCacheRet) {
-                    qCritical() << "remove cache failed: " << removeCacheRet.error().message();
-                }
-            }
-            auto ret = this->repo.remove(*pkgRef, item.info.packageInfoV2Module, item.info.uuid);
+            // The app was already unapplied before being marked for lazy deletion.
+
+            // Because there may be multiple items with the same reference, and one
+            // of them could be marked as deleted. This scenario occurs when a layer
+            // is marked as deleted, and then the same version of the UAB is installed
+            // again. In this case, `UABInstallationAction` will overwrite the previous layer.
+            auto ret = this->repo.remove(item);
             if (!ret) {
-                qCritical() << ret.error();
+                LogE("failed to remove lazy deleted layer {}", ret.error());
                 continue;
             }
         }
+    }
 
-        auto mergeRet = this->repo.mergeModules();
-        if (!mergeRet) {
-            qCritical() << "merge modules failed: " << mergeRet.error().message();
-        }
-
-        auto fuzzy =
-          package::FuzzyReference::create(pkgRef->channel, pkgRef->id, std::nullopt, pkgRef->arch);
-        if (!fuzzy) {
-            qCritical() << "internal error:" << fuzzy.error().message();
-            Q_ASSERT(false);
-            return;
-        }
-
-        auto latestRef = this->repo.clearReference(
-          *fuzzy,
-          linglong::repo::clearReferenceOption{ .fallbackToRemote = false });
-        if (!latestRef) {
-            qCritical() << "failed to get latest layer item:" << latestRef.error().message();
-        }
-
-        this->repo.exportReference(*latestRef);
+    auto mergeRet = this->repo.mergeModules();
+    if (!mergeRet) {
+        LogE("failed to merge modules: {}", mergeRet.error());
     }
 }
 

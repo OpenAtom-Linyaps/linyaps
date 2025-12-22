@@ -127,6 +127,71 @@ StartupNotify=true
 Terminal=false
 ```
 
+## Managing sandbox permissions with configuration files
+
+`ll-cli config` now understands Flatseal-style permission toggles through JSON configuration files. User-level settings live in `~/.config/linglong/config.json`, application overrides live in `~/.config/linglong/apps/<appid>/config.json`, and base overrides live under `~/.config/linglong/base/<baseid>/config.json`. Settings can also be defined system-wide inside `/var/lib/linglong/config/`.
+
+Use the new helpers to enable or disable presets:
+
+```
+ll-cli config enable-permission --global --category filesystem host home
+ll-cli config disable-permission --app org.deepin.calculator --category sockets cups
+```
+
+Internally the files contain a `permissions` object. Example:
+
+```json
+{
+  "permissions": {
+    "filesystem": { "host": true, "home": true, "host-os": true },
+    "sockets": { "cups": true },
+    "portals": { "notifications": true, "background": false }
+  }
+}
+```
+
+The recognised categories and names are:
+
+| Category   | Names                                                                                  | Effect (when enabled)                                                                   |
+| ---------- | -------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| filesystem | `host`, `host-os`, `host-etc`, `home`                                                  | Share full host tree, OS resources, `/etc`, or the host home directory (with privates) |
+| sockets    | `cups`, `pcsc`                                                                         | Bind `/run/cups` (printing) or `/run/pcscd` (smart cards) from the host                 |
+| portals    | `background`, `notifications`, `microphone`, `speaker`, `camera`, `location`           | Exported to the container as `LINGLONG_PORTAL_<NAME>` environment variables            |
+| devices    | `usb`, `usb-hid`, `udev`                                                               | Share `/dev/bus/usb`, `/dev/hidraw*`, and `/run/udev` plus host udev rules (`LINGLONG_UDEV_RULES_DIR`) |
+
+If a category is omitted the default matches the previous behaviour (host root, host OS assets, and the host home directory are shared). The JSON can also be edited manually when integrating with GUI tools. When `devices.udev` is enabled the host `/etc/udev/rules.d` and `/lib/udev/rules.d` directories are mapped read-only to `/run/host-udev-rules` inside the sandbox, and the location is exposed via the `LINGLONG_UDEV_RULES_DIR` variable.
+
+Custom udev rules can be embedded directly into the configuration:
+
+```
+ll-cli config add-udev-rule --global --name 99-my-device.rules --file ./my-device.rules
+ll-cli config rm-udev-rule --global --name 99-my-device.rules
+```
+
+The rule content is stored in JSON and synchronized into `/run/host-udev-rules/custom/` when the sandbox starts, so it works together with the `devices.udev` preset.
+
+### Restrict access to `~/.config/linglong`
+
+To prevent rogue applications from rewriting the host configuration, containers now hide `~/.config/linglong` by default. Only application IDs in the whitelist can see or modify the host directory. Maintain the whitelist via the CLI (the option must operate on `--global`):
+
+```
+ll-cli config allow-config-home --global org.deepin.calculator
+ll-cli config deny-config-home  --global org.deepin.calculator
+```
+
+Entries are stored under `config_access_whitelist`. Applications that are not listed receive a private copy of `~/.config/linglong` even when `filesystem.home` is enabled.
+
+### Restrict access to `/run/host/rootfs`
+
+The full host filesystem is exposed under `/run/host/rootfs`, but it is now hidden unless an app is explicitly whitelisted:
+
+```
+ll-cli config allow-host-root --global org.deepin.calculator
+ll-cli config deny-host-root  --global org.deepin.calculator
+```
+
+The entries live in `host_root_whitelist` and follow the same matching rules as the config whitelist, allowing you to pair them with `filesystem.host` permissions when necessary.
+
 ## Linyaps Application Build Project `linglong.yaml` Specification
 
 Like other traditional package management suites, manually creating a Linyaps application build project requires setting up a build rule file `linglong.yaml`. In the build rules, it is divided into `global fields` and `custom fields` according to usage. \* In the case, all space symbols and placeholders in the `linglong.yaml` body are valid characters. Please do not delete or change the format

@@ -1821,55 +1821,24 @@ utils::error::Result<void> OSTreeRepo::exportDir(const std::string &appID,
 {
     LINGLONG_TRACE(fmt::format("export {}", source.string()));
     if (max_depth <= 0) {
-        qWarning() << "ttl reached, skipping export for" << source.c_str();
+        LogW("max depth reached, skipping export for {}", source.c_str());
         return LINGLONG_OK;
     }
 
     std::error_code ec;
     // 检查源目录是否存在
-    auto exists = std::filesystem::exists(source, ec);
-    if (ec) {
-        return LINGLONG_ERR("check source", ec);
-    }
-    if (!exists) {
-        return LINGLONG_ERR("source directory does not exist");
-    }
-    auto is_directory = std::filesystem::is_directory(source, ec);
-    if (ec) {
-        return LINGLONG_ERR("check source", ec);
-    }
-    if (!is_directory) {
-        return LINGLONG_ERR("source is not a directory");
-    }
-    auto forceMkdirDir = [](std::string path) -> utils::error::Result<void> {
-        LINGLONG_TRACE(fmt::format("force mkdir {}", path));
-        // 检查目标目录是否存在，如果不存在则创建
-        std::error_code ec;
-        auto exists = std::filesystem::exists(path, ec);
+    if (!std::filesystem::is_directory(source, ec)) {
+        auto msg = fmt::format("{} is not a directory", source.string());
         if (ec) {
-            return LINGLONG_ERR(QString("Failed to check file existence: ") + path.c_str(), ec);
+            return LINGLONG_ERR(std::move(msg), ec);
         }
-        // 如果目标非目录，则删除它并重新创建
-        if (exists && !std::filesystem::is_directory(path, ec)) {
-            std::filesystem::remove(path, ec);
-            if (ec) {
-                return LINGLONG_ERR(QString("Failed to remove file: ") + path.c_str(), ec);
-            }
-            // 标记目标不存在
-            exists = false;
-        }
-        if (!exists) {
-            std::filesystem::create_directories(path, ec);
-            if (ec) {
-                return LINGLONG_ERR(QString("Failed to create directory: ") + path.c_str(), ec);
-            }
-        }
-        return LINGLONG_OK;
-    };
-    auto ret = forceMkdirDir(destination.string());
-    if (!ret.has_value()) {
-        return LINGLONG_ERR("create destination directory", ret);
+        return LINGLONG_ERR(std::move(msg));
     }
+    auto ret = utils::ensureDirectory(destination);
+    if (!ret.has_value()) {
+        return LINGLONG_ERR(ret);
+    }
+
     auto iterator = std::filesystem::directory_iterator(source, ec);
     if (ec) {
         return LINGLONG_ERR("list directory: " + source.string(), ec);
@@ -1878,22 +1847,15 @@ utils::error::Result<void> OSTreeRepo::exportDir(const std::string &appID,
     // 遍历源目录中的所有文件和子目录
     for (const auto &entry : iterator) {
         const auto &source_path = entry.path();
-        const auto &target_path = destination / source_path.filename();
         // 跳过无效的软链接
-        exists = std::filesystem::exists(source_path, ec);
+        auto status = std::filesystem::status(source_path, ec);
         if (ec) {
-            return LINGLONG_ERR("check source existence" + source_path.string(), ec);
-        }
-        if (!exists) {
-            continue;
+            return LINGLONG_ERR("failed to check file status: " + source_path.string(), ec);
         }
 
+        const auto &target_path = destination / source_path.filename();
         // 如果是文件，创建符号链接
-        auto is_regular_file = std::filesystem::is_regular_file(source_path, ec);
-        if (ec) {
-            return LINGLONG_ERR("check file type: " + source_path.string(), ec);
-        }
-        if (is_regular_file) {
+        if (std::filesystem::is_regular_file(status)) {
             // linyaps.original结尾的文件是重写之前的备份文件，不应该被导出
             if (common::strings::ends_with(source_path.string(), ".linyaps.original")) {
                 continue;
@@ -1921,28 +1883,21 @@ utils::error::Result<void> OSTreeRepo::exportDir(const std::string &appID,
                 if (!std::filesystem::exists(originPath, ec)) {
                     std::filesystem::rename(source_path, originPath, ec);
                     if (ec) {
-                        return LINGLONG_ERR("rename orig path", ec);
+                        return LINGLONG_ERR(fmt::format("failed to backup file: {}", source_path),
+                                            ec);
                     }
                 }
-                // 复制原始文件到source用于后面的重写
-                std::filesystem::copy(originPath, sourceNewPath, ec);
+                // 复制原始文件到临时文件用于重写
+                std::filesystem::copy_file(originPath, sourceNewPath, ec);
                 if (ec) {
-                    return LINGLONG_ERR("copy file failed: " + sourceNewPath, ec);
+                    return LINGLONG_ERR(
+                      fmt::format("failed to copy file from {} to {}", originPath, sourceNewPath),
+                      ec);
                 }
 
-                // TODO 这部分代码可以删除
-                exists = std::filesystem::exists(sourceNewPath, ec);
-                if (ec) {
-                    return LINGLONG_ERR("check file exists", ec);
-                }
-
-                if (!exists) {
-                    qWarning() << "failed to copy file: " << sourceNewPath.c_str();
-                    continue;
-                }
-
-                // 为了兼容上个版本直接对source进行重写，这里需要判断原始文件的硬链接数
-                // 如果硬链接数为1，则说明原始文件重写过了，就跳过重写
+                // 目前的重写方式不支持重复重写，因此需要判断是否重写过
+                // 旧版本直接在经过复制的 source_path 上进行重写，硬链接数为 1
+                // 当前版本通过 rename source_path 创建，硬链接数大于 1
                 auto hard_link_count = std::filesystem::hard_link_count(originPath, ec);
                 if (ec) {
                     return LINGLONG_ERR("get hard link count", ec);
@@ -1950,7 +1905,7 @@ utils::error::Result<void> OSTreeRepo::exportDir(const std::string &appID,
                 if (hard_link_count > 1) {
                     auto ret = IniLikeFileRewrite(QFileInfo(sourceNewPath.c_str()), appID.c_str());
                     if (!ret) {
-                        qWarning() << "rewrite file failed: " << ret.error().message();
+                        LogW("rewrite file failed: {}", ret.error());
                         continue;
                     }
                 }
@@ -1976,23 +1931,13 @@ utils::error::Result<void> OSTreeRepo::exportDir(const std::string &appID,
                     // 如果目标文件存在，删除再导出
                     std::filesystem::path linkpath =
                       target_path.string().replace(0, oldAppDir.length(), appDir);
-                    exists = std::filesystem::exists(linkpath, ec);
-                    if (ec) {
-                        return LINGLONG_ERR("check file existence", ec);
-                    }
-                    if (exists) {
+                    auto status = std::filesystem::symlink_status(linkpath, ec);
+                    if (!ec) {
                         desktopExists = true;
-                        LogD("remove exists file {}", linkpath);
-                        std::filesystem::remove(linkpath, ec);
-                        if (ec) {
-                            return LINGLONG_ERR("remove file failed", ec);
-                        }
-                        std::filesystem::create_symlink(
-                          source_path.lexically_relative(linkpath.parent_path()),
-                          linkpath,
-                          ec);
-                        if (ec) {
-                            return LINGLONG_ERR("create symlink failed: " + linkpath.string(), ec);
+                        auto target = source_path.lexically_relative(linkpath.parent_path());
+                        auto res = utils::relinkFileTo(linkpath, target);
+                        if (!res) {
+                            LogE("failed to link {} to {}", linkpath.string(), target.string());
                         }
                     }
                 }
@@ -2001,7 +1946,7 @@ utils::error::Result<void> OSTreeRepo::exportDir(const std::string &appID,
                     std::filesystem::path linkpath =
                       target_path.string().replace(0, oldAppDir.length(), newAppDir);
                     LogD("create parent directories for {}", linkpath);
-                    auto ret = forceMkdirDir(linkpath.parent_path().string());
+                    auto ret = utils::ensureDirectory(linkpath.parent_path());
                     if (!ret.has_value()) {
                         return LINGLONG_ERR("create parent dir", ret);
                     }
@@ -2015,44 +1960,27 @@ utils::error::Result<void> OSTreeRepo::exportDir(const std::string &appID,
                 }
                 continue;
             }
-            // 如果目标文件存在，删除它
-            auto linkpath = target_path;
-            exists = std::filesystem::exists(linkpath, ec);
-            if (ec) {
-                return LINGLONG_ERR("check file existence", ec);
-            }
-            if (exists) {
-                LogD("remove exists file {}", linkpath);
-                std::filesystem::remove(linkpath, ec);
-                if (ec) {
-                    return LINGLONG_ERR("remove file failed", ec);
-                }
-            }
+
             // 在destination创建指向source的符号链接
             // 这里使用相对链接，避免容器环境下的路径问题（例如帮助手册）
-            std::filesystem::create_symlink(source_path.lexically_relative(linkpath.parent_path()),
-                                            linkpath,
-                                            ec);
-            if (ec) {
-                return LINGLONG_ERR("create symlink failed: " + linkpath.string(), ec);
+            auto linkpath = target_path;
+            auto target = source_path.lexically_relative(linkpath.parent_path());
+            auto res = utils::relinkFileTo(linkpath, target);
+            if (!res) {
+                LogE("failed to link {} to {}", linkpath.string(), target.string());
             }
             continue;
         }
 
-        // 如果是目录，进行递归导出
-        is_directory = std::filesystem::is_directory(source_path, ec);
-        if (ec) {
-            return LINGLONG_ERR("check file type", ec);
-        }
-        if (is_directory) {
+        if (std::filesystem::is_directory(status)) {
             auto ret = this->exportDir(appID, source_path, target_path, max_depth - 1);
             if (!ret.has_value()) {
                 return ret;
             }
             continue;
         }
-        // 其它情况，打印警告日志
-        qWarning() << "invalid file: " << source_path.c_str();
+
+        LogW("ignore file {} type {}", source_path.string(), static_cast<int>(status.type()));
     }
     return LINGLONG_OK;
 }

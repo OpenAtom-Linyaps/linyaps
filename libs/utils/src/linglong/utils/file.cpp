@@ -240,8 +240,60 @@ linglong::utils::error::Result<void> ensureDirectory(const std::filesystem::path
     LINGLONG_TRACE(fmt::format("ensure directory {}", dir));
 
     std::error_code ec;
-    if (!std::filesystem::create_directory(dir, ec) && ec) {
+    auto status = std::filesystem::symlink_status(dir, ec);
+    if (!ec) {
+        if (std::filesystem::is_directory(status)) {
+            return LINGLONG_OK;
+        }
+
+        std::filesystem::remove(dir, ec);
+        if (ec) {
+            return LINGLONG_ERR("failed to remove directory", ec);
+        }
+    }
+
+    if (!std::filesystem::create_directories(dir, ec) && ec) {
         return LINGLONG_ERR("failed to create directory", ec);
+    }
+
+    return LINGLONG_OK;
+}
+
+linglong::utils::error::Result<void> relinkFileTo(const std::filesystem::path &link,
+                                                  const std::filesystem::path &target) noexcept
+{
+    LINGLONG_TRACE(fmt::format("relink {} to {}", link.string(), target.string()));
+
+    auto tmpPath = link.string() + ".linyaps.tmp";
+
+    std::error_code ec;
+    std::filesystem::symlink_status(tmpPath, ec);
+    if (!ec) {
+        std::filesystem::remove(tmpPath, ec);
+    }
+
+    std::filesystem::create_symlink(target, tmpPath, ec);
+    if (ec) {
+        return LINGLONG_ERR("failed to create symlink", ec);
+    }
+
+    std::filesystem::rename(tmpPath, link, ec);
+    if (ec) {
+        LogW("failed to rename {} to {}: {}, fallback to remove",
+             tmpPath,
+             link.string(),
+             ec.message());
+
+        std::filesystem::remove_all(link, ec);
+        if (ec) {
+            return LINGLONG_ERR(fmt::format("failed to remove {}", link.string()), ec);
+        }
+
+        std::filesystem::rename(tmpPath, link, ec);
+        if (ec) {
+            return LINGLONG_ERR(fmt::format("failed to rename {} to {}", tmpPath, link.string()),
+                                ec);
+        }
     }
 
     return LINGLONG_OK;

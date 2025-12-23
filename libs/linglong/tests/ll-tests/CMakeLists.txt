@@ -47,7 +47,7 @@ pfl_add_executable(
   src/linglong/utils/bash_command_helper_test.cpp
   src/linglong/utils/command_test.cpp
   src/linglong/utils/error/error_test.cpp
-  src/linglong/utils/file.cpp
+  src/linglong/utils/file_test.cpp
   src/linglong/utils/filelock_test.cpp
   src/linglong/utils/gkeyfile_wrapper_test.cpp
   src/linglong/utils/log.cpp

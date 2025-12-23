@@ -35,4 +35,7 @@ getFiles(const std::filesystem::path &dir);
 
 linglong::utils::error::Result<void> ensureDirectory(const std::filesystem::path &dir);
 
+linglong::utils::error::Result<void> relinkFileTo(const std::filesystem::path &link,
+                                                  const std::filesystem::path &target) noexcept;
+
 } // namespace linglong::utils

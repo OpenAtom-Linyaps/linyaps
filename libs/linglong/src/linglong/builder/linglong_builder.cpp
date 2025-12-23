@@ -1630,10 +1630,8 @@ utils::error::Result<void> Builder::exportLayer(const ExportOption &option)
         auto layerFile = QString::fromStdString(workingDir / layerExportFilename(*ref, module));
         auto ret = pkger.pack(*layerDir, layerFile);
         if (!ret) {
-            LogE("export layer {}/{} failed: {}",
-                 ref->toString(),
-                 module.c_str(),
-                 ret.error().message());
+            LogE("export layer {}/{} failed: {}", ref->toString(), module, ret.error());
+            return LINGLONG_ERR("export layer {}/{} failed", ret);
         }
     }
 

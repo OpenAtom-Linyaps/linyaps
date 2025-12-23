@@ -2,10 +2,9 @@
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
-#include "linglong/utils/file.h"
-
 #include <gtest/gtest.h>
 
+#include "linglong/utils/file.h"
 #include "linglong/utils/global/initialize.h"
 
 #include <cstdlib>
@@ -265,5 +264,62 @@ TEST_F(FileTest, EnsureDirectory)
     fs::path file_path = dest_dir / "file.txt";
     std::ofstream(file_path) << "test";
     result = linglong::utils::ensureDirectory(file_path);
-    EXPECT_FALSE(result.has_value());
+    EXPECT_TRUE(result.has_value());
+    EXPECT_TRUE(fs::is_directory(file_path));
+
+    // Test with mutiple layer directory
+    fs::path multiple_dir = dest_dir / "multiple_dir" / "sub_dir";
+    result = linglong::utils::ensureDirectory(multiple_dir);
+    ASSERT_TRUE(result.has_value());
+    EXPECT_TRUE(fs::is_directory(multiple_dir));
+}
+
+TEST_F(FileTest, RelinkFile)
+{
+    fs::path target = dest_dir / "target_file";
+    std::ofstream(target) << "target content";
+
+    fs::path link = dest_dir / "link_file";
+
+    // Case 1: link does not exist
+    {
+        auto result = linglong::utils::relinkFileTo(link, target);
+        ASSERT_TRUE(result.has_value());
+        EXPECT_TRUE(fs::is_symlink(link));
+        EXPECT_EQ(fs::read_symlink(link), target);
+    }
+
+    // Case 2: link exists as a regular file
+    {
+        fs::remove(link);
+        std::ofstream(link) << "old content";
+
+        auto result = linglong::utils::relinkFileTo(link, target);
+        ASSERT_TRUE(result.has_value());
+        EXPECT_TRUE(fs::is_symlink(link));
+        EXPECT_EQ(fs::read_symlink(link), target);
+    }
+
+    // Case 3: link exists as a symlink
+    {
+        fs::remove(link);
+        fs::path old_target = dest_dir / "old_target";
+        fs::create_symlink(old_target, link);
+
+        auto result = linglong::utils::relinkFileTo(link, target);
+        ASSERT_TRUE(result.has_value());
+        EXPECT_TRUE(fs::is_symlink(link));
+        EXPECT_EQ(fs::read_symlink(link), target);
+    }
+
+    // Case 4: link exists as a directory
+    {
+        fs::remove(link);
+        fs::create_directories(link / "non-empty");
+
+        auto result = linglong::utils::relinkFileTo(link, target);
+        ASSERT_TRUE(result.has_value()) << result.error().message();
+        EXPECT_TRUE(fs::is_symlink(link));
+        EXPECT_EQ(fs::read_symlink(link), target);
+    }
 }

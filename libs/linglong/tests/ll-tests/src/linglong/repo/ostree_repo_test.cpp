@@ -68,7 +68,7 @@ TEST_F(RepoTest, exportDir)
 
     // 创建普通测试文件
     std::ofstream(srcDirPath / "test1.txt").close();
-    std::ofstream(srcDirPath / "test2.txt").close();
+    std::ofstream(srcDirPath / "test2.txt") << "test2.txt";
 
     // 创建子目录和文件
     created = fs::create_directories(srcDirPath / "subdir", ec);
@@ -121,6 +121,8 @@ TEST_F(RepoTest, exportDir)
     };
     {
         // 测试目标目录已存在同名文件的情况
+        fs::create_directories(destDirPath, ec);
+        fs::create_symlink("noexist", destDirPath / "test2.txt");
         created = fs::create_directories(destDirPath / "share" / "applications", ec);
         EXPECT_TRUE(created) << "Failed to create destination applications directory";
         EXPECT_FALSE(ec) << "Error creating destination applications directory: " << ec.message();
@@ -129,11 +131,17 @@ TEST_F(RepoTest, exportDir)
         std::ofstream(destDirPath / "share" / "applications" / "test").close();
         auto result = ostreeRepo->exportDir("appID", srcDirPath.string(), destDirPath.string(), 10);
         EXPECT_TRUE(result.has_value()) << "exportDir failed: " << result.error().message();
+        auto status = fs::status(destDirPath / "share" / "applications" / "test", ec);
         EXPECT_FALSE(ec) << "Unexpected error code: " << ec.message();
+        EXPECT_EQ(status.type(), fs::file_type::directory);
 
         // 非标准路径会被忽略
         EXPECT_TRUE(fs::exists(destDirPath / "test1.txt"));
         EXPECT_TRUE(fs::exists(destDirPath / "test2.txt"));
+        std::ifstream ifs(destDirPath / "test2.txt");
+        std::string content((std::istreambuf_iterator<char>(ifs)),
+                            (std::istreambuf_iterator<char>()));
+        EXPECT_EQ(content, "test2.txt");
         EXPECT_TRUE(fs::exists(destDirPath / "subdir" / "test3.txt"));
 
         // 验证XDG标准文件

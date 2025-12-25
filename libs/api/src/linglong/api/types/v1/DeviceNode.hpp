@@ -9,7 +9,7 @@
 //
 //  Then include this file, and then do
 //
-//     ExtensionImpl.hpp data = nlohmann::json::parse(jsonString);
+//     DeviceNode.hpp data = nlohmann::json::parse(jsonString);
 
 #pragma once
 
@@ -17,27 +17,21 @@
 #include <nlohmann/json.hpp>
 #include "linglong/api/types/v1/helper.hpp"
 
-#include "linglong/api/types/v1/DeviceNode.hpp"
-
 namespace linglong {
 namespace api {
 namespace types {
 namespace v1 {
 using nlohmann::json;
 
-struct ExtensionImpl {
+struct DeviceNode {
 /**
-* device nodes to be mounted
+* host device node path
 */
-std::optional<std::vector<DeviceNode>> deviceNodes;
+std::optional<std::string> hostPath;
 /**
-* environment variables to set when extension effects
+* device node path
 */
-std::optional<std::map<std::string, std::string>> env;
-/**
-* extra ld search path
-*/
-std::optional<std::vector<std::string>> libs;
+std::string path;
 };
 }
 }

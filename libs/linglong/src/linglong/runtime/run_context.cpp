@@ -548,7 +548,24 @@ RunContext::fillContextCfg(linglong::generator::ContainerCfgBuilder &builder)
         });
     }
 
-    for (const auto &ext : extensionLayers) {
+    for (auto &ext : extensionLayers) {
+        auto item = ext.getCachedItem();
+        if (!item) {
+            continue;
+        }
+        const auto &info = item->info;
+        if (info.extImpl && info.extImpl->deviceNodes) {
+            for (auto &node : *info.extImpl->deviceNodes) {
+                ocppi::runtime::config::types::Mount mount = {
+                    .destination = node.path,
+                    .options = { { "bind" } },
+                    .source = node.hostPath.value_or(node.path),
+                    .type = "bind",
+                };
+                builder.addExtraMount(mount);
+            }
+        }
+
         std::string name = ext.getReference().id;
         if (extensionOutput && name == targetId) {
             continue;

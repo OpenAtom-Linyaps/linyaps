@@ -82,7 +82,7 @@ pfl_add_executable(
 
 include(GoogleTest)
 get_real_target_name(tests linglong::linglong::ll-tests)
-gtest_discover_tests(${tests} WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR})
+gtest_discover_tests(${tests} WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
 # FIXME: we should'n include header directly
 target_include_directories(${tests}

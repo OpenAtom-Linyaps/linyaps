@@ -26,6 +26,7 @@
 #include "linglong/api/types/v1/CommonOptions.hpp"
 #include "linglong/api/types/v1/CommonResult.hpp"
 #include "linglong/api/types/v1/ContainerProcessStateInfo.hpp"
+#include "linglong/api/types/v1/DeviceNode.hpp"
 #include "linglong/api/types/v1/DialogHandShakePayload.hpp"
 #include "linglong/api/types/v1/DialogMessage.hpp"
 #include "linglong/api/types/v1/ExportDirs.hpp"
@@ -95,6 +96,7 @@ std::optional<CliContainer> cliContainer;
 std::optional<CommonOptions> commonOptions;
 std::optional<CommonResult> commonResult;
 std::optional<ContainerProcessStateInfo> containerProcessStateInfo;
+std::optional<DeviceNode> deviceNode;
 std::optional<DialogHandShakePayload> dialogHandShakePayload;
 std::optional<DialogMessage> dialogMessage;
 std::optional<ExportDirs> exportDirs;

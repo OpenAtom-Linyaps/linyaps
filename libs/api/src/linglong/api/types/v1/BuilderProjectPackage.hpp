@@ -17,6 +17,8 @@
 #include <nlohmann/json.hpp>
 #include "linglong/api/types/v1/helper.hpp"
 
+#include "linglong/api/types/v1/DeviceNode.hpp"
+
 namespace linglong {
 namespace api {
 namespace types {
@@ -43,6 +45,10 @@ std::optional<std::string> channel;
 * description of package
 */
 std::string description;
+/**
+* device nodes to be mounted
+*/
+std::optional<std::vector<DeviceNode>> deviceNodes;
 /**
 * Predefined environment variables when the extension is applied
 */

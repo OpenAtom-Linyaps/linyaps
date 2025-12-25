@@ -65,6 +65,7 @@
 #include "linglong/api/types/v1/BuilderProject.hpp"
 #include "linglong/api/types/v1/BuilderProjectSource.hpp"
 #include "linglong/api/types/v1/BuilderProjectPackage.hpp"
+#include "linglong/api/types/v1/DeviceNode.hpp"
 #include "linglong/api/types/v1/BuilderProjectModules.hpp"
 #include "linglong/api/types/v1/BuilderProjectBuildEXT.hpp"
 #include "linglong/api/types/v1/Apt.hpp"
@@ -109,6 +110,9 @@ void to_json(json & j, const BuilderProjectBuildEXT & x);
 
 void from_json(const json & j, BuilderProjectModules & x);
 void to_json(json & j, const BuilderProjectModules & x);
+
+void from_json(const json & j, DeviceNode & x);
+void to_json(json & j, const DeviceNode & x);
 
 void from_json(const json & j, BuilderProjectPackage & x);
 void to_json(json & j, const BuilderProjectPackage & x);
@@ -390,10 +394,24 @@ j["files"] = x.files;
 j["name"] = x.name;
 }
 
+inline void from_json(const json & j, DeviceNode& x) {
+x.hostPath = get_stack_optional<std::string>(j, "hostPath");
+x.path = j.at("path").get<std::string>();
+}
+
+inline void to_json(json & j, const DeviceNode & x) {
+j = json::object();
+if (x.hostPath) {
+j["hostPath"] = x.hostPath;
+}
+j["path"] = x.path;
+}
+
 inline void from_json(const json & j, BuilderProjectPackage& x) {
 x.architecture = get_stack_optional<std::string>(j, "architecture");
 x.channel = get_stack_optional<std::string>(j, "channel");
 x.description = j.at("description").get<std::string>();
+x.deviceNodes = get_stack_optional<std::vector<DeviceNode>>(j, "deviceNodes");
 x.env = get_stack_optional<std::map<std::string, std::string>>(j, "env");
 x.extensionOf = get_stack_optional<std::string>(j, "extension_of");
 x.id = j.at("id").get<std::string>();
@@ -412,6 +430,9 @@ if (x.channel) {
 j["channel"] = x.channel;
 }
 j["description"] = x.description;
+if (x.deviceNodes) {
+j["deviceNodes"] = x.deviceNodes;
+}
 if (x.env) {
 j["env"] = x.env;
 }
@@ -616,12 +637,16 @@ j["version"] = x.version;
 }
 
 inline void from_json(const json & j, ExtensionImpl& x) {
+x.deviceNodes = get_stack_optional<std::vector<DeviceNode>>(j, "deviceNodes");
 x.env = get_stack_optional<std::map<std::string, std::string>>(j, "env");
 x.libs = get_stack_optional<std::vector<std::string>>(j, "libs");
 }
 
 inline void to_json(json & j, const ExtensionImpl & x) {
 j = json::object();
+if (x.deviceNodes) {
+j["deviceNodes"] = x.deviceNodes;
+}
 if (x.env) {
 j["env"] = x.env;
 }
@@ -1236,6 +1261,7 @@ x.cliContainer = get_stack_optional<CliContainer>(j, "CLIContainer");
 x.commonOptions = get_stack_optional<CommonOptions>(j, "CommonOptions");
 x.commonResult = get_stack_optional<CommonResult>(j, "CommonResult");
 x.containerProcessStateInfo = get_stack_optional<ContainerProcessStateInfo>(j, "ContainerProcessStateInfo");
+x.deviceNode = get_stack_optional<DeviceNode>(j, "DeviceNode");
 x.dialogHandShakePayload = get_stack_optional<DialogHandShakePayload>(j, "DialogHandShakePayload");
 x.dialogMessage = get_stack_optional<DialogMessage>(j, "DialogMessage");
 x.exportDirs = get_stack_optional<ExportDirs>(j, "ExportDirs");
@@ -1302,6 +1328,9 @@ j["CommonResult"] = x.commonResult;
 }
 if (x.containerProcessStateInfo) {
 j["ContainerProcessStateInfo"] = x.containerProcessStateInfo;
+}
+if (x.deviceNode) {
+j["DeviceNode"] = x.deviceNode;
 }
 if (x.dialogHandShakePayload) {
 j["DialogHandShakePayload"] = x.dialogHandShakePayload;
@@ -1429,7 +1458,7 @@ case InteractionMessageType::Install: j = "Install"; break;
 case InteractionMessageType::Uninstall: j = "Uninstall"; break;
 case InteractionMessageType::Unknown: j = "Unknown"; break;
 case InteractionMessageType::Upgrade: j = "Upgrade"; break;
-default: throw std::runtime_error("Unexpected value in enumeration \"[object Object]\": " + std::to_string(static_cast<int>(x)));
+default: throw std::runtime_error("Unexpected value in enumeration \"InteractionMessageType\": " + std::to_string(static_cast<int>(x)));
 }
 }
 
@@ -1453,7 +1482,7 @@ case State::Processing: j = "Processing"; break;
 case State::Queued: j = "Queued"; break;
 case State::Succeed: j = "Succeed"; break;
 case State::Unknown: j = "Unknown"; break;
-default: throw std::runtime_error("Unexpected value in enumeration \"[object Object]\": " + std::to_string(static_cast<int>(x)));
+default: throw std::runtime_error("Unexpected value in enumeration \"State\": " + std::to_string(static_cast<int>(x)));
 }
 }
 
@@ -1465,7 +1494,7 @@ else { throw std::runtime_error("Input JSON does not conform to schema!"); }
 inline void to_json(json & j, const Version & x) {
 switch (x) {
 case Version::The1: j = "1"; break;
-default: throw std::runtime_error("Unexpected value in enumeration \"[object Object]\": " + std::to_string(static_cast<int>(x)));
+default: throw std::runtime_error("Unexpected value in enumeration \"Version\": " + std::to_string(static_cast<int>(x)));
 }
 }
 }

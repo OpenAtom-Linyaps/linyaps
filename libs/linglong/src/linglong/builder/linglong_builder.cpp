@@ -1186,8 +1186,9 @@ utils::error::Result<void> Builder::commitToLocalRepo() noexcept
     }
 
     if (info.kind == "extension") {
-        info.extImpl =
-          api::types::v1::ExtensionImpl{ .env = project.package.env, .libs = project.package.libs };
+        info.extImpl = api::types::v1::ExtensionImpl{ .deviceNodes = project.package.deviceNodes,
+                                                      .env = project.package.env,
+                                                      .libs = project.package.libs };
     }
 
     // 从本地仓库清理旧的ref

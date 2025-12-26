@@ -503,14 +503,9 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
         return toDBusReply(architectureRet);
     }
 
-    auto currentArch = package::Architecture::currentCPUArchitecture();
-    if (!currentArch) {
-        return toDBusReply(currentArch);
-    }
-
-    if (*architectureRet != *currentArch) {
+    if (*architectureRet != package::Architecture::currentCPUArchitecture()) {
         return toDBusReply(utils::error::ErrorCode::Failed,
-                           "app arch:" + architectureRet->toStdString()
+                           "app arch:" + architectureRet->toString()
                              + " not match host architecture");
     }
 
@@ -561,7 +556,7 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
             auto layerName = fmt::format("{}_{}_{}_{}.layer",
                                          packageRef.id,
                                          packageRef.version.toString(),
-                                         architectureRet->toStdString(),
+                                         architectureRet->toString(),
                                          packageInfo.packageInfoV2Module.c_str());
             auto err = fmt::format("The latest version has been installed. If you want to "
                                    "replace it, try using 'll-cli install {} --force'",
@@ -884,7 +879,7 @@ auto PackageManager::Uninstall(const QVariantMap &parameters) noexcept -> QVaria
     auto refSpec = fmt::format("{}/{}/{}/{}",
                                mainRef->channel,
                                mainRef->id,
-                               mainRef->arch.toStdString(),
+                               mainRef->arch.toString(),
                                curModule);
 
     auto taskRet = tasks.addPackageTask(
@@ -963,12 +958,6 @@ auto PackageManager::Update(const QVariantMap &parameters) noexcept -> QVariantM
       parameters);
     if (!paras) {
         return toDBusReply(utils::error::ErrorCode::AppUpgradeFailed, paras.error().message());
-    }
-
-    auto currentArch = package::Architecture::currentCPUArchitecture();
-    if (!currentArch) {
-        return toDBusReply(utils::error::ErrorCode::AppUpgradeFailed,
-                           currentArch.error().message());
     }
 
     auto action = PackageUpdateAction::create(paras->packages, paras->depsOnly, *this, repo);
@@ -1495,10 +1484,6 @@ utils::error::Result<void> PackageManager::generateCache(const package::Referenc
     process.noNewPrivileges = true;
     process.terminal = true;
 
-    auto currentArch = package::Architecture::currentCPUArchitecture();
-    if (!currentArch) {
-        return LINGLONG_ERR(currentArch);
-    }
     auto ldGenerateCmd =
       std::vector<std::string>{ "/sbin/ldconfig", "-X", "-C", appCacheDest + "/ld.so.cache" };
 #ifdef LINGLONG_FONT_CACHE_GENERATOR

@@ -53,7 +53,7 @@ std::vector<std::string> RemotePackages::getReferenceModules(const package::Refe
         for (const auto &package : packages.second) {
             if (package.id == ref.id && package.channel == ref.channel
                 && package.version == ref.version.toString()
-                && package.arch[0] == ref.arch.toStdString()) {
+                && package.arch[0] == ref.arch.toString()) {
                 modules.emplace_back(package.packageInfoV2Module);
             }
         }

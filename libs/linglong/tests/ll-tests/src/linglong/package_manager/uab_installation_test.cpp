@@ -51,7 +51,7 @@ api::types::v1::UabLayer create_layer(const std::string &id,
                                       const std::string &channel,
                                       const std::string &kind)
 {
-    auto currentArch = package::Architecture::currentCPUArchitecture()->toStdString();
+    auto currentArch = package::Architecture::currentCPUArchitecture().toString();
     api::types::v1::UabLayer layer;
     layer.minified = false;
     layer.info.id = id;
@@ -81,8 +81,6 @@ TEST(CheckUABLayersConstrain, ArchMismatch)
     repo::OSTreeRepo &repo = mockRepo;
     std::vector<api::types::v1::UabLayer> layers;
     api::types::v1::UabLayer layer;
-    auto currentArch = package::Architecture::currentCPUArchitecture();
-    ASSERT_TRUE(currentArch.has_value());
     // An arch that doesn't match current arch
     layer.minified = false;
     layer.info.arch = { "non-existent-arch" };
@@ -98,7 +96,7 @@ TEST(CheckUABLayersConstrain, DifferentIds)
     MockOSTreeRepo mockRepo(tempDir.path());
     repo::OSTreeRepo &repo = mockRepo;
     std::vector<api::types::v1::UabLayer> layers;
-    auto currentArch = package::Architecture::currentCPUArchitecture()->toStdString();
+    auto currentArch = package::Architecture::currentCPUArchitecture().toString();
 
     api::types::v1::UabLayer layer1;
     layer1.minified = false;
@@ -122,7 +120,7 @@ TEST(CheckUABLayersConstrain, DifferentVersions)
     MockOSTreeRepo mockRepo(tempDir.path());
     repo::OSTreeRepo &repo = mockRepo;
     std::vector<api::types::v1::UabLayer> layers;
-    auto currentArch = package::Architecture::currentCPUArchitecture()->toStdString();
+    auto currentArch = package::Architecture::currentCPUArchitecture().toString();
 
     api::types::v1::UabLayer layer1;
     layer1.minified = false;
@@ -150,7 +148,7 @@ TEST(CheckUABLayersConstrain, ExtraModuleNoBinaryAndNotInstalled)
     MockOSTreeRepo mockRepo(tempDir.path());
     repo::OSTreeRepo &repo = mockRepo;
     std::vector<api::types::v1::UabLayer> layers;
-    auto currentArch = package::Architecture::currentCPUArchitecture()->toStdString();
+    auto currentArch = package::Architecture::currentCPUArchitecture().toString();
 
     api::types::v1::UabLayer layer1;
     layer1.minified = false;
@@ -173,7 +171,7 @@ TEST(CheckUABLayersConstrain, ExtraModuleNoBinaryAndWrongVersionInstalled)
     MockOSTreeRepo mockRepo(tempDir.path());
     repo::OSTreeRepo &repo = mockRepo;
     std::vector<api::types::v1::UabLayer> layers;
-    auto currentArch = package::Architecture::currentCPUArchitecture()->toStdString();
+    auto currentArch = package::Architecture::currentCPUArchitecture().toString();
 
     api::types::v1::UabLayer layer1;
     layer1.minified = false;
@@ -199,7 +197,7 @@ TEST(CheckUABLayersConstrain, ExtraModuleNoBinaryButInstalled)
     MockOSTreeRepo mockRepo(tempDir.path());
     repo::OSTreeRepo &repo = mockRepo;
     std::vector<api::types::v1::UabLayer> layers;
-    auto currentArch = package::Architecture::currentCPUArchitecture()->toStdString();
+    auto currentArch = package::Architecture::currentCPUArchitecture().toString();
 
     api::types::v1::UabLayer layer1;
     layer1.minified = false;
@@ -225,7 +223,7 @@ TEST(CheckUABLayersConstrain, ExtraModuleWithBinary)
     MockOSTreeRepo mockRepo(tempDir.path());
     repo::OSTreeRepo &repo = mockRepo;
     std::vector<api::types::v1::UabLayer> layers;
-    auto currentArch = package::Architecture::currentCPUArchitecture()->toStdString();
+    auto currentArch = package::Architecture::currentCPUArchitecture().toString();
 
     api::types::v1::UabLayer layer1;
     layer1.minified = false;

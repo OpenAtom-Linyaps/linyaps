@@ -95,7 +95,7 @@ std::string FuzzyReference::toString() const noexcept
                        this->channel.value_or("unknown"),
                        this->id,
                        this->version ? this->version.value() : "unknown",
-                       this->arch ? this->arch->toStdString() : "unknown");
+                       this->arch ? this->arch->toString() : "unknown");
 }
 
 } // namespace linglong::package

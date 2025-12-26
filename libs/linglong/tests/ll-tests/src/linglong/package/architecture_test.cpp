@@ -42,7 +42,7 @@ TEST(Package, ArchitectureToString)
 {
     // 使用for循环测试所有架构的toString()方法
     for (const auto &data : ARCHITECTURE_TEST_DATA) {
-        EXPECT_EQ(Architecture(data.value).toStdString(), data.name);
+        EXPECT_EQ(Architecture(data.value).toString(), data.name);
     }
 }
 
@@ -60,7 +60,7 @@ TEST(Package, ArchitectureParseValid)
     for (const auto &data : ARCHITECTURE_TEST_DATA) {
         auto result = Architecture::parse(data.name);
         ASSERT_TRUE(result.has_value()) << "Failed to parse: " << data.name;
-        EXPECT_EQ(result->toStdString(), data.name);
+        EXPECT_EQ(result->toString(), data.name);
         EXPECT_EQ(result->getTriplet(), data.triplet);
     }
 }
@@ -79,7 +79,7 @@ TEST(Package, ArchitectureConstructionFromString)
     // 使用for循环测试从字符串构造架构对象
     for (const auto &data : ARCHITECTURE_TEST_DATA) {
         Architecture arch(data.name);
-        EXPECT_EQ(arch.toStdString(), data.name);
+        EXPECT_EQ(arch.toString(), data.name);
     }
 }
 
@@ -134,18 +134,17 @@ TEST(Package, ArchitectureDefaultConstruction)
 {
     // 测试默认构造
     Architecture defaultArch;
-    EXPECT_EQ(defaultArch.toStdString(), "unknown"); // UNKNOW
-    EXPECT_EQ(defaultArch.getTriplet(), "unknown");  // unknow
+    EXPECT_EQ(defaultArch.toString(), "unknown");   // UNKNOW
+    EXPECT_EQ(defaultArch.getTriplet(), "unknown"); // unknow
 }
 
 TEST(Package, ArchitectureCurrentCPUArchitecture)
 {
     // 测试获取当前CPU架构
     auto currentArch = Architecture::currentCPUArchitecture();
-    EXPECT_TRUE(currentArch.has_value()) << "should not fail (unless system problem)";
     // 这不应该失败（除非有系统问题）
     // 我们无法预测确切的架构，但可以验证它是有效的
-    std::string archString = currentArch->toStdString();
+    std::string archString = currentArch.toString();
     // 当前架构应该是支持的类型之一
     bool found = false;
     for (const auto &data : ARCHITECTURE_TEST_DATA) {
@@ -157,7 +156,7 @@ TEST(Package, ArchitectureCurrentCPUArchitecture)
     EXPECT_TRUE(found) << "Unknown architecture: " << archString;
 
     // 三元组不应为空，且应包含"linux-gnu"
-    std::string triplet = currentArch->getTriplet();
+    std::string triplet = currentArch.getTriplet();
     EXPECT_FALSE(triplet.empty());
     EXPECT_TRUE(linglong::common::strings::contains(triplet, "linux-gnu"));
 }

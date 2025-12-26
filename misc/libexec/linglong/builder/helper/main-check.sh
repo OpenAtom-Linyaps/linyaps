@@ -8,10 +8,27 @@
 
 #default level is 1
 declare -i check_level=1
+declare -i skip_ldd=0
+declare -i skip_config=0
 
-if [[ $1 != "" ]]; then
-        check_level=$1
-fi
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --skip-ldd-check)
+            skip_ldd=1
+            shift
+            ;;
+        --skip-config-check)
+            skip_config=1
+            shift
+            ;;
+        *)
+            if [[ -n "$1" ]]; then
+                check_level=$1
+            fi
+            shift
+            ;;
+    esac
+done
 
 case $check_level in
 0)
@@ -26,15 +43,23 @@ case $check_level in
         ;;
 esac
 
-echo "start ldd check"
-if ! @CMAKE_INSTALL_FULL_LIBEXECDIR@/linglong/builder/helper/ldd-check.sh "/opt/apps/${LINGLONG_APPID}/files"; then
-        echo "Error: ldd check failed."
-        if [ $check_level -eq 1 ]; then
-                exit 1
-        fi
+if [[ $skip_ldd -eq 0 ]]; then
+    echo "start ldd check"
+    if ! @CMAKE_INSTALL_FULL_LIBEXECDIR@/linglong/builder/helper/ldd-check.sh "/opt/apps/${LINGLONG_APPID}/files"; then
+            echo "Error: ldd check failed."
+            if [ $check_level -eq 1 ]; then
+                    exit 1
+            fi
+    fi
+else
+    echo "Skipping ldd check."
 fi
 
-echo "start application configure check"
-if ! @CMAKE_INSTALL_FULL_LIBEXECDIR@/linglong/builder/helper/config-check.sh; then
-        echo "Warnning: configue check failed."
+if [[ $skip_config -eq 0 ]]; then
+    echo "start application configure check"
+    if ! @CMAKE_INSTALL_FULL_LIBEXECDIR@/linglong/builder/helper/config-check.sh; then
+            echo "Warning: application configure check failed."
+    fi
+else
+    echo "Skipping application configure check."
 fi

@@ -250,6 +250,10 @@ RepoCache::queryLayerItem(const repoCacheQuery &query) const noexcept
             continue;
         }
 
+        if (query.architecture && query.architecture.value() != layer.info.arch.front()) {
+            continue;
+        }
+
         if (query.deleted) {
             auto layerDeleted = layer.deleted.value_or(false);
             if (query.deleted.value() != layerDeleted) {

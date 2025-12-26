@@ -34,96 +34,6 @@
 
 namespace linglong::package {
 
-Q_LOGGING_CATEGORY(uab_packager, "packager.uab")
-
-elfHelper::elfHelper(QByteArray path, int fd, Elf *ptr)
-    : filePath(std::move(path))
-    , elfFd(fd)
-    , e(ptr)
-{
-}
-
-elfHelper::elfHelper(elfHelper &&other) noexcept
-    : filePath(std::move(other).filePath)
-    , elfFd(other.elfFd)
-    , e(other.e)
-{
-    other.e = nullptr;
-    other.elfFd = -1;
-}
-
-elfHelper &elfHelper::operator=(elfHelper &&other) noexcept
-{
-    if (*this == other) {
-        return *this;
-    }
-
-    this->e = other.e;
-    this->elfFd = other.elfFd;
-    this->filePath = std::move(other).filePath;
-
-    other.e = nullptr;
-    other.elfFd = -1;
-
-    return *this;
-}
-
-elfHelper::~elfHelper()
-{
-    if (elfFd == -1) {
-        return;
-    }
-
-    elf_end(e);
-    ::close(elfFd);
-}
-
-utils::error::Result<elfHelper> elfHelper::create(const QByteArray &filePath) noexcept
-{
-    LINGLONG_TRACE("create elfHelper");
-
-    if (!QFileInfo::exists(filePath)) {
-        auto ret = filePath + "doesn't exists";
-        return LINGLONG_ERR(ret.toStdString());
-    }
-
-    // TODO: use libelf
-    // auto fd = ::open(filePath.data(), O_RDWR);
-    // if (fd == -1) {
-    //     return LINGLONG_ERR(strerror(errno));
-    // }
-
-    // auto *elf = elf_begin(fd, ELF_C_RDWR, nullptr);
-    // if (elf == nullptr) {
-    //     return LINGLONG_ERR(
-    //       QString{ "%1 not usable: %2" }.arg(QString{ filePath }).arg(elf_errmsg(-1)));
-    // }
-
-    return elfHelper{ filePath, -1, nullptr };
-}
-
-utils::error::Result<void> elfHelper::addNewSection(const QByteArray &sectionName,
-                                                    const QFileInfo &dataFile,
-                                                    const QStringList &flags) const noexcept
-{
-    LINGLONG_TRACE(fmt::format("add section:{}", sectionName.toStdString()))
-
-    auto args = QStringList{ QString{ "--add-section" },
-                             QString("%1=%2").arg(sectionName, dataFile.absoluteFilePath()) };
-
-    if (!flags.empty()) {
-        args.append({ "--set-section-flags", flags.join(QString{ "," }) });
-    }
-
-    args.append({ this->elfPath(), this->elfPath() });
-    auto ret = utils::command::Cmd("objcopy").exec(args);
-    if (!ret) {
-        return LINGLONG_ERR("exec objcopy", ret);
-    }
-
-    return LINGLONG_OK;
-}
-
 UABPackager::UABPackager(const QDir &projectDir, QDir workingDir)
 {
     if (!workingDir.mkpath(".")) {
@@ -148,28 +58,32 @@ UABPackager::~UABPackager()
             return;
         }
 
-        qWarning() << "couldn't rename build directory" << buildDirPath << "to" << randomName
-                   << ",try to remove it.";
+        LogW("couldn't rename build directory {} to {}, try to remove it",
+             buildDirPath,
+             randomName);
     }
 
     if (!buildDir.removeRecursively()) {
-        qCCritical(uab_packager) << "couldn't remove build directory, please remove it manually.";
+        LogE("couldn't remove build directory, please remove it manually.");
     }
 }
 
-utils::error::Result<void> UABPackager::setIcon(const QFileInfo &newIcon) noexcept
+utils::error::Result<void> UABPackager::setIcon(std::filesystem::path newIcon) noexcept
 {
     LINGLONG_TRACE("append icon to uab")
 
-    if (!newIcon.exists()) {
-        return LINGLONG_ERR("icon doesn't exists");
+    std::error_code ec;
+    auto status = std::filesystem::status(newIcon, ec);
+    if (ec) {
+        return LINGLONG_ERR(fmt::format("failed to check icon file status {}", newIcon.string()),
+                            ec);
     }
 
-    if (!newIcon.isFile()) {
+    if (!std::filesystem::is_regular_file(status)) {
         return LINGLONG_ERR("icon isn't a file");
     }
 
-    icon = newIcon;
+    icon = std::move(newIcon);
     return LINGLONG_OK;
 }
 
@@ -236,7 +150,7 @@ utils::error::Result<void> UABPackager::pack(const QString &uabFilePath,
                                         uabApp.toStdString()));
     }
 
-    auto uab = elfHelper::create(uabApp.toLocal8Bit());
+    auto uab = ElfHandler::create(uabApp.toStdString());
     if (!uab) {
         return LINGLONG_ERR(uab);
     }
@@ -262,10 +176,8 @@ utils::error::Result<void> UABPackager::pack(const QString &uabFilePath,
         return LINGLONG_ERR("couldn't remove previous uab file");
     }
 
-    if (!QFile::rename(this->uab.elfPath(), exportPath)) {
-        return LINGLONG_ERR(fmt::format("export uab from {} to {} failed",
-                                        this->uab.elfPath().toStdString(),
-                                        exportPath.toStdString()));
+    if (!QFile::rename(uabApp, exportPath)) {
+        return LINGLONG_ERR(fmt::format("export uab from {} to {} failed", uabApp, exportPath));
     }
 
     if (!QFile::setPermissions(exportPath,
@@ -281,12 +193,12 @@ utils::error::Result<void> UABPackager::packIcon() noexcept
 {
     LINGLONG_TRACE("add icon to uab")
 
-    QByteArray iconSection{ "linglong.icon" };
-    if (auto ret = this->uab.addNewSection(iconSection, icon.value()); !ret) {
+    std::string iconSection{ "linglong.icon" };
+    if (auto ret = this->uab->addSection(iconSection, icon.value()); !ret) {
         return LINGLONG_ERR(ret);
     }
 
-    this->meta.sections.icon = iconSection.toStdString();
+    this->meta.sections.icon = iconSection;
 
     return LINGLONG_OK;
 }
@@ -598,11 +510,8 @@ utils::error::Result<void> UABPackager::prepareExecutableBundle(const QDir &bund
                                                 filesDir.absolutePath().toStdString()));
             }
 
-            auto curArch = Architecture::currentCPUArchitecture();
-            if (!curArch) {
-                return LINGLONG_ERR("couldn't get current architecture");
-            }
-            const auto fakePrefix = moduleFilesDir / "lib" / curArch->getTriplet();
+            const auto fakePrefix =
+              moduleFilesDir / "lib" / Architecture::currentCPUArchitecture().getTriplet();
 
             for (const std::filesystem::path file : this->neededFiles) {
                 auto fileName = file.filename().string();
@@ -906,13 +815,13 @@ utils::error::Result<void> UABPackager::packBundle(bool distributedOnly) noexcep
 {
     LINGLONG_TRACE("add layers to uab")
 
-    auto bundleDir = QDir{ this->uab.parentDir().absoluteFilePath("bundle") };
+    auto bundleDir = QDir{ buildDir.filePath("bundle") };
     if (!bundleDir.mkpath(".")) {
         return LINGLONG_ERR(
           fmt::format("couldn't create directory {}", bundleDir.absolutePath().toStdString()));
     }
 
-    auto bundleFile = this->uab.parentDir().absoluteFilePath("bundle.ef");
+    auto bundleFile = buildDir.filePath("bundle.ef");
     if (QFile::exists(bundleFile) && !QFile::remove(bundleFile)) {
         return LINGLONG_ERR(fmt::format("couldn't remove file {}", bundleFile.toStdString()));
     }
@@ -956,7 +865,7 @@ utils::error::Result<void> UABPackager::packBundle(bool distributedOnly) noexcep
     }
     this->meta.digest = cryptor.result().toHex().toStdString();
     const auto *bundleSection = "linglong.bundle";
-    if (auto ret = this->uab.addNewSection(bundleSection, QFileInfo{ bundleFile }); !ret) {
+    if (auto ret = this->uab->addSection(bundleSection, bundleFile.toStdString()); !ret) {
         return LINGLONG_ERR(ret);
     }
     this->meta.sections.bundle = bundleSection;
@@ -968,23 +877,22 @@ utils::error::Result<void> UABPackager::packMetaInfo() noexcept
 {
     LINGLONG_TRACE("add metaInfo to uab")
 
-    auto metaFile = QFile{ this->uab.parentDir().absoluteFilePath("metaInfo.json") };
-    if (!metaFile.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate)) {
-        return LINGLONG_ERR(metaFile);
+    auto metaFilePath = buildDir.filePath("metaInfo.json");
+    std::ofstream metaFile(metaFilePath.toStdString());
+    if (!metaFile.is_open()) {
+        return LINGLONG_ERR("couldn't open meta file: " + metaFilePath);
     }
 
     nlohmann::json metaInfo;
     api::types::v1::to_json(metaInfo, meta);
-    if (metaFile.write(QByteArray::fromStdString(metaInfo.dump())) == -1) {
-        return LINGLONG_ERR(metaFile);
+    metaFile << metaInfo.dump();
+    if (!metaFile) {
+        return LINGLONG_ERR("couldn't write to meta file: " + metaFilePath);
     }
     metaFile.close();
 
     const auto *metaSection = "linglong.meta";
-    if (auto ret = this->uab.addNewSection(metaSection,
-                                           QFileInfo{ metaFile },
-                                           { "linglong.meta=readonly,code" });
-        !ret) {
+    if (auto ret = this->uab->addSection(metaSection, metaFilePath.toStdString()); !ret) {
         return LINGLONG_ERR(ret);
     }
 

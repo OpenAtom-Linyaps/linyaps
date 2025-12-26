@@ -27,15 +27,11 @@ struct repoCacheQuery
     std::optional<std::string> module;
     std::optional<std::string> uuid;
     std::optional<bool> deleted;
+    std::optional<std::string> architecture;
 
-    static auto arch()
+    auto arch() const
     {
-        auto ret = package::Architecture::currentCPUArchitecture();
-        if (ret) {
-            return ret->toStdString();
-        }
-
-        return std::string{ "unknown" };
+        return architecture.value_or(package::Architecture::currentCPUArchitecture().toString());
     }
 
     [[nodiscard]] std::string to_string() const noexcept

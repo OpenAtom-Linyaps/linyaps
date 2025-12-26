@@ -34,7 +34,7 @@ public:
      * @brief 获取架构名称的字符串表示
      * @return 架构名称的std::string表示
      */
-    [[nodiscard]] std::string toStdString() const noexcept;
+    [[nodiscard]] std::string toString() const noexcept;
     /**
      * @brief 获取架构的gnu路径
      * @return gnu路径的std::string表示
@@ -47,7 +47,7 @@ public:
 
     static utils::error::Result<Architecture> parse(const std::string &raw) noexcept;
 
-    static utils::error::Result<Architecture> currentCPUArchitecture() noexcept;
+    static const Architecture &currentCPUArchitecture();
 
 private:
     Value v;

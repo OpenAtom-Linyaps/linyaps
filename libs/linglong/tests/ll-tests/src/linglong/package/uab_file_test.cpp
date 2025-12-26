@@ -34,7 +34,7 @@ protected:
         ASSERT_FALSE(testDir.empty()) << "Failed to create temporary directory";
         uabFile = testDir / "test.uab";
         std::filesystem::copy_file("/proc/self/exe", uabFile);
-        auto uab = elfHelper::create(QString::fromStdString(uabFile).toLocal8Bit());
+        auto uab = ElfHandler::create(uabFile);
         ASSERT_TRUE(uab.has_value()) << "Failed to create uab file";
         // 添加bundle section
         std::string bundleFile = testDir / "bundle.erofs";
@@ -50,7 +50,7 @@ protected:
             auto ret = utils::command::Cmd("mkfs.erofs")
                          .exec({ bundleFile.c_str(), (testDir / "bundle").c_str() });
             ASSERT_TRUE(ret.has_value()) << "Failed to create erofs file" << ret.error().message();
-            auto ret2 = uab->addNewSection("linglong.bundle", QFileInfo(bundleFile.c_str()));
+            auto ret2 = (*uab)->addSection("linglong.bundle", bundleFile);
             ASSERT_TRUE(ret2.has_value()) << ret2.error().message();
         }
         // 新添加 meta section
@@ -82,8 +82,7 @@ protected:
             std::ofstream jsonFile(testDir / "info.json");
             jsonFile << nlohmann::json(meta).dump();
             jsonFile.close();
-            auto ret = uab->addNewSection("linglong.meta",
-                                          QFileInfo((testDir / "info.json").string().c_str()));
+            auto ret = (*uab)->addSection("linglong.meta", testDir / "info.json");
             ASSERT_TRUE(ret.has_value()) << "Failed to add meta section";
         }
         // 再添加sign section
@@ -99,9 +98,8 @@ protected:
             auto ret = utils::command::Cmd("tar").exec(
               { "-cvf", (testDir / "sign.tar").c_str(), "-C", signDir.c_str(), "." });
             ASSERT_TRUE(ret.has_value()) << "Failed to create tar file";
-            auto ret2 = uab->addNewSection("linglong.bundle.sign",
-                                           QFileInfo((testDir / "sign.tar").string().c_str()));
-            ASSERT_TRUE(ret2.has_value()) << "Failed to add sign section";
+            auto ret2 = (*uab)->addSection("linglong.bundle.sign", testDir / "sign.tar");
+            ASSERT_TRUE(ret2.has_value()) << "Failed to add sign section" << ret2.error().message();
         }
     }
 

@@ -111,7 +111,7 @@ Reference::Reference(const std::string &channel,
 
 std::string Reference::toString() const noexcept
 {
-    return fmt::format("{}:{}/{}/{}", channel, id, version.toString(), arch.toStdString());
+    return fmt::format("{}:{}/{}/{}", channel, id, version.toString(), arch.toString());
 }
 
 bool operator!=(const Reference &lhs, const Reference &rhs) noexcept
@@ -137,16 +137,17 @@ Reference::fromBuilderProject(const api::types::v1::BuilderProject &project) noe
 
     auto architecture = package::Architecture::currentCPUArchitecture();
     if (project.package.architecture) {
-        architecture = package::Architecture::parse(*project.package.architecture);
-    }
-    if (!architecture) {
-        return LINGLONG_ERR(architecture);
+        auto targetArch = package::Architecture::parse(*project.package.architecture);
+        if (!targetArch) {
+            return LINGLONG_ERR(targetArch);
+        }
+        architecture = *targetArch;
     }
     std::string channel = "main";
     if (project.package.channel.has_value()) {
         channel = *project.package.channel;
     }
-    auto ref = package::Reference::create(channel, project.package.id, *version, *architecture);
+    auto ref = package::Reference::create(channel, project.package.id, *version, architecture);
     if (!ref) {
         return LINGLONG_ERR(ref);
     }

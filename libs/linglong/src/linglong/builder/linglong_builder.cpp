@@ -411,24 +411,46 @@ utils::error::Result<void> Builder::buildStageFetchSource() noexcept
     return LINGLONG_OK;
 }
 
-utils::error::Result<package::Reference> Builder::ensureUtils(const std::string &id) noexcept
+utils::error::Result<package::Reference>
+Builder::ensureUtils(const std::string &id, const package::Architecture &arch) noexcept
 {
     LINGLONG_TRACE("ensureUtils");
 
+    auto fuzzyRef = package::FuzzyReference::create(std::nullopt, id, std::nullopt, arch);
+    if (!fuzzyRef) {
+        return LINGLONG_ERR(fuzzyRef);
+    }
+
     // always try to get newest version from remote
-    auto ref = clearDependency(id, true, true);
-    auto localRef = clearDependency(id, false, false);
+    auto ref = repo.clearReference(
+      *fuzzyRef,
+      { .forceRemote = true, .fallbackToRemote = true, .semanticMatching = true });
+    auto localRef = repo.clearReference(
+      *fuzzyRef,
+      { .forceRemote = false, .fallbackToRemote = false, .semanticMatching = true });
     if (localRef) {
         if (!ref || localRef->version > ref->version) {
             ref = std::move(localRef);
+            LogD("use local tools {}", ref->toString());
         }
     }
-    if (ref && pullDependency(*ref, this->repo, "binary")) {
-        auto appLayerDir = this->repo.getMergedModuleDir(*ref);
-        if (!appLayerDir) {
-            return LINGLONG_ERR("failed to get layer dir of " + ref->toString());
-        }
 
+    if (!ref) {
+        return LINGLONG_ERR("failed to find utils " + id, ref);
+    }
+
+    auto res = pullDependency(*ref, this->repo, "binary");
+    if (!res) {
+        return LINGLONG_ERR("failed to get utils " + id, res);
+    }
+
+    auto appLayerDir = this->repo.getMergedModuleDir(*ref);
+    if (!appLayerDir) {
+        return LINGLONG_ERR("failed to get layer dir of " + ref->toString());
+    }
+
+    // pull dependencies only when the target architecture matches the current CPU architecture
+    if (arch == package::Architecture::currentCPUArchitecture()) {
         auto layerItem = this->repo.getLayerItem(*ref);
         if (!layerItem) {
             return LINGLONG_ERR("failed to get layer item of " + ref->toString());
@@ -454,11 +476,9 @@ utils::error::Result<package::Reference> Builder::ensureUtils(const std::string 
                                     + QString::fromStdString(info.runtime.value()));
             }
         }
-
-        return ref;
     }
 
-    return LINGLONG_ERR("failed to get utils " + QString::fromStdString(id));
+    return ref;
 }
 
 utils::error::Result<package::Reference> Builder::clearDependency(const std::string &ref,
@@ -781,7 +801,7 @@ utils::error::Result<bool> Builder::buildStageBuild(const QStringList &args) noe
 
     // write ld.so.conf
     QString ldConfPath = appCache.absoluteFilePath("ld.so.conf");
-    std::string triplet = projectRef->arch.getTriplet();
+    std::string triplet = package::Architecture::currentCPUArchitecture().getTriplet();
     std::string ldRawConf = cfgBuilder.ldConf(triplet);
 
     QFile ldsoconf{ ldConfPath };
@@ -1167,7 +1187,7 @@ utils::error::Result<void> Builder::commitToLocalRepo() noexcept
     auto appIDPrintWidth = -project.package.id.size() + -5;
 
     auto info = api::types::v1::PackageInfoV2{
-        .arch = { projectRef->arch.toStdString() },
+        .arch = { projectRef->arch.toString() },
         .channel = projectRef->channel,
         .command = project.command,
         .description = project.package.description,
@@ -1363,11 +1383,18 @@ utils::error::Result<void> Builder::exportUAB(const ExportOption &option,
 
     const bool distributedOnly = !exportOpts.ref.empty();
 
-    // Try to use uab-header, uab-loader, ll-box and bundling logic from ll-builder-utils if
-    // available. Fallback to defaults if ll-builder-utils is not found or fails.
-    auto ref = ensureUtils("cn.org.linyaps.builder.utils");
+    if (!distributedOnly && package::Architecture::currentCPUArchitecture() != projectRef->arch) {
+        return LINGLONG_ERR(
+          "can't export different architecture UAB in executable mode, if you want to export UAB "
+          "in distributed mode, please use --ref option instead");
+    }
+
+    // Retrieves static files from the ll-builder-utils matching the target architecture if
+    // available, including uab-header, uab-loader, ll-box. Fallback to defaults if ll-builder-utils
+    // is not found or fails.
+    auto ref = ensureUtils("cn.org.linyaps.builder.utils", projectRef->arch);
     if (ref) {
-        LogD("using cn.org.linyaps.builder.utils");
+        LogD("using static files from cn.org.linyaps.builder.utils");
         std::vector<std::string> args{
             "/opt/apps/cn.org.linyaps.builder.utils/files/bin/ll-builder-export",
             "--get-header",
@@ -1396,7 +1423,15 @@ utils::error::Result<void> Builder::exportUAB(const ExportOption &option,
         } else {
             LogW("run builder utils error: {}", res.error());
         }
+    }
 
+    // Using the packdir tools matching current architecture
+    const auto &arch = package::Architecture::currentCPUArchitecture();
+    if (arch != projectRef->arch) {
+        ref = ensureUtils("cn.org.linyaps.builder.utils", arch);
+    }
+
+    if (ref) {
         auto utilsBundler =
           [&ref, &exportOpts, this](const QString &bundleFile,
                                     const QString &bundleDir) -> utils::error::Result<void> {
@@ -1506,7 +1541,7 @@ utils::error::Result<void> Builder::exportUAB(const ExportOption &option,
     }
 
     if (!option.iconPath.empty()) {
-        if (auto ret = packager.setIcon(QFileInfo{ option.iconPath.c_str() }); !ret) {
+        if (auto ret = packager.setIcon(option.iconPath); !ret) {
             return LINGLONG_ERR(ret);
         }
     }
@@ -1831,7 +1866,7 @@ utils::error::Result<void> Builder::run(std::vector<std::string> modules,
           .appendEnv("LINYAPS_INIT_SINGLE_MODE", "1");
 
         // write ld.so.conf
-        std::string triplet = curRef->arch.getTriplet();
+        std::string triplet = package::Architecture::currentCPUArchitecture().getTriplet();
         std::string ldRawConf = cfgBuilder.ldConf(triplet);
 
         QFile ldsoconf{ ldConfPath.c_str() };
@@ -1972,7 +2007,7 @@ utils::error::Result<void> Builder::runFromRepo(const package::Reference &ref,
           .appendEnv("LINYAPS_INIT_SINGLE_MODE", "1");
 
         // write ld.so.conf
-        std::string triplet = ref.arch.getTriplet();
+        std::string triplet = package::Architecture::currentCPUArchitecture().getTriplet();
         std::string ldRawConf = cfgBuilder.ldConf(triplet);
 
         QFile ldsoconf{ ldConfPath.c_str() };
@@ -2055,9 +2090,12 @@ utils::error::Result<void> Builder::runtimeCheck()
     }
     printMessage("Start runtime check", 2);
     // 导出uab时需要使用main-check统计的信息，所以无论是否跳过检查，都需要执行main-check
-    auto ret =
-      this->run(packageModules,
-                { { std::filesystem::path{ LINGLONG_BUILDER_HELPER } / "main-check.sh" } });
+    auto args = std::vector<std::string>{ std::filesystem::path{ LINGLONG_BUILDER_HELPER }
+                                          / "main-check.sh" };
+    if (package::Architecture::currentCPUArchitecture() != projectRef->arch) {
+        args.push_back("--skip-ldd-check");
+    }
+    auto ret = this->run(packageModules, args);
     // ignore runtime check if skipCheckOutput is set
     if (this->buildOptions.skipCheckOutput) {
         printMessage("Runtime check ignored", 2);
@@ -2233,13 +2271,14 @@ void Builder::printBasicInfo()
     printMessage("[Builder info]");
     printMessage(std::string("Linglong Builder Version: ") + LINGLONG_VERSION, 2);
     printMessage("[Build Target]");
-    auto &project = *this->project;
+    const auto &project = *this->project;
     printMessage(project.package.id, 2);
     printMessage("[Project Info]");
     printMessage("Package Name: " + project.package.name, 2);
     printMessage("Version: " + project.package.version, 2);
     printMessage("Package Type: " + project.package.kind, 2);
-    printMessage("Build Arch: " + projectRef->arch.toStdString(), 2);
+    printMessage("Build Arch: " + package::Architecture::currentCPUArchitecture().toString(), 2);
+    printMessage("Target Arch: " + projectRef->arch.toString(), 2);
 }
 
 void Builder::printRepo()
@@ -2268,7 +2307,7 @@ std::string Builder::uabExportFilename(const linglong::package::Reference &ref)
     return fmt::format("{}_{}_{}_{}.uab",
                        ref.id,
                        ref.version.toString(),
-                       ref.arch.toStdString(),
+                       ref.arch.toString(),
                        ref.channel);
 }
 
@@ -2278,7 +2317,7 @@ std::string Builder::layerExportFilename(const linglong::package::Reference &ref
     return fmt::format("{}_{}_{}_{}.layer",
                        ref.id,
                        ref.version.toString(),
-                       ref.arch.toStdString(),
+                       ref.arch.toString(),
                        module);
 }
 } // namespace linglong::builder

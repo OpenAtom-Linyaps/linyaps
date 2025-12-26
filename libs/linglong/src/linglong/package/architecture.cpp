@@ -21,7 +21,7 @@ Architecture::Architecture(Value value)
 {
 }
 
-std::string Architecture::toStdString() const noexcept
+std::string Architecture::toString() const noexcept
 {
     switch (this->v) {
     case X86_64:
@@ -135,23 +135,28 @@ bool isNewWorldLoongArch()
 }
 } // namespace
 
-utils::error::Result<Architecture> Architecture::currentCPUArchitecture() noexcept
+const Architecture &Architecture::currentCPUArchitecture()
 {
-    auto arch = QSysInfo::currentCpuArchitecture().toStdString();
+    auto currentArch = []() {
+        auto arch = QSysInfo::currentCpuArchitecture().toStdString();
 
-    if (arch == "sw_64") {
-        arch = "sw64";
-    }
-
-    if (arch == "loongarch64" || arch == "loong64") {
-        if (isNewWorldLoongArch()) {
-            arch = "loong64";
-        } else {
-            arch = "loongarch64";
+        if (arch == "sw_64") {
+            arch = "sw64";
         }
-    }
 
-    return Architecture::parse(arch);
-};
+        if (arch == "loongarch64" || arch == "loong64") {
+            if (isNewWorldLoongArch()) {
+                arch = "loong64";
+            } else {
+                arch = "loongarch64";
+            }
+        }
+        return arch;
+    };
+
+    // throw exception if architecture is unknown
+    static Architecture arch(currentArch());
+    return arch;
+}
 
 } // namespace linglong::package

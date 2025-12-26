@@ -169,18 +169,17 @@ getProjectYAMLPath(const std::filesystem::path &projectDir, const std::string &u
         return path;
     }
 
-    auto arch = linglong::package::Architecture::currentCPUArchitecture();
-    if (arch && *arch != linglong::package::Architecture()) {
-        std::filesystem::path path = projectDir / ("linglong." + arch->toStdString() + ".yaml");
-        if (std::filesystem::exists(path, ec)) {
-            return path;
-        }
-        if (ec) {
-            return LINGLONG_ERR(fmt::format("path {} error: {}", path, ec.message()));
-        }
+    std::filesystem::path path = projectDir
+      / ("linglong." + linglong::package::Architecture::currentCPUArchitecture().toString()
+         + ".yaml");
+    if (std::filesystem::exists(path, ec)) {
+        return path;
+    }
+    if (ec) {
+        return LINGLONG_ERR(fmt::format("path {} error: {}", path, ec.message()));
     }
 
-    std::filesystem::path path = projectDir / "linglong.yaml";
+    path = projectDir / "linglong.yaml";
     if (std::filesystem::exists(path, ec)) {
         return path;
     }

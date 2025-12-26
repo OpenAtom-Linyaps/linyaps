@@ -154,7 +154,7 @@ std::string ostreeSpecFromReference(const package::Reference &ref,
     }
 
     auto spec = ref.channel + "/" + ref.id + "/" + ref.version.toString() + "/"
-      + ref.arch.toStdString() + "/" + module;
+      + ref.arch.toString() + "/" + module;
 
     if (repo) {
         spec = repo.value() + ":" + spec;
@@ -171,8 +171,8 @@ ostreeSpecFromReferenceV2(const package::Reference &ref,
     if (module == "runtime") {
         module = "binary";
     }
-    auto ret = ref.channel + "/" + ref.id + "/" + ref.version.toString() + "/"
-      + ref.arch.toStdString() + "/" + module;
+    auto ret = ref.channel + "/" + ref.id + "/" + ref.version.toString() + "/" + ref.arch.toString()
+      + "/" + module;
 
     if (repo) {
         ret = repo.value() + ":" + ret;
@@ -372,21 +372,13 @@ utils::error::Result<package::Reference> clearReferenceLocal(const linglong::rep
 {
     LINGLONG_TRACE("clear fuzzy reference locally");
 
-    // the arch of all local packages is host arch
-    if (fuzzy.arch) {
-        auto curArch = linglong::package::Architecture::currentCPUArchitecture();
-        if (!curArch) {
-            return LINGLONG_ERR(curArch.error().message(), utils::error::ErrorCode::Unknown);
-        }
-        if (curArch != *fuzzy.arch) {
-            return LINGLONG_ERR("arch mismatch with host arch", utils::error::ErrorCode::Unknown);
-        }
-    }
-
     // NOTE: ignore channel, two packages with the same version but different channels are not
     // allowed to be installed
     repoCacheQuery query;
     query.id = fuzzy.id;
+    if (fuzzy.arch) {
+        query.architecture = fuzzy.arch->toString();
+    }
     const auto availablePackage = cache.queryLayerItem(query);
     if (availablePackage.empty()) {
         return LINGLONG_ERR("package not found:" + fuzzy.toString(),
@@ -452,7 +444,7 @@ utils::error::Result<bool> semanticMatch(const package::FuzzyReference &fuzzy,
         return false;
     }
 
-    if (fuzzy.arch && fuzzy.arch->toStdString() != record.arch[0]) {
+    if (fuzzy.arch && fuzzy.arch->toString() != record.arch[0]) {
         return false;
     }
 
@@ -1578,12 +1570,8 @@ OSTreeRepo::searchRemote(const package::FuzzyReference &fuzzyRef,
         }
     }
 
-    auto defaultArch = package::Architecture::currentCPUArchitecture();
-    if (!defaultArch) {
-        return LINGLONG_ERR(defaultArch);
-    }
-
-    auto arch = fuzzyRef.arch.value_or(*defaultArch).toStdString();
+    // use current CPU architecture if no architecture is specified
+    auto arch = fuzzyRef.arch.value_or(package::Architecture::currentCPUArchitecture()).toString();
     char *archStr = strndup(arch.data(), arch.size());
     if (archStr == nullptr) {
         return LINGLONG_ERR(fmt::format("strndup arch failed: {}", arch));
@@ -2275,7 +2263,8 @@ OSTreeRepo::getLayerItem(const package::Reference &ref,
                           .version = ref.version.toString(),
                           .module = std::move(module),
                           .uuid = subRef,
-                          .deleted = std::nullopt };
+                          .deleted = std::nullopt,
+                          .architecture = ref.arch.toString() };
     auto item = queryItem(query);
     if (item) {
         return *item;
@@ -2359,6 +2348,7 @@ std::vector<std::string> OSTreeRepo::getModuleList(const package::Reference &ref
         .repo = std::nullopt,
         .channel = ref.channel,
         .version = ref.version.toString(),
+        .architecture = ref.arch.toString(),
     };
     auto layers = this->cache->queryLayerItem(query);
     // 按module字母从小到大排序，提前排序以保证后面的commits比较
@@ -2440,7 +2430,7 @@ utils::error::Result<package::LayerDir> OSTreeRepo::getMergedModuleDir(
             arch = layer.info.arch.front();
         }
         if (layer.info.id != ref.id || layer.info.version != ref.version.toString()
-            || arch != ref.arch.toStdString()) {
+            || arch != ref.arch.toString()) {
             continue;
         }
         if (std::find(loadModules.begin(), loadModules.end(), layer.info.packageInfoV2Module)
@@ -2983,14 +2973,13 @@ OSTreeRepo::upgradableApps() const noexcept
         return LINGLONG_ERR(appPkgs);
     }
 
-    auto arch = package::Architecture::currentCPUArchitecture();
-    if (!arch) {
-        return LINGLONG_ERR(arch);
-    }
-
     std::vector<std::pair<package::Reference, package::ReferenceWithRepo>> upgradeList;
     for (const auto &pkg : *appPkgs) {
-        auto fuzzy = package::FuzzyReference::create(pkg.channel, pkg.id, std::nullopt, *arch);
+        auto fuzzy =
+          package::FuzzyReference::create(pkg.channel,
+                                          pkg.id,
+                                          std::nullopt,
+                                          package::Architecture::currentCPUArchitecture());
         if (!fuzzy) {
             LogW("failed to create fuzzy reference: {}", fuzzy.error());
             continue;

@@ -115,11 +115,6 @@ utils::error::Result<void> UabInstallationAction::checkUABLayersConstrain(
 {
     LINGLONG_TRACE("check uab layers constrain");
 
-    auto currentArch = package::Architecture::currentCPUArchitecture();
-    if (!currentArch) {
-        return LINGLONG_ERR(currentArch);
-    }
-
     if (layers.empty()) {
         return LINGLONG_OK;
     }
@@ -130,7 +125,7 @@ utils::error::Result<void> UabInstallationAction::checkUABLayersConstrain(
         if (!arch) {
             return LINGLONG_ERR(arch);
         }
-        if (*arch != *currentArch) {
+        if (*arch != package::Architecture::currentCPUArchitecture()) {
             return LINGLONG_ERR(
               fmt::format("uab arch: {} not match host architecture", layer.info.arch[0]));
         }

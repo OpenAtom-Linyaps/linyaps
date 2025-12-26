@@ -67,7 +67,7 @@ struct std::hash<linglong::package::Reference>
         hash_combine(seed, hasher(ref.channel));
         hash_combine(seed, hasher(ref.id));
         hash_combine(seed, hasher(ref.version.toString()));
-        hash_combine(seed, hasher(ref.arch.toStdString()));
+        hash_combine(seed, hasher(ref.arch.toString()));
         return seed;
     }
 };

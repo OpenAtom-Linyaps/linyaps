@@ -46,7 +46,9 @@
 
 #include <linux/un.h>
 #include <nlohmann/json.hpp>
-
+#include <QProcess>
+#include <QTimer>
+#include <QDateTime>
 #include <QCryptographicHash>
 #include <QEventLoop>
 #include <QFileInfo>
@@ -2214,11 +2216,19 @@ utils::error::Result<std::filesystem::path> Cli::ensureCache(
     // Try to generate cache here
     QProcess process;
     process.setProgram(LINGLONG_LIBEXEC_DIR "/ll-dialog");
-    process.setArguments(
-      { "-m", "startup", "--id", QString::fromStdString(appLayerItem->info.id) });
-    process.start();
+    process.setArguments({ "-m", "startup", "--id", QString::fromStdString(appLayerItem->info.id) });
     qDebug() << process.program() << process.arguments();
 
+    int64_t processStartTime = 0;
+    // 延迟300ms显示等待提示窗口
+    QTimer timer(this); 
+    timer.setSingleShot(true);
+    timer.setInterval(300);
+    QObject::connect(&timer, &QTimer::timeout, [&process, &processStartTime] {
+        processStartTime = QDateTime::currentSecsSinceEpoch();
+        process.start();
+    });
+    timer.start();
     auto ret = this->generateCache(appRef);
     if (ret != 0) {
         auto ret = this->notifier->notify(api::types::v1::InteractionRequest{
@@ -2227,6 +2237,13 @@ utils::error::Result<std::filesystem::path> Cli::ensureCache(
         if (!ret) {
             qWarning() << "failed to notify" << ret.error();
         }
+    }
+    // 如果缓存生成时间小于300ms, 则不再显示等待窗口
+    // 如果等待窗口显示时间小于1s，则等待1s后再关闭窗口
+    if (processStartTime == 0) {
+        timer.stop();
+    } else if (QDateTime::currentSecsSinceEpoch() - processStartTime < 1000) {
+        QThread::sleep(1);
     }
     process.close();
 

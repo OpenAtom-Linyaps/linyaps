@@ -41,6 +41,7 @@ class Printer;
 struct GlobalOptions
 {
     bool verbose{ false };
+    bool noProgress{ false };
 };
 
 // 各subcommand的独立选项结构体

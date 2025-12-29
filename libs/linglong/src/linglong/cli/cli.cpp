@@ -394,7 +394,9 @@ void Cli::handleTaskState() noexcept
         return;
     }
 
-    this->printer.printProgress(taskState.percentage, taskState.message);
+    if (!this->globalOptions.noProgress) {
+        this->printer.printProgress(taskState.percentage, taskState.message);
+    }
 }
 
 void Cli::printOnTaskFailed()

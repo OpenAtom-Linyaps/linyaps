@@ -669,10 +669,13 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     auto *jsonFlag = commandParser.add_flag("--json", jsonDescription);
 
     // verbose flag
-    GlobalOptions globalOptions{ .verbose = false };
+    GlobalOptions globalOptions{ .verbose = false, .noProgress = false };
     commandParser.add_flag("-v,--verbose",
                            globalOptions.verbose,
                            _("Show debug info (verbose logs)"));
+    commandParser.add_flag("--no-progress",
+                           globalOptions.noProgress,
+                           _("Don't output progress information"));
 
     // subcommand options
     RunOptions runOptions{};

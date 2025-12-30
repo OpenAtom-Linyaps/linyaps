@@ -1924,11 +1924,7 @@ utils::error::Result<void> Builder::run(std::vector<std::string> modules,
       .enableSelfAdjustingMount()
       .appendEnv("LINYAPS_INIT_SINGLE_MODE", "1");
 
-#ifdef LINGLONG_FONT_CACHE_GENERATOR
-    cfgBuilder.enableFontCache()
-#endif
-
-      res = runContext.fillContextCfg(cfgBuilder);
+    res = runContext.fillContextCfg(cfgBuilder);
     if (!res) {
         return LINGLONG_ERR(res);
     }

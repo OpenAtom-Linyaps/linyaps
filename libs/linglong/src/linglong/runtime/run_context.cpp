@@ -71,8 +71,10 @@ RunContext::~RunContext()
 {
     if (!bundle.empty()) {
         std::error_code ec;
-        if (std::filesystem::remove_all(bundle, ec) == static_cast<std::uintmax_t>(-1)) {
-            qWarning() << "failed to remove " << bundle.c_str() << ": " << ec.message().c_str();
+        if (std::filesystem::exists(bundle, ec)) {
+            if (std::filesystem::remove_all(bundle, ec) == static_cast<std::uintmax_t>(-1)) {
+                LogW("failed to remove bundle directory {}: {}", bundle, ec.message());
+            }
         }
     }
 }
@@ -500,8 +502,8 @@ void RunContext::detectDisplaySystem(generator::ContainerCfgBuilder &builder) no
     }
 }
 
-utils::error::Result<void>
-RunContext::fillContextCfg(linglong::generator::ContainerCfgBuilder &builder)
+utils::error::Result<void> RunContext::fillContextCfg(
+  linglong::generator::ContainerCfgBuilder &builder, const std::string &bundleSuffix)
 {
     LINGLONG_TRACE("fill ContainerCfgBuilder with run context");
 
@@ -511,11 +513,12 @@ RunContext::fillContextCfg(linglong::generator::ContainerCfgBuilder &builder)
         return LINGLONG_ERR("run context doesn't resolved");
     }
 
-    auto bundleDir = runtime::makeBundleDir(containerID);
+    auto bundleDir = runtime::makeBundleDir(containerID, bundleSuffix);
     if (!bundleDir) {
         return LINGLONG_ERR("failed to get bundle dir of " + QString::fromStdString(containerID));
     }
     bundle = *bundleDir;
+    builder.setBundlePath(bundle);
 
     builder.setBasePath(baseLayer->getLayerDir()->absoluteFilePath("files").toStdString());
 
@@ -582,8 +585,6 @@ RunContext::fillContextCfg(linglong::generator::ContainerCfgBuilder &builder)
     if (!extensionMounts.empty()) {
         builder.setExtensionMounts(extensionMounts);
     }
-
-    builder.setBundlePath(bundle);
 
     auto res = fillExtraAppMounts(builder);
     if (!res) {

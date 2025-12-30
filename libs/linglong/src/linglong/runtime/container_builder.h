@@ -18,7 +18,8 @@
 namespace linglong::runtime {
 
 // Used to obtain a clean container bundle directory.
-utils::error::Result<std::filesystem::path> makeBundleDir(const std::string &containerID);
+utils::error::Result<std::filesystem::path> makeBundleDir(const std::string &containerID,
+                                                          const std::string &bundleSuffix = "");
 
 inline std::string genContainerID(const package::Reference &ref) noexcept
 {

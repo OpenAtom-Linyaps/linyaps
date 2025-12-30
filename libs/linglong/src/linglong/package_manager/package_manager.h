@@ -57,7 +57,6 @@ public
     auto Update(const QVariantMap &parameters) noexcept -> QVariantMap;
     auto Search(const QVariantMap &parameters) noexcept -> QVariantMap;
     auto Prune() noexcept -> QVariantMap;
-    auto GenerateCache(const QString &reference) noexcept -> QVariantMap;
     void ReplyInteraction(QDBusObjectPath object_path, const QVariantMap &replies);
 
     // Nothing to do here, Permissions() will be rejected in org.deepin.linglong.PackageManager.conf
@@ -103,7 +102,6 @@ Q_SIGNALS:
                             QVariantMap additionalMessage);
     void SearchFinished(QString jobID, QVariantMap result);
     void PruneFinished(QString jobID, QVariantMap result);
-    void GenerateCacheFinished(QString jobID, bool status);
     void ReplyReceived(const QVariantMap &replies);
 
 private:
@@ -122,7 +120,6 @@ private:
     void deferredUninstall() noexcept;
     utils::error::Result<void>
     Prune(std::vector<api::types::v1::PackageInfoV2> &removedInfo) noexcept;
-    utils::error::Result<void> generateCache(const package::Reference &ref) noexcept;
     utils::error::Result<void> removeCache(const package::Reference &ref) noexcept;
 
     QVariantMap runActionOnTaskQueue(std::shared_ptr<Action> action);
@@ -130,7 +127,6 @@ private:
     linglong::repo::OSTreeRepo &repo; // NOLINT
     PackageTaskQueue tasks;
     PackageTaskQueue m_search_queue;
-    PackageTaskQueue m_generator_queue;
 
     int lockFd{ -1 };
     linglong::runtime::ContainerBuilder &containerBuilder;

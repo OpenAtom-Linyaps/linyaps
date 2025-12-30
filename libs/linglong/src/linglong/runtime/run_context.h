@@ -78,7 +78,8 @@ public:
     utils::error::Result<void> resolve(const api::types::v1::BuilderProject &target,
                                        const std::filesystem::path &buildOutput);
 
-    utils::error::Result<void> fillContextCfg(generator::ContainerCfgBuilder &builder);
+    utils::error::Result<void> fillContextCfg(generator::ContainerCfgBuilder &builder,
+                                              const std::string &bundleSuffix = "");
     api::types::v1::ContainerProcessStateInfo stateInfo();
 
     repo::OSTreeRepo &getRepo() const { return repo; }

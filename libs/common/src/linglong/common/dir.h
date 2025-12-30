@@ -17,4 +17,9 @@ std::filesystem::path getAppRuntimeDir(const std::string &appId) noexcept;
 
 std::filesystem::path getBundleDir(const std::string &containerId) noexcept;
 
+// user cache directory for linglong in the following order:
+// 1. $XDG_CACHE_HOME/linglong
+// 2. $HOME/.cache/linglong, if $XDG_CACHE_HOME is either not set or empty
+// 3. LINGLONG_ROOT/cache, if $HOME is either not set or empty
+std::filesystem::path getUserCacheDir() noexcept;
 } // namespace linglong::common::dir

@@ -12,4 +12,6 @@ namespace linglong::common::xdg {
 
 std::filesystem::path getXDGRuntimeDir() noexcept;
 
+std::filesystem::path getXDGCacheHomeDir() noexcept;
+
 } // namespace linglong::common::xdg

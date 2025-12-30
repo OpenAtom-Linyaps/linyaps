@@ -17,8 +17,8 @@ class Container
 {
 public:
     Container(ocppi::runtime::config::types::Config cfg,
-              std::string appId,
               std::string containerId,
+              std::filesystem::path bundleDir,
               ocppi::cli::CLI &cli);
 
     utils::error::Result<void> run(const ocppi::runtime::config::types::Process &process,
@@ -27,7 +27,7 @@ public:
 private:
     ocppi::runtime::config::types::Config cfg;
     std::string id;
-    std::string appId;
+    std::filesystem::path bundleDir;
     ocppi::cli::CLI &cli;
 };
 

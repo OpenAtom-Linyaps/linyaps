@@ -37,4 +37,21 @@ std::filesystem::path getXDGCacheHomeDir() noexcept
     return "";
 }
 
+std::filesystem::path getXDGConfigHomeDir() noexcept
+{
+    auto *configHomeEnv = std::getenv("XDG_CONFIG_HOME");
+    if (configHomeEnv != nullptr && configHomeEnv[0] != '\0') {
+        return configHomeEnv;
+    }
+
+    // fallback to default
+    // $HOME/.config
+    auto *homeEnv = std::getenv("HOME");
+    if (homeEnv != nullptr && homeEnv[0] != '\0') {
+        return std::filesystem::path{ homeEnv } / ".config";
+    }
+
+    return "";
+}
+
 } // namespace linglong::common::xdg

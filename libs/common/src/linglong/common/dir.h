@@ -22,4 +22,7 @@ std::filesystem::path getBundleDir(const std::string &containerId) noexcept;
 // 2. $HOME/.cache/linglong, if $XDG_CACHE_HOME is either not set or empty
 // 3. LINGLONG_ROOT/cache, if $HOME is either not set or empty
 std::filesystem::path getUserCacheDir() noexcept;
+
+std::filesystem::path getUserRuntimeConfigDir() noexcept;
+
 } // namespace linglong::common::dir

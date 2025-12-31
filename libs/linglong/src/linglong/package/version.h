@@ -33,7 +33,7 @@ public:
 
     static std::vector<linglong::api::types::v1::PackageInfoV2> filterByFuzzyVersion(
       std::vector<linglong::api::types::v1::PackageInfoV2> list, const std::string &fuzzyVersion);
-    bool semanticMatch(const std::string &versionStr);
+    bool semanticMatch(const std::string &versionStr) const;
 
     static utils::error::Result<void> validateDependVersion(const std::string &raw) noexcept;
     explicit Version(const std::string &raw) = delete;

@@ -1423,6 +1423,28 @@
           "type": "string"
         }
       }
+    },
+    "RuntimeConfigure": {
+      "title": "RuntimeConfigure",
+      "type": "object",
+      "properties": {
+        "env": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "ext_defs": {
+          "description": "external extension definitions to extend the component",
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/ExtensionDefine"
+            }
+          }
+        }
+      }
     }
   },
   "type": "object",
@@ -1564,6 +1586,9 @@
     },
     "DeviceNode": {
       "$ref": "#/$defs/DeviceNode"
+    },
+    "RuntimeConfigure": {
+      "$ref": "#/$defs/RuntimeConfigure"
     }
   }
 }

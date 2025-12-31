@@ -36,4 +36,15 @@ std::filesystem::path getUserCacheDir() noexcept
     return cacheDir / "linglong";
 }
 
+std::filesystem::path getUserRuntimeConfigDir() noexcept
+{
+    auto configDir = xdg::getXDGConfigHomeDir();
+    // If neither XDG_CONFIG_HOME nor HOME is set, return empty path
+    if (configDir.empty()) {
+        return {};
+    }
+
+    return configDir / "linglong";
+}
+
 } // namespace linglong::common::dir

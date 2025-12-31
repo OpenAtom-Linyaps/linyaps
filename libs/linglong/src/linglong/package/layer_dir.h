@@ -11,12 +11,24 @@
 
 #include <QDir>
 
+#include <filesystem>
+
 namespace linglong::package {
 
 class LayerDir : public QDir
 {
 public:
     using QDir::QDir;
+
+    LayerDir(const std::filesystem::path &path)
+        : QDir(QString::fromStdString(path.string()))
+    {
+    }
+
+    LayerDir(const QString &path)
+        : QDir(path)
+    {
+    }
 
     [[nodiscard]] utils::error::Result<api::types::v1::PackageInfoV2> info() const;
     [[nodiscard]] QString filesDirPath() const noexcept;

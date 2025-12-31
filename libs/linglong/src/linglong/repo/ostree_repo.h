@@ -128,11 +128,13 @@ public:
     // 扫描layers变动，重新合并变动layer的modules
     [[nodiscard]] utils::error::Result<void> mergeModules() const noexcept;
     // 获取合并后的layerDir，如果没有找到则返回binary模块的layerDir
-    [[nodiscard]] utils::error::Result<package::LayerDir>
-    getMergedModuleDir(const package::Reference &ref, bool fallbackLayerDir = true) const noexcept;
+    [[nodiscard]] virtual utils::error::Result<package::LayerDir>
+    getMergedModuleDir(const package::Reference &ref,
+                       bool fallbackLayerDir = true,
+                       const std::optional<std::string> &subRef = std::nullopt) const noexcept;
     // 将指定的modules合并到临时目录，并返回合并后的layerDir，供打包者调试应用
     // 临时目录由调用者负责删除
-    [[nodiscard]] utils::error::Result<package::LayerDir> getMergedModuleDir(
+    [[nodiscard]] virtual utils::error::Result<package::LayerDir> createTempMergedModuleDir(
       const package::Reference &ref, const std::vector<std::string> &modules) const noexcept;
     virtual std::vector<std::string> getModuleList(const package::Reference &ref) const noexcept;
     [[nodiscard]] virtual utils::error::Result<std::vector<std::string>> getRemoteModuleList(

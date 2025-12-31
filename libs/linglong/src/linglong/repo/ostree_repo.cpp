@@ -2369,11 +2369,13 @@ std::vector<std::string> OSTreeRepo::getModuleList(const package::Reference &ref
 
 // 获取合并后的layerDir，如果没有找到则返回binary模块的layerDir
 utils::error::Result<package::LayerDir>
-OSTreeRepo::getMergedModuleDir(const package::Reference &ref, bool fallbackLayerDir) const noexcept
+OSTreeRepo::getMergedModuleDir(const package::Reference &ref,
+                               bool fallbackLayerDir,
+                               const std::optional<std::string> &subRef) const noexcept
 {
     LINGLONG_TRACE(fmt::format("get merge dir from ref {}", ref.toString()));
     LogD("getMergedModuleDir: {}", ref.toString());
-    auto layer = this->getLayerItem(ref, "binary");
+    auto layer = this->getLayerItem(ref, "binary", subRef);
     if (!layer) {
         LogD("no such item {}/binary: {}", ref.toString(), layer.error().message());
         return LINGLONG_ERR(layer);
@@ -2414,7 +2416,10 @@ utils::error::Result<package::LayerDir> OSTreeRepo::getMergedModuleDir(
     return LINGLONG_ERR("merged doesn't exist");
 }
 
-utils::error::Result<package::LayerDir> OSTreeRepo::getMergedModuleDir(
+// this method creates a temporary merged module directory for debugging purposes
+// The caller is responsible for cleaning up the returned directory and must have
+// write permissions to the <repo_dir>/merged directory
+utils::error::Result<package::LayerDir> OSTreeRepo::createTempMergedModuleDir(
   const package::Reference &ref, const std::vector<std::string> &loadModules) const noexcept
 {
     LINGLONG_TRACE("merge modules");

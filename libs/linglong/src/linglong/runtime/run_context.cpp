@@ -401,6 +401,10 @@ RunContext::resolveExtension(const std::vector<api::types::v1::ExtensionDefine> 
           repo.clearReference(*fuzzyRef, { .fallbackToRemote = false, .semanticMatching = true });
         if (!ref) {
             LogD("extension is not installed: {}", fuzzyRef->toString());
+            if (extension::isNvidiaDisplayDriverExtension(name)) {
+                hostExtensions.insert(name);
+                continue;
+            }
             if (skipOnNotFound) {
                 continue;
             }
@@ -500,6 +504,154 @@ void RunContext::detectDisplaySystem(generator::ContainerCfgBuilder &builder) no
     }
 }
 
+void RunContext::setupHostNvidiaFallbacks(
+  generator::ContainerCfgBuilder &builder,
+  std::vector<ocppi::runtime::config::types::Mount> &extensionMounts)
+{
+    if (hostExtensions.empty() || !baseLayer) {
+        return;
+    }
+
+    bool hasInstalledNvidiaExtension = false;
+    for (const auto &ext : extensionLayers) {
+        const auto &name = ext.getReference().id;
+        if (extension::isNvidiaDisplayDriverExtension(name)) {
+            hasInstalledNvidiaExtension = true;
+            break;
+        }
+    }
+
+    if (hasInstalledNvidiaExtension) {
+        return;
+    }
+
+    auto hostBase = bundle / "host-extensions";
+    const auto baseFilesRoot =
+      std::filesystem::path(baseLayer->getLayerDir()->absoluteFilePath("files").toStdString());
+    auto baseHasPath = [&baseFilesRoot](const std::filesystem::path &dest) -> bool {
+        std::filesystem::path rel = dest.is_absolute() ? dest.relative_path() : dest;
+        std::error_code ec;
+        return std::filesystem::exists(baseFilesRoot / rel, ec);
+    };
+    auto appendPathEnv = [this](const std::string &key, const std::string &value) {
+        if (value.empty()) {
+            return;
+        }
+        auto it = environment.find(key);
+        std::string current;
+        if (it != environment.end() && !it->second.empty()) {
+            current = it->second;
+        } else {
+            auto *envValue = ::getenv(key.c_str());
+            if (envValue != nullptr && envValue[0] != '\0') {
+                current = envValue;
+            }
+        }
+        if (current.empty()) {
+            environment[key] = value;
+            return;
+        }
+        std::string haystack = ":" + current + ":";
+        std::string needle = ":" + value + ":";
+        if (haystack.find(needle) != std::string::npos) {
+            environment[key] = current;
+            return;
+        }
+        environment[key] = current + ":" + value;
+    };
+    auto setEnvIfEmpty = [this](const std::string &key, const std::string &value) {
+        if (value.empty()) {
+            return;
+        }
+        auto it = environment.find(key);
+        if (it != environment.end() && !it->second.empty()) {
+            return;
+        }
+        auto *envValue = ::getenv(key.c_str());
+        if (envValue != nullptr && envValue[0] != '\0') {
+            return;
+        }
+        environment[key] = value;
+    };
+
+    const std::filesystem::path kVulkanIcd = "/usr/share/vulkan/icd.d/nvidia_icd.json";
+    const std::filesystem::path kEglExternalDir = "/usr/share/egl/egl_external_platform.d";
+    const std::filesystem::path kEglVendorDir = "/usr/share/glvnd/egl_vendor.d";
+    const std::filesystem::path kGlxVendorDir = "/usr/share/glvnd/glx_vendor.d";
+    auto applyNvidiaBinds =
+      [&](const std::vector<extension::HostExtensionFileBind> &binds,
+          bool &boundVulkanJson,
+          bool &boundEglJson,
+          bool &boundEglVendorJson) {
+          for (const auto &bind : binds) {
+              const auto &dest = bind.destination;
+              if (dest == kVulkanIcd) {
+                  if (!baseHasPath(dest)) {
+                      continue;
+                  }
+                  boundVulkanJson = true;
+              } else if (dest.parent_path() == kEglExternalDir) {
+                  if (!baseHasPath(dest)) {
+                      continue;
+                  }
+                  boundEglJson = true;
+              } else if (dest.parent_path() == kEglVendorDir) {
+                  if (!baseHasPath(dest)) {
+                      continue;
+                  }
+                  boundEglVendorJson = true;
+              } else if (dest.parent_path() == kGlxVendorDir) {
+                  if (!baseHasPath(dest)) {
+                      continue;
+                  }
+              }
+
+              ocppi::runtime::config::types::Mount mount = {
+                  .destination = dest.string(),
+                  .options = { { "rbind", "ro" } },
+                  .source = bind.source.string(),
+                  .type = "bind",
+              };
+              builder.addExtraMount(mount);
+          }
+      };
+    for (const auto &name : hostExtensions) {
+        auto hostExt = extension::prepareHostNvidiaExtension(hostBase, name);
+        if (!hostExt) {
+            LogW("failed to prepare host NVIDIA driver for {}", name);
+            continue;
+        }
+        extensionMounts.push_back(ocppi::runtime::config::types::Mount{
+          .destination = "/opt/extensions/" + name,
+          .gidMappings = {},
+          .options = { { "rbind", "ro" } },
+          .source = hostExt->root.string(),
+          .type = "bind",
+          .uidMappings = {},
+        });
+
+        bool boundVulkanJson = false;
+        bool boundEglJson = false;
+        bool boundEglVendorJson = false;
+        applyNvidiaBinds(hostExt->extraBinds, boundVulkanJson, boundEglJson, boundEglVendorJson);
+
+        if (!boundVulkanJson && hostExt->vkIcdFile) {
+            appendPathEnv("VK_ICD_FILENAMES", hostExt->vkIcdFile->string());
+        }
+        if (!boundEglJson && hostExt->eglExternalPlatformDir) {
+            appendPathEnv("EGL_EXTERNAL_PLATFORM_CONFIG_DIRS",
+                          hostExt->eglExternalPlatformDir->string());
+        }
+        if (!boundEglVendorJson && hostExt->eglVendorDir) {
+            appendPathEnv("__EGL_VENDOR_LIBRARY_DIRS", hostExt->eglVendorDir->string());
+        }
+        if (hostExt->hasGlxLib) {
+            setEnvIfEmpty("__GLX_VENDOR_LIBRARY_NAME", "nvidia");
+            setEnvIfEmpty("__NV_PRIME_RENDER_OFFLOAD", "1");
+        }
+    }
+}
+
 utils::error::Result<void>
 RunContext::fillContextCfg(linglong::generator::ContainerCfgBuilder &builder)
 {
@@ -579,6 +731,8 @@ RunContext::fillContextCfg(linglong::generator::ContainerCfgBuilder &builder)
           .uidMappings = {},
         });
     }
+
+    setupHostNvidiaFallbacks(builder, extensionMounts);
     if (!extensionMounts.empty()) {
         builder.setExtensionMounts(extensionMounts);
     }
@@ -727,6 +881,9 @@ api::types::v1::ContainerProcessStateInfo RunContext::stateInfo()
     state.extensions = std::vector<std::string>{};
     for (auto &ext : extensionLayers) {
         state.extensions->push_back(ext.getReference().toString());
+    }
+    for (const auto &name : hostExtensions) {
+        state.extensions->push_back(name);
     }
 
     return state;

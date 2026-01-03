@@ -16,6 +16,7 @@
 
 #include <filesystem>
 #include <list>
+#include <unordered_set>
 
 namespace linglong::runtime {
 
@@ -110,6 +111,9 @@ private:
                      bool skipOnNotFound = false);
     utils::error::Result<void> fillExtraAppMounts(generator::ContainerCfgBuilder &builder);
     void detectDisplaySystem(generator::ContainerCfgBuilder &builder) noexcept;
+    void setupHostNvidiaFallbacks(
+      generator::ContainerCfgBuilder &builder,
+      std::vector<ocppi::runtime::config::types::Mount> &extensionMounts);
     utils::error::Result<std::vector<api::types::v1::ExtensionDefine>>
     makeManualExtensionDefine(const std::vector<std::string> &refs);
 
@@ -119,6 +123,7 @@ private:
     std::optional<RuntimeLayer> runtimeLayer;
     std::optional<RuntimeLayer> appLayer;
     std::list<RuntimeLayer> extensionLayers;
+    std::unordered_set<std::string> hostExtensions;
 
     std::string targetId;
     std::optional<std::filesystem::path> appOutput;

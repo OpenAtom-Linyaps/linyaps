@@ -444,37 +444,32 @@ Builder::ensureUtils(const std::string &id, const package::Architecture &arch) n
         return LINGLONG_ERR("failed to get utils " + id, res);
     }
 
-    auto appLayerDir = this->repo.getMergedModuleDir(*ref);
-    if (!appLayerDir) {
-        return LINGLONG_ERR("failed to get layer dir of " + ref->toString());
+    auto layerItem = this->repo.getLayerItem(*ref);
+    if (!layerItem) {
+        return LINGLONG_ERR("failed to get layer item of " + ref->toString());
+    }
+    const auto &info = layerItem->info;
+
+    // assumes these dependencies are available for the current architecture,
+    // this requires the same version of `build-utils` to be built for both
+    // the target and the current architectures.
+    auto baseRef = clearDependency(info.base, false, true);
+    if (!baseRef) {
+        return LINGLONG_ERR("base not exist: " + QString::fromStdString(info.base));
+    }
+    if (!pullDependency(*baseRef, this->repo, "binary")) {
+        return LINGLONG_ERR("failed to pull base binary " + QString::fromStdString(info.base));
     }
 
-    // pull dependencies only when the target architecture matches the current CPU architecture
-    if (arch == package::Architecture::currentCPUArchitecture()) {
-        auto layerItem = this->repo.getLayerItem(*ref);
-        if (!layerItem) {
-            return LINGLONG_ERR("failed to get layer item of " + ref->toString());
+    if (info.runtime) {
+        auto runtimeRef = clearDependency(info.runtime.value(), false, true);
+        if (!runtimeRef) {
+            return LINGLONG_ERR("runtime not exist: "
+                                + QString::fromStdString(info.runtime.value()));
         }
-        const auto &info = layerItem->info;
-
-        auto baseRef = clearDependency(info.base, false, true);
-        if (!baseRef) {
-            return LINGLONG_ERR("base not exist: " + QString::fromStdString(info.base));
-        }
-        if (!pullDependency(*baseRef, this->repo, "binary")) {
-            return LINGLONG_ERR("failed to pull base binary " + QString::fromStdString(info.base));
-        }
-
-        if (info.runtime) {
-            auto runtimeRef = clearDependency(info.runtime.value(), false, true);
-            if (!runtimeRef) {
-                return LINGLONG_ERR("runtime not exist: "
-                                    + QString::fromStdString(info.runtime.value()));
-            }
-            if (!pullDependency(*runtimeRef, this->repo, "binary")) {
-                return LINGLONG_ERR("failed to pull runtime binary "
-                                    + QString::fromStdString(info.runtime.value()));
-            }
+        if (!pullDependency(*runtimeRef, this->repo, "binary")) {
+            return LINGLONG_ERR("failed to pull runtime binary "
+                                + QString::fromStdString(info.runtime.value()));
         }
     }
 
@@ -1383,7 +1378,46 @@ utils::error::Result<void> Builder::exportUAB(const ExportOption &option,
 
     const bool distributedOnly = !exportOpts.ref.empty();
 
-    if (!distributedOnly && package::Architecture::currentCPUArchitecture() != projectRef->arch) {
+    const bool underProject = this->project.has_value();
+    auto curRef = [this,
+                   &exportOpts,
+                   underProject,
+                   distributedOnly]() -> utils::error::Result<package::Reference> {
+        LINGLONG_TRACE("get current reference");
+
+        if (distributedOnly) {
+            auto fuzzyRef = package::FuzzyReference::parse(exportOpts.ref);
+            if (!fuzzyRef) {
+                return LINGLONG_ERR("fuzzy ref", fuzzyRef);
+            }
+
+            auto targetRef = this->repo.clearReference(*fuzzyRef, { .fallbackToRemote = false });
+            if (!targetRef) {
+                return LINGLONG_ERR("clear ref", targetRef);
+            }
+
+            return targetRef;
+        }
+
+        if (!underProject) {
+            return LINGLONG_ERR("not under project");
+        }
+
+        if (underProject && this->project->package.kind != "app") {
+            return LINGLONG_ERR(
+              fmt::format("can't export {} kind UAB in executable mode, if you want to export UAB "
+                          "in distributed mode, please use --ref option instead",
+                          this->project->package.kind));
+        }
+
+        return currentReference(*this->project);
+    }();
+
+    if (!curRef) {
+        return LINGLONG_ERR(curRef);
+    }
+
+    if (!distributedOnly && package::Architecture::currentCPUArchitecture() != curRef->arch) {
         return LINGLONG_ERR(
           "can't export different architecture UAB in executable mode, if you want to export UAB "
           "in distributed mode, please use --ref option instead");
@@ -1392,7 +1426,7 @@ utils::error::Result<void> Builder::exportUAB(const ExportOption &option,
     // Retrieves static files from the ll-builder-utils matching the target architecture if
     // available, including uab-header, uab-loader, ll-box. Fallback to defaults if ll-builder-utils
     // is not found or fails.
-    auto ref = ensureUtils("cn.org.linyaps.builder.utils", projectRef->arch);
+    auto ref = ensureUtils("cn.org.linyaps.builder.utils", curRef->arch);
     if (ref) {
         LogD("using static files from cn.org.linyaps.builder.utils");
         std::vector<std::string> args{
@@ -1423,11 +1457,13 @@ utils::error::Result<void> Builder::exportUAB(const ExportOption &option,
         } else {
             LogW("run builder utils error: {}", res.error());
         }
+    } else {
+        LogW("failed to get builder utils for arch {}: {}", curRef->arch.toString(), ref.error());
     }
 
     // Using the packdir tools matching current architecture
     const auto &arch = package::Architecture::currentCPUArchitecture();
-    if (arch != projectRef->arch) {
+    if (arch != curRef->arch) {
         ref = ensureUtils("cn.org.linyaps.builder.utils", arch);
     }
 
@@ -1470,38 +1506,7 @@ utils::error::Result<void> Builder::exportUAB(const ExportOption &option,
         };
         packager.setBundleCB(utilsBundler);
     } else {
-        LogD("cn.org.linyaps.builder.utils not found, using system tools");
-    }
-
-    const bool underProject = this->project.has_value();
-    auto curRef = [this,
-                   &exportOpts,
-                   underProject,
-                   distributedOnly]() -> utils::error::Result<package::Reference> {
-        LINGLONG_TRACE("get current reference");
-
-        if (distributedOnly) {
-            auto fuzzyRef = package::FuzzyReference::parse(exportOpts.ref);
-            if (!fuzzyRef) {
-                return LINGLONG_ERR("fuzzy ref", fuzzyRef);
-            }
-
-            auto targetRef = this->repo.clearReference(*fuzzyRef, { .fallbackToRemote = false });
-            if (!targetRef) {
-                return LINGLONG_ERR("clear ref", targetRef);
-            }
-
-            return targetRef;
-        }
-
-        if (!underProject) {
-            return LINGLONG_ERR("not under project");
-        }
-        return currentReference(*this->project);
-    }();
-
-    if (!curRef) {
-        return LINGLONG_ERR(curRef);
+        LogW("cn.org.linyaps.builder.utils not found, using system tools");
     }
 
     QString uabFile;

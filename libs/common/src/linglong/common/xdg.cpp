@@ -20,4 +20,21 @@ std::filesystem::path getXDGRuntimeDir() noexcept
     return std::filesystem::path{ "/tmp" } / ("linglong-runtime-" + std::to_string(::getuid()));
 }
 
+std::filesystem::path getXDGCacheHomeDir() noexcept
+{
+    auto *cacheHomeEnv = std::getenv("XDG_CACHE_HOME");
+    if (cacheHomeEnv != nullptr && cacheHomeEnv[0] != '\0') {
+        return cacheHomeEnv;
+    }
+
+    // fallback to default
+    // $HOME/.cache
+    auto *homeEnv = std::getenv("HOME");
+    if (homeEnv != nullptr && homeEnv[0] != '\0') {
+        return std::filesystem::path{ homeEnv } / ".cache";
+    }
+
+    return "";
+}
+
 } // namespace linglong::common::xdg

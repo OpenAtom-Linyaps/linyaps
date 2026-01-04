@@ -216,7 +216,8 @@ private:
     utils::error::Result<void> runningAsRoot();
     utils::error::Result<void> runningAsRoot(const QList<QString> &args);
     utils::error::Result<std::vector<api::types::v1::UpgradeListResult>> listUpgradable();
-    int generateCache(const package::Reference &ref);
+    utils::error::Result<void> generateLDCache(runtime::RunContext &runContext,
+                                               const std::string &ldConf) noexcept;
     utils::error::Result<std::filesystem::path> ensureCache(
       runtime::RunContext &runContext, const generator::ContainerCfgBuilder &cfgBuilder) noexcept;
     QDBusReply<void> authorization();

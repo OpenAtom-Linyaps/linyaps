@@ -88,7 +88,6 @@ PackageManager::PackageManager(linglong::repo::OSTreeRepo &repo,
     , repo(repo)
     , tasks(this)
     , m_search_queue(this)
-    , m_generator_queue(this)
     , containerBuilder(containerBuilder)
 {
     // tasks and PackageManager are on a same thread, it's safe to getTask in slot
@@ -1384,160 +1383,10 @@ void PackageManager::ReplyInteraction([[maybe_unused]] QDBusObjectPath object_pa
     Q_EMIT this->ReplyReceived(replies);
 }
 
-utils::error::Result<void> PackageManager::generateCache(const package::Reference &ref) noexcept
-{
-    LINGLONG_TRACE("generate cache for " + ref.toString());
-
-    auto layerItem = this->repo.getLayerItem(ref);
-    if (!layerItem) {
-        return LINGLONG_ERR(layerItem);
-    }
-
-    const auto appCache = std::filesystem::path(LINGLONG_ROOT) / "cache" / layerItem->commit;
-    const std::string appCacheDest = "/run/linglong/cache";
-    const std::string generatorDest = "/run/linglong/generator";
-
-    utils::Transaction transaction;
-
-#ifdef LINGLONG_FONT_CACHE_GENERATOR
-    const auto appFontCache = appCache / "fontconfig";
-    const std::string fontGenerator = generatorDest + "/font-cache-generator";
-#endif
-    std::error_code ec;
-    std::filesystem::create_directories(appCache, ec);
-    if (ec) {
-        return LINGLONG_ERR(QString::fromStdString(ec.message()));
-    }
-
-    transaction.addRollBack([&appCache]() noexcept {
-        std::error_code ec;
-        std::filesystem::remove_all(appCache, ec);
-        if (ec) {
-            qCritical() << QString::fromStdString(ec.message());
-        }
-    });
-
-    runtime::RunContext runContext(this->repo);
-    auto res = runContext.resolve(ref);
-    if (!res) {
-        return LINGLONG_ERR(res);
-    }
-
-    auto uid = getuid();
-    auto gid = getgid();
-
-    std::filesystem::path ldConfPath{ appCache / "ld.so.conf" };
-
-    linglong::generator::ContainerCfgBuilder cfgBuilder;
-    res = runContext.fillContextCfg(cfgBuilder);
-    if (!res) {
-        return LINGLONG_ERR(res);
-    }
-
-    cfgBuilder.setAppId(ref.id)
-      .setAppCache(appCache, false)
-      .addUIdMapping(uid, uid, 1)
-      .addGIdMapping(gid, gid, 1)
-      .bindDefault()
-      .bindCgroup()
-      .bindXDGRuntime()
-      .bindUserGroup()
-      .forwardDefaultEnv()
-      .addExtraMounts(std::vector<ocppi::runtime::config::types::Mount>{
-        ocppi::runtime::config::types::Mount{ .destination = generatorDest,
-                                              .options = { { "rbind", "ro" } },
-                                              .source = LINGLONG_LIBEXEC_DIR,
-                                              .type = "bind" },
-        ocppi::runtime::config::types::Mount{
-          .destination = "/etc/ld.so.conf.d/zz_deepin-linglong-app.conf",
-          .options = { { "rbind", "ro" } },
-          .source = ldConfPath,
-          .type = "bind",
-        } })
-      .enableSelfAdjustingMount();
-#ifdef LINGLONG_FONT_CACHE_GENERATOR
-    cfgBuilder.enableFontCache();
-#endif
-
-    // generate ld config
-    {
-        std::ofstream ofs(ldConfPath, std::ios::binary | std::ios::out | std::ios::trunc);
-        Q_ASSERT(ofs.is_open());
-        if (!ofs.is_open()) {
-            return LINGLONG_ERR("create ld config in bundle directory");
-        }
-        ofs << cfgBuilder.ldConf(ref.arch.getTriplet());
-    }
-
-    if (!cfgBuilder.build()) {
-        auto err = cfgBuilder.getError();
-        return LINGLONG_ERR("build cfg error: " + QString::fromStdString(err.reason));
-    }
-
-    auto container = this->containerBuilder.create(cfgBuilder);
-    if (!container) {
-        return LINGLONG_ERR(container);
-    }
-
-    ocppi::runtime::config::types::Process process{};
-    process.cwd = "/";
-    process.noNewPrivileges = true;
-    process.terminal = true;
-
-    auto ldGenerateCmd =
-      std::vector<std::string>{ "/sbin/ldconfig", "-X", "-C", appCacheDest + "/ld.so.cache" };
-#ifdef LINGLONG_FONT_CACHE_GENERATOR
-    // Usage: font-cache-generator [cacheRoot] [id]
-    const std::string fontGenerateCmd = common::strings::quoteBashArg(fontGenerator) + " "
-      + common::strings::quoteBashArg(appCacheDest) + " "
-      + common::strings::quoteBashArg(ref.id.toStdString());
-    auto ldGenerateCmdstr;
-    for (const auto &c : ldGenerateCmd) {
-        ldGenerateCmdstr.append(common::strings::quoteBashArg(c));
-        ldGenerateCmdstr.append(" ");
-    }
-    process.args =
-      std::vector<std::string>{ "bash", "-c", ldGenerateCmdstr + ";" + fontGenerateCmd };
-#endif
-
-    process.args = std::move(ldGenerateCmd);
-    auto XDGRuntimeDir = common::dir::getAppRuntimeDir(ref.id);
-    auto containerStateRoot = XDGRuntimeDir / "ll-box";
-
-    ocppi::runtime::RunOption opt;
-    opt.GlobalOption::root = containerStateRoot;
-    auto result = (*container)->run(process, opt);
-    if (!result) {
-        return LINGLONG_ERR(result);
-    }
-
-    transaction.commit();
-    return LINGLONG_OK;
-}
-
-// it's safe to skip cache generation here, if the cache directory already exists.
-// when application begins to run, it will regenerate the cache if necessary
+// no-op for now
 utils::error::Result<void> PackageManager::tryGenerateCache(const package::Reference &ref) noexcept
 {
     LINGLONG_TRACE("try to generate cache for " + ref.toString());
-
-    auto layerItem = this->repo.getLayerItem(ref);
-    if (!layerItem) {
-        return LINGLONG_ERR(layerItem);
-    }
-    auto appCache = std::filesystem::path(LINGLONG_ROOT) / "cache" / layerItem->commit;
-    std::error_code ec;
-    if (std::filesystem::exists(appCache, ec)) {
-        return LINGLONG_OK;
-    }
-    if (ec) {
-        return LINGLONG_ERR(QString::fromStdString(ec.message()));
-    }
-
-    auto ret = generateCache(ref);
-    if (!ret) {
-        qWarning() << "failed to generate cache" << ret.error();
-    }
 
     return LINGLONG_OK;
 }
@@ -1559,38 +1408,6 @@ utils::error::Result<void> PackageManager::removeCache(const package::Reference 
     }
 
     return LINGLONG_OK;
-}
-
-auto PackageManager::GenerateCache(const QString &reference) noexcept -> QVariantMap
-{
-    auto refRet = package::Reference::parse(reference.toStdString());
-    if (!refRet) {
-        return toDBusReply(refRet);
-    }
-    auto taskRet =
-      m_generator_queue.addPackageTask([this, ref = std::move(refRet).value()](Task &task) {
-          LogI("Generate cache for {}", ref.toString());
-
-          auto ret = this->generateCache(ref);
-          if (!ret) {
-              LogE("failed to generate cache for {}: {}", ref.toString(), ret.error().message());
-              Q_EMIT this->GenerateCacheFinished(QString::fromStdString(task.taskID()), false);
-              return;
-          }
-
-          qInfo() << "Generate cache finished";
-          Q_EMIT this->GenerateCacheFinished(QString::fromStdString(task.taskID()), true);
-      });
-    if (!taskRet) {
-        return toDBusReply(taskRet);
-    }
-
-    auto result = utils::serialize::toQVariantMap(api::types::v1::PackageManager1JobInfo{
-      .id = taskRet->get().taskID(),
-      .code = 0,
-      .message = "",
-    });
-    return result;
 }
 
 utils::error::Result<void>

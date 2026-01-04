@@ -10,10 +10,14 @@
 
 namespace linglong::runtime {
 
-utils::error::Result<std::filesystem::path> makeBundleDir(const std::string &containerID)
+utils::error::Result<std::filesystem::path> makeBundleDir(const std::string &containerID,
+                                                          const std::string &bundleSuffix)
 {
     LINGLONG_TRACE("get bundle dir");
     auto bundle = common::dir::getBundleDir(containerID);
+    if (!bundleSuffix.empty()) {
+        bundle += bundleSuffix;
+    }
     std::error_code ec;
     if (std::filesystem::exists(bundle, ec)) {
         std::filesystem::remove_all(bundle, ec);
@@ -42,8 +46,8 @@ auto ContainerBuilder::create(const linglong::generator::ContainerCfgBuilder &cf
     auto config = cfgBuilder.getConfig();
 
     return std::make_unique<Container>(config,
-                                       cfgBuilder.getAppId(),
                                        cfgBuilder.getContainerId(),
+                                       cfgBuilder.getBundlePath(),
                                        this->cli);
 }
 

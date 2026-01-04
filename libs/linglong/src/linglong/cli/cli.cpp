@@ -684,10 +684,6 @@ int Cli::run(const RunOptions &options)
                              true);
     }
 
-#ifdef LINGLONG_FONT_CACHE_GENERATOR
-    cfgBuilder.enableFontCache();
-#endif
-
     auto appCache = this->ensureCache(runContext, cfgBuilder);
     if (!appCache) {
         this->printer.printErr(LINGLONG_ERRV(appCache));
@@ -2136,33 +2132,92 @@ Cli::RequestDirectories(const api::types::v1::PackageInfoV2 &info) noexcept
     return LINGLONG_OK;
 }
 
-int Cli::generateCache(const package::Reference &ref)
+utils::error::Result<void> Cli::generateLDCache(runtime::RunContext &runContext,
+                                                const std::string &ldConf) noexcept
 {
-    LINGLONG_TRACE("generate cache for " + ref.toString());
-    QEventLoop loop;
-    QString jobIDReply;
-    connect(&this->pkgMan,
-            &api::dbus::v1::PackageManager::GenerateCacheFinished,
-            [&loop, &jobIDReply](const QString &jobID, bool success) {
-                if (jobIDReply != jobID) {
-                    return;
-                }
-                if (!success) {
-                    loop.exit(-1);
-                    return;
-                }
-                loop.exit(0);
-            });
+    LINGLONG_TRACE("generate ld cache");
 
-    auto pendingReply = this->pkgMan.GenerateCache(QString::fromStdString(ref.toString()));
-    auto result = waitDBusReply<api::types::v1::PackageManager1JobInfo>(pendingReply);
-    if (!result) {
-        this->printer.printErr(result.error());
-        return -1;
+    auto appLayerItem = runContext.getCachedAppItem();
+    if (!appLayerItem) {
+        return LINGLONG_ERR(appLayerItem);
     }
-    jobIDReply = QString::fromStdString(result->id);
 
-    return loop.exec();
+    auto appLayer = runContext.getAppLayer();
+    if (!appLayer) {
+        return LINGLONG_ERR("app layer not found");
+    }
+    auto appRef = appLayer->getReference();
+
+    auto appCache = common::dir::getUserCacheDir() / appLayerItem->commit;
+    std::error_code ec;
+    std::filesystem::create_directories(appCache, ec);
+    if (ec) {
+        return LINGLONG_ERR(fmt::format("failed to create cache directory {}: ", appCache), ec);
+    }
+
+    generator::ContainerCfgBuilder cfgBuilder;
+    auto res = runContext.fillContextCfg(cfgBuilder, ".ldcache");
+    if (!res) {
+        return LINGLONG_ERR(res);
+    }
+
+    auto uid = getuid();
+    auto gid = getgid();
+
+    std::filesystem::path ldConfPath{ appCache / "ld.so.conf" };
+
+    cfgBuilder.setAppId(appRef.id)
+      .setAppCache(appCache, false)
+      .addUIdMapping(uid, uid, 1)
+      .addGIdMapping(gid, gid, 1)
+      .bindDefault()
+      .bindCgroup()
+      .bindXDGRuntime()
+      .bindUserGroup()
+      .forwardDefaultEnv()
+      .addExtraMounts(
+        std::vector<ocppi::runtime::config::types::Mount>{ ocppi::runtime::config::types::Mount{
+          .destination = "/etc/ld.so.conf.d/zz_deepin-linglong-app.conf",
+          .options = { { "rbind", "ro" } },
+          .source = ldConfPath,
+          .type = "bind",
+        } })
+      .enableSelfAdjustingMount();
+
+    // generate ld config
+    {
+        std::ofstream ofs(ldConfPath, std::ios::binary | std::ios::out | std::ios::trunc);
+        Q_ASSERT(ofs.is_open());
+        if (!ofs.is_open()) {
+            return LINGLONG_ERR("create ld config in bundle directory");
+        }
+        ofs << ldConf;
+    }
+
+    if (!cfgBuilder.build()) {
+        auto err = cfgBuilder.getError();
+        return LINGLONG_ERR("build cfg error: " + QString::fromStdString(err.reason));
+    }
+
+    auto container = this->containerBuilder.create(cfgBuilder);
+    if (!container) {
+        return LINGLONG_ERR(container);
+    }
+
+    ocppi::runtime::config::types::Process process{};
+    process.cwd = "/";
+    process.noNewPrivileges = true;
+    process.terminal = true;
+    process.args =
+      std::vector<std::string>{ "/sbin/ldconfig", "-X", "-C", "/run/linglong/cache/ld.so.cache" };
+
+    ocppi::runtime::RunOption opt{};
+    auto result = (*container)->run(process, opt);
+    if (!result) {
+        return LINGLONG_ERR(result);
+    }
+
+    return LINGLONG_OK;
 }
 
 utils::error::Result<std::filesystem::path> Cli::ensureCache(
@@ -2181,7 +2236,10 @@ utils::error::Result<std::filesystem::path> Cli::ensureCache(
     }
     auto appRef = appLayer->getReference();
 
-    auto appCache = std::filesystem::path(LINGLONG_ROOT) / "cache" / appLayerItem->commit;
+    auto appCache = common::dir::getUserCacheDir() / appLayerItem->commit;
+    bool ldCacheGen = true;
+    auto ldConf = cfgBuilder.ldConf(appRef.arch.getTriplet());
+
     do {
         std::error_code ec;
         if (!std::filesystem::exists(appCache, ec)) {
@@ -2191,12 +2249,12 @@ utils::error::Result<std::filesystem::path> Cli::ensureCache(
         // check ld.so.conf
         {
             auto ldSoConf = appCache / "ld.so.conf";
-            if (!std::filesystem::exists(ldSoConf, ec)) {
+            if (!std::filesystem::exists(ldSoConf, ec)
+                || !std::filesystem::exists(appCache / "ld.so.cache")) {
                 break;
             }
 
             // If the ld.so.conf exists, check if it is consistent with the current configuration.
-            auto ldConf = cfgBuilder.ldConf(appRef.arch.getTriplet());
             std::stringstream oldCache;
             std::ifstream ifs(ldSoConf, std::ios::binary | std::ios::in);
             if (!ifs.is_open()) {
@@ -2208,29 +2266,17 @@ utils::error::Result<std::filesystem::path> Cli::ensureCache(
             if (oldCache.str() != ldConf) {
                 break;
             }
-        }
 
-        return appCache;
+            ldCacheGen = false;
+        }
     } while (false);
 
-    // Try to generate cache here
-    QProcess process;
-    process.setProgram(LINGLONG_LIBEXEC_DIR "/ll-dialog");
-    process.setArguments(
-      { "-m", "startup", "--id", QString::fromStdString(appLayerItem->info.id) });
-    process.start();
-    qDebug() << process.program() << process.arguments();
-
-    auto ret = this->generateCache(appRef);
-    if (ret != 0) {
-        auto ret = this->notifier->notify(api::types::v1::InteractionRequest{
-          .summary =
-            _("The cache generation failed, please uninstall and reinstall the application.") });
-        if (!ret) {
-            qWarning() << "failed to notify" << ret.error();
+    if (ldCacheGen) {
+        auto res = generateLDCache(runContext, ldConf);
+        if (!res) {
+            return LINGLONG_ERR("failed to generate ld cache", res);
         }
     }
-    process.close();
 
     return appCache;
 }

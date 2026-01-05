@@ -24,6 +24,7 @@
 #include "linglong/api/types/v1/Sections.hpp"
 #include "linglong/api/types/v1/UabLayer.hpp"
 #include "linglong/api/types/v1/State.hpp"
+#include "linglong/api/types/v1/RuntimeConfigure.hpp"
 #include "linglong/api/types/v1/RepositoryCache.hpp"
 #include "linglong/api/types/v1/RepositoryCacheMergedItem.hpp"
 #include "linglong/api/types/v1/RepositoryCacheLayersItem.hpp"
@@ -233,6 +234,9 @@ void to_json(json & j, const RepositoryCacheMergedItem & x);
 
 void from_json(const json & j, RepositoryCache & x);
 void to_json(json & j, const RepositoryCache & x);
+
+void from_json(const json & j, RuntimeConfigure & x);
+void to_json(json & j, const RuntimeConfigure & x);
 
 void from_json(const json & j, UabLayer & x);
 void to_json(json & j, const UabLayer & x);
@@ -1193,6 +1197,21 @@ j["merged"] = x.merged;
 j["version"] = x.version;
 }
 
+inline void from_json(const json & j, RuntimeConfigure& x) {
+x.env = get_stack_optional<std::map<std::string, std::string>>(j, "env");
+x.extDefs = get_stack_optional<std::map<std::string, std::vector<ExtensionDefine>>>(j, "ext_defs");
+}
+
+inline void to_json(json & j, const RuntimeConfigure & x) {
+j = json::object();
+if (x.env) {
+j["env"] = x.env;
+}
+if (x.extDefs) {
+j["ext_defs"] = x.extDefs;
+}
+}
+
 inline void from_json(const json & j, UabLayer& x) {
 x.info = j.at("info").get<PackageInfoV2>();
 x.minified = j.at("minified").get<bool>();
@@ -1294,6 +1313,7 @@ x.repo = get_stack_optional<Repo>(j, "Repo");
 x.repoConfig = get_stack_optional<RepoConfig>(j, "RepoConfig");
 x.repoConfigV2 = get_stack_optional<RepoConfigV2>(j, "RepoConfigV2");
 x.repositoryCache = get_stack_optional<RepositoryCache>(j, "RepositoryCache");
+x.runtimeConfigure = get_stack_optional<RuntimeConfigure>(j, "RuntimeConfigure");
 x.state = get_stack_optional<State>(j, "State");
 x.uabMetaInfo = get_stack_optional<UabMetaInfo>(j, "UABMetaInfo");
 x.upgradeListResult = get_stack_optional<UpgradeListResult>(j, "UpgradeListResult");
@@ -1427,6 +1447,9 @@ j["RepoConfigV2"] = x.repoConfigV2;
 }
 if (x.repositoryCache) {
 j["RepositoryCache"] = x.repositoryCache;
+}
+if (x.runtimeConfigure) {
+j["RuntimeConfigure"] = x.runtimeConfigure;
 }
 if (x.state) {
 j["State"] = x.state;

@@ -86,7 +86,7 @@ std::vector<linglong::api::types::v1::PackageInfoV2> Version::filterByFuzzyVersi
     return list;
 }
 
-bool Version::semanticMatch(const std::string &versionStr)
+bool Version::semanticMatch(const std::string &versionStr) const
 {
     if (std::holds_alternative<VersionV1>(version)) {
         return std::get<VersionV1>(version).semanticMatch(versionStr);

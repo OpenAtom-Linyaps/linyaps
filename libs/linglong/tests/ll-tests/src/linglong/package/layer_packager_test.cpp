@@ -59,7 +59,7 @@ public:
         // 生成空文件，测试文件已存在的场景
         std::ofstream emptyFile(layerFilePath);
         emptyFile.close();
-        auto layerDir = package::LayerDir(layerDirPath.string().c_str());
+        auto layerDir = package::LayerDir(layerDirPath);
         auto ret = packager.pack(layerDir, layerFilePath.string().c_str());
         ASSERT_TRUE(ret.has_value()) << "Failed to pack layer file" << ret.error().message();
         ASSERT_TRUE(std::filesystem::exists(layerFilePath)) << "Failed to pack layer file";

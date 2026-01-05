@@ -386,8 +386,7 @@ utils::error::Result<void> UabInstallationAction::installUabLayer(
             return LINGLONG_ERR(ref);
         }
 
-        auto ret =
-          this->repo.importLayerDir(package::LayerDir{ layerDirPath.c_str() }, overlays, subRef);
+        auto ret = this->repo.importLayerDir(package::LayerDir{ layerDirPath }, overlays, subRef);
         if (!ret) {
             return LINGLONG_ERR(ret);
         }

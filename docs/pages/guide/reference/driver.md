@@ -20,6 +20,6 @@
 
 不在 base 中携带的，需要额外安装的驱动：
 
-- 英伟达闭源驱动，通过 `sudo ll-cli install org.deepin.driver.display.nvidia.570-124-04` 安装。其中 `570-124-04` 是驱动版本号，需要与宿主机安装的驱动版本匹配，通过宿主机 `/sys/module/nvidia/version` 文件查看宿主机驱动的版本。
+- 英伟达闭源驱动，推荐通过 `sudo ll-cli install org.deepin.driver.display.nvidia.570-124-04` 安装。其中 `570-124-04` 是驱动版本号，需要与宿主机安装的驱动版本匹配，通过宿主机 `/sys/module/nvidia/version` 文件查看宿主机驱动的版本。未安装扩展时，linyaps 会在运行时尝试从宿主机自动链接 NVIDIA 驱动文件。
 - 格兰菲显卡驱动，通过 `sudo ll-cli install com.glenfly.driver.display.arise` 安装。
 - 英特尔视频编解码驱动（VAAPI），通过 `sudo ll-cli install org.deepin.driver.media.intel` 安装，包含了新/旧 Intel 显卡的支持。

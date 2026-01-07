@@ -22,6 +22,7 @@
 #include <iomanip>
 #include <iostream>
 #include <vector>
+#include <unordered_set>
 
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -1813,6 +1814,23 @@ bool ContainerCfgBuilder::mergeMount() noexcept
         std::move(extraMount->begin(), extraMount->end(), std::back_inserter(mounts));
     }
 
+    if (!mounts.empty()) {
+        std::unordered_set<std::string> seen;
+        seen.reserve(mounts.size());
+        std::vector<Mount> deduped;
+        deduped.reserve(mounts.size());
+        for (auto it = mounts.rbegin(); it != mounts.rend(); ++it) {
+            const auto &dest = it->destination;
+            if (dest.empty()) {
+                continue;
+            }
+            if (seen.insert(dest).second) {
+                deduped.push_back(std::move(*it));
+            }
+        }
+        std::reverse(deduped.begin(), deduped.end());
+        mounts = std::move(deduped);
+    }
     config.mounts = std::move(mounts);
 
     return true;

@@ -20,6 +20,6 @@ The base that applications depend on already includes the appropriate version of
 
 Drivers not included in the base that require additional installation:
 
-- NVIDIA proprietary drivers: Install via `sudo ll-cli install org.deepin.driver.display.nvidia.570-124-04`. The `570-124-04` is the driver version number, which must match the driver version installed on the host system. Check the host driver version through the `/sys/module/nvidia/version` file.
+- NVIDIA proprietary drivers: Install via `sudo ll-cli install org.deepin.driver.display.nvidia.570-124-04`. The `570-124-04` is the driver version number, which must match the driver version installed on the host system. Check the host driver version through the `/sys/module/nvidia/version` file. If the extension is not installed, linyaps will attempt to link NVIDIA driver files from the host at runtime.
 - Glenfly graphics drivers: Install via `sudo ll-cli install com.glenfly.driver.display.arise`.
 - Intel video codec drivers (VAAPI): Install via `sudo ll-cli install org.deepin.driver.media.intel`, which includes support for both new and legacy Intel graphics cards.

@@ -9,6 +9,9 @@
 #include "linglong/runtime/container_builder.h"
 #include "linglong/utils/log/log.h"
 
+#include <fstream>
+#include <unordered_map>
+#include <unordered_set>
 #include <utility>
 
 namespace linglong::runtime {
@@ -403,6 +406,10 @@ RunContext::resolveExtension(const std::vector<api::types::v1::ExtensionDefine> 
           repo.clearReference(*fuzzyRef, { .fallbackToRemote = false, .semanticMatching = true });
         if (!ref) {
             LogD("extension is not installed: {}", fuzzyRef->toString());
+            if (extension::isNvidiaDisplayDriverExtension(name)) {
+                hostExtensions.insert(name);
+                continue;
+            }
             if (skipOnNotFound) {
                 continue;
             }
@@ -502,8 +509,283 @@ void RunContext::detectDisplaySystem(generator::ContainerCfgBuilder &builder) no
     }
 }
 
-utils::error::Result<void> RunContext::fillContextCfg(
-  linglong::generator::ContainerCfgBuilder &builder, const std::string &bundleSuffix)
+void RunContext::applyExtensionOverrides(
+  generator::ContainerCfgBuilder &builder,
+  std::vector<ocppi::runtime::config::types::Mount> &extensionMounts)
+{
+    if (extensionOverrides.empty()) {
+        return;
+    }
+
+    auto matchesPrefix = [](const std::string &extensionName, const std::string &prefix) -> bool {
+        if (extensionName == prefix) {
+            return true;
+        }
+        if (extensionName.size() <= prefix.size()) {
+            return false;
+        }
+        return extensionName.compare(0, prefix.size(), prefix) == 0
+          && extensionName[prefix.size()] == '.';
+    };
+    auto hasInstalledExtension = [&](const std::string &prefix) -> bool {
+        for (const auto &ext : extensionLayers) {
+            if (matchesPrefix(ext.getReference().id, prefix)) {
+                return true;
+            }
+        }
+        return false;
+    };
+    auto ensureExtensionRoot = [&](const std::string &rootName, bool has32Bit) {
+        if (rootName.empty()) {
+            return;
+        }
+        std::string destination = "/opt/extensions/" + rootName;
+        for (const auto &mount : extensionMounts) {
+            if (mount.destination == destination) {
+                return;
+            }
+        }
+        if (bundle.empty()) {
+            LogW("bundle path is empty, skip CDI extension mount for {}", rootName);
+            return;
+        }
+        std::filesystem::path sourceDir = bundle / "cdi-extensions" / rootName;
+        std::error_code ec;
+        std::filesystem::create_directories(sourceDir / "etc", ec);
+        if (ec) {
+            LogW("failed to create CDI extension dir {}: {}", sourceDir.string(), ec.message());
+            return;
+        }
+        std::filesystem::create_directories(sourceDir / "orig", ec);
+        if (has32Bit) {
+            std::filesystem::create_directories(sourceDir / "orig/32", ec);
+        }
+
+        std::ofstream ldConf(sourceDir / "etc/ld.so.conf", std::ios::binary | std::ios::out | std::ios::trunc);
+        if (ldConf.is_open()) {
+            ldConf << destination << "/orig\n";
+            if (has32Bit) {
+                ldConf << destination << "/orig/32\n";
+            }
+        }
+
+        extensionMounts.push_back(ocppi::runtime::config::types::Mount{
+          .destination = destination,
+          .gidMappings = {},
+          .options = { { "rbind", "ro" } },
+          .source = sourceDir.string(),
+          .type = "bind",
+          .uidMappings = {},
+        });
+    };
+    auto collectExtensionRoots = [&](const ExtensionOverride &overrideDef) {
+        std::unordered_map<std::string, bool> roots;
+        const std::string prefix = "/opt/extensions/";
+        for (const auto &mount : overrideDef.mounts) {
+            if (mount.destination.empty()) {
+                continue;
+            }
+            const auto &dest = mount.destination;
+            if (dest.rfind(prefix, 0) != 0) {
+                continue;
+            }
+            auto rest = dest.substr(prefix.size());
+            if (rest.empty()) {
+                continue;
+            }
+            auto slash = rest.find('/');
+            std::string root = (slash == std::string::npos) ? rest : rest.substr(0, slash);
+            if (root.empty()) {
+                continue;
+            }
+            bool has32 = dest.find("/orig/32") != std::string::npos;
+            auto it = roots.find(root);
+            if (it == roots.end()) {
+                roots.emplace(root, has32);
+            } else if (has32) {
+                it->second = true;
+            }
+        }
+        for (const auto &item : roots) {
+            ensureExtensionRoot(item.first, item.second);
+        }
+    };
+
+    std::unordered_map<std::string, std::filesystem::path> hostDirRelMap;
+    std::unordered_map<std::string, int> hostDirCounters;
+    std::unordered_set<std::string> hostDirMounts;
+    auto ensureHostDir = [&](const std::string &rootName,
+                             const std::filesystem::path &sourceDir,
+                             const std::vector<std::string> &options)
+      -> std::optional<std::filesystem::path> {
+        if (sourceDir.empty() || !sourceDir.is_absolute()) {
+            return std::nullopt;
+        }
+        auto key = rootName + "|" + sourceDir.lexically_normal().string();
+        auto it = hostDirRelMap.find(key);
+        if (it != hostDirRelMap.end()) {
+            return it->second;
+        }
+        int &counter = hostDirCounters[rootName];
+        auto rel = std::filesystem::path("host") / std::to_string(counter++);
+        hostDirRelMap.emplace(key, rel);
+        std::error_code ec;
+        std::filesystem::create_directories(bundle / "cdi-extensions" / rootName / rel, ec);
+        ec.clear();
+        auto mountKey = rootName + "|" + rel.string();
+        if (hostDirMounts.insert(mountKey).second) {
+            builder.addExtraMount(ocppi::runtime::config::types::Mount{
+              .destination = (std::filesystem::path("/opt/extensions") / rootName / rel).string(),
+              .gidMappings = {},
+              .options = options,
+              .source = sourceDir.string(),
+              .type = "bind",
+              .uidMappings = {},
+            });
+        }
+        return rel;
+    };
+
+    auto linkOverrideMount = [&](const ocppi::runtime::config::types::Mount &mount) -> bool {
+        if (!mount.source || mount.source->empty() || mount.destination.empty()) {
+            return false;
+        }
+        std::filesystem::path sourcePath{ *mount.source };
+        if (!sourcePath.is_absolute()) {
+            return false;
+        }
+        std::filesystem::path destPath{ mount.destination };
+        const std::string prefix = "/opt/extensions/";
+        auto destStr = destPath.generic_string();
+        if (destStr.rfind(prefix, 0) != 0) {
+            return false;
+        }
+        auto rest = destStr.substr(prefix.size());
+        auto slash = rest.find('/');
+        if (slash == std::string::npos) {
+            return false;
+        }
+        std::string rootName = rest.substr(0, slash);
+        if (rootName.empty()) {
+            return false;
+        }
+        if (bundle.empty()) {
+            return false;
+        }
+        std::filesystem::path rel =
+          destPath.lexically_relative(std::filesystem::path("/opt/extensions") / rootName);
+        if (rel.empty() || rel == "." || rel.native().rfind("..", 0) == 0) {
+            return false;
+        }
+        std::vector<std::string> options =
+          mount.options.value_or(std::vector<std::string>{ "rbind", "ro" });
+        auto relDir = ensureHostDir(rootName, sourcePath.parent_path(), options);
+        if (!relDir) {
+            return false;
+        }
+        std::filesystem::path destInRoot = bundle / "cdi-extensions" / rootName / rel;
+        std::filesystem::path target =
+          std::filesystem::path("/opt/extensions") / rootName / *relDir / sourcePath.filename();
+        std::error_code ec;
+        std::filesystem::create_directories(destInRoot.parent_path(), ec);
+        ec.clear();
+        if (std::filesystem::is_symlink(destInRoot, ec)) {
+            auto existing = std::filesystem::read_symlink(destInRoot, ec);
+            if (!ec && existing == target) {
+                ec.clear();
+                return true;
+            }
+        }
+        ec.clear();
+        if (std::filesystem::exists(destInRoot, ec)) {
+            std::filesystem::remove(destInRoot, ec);
+        }
+        ec.clear();
+        std::filesystem::create_symlink(target, destInRoot, ec);
+        if (ec) {
+            LogW("failed to create CDI link {} -> {}: {}",
+                 destInRoot.string(),
+                 target.string(),
+                 ec.message());
+            ec.clear();
+            return false;
+        }
+        auto destFilename = destPath.filename();
+        auto sourceFilename = sourcePath.filename();
+        if (!sourceFilename.empty() && destFilename != sourceFilename) {
+            std::filesystem::path aliasPath = destInRoot.parent_path() / sourceFilename;
+            std::filesystem::path aliasTarget = destFilename;
+            std::error_code aliasEc;
+            bool needsCreate = true;
+            if (std::filesystem::is_symlink(aliasPath, aliasEc)) {
+                auto existing = std::filesystem::read_symlink(aliasPath, aliasEc);
+                if (!aliasEc && existing == aliasTarget) {
+                    needsCreate = false;
+                }
+            }
+            aliasEc.clear();
+            if (needsCreate) {
+                if (std::filesystem::exists(aliasPath, aliasEc)) {
+                    std::filesystem::remove(aliasPath, aliasEc);
+                }
+                aliasEc.clear();
+                std::filesystem::create_symlink(aliasTarget, aliasPath, aliasEc);
+                if (aliasEc) {
+                    LogW("failed to create CDI alias {} -> {}: {}",
+                         aliasPath.string(),
+                         aliasTarget.string(),
+                         aliasEc.message());
+                }
+            }
+        }
+
+        return true;
+    };
+
+    for (const auto &overrideDef : extensionOverrides) {
+        bool installed = hasInstalledExtension(overrideDef.name);
+        bool isNvidiaOverride = extension::isNvidiaDisplayDriverExtension(overrideDef.name);
+        if (installed && (overrideDef.fallbackOnly || isNvidiaOverride)) {
+            continue;
+        }
+
+        collectExtensionRoots(overrideDef);
+
+        for (const auto &env : overrideDef.env) {
+            environment[env.first] = env.second;
+        }
+
+        for (auto mount : overrideDef.mounts) {
+            if (mount.destination.empty() || !mount.source) {
+                continue;
+            }
+            if (!mount.options || mount.options->empty()) {
+                mount.options = std::vector<std::string>{ "rbind", "ro" };
+            }
+            if (!mount.type) {
+                mount.type = "bind";
+            }
+            if (linkOverrideMount(mount)) {
+                continue;
+            }
+            builder.addExtraMount(mount);
+        }
+
+        for (const auto &node : overrideDef.deviceNodes) {
+            ocppi::runtime::config::types::Mount mount = {
+                .destination = node.path,
+                .options = { { "bind" } },
+                .source = node.hostPath.value_or(node.path),
+                .type = "bind",
+            };
+            builder.addExtraMount(mount);
+        }
+    }
+}
+
+utils::error::Result<void>
+RunContext::fillContextCfg(linglong::generator::ContainerCfgBuilder &builder,
+                           const std::string &bundleSuffix)
 {
     LINGLONG_TRACE("fill ContainerCfgBuilder with run context");
 
@@ -582,6 +864,9 @@ utils::error::Result<void> RunContext::fillContextCfg(
           .uidMappings = {},
         });
     }
+
+    setupHostNvidiaFallbacks(builder, extensionMounts);
+    applyExtensionOverrides(builder, extensionMounts);
     if (!extensionMounts.empty()) {
         builder.setExtensionMounts(extensionMounts);
     }
@@ -728,6 +1013,9 @@ api::types::v1::ContainerProcessStateInfo RunContext::stateInfo()
     state.extensions = std::vector<std::string>{};
     for (auto &ext : extensionLayers) {
         state.extensions->push_back(ext.getReference().toString());
+    }
+    for (const auto &name : hostExtensions) {
+        state.extensions->push_back(name);
     }
 
     return state;

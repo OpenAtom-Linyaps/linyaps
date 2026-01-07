@@ -607,6 +607,44 @@ void addInspectCommand(CLI::App &commandParser,
       ->check(validatorString);
 }
 
+// Function to add the extension subcommand
+void addExtensionCommand(CLI::App &commandParser,
+                         ExtensionOptions &extensionOptions,
+                         const std::string &group)
+{
+    auto *cliExtension =
+      commandParser.add_subcommand("extension", _("Manage extension overrides"))
+        ->group(group)
+        ->usage(_("Usage: ll-cli extension SUBCOMMAND [OPTIONS]"));
+
+    cliExtension->require_subcommand(1);
+
+    auto *cliImportCdi =
+      cliExtension
+        ->add_subcommand("import-cdi", _("Import CDI rules into extension overrides"))
+        ->usage(_("Usage: ll-cli extension import-cdi [OPTIONS]"));
+    cliImportCdi
+      ->add_option("--name",
+                   extensionOptions.name,
+                   _("Specify extension name prefix to update"))
+      ->type_name("NAME")
+      ->check(validatorString);
+    cliImportCdi
+      ->add_option("--config",
+                   extensionOptions.configPath,
+                   _("Specify config path (default: ~/.config/linglong/config.json)"))
+      ->type_name("FILE");
+    cliImportCdi
+      ->add_option("--cdi",
+                   extensionOptions.cdiPath,
+                   _("Specify CDI JSON path (default: nvidia-ctk cdi generate --format json)"))
+      ->type_name("FILE");
+    cliImportCdi
+      ->add_flag("--apply-when-installed",
+                 extensionOptions.applyWhenInstalled,
+                 _("Apply overrides even when extension is installed"));
+}
+
 } // namespace
 
 using namespace linglong::utils::global;
@@ -690,12 +728,14 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     ContentOptions contentOptions{};
     RepoOptions repoOptions{};
     InspectOptions inspectOptions{};
+    ExtensionOptions extensionOptions{};
 
     // groups for subcommands
     auto *CliBuildInGroup = _("Managing installed applications and runtimes");
     auto *CliAppManagingGroup = _("Managing running applications");
     auto *CliSearchGroup = _("Finding applications and runtimes");
     auto *CliRepoGroup = _("Managing remote repositories");
+    auto *CliExtensionGroup = _("Managing extensions");
 
     // add all subcommands using the new functions
     addRunCommand(commandParser, runOptions, CliAppManagingGroup);
@@ -712,6 +752,7 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     addContentCommand(commandParser, contentOptions, CliBuildInGroup);
     addPruneCommand(commandParser, CliAppManagingGroup);
     addInspectCommand(commandParser, inspectOptions, CliHiddenGroup);
+    addExtensionCommand(commandParser, extensionOptions, CliExtensionGroup);
 
     auto res = transformOldExec(argc, argv);
     CLI11_PARSE(commandParser, std::move(res));
@@ -920,6 +961,8 @@ You can report bugs to the linyaps team under this project: https://github.com/O
         result = cli->inspect(*ret, inspectOptions);
     } else if (name == "repo") {
         result = cli->repo(*ret, repoOptions);
+    } else if (name == "extension") {
+        result = cli->extension(*ret, extensionOptions);
     } else {
         // if subcommand name is not found, print help
         std::cout << commandParser.help("", CLI::AppFormatMode::All);

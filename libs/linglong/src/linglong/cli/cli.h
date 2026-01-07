@@ -134,6 +134,14 @@ struct InspectOptions
     std::string dirType{ "layer" };
 };
 
+struct ExtensionOptions
+{
+    std::optional<std::string> configPath;
+    std::optional<std::string> cdiPath;
+    std::string name{ "org.deepin.driver.display.nvidia" };
+    bool applyWhenInstalled{ false };
+};
+
 enum class TaskType : int {
     None,
     Install,
@@ -186,6 +194,7 @@ public:
     int content(const ContentOptions &options);
     int prune();
     int inspect(CLI::App *subcommand, const InspectOptions &options);
+    int extension(CLI::App *subcommand, const ExtensionOptions &options);
 
     void cancelCurrentTask();
 
@@ -225,6 +234,7 @@ private:
     std::vector<std::string> getRunningAppContainers(const std::string &appid);
     int getLayerDir(const InspectOptions &options);
     int getBundleDir(const InspectOptions &options);
+    int importCdi(const ExtensionOptions &options);
     utils::error::Result<void> initInteraction();
     void detectDrivers();
 

@@ -6,8 +6,11 @@
 
 #pragma once
 
+#include <filesystem>
 #include <memory>
+#include <optional>
 #include <string>
+#include <vector>
 
 namespace linglong::extension {
 
@@ -56,5 +59,27 @@ public:
 
     bool shouldEnable([[maybe_unused]] std::string &extensionName) override { return true; }
 };
+
+struct HostExtensionFileBind
+{
+    std::filesystem::path source;
+    std::filesystem::path destination;
+};
+
+struct HostExtensionInfo
+{
+    std::filesystem::path root;
+    std::vector<HostExtensionFileBind> extraBinds;
+    std::optional<std::filesystem::path> vkIcdFile;
+    std::optional<std::filesystem::path> eglExternalPlatformDir;
+    std::optional<std::filesystem::path> eglVendorDir;
+    bool hasGlxLib{ false };
+};
+
+bool isNvidiaDisplayDriverExtension(const std::string &extensionName);
+
+std::optional<HostExtensionInfo>
+prepareHostNvidiaExtension(const std::filesystem::path &baseDir,
+                           const std::string &extensionName);
 
 } // namespace linglong::extension

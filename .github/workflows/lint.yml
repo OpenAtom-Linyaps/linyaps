@@ -1,4 +1,5 @@
 name: lint
+
 on:
   pull_request:
     branches: ['master', 'release/**']
@@ -18,13 +19,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            code:
-              - '!(docs/**|**.md)'
-
       - name: Set up Python
         if: steps.filter.outputs.code == 'true'
         uses: actions/setup-python@v6
@@ -34,3 +28,21 @@ jobs:
       - name: Run pre-commit
         if: steps.filter.outputs.code == 'true'
         uses: pre-commit/action@v3.0.1
+
+  lint_final_status:
+    name: Lint Check Success
+    needs: [check_job, pre_commit_job]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Overall Status
+        run: |
+          COMMIT_RESULT="${{ needs.check_job.result }}"
+          STYLE_RESULT="${{ needs.pre_commit_job.result }}"
+
+          if [[ "$COMMIT_RESULT" == "failure" || "$STYLE_RESULT" == "failure" ]]; then
+            echo "Lint failed."
+            exit 1
+          fi
+          echo "All lint checks passed."
+          exit 0

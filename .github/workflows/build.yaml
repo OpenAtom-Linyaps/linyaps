@@ -3,19 +3,34 @@ name: build
 on:
   pull_request:
     branches: ['master', 'release/**']
-    paths-ignore: ['**.md', '**.toml', '**.yaml', 'docs/**']
   push:
     branches: ['master', 'release/**']
-    paths-ignore: ['**.md', '**.toml', '**.yaml', 'docs/**']
 
 jobs:
+  path-filter:
+    runs-on: ubuntu-latest
+    outputs:
+      should_build: ${{ steps.filter.outputs.code }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            code:
+              - '!**.md'
+              - '!**.toml'
+              - '!**.yaml'
+              - '!docs/**'
+
   build-on-ubuntu-24:
+    needs: path-filter
+    if: ${{ needs.path-filter.outputs.should_build == 'true' }}
     name: build on ${{ matrix.os }} with Qt6
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: ['ubuntu-24.04', 'ubuntu-24.04-arm']
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -43,10 +58,11 @@ jobs:
         run: cmake --build build --parallel
 
       - name: Run tests
-        run: |
-          cmake --build build --target test
+        run: cmake --build build --target test
 
   build-on-ubuntu-22:
+    needs: path-filter
+    if: ${{ needs.path-filter.outputs.should_build == 'true' }}
     name: build on ${{ matrix.os }} with Qt5
     runs-on: ${{ matrix.os }}
     strategy:
@@ -79,3 +95,16 @@ jobs:
 
       - name: Build
         run: cmake --build build --parallel
+
+  build-status:
+    name: Final build Status
+    needs: [path-filter, build-on-ubuntu-24, build-on-ubuntu-22]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Decide status
+        run: |
+          if [[ "${{ needs.build-on-ubuntu-24.result }}" == "failure" || "${{ needs.build-on-ubuntu-22.result }}" == "failure" ]]; then
+            exit 1
+          fi
+          exit 0

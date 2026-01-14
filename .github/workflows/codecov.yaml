@@ -1,22 +1,44 @@
 name: coverage
+
 on:
-  pull_request_target:
+  pull_request:
+    branches: ['master', 'release/**']
   push:
-    branches:
-      - master
-      - 'release/**'
+    branches: ['master', 'release/**']
+
 jobs:
-  codecov:
-    name: codecov
-    runs-on: ubuntu-24.04
+  path-filter:
+    runs-on: ubuntu-latest
+    outputs:
+      should_scan: ${{ steps.filter.outputs.code }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
+      - uses: dorny/paths-filter@v3
+        id: filter
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          filters: |
+            code:
+              - '!**.md'
+              - '!**.toml'
+              - '!**.yaml'
+              - '!docs/**'
+
+  codecov:
+    needs: path-filter
+    if: ${{ needs.path-filter.outputs.should_scan == 'true' }}
+    name: codecov
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
 
       - uses: awalsh128/cache-apt-pkgs-action@latest
         with:
-          packages: gcovr cmake debhelper-compat erofs-utils erofsfuse intltool libcap-dev libcli11-dev libcurl4-openssl-dev libdeflate-dev libelf-dev libexpected-dev libfuse3-dev libglib2.0-dev libgmock-dev libgtest-dev liblz4-dev liblzma-dev libostree-dev libpcre2-dev libselinux1-dev libssl-dev libsystemd-dev libyaml-cpp-dev libzstd-dev nlohmann-json3-dev pkg-config qtbase5-dev qtbase5-private-dev systemd zlib1g-dev
+          packages: >-
+            gcovr cmake debhelper-compat erofs-utils erofsfuse intltool libcap-dev libcli11-dev
+            libcurl4-openssl-dev libdeflate-dev libelf-dev libexpected-dev libfuse3-dev libglib2.0-dev libgmock-dev
+            libgtest-dev liblz4-dev liblzma-dev libostree-dev libpcre2-dev libselinux1-dev libssl-dev libsystemd-dev
+            libyaml-cpp-dev libzstd-dev nlohmann-json3-dev pkg-config qt6-base-dev qt6-base-private-dev systemd zlib1g-dev
+            libwayland-dev wayland-protocols libgl1-mesa-dev
           version: 1.0
 
       - name: Generate coverage
@@ -30,3 +52,19 @@ jobs:
           files: ./build-generate-coverage/report/index.xml
           disable_search: true
           disable_telem: true
+
+  coverage_final_status:
+    name: Coverage Check Success
+    needs: [path-filter, codecov]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Decide Status
+        run: |
+          RESULT="${{ needs.codecov.result }}"
+          if [[ "$RESULT" == "failure" ]]; then
+            echo "Coverage generation failed."
+            exit 1
+          fi
+          echo "Coverage passed or skipped."
+          exit 0

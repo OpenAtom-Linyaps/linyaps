@@ -1,0 +1,36 @@
+name: lint
+on:
+  pull_request:
+    branches: ['master', 'release/**']
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  check_job:
+    uses: linuxdeepin/.github/.github/workflows/commitlint.yml@master
+
+  pre_commit_job:
+    name: Code Style Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            code:
+              - '!(docs/**|**.md)'
+
+      - name: Set up Python
+        if: steps.filter.outputs.code == 'true'
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.14'
+
+      - name: Run pre-commit
+        if: steps.filter.outputs.code == 'true'
+        uses: pre-commit/action@v3.0.1

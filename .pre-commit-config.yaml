@@ -2,6 +2,19 @@
 #
 # SPDX-License-Identifier: CC0-1.0
 
+exclude: |
+  (?x)^(
+    docs/|
+    build/|
+    external/|
+    cmake/|
+    LICENSES/|
+    misc/image/|
+    po/|
+    tools/quicktype/|
+    tools/openapi-c-libcurl-client/|
+  )
+
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
@@ -23,8 +36,6 @@ repos:
         args: ['-i', '--sort-includes', '--style=file']
         exclude: |
           (?x)^(
-            build/|
-            external/|
             libs/api/src/linglong/api/types/v1/
           )
 

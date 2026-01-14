@@ -1,59 +1,81 @@
 name: build
-on:
-  pull_request_target:
-  push:
-    branches:
-      - master
-      - 'release/**'
-jobs:
-  ubuntu2404:
-    name: ubuntu_24.04
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
 
-      - uses: awalsh128/cache-apt-pkgs-action@latest
+on:
+  pull_request:
+    branches: ['master', 'release/**']
+    paths-ignore: ['**.md', '**.toml', '**.yaml', 'docs/**']
+  push:
+    branches: ['master', 'release/**']
+    paths-ignore: ['**.md', '**.toml', '**.yaml', 'docs/**']
+
+jobs:
+  build-on-ubuntu-24:
+    name: build on ${{ matrix.os }} with Qt6
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: ['ubuntu-24.04', 'ubuntu-24.04-arm']
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Install dependencies
+        uses: awalsh128/cache-apt-pkgs-action@latest
         with:
-          packages: cmake debhelper-compat erofs-utils erofsfuse intltool libcap-dev libcli11-dev libcurl4-openssl-dev libdeflate-dev libelf-dev libexpected-dev libfuse3-dev libglib2.0-dev libgmock-dev libgtest-dev liblz4-dev liblzma-dev libostree-dev libpcre2-dev libselinux1-dev libssl-dev libsystemd-dev libyaml-cpp-dev libzstd-dev nlohmann-json3-dev pkg-config qt6-base-dev qt6-base-private-dev zlib1g-dev
+          packages: >-
+            cmake ninja-build debhelper-compat erofs-utils erofsfuse intltool libcap-dev
+            libcli11-dev libcurl4-openssl-dev libdeflate-dev libelf-dev libexpected-dev
+            libfuse3-dev libglib2.0-dev libgmock-dev libgtest-dev liblz4-dev liblzma-dev
+            libostree-dev libpcre2-dev libselinux1-dev libssl-dev libsystemd-dev libyaml-cpp-dev
+            libzstd-dev nlohmann-json3-dev pkg-config zlib1g-dev libwayland-dev wayland-protocols libgl1-mesa-dev
+            qt6-base-dev qt6-base-private-dev
           version: 1.0
 
-      - name: Build
+      - name: Configure CMake
         run: |
-          mkdir build
-          cd build
-          cmake -DCMAKE_BUILD_TYPE=Release \
+          cmake -B build -GNinja \
+            -DCMAKE_BUILD_TYPE=Release \
             -DCPM_LOCAL_PACKAGES_ONLY=ON \
-            -DBUILD_SHARED_LIBS=OFF \
-            ..
+            -DLINGLONG_ENABLE_WAYLAND_SEC_CTX_SUPPORT=ON
 
-          make -j$(nproc)
+      - name: Build
+        run: cmake --build build --parallel
+
       - name: Run tests
         run: |
-          ./build/libs/linglong/tests/ll-tests/ll-tests
+          cmake --build build --target test
 
-  ubuntu2204:
-    name: ubuntu_22.04
-    runs-on: ubuntu-22.04
+  build-on-ubuntu-22:
+    name: build on ${{ matrix.os }} with Qt5
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: ['ubuntu-22.04', 'ubuntu-22.04-arm']
+
     steps:
-      - uses: actions/checkout@v3
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Checkout code
+        uses: actions/checkout@v6
 
-      - uses: awalsh128/cache-apt-pkgs-action@latest
+      - name: Install dependencies
+        uses: awalsh128/cache-apt-pkgs-action@latest
         with:
-          packages: cmake debhelper-compat erofs-utils erofsfuse intltool libcap-dev libcli11-dev libcurl4-openssl-dev libdeflate-dev libelf-dev libexpected-dev libfuse3-dev libglib2.0-dev libgmock-dev libgtest-dev liblz4-dev liblzma-dev libostree-dev libpcre2-dev libselinux1-dev libssl-dev libsystemd-dev libyaml-cpp-dev libzstd-dev nlohmann-json3-dev pkg-config qtbase5-dev qtbase5-private-dev systemd zlib1g-dev
+          packages: >-
+            cmake ninja-build debhelper-compat erofs-utils erofsfuse intltool libcap-dev
+            libcli11-dev libcurl4-openssl-dev libdeflate-dev libelf-dev libexpected-dev
+            libfuse3-dev libglib2.0-dev libgmock-dev libgtest-dev liblz4-dev liblzma-dev
+            libostree-dev libpcre2-dev libselinux1-dev libssl-dev libsystemd-dev libyaml-cpp-dev
+            libzstd-dev nlohmann-json3-dev pkg-config zlib1g-dev libgl1-mesa-dev
+            qtbase5-dev qtbase5-private-dev
           version: 1.0
 
-      - name: Build
+      # Disable testing for now, required tl-expected not available on 22.04
+      - name: Configure CMake
         run: |
-          mkdir build
-          cd build
-          cmake -DCMAKE_BUILD_TYPE=Release \
+          cmake -B build -GNinja \
+            -DCMAKE_BUILD_TYPE=Release \
             -DCPM_LOCAL_PACKAGES_ONLY=ON \
-            -DBUILD_SHARED_LIBS=OFF \
-            -DENABLE_TESTING=OFF \
-            ..
+            -DENABLE_TESTING=OFF
 
-          make -j$(nproc)
+      - name: Build
+        run: cmake --build build --parallel

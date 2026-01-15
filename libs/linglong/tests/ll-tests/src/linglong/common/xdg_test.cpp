@@ -5,7 +5,7 @@
 #include <gtest/gtest.h>
 
 #include "linglong/common/xdg.h"
-#include "linglong/utils/command/env.h"
+#include "linglong/utils/env.h"
 
 #include <filesystem>
 
@@ -42,13 +42,13 @@ TEST_F(XDGTest, GetXDGRuntimeDir)
     }
 
     {
-        linglong::utils::command::EnvironmentVariableGuard env("XDG_RUNTIME_DIR", "/tmp");
+        linglong::utils::EnvironmentVariableGuard env("XDG_RUNTIME_DIR", "/tmp");
         auto runtimeDir = linglong::common::xdg::getXDGRuntimeDir();
         ASSERT_EQ(runtimeDir, "/tmp");
     }
 
     {
-        linglong::utils::command::EnvironmentVariableGuard env("XDG_RUNTIME_DIR", "");
+        linglong::utils::EnvironmentVariableGuard env("XDG_RUNTIME_DIR", "");
         auto runtimeDir = linglong::common::xdg::getXDGRuntimeDir();
         checkRuntimeDir(runtimeDir);
     }

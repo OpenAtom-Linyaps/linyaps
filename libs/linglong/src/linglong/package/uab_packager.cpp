@@ -9,7 +9,7 @@
 #include "linglong/api/types/v1/UabLayer.hpp"
 #include "linglong/api/types/v1/Version.hpp"
 #include "linglong/package/architecture.h"
-#include "linglong/utils/command/cmd.h"
+#include "linglong/utils/cmd.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/file.h"
 #include "linglong/utils/log/log.h"
@@ -839,13 +839,13 @@ utils::error::Result<void> UABPackager::packBundle(bool distributedOnly) noexcep
         }
     } else {
         // https://github.com/erofs/erofs-utils/blob/b526c0d7da46b14f1328594cf1d1b2401770f59b/README#L171-L183
-        if (auto ret = utils::command::Cmd("mkfs.erofs")
-                         .exec({ "-z" + compressor,
+        if (auto ret = utils::Cmd("mkfs.erofs")
+                         .exec({ "-z" + compressor.toStdString(),
                                  "-Efragments,dedupe,ztailpacking",
                                  "-C1048576",
                                  "-b4096", // force 4096 block size, default is page size
-                                 bundleFile,
-                                 bundleDir.absolutePath() });
+                                 bundleFile.toStdString(),
+                                 bundleDir.absolutePath().toStdString() });
             !ret) {
             return LINGLONG_ERR(ret);
         }

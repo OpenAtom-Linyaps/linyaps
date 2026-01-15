@@ -252,16 +252,14 @@ PackageManager::getAllRunningContainers() noexcept
     LINGLONG_TRACE("lock whole repo")
     lockFd = ::open(repoLockPath, O_RDWR | O_CREAT, 0644);
     if (lockFd == -1) {
-        return LINGLONG_ERR(QStringLiteral("failed to create lock file %1: %2")
-                              .arg(repoLockPath)
-                              .arg(::strerror(errno)));
+        return LINGLONG_ERR(
+          fmt::format("failed to create lock file {}: {}", repoLockPath, errorString(errno)));
     }
 
     struct flock locker{ .l_type = F_WRLCK, .l_whence = SEEK_SET, .l_start = 0, .l_len = 0 };
 
     if (::fcntl(lockFd, F_SETLK, &locker) == -1) {
-        return LINGLONG_ERR(
-          QStringLiteral("failed to lock %1: %2").arg(repoLockPath).arg(::strerror(errno)));
+        return LINGLONG_ERR(fmt::format("failed to lock {}: {}", repoLockPath, errorString(errno)));
     }
 
     return LINGLONG_OK;
@@ -279,7 +277,7 @@ PackageManager::getAllRunningContainers() noexcept
 
     if (::fcntl(lockFd, F_SETLK, &unlocker)) {
         return LINGLONG_ERR(
-          QStringLiteral("failed to unlock %1: %2").arg(repoLockPath).arg(::strerror(errno)));
+          fmt::format("failed to unlock {}: {}", repoLockPath, errorString(errno)));
     }
 
     ::close(lockFd);

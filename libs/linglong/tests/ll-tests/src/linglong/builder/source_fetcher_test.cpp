@@ -1,20 +1,43 @@
 // SPDX-FileCopyrightText: 2024 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "../mocks/command_mock.h"
-#include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/builder/source_fetcher.h"
 #include "linglong/utils/error/error.h"
 
 #include <QDir>
-#include <QProcessEnvironment>
 
 using namespace linglong;
-using namespace testing;
 
 namespace linglong::builder {
+
+using ::testing::_;
+using ::testing::ElementsAre;
+using ::testing::EndsWith;
+using ::testing::Return;
+using ::testing::ReturnRef;
+
+class MockCommand : public linglong::utils::Cmd
+{
+public:
+    MockCommand(std::string command)
+        : Cmd(command)
+    {
+    }
+
+    MOCK_METHOD(utils::error::Result<std::string>,
+                exec,
+                (const std::vector<std::string> &args),
+                (noexcept, override));
+    MOCK_METHOD(bool, exists, (), (noexcept, override));
+    MOCK_METHOD(Cmd &,
+                setEnv,
+                (const std::string &name, const std::string &value),
+                (noexcept, override));
+};
+
 class SourceFetcherTest : public ::testing::Test
 {
 protected:
@@ -34,15 +57,13 @@ TEST_F(SourceFetcherTest, FetchFileSource)
 
     QDir cacheDir("/tmp/cache");
     auto mockCmd = std::make_shared<MockCommand>("mock");
-    mockCmd->wrapExecFunc = [&](const QStringList &args) {
-        auto argsStr = args.join(" ").toStdString();
-        EXPECT_TRUE(args[0].contains("fetch-file-source")) << argsStr;
-        EXPECT_EQ(args[1].toStdString(), "/tmp/dest/" + source.name.value()) << argsStr;
-        EXPECT_EQ(args[2].toStdString(), source.url) << argsStr;
-        EXPECT_EQ(args[3].toStdString(), source.digest) << argsStr;
-        EXPECT_EQ(args[4].toStdString(), "/tmp/cache") << argsStr;
-        return utils::error::Result<QString>("ok");
-    };
+    EXPECT_CALL(*mockCmd,
+                exec(ElementsAre(EndsWith("fetch-file-source"),
+                                 "/tmp/dest/" + source.name.value(),
+                                 source.url,
+                                 source.digest,
+                                 "/tmp/cache")))
+      .WillOnce(Return("ok"));
     SourceFetcher fetcher(source, cacheDir);
     fetcher.setCommand(mockCmd);
     auto ret = fetcher.fetch(QDir("/tmp/dest"));
@@ -62,15 +83,14 @@ TEST_F(SourceFetcherTest, FetchGitSource)
 
     QDir cacheDir("/tmp/cache");
     auto mockCmd = std::make_shared<MockCommand>("mock");
-    mockCmd->wrapExecFunc = [&](const QStringList &args) {
-        auto argsStr = args.join(" ").toStdString();
-        EXPECT_TRUE(args[0].contains("fetch-git-source")) << argsStr;
-        EXPECT_EQ(args[1].toStdString(), "/tmp/dest/" + source.name.value()) << argsStr;
-        EXPECT_EQ(args[2].toStdString(), source.url) << argsStr;
-        EXPECT_EQ(args[3].toStdString(), source.commit) << argsStr;
-        EXPECT_EQ(args[4], "/tmp/cache") << argsStr;
-        return utils::error::Result<QString>("ok");
-    };
+    EXPECT_CALL(*mockCmd,
+                exec(ElementsAre(EndsWith("fetch-git-source"),
+                                 "/tmp/dest/" + source.name.value(),
+                                 source.url,
+                                 source.commit,
+                                 "/tmp/cache")))
+      .WillOnce(Return("ok"));
+    EXPECT_CALL(*mockCmd, setEnv("GIT_SUBMODULES", "true")).WillOnce(ReturnRef(*mockCmd));
     SourceFetcher fetcher(source, cacheDir);
     fetcher.setCommand(mockCmd);
     auto ret = fetcher.fetch(QDir("/tmp/dest"));
@@ -92,15 +112,8 @@ TEST_F(SourceFetcherTest, gitSubmodules)
     {
         QDir cacheDir("/tmp/cache");
         auto mockCmd = std::make_shared<MockCommand>("mock");
-        mockCmd->wrapExecFunc = [&]([[maybe_unused]] const QStringList &args) {
-            return utils::error::Result<QString>("ok");
-        };
-        mockCmd->wrapSetEnvFunc = [&](const QString &name,
-                                      const QString &value) -> linglong::utils::command::Cmd & {
-            EXPECT_EQ(name, "GIT_SUBMODULES");
-            EXPECT_EQ(value, "true");
-            return *mockCmd;
-        };
+        EXPECT_CALL(*mockCmd, exec(_)).WillOnce(Return("ok"));
+        EXPECT_CALL(*mockCmd, setEnv("GIT_SUBMODULES", "true")).WillOnce(ReturnRef(*mockCmd));
         SourceFetcher fetcher(source, cacheDir);
         fetcher.setCommand(mockCmd);
         auto ret2 = fetcher.fetch(QDir("/tmp/dest"));
@@ -111,14 +124,8 @@ TEST_F(SourceFetcherTest, gitSubmodules)
     {
         QDir cacheDir("/tmp/cache");
         auto mockCmd = std::make_shared<MockCommand>("mock");
-        mockCmd->wrapExecFunc = [&]([[maybe_unused]] const QStringList &args) {
-            return utils::error::Result<QString>("ok");
-        };
-        mockCmd->wrapSetEnvFunc = [&](const QString &name,
-                                      const QString &value) -> linglong::utils::command::Cmd & {
-            EXPECT_TRUE(value.isEmpty()) << name.toStdString();
-            return *mockCmd;
-        };
+        EXPECT_CALL(*mockCmd, exec(_)).WillOnce(Return("ok"));
+        EXPECT_CALL(*mockCmd, setEnv("GIT_SUBMODULES", "")).WillOnce(ReturnRef(*mockCmd));
         SourceFetcher fetcher(source, cacheDir);
         fetcher.setCommand(mockCmd);
         auto ret2 = fetcher.fetch(QDir("/tmp/dest"));
@@ -170,6 +177,8 @@ TEST_F(SourceFetcherTest, FetchMissingRequiredField)
 // 预期：两种情况都返回错误结果，场景2的错误码为-2
 TEST_F(SourceFetcherTest, FetchInvalidGitCommit)
 {
+    LINGLONG_TRACE("FetchInvalidGitCommit");
+
     api::types::v1::BuilderProjectSource source;
     source.kind = "git";
     source.url = "https://example.com/repo.git";
@@ -184,10 +193,8 @@ TEST_F(SourceFetcherTest, FetchInvalidGitCommit)
     source.commit = "invalid_commit";
     SourceFetcher fetcher(source, cacheDir);
     auto mockCmd = std::make_shared<MockCommand>("mock");
-    mockCmd->wrapExecFunc = [&]([[maybe_unused]] const QStringList &args) {
-        LINGLONG_TRACE("FetchInvalidGitCommit");
-        return LINGLONG_ERR("Invalid commit", -2);
-    };
+    EXPECT_CALL(*mockCmd, exec(_)).WillOnce(Return(LINGLONG_ERR("Invalid commit", -2)));
+    EXPECT_CALL(*mockCmd, setEnv("GIT_SUBMODULES", "true")).WillOnce(ReturnRef(*mockCmd));
     fetcher.setCommand(mockCmd);
     auto ret = fetcher.fetch(QDir("/tmp/dest"));
     EXPECT_FALSE(ret.has_value());
@@ -200,6 +207,8 @@ TEST_F(SourceFetcherTest, FetchInvalidGitCommit)
 // 预期：两种情况都返回错误结果，场景2的错误码为-3
 TEST_F(SourceFetcherTest, FetchInvalidFileDigest)
 {
+    LINGLONG_TRACE("FetchInvalidFileDigest");
+
     api::types::v1::BuilderProjectSource source;
     source.kind = "file";
     source.url = "https://example.com/repo.git";
@@ -214,10 +223,7 @@ TEST_F(SourceFetcherTest, FetchInvalidFileDigest)
     source.digest = "invalid_digest";
     SourceFetcher fetcher(source, cacheDir);
     auto mockCmd = std::make_shared<MockCommand>("mock");
-    mockCmd->wrapExecFunc = [&]([[maybe_unused]] const QStringList &args) {
-        LINGLONG_TRACE("FetchInvalidFileDigest");
-        return LINGLONG_ERR("Invalid digest", -3);
-    };
+    EXPECT_CALL(*mockCmd, exec(_)).WillOnce(Return(LINGLONG_ERR("Invalid digest", -3)));
     fetcher.setCommand(mockCmd);
     auto ret = fetcher.fetch(QDir("/tmp/dest"));
     EXPECT_FALSE(ret.has_value());
@@ -236,9 +242,7 @@ TEST_F(SourceFetcherTest, FetchNoSetName)
 
     QDir cacheDir("/tmp/cache");
     auto mockCmd = std::make_shared<MockCommand>("mock");
-    mockCmd->wrapExecFunc = [&]([[maybe_unused]] const QStringList &args) {
-        return utils::error::Result<QString>("ok");
-    };
+    EXPECT_CALL(*mockCmd, exec(_)).WillOnce(Return("ok"));
     SourceFetcher fetcher(source, cacheDir);
     fetcher.setCommand(mockCmd);
     auto ret = fetcher.fetch(QDir("/tmp/dest"));

@@ -8,7 +8,7 @@
 
 #include "linglong/api/types/v1/BuilderConfig.hpp"
 #include "linglong/api/types/v1/BuilderProjectSource.hpp"
-#include "linglong/utils/command/cmd.h"
+#include "linglong/utils/cmd.h"
 #include "linglong/utils/error/error.h"
 
 #include <QDir>
@@ -25,13 +25,13 @@ public:
 
     auto fetch(QDir destination) noexcept -> utils::error::Result<void>;
 
-    void setCommand(std::shared_ptr<utils::command::Cmd> cmd) { this->m_cmd = cmd; }
+    void setCommand(std::shared_ptr<utils::Cmd> cmd) { this->m_cmd = cmd; }
 
 private:
     QString getSourceName();
     QDir cacheDir;
     api::types::v1::BuilderProjectSource source;
-    std::shared_ptr<utils::command::Cmd> m_cmd = std::make_shared<utils::command::Cmd>("sh");
+    std::shared_ptr<utils::Cmd> m_cmd = std::make_shared<utils::Cmd>("sh");
 };
 
 } // namespace linglong::builder

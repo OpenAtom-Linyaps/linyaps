@@ -8,8 +8,8 @@
 
 #include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/api/types/v1/LayerInfo.hpp"
-#include "linglong/utils/command/cmd.h"
-#include "linglong/utils/command/env.h"
+#include "linglong/utils/cmd.h"
+#include "linglong/utils/file.h"
 #include "linglong/utils/log/log.h"
 
 #include <QDataStream>
@@ -28,8 +28,7 @@ LayerPackager::LayerPackager()
     // maybe refactor on later
     auto ret = this->initWorkDir();
     if (!ret) {
-        qCritical() << "init work dir failed";
-        Q_ASSERT(false);
+        LogE("init work dir failed");
     }
 }
 
@@ -48,16 +47,15 @@ utils::error::Result<void> LayerPackager::initWorkDir()
     // 优先使用环境变量LINGLONG_TMPDIR指定的目录，默认为/var/tmp，避免/tmp是tmpfs内存不足
     auto uuid = QUuid::createUuid().toString(QUuid::Id128);
     auto dirName = "linglong-layer-workdir-" + uuid.toStdString();
-    auto tmpDir = utils::command::getEnv("LINGLONG_TMPDIR");
-    auto dirPath = std::filesystem::path(tmpDir.value_or("/var/tmp")) / dirName;
+    auto *tmpDir = std::getenv("LINGLONG_TMPDIR");
+    auto dirPath = std::filesystem::path(tmpDir ? tmpDir : "/var/tmp") / dirName;
     auto ret = this->mkdirDir(dirPath);
     if (!ret.has_value()) {
         // 如果/var/tmp目录无权限创建，则使用临时目录
         dirPath = std::filesystem::temp_directory_path() / dirName;
         ret = this->mkdirDir(dirPath);
         if (!ret) {
-            qCritical() << "failed to set work dir" << ret.error().message();
-            Q_ASSERT(false);
+            LogE("failed to set work dir: {}", ret.error());
         }
     }
     this->workDir = dirPath;
@@ -84,16 +82,15 @@ utils::error::Result<void> LayerPackager::mkdirDir(const std::string &path) noex
 LayerPackager::~LayerPackager()
 {
     if (this->isMounted) {
-        auto ret = utils::command::Cmd("fusermount")
+        auto ret = utils::Cmd("fusermount")
                      .exec({ "-z", "-u", (this->workDir / "unpack").string().c_str() });
         if (!ret) {
-            qWarning() << "failed to umount " << (this->workDir / "unpack").c_str()
-                       << ", please umount it manually";
+            LogW("failed to umount {}, please umount it manually",
+                 (this->workDir / "unpack").string());
         }
     }
     if (!std::filesystem::remove_all(this->workDir)) {
         LogE("failed to remove {}", this->workDir);
-        Q_ASSERT(false);
     }
 }
 
@@ -151,23 +148,21 @@ LayerPackager::pack(const LayerDir &dir, const QString &layerFilePath) const
 
     // compress data with erofs
     const auto &compressedFilePath = this->workDir / "tmp.erofs";
-    const auto &ignoreRegex = QString{ "--exclude-regex=minified*" };
     // 使用-b统一指定block size为4096(2^12), 避免不同系统的兼容问题
     // loongarch64默认使用(16384)2^14, 在x86和arm64不受支持, 会导致无法推包
-    auto ret = utils::command::Cmd("mkfs.erofs")
-                 .exec({ "-z" + compressor,
-                         "-b4096",
-                         compressedFilePath.string().c_str(),
-                         ignoreRegex,
-                         dir.absolutePath() });
+    auto ret = utils::Cmd("mkfs.erofs")
+                 .exec(std::vector<std::string>{ "-z" + compressor.toStdString(),
+                                                 "-b4096",
+                                                 compressedFilePath.string(),
+                                                 "--exclude-regex=minified*",
+                                                 dir.absolutePath().toStdString() });
     if (!ret) {
         return LINGLONG_ERR(ret);
     }
 
-    ret = utils::command::Cmd("sh").exec(
-      { "-c", QString("cat %1 >> %2").arg(compressedFilePath.string().c_str(), layerFilePath) });
-    if (!ret) {
-        LINGLONG_ERR(ret);
+    auto res = utils::concatFile(compressedFilePath, layerFilePath.toStdString());
+    if (!res) {
+        return LINGLONG_ERR(res);
     }
 
     auto result = LayerFile::New(layerFilePath);
@@ -242,8 +237,10 @@ utils::error::Result<LayerDir> LayerPackager::unpack(LayerFile &file)
             }
             fuseOffset = "0";
         }
-        auto ret = utils::command::Cmd("erofsfuse")
-                     .exec({ "--offset=" + fuseOffset, fdPath, unpackDir.absolutePath() });
+        auto ret = utils::Cmd("erofsfuse")
+                     .exec({ "--offset=" + fuseOffset.toStdString(),
+                             fdPath.toStdString(),
+                             unpackDir.absolutePath().toStdString() });
         if (!ret) {
             return LINGLONG_ERR(ret);
         }
@@ -252,15 +249,16 @@ utils::error::Result<LayerDir> LayerPackager::unpack(LayerFile &file)
     }
     // 判断fsck.erofs命令是否存在，fsck.erofs是erofs-utils的命令，可用于解压erofs文件
     // 在旧版本中fsck.erofs不支持offset参数，所以需要提前将erofs文件复制到临时目录
-    auto erofsFscExistsRet = utils::command::Cmd("fsck.erofs").exists();
+    auto erofsFscExistsRet = utils::Cmd("fsck.erofs").exists();
     if (erofsFscExistsRet) {
         fdPath = (this->workDir / "layer.erofs").string().c_str();
         auto ret = this->copyFile(file, fdPath.toStdString(), *offset);
         if (!ret) {
             return LINGLONG_ERR(ret);
         }
-        auto cmdRet = utils::command::Cmd("fsck.erofs")
-                        .exec({ "--extract=" + unpackDir.absolutePath(), fdPath });
+        auto cmdRet =
+          utils::Cmd("fsck.erofs")
+            .exec({ "--extract=" + unpackDir.absolutePath().toStdString(), fdPath.toStdString() });
         if (!cmdRet) {
             return LINGLONG_ERR(cmdRet);
         }
@@ -278,7 +276,7 @@ void LayerPackager::setCompressor(const QString &compressor) noexcept
 
 utils::error::Result<bool> LayerPackager::checkErofsFuseExists() const
 {
-    return utils::command::Cmd("erofsfuse").exists();
+    return utils::Cmd("erofsfuse").exists();
 }
 
 } // namespace linglong::package

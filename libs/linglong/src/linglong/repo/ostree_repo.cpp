@@ -19,8 +19,8 @@
 #include "linglong/package/reference.h"
 #include "linglong/package_manager/package_task.h"
 #include "linglong/repo/config.h"
-#include "linglong/utils/command/cmd.h"
-#include "linglong/utils/command/env.h"
+#include "linglong/utils/cmd.h"
+#include "linglong/utils/env.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/file.h"
 #include "linglong/utils/finally/finally.h"
@@ -668,11 +668,8 @@ OSTreeRepo::OSTreeRepo(const QDir &path, api::types::v1::RepoConfigV2 cfg) noexc
 
     // To avoid glib start thread
     // set GIO_USE_VFS to local and GVFS_REMOTE_VOLUME_MONITOR_IGNORE to 1
-    linglong::utils::command::EnvironmentVariableGuard gioGuard{ "GIO_USE_VFS", "local" };
-    linglong::utils::command::EnvironmentVariableGuard gvfsGuard{
-        "GVFS_REMOTE_VOLUME_MONITOR_IGNORE",
-        "1"
-    };
+    utils::EnvironmentVariableGuard gioGuard{ "GIO_USE_VFS", "local" };
+    utils::EnvironmentVariableGuard gvfsGuard{ "GVFS_REMOTE_VOLUME_MONITOR_IGNORE", "1" };
 
     g_autoptr(GError) gErr = nullptr;
     g_autoptr(GFile) repoPath = nullptr;
@@ -965,8 +962,8 @@ utils::error::Result<void> OSTreeRepo::pushToRemote(const std::string &remoteRep
     const auto tarFileName = fmt::format("{}.tgz", reference.id);
     const QString tarFilePath =
       QDir::cleanPath(tmpDir.filePath(QString::fromStdString(tarFileName)));
-    QStringList args = { "-zcf", tarFilePath, "-C", layerDir->absolutePath(), "." };
-    auto tarStdout = utils::command::Cmd("tar").exec(args);
+    auto tarStdout = utils::Cmd("tar").exec(
+      { "-zcf", tarFilePath.toStdString(), "-C", layerDir->absolutePath().toStdString(), "." });
     if (!tarStdout) {
         return LINGLONG_ERR(tarStdout);
     }
@@ -2138,45 +2135,48 @@ void OSTreeRepo::updateSharedInfo() noexcept
     auto mimeDataDir = QDir(this->repoDir.absoluteFilePath("entries/share/mime"));
     auto glibSchemasDir = QDir(this->repoDir.absoluteFilePath("entries/share/glib-2.0/schemas"));
 
-    QStringList desktopDirs;
+    std::vector<std::string> desktopDirs;
     if (defaultApplicationDir.exists()) {
-        desktopDirs << defaultApplicationDir.absolutePath();
+        desktopDirs.emplace_back(defaultApplicationDir.absolutePath().toStdString());
     }
 
     if (defaultApplicationDir != customApplicationDir) {
         if (customApplicationDir.exists()) {
-            desktopDirs << customApplicationDir.absolutePath();
+            desktopDirs.emplace_back(customApplicationDir.absolutePath().toStdString());
         } else {
-            qWarning() << "warning: custom application dir " << customApplicationDir.absolutePath()
-                       << " does not exist, ignoring";
+            LogW("custom application dir {} does not exist, ignoring",
+                 customApplicationDir.absolutePath().toStdString());
         }
     }
 
     // 更新 desktop database
     if (!desktopDirs.empty()) {
-        auto ret = utils::command::Cmd("update-desktop-database").exec(desktopDirs);
+        auto ret = utils::Cmd("update-desktop-database").exec(desktopDirs);
         if (!ret) {
-            qWarning() << "warning: failed to update desktop database in " + desktopDirs.join(" ")
-                + ": " + QString::fromStdString(ret.error().message());
+            LogW("failed to update desktop database in {}",
+                 common::strings::join(desktopDirs, ' '));
         }
     }
 
     // 更新 mime type database
     if (mimeDataDir.exists()) {
-        auto ret = utils::command::Cmd("update-mime-database").exec({ mimeDataDir.absolutePath() });
+        auto ret =
+          utils::Cmd("update-mime-database").exec({ mimeDataDir.absolutePath().toStdString() });
         if (!ret) {
-            qWarning() << "warning: failed to update mime type database in "
-                + mimeDataDir.absolutePath() + ": " + ret.error().message().c_str();
+            LogW("failed to update mime type database in {}: {}",
+                 mimeDataDir.absolutePath().toStdString(),
+                 ret.error());
         }
     }
 
     // 更新 glib-2.0/schemas
     if (glibSchemasDir.exists()) {
         auto ret =
-          utils::command::Cmd("glib-compile-schemas").exec({ glibSchemasDir.absolutePath() });
+          utils::Cmd("glib-compile-schemas").exec({ glibSchemasDir.absolutePath().toStdString() });
         if (!ret) {
-            qWarning() << "warning: failed to update schemas in " + glibSchemasDir.absolutePath()
-                + ": " + QString::fromStdString(ret.error().message());
+            LogW("failed to update schemas in {}: {}",
+                 glibSchemasDir.absolutePath().toStdString(),
+                 ret.error());
         }
     }
 }

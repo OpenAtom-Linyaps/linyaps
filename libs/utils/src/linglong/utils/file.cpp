@@ -18,7 +18,7 @@
 
 namespace linglong::utils {
 
-linglong::utils::error::Result<std::string> readFile(std::string filepath)
+linglong::utils::error::Result<std::string> readFile(const std::filesystem::path &filepath)
 {
     LINGLONG_TRACE(fmt::format("read file {}", filepath));
     std::error_code ec;
@@ -31,43 +31,63 @@ linglong::utils::error::Result<std::string> readFile(std::string filepath)
     }
     std::ifstream in{ filepath };
     if (!in.is_open()) {
-        auto msg = std::string("open file:") + std::strerror(errno);
+        auto msg = std::string("open file:") + errorString(errno);
         return LINGLONG_ERR(msg.c_str());
     }
     std::stringstream buffer;
     buffer << in.rdbuf();
-    if (in.fail()) {
-        auto msg = std::string("read file: ") + std::strerror(errno);
+    if (buffer.bad()) {
+        auto msg = std::string("read file: ") + errorString(errno);
         return LINGLONG_ERR(msg.c_str());
     }
     return buffer.str();
 }
 
-linglong::utils::error::Result<void> writeFile(const std::string &filepath,
+linglong::utils::error::Result<void> writeFile(const std::filesystem::path &filepath,
                                                const std::string &content)
 {
     LINGLONG_TRACE(fmt::format("write file {}", filepath));
 
-    std::error_code ec;
-    auto exists = std::filesystem::exists(filepath, ec);
-    if (ec) {
-        return LINGLONG_ERR("check file", ec);
-    }
-    if (exists) {
-        std::filesystem::remove(filepath, ec);
-        if (ec) {
-            return LINGLONG_ERR("remove file", ec);
-        }
-    }
     std::ofstream out{ filepath };
     if (!out.is_open()) {
-        auto msg = std::string("open file:") + std::strerror(errno);
-        return LINGLONG_ERR(msg.c_str());
+        return LINGLONG_ERR(
+          fmt::format("failed to open file {}: {}", filepath, errorString(errno)));
     }
     out << content;
-    if (out.fail()) {
-        auto msg = std::string("write file: ") + std::strerror(errno);
-        return LINGLONG_ERR(msg.c_str());
+    if (out.bad()) {
+        return LINGLONG_ERR(fmt::format("failed to write file {}", errorString(errno)));
+    }
+    return LINGLONG_OK;
+}
+
+linglong::utils::error::Result<void> concatFile(const std::filesystem::path &source,
+                                                const std::filesystem::path &target)
+{
+    LINGLONG_TRACE(fmt::format("concat file {} to {}", source, target));
+
+    std::error_code ec;
+    if (!std::filesystem::exists(source, ec)) {
+        return LINGLONG_ERR("source file not exists", ec);
+    }
+
+    if (std::filesystem::exists(target, ec) && std::filesystem::equivalent(source, target, ec)) {
+        return LINGLONG_ERR("source and target are the same file", ec);
+    }
+
+    std::ifstream ifs(source, std::ios::binary);
+    if (!ifs) {
+        return LINGLONG_ERR(fmt::format("failed to open source {}", source));
+    }
+
+    std::ofstream ofs(target, std::ios::binary | std::ios::app);
+    if (!ofs) {
+        return LINGLONG_ERR(fmt::format("failed to open target {}", target));
+    }
+
+    ofs << ifs.rdbuf();
+    if (ofs.bad()) {
+        return LINGLONG_ERR(
+          fmt::format("failed to write target {} {}", target, errorString(errno)));
     }
     return LINGLONG_OK;
 }
@@ -93,7 +113,7 @@ calculateDirectorySize(const std::filesystem::path &dir) noexcept
 
             if (::lstat64(path.c_str(), &st) == -1) {
                 return LINGLONG_ERR(
-                  QString{ "failed to get symlink size: %1" }.arg(::strerror(errno)));
+                  fmt::format("failed to get symlink size: {}", errorString(errno)));
             }
 
             size += st.st_size;
@@ -110,7 +130,7 @@ calculateDirectorySize(const std::filesystem::path &dir) noexcept
 
             if (::stat64(path.c_str(), &st) == -1) {
                 return LINGLONG_ERR(
-                  QString{ "failed to get directory size: %1" }.arg(::strerror(errno)));
+                  fmt::format("failed to get directory size: {}", errorString(errno)));
             }
             size += st.st_size;
             continue;

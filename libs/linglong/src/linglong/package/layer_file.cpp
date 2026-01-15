@@ -8,6 +8,8 @@
 
 #include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/api/types/v1/LayerInfo.hpp"
+#include "linglong/utils/error/error.h"
+#include "linglong/utils/log/formatter.h"
 #include "linglong/utils/serialize/json.h"
 
 #include <QDataStream>
@@ -31,7 +33,7 @@ utils::error::Result<QSharedPointer<LayerFile>> LayerFile::New(const QString &pa
     LINGLONG_TRACE("install layer file from path")
     auto fd = ::open(path.toLocal8Bit(), O_RDONLY);
     if (fd < 0) {
-        return LINGLONG_ERR("failed to open " + path + ":" + ::strerror(errno));
+        return LINGLONG_ERR(fmt::format("failed to open {}: {}", path, ::errorString(errno)));
     }
 
     return New(fd);

@@ -10,10 +10,13 @@
 
 namespace linglong::utils {
 
-linglong::utils::error::Result<std::string> readFile(std::string filepath);
+linglong::utils::error::Result<std::string> readFile(const std::filesystem::path &filepath);
 
-linglong::utils::error::Result<void> writeFile(const std::string &filepath,
+linglong::utils::error::Result<void> writeFile(const std::filesystem::path &filepath,
                                                const std::string &content);
+
+linglong::utils::error::Result<void> concatFile(const std::filesystem::path &source,
+                                                const std::filesystem::path &target);
 
 linglong::utils::error::Result<uintmax_t>
 calculateDirectorySize(const std::filesystem::path &dir) noexcept;

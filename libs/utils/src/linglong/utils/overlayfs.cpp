@@ -4,11 +4,8 @@
 
 #include "overlayfs.h"
 
-#include "linglong/utils/command/cmd.h"
+#include "linglong/utils/cmd.h"
 #include "linglong/utils/log/log.h"
-
-#include <QDebug>
-#include <QString>
 
 #include <filesystem>
 #include <system_error>
@@ -28,11 +25,9 @@ OverlayFS::OverlayFS(std::filesystem::path lowerdir,
 
 OverlayFS::~OverlayFS()
 {
-    auto res = utils::command::Cmd("fusermount")
-                 .exec({ "-z", "-u", QString::fromStdString(merged_.string()) });
+    auto res = utils::Cmd("fusermount").exec({ "-z", "-u", merged_.string() });
     if (!res) {
-        qWarning() << QString("failed to umount %1 ").arg(QString::fromStdString(merged_.string()))
-                   << res.error();
+        LogW("failed to umount {}: {}", merged_.string(), res.error());
     }
 }
 
@@ -55,19 +50,18 @@ bool OverlayFS::mount()
     }
 
     // TODO: check mountpoint whether already mounted
-    auto ret = utils::command::Cmd("fusermount")
-                 .exec({ "-z", "-u", QString::fromStdString(merged_.string()) });
+    auto ret = utils::Cmd("fusermount").exec({ "-z", "-u", merged_.string() });
     if (!ret) {
         LogD("failed to set lazy umount {}", ret.error());
     }
 
-    ret = utils::command::Cmd("fuse-overlayfs")
-            .exec({ "-o",
-                    QString("lowerdir=%1,upperdir=%2,workdir=%3")
-                      .arg((lowerdir_.c_str()), (upperdir_.c_str()), (workdir_.c_str())),
-                    QString::fromStdString(merged_.string()) });
+    ret =
+      utils::Cmd("fuse-overlayfs")
+        .exec({ "-o",
+                fmt::format("lowerdir={},upperdir={},workdir={}", lowerdir_, upperdir_, workdir_),
+                merged_.string() });
     if (!ret) {
-        qWarning() << "failed to mount " << ret.error();
+        LogW("failed to mount {}", ret.error());
     }
 
     return !!ret;
@@ -75,11 +69,9 @@ bool OverlayFS::mount()
 
 void OverlayFS::unmount(bool clean)
 {
-    auto res = utils::command::Cmd("fusermount")
-                 .exec({ "-z", "-u", QString::fromStdString(merged_.string()) });
+    auto res = utils::Cmd("fusermount").exec({ "-z", "-u", merged_.string() });
     if (!res) {
-        qWarning() << QString("failed to umount %1 ").arg(QString::fromStdString(merged_.string()))
-                   << res.error();
+        LogW("failed to umount {}: {}", merged_.string(), res.error());
     }
 
     if (clean) {

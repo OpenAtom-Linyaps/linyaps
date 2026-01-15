@@ -15,6 +15,10 @@ exclude: |
     tools/openapi-c-libcurl-client/
   )
 
+ci:
+  autofix_prs: false
+  autoupdate_schedule: 'monthly'
+
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0

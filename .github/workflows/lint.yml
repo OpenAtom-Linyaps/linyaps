@@ -11,36 +11,3 @@ concurrency:
 jobs:
   check_job:
     uses: linuxdeepin/.github/.github/workflows/commitlint.yml@master
-
-  pre_commit_job:
-    name: Code Style Check
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: '3.14'
-
-      - name: Run pre-commit
-        uses: pre-commit/action@v3.0.1
-
-  lint_final_status:
-    name: Lint Check Success
-    needs: [check_job, pre_commit_job]
-    if: always()
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check Overall Status
-        run: |
-          COMMIT_RESULT="${{ needs.check_job.result }}"
-          STYLE_RESULT="${{ needs.pre_commit_job.result }}"
-
-          if [[ "$COMMIT_RESULT" == "failure" || "$STYLE_RESULT" == "failure" ]]; then
-            echo "Lint failed."
-            exit 1
-          fi
-          echo "All lint checks passed."
-          exit 0

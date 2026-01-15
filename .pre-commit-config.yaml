@@ -12,7 +12,7 @@ exclude: |
     misc/image/|
     po/|
     tools/quicktype/|
-    tools/openapi-c-libcurl-client/|
+    tools/openapi-c-libcurl-client/
   )
 
 repos:

@@ -13,7 +13,7 @@
 source_script="@CMAKE_INSTALL_PREFIX@/lib/linglong/generate-xdg-data-dirs.sh"
 
 # Source the script and export XDG_DATA_DIRS if successful
-[ -r "${source_script}" ] && . "${source_script}" 
+[ -r "${source_script}" ] && . "${source_script}"
 
 if  [ -n "${XDG_DATA_DIRS}" ]; then
 # !!!systemd requires environment variables to be printed to standard output!!!

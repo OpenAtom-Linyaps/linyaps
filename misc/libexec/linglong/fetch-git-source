@@ -11,7 +11,7 @@ url=$2
 commit=$3
 # cachedir=$4
 
-# Check command tools 
+# Check command tools
 if ! command -v git
 then
     echo "git not found, please install git first"

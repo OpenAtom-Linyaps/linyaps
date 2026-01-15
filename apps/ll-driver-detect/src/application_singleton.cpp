@@ -7,6 +7,7 @@
 #include "linglong/utils/log/log.h"
 
 #include <filesystem>
+
 namespace linglong::driver::detect {
 
 ApplicationSingleton::ApplicationSingleton(const std::string &lockFilePath)

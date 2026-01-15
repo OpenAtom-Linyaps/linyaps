@@ -10,7 +10,7 @@ url=$2
 digest=$3
 cachedir=$4
 
-# Check command tools 
+# Check command tools
 if ! command -v wget
 then
     echo "wget not found, please install wget first"

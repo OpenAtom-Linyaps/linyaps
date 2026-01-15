@@ -12,7 +12,10 @@ exclude: |
     misc/image/|
     po/|
     tools/quicktype/|
-    tools/openapi-c-libcurl-client/
+    tools/openapi-c-libcurl-client/|
+    .obs/|
+    misc/share/linglong/builder/templates/|
+    apps/ll-builder-utils/patch/
   )
 
 ci:

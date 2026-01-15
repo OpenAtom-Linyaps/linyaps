@@ -58,7 +58,8 @@ DBusNotifier::sendInteractiveNotification(const NotificationRequest &request)
     bool userInteracted = false;
     QEventLoop loop;
 
-    struct SignalGuard {
+    struct SignalGuard
+    {
         QMetaObject::Connection closeConn;
         QMetaObject::Connection actionConn;
 
@@ -67,27 +68,29 @@ DBusNotifier::sendInteractiveNotification(const NotificationRequest &request)
             QObject::disconnect(closeConn);
             QObject::disconnect(actionConn);
         }
-    } signalGuard{{}, {}};
+    } signalGuard{ {}, {} };
 
     // 连接信号处理函数
-    signalGuard.closeConn = QObject::connect(this,
-                                                   &DBusNotifier::notificationClosed,
-                                                   [&](quint32 id, quint32 closeReason) {
-                                                       if (notificationID != 0 && id == notificationID) {
-                                                           LogD("Notification {} closed with reason: {}", id, closeReason);
-                                                           loop.quit();
-                                                       }
-                                                   });
+    signalGuard.closeConn =
+      QObject::connect(this,
+                       &DBusNotifier::notificationClosed,
+                       [&](quint32 id, quint32 closeReason) {
+                           if (notificationID != 0 && id == notificationID) {
+                               LogD("Notification {} closed with reason: {}", id, closeReason);
+                               loop.quit();
+                           }
+                       });
 
-    signalGuard.actionConn = QObject::connect(this,
-                                                    &DBusNotifier::actionInvoked,
-                                                    [&](quint32 id, const QString &actionKey) {
-                                                        if (notificationID != 0 && id == notificationID) {
-                                                            LogD("Notification {} action invoked: {}", id, actionKey.toStdString());
-                                                            choice = actionKey;
-                                                            userInteracted = true;
-                                                        }
-                                                    });
+    signalGuard.actionConn = QObject::connect(
+      this,
+      &DBusNotifier::actionInvoked,
+      [&](quint32 id, const QString &actionKey) {
+          if (notificationID != 0 && id == notificationID) {
+              LogD("Notification {} action invoked: {}", id, actionKey.toStdString());
+              choice = actionKey;
+              userInteracted = true;
+          }
+      });
 
     // 检查信号连接是否成功
     if (!signalGuard.closeConn || !signalGuard.actionConn) {

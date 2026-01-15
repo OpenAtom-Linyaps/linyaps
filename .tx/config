@@ -6,4 +6,3 @@ file_filter = po/<lang>.po
 source_file = po/en_US.po
 source_lang = en_US
 type = PO
-

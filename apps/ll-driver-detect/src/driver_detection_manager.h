@@ -18,11 +18,9 @@ struct DriverDetectionResult
 
     bool hasAvailableDrivers() const
     {
-        return std::any_of(detectedDrivers.begin(),
-                           detectedDrivers.end(),
-                           [](const auto &driver) {
-                               return !driver.isInstalled;
-                           });
+        return std::any_of(detectedDrivers.begin(), detectedDrivers.end(), [](const auto &driver) {
+            return !driver.isInstalled;
+        });
     }
 };
 

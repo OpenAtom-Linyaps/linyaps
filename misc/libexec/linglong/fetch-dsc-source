@@ -10,7 +10,7 @@ url=$2
 digest=$3
 cachedir=$4
 
-# Check command tools 
+# Check command tools
 if ! command -v dget
 then
     echo "dget not found, please install devscripts first"

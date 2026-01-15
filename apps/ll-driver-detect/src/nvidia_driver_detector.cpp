@@ -76,8 +76,9 @@ NVIDIADriverDetector::checkPackageInstalled(const std::string &packageName)
           linglong::utils::command::Cmd("ll-cli").exec({ "info", packageName.c_str() });
 
         if (!listResult) {
-            LogD("Can not get package info with `ll-cli info`, maybe the package is not installed: {}",
-                 listResult.error().message());
+            LogD(
+              "Can not get package info with `ll-cli info`, maybe the package is not installed: {}",
+              listResult.error().message());
             return false;
         }
 

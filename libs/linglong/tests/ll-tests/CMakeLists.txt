@@ -18,7 +18,6 @@ pfl_add_executable(
   src/linglong/cli/cli_test.cpp
   src/linglong/common/strings_test.cpp
   src/linglong/common/xdg_test.cpp
-  src/linglong/mocks/command_mock.h
   src/linglong/mocks/layer_packager_mock.h
   src/linglong/mocks/linglong_builder_mock.h
   src/linglong/mocks/ostree_repo_mock.h
@@ -46,7 +45,7 @@ pfl_add_executable(
   src/linglong/repo/ostree_repo_test.cpp
   src/linglong/runtime/run_context_test.cpp
   src/linglong/utils/bash_command_helper_test.cpp
-  src/linglong/utils/command_test.cpp
+  src/linglong/utils/cmd_test.cpp
   src/linglong/utils/error/error_test.cpp
   src/linglong/utils/file_test.cpp
   src/linglong/utils/filelock_test.cpp

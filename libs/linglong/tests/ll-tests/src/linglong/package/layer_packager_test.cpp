@@ -8,10 +8,11 @@
 #include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/common/strings.h"
 #include "linglong/package/layer_packager.h"
-#include "linglong/utils/command/cmd.h"
+#include "linglong/utils/cmd.h"
 #include "linglong/utils/error/error.h"
 
 #include <QDir>
+#include <QSharedPointer>
 
 #include <filesystem>
 #include <fstream>
@@ -113,7 +114,7 @@ TEST_F(LayerPackagerTest, LayerPackagerUnpackFuseOffset)
 TEST_F(LayerPackagerTest, LayerPackagerUnpackFuse)
 {
     {
-        auto ret = utils::command::Cmd("erofsfuse").exists();
+        auto ret = utils::Cmd("erofsfuse").exists();
         if (!ret) {
 #ifdef GTEST_SKIP
             GTEST_SKIP() << "Skipping this test.";

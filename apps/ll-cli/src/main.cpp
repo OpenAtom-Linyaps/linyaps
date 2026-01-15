@@ -112,7 +112,7 @@ int lockCheck() noexcept
             return 0;
         }
 
-        qCritical() << "failed to open lock" << lock << ::strerror(errno);
+        qCritical() << "failed to open lock" << lock << errorString(errno);
         return -1;
     }
 

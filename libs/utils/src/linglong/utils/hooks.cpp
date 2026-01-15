@@ -7,8 +7,9 @@
 #include "hooks.h"
 
 #include "configure.h"
-#include "linglong/utils/command/env.h"
+#include "linglong/utils/env.h"
 #include "linglong/utils/error/error.h"
+#include "linglong/utils/log/log.h"
 
 #include <fmt/format.h>
 
@@ -51,11 +52,11 @@ utils::error::Result<void> executeHookCommands(
 {
     LINGLONG_TRACE("Executing command");
 
-    std::vector<std::unique_ptr<command::EnvironmentVariableGuard>> envVarGuards;
+    std::vector<std::unique_ptr<EnvironmentVariableGuard>> envVarGuards;
     envVarGuards.reserve(envVars.size());
     for (const auto &pair : envVars) {
         envVarGuards.emplace_back(
-          std::make_unique<command::EnvironmentVariableGuard>(pair.first, pair.second));
+          std::make_unique<EnvironmentVariableGuard>(pair.first, pair.second));
     }
 
     for (const auto &command_raw : commands) {
@@ -101,8 +102,7 @@ utils::error::Result<void> InstallHookManager::parseInstallHooks()
 
         if (!std::filesystem::is_regular_file(entry.status(ec))) {
             if (ec) {
-                qWarning() << "Failed to get status for" << entry.path().c_str() << ":"
-                           << QString::fromStdString(ec.message());
+                LogE("Failed to get status for {}: {}", entry.path().c_str(), ec.message());
             }
             continue;
         }

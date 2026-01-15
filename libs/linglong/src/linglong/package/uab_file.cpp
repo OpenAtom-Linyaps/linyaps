@@ -5,10 +5,10 @@
 #include "linglong/package/uab_file.h"
 
 #include "linglong/api/types/v1/Generators.hpp"
-#include "linglong/utils/command/cmd.h"
-#include "linglong/utils/command/env.h"
+#include "linglong/utils/cmd.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/finally/finally.h"
+#include "linglong/utils/log/log.h"
 
 #include <nlohmann/json.hpp>
 
@@ -56,18 +56,16 @@ utils::error::Result<std::unique_ptr<UABFile>> UABFile::loadFromFile(int fd) noe
 UABFile::~UABFile()
 {
     if (!m_mountPoint.empty()) {
-        auto ret = utils::command::Cmd("fusermount").exec({ "-z", "-u", m_mountPoint.c_str() });
+        auto ret = utils::Cmd("fusermount").exec({ "-z", "-u", m_mountPoint.c_str() });
         if (!ret) {
-            qCritical() << "failed to umount " << m_mountPoint.c_str()
-                        << ", please umount it manually";
+            LogE("failed to umount {}, please umount it manually", m_mountPoint);
         }
     }
     if (!m_unpackPath.empty()) {
         std::error_code ec;
         std::filesystem::remove_all(std::filesystem::path(m_unpackPath).parent_path(), ec);
         if (ec) {
-            qCritical() << "failed to remove " << m_unpackPath.c_str()
-                        << ", please remove it manually";
+            LogE("failed to remove {}, please remove it manually", m_unpackPath);
         }
     }
     if (this->e) {
@@ -216,8 +214,8 @@ utils::error::Result<std::filesystem::path> UABFile::unpack() noexcept
 
     auto dirName = "linglong-uab-" + QUuid::createUuid().toString(QUuid::Id128).toStdString();
     // 优先使用/var/tmp目录，避免tmpfs内存不足
-    auto tmpDir = utils::command::getEnv("LINGLONG_TMPDIR").value_or("/var/tmp");
-    auto unpackPath = std::filesystem::path(tmpDir) / dirName / "unpack";
+    auto *tmpDir = std::getenv("LINGLONG_TMPDIR");
+    auto unpackPath = std::filesystem::path(tmpDir ? tmpDir : "/var/tmp") / dirName / "unpack";
     auto ret = this->mkdirDir(unpackPath);
     if (!ret) {
         // 如果/var/tmp目录无权限创建，则使用临时目录
@@ -239,9 +237,10 @@ utils::error::Result<std::filesystem::path> UABFile::unpack() noexcept
                 return LINGLONG_ERR(ret.error());
             }
         }
-        auto ret =
-          utils::command::Cmd("erofsfuse")
-            .exec(QStringList{ QString{ "--offset=%1" }.arg(offset), uabFile, unpackPath.c_str() });
+        auto ret = utils::Cmd("erofsfuse")
+                     .exec(std::vector<std::string>{ fmt::format("--offset={}", offset),
+                                                     uabFile.toStdString(),
+                                                     unpackPath.string() });
         if (!ret) {
             return LINGLONG_ERR(ret.error());
         }
@@ -256,8 +255,9 @@ utils::error::Result<std::filesystem::path> UABFile::unpack() noexcept
         if (!ret) {
             return LINGLONG_ERR(ret.error());
         }
-        auto cmdRet = utils::command::Cmd("fsck.erofs")
-                        .exec({ "--extract=" + QString::fromStdString(unpackPath), uabFile });
+        auto cmdRet = utils::Cmd("fsck.erofs")
+                        .exec(std::vector<std::string>{ "--extract=" + unpackPath.string(),
+                                                        uabFile.toStdString() });
         if (!cmdRet) {
             return LINGLONG_ERR(cmdRet);
         }
@@ -278,7 +278,7 @@ utils::error::Result<std::filesystem::path> UABFile::extractSignData() noexcept
 
     auto signSection = getSectionHeader("linglong.bundle.sign");
     if (!signSection) {
-        qInfo() << "couldn't get sign data:" << signSection.error().message() << "skip";
+        LogI("couldn't get sign data: {} skip", signSection.error());
         return {};
     }
 
@@ -321,7 +321,7 @@ utils::error::Result<std::filesystem::path> UABFile::extractSignData() noexcept
 
         std::error_code ec;
         if (!std::filesystem::remove(tarFile, ec) && ec) {
-            qWarning() << "remove" << tarFile.c_str() << "failed:" << ec.message().c_str();
+            LogW("failed to remove {}: {}", tarFile.string(), ec.message());
         }
     });
 
@@ -342,7 +342,7 @@ utils::error::Result<std::filesystem::path> UABFile::extractSignData() noexcept
                 continue;
             }
             return LINGLONG_ERR(
-              QString{ "read from sign section error: %1" }.arg(::strerror(errno)));
+              fmt::format("read from sign section error: {}", ::errorString(errno)));
         }
 
         while (true) {
@@ -353,7 +353,7 @@ utils::error::Result<std::filesystem::path> UABFile::extractSignData() noexcept
                     continue;
                 }
                 return LINGLONG_ERR(
-                  QString{ "write to sign.tar error: %1" }.arg(::strerror(errno)));
+                  fmt::format("write to sign.tar error: {}", ::errorString(errno)));
             }
 
             if (writeBytes != readBytes) {
@@ -366,17 +366,16 @@ utils::error::Result<std::filesystem::path> UABFile::extractSignData() noexcept
     }
 
     if (::fsync(tarFd) == -1) {
-        return LINGLONG_ERR(QString{ "fsync sign.tar error: %1" }.arg(::strerror(errno)));
+        return LINGLONG_ERR(fmt::format("fsync sign.tar error: {}", ::errorString(errno)));
     }
 
     if (::close(tarFd) == -1) {
         tarFd = -1; // no need to try twice
-        return LINGLONG_ERR(QString{ "failed to close tar: %1" }.arg(::strerror(errno)));
+        return LINGLONG_ERR(fmt::format("failed to close tar: {}", ::errorString(errno)));
     }
     tarFd = -1;
 
-    auto ret = utils::command::Cmd("tar").exec(
-      QStringList{ "-xf", tarFile.c_str(), "-C", destination.c_str() });
+    auto ret = utils::Cmd("tar").exec({ "-xf", tarFile.string(), "-C", destination.string() });
     if (!ret) {
         return LINGLONG_ERR(ret);
     }
@@ -416,7 +415,7 @@ utils::error::Result<void> UABFile::saveErofsToFile(const std::string &path)
         auto bytesRead = ::read(handle(), buf.data(), readBytes);
         if (bytesRead == -1) {
             return LINGLONG_ERR(
-              QString{ "read from bundle section error: %1" }.arg(::strerror(errno)));
+              fmt::format("read from bundle section error: {}", ::errorString(errno)));
         }
         ofs.write(buf.data(), bytesRead);
         if (ofs.fail()) {
@@ -444,7 +443,7 @@ utils::error::Result<void> UABFile::mkdirDir(const std::string &path) noexcept
 
 bool UABFile::checkCommandExists(const std::string &command) const
 {
-    return utils::command::Cmd(command.c_str()).exists();
+    return utils::Cmd(command).exists();
 }
 
 } // namespace linglong::package

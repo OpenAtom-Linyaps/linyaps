@@ -8,7 +8,7 @@
 #include "driver_detection_config.h"
 #include "driver_detection_manager.h"
 #include "driver_detector.h"
-#include "linglong/utils/command/cmd.h"
+#include "linglong/utils/cmd.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/gettext.h"
 #include "linglong/utils/global/initialize.h"
@@ -105,8 +105,7 @@ installDriverPackage(const std::vector<GraphicsDriverInfo> &drivers)
             }
 
             // Execute ll-cli install command to install the package
-            auto ret = linglong::utils::command::Cmd("ll-cli").exec(
-              { "install", QString::fromStdString(driverInfo.packageName) });
+            auto ret = linglong::utils::Cmd("ll-cli").exec({ "install", driverInfo.packageName });
             if (!ret) {
                 return LINGLONG_ERR("Installation command failed: " + ret.error().message());
             }

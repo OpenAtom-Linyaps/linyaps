@@ -5,3 +5,8 @@
  */
 
 #include "linglong/utils/error/error.h"
+
+std::string errorString(int err)
+{
+    return std::system_category().message(err);
+}

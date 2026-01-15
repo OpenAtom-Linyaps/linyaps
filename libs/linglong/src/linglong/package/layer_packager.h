@@ -10,6 +10,7 @@
 #include "linglong/package/layer_file.h"
 #include "linglong/utils/error/error.h"
 
+#include <QSharedPointer>
 #include <QString>
 #include <QUuid>
 

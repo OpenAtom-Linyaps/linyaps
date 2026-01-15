@@ -4,7 +4,7 @@
 
 #include "nvidia_driver_detector.h"
 
-#include "linglong/utils/command/cmd.h"
+#include "linglong/utils/cmd.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/log/log.h"
 
@@ -53,13 +53,12 @@ utils::error::Result<void> NVIDIADriverDetector::checkPackageExists(const std::s
 {
     LINGLONG_TRACE("Check if NVIDIA driver package exists in repository");
     // Execute ll-cli search command to check driver package existence
-    auto ret = linglong::utils::command::Cmd("ll-cli").exec(
-      { "search", QString::fromStdString(packageName) });
+    auto ret = linglong::utils::Cmd("ll-cli").exec({ "search", packageName });
     if (!ret) {
         return LINGLONG_ERR("Search command failed: " + ret.error().message());
     }
 
-    if (!ret->contains(QString::fromStdString(packageName))) {
+    if (ret->find(packageName) == std::string::npos) {
         return LINGLONG_ERR("Driver package not found in linglong repo: " + packageName);
     }
     return LINGLONG_OK;
@@ -72,8 +71,7 @@ NVIDIADriverDetector::checkPackageInstalled(const std::string &packageName)
 
     try {
         // First execute ll-cli info to get the package info
-        auto listResult =
-          linglong::utils::command::Cmd("ll-cli").exec({ "info", packageName.c_str() });
+        auto listResult = linglong::utils::Cmd("ll-cli").exec({ "info", packageName });
 
         if (!listResult) {
             LogD(

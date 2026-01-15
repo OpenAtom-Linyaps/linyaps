@@ -483,8 +483,7 @@ int Cli::run(const RunOptions &options)
     // placeholder file
     auto fd = ::open(pidFile.c_str(), O_WRONLY | O_CREAT | O_EXCL, mode);
     if (fd == -1) {
-        qCritical()
-          << QString{ "create file %1 error: %2" }.arg(pidFile.c_str()).arg(::strerror(errno));
+        LogE("create file {} error: {}", pidFile, errorString(errno));
         QCoreApplication::exit(-1);
         return -1;
     }
@@ -1712,7 +1711,7 @@ int Cli::content(const ContentOptions &options)
         if (real != nullptr) {
             target = real;
         } else {
-            qCritical() << "resolve symlink " << file.c_str() << " error: " << ::strerror(errno);
+            LogE("resolve symlink {} error: {}", file, errorString(errno));
         }
     }
 
@@ -1992,7 +1991,7 @@ Cli::RequestDirectories(const api::types::v1::PackageInfoV2 &info) noexcept
 
     auto fd = ::shm_open(info.id.c_str(), O_RDWR | O_CREAT, 0600);
     if (fd < 0) {
-        return LINGLONG_ERR(QString{ "shm_open error:" } + ::strerror(errno));
+        return LINGLONG_ERR("shm_open error:" + errorString(errno));
     }
     auto closeFd = utils::finally::finally([fd] {
         ::close(fd);
@@ -2017,7 +2016,7 @@ Cli::RequestDirectories(const api::types::v1::PackageInfoV2 &info) noexcept
                 continue;
             }
 
-            return LINGLONG_ERR(QString{ "fcntl lock error: " } + ::strerror(errno));
+            return LINGLONG_ERR("fcntl lock error: " + errorString(errno));
         }
 
         if (!anotherRunning) {
@@ -2027,7 +2026,7 @@ Cli::RequestDirectories(const api::types::v1::PackageInfoV2 &info) noexcept
         lock.l_type = F_UNLCK;
         ret = ::fcntl(fd, F_SETLK, &lock);
         if (ret == -1) {
-            return LINGLONG_ERR(QString{ "fcntl unlock error: " } + ::strerror(errno));
+            return LINGLONG_ERR("fcntl unlock error: " + errorString(errno));
         }
 
         return LINGLONG_OK;
@@ -2037,11 +2036,11 @@ Cli::RequestDirectories(const api::types::v1::PackageInfoV2 &info) noexcept
     auto releaseResource = utils::finally::finally([&info, &lock, fd] {
         lock.l_type = F_UNLCK;
         if (::fcntl(fd, F_SETLK, &lock) == -1) {
-            qDebug() << "failed to unlock mem file:" << ::strerror(errno);
+            LogD("failed to unlock mem file: {}", errorString(errno));
         }
 
         if (::shm_unlink(info.id.c_str()) == -1) {
-            qDebug() << "shm_unlink error:" << ::strerror(errno);
+            LogD("shm_unlink error: {}", errorString(errno));
         }
     });
 

@@ -10,12 +10,10 @@ pfl_add_library(
   SOURCES
   # find -regex '\.\/*.+\.[ch]\(pp\)?\(.in\)?' -type f -printf '%P\n'| sort
   src/linglong/utils/bash_command_helper.h
-  src/linglong/utils/command/cmd.cpp
-  src/linglong/utils/command/cmd.h
-  src/linglong/utils/command/env.cpp
-  src/linglong/utils/command/env.h
-  src/linglong/utils/command/ocppi-helper.cpp
-  src/linglong/utils/command/ocppi-helper.h
+  src/linglong/utils/cmd.cpp
+  src/linglong/utils/cmd.h
+  src/linglong/utils/env.cpp
+  src/linglong/utils/env.h
   src/linglong/utils/dbus/log.cpp
   src/linglong/utils/dbus/log.h
   src/linglong/utils/dbus/properties_forwarder.cpp

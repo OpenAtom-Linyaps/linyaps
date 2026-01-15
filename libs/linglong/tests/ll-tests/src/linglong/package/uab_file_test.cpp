@@ -9,7 +9,7 @@
 #include "linglong/common/strings.h"
 #include "linglong/package/uab_file.h"
 #include "linglong/package/uab_packager.h"
-#include "linglong/utils/command/cmd.h"
+#include "linglong/utils/cmd.h"
 
 #include <QCryptographicHash>
 #include <QFileInfo>
@@ -47,8 +47,8 @@ protected:
             std::ofstream tmpFile(helloFilePath);
             tmpFile << "Hello, World!";
             tmpFile.close();
-            auto ret = utils::command::Cmd("mkfs.erofs")
-                         .exec({ bundleFile.c_str(), (testDir / "bundle").c_str() });
+            auto ret =
+              utils::Cmd("mkfs.erofs").exec({ bundleFile.c_str(), (testDir / "bundle").c_str() });
             ASSERT_TRUE(ret.has_value()) << "Failed to create erofs file" << ret.error().message();
             auto ret2 = (*uab)->addSection("linglong.bundle", bundleFile);
             ASSERT_TRUE(ret2.has_value()) << ret2.error().message();
@@ -95,7 +95,7 @@ protected:
             std::ofstream tmpFile(helloFilePath);
             tmpFile << "Hello, World!";
             tmpFile.close();
-            auto ret = utils::command::Cmd("tar").exec(
+            auto ret = utils::Cmd("tar").exec(
               { "-cvf", (testDir / "sign.tar").c_str(), "-C", signDir.c_str(), "." });
             ASSERT_TRUE(ret.has_value()) << "Failed to create tar file";
             auto ret2 = (*uab)->addSection("linglong.bundle.sign", testDir / "sign.tar");
@@ -141,7 +141,7 @@ TEST_F(UabFileTest, UnpackFuseOffset)
 TEST_F(UabFileTest, UnpackFuse)
 {
     {
-        auto ret = utils::command::Cmd("erofsfuse").exists();
+        auto ret = utils::Cmd("erofsfuse").exists();
         if (!ret) {
 #ifdef GTEST_SKIP
             GTEST_SKIP() << "Skipping this test.";

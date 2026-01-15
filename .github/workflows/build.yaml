@@ -18,23 +18,23 @@ jobs:
         with:
           filters: |
             code:
-              - '!**.md'
-              - '!**.toml'
-              - '!**.yaml'
-              - '!docs/**'
+              - '**.h'
+              - '**.hpp'
+              - '**.c'
+              - '**.cpp'
+              - '**.cc'
+              - 'po/**'
+              - '**.cmake'
+              - '**/CMakeLists.txt'
 
-  build-on-ubuntu-24:
+  build-u24-x64:
     needs: path-filter
     if: ${{ needs.path-filter.outputs.should_build == 'true' }}
-    name: build on ${{ matrix.os }} with Qt6
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: ['ubuntu-24.04', 'ubuntu-24.04-arm']
+    name: build on ubuntu-24.04 with Qt6
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
-
       - name: Install dependencies
         uses: awalsh128/cache-apt-pkgs-action@latest
         with:
@@ -46,33 +46,49 @@ jobs:
             libzstd-dev nlohmann-json3-dev pkg-config zlib1g-dev libwayland-dev wayland-protocols libgl1-mesa-dev
             qt6-base-dev qt6-base-private-dev
           version: 1.0
-
       - name: Configure CMake
         run: |
-          cmake -B build -GNinja \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCPM_LOCAL_PACKAGES_ONLY=ON \
-            -DLINGLONG_ENABLE_WAYLAND_SEC_CTX_SUPPORT=ON
-
+          cmake -B build -GNinja -DCMAKE_BUILD_TYPE=Release -DCPM_LOCAL_PACKAGES_ONLY=ON -DLINGLONG_ENABLE_WAYLAND_SEC_CTX_SUPPORT=ON
       - name: Build
         run: cmake --build build --parallel
-
       - name: Run tests
         run: cmake --build build --target test
 
-  build-on-ubuntu-22:
+  build-u24-arm:
     needs: path-filter
     if: ${{ needs.path-filter.outputs.should_build == 'true' }}
-    name: build on ${{ matrix.os }} with Qt5
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: ['ubuntu-22.04', 'ubuntu-22.04-arm']
-
+    name: build on ubuntu-24.04-arm with Qt6
+    runs-on: ubuntu-24.04-arm
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+      - name: Install dependencies
+        uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: >-
+            cmake ninja-build debhelper-compat erofs-utils erofsfuse intltool libcap-dev
+            libcli11-dev libcurl4-openssl-dev libdeflate-dev libelf-dev libexpected-dev
+            libfuse3-dev libglib2.0-dev libgmock-dev libgtest-dev liblz4-dev liblzma-dev
+            libostree-dev libpcre2-dev libselinux1-dev libssl-dev libsystemd-dev libyaml-cpp-dev
+            libzstd-dev nlohmann-json3-dev pkg-config zlib1g-dev libwayland-dev wayland-protocols libgl1-mesa-dev
+            qt6-base-dev qt6-base-private-dev
+          version: 1.0
+      - name: Configure CMake
+        run: |
+          cmake -B build -GNinja -DCMAKE_BUILD_TYPE=Release -DCPM_LOCAL_PACKAGES_ONLY=ON -DLINGLONG_ENABLE_WAYLAND_SEC_CTX_SUPPORT=ON
+      - name: Build
+        run: cmake --build build --parallel
+      - name: Run tests
+        run: cmake --build build --target test
 
+  build-u22-x64:
+    needs: path-filter
+    if: ${{ needs.path-filter.outputs.should_build == 'true' }}
+    name: build on ubuntu-22.04 with Qt5
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
       - name: Install dependencies
         uses: awalsh128/cache-apt-pkgs-action@latest
         with:
@@ -84,27 +100,54 @@ jobs:
             libzstd-dev nlohmann-json3-dev pkg-config zlib1g-dev libgl1-mesa-dev
             qtbase5-dev qtbase5-private-dev
           version: 1.0
-
-      # Disable testing for now, required tl-expected not available on 22.04
       - name: Configure CMake
         run: |
-          cmake -B build -GNinja \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCPM_LOCAL_PACKAGES_ONLY=ON \
-            -DENABLE_TESTING=OFF
+          cmake -B build -GNinja -DCMAKE_BUILD_TYPE=Release -DCPM_LOCAL_PACKAGES_ONLY=ON -DENABLE_TESTING=OFF
+      - name: Build
+        run: cmake --build build --parallel
 
+  build-u22-arm:
+    needs: path-filter
+    if: ${{ needs.path-filter.outputs.should_build == 'true' }}
+    name: build on ubuntu-22.04-arm with Qt5
+    runs-on: ubuntu-22.04-arm
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+      - name: Install dependencies
+        uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: >-
+            cmake ninja-build debhelper-compat erofs-utils erofsfuse intltool libcap-dev
+            libcli11-dev libcurl4-openssl-dev libdeflate-dev libelf-dev libexpected-dev
+            libfuse3-dev libglib2.0-dev libgmock-dev libgtest-dev liblz4-dev liblzma-dev
+            libostree-dev libpcre2-dev libselinux1-dev libssl-dev libsystemd-dev libyaml-cpp-dev
+            libzstd-dev nlohmann-json3-dev pkg-config zlib1g-dev libgl1-mesa-dev
+            qtbase5-dev qtbase5-private-dev
+          version: 1.0
+      - name: Configure CMake
+        run: |
+          cmake -B build -GNinja -DCMAKE_BUILD_TYPE=Release -DCPM_LOCAL_PACKAGES_ONLY=ON -DENABLE_TESTING=OFF
       - name: Build
         run: cmake --build build --parallel
 
   build-status:
     name: Final build Status
-    needs: [path-filter, build-on-ubuntu-24, build-on-ubuntu-22]
+    needs:
+      [path-filter, build-u24-x64, build-u24-arm, build-u22-x64, build-u22-arm]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - name: Decide status
         run: |
-          if [[ "${{ needs.build-on-ubuntu-24.result }}" == "failure" || "${{ needs.build-on-ubuntu-22.result }}" == "failure" ]]; then
+          U24_X64="${{ needs.build-u24-x64.result }}"
+          U24_ARM="${{ needs.build-u24-arm.result }}"
+          U22_X64="${{ needs.build-u22-x64.result }}"
+          U22_ARM="${{ needs.build-u22-arm.result }}"
+
+          if [[ "$U24_X64" == "failure" || "$U24_ARM" == "failure" || "$U22_X64" == "failure" || "$U22_ARM" == "failure" ]]; then
+            echo "One or more builds failed."
             exit 1
           fi
+          echo "All builds successful or skipped."
           exit 0

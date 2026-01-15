@@ -18,10 +18,14 @@ jobs:
         with:
           filters: |
             code:
-              - '!**.md'
-              - '!**.toml'
-              - '!**.yaml'
-              - '!docs/**'
+              - '**.h'
+              - '**.hpp'
+              - '**.c'
+              - '**.cpp'
+              - '**.cc'
+              - 'po/**'
+              - '**.cmake'
+              - '**/CMakeLists.txt'
 
   codecov:
     needs: path-filter

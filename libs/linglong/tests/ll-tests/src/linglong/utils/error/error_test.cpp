@@ -7,7 +7,7 @@
 #include <gtest/gtest.h>
 
 #include "linglong/common/strings.h"
-#include "linglong/utils/command/env.h"
+#include "linglong/utils/env.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/log/log.h"
 
@@ -16,7 +16,7 @@
 using namespace linglong::utils::error;
 
 using namespace linglong::common;
-using linglong::utils::command::EnvironmentVariableGuard;
+using linglong::utils::EnvironmentVariableGuard;
 
 TEST(Error, New)
 {

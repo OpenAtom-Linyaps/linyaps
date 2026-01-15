@@ -4,7 +4,7 @@
 
 #include "namespace.h"
 
-#include "linglong/utils/command/cmd.h"
+#include "linglong/utils/cmd.h"
 #include "linglong/utils/finally/finally.h"
 #include "linglong/utils/log/log.h"
 
@@ -135,7 +135,7 @@ utils::error::Result<int> runInNamespace(int argc, char **argv)
                 continue;
             }
 
-            LogW("failed to write data to sync socket: {}", ::strerror(errno));
+            LogW("failed to write data to sync socket: {}", errorString(errno));
             return -1;
         }
 
@@ -147,7 +147,7 @@ utils::error::Result<int> runInNamespace(int argc, char **argv)
                 continue;
             }
 
-            LogW("failed to read data from sync socket: {}", ::strerror(errno));
+            LogW("failed to read data from sync socket: {}", errorString(errno));
             return -1;
         }
 
@@ -158,13 +158,13 @@ utils::error::Result<int> runInNamespace(int argc, char **argv)
 
         execvp(runInNamespaceArgs->argv[0], runInNamespaceArgs->argv);
 
-        LogE("execvp failed: {}", ::strerror(errno));
+        LogE("execvp failed: {}", errorString(errno));
         return -1;
     };
 
     std::array<int, 2> pair{};
     if (socketpair(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0, pair.data()) == -1) {
-        return LINGLONG_ERR(fmt::format("socketpair failed: {}", ::strerror(errno)));
+        return LINGLONG_ERR(fmt::format("socketpair failed: {}", errorString(errno)));
     }
 
     auto closeSocket = linglong::utils::finally::finally([&pair]() {
@@ -186,7 +186,7 @@ utils::error::Result<int> runInNamespace(int argc, char **argv)
                       0);
     if (addr == MAP_FAILED) {
         return LINGLONG_ERR(
-          fmt::format("failed to create stack for child process: {}", strerror(errno)));
+          fmt::format("failed to create stack for child process: {}", errorString(errno)));
     }
 
     auto recycle = linglong::utils::finally::finally([addr]() {
@@ -202,7 +202,7 @@ utils::error::Result<int> runInNamespace(int argc, char **argv)
     pair[1] = -1;
 
     if (pid < 0) {
-        return LINGLONG_ERR(fmt::format("clone failed: {}", strerror(errno)));
+        return LINGLONG_ERR(fmt::format("clone failed: {}", errorString(errno)));
     }
 
     LogD("waiting child {}", pid);
@@ -213,7 +213,7 @@ utils::error::Result<int> runInNamespace(int argc, char **argv)
             continue;
         }
 
-        return LINGLONG_ERR(fmt::format("read failed: {}", ::strerror(errno)));
+        return LINGLONG_ERR(fmt::format("read failed: {}", errorString(errno)));
     }
 
     auto mappingTool = [](bool isUid, pid_t pid) -> utils::error::Result<void> {
@@ -227,14 +227,14 @@ utils::error::Result<int> runInNamespace(int argc, char **argv)
             return LINGLONG_ERR("failed to get subuid range", ranges.error());
         }
 
-        utils::command::Cmd cmd(isUid ? "newuidmap" : "newgidmap");
+        utils::Cmd cmd(isUid ? "newuidmap" : "newgidmap");
         unsigned long containerID = 0;
-        QStringList args = { QString::number(pid),
-                             QString::number(containerID),
-                             QString::number(id),
-                             "1" };
+        auto args = std::vector<std::string>{ std::to_string(pid),
+                                              std::to_string(containerID),
+                                              std::to_string(id),
+                                              "1" };
         for (const auto &range : *ranges) {
-            args << QString::number(containerID + 1) << range.subuid.c_str() << range.count.c_str();
+            args.insert(args.end(), { std::to_string(containerID + 1), range.subuid, range.count });
             try {
                 containerID += std::stoul(range.count);
             } catch (const std::invalid_argument &e) {
@@ -276,7 +276,7 @@ utils::error::Result<int> runInNamespace(int argc, char **argv)
                 continue;
             }
 
-            return LINGLONG_ERR(fmt::format("waitpid failed {}", strerror(errno)));
+            return LINGLONG_ERR(fmt::format("waitpid failed {}", errorString(errno)));
         }
 
         if (WIFEXITED(status)) {

@@ -5,7 +5,6 @@
 #include <gtest/gtest.h>
 
 #include "linglong/utils/file.h"
-#include "linglong/utils/global/initialize.h"
 
 #include <cstdlib>
 #include <filesystem>
@@ -322,4 +321,227 @@ TEST_F(FileTest, RelinkFile)
         EXPECT_TRUE(fs::is_symlink(link));
         EXPECT_EQ(fs::read_symlink(link), target);
     }
+}
+
+TEST_F(FileTest, WriteFile)
+{
+    // Test writing to a new file
+    fs::path test_file = dest_dir / "test_write.txt";
+    std::string content = "Hello, World!";
+
+    auto result = linglong::utils::writeFile(test_file.string(), content);
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+    EXPECT_TRUE(fs::exists(test_file));
+
+    // Verify content was written correctly
+    std::ifstream ifs(test_file);
+    std::string read_content((std::istreambuf_iterator<char>(ifs)),
+                             (std::istreambuf_iterator<char>()));
+    EXPECT_EQ(read_content, content);
+
+    // Test overwriting an existing file
+    std::string new_content = "New content";
+    result = linglong::utils::writeFile(test_file.string(), new_content);
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+
+    std::ifstream ifs2(test_file);
+    std::string read_content2((std::istreambuf_iterator<char>(ifs2)),
+                              (std::istreambuf_iterator<char>()));
+    EXPECT_EQ(read_content2, new_content);
+
+    // Test writing empty content
+    fs::path empty_file = dest_dir / "empty.txt";
+    result = linglong::utils::writeFile(empty_file.string(), "\0");
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+    EXPECT_TRUE(fs::exists(empty_file));
+
+    std::ifstream ifs3(empty_file);
+    std::string read_content3((std::istreambuf_iterator<char>(ifs3)),
+                              (std::istreambuf_iterator<char>()));
+    EXPECT_EQ(read_content3, "");
+
+    // Test writing to a file in a subdirectory that doesn't exist
+    fs::path subdir_file = dest_dir / "subdir" / "subfile.txt";
+    result = linglong::utils::writeFile(subdir_file.string(), "subdir content");
+    EXPECT_FALSE(result.has_value()); // Should fail because parent directory doesn't exist
+}
+
+TEST_F(FileTest, ReadFile)
+{
+    // Test reading an existing file
+    fs::path test_file = dest_dir / "test_read.txt";
+    std::string content = "Test content for reading";
+    std::ofstream(test_file) << content;
+
+    auto result = linglong::utils::readFile(test_file.string());
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+    EXPECT_EQ(*result, content);
+
+    // Test reading an empty file
+    fs::path empty_file = dest_dir / "empty_read.txt";
+    auto _ = std::ofstream(empty_file); // Create empty file
+
+    auto result_empty = linglong::utils::readFile(empty_file.string());
+    ASSERT_TRUE(result_empty.has_value()) << result_empty.error().message();
+    EXPECT_EQ(*result_empty, "");
+
+    // Test reading a file with special characters
+    fs::path special_file = dest_dir / "special.txt";
+    std::string special_content = "Special chars: \n\t\r\"'\\";
+    std::ofstream(special_file) << special_content;
+
+    auto result_special = linglong::utils::readFile(special_file.string());
+    ASSERT_TRUE(result_special.has_value()) << result_special.error().message();
+    EXPECT_EQ(*result_special, special_content);
+
+    // Test reading a non-existent file
+    fs::path non_existent = dest_dir / "non_existent.txt";
+    auto result_non_existent = linglong::utils::readFile(non_existent.string());
+    EXPECT_FALSE(result_non_existent.has_value());
+
+    // Test reading a file in a subdirectory
+    fs::path subdir = dest_dir / "subdir";
+    fs::create_directories(subdir);
+    fs::path subdir_file = subdir / "subfile.txt";
+    std::string subdir_content = "Content in subdirectory";
+    std::ofstream(subdir_file) << subdir_content;
+
+    auto result_subdir = linglong::utils::readFile(subdir_file.string());
+    ASSERT_TRUE(result_subdir.has_value()) << result_subdir.error().message();
+    EXPECT_EQ(*result_subdir, subdir_content);
+}
+
+TEST_F(FileTest, WriteFileAndReadFile)
+{
+    // Test write and read operations together
+    fs::path test_file = dest_dir / "test_roundtrip.txt";
+    std::string original_content =
+      "This is a test for write and read operations.\nMultiple lines.\nSpecial chars: 中文";
+
+    // Write the file
+    auto write_result = linglong::utils::writeFile(test_file.string(), original_content);
+    ASSERT_TRUE(write_result.has_value()) << write_result.error().message();
+
+    // Read the file back
+    auto read_result = linglong::utils::readFile(test_file.string());
+    ASSERT_TRUE(read_result.has_value()) << read_result.error().message();
+
+    // Verify round-trip integrity
+    EXPECT_EQ(*read_result, original_content);
+
+    // Test with binary content
+    fs::path binary_file = dest_dir / "test_binary.txt";
+    std::string binary_content = "\x01\x02\x03\xFF\xFE\xFD";
+
+    auto write_binary = linglong::utils::writeFile(binary_file.string(), binary_content);
+    ASSERT_TRUE(write_binary.has_value()) << write_binary.error().message();
+
+    auto read_binary = linglong::utils::readFile(binary_file.string());
+    ASSERT_TRUE(read_binary.has_value()) << read_binary.error().message();
+
+    EXPECT_EQ(*read_binary, binary_content);
+}
+
+TEST_F(FileTest, ConcatFile)
+{
+    // Test concatenating to a new target file
+    fs::path source_file = dest_dir / "source.txt";
+    fs::path target_file = dest_dir / "target.txt";
+    std::string source_content = "Source content";
+    std::string target_content = "Target content";
+
+    // Create source file
+    std::ofstream(source_file) << source_content;
+
+    // Create target file with initial content
+    std::ofstream(target_file) << target_content;
+
+    // Concatenate source to target
+    auto result = linglong::utils::concatFile(source_file, target_file);
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+
+    // Verify concatenated content
+    auto read_result = linglong::utils::readFile(target_file.string());
+    ASSERT_TRUE(read_result.has_value()) << read_result.error().message();
+    EXPECT_EQ(*read_result, target_content + source_content);
+
+    // Test concatenating to an empty target file
+    fs::path empty_target = dest_dir / "empty_target.txt";
+    fs::path another_source = dest_dir / "another_source.txt";
+    std::string another_content = "Another source content";
+
+    std::ofstream(another_source) << another_content;
+
+    auto result_empty = linglong::utils::concatFile(another_source, empty_target);
+    ASSERT_TRUE(result_empty.has_value()) << result_empty.error().message();
+
+    auto read_empty = linglong::utils::readFile(empty_target.string());
+    ASSERT_TRUE(read_empty.has_value()) << read_empty.error().message();
+    EXPECT_EQ(*read_empty, another_content);
+
+    // Test multiple concatenations
+    fs::path multi_target = dest_dir / "multi_target.txt";
+    fs::path source1 = dest_dir / "source1.txt";
+    fs::path source2 = dest_dir / "source2.txt";
+
+    std::ofstream(multi_target) << "Initial";
+    std::ofstream(source1) << "First";
+    std::ofstream(source2) << "Second";
+
+    auto result1 = linglong::utils::concatFile(source1, multi_target);
+    ASSERT_TRUE(result1.has_value()) << result1.error().message();
+
+    auto result2 = linglong::utils::concatFile(source2, multi_target);
+    ASSERT_TRUE(result2.has_value()) << result2.error().message();
+
+    auto read_multi = linglong::utils::readFile(multi_target.string());
+    ASSERT_TRUE(read_multi.has_value()) << read_multi.error().message();
+    EXPECT_EQ(*read_multi, "InitialFirstSecond");
+}
+
+TEST_F(FileTest, ConcatFile_ErrorCases)
+{
+    // Test concatenating from non-existent source file
+    fs::path non_existent_source = dest_dir / "non_existent.txt";
+    fs::path target = dest_dir / "target.txt";
+    std::ofstream(target) << "target";
+
+    auto result = linglong::utils::concatFile(non_existent_source, target);
+    EXPECT_FALSE(result.has_value()) << "Should fail when source file doesn't exist";
+
+    // Test concatenating when source and target are the same file
+    fs::path same_file = dest_dir / "same.txt";
+    std::ofstream(same_file) << "same content";
+
+    auto result_same = linglong::utils::concatFile(same_file, same_file);
+    EXPECT_FALSE(result_same.has_value()) << "Should fail when source and target are the same file";
+
+    // Test concatenating binary content
+    fs::path binary_source = dest_dir / "binary_source.txt";
+    fs::path binary_target = dest_dir / "binary_target.txt";
+
+    std::string binary_content = "\x01\x02\xFF\xFE\xFD";
+    std::ofstream(binary_source, std::ios::binary) << binary_content;
+    std::ofstream(binary_target, std::ios::binary) << std::string("\x10\x20", 2);
+
+    auto result_binary = linglong::utils::concatFile(binary_source, binary_target);
+    ASSERT_TRUE(result_binary.has_value()) << result_binary.error().message();
+
+    auto read_binary = linglong::utils::readFile(binary_target.string());
+    ASSERT_TRUE(read_binary.has_value()) << read_binary.error().message();
+    EXPECT_EQ(*read_binary, std::string("\x10\x20", 2) + binary_content);
+
+    // Test concatenating empty source file
+    fs::path empty_source = dest_dir / "empty_source.txt";
+    fs::path empty_target = dest_dir / "empty_target.txt";
+
+    auto _ = std::ofstream(empty_source); // Create empty file
+    std::ofstream(empty_target) << "target content";
+
+    auto result_empty_source = linglong::utils::concatFile(empty_source, empty_target);
+    ASSERT_TRUE(result_empty_source.has_value()) << result_empty_source.error().message();
+
+    auto read_empty_source = linglong::utils::readFile(empty_target.string());
+    ASSERT_TRUE(read_empty_source.has_value()) << read_empty_source.error().message();
+    EXPECT_EQ(*read_empty_source, "target content");
 }

@@ -9,15 +9,16 @@
 #include "linglong/api/types/v1/BuilderConfig.hpp"
 #include "linglong/utils/error/error.h"
 
-#include <QString>
+#include <filesystem>
 
 namespace linglong::builder {
 
-auto loadConfig(const QString &file) noexcept
+utils::error::Result<api::types::v1::BuilderConfig>
+initDefaultBuildConfig(const std::filesystem::path &path);
+auto loadConfig(const std::filesystem::path &file) noexcept
   -> utils::error::Result<api::types::v1::BuilderConfig>;
-auto loadConfig(const QStringList &files) noexcept
-  -> utils::error::Result<api::types::v1::BuilderConfig>;
-auto saveConfig(const api::types::v1::BuilderConfig &cfg, const QString &path) noexcept
-  -> utils::error::Result<void>;
+auto loadConfig() noexcept -> utils::error::Result<api::types::v1::BuilderConfig>;
+auto saveConfig(const api::types::v1::BuilderConfig &cfg,
+                const std::filesystem::path &path) noexcept -> utils::error::Result<void>;
 
 } // namespace linglong::builder

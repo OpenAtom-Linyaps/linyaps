@@ -7,7 +7,10 @@
 #include "linglong/builder/config.h"
 
 #include "linglong/api/types/v1/BuilderConfig.hpp"
+#include "linglong/common/dir.h"
+#include "linglong/common/xdg.h"
 #include "linglong/utils/error/error.h"
+#include "linglong/utils/log/log.h"
 #include "linglong/utils/serialize/yaml.h"
 
 #include <fmt/format.h>
@@ -16,24 +19,46 @@
 
 namespace linglong::builder {
 
-auto loadConfig(const QString &file) noexcept -> utils::error::Result<api::types::v1::BuilderConfig>
+utils::error::Result<api::types::v1::BuilderConfig>
+initDefaultBuildConfig(const std::filesystem::path &path)
 {
-    LINGLONG_TRACE(fmt::format("load build config from {}", file.toStdString()));
+    LINGLONG_TRACE("init default build config");
+
+    auto cacheLocation = common::xdg::getXDGCacheHomeDir();
+    if (cacheLocation.empty()) {
+        return LINGLONG_ERR("failed to get cache dir, neither XDG_CACHE_HOME nor HOME is set");
+    }
+
+    std::error_code ec;
+    std::filesystem::create_directories(path.parent_path(), ec);
+    if (ec) {
+        return LINGLONG_ERR("failed to create config dir", ec);
+    }
+
+    linglong::api::types::v1::BuilderConfig config;
+    config.version = 1;
+    config.repo = cacheLocation / "linglong-builder";
+    auto ret = linglong::builder::saveConfig(config, path);
+    if (!ret) {
+        return LINGLONG_ERR("failed to save default build config file", ret.error());
+    }
+
+    return config;
+}
+
+auto loadConfig(const std::filesystem::path &path) noexcept
+  -> utils::error::Result<api::types::v1::BuilderConfig>
+{
+    LINGLONG_TRACE(fmt::format("load build config from {}", path));
 
     try {
-        QFile f(file);
-        qDebug() << "read build config file" << file;
-        if (!f.open(QIODevice::ReadOnly)) {
-            return LINGLONG_ERR("read build config file", f);
-        }
-        auto data = f.readAll().toStdString();
-        auto config = utils::serialize::LoadYAML<api::types::v1::BuilderConfig>(data);
+        auto config = utils::serialize::LoadYAMLFile<api::types::v1::BuilderConfig>(path);
         if (!config) {
             return LINGLONG_ERR("parse build config", config);
         }
         if (config->version != 1) {
             return LINGLONG_ERR(
-              QString("wrong configuration file version %1").arg(config->version));
+              fmt::format("wrong configuration file version {}", config->version));
         }
 
         return config;
@@ -42,32 +67,42 @@ auto loadConfig(const QString &file) noexcept -> utils::error::Result<api::types
     }
 }
 
-auto loadConfig(const QStringList &files) noexcept
-  -> utils::error::Result<api::types::v1::BuilderConfig>
+auto loadConfig() noexcept -> utils::error::Result<api::types::v1::BuilderConfig>
 {
-    LINGLONG_TRACE(fmt::format("load build config from {}", files.join(" ").toStdString()));
+    LINGLONG_TRACE("load build config");
 
-    for (const auto &file : files) {
-        auto config = loadConfig(file);
-        if (!config.has_value()) {
-            qDebug() << "Failed to load build config from" << file << ":" << config.error();
-            continue;
-        }
-
-        qDebug() << "Load build config from" << file;
-        return config;
+    std::filesystem::path builderConfigPath = "builder/config.yaml";
+    auto configDir = common::dir::getUserRuntimeConfigDir();
+    if (configDir.empty()) {
+        return LINGLONG_ERR("failed to get config dir");
     }
 
-    return LINGLONG_ERR("all failed");
+    std::error_code ec;
+    auto path = configDir / builderConfigPath;
+    if (!std::filesystem::exists(path, ec)) {
+        if (ec) {
+            return LINGLONG_ERR(fmt::format("failed to check build config file {}", path), ec);
+        }
+
+        return initDefaultBuildConfig(path);
+    }
+
+    auto config = loadConfig(path);
+    if (!config) {
+        return LINGLONG_ERR(config);
+    }
+
+    LogD("Load build config from {}", path);
+    return config;
 }
 
-auto saveConfig(const api::types::v1::BuilderConfig &cfg, const QString &path) noexcept
-  -> utils::error::Result<void>
+auto saveConfig(const api::types::v1::BuilderConfig &cfg,
+                const std::filesystem::path &path) noexcept -> utils::error::Result<void>
 {
-    LINGLONG_TRACE(fmt::format("save config to {}", path.toStdString()));
+    LINGLONG_TRACE(fmt::format("save config to {}", path));
 
     try {
-        auto ofs = std::ofstream(path.toLocal8Bit());
+        auto ofs = std::ofstream(path);
         if (!ofs.is_open()) {
             return LINGLONG_ERR("open failed");
         }
@@ -80,4 +115,5 @@ auto saveConfig(const api::types::v1::BuilderConfig &cfg, const QString &path) n
         return LINGLONG_ERR(e);
     }
 }
+
 } // namespace linglong::builder

@@ -38,62 +38,6 @@
 
 namespace {
 
-QStringList projectBuildConfigPaths()
-{
-    QStringList result{};
-
-    auto pwd = QDir::current();
-
-    do {
-        auto configPath =
-          QStringList{ pwd.absolutePath(), ".ll-builder", "config.yaml" }.join(QDir::separator());
-        result << configPath;
-    } while (pwd.cdUp());
-
-    return result;
-}
-
-QStringList nonProjectBuildConfigPaths()
-{
-    QStringList result{};
-
-    auto configLocations = QStandardPaths::standardLocations(QStandardPaths::GenericConfigLocation);
-    configLocations.append(SYSCONFDIR);
-
-    for (const auto &configLocation : std::as_const(configLocations)) {
-        result << QStringList{ configLocation, "linglong", "builder", "config.yaml" }.join(
-          QDir::separator());
-    }
-
-    result << QStringList{ DATADIR, "linglong", "builder", "config.yaml" }.join(QDir::separator());
-
-    return result;
-}
-
-void initDefaultBuildConfig()
-{
-    // ~/.cache
-    QDir cacheLocation = QStandardPaths::writableLocation(QStandardPaths::GenericCacheLocation);
-    // ~/.config/
-    QDir configLocations = QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation);
-    if (!QDir().mkpath(configLocations.filePath("linglong/builder"))) {
-        qWarning() << "init BuildConfig directory failed."
-                   << configLocations.filePath("linglong/builder");
-    }
-    QString configFilePath = configLocations.filePath("linglong/builder/config.yaml");
-    if (QFile::exists(configFilePath)) {
-        return;
-    }
-    linglong::api::types::v1::BuilderConfig config;
-    config.version = 1;
-    config.repo = cacheLocation.filePath("linglong-builder").toStdString();
-    auto ret = linglong::builder::saveConfig(config, configFilePath);
-    if (!ret) {
-        qCritical() << "failed to save default build config file" << configFilePath << ":"
-                    << ret.error();
-    }
-}
-
 std::string validateNonEmptyString(const std::string &parameter)
 {
     if (parameter.empty()) {
@@ -1056,15 +1000,9 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     }
 
     // following command need repo
-    QStringList configPaths = {};
-    // 初始化 build config
-    initDefaultBuildConfig();
-    configPaths << projectBuildConfigPaths();
-    configPaths << nonProjectBuildConfigPaths();
-
-    auto builderCfg = linglong::builder::loadConfig(configPaths);
+    auto builderCfg = linglong::builder::loadConfig();
     if (!builderCfg) {
-        qCritical() << builderCfg.error();
+        LogE("failed to load build config {}", builderCfg.error());
         return -1;
     }
 

@@ -13,6 +13,7 @@ pfl_add_executable(
   SOURCES
   # find -regex '\./src/.+\.[ch]\(pp\)?' -type f -printf '%P\n'| sort
   src/common/tempdir.h
+  src/linglong/builder/config_test.cpp
   src/linglong/builder/linglong_builder_test.cpp
   src/linglong/builder/source_fetcher_test.cpp
   src/linglong/cli/cli_test.cpp

@@ -28,8 +28,8 @@
 #include "linglong/utils/finally/finally.h"
 #include "linglong/utils/hooks.h"
 #include "linglong/utils/log/log.h"
-#include "linglong/utils/packageinfo_handler.h"
 #include "linglong/utils/serialize/json.h"
+#include "linglong/utils/serialize/packageinfo_handler.h"
 #include "linglong/utils/transaction.h"
 
 #include <QDBusInterface>
@@ -486,7 +486,7 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
     }
 
     const auto &metaInfo = *metaInfoRet;
-    auto packageInfoRet = utils::parsePackageInfo(metaInfo.info);
+    auto packageInfoRet = utils::serialize::parsePackageInfo(metaInfo.info);
     if (!packageInfoRet) {
         return toDBusReply(packageInfoRet);
     }
@@ -1423,9 +1423,7 @@ PackageManager::executePostInstallHooks(const package::Reference &ref) noexcept
         return LINGLONG_ERR(layerDir);
     }
 
-    auto appPath = layerDir->absolutePath();
-
-    ret = installHookManager->executePostInstallHooks(ref.id, appPath.toStdString());
+    ret = installHookManager->executePostInstallHooks(ref.id, layerDir->path());
     if (!ret) {
         return LINGLONG_ERR(ret);
     }

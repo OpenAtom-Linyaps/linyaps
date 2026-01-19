@@ -99,13 +99,13 @@ TEST_F(LayerPackagerTest, LayerPackagerUnpackFuseOffset)
     package::LayerPackager packager;
     auto ret = packager.unpack(*layerFile);
     ASSERT_TRUE(ret.has_value()) << "Failed to unpack layer file" << ret.error().message();
-    ASSERT_TRUE(std::filesystem::exists(ret->filePath("info.json").toStdString()))
-      << "'info.json' not found in unpack dir" << ret->filePath("info.json").toStdString();
-    auto filesDir = ret->filesDirPath().toStdString();
-    ASSERT_TRUE(std::filesystem::exists(filesDir + "/hello"))
+    ASSERT_TRUE(std::filesystem::exists(ret->path() / "info.json"))
+      << "'info.json' not found in unpack dir" << ret->path();
+    auto filesDir = ret->filesDirPath();
+    ASSERT_TRUE(std::filesystem::exists(filesDir / "hello"))
       << "'hello' not found in unpack dir" << filesDir;
     // 读取hello文件
-    std::ifstream helloFile(filesDir + "/hello");
+    std::ifstream helloFile(filesDir / "hello");
     std::stringstream buffer;
     buffer << helloFile.rdbuf();
     ASSERT_EQ(buffer.str(), "Hello, World!") << "Failed to read hello file";
@@ -136,13 +136,13 @@ TEST_F(LayerPackagerTest, LayerPackagerUnpackFuse)
     };
     auto ret = packager.unpack(*layerFile);
     ASSERT_TRUE(ret.has_value()) << "Failed to unpack layer file" << ret.error().message();
-    ASSERT_TRUE(std::filesystem::exists(ret->filePath("info.json").toStdString()))
-      << "'info.json' not found in unpack dir" << ret->filePath("info.json").toStdString();
-    auto filesDir = ret->filesDirPath().toStdString();
-    ASSERT_TRUE(std::filesystem::exists(filesDir + "/hello"))
+    ASSERT_TRUE(std::filesystem::exists(ret->path() / "info.json"))
+      << "'info.json' not found in unpack dir" << ret->path();
+    auto filesDir = ret->filesDirPath();
+    ASSERT_TRUE(std::filesystem::exists(filesDir / "hello"))
       << "'hello' not found in unpack dir" << filesDir;
     // 读取hello文件
-    std::ifstream helloFile(filesDir + "/hello");
+    std::ifstream helloFile(filesDir / "hello");
     std::stringstream buffer;
     buffer << helloFile.rdbuf();
     ASSERT_EQ(buffer.str(), "Hello, World!") << "Failed to read hello file";
@@ -160,10 +160,10 @@ TEST_F(LayerPackagerTest, LayerPackagerUnpackFsck)
     };
     auto ret = packager.unpack(*layerFile);
     ASSERT_TRUE(ret.has_value()) << "Failed to unpack layer file" << ret.error().message();
-    ASSERT_TRUE(std::filesystem::exists(ret->filePath("info.json").toStdString()))
-      << "'info.json' not found in unpack dir" << ret->filePath("info.json").toStdString();
-    auto filesDir = ret->filesDirPath().toStdString();
-    ASSERT_TRUE(std::filesystem::exists(filesDir + "/hello"))
+    ASSERT_TRUE(std::filesystem::exists(ret->path() / "info.json"))
+      << "'info.json' not found in unpack dir" << ret->path();
+    auto filesDir = ret->filesDirPath();
+    ASSERT_TRUE(std::filesystem::exists(filesDir / "hello"))
       << "'hello' not found in unpack dir" << filesDir;
 }
 

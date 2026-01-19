@@ -324,31 +324,29 @@ int handleRemove(linglong::repo::OSTreeRepo &repo, const RemoveCommandOptions &o
 
 int handleImport(linglong::repo::OSTreeRepo &repo, const ImportCommandOptions &options)
 {
-    QString layerFile = QString::fromStdString(options.layerFile);
-    qInfo() << "Handling import command for layer file:" << layerFile;
+    LogI("Handling import command for layer file: {}", options.layerFile);
 
-    auto result = linglong::builder::Builder::importLayer(repo, layerFile);
+    auto result = linglong::builder::Builder::importLayer(repo, options.layerFile);
     if (!result) {
-        qCritical() << "Import layer failed: " << result.error();
+        LogE("Import layer failed: {}", result.error());
         return result.error().code();
     }
 
-    qInfo() << "Layer import completed successfully.";
+    LogI("Layer import completed successfully.");
     return 0;
 }
 
 int handleImportDir(linglong::repo::OSTreeRepo &repo, const ImportDirCommandOptions &options)
 {
-    QString layerDir = QString::fromStdString(options.layerDir);
-    qInfo() << "Handling import-dir command for layer directory:" << layerDir;
+    LogI("Handling import-dir command for layer directory: {}", options.layerDir);
 
-    auto result = linglong::builder::Builder::importLayer(repo, layerDir);
+    auto result = linglong::builder::Builder::importLayer(repo, options.layerDir);
     if (!result) {
-        qCritical() << "Import layer directory failed: " << result.error();
+        LogE("Import layer directory failed: {}", result.error());
         return result.error().code();
     }
 
-    qInfo() << "Layer directory import completed successfully.";
+    LogI("Layer directory import completed successfully.");
     return 0;
 }
 

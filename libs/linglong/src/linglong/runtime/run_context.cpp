@@ -42,7 +42,8 @@ RuntimeLayer::RuntimeLayer(package::Reference ref, RunContext &context)
 RuntimeLayer::~RuntimeLayer()
 {
     if (temporary && layerDir) {
-        layerDir->removeRecursively();
+        std::error_code ec;
+        std::filesystem::remove_all(layerDir->path(), ec);
     }
 }
 
@@ -579,13 +580,13 @@ utils::error::Result<void> RunContext::fillContextCfg(
     bundle = *bundleDir;
     builder.setBundlePath(bundle);
 
-    builder.setBasePath(baseLayer->getLayerDir()->absoluteFilePath("files").toStdString());
+    builder.setBasePath(baseLayer->getLayerDir()->filesDirPath());
 
     if (appOutput) {
         builder.setAppPath(*appOutput, false);
     } else {
         if (appLayer) {
-            builder.setAppPath(appLayer->getLayerDir()->absoluteFilePath("files").toStdString());
+            builder.setAppPath(appLayer->getLayerDir()->filesDirPath());
         }
     }
 
@@ -593,8 +594,7 @@ utils::error::Result<void> RunContext::fillContextCfg(
         builder.setRuntimePath(*runtimeOutput, false);
     } else {
         if (runtimeLayer) {
-            builder.setRuntimePath(
-              runtimeLayer->getLayerDir()->absoluteFilePath("files").toStdString());
+            builder.setRuntimePath(runtimeLayer->getLayerDir()->filesDirPath());
         }
     }
 
@@ -632,7 +632,7 @@ utils::error::Result<void> RunContext::fillContextCfg(
           .destination = "/opt/extensions/" + name,
           .gidMappings = {},
           .options = { { "rbind", "ro" } },
-          .source = ext.getLayerDir()->absoluteFilePath("files").toStdString(),
+          .source = ext.getLayerDir()->filesDirPath(),
           .type = "bind",
           .uidMappings = {},
         });
@@ -792,8 +792,7 @@ utils::error::Result<std::filesystem::path> RunContext::getBaseLayerPath() const
         return LINGLONG_ERR("run context doesn't resolved");
     }
 
-    const auto &layerDir = baseLayer->getLayerDir();
-    return std::filesystem::path{ layerDir->absolutePath().toStdString() };
+    return baseLayer->getLayerDir()->path();
 }
 
 utils::error::Result<std::filesystem::path> RunContext::getRuntimeLayerPath() const
@@ -804,8 +803,7 @@ utils::error::Result<std::filesystem::path> RunContext::getRuntimeLayerPath() co
         return LINGLONG_ERR("no runtime layer exist");
     }
 
-    const auto &layerDir = runtimeLayer->getLayerDir();
-    return std::filesystem::path{ layerDir->absolutePath().toStdString() };
+    return runtimeLayer->getLayerDir()->path();
 }
 
 utils::error::Result<api::types::v1::RepositoryCacheLayersItem> RunContext::getCachedAppItem()

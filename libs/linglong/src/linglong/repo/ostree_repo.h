@@ -21,6 +21,8 @@
 
 #include <ostree.h>
 
+#include <QDir>
+
 #include <memory>
 #include <optional>
 #include <string>

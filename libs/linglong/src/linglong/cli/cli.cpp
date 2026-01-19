@@ -1667,7 +1667,7 @@ int Cli::content(const ContentOptions &options)
         return -1;
     }
 
-    QDir entriesDir(layer->absoluteFilePath("entries/share"));
+    QDir entriesDir((layer->path() / "entries/share").c_str());
     if (!entriesDir.exists()) {
         this->printer.printErr(LINGLONG_ERR("no entries found").value());
         return -1;
@@ -2372,7 +2372,7 @@ int Cli::getLayerDir(const InspectOptions &options)
         return -1;
     }
 
-    std::cout << layerDir->absolutePath().toStdString() << std::endl;
+    std::cout << layerDir->path() << std::endl;
 
     return 0;
 }

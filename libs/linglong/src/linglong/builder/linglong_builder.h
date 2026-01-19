@@ -91,7 +91,7 @@ public:
 
     auto import() -> utils::error::Result<void>;
 
-    static auto importLayer(repo::OSTreeRepo &repo, const QString &path)
+    static auto importLayer(repo::OSTreeRepo &repo, const std::filesystem::path &path)
       -> utils::error::Result<void>;
 
     auto run(std::vector<std::string> modules,

@@ -6,20 +6,17 @@
 
 #include "linglong/package/layer_dir.h"
 
-#include "linglong/api/types/v1/Generators.hpp"
-#include "linglong/utils/packageinfo_handler.h"
+#include "linglong/utils/serialize/packageinfo_handler.h"
 
 #include <fmt/format.h>
-
-#include <fstream>
 
 namespace linglong::package {
 
 utils::error::Result<api::types::v1::PackageInfoV2> LayerDir::info() const
 {
-    LINGLONG_TRACE(fmt::format("get layer info from {}", this->absolutePath().toStdString()));
+    LINGLONG_TRACE(fmt::format("get layer info from {}", this->path_.string()));
 
-    auto info = utils::parsePackageInfo(this->filePath("info.json"));
+    auto info = utils::serialize::parsePackageInfoFile(this->path_ / "info.json");
     if (!info) {
         return LINGLONG_ERR(info);
     }
@@ -27,14 +24,15 @@ utils::error::Result<api::types::v1::PackageInfoV2> LayerDir::info() const
     return info;
 }
 
-QString LayerDir::filesDirPath() const noexcept
+std::filesystem::path LayerDir::filesDirPath() const noexcept
 {
-    return this->absoluteFilePath("files");
+    return this->path_ / "files";
 }
 
 bool LayerDir::valid() const noexcept
 {
-    return this->exists("info.json");
+    std::error_code ec;
+    return std::filesystem::exists(this->path_ / "info.json", ec);
 }
 
 } // namespace linglong::package

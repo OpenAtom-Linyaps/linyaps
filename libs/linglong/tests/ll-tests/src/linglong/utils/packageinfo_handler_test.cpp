@@ -5,8 +5,8 @@
 #include <gtest/gtest.h>
 
 #include "linglong/utils/error/error.h"
-#include "linglong/utils/packageinfo_handler.h"
 #include "linglong/utils/serialize/json.h"
+#include "linglong/utils/serialize/packageinfo_handler.h"
 
 #include <filesystem>
 #include <fstream>
@@ -49,7 +49,7 @@ TEST_F(PackageInfoHandlerTest, toPackageInfoV2_BasicConversion)
     oldInfo.version = "1.0.0";
 
     // 转换为PackageInfoV2
-    auto result = linglong::utils::toPackageInfoV2(oldInfo);
+    auto result = linglong::utils::serialize::toPackageInfoV2(oldInfo);
 
     // 验证转换结果
     EXPECT_EQ(result.id, oldInfo.appid);
@@ -92,7 +92,7 @@ TEST_F(PackageInfoHandlerTest, toPackageInfoV2_WithOptionalFields)
     oldInfo.version = "2.0.0";
 
     // 转换为PackageInfoV2
-    auto result = linglong::utils::toPackageInfoV2(oldInfo);
+    auto result = linglong::utils::serialize::toPackageInfoV2(oldInfo);
 
     // 验证转换结果
     EXPECT_EQ(result.id, oldInfo.appid);
@@ -129,14 +129,14 @@ TEST_F(PackageInfoHandlerTest, parsePackageInfo_FromFileV2)
         "version": "1.0.0"
     })";
 
-    std::string filePath = (tempDir / "package_v2.json").string();
+    std::filesystem::path filePath = tempDir / "package_v2.json";
     std::ofstream file(filePath);
     ASSERT_TRUE(file.is_open());
     file << jsonContent;
     file.close();
 
     // 解析文件
-    auto result = linglong::utils::parsePackageInfo(QString::fromStdString(filePath));
+    auto result = linglong::utils::serialize::parsePackageInfoFile(filePath);
 
     // 验证解析结果
     ASSERT_TRUE(result.has_value()) << result.error().message();
@@ -171,14 +171,14 @@ TEST_F(PackageInfoHandlerTest, parsePackageInfo_FromFileV1)
         "version": "1.0.0"
     })";
 
-    std::string filePath = (tempDir / "package_v1.json").string();
+    std::filesystem::path filePath = tempDir / "package_v1.json";
     std::ofstream file(filePath);
     ASSERT_TRUE(file.is_open());
     file << jsonContent;
     file.close();
 
     // 解析文件
-    auto result = linglong::utils::parsePackageInfo(QString::fromStdString(filePath));
+    auto result = linglong::utils::serialize::parsePackageInfoFile(filePath);
 
     // 验证解析结果
     ASSERT_TRUE(result.has_value()) << result.error().message();
@@ -204,14 +204,14 @@ TEST_F(PackageInfoHandlerTest, parsePackageInfo_FromFileInvalid)
         "invalid": "json content"
     })";
 
-    std::string filePath = (tempDir / "invalid.json").string();
+    std::filesystem::path filePath = tempDir / "invalid.json";
     std::ofstream file(filePath);
     ASSERT_TRUE(file.is_open());
     file << jsonContent;
     file.close();
 
     // 解析文件
-    auto result = linglong::utils::parsePackageInfo(QString::fromStdString(filePath));
+    auto result = linglong::utils::serialize::parsePackageInfoFile(filePath);
 
     // 验证解析失败
     EXPECT_FALSE(result.has_value());
@@ -234,7 +234,7 @@ TEST_F(PackageInfoHandlerTest, parsePackageInfo_FromJSONV2)
                                 { "version", "1.0.0" } };
 
     // 解析JSON
-    auto result = linglong::utils::parsePackageInfo(jsonData);
+    auto result = linglong::utils::serialize::parsePackageInfo(jsonData);
 
     // 验证解析结果
     ASSERT_TRUE(result.has_value()) << result.error().message();
@@ -268,7 +268,7 @@ TEST_F(PackageInfoHandlerTest, parsePackageInfo_FromJSONV1)
                                 { "version", "1.0.0" } };
 
     // 解析JSON
-    auto result = linglong::utils::parsePackageInfo(jsonData);
+    auto result = linglong::utils::serialize::parsePackageInfo(jsonData);
 
     // 验证解析结果
     ASSERT_TRUE(result.has_value()) << result.error().message();
@@ -293,133 +293,8 @@ TEST_F(PackageInfoHandlerTest, parsePackageInfo_FromJSONInvalid)
     nlohmann::json jsonData = { { "invalid", "json content" } };
 
     // 解析JSON
-    auto result = linglong::utils::parsePackageInfo(jsonData);
+    auto result = linglong::utils::serialize::parsePackageInfo(jsonData);
 
     // 验证解析失败
     EXPECT_FALSE(result.has_value());
-}
-
-TEST_F(PackageInfoHandlerTest, parsePackageInfo_FromGFileV2)
-{
-    // 创建PackageInfoV2 JSON文件
-    std::string jsonContent = R"({
-        "arch": ["x86_64"],
-        "base": "org.deepin.base",
-        "channel": "main",
-        "command": ["testapp"],
-        "description": "Test application",
-        "id": "com.example.testapp",
-        "kind": "app",
-        "module": "runtime",
-        "name": "TestApp",
-        "schema_version": "1.0",
-        "size": 1024,
-        "version": "1.0.0"
-    })";
-
-    std::string filePath = (tempDir / "package_gfile_v2.json").string();
-    std::ofstream file(filePath);
-    ASSERT_TRUE(file.is_open());
-    file << jsonContent;
-    file.close();
-
-    // 创建GFile对象
-    GFile *gfile = g_file_new_for_path(filePath.c_str());
-
-    // 解析GFile
-    auto result = linglong::utils::parsePackageInfo(gfile);
-
-    // 验证解析结果
-    ASSERT_TRUE(result.has_value()) << result.error().message();
-
-    EXPECT_EQ(result->id, "com.example.testapp");
-    EXPECT_EQ(result->arch, std::vector<std::string>{ "x86_64" });
-    EXPECT_EQ(result->base, "org.deepin.base");
-    EXPECT_EQ(result->channel, "main");
-    EXPECT_EQ(result->command, std::vector<std::string>{ "testapp" });
-    EXPECT_EQ(result->description, "Test application");
-    EXPECT_EQ(result->kind, "app");
-    EXPECT_EQ(result->packageInfoV2Module, "runtime");
-    EXPECT_EQ(result->name, "TestApp");
-    EXPECT_EQ(result->schemaVersion, "1.0");
-    EXPECT_EQ(result->size, 1024);
-    EXPECT_EQ(result->version, "1.0.0");
-
-    // 释放GFile
-    g_object_unref(gfile);
-}
-
-TEST_F(PackageInfoHandlerTest, parsePackageInfo_FromGFileV1)
-{
-    // 创建PackageInfo JSON文件（V1格式）
-    std::string jsonContent = R"({
-        "appid": "com.example.testapp",
-        "arch": ["x86_64"],
-        "base": "org.deepin.base",
-        "channel": "main",
-        "command": ["testapp"],
-        "description": "Test application",
-        "kind": "app",
-        "module": "runtime",
-        "name": "TestApp",
-        "size": 1024,
-        "version": "1.0.0"
-    })";
-
-    std::string filePath = (tempDir / "package_gfile_v1.json").string();
-    std::ofstream file(filePath);
-    ASSERT_TRUE(file.is_open());
-    file << jsonContent;
-    file.close();
-
-    // 创建GFile对象
-    GFile *gfile = g_file_new_for_path(filePath.c_str());
-
-    // 解析GFile
-    auto result = linglong::utils::parsePackageInfo(gfile);
-
-    // 验证解析结果
-    ASSERT_TRUE(result.has_value()) << result.error().message();
-
-    EXPECT_EQ(result->id, "com.example.testapp");
-    EXPECT_EQ(result->arch, std::vector<std::string>{ "x86_64" });
-    EXPECT_EQ(result->base, "org.deepin.base");
-    EXPECT_EQ(result->channel, "main");
-    EXPECT_EQ(result->command, std::vector<std::string>{ "testapp" });
-    EXPECT_EQ(result->description, "Test application");
-    EXPECT_EQ(result->kind, "app");
-    EXPECT_EQ(result->packageInfoV2Module, "runtime");
-    EXPECT_EQ(result->name, "TestApp");
-    EXPECT_EQ(result->schemaVersion, PACKAGE_INFO_VERSION);
-    EXPECT_EQ(result->size, 1024);
-    EXPECT_EQ(result->version, "1.0.0");
-
-    // 释放GFile
-    g_object_unref(gfile);
-}
-
-TEST_F(PackageInfoHandlerTest, parsePackageInfo_FromGFileInvalid)
-{
-    // 创建无效的JSON文件
-    std::string jsonContent = R"({
-        "invalid": "json content"
-    })";
-
-    std::string filePath = (tempDir / "invalid_gfile.json").string();
-    std::ofstream file(filePath);
-    ASSERT_TRUE(file.is_open());
-    file << jsonContent;
-    file.close();
-
-    // 创建GFile对象
-    GFile *gfile = g_file_new_for_path(filePath.c_str());
-
-    // 解析GFile
-    auto result = linglong::utils::parsePackageInfo(gfile);
-
-    // 验证解析失败
-    EXPECT_FALSE(result.has_value());
-
-    // 释放GFile
-    g_object_unref(gfile);
 }

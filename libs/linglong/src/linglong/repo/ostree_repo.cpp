@@ -26,8 +26,8 @@
 #include "linglong/utils/finally/finally.h"
 #include "linglong/utils/gkeyfile_wrapper.h"
 #include "linglong/utils/log/log.h"
-#include "linglong/utils/packageinfo_handler.h"
 #include "linglong/utils/serialize/json.h"
+#include "linglong/utils/serialize/packageinfo_handler.h"
 #include "linglong/utils/transaction.h"
 
 #include <gio/gio.h>
@@ -845,8 +845,8 @@ OSTreeRepo::importLayerDir(const package::LayerDir &dir,
 {
     LINGLONG_TRACE("import layer dir");
 
-    if (!dir.exists()) {
-        return LINGLONG_ERR(QString("layer directory %1 not exists").arg(dir.absolutePath()));
+    if (!dir.valid()) {
+        return LINGLONG_ERR(fmt::format("invalid layer directory {}", dir.path()));
     }
 
     auto info = dir.info();
@@ -859,7 +859,7 @@ OSTreeRepo::importLayerDir(const package::LayerDir &dir,
         return LINGLONG_ERR(reference);
     }
 
-    overlays.insert(overlays.begin(), dir.absolutePath().toStdString());
+    overlays.insert(overlays.begin(), dir.path());
 
     std::vector<GFile *> dirs;
     auto cleanRes = utils::finally::finally([&dirs] {
@@ -900,7 +900,7 @@ OSTreeRepo::importLayerDir(const package::LayerDir &dir,
         return LINGLONG_ERR(result);
     }
 
-    return package::LayerDir{ layerDir->absolutePath() };
+    return package::LayerDir{ layerDir->absolutePath().toStdString() };
 }
 
 [[nodiscard]] utils::error::Result<void> OSTreeRepo::push(const package::Reference &reference,
@@ -962,8 +962,8 @@ utils::error::Result<void> OSTreeRepo::pushToRemote(const std::string &remoteRep
     const auto tarFileName = fmt::format("{}.tgz", reference.id);
     const QString tarFilePath =
       QDir::cleanPath(tmpDir.filePath(QString::fromStdString(tarFileName)));
-    auto tarStdout = utils::Cmd("tar").exec(
-      { "-zcf", tarFilePath.toStdString(), "-C", layerDir->absolutePath().toStdString(), "." });
+    auto tarStdout =
+      utils::Cmd("tar").exec({ "-zcf", tarFilePath.toStdString(), "-C", layerDir->path(), "." });
     if (!tarStdout) {
         return LINGLONG_ERR(tarStdout);
     }
@@ -1062,15 +1062,17 @@ OSTreeRepo::undeployedLayer(const api::types::v1::RepositoryCacheLayersItem &lay
         return LINGLONG_OK;
     }
 
-    if (!layerDir->removeRecursively()) {
-        return LINGLONG_ERR(fmt::format("failed to remove layer dir {}", layerDir->absolutePath()));
+    std::error_code ec;
+    std::filesystem::remove_all(layerDir->path(), ec);
+    if (ec) {
+        return LINGLONG_ERR(fmt::format("failed to remove layer dir {}", layerDir->path()), ec);
     }
 
     // In older versions, LINGLONG_ROOT/layers/<commit> could be a symlink pointing to
     // LINGLONG_ROOT/layers/<appid>/<version>/<arch>.
     // This code attempts to clean up any empty parent directories up to `LINGLONG_ROOT/layers/
     // for compatibility,
-    QFileInfo dirInfo{ layerDir->absolutePath() };
+    QFileInfo dirInfo{ layerDir->path().c_str() };
     if (!dirInfo.isSymLink()) {
         return LINGLONG_OK;
     }
@@ -1089,7 +1091,7 @@ OSTreeRepo::undeployedLayer(const api::types::v1::RepositoryCacheLayersItem &lay
         }
     }
 
-    QFile::remove(layerDir->absolutePath());
+    QFile::remove(layerDir->path().c_str());
     return LINGLONG_OK;
 }
 
@@ -1318,7 +1320,12 @@ utils::error::Result<void> OSTreeRepo::pull(service::Task &taskContext,
     }
 
     g_autoptr(GFile) infoFile = g_file_resolve_relative_path(layerRootDir, "info.json");
-    auto info = utils::parsePackageInfo(infoFile);
+    g_clear_error(&gErr);
+    g_autofree gchar *content = nullptr;
+    if (!g_file_load_contents(infoFile, nullptr, &content, nullptr, nullptr, &gErr)) {
+        return LINGLONG_ERR("g_file_load_contents", gErr);
+    }
+    auto info = utils::serialize::parsePackageInfo(content);
     if (!info) {
         return LINGLONG_ERR(info);
     }
@@ -1462,7 +1469,7 @@ OSTreeRepo::getLayerCreateTime(const api::types::v1::RepositoryCacheLayersItem &
     if (!dir.has_value()) {
         return LINGLONG_ERR("get layer dir", dir);
     }
-    return QFileInfo(dir->absolutePath()).birthTime().toSecsSinceEpoch();
+    return QFileInfo(dir->path().c_str()).birthTime().toSecsSinceEpoch();
 }
 
 utils::error::Result<std::vector<api::types::v1::PackageInfoV2>>
@@ -1775,7 +1782,7 @@ void OSTreeRepo::unexportReference(const package::Reference &ref) noexcept
         return;
     }
 
-    this->unexportReference(layerDir->absolutePath().toStdString());
+    this->unexportReference(layerDir->path());
 }
 
 void OSTreeRepo::exportReference(const package::Reference &ref) noexcept
@@ -1982,7 +1989,7 @@ OSTreeRepo::exportEntries(const std::filesystem::path &rootEntriesDir,
     }
     std::error_code ec;
     // 检查目录是否存在
-    std::filesystem::path appEntriesDir = layerDir->absoluteFilePath("entries").toStdString();
+    std::filesystem::path appEntriesDir = layerDir->path() / "entries";
     auto exists = std::filesystem::exists(appEntriesDir, ec);
     if (ec) {
         return LINGLONG_ERR("check appEntriesDir exists", ec);
@@ -2294,7 +2301,7 @@ auto OSTreeRepo::getLayerDir(const api::types::v1::RepositoryCacheLayersItem &la
     if (!dir.exists()) {
         return LINGLONG_ERR(dir.absolutePath() + " doesn't exist");
     }
-    return dir.absolutePath();
+    return std::filesystem::path{ dir.absolutePath().toStdString() };
 }
 
 auto OSTreeRepo::getLayerDir(const package::Reference &ref,
@@ -2404,7 +2411,7 @@ utils::error::Result<package::LayerDir> OSTreeRepo::getMergedModuleDir(
         if (item.binaryCommit == layer.commit) {
             QDir dir = mergedDir.filePath(item.id.c_str());
             if (dir.exists()) {
-                return dir.path();
+                return std::filesystem::path{ dir.path().toStdString() };
             }
 
             qWarning().nospace() << "not exists merged dir" << dir;
@@ -2476,7 +2483,7 @@ utils::error::Result<package::LayerDir> OSTreeRepo::createTempMergedModuleDir(
             return LINGLONG_ERR(QString("ostree_repo_checkout_at %1").arg(mergeTmp), gErr);
         }
     }
-    return mergeTmp;
+    return std::filesystem::path{ mergeTmp.toStdString() };
 }
 
 utils::error::Result<void> OSTreeRepo::mergeModules() const noexcept

@@ -23,15 +23,18 @@
 #include "linglong/utils/cmd.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/file.h"
+#include "linglong/utils/finally/finally.h"
 #include "linglong/utils/global/initialize.h"
 #include "linglong/utils/log/log.h"
-#include "linglong/utils/packageinfo_handler.h"
 #include "linglong/utils/serialize/json.h"
+#include "linglong/utils/serialize/packageinfo_handler.h"
 #include "ocppi/runtime/RunOption.hpp"
 #include "source_fetcher.h"
 
+#include <fmt/ranges.h>
 #include <nlohmann/json.hpp>
 #include <qdebug.h>
+#include <uuid.h>
 
 #include <QDir>
 #include <QRegularExpression>
@@ -1221,35 +1224,26 @@ utils::error::Result<void> Builder::commitToLocalRepo() noexcept
                    .toStdString(),
                  2);
     for (const auto &module : std::as_const(packageModules)) {
-        QDir moduleOutput(QString::fromStdString(internalDir / "output" / module));
+        auto moduleOutput = internalDir / "output" / module;
         info.packageInfoV2Module = module;
-        auto ret =
-          linglong::utils::calculateDirectorySize(moduleOutput.absolutePath().toStdString());
+        auto ret = linglong::utils::calculateDirectorySize(moduleOutput);
         if (!ret) {
             return LINGLONG_ERR(ret);
         }
         info.size = static_cast<int64_t>(*ret);
 
-        QFile infoFile{ moduleOutput.filePath("info.json") };
-        if (!infoFile.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-            return LINGLONG_ERR(infoFile);
+        auto res = utils::writeFile(moduleOutput / "info.json", nlohmann::json(info).dump());
+        if (!res) {
+            return LINGLONG_ERR(res);
         }
-
-        infoFile.write(nlohmann::json(info).dump().c_str());
-        if (infoFile.error() != QFile::NoError) {
-            return LINGLONG_ERR(infoFile);
-        }
-        infoFile.close();
 
         LogD("copy linglong.yaml to output");
 
         std::error_code ec;
-        std::filesystem::copy(this->projectYamlFile,
-                              moduleOutput.filePath("linglong.yaml").toStdString(),
-                              ec);
-        if (ec) {
-            return LINGLONG_ERR(
-              QString("copy linglong.yaml to output failed: %1").arg(ec.message().c_str()));
+        if (!std::filesystem::copy_file(this->projectYamlFile,
+                                        moduleOutput / "linglong.yaml",
+                                        ec)) {
+            return LINGLONG_ERR("copy linglong.yaml to output failed", ec);
         }
         LogD("import module to layers");
         printReplacedText(QString("%1%2%3%4")
@@ -1259,7 +1253,7 @@ utils::error::Result<void> Builder::commitToLocalRepo() noexcept
                             .arg("committing")
                             .toStdString(),
                           2);
-        auto localLayer = this->repo.importLayerDir(moduleOutput.path());
+        auto localLayer = this->repo.importLayerDir(moduleOutput);
         if (!localLayer) {
             return LINGLONG_ERR(localLayer);
         }
@@ -1361,8 +1355,31 @@ utils::error::Result<void> Builder::exportUAB(const ExportOption &option,
     LINGLONG_TRACE("export uab file");
 
     auto exportWorkingDir = this->workingDir / ".uabBuild";
-    package::UABPackager packager{ QDir(QString::fromStdString(workingDir)),
-                                   QString::fromStdString(exportWorkingDir) };
+    auto res = utils::ensureDirectory(exportWorkingDir);
+    if (!res) {
+        return LINGLONG_ERR("failed to ensure export working directory", res);
+    }
+    auto removeWorkingDir = utils::finally::finally([&exportWorkingDir]() {
+        std::error_code ec;
+        auto *env = ::getenv("LINGLONG_UAB_DEBUG");
+        if (env != nullptr) {
+            uuid_t uuid;
+            uuid_generate_random(uuid);
+            auto randomName = fmt::format("{}-{}", exportWorkingDir, fmt::join(uuid, ""));
+            std::filesystem::rename(exportWorkingDir, randomName, ec);
+            if (!ec) {
+                return;
+            }
+
+            LogW("couldn't rename export working directory {} to {}", exportWorkingDir, randomName);
+        }
+
+        std::filesystem::remove_all(exportWorkingDir, ec);
+        if (ec) {
+            LogE("couldn't remove export working directory, please remove it manually.");
+        }
+    });
+    package::UABPackager packager(workingDir, exportWorkingDir);
     auto exportOpts = option;
     if (exportOpts.compressor.empty()) {
         LogI("Compressor not specified, defaulting to lz4 for UAB export.");
@@ -1444,12 +1461,12 @@ utils::error::Result<void> Builder::exportUAB(const ExportOption &option,
             std::error_code ec;
             if (std::filesystem::exists(exportWorkingDir / "uab-header", ec)
                 && std::filesystem::exists(exportWorkingDir / "uab-loader", ec)) {
-                packager.setDefaultHeader(QString::fromStdString(exportWorkingDir / "uab-header"));
-                packager.setDefaultLoader(QString::fromStdString(exportWorkingDir / "uab-loader"));
+                packager.setDefaultHeader(exportWorkingDir / "uab-header");
+                packager.setDefaultLoader(exportWorkingDir / "uab-loader");
             }
 
             if (!distributedOnly && std::filesystem::exists(exportWorkingDir / "ll-box", ec)) {
-                packager.setDefaultBox(QString::fromStdString(exportWorkingDir / "ll-box"));
+                packager.setDefaultBox(exportWorkingDir / "ll-box");
             }
         } else {
             LogW("run builder utils error: {}", res.error());
@@ -1466,35 +1483,34 @@ utils::error::Result<void> Builder::exportUAB(const ExportOption &option,
 
     if (ref) {
         auto utilsBundler =
-          [&ref, &exportOpts, this](const QString &bundleFile,
-                                    const QString &bundleDir) -> utils::error::Result<void> {
+          [&ref, &exportOpts, this](
+            const std::filesystem::path &bundleFile,
+            const std::filesystem::path &bundleDir) -> utils::error::Result<void> {
             LINGLONG_TRACE("use utils to bundle file");
 
             std::error_code ec;
-            const auto relativeBundleFile = QString::fromStdString(
-              std::filesystem::relative(bundleFile.toStdString(), workingDir, ec));
+            const auto relativeBundleFile = std::filesystem::relative(bundleFile, workingDir, ec);
             if (ec) {
                 return LINGLONG_ERR(
                   fmt::format("failed to get relative path {}: {}", bundleFile, ec.message())
                     .c_str());
             }
-            const auto relativeBundleDir = QString::fromStdString(
-              std::filesystem::relative(bundleDir.toStdString(), workingDir, ec));
+            const auto relativeBundleDir = std::filesystem::relative(bundleDir, workingDir, ec);
             if (ec) {
                 return LINGLONG_ERR(
                   fmt::format("failed to get relative path {}: {}", bundleDir, ec.message())
                     .c_str());
             }
-            if (relativeBundleFile.startsWith("../") || relativeBundleDir.startsWith("../")) {
+            if (common::strings::starts_with(relativeBundleFile.string(), "../")
+                || common::strings::starts_with(relativeBundleDir.string(), "../")) {
                 return LINGLONG_ERR("file must be in project directory");
             }
             std::vector<std::string> args{
                 "/opt/apps/cn.org.linyaps.builder.utils/files/bin/ll-builder-export",
                 "--packdir",
-                QString("%1:%2")
-                  .arg(QDir("/project").absoluteFilePath(relativeBundleDir),
-                       QDir("/project").absoluteFilePath(relativeBundleFile))
-                  .toStdString()
+                fmt::format("{}:{}",
+                            std::filesystem::path{ "/project" } / relativeBundleDir,
+                            std::filesystem::path{ "/project" } / relativeBundleFile)
             };
 
             args.emplace_back("-z");
@@ -1506,15 +1522,19 @@ utils::error::Result<void> Builder::exportUAB(const ExportOption &option,
         LogW("cn.org.linyaps.builder.utils not found, using system tools");
     }
 
-    QString uabFile;
+    std::filesystem::path uabFile;
     if (!outputFile.empty()) {
         if (outputFile.is_absolute()) {
-            uabFile = QString::fromStdString(outputFile);
+            uabFile = outputFile;
         } else {
-            uabFile = QDir::current().absoluteFilePath(QString::fromStdString(outputFile));
+            std::error_code ec;
+            uabFile = std::filesystem::canonical(outputFile, ec);
+            if (ec) {
+                return LINGLONG_ERR(fmt::format("failed to get canonical path {}", outputFile), ec);
+            }
         }
     } else {
-        uabFile = QString::fromStdString(workingDir / uabExportFilename(*curRef));
+        uabFile = workingDir / uabExportFilename(*curRef);
     }
 
     // export single ref
@@ -1697,8 +1717,8 @@ utils::error::Result<void> Builder::extractLayer(const QString &layerPath,
         return LINGLONG_ERR(layerDir);
     }
 
-    auto output = utils::Cmd("cp").exec(
-      { "-r", layerDir->absolutePath().toStdString(), destDir.absolutePath().toStdString() });
+    auto output =
+      utils::Cmd("cp").exec({ "-r", layerDir->path(), destDir.absolutePath().toStdString() });
     if (!output) {
         return LINGLONG_ERR(output);
     }
@@ -1727,10 +1747,12 @@ linglong::utils::error::Result<void> Builder::push(const std::string &module,
     return repo.pushToRemote(repoName, repoUrl, *ref, module);
 }
 
-utils::error::Result<void> Builder::importLayer(repo::OSTreeRepo &ostree, const QString &path)
+utils::error::Result<void> Builder::importLayer(repo::OSTreeRepo &ostree,
+                                                const std::filesystem::path &path)
 {
     LINGLONG_TRACE("import layer");
-    if (std::filesystem::is_directory(path.toStdString())) {
+    std::error_code ec;
+    if (std::filesystem::is_directory(path, ec)) {
         auto layerDir = package::LayerDir(path);
         auto info = layerDir.info();
         if (!info) {
@@ -1742,7 +1764,7 @@ utils::error::Result<void> Builder::importLayer(repo::OSTreeRepo &ostree, const 
         }
         return LINGLONG_OK;
     }
-    auto layerFile = package::LayerFile::New(path);
+    auto layerFile = package::LayerFile::New(path.c_str());
     if (!layerFile) {
         return LINGLONG_ERR(layerFile);
     }

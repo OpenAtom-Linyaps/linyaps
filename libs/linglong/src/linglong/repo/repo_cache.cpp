@@ -8,8 +8,9 @@
 
 #include "configure.h"
 #include "linglong/package/version.h"
-#include "linglong/utils/packageinfo_handler.h"
+#include "linglong/utils/log/log.h"
 #include "linglong/utils/serialize/json.h"
+#include "linglong/utils/serialize/packageinfo_handler.h"
 
 #include <fstream>
 #include <iostream>
@@ -124,9 +125,14 @@ utils::error::Result<void> RepoCache::rebuildCache(const api::types::v1::RepoCon
 
         // ostree ls --repo repo ref, the file path of info.json is /info.json.
         g_autoptr(GFile) infoFile = g_file_resolve_relative_path(root, "info.json");
-        auto info = utils::parsePackageInfo(infoFile);
+        g_clear_error(&gErr);
+        g_autofree gchar *content = nullptr;
+        if (!g_file_load_contents(infoFile, nullptr, &content, nullptr, nullptr, &gErr)) {
+            return LINGLONG_ERR("g_file_load_contents", gErr);
+        }
+        auto info = utils::serialize::parsePackageInfo(content);
         if (!info) {
-            qWarning() << "invalid info.json:" << info.error();
+            LogW("invalid info.json: {}", info.error());
             continue;
         }
 

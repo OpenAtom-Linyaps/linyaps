@@ -475,5 +475,3 @@ inline QDebug operator<<(QDebug debug, const std::string &str)
     debug.noquote().nospace() << QString::fromStdString(str);
     return debug;
 }
-
-std::string errorString(int err);

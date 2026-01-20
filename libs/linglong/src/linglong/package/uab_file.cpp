@@ -5,6 +5,7 @@
 #include "linglong/package/uab_file.h"
 
 #include "linglong/api/types/v1/Generators.hpp"
+#include "linglong/common/error.h"
 #include "linglong/utils/cmd.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/finally/finally.h"
@@ -342,7 +343,7 @@ utils::error::Result<std::filesystem::path> UABFile::extractSignData() noexcept
                 continue;
             }
             return LINGLONG_ERR(
-              fmt::format("read from sign section error: {}", ::errorString(errno)));
+              fmt::format("read from sign section error: {}", common::error::errorString(errno)));
         }
 
         while (true) {
@@ -353,7 +354,7 @@ utils::error::Result<std::filesystem::path> UABFile::extractSignData() noexcept
                     continue;
                 }
                 return LINGLONG_ERR(
-                  fmt::format("write to sign.tar error: {}", ::errorString(errno)));
+                  fmt::format("write to sign.tar error: {}", common::error::errorString(errno)));
             }
 
             if (writeBytes != readBytes) {
@@ -366,12 +367,14 @@ utils::error::Result<std::filesystem::path> UABFile::extractSignData() noexcept
     }
 
     if (::fsync(tarFd) == -1) {
-        return LINGLONG_ERR(fmt::format("fsync sign.tar error: {}", ::errorString(errno)));
+        return LINGLONG_ERR(
+          fmt::format("fsync sign.tar error: {}", common::error::errorString(errno)));
     }
 
     if (::close(tarFd) == -1) {
         tarFd = -1; // no need to try twice
-        return LINGLONG_ERR(fmt::format("failed to close tar: {}", ::errorString(errno)));
+        return LINGLONG_ERR(
+          fmt::format("failed to close tar: {}", common::error::errorString(errno)));
     }
     tarFd = -1;
 
@@ -415,7 +418,7 @@ utils::error::Result<void> UABFile::saveErofsToFile(const std::string &path)
         auto bytesRead = ::read(handle(), buf.data(), readBytes);
         if (bytesRead == -1) {
             return LINGLONG_ERR(
-              fmt::format("read from bundle section error: {}", ::errorString(errno)));
+              fmt::format("read from bundle section error: {}", common::error::errorString(errno)));
         }
         ofs.write(buf.data(), bytesRead);
         if (ofs.fail()) {

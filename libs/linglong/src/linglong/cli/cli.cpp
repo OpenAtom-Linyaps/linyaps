@@ -25,6 +25,7 @@
 #include "linglong/api/types/v1/UpgradeListResult.hpp"
 #include "linglong/cli/printer.h"
 #include "linglong/common/dir.h"
+#include "linglong/common/error.h"
 #include "linglong/common/strings.h"
 #include "linglong/oci-cfg-generators/container_cfg_builder.h"
 #include "linglong/package/layer_file.h"
@@ -53,7 +54,6 @@
 
 #include <algorithm>
 #include <cassert>
-#include <charconv>
 #include <cstdint>
 #include <cstdlib>
 #include <filesystem>
@@ -483,7 +483,7 @@ int Cli::run(const RunOptions &options)
     // placeholder file
     auto fd = ::open(pidFile.c_str(), O_WRONLY | O_CREAT | O_EXCL, mode);
     if (fd == -1) {
-        LogE("create file {} error: {}", pidFile, errorString(errno));
+        LogE("create file {} error: {}", pidFile, common::error::errorString(errno));
         QCoreApplication::exit(-1);
         return -1;
     }
@@ -1711,7 +1711,7 @@ int Cli::content(const ContentOptions &options)
         if (real != nullptr) {
             target = real;
         } else {
-            LogE("resolve symlink {} error: {}", file, errorString(errno));
+            LogE("resolve symlink {} error: {}", file, common::error::errorString(errno));
         }
     }
 
@@ -1991,7 +1991,7 @@ Cli::RequestDirectories(const api::types::v1::PackageInfoV2 &info) noexcept
 
     auto fd = ::shm_open(info.id.c_str(), O_RDWR | O_CREAT, 0600);
     if (fd < 0) {
-        return LINGLONG_ERR("shm_open error:" + errorString(errno));
+        return LINGLONG_ERR("shm_open error:" + common::error::errorString(errno));
     }
     auto closeFd = utils::finally::finally([fd] {
         ::close(fd);
@@ -2016,7 +2016,7 @@ Cli::RequestDirectories(const api::types::v1::PackageInfoV2 &info) noexcept
                 continue;
             }
 
-            return LINGLONG_ERR("fcntl lock error: " + errorString(errno));
+            return LINGLONG_ERR("fcntl lock error: " + common::error::errorString(errno));
         }
 
         if (!anotherRunning) {
@@ -2026,7 +2026,7 @@ Cli::RequestDirectories(const api::types::v1::PackageInfoV2 &info) noexcept
         lock.l_type = F_UNLCK;
         ret = ::fcntl(fd, F_SETLK, &lock);
         if (ret == -1) {
-            return LINGLONG_ERR("fcntl unlock error: " + errorString(errno));
+            return LINGLONG_ERR("fcntl unlock error: " + common::error::errorString(errno));
         }
 
         return LINGLONG_OK;
@@ -2036,11 +2036,11 @@ Cli::RequestDirectories(const api::types::v1::PackageInfoV2 &info) noexcept
     auto releaseResource = utils::finally::finally([&info, &lock, fd] {
         lock.l_type = F_UNLCK;
         if (::fcntl(fd, F_SETLK, &lock) == -1) {
-            LogD("failed to unlock mem file: {}", errorString(errno));
+            LogD("failed to unlock mem file: {}", common::error::errorString(errno));
         }
 
         if (::shm_unlink(info.id.c_str()) == -1) {
-            LogD("shm_unlink error: {}", errorString(errno));
+            LogD("shm_unlink error: {}", common::error::errorString(errno));
         }
     });
 

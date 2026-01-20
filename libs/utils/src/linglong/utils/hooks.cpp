@@ -7,6 +7,7 @@
 #include "hooks.h"
 
 #include "configure.h"
+#include "linglong/common/error.h"
 #include "linglong/utils/env.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/log/log.h"
@@ -67,7 +68,7 @@ utils::error::Result<void> executeHookCommands(
         if (ret == -1) {
             return LINGLONG_ERR(fmt::format("Failed to execute command: '{}'. System error: {}.",
                                             fullCommand,
-                                            errorString(errno)));
+                                            common::error::errorString(errno)));
         }
 
         if (!WIFEXITED(ret)) {
@@ -156,8 +157,9 @@ utils::error::Result<void> InstallHookManager::executeInstallHooks(int fd) noexc
     auto size = readlink(oss.str().c_str(), pathBuf.data(), PATH_MAX);
 
     if (size == -1) {
-        return LINGLONG_ERR(
-          fmt::format("Failed to read file link for fd {}: {}", fd, errorString(errno)));
+        return LINGLONG_ERR(fmt::format("Failed to read file link for fd {}: {}",
+                                        fd,
+                                        common::error::errorString(errno)));
     }
 
     pathBuf[size] = '\0';

@@ -16,6 +16,8 @@ pfl_add_library(
   src/linglong/common/display.h
   src/linglong/common/error.h
   src/linglong/common/error.cpp
+  src/linglong/common/socket.cpp
+  src/linglong/common/socket.h
   src/linglong/common/strings.cpp
   src/linglong/common/strings.h
   src/linglong/common/xdg.cpp

@@ -4,11 +4,11 @@
 
 #include "file.h"
 
+#include "linglong/common/error.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/log/log.h"
 
 #include <cstdint>
-#include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <string>
@@ -31,13 +31,13 @@ linglong::utils::error::Result<std::string> readFile(const std::filesystem::path
     }
     std::ifstream in{ filepath };
     if (!in.is_open()) {
-        auto msg = std::string("open file:") + errorString(errno);
+        auto msg = std::string("open file:") + common::error::errorString(errno);
         return LINGLONG_ERR(msg.c_str());
     }
     std::stringstream buffer;
     buffer << in.rdbuf();
     if (buffer.bad()) {
-        auto msg = std::string("read file: ") + errorString(errno);
+        auto msg = std::string("read file: ") + common::error::errorString(errno);
         return LINGLONG_ERR(msg.c_str());
     }
     return buffer.str();
@@ -51,11 +51,12 @@ linglong::utils::error::Result<void> writeFile(const std::filesystem::path &file
     std::ofstream out{ filepath };
     if (!out.is_open()) {
         return LINGLONG_ERR(
-          fmt::format("failed to open file {}: {}", filepath, errorString(errno)));
+          fmt::format("failed to open file {}: {}", filepath, common::error::errorString(errno)));
     }
     out << content;
     if (out.bad()) {
-        return LINGLONG_ERR(fmt::format("failed to write file {}", errorString(errno)));
+        return LINGLONG_ERR(
+          fmt::format("failed to write file {}", common::error::errorString(errno)));
     }
     return LINGLONG_OK;
 }
@@ -87,7 +88,7 @@ linglong::utils::error::Result<void> concatFile(const std::filesystem::path &sou
     ofs << ifs.rdbuf();
     if (ofs.bad()) {
         return LINGLONG_ERR(
-          fmt::format("failed to write target {} {}", target, errorString(errno)));
+          fmt::format("failed to write target {} {}", target, common::error::errorString(errno)));
     }
     return LINGLONG_OK;
 }
@@ -113,7 +114,7 @@ calculateDirectorySize(const std::filesystem::path &dir) noexcept
 
             if (::lstat64(path.c_str(), &st) == -1) {
                 return LINGLONG_ERR(
-                  fmt::format("failed to get symlink size: {}", errorString(errno)));
+                  fmt::format("failed to get symlink size: {}", common::error::errorString(errno)));
             }
 
             size += st.st_size;
@@ -129,8 +130,8 @@ calculateDirectorySize(const std::filesystem::path &dir) noexcept
             struct stat64 st{};
 
             if (::stat64(path.c_str(), &st) == -1) {
-                return LINGLONG_ERR(
-                  fmt::format("failed to get directory size: {}", errorString(errno)));
+                return LINGLONG_ERR(fmt::format("failed to get directory size: {}",
+                                                common::error::errorString(errno)));
             }
             size += st.st_size;
             continue;

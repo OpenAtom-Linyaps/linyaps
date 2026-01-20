@@ -7,6 +7,7 @@
 #include "cmd.h"
 
 #include "configure.h"
+#include "linglong/common/error.h"
 #include "linglong/common/strings.h"
 #include "linglong/utils/finally/finally.h"
 #include "linglong/utils/log/log.h"
@@ -79,7 +80,7 @@ utils::error::Result<std::string> Cmd::exec(const std::vector<std::string> &args
 
     int stdoutPipe[2];
     if (pipe(stdoutPipe) == -1) {
-        return LINGLONG_ERR(fmt::format("pipe error: {}", errorString(errno)));
+        return LINGLONG_ERR(fmt::format("pipe error: {}", common::error::errorString(errno)));
     }
     auto stdoutPipeCloser = utils::finally::finally([stdoutPipe]() {
         close(stdoutPipe[0]);
@@ -88,7 +89,7 @@ utils::error::Result<std::string> Cmd::exec(const std::vector<std::string> &args
 
     int stdinPipe[2];
     if (pipe(stdinPipe) == -1) {
-        return LINGLONG_ERR(fmt::format("pipe error: {}", errorString(errno)));
+        return LINGLONG_ERR(fmt::format("pipe error: {}", common::error::errorString(errno)));
     }
     auto stdinPipeCloser = utils::finally::finally([stdinPipe]() {
         close(stdinPipe[0]);
@@ -145,7 +146,7 @@ utils::error::Result<std::string> Cmd::exec(const std::vector<std::string> &args
 
     pid_t pid = fork();
     if (pid == -1) {
-        return LINGLONG_ERR(fmt::format("fork error: {}", errorString(errno)));
+        return LINGLONG_ERR(fmt::format("fork error: {}", common::error::errorString(errno)));
     }
 
     // child process
@@ -169,7 +170,7 @@ utils::error::Result<std::string> Cmd::exec(const std::vector<std::string> &args
 
         execvpe(commandPath.c_str(), argv.data(), envp.data());
 
-        std::cout << "execvpe failed: " << errorString(errno) << std::endl;
+        std::cout << "execvpe failed: " << common::error::errorString(errno) << std::endl;
 
         _exit(1);
     }
@@ -186,12 +187,14 @@ utils::error::Result<std::string> Cmd::exec(const std::vector<std::string> &args
         return false;
     };
     if (!setNonBlock(stdoutPipe[0]) || !setNonBlock(stdinPipe[1])) {
-        return LINGLONG_ERR(fmt::format("set non block error: {}", errorString(errno)));
+        return LINGLONG_ERR(
+          fmt::format("set non block error: {}", common::error::errorString(errno)));
     }
 
     int epfd = epoll_create1(O_CLOEXEC);
     if (epfd == -1) {
-        return LINGLONG_ERR(fmt::format("epoll_create error: {}", errorString(errno)));
+        return LINGLONG_ERR(
+          fmt::format("epoll_create error: {}", common::error::errorString(errno)));
     }
     auto epfdCloser = utils::finally::finally([epfd]() {
         close(epfd);
@@ -203,7 +206,8 @@ utils::error::Result<std::string> Cmd::exec(const std::vector<std::string> &args
     ev.events = EPOLLIN;
     ev.data.fd = stdoutPipe[0];
     if (epoll_ctl(epfd, EPOLL_CTL_ADD, stdoutPipe[0], &ev) == -1) {
-        return LINGLONG_ERR(fmt::format("epoll_ctl stdout error: {}", errorString(errno)));
+        return LINGLONG_ERR(
+          fmt::format("epoll_ctl stdout error: {}", common::error::errorString(errno)));
     }
     activeFds++;
 
@@ -212,7 +216,8 @@ utils::error::Result<std::string> Cmd::exec(const std::vector<std::string> &args
         ev.events = EPOLLOUT;
         ev.data.fd = stdinPipe[1];
         if (epoll_ctl(epfd, EPOLL_CTL_ADD, stdinPipe[1], &ev) == -1) {
-            return LINGLONG_ERR(fmt::format("epoll_ctl stdin error: {}", errorString(errno)));
+            return LINGLONG_ERR(
+              fmt::format("epoll_ctl stdin error: {}", common::error::errorString(errno)));
         }
         activeFds++;
     } else {
@@ -230,7 +235,8 @@ utils::error::Result<std::string> Cmd::exec(const std::vector<std::string> &args
         if (nfds == -1) {
             if (errno == EINTR)
                 continue;
-            return LINGLONG_ERR(fmt::format("epoll_wait error: {}", errorString(errno)));
+            return LINGLONG_ERR(
+              fmt::format("epoll_wait error: {}", common::error::errorString(errno)));
         }
 
         for (int i = 0; i < nfds; ++i) {
@@ -286,7 +292,7 @@ utils::error::Result<std::string> Cmd::exec(const std::vector<std::string> &args
     while (waitpid(pid, &status, 0) == -1) {
         if (errno == EINTR)
             continue;
-        return LINGLONG_ERR(fmt::format("waitpid error: {}", errorString(errno)));
+        return LINGLONG_ERR(fmt::format("waitpid error: {}", common::error::errorString(errno)));
     }
 
     if (WIFEXITED(status)) {

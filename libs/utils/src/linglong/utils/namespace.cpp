@@ -4,6 +4,7 @@
 
 #include "namespace.h"
 
+#include "linglong/common/error.h"
 #include "linglong/utils/cmd.h"
 #include "linglong/utils/finally/finally.h"
 #include "linglong/utils/log/log.h"
@@ -135,7 +136,7 @@ utils::error::Result<int> runInNamespace(int argc, char **argv)
                 continue;
             }
 
-            LogW("failed to write data to sync socket: {}", errorString(errno));
+            LogW("failed to write data to sync socket: {}", common::error::errorString(errno));
             return -1;
         }
 
@@ -147,7 +148,7 @@ utils::error::Result<int> runInNamespace(int argc, char **argv)
                 continue;
             }
 
-            LogW("failed to read data from sync socket: {}", errorString(errno));
+            LogW("failed to read data from sync socket: {}", common::error::errorString(errno));
             return -1;
         }
 
@@ -158,13 +159,14 @@ utils::error::Result<int> runInNamespace(int argc, char **argv)
 
         execvp(runInNamespaceArgs->argv[0], runInNamespaceArgs->argv);
 
-        LogE("execvp failed: {}", errorString(errno));
+        LogE("execvp failed: {}", common::error::errorString(errno));
         return -1;
     };
 
     std::array<int, 2> pair{};
     if (socketpair(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0, pair.data()) == -1) {
-        return LINGLONG_ERR(fmt::format("socketpair failed: {}", errorString(errno)));
+        return LINGLONG_ERR(
+          fmt::format("socketpair failed: {}", common::error::errorString(errno)));
     }
 
     auto closeSocket = linglong::utils::finally::finally([&pair]() {
@@ -185,8 +187,8 @@ utils::error::Result<int> runInNamespace(int argc, char **argv)
                       -1,
                       0);
     if (addr == MAP_FAILED) {
-        return LINGLONG_ERR(
-          fmt::format("failed to create stack for child process: {}", errorString(errno)));
+        return LINGLONG_ERR(fmt::format("failed to create stack for child process: {}",
+                                        common::error::errorString(errno)));
     }
 
     auto recycle = linglong::utils::finally::finally([addr]() {
@@ -202,7 +204,7 @@ utils::error::Result<int> runInNamespace(int argc, char **argv)
     pair[1] = -1;
 
     if (pid < 0) {
-        return LINGLONG_ERR(fmt::format("clone failed: {}", errorString(errno)));
+        return LINGLONG_ERR(fmt::format("clone failed: {}", common::error::errorString(errno)));
     }
 
     LogD("waiting child {}", pid);
@@ -213,7 +215,7 @@ utils::error::Result<int> runInNamespace(int argc, char **argv)
             continue;
         }
 
-        return LINGLONG_ERR(fmt::format("read failed: {}", errorString(errno)));
+        return LINGLONG_ERR(fmt::format("read failed: {}", common::error::errorString(errno)));
     }
 
     auto mappingTool = [](bool isUid, pid_t pid) -> utils::error::Result<void> {
@@ -276,7 +278,8 @@ utils::error::Result<int> runInNamespace(int argc, char **argv)
                 continue;
             }
 
-            return LINGLONG_ERR(fmt::format("waitpid failed {}", errorString(errno)));
+            return LINGLONG_ERR(
+              fmt::format("waitpid failed {}", common::error::errorString(errno)));
         }
 
         if (WIFEXITED(status)) {

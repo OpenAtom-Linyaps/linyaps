@@ -11,6 +11,7 @@
 #include "linglong/cli/dummy_notifier.h"
 #include "linglong/cli/json_printer.h"
 #include "linglong/cli/terminal_notifier.h"
+#include "linglong/common/error.h"
 #include "linglong/repo/config.h"
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/runtime/container_builder.h"
@@ -112,7 +113,7 @@ int lockCheck() noexcept
             return 0;
         }
 
-        qCritical() << "failed to open lock" << lock << errorString(errno);
+        LogE("failed to open lock {}: {}", lock, linglong::common::error::errorString(errno));
         return -1;
     }
 

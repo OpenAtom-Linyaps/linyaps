@@ -74,29 +74,33 @@ TEST_F(SocketFdTest, InvalidFileDescriptor)
 
 TEST_F(SocketFdTest, EmptyAncillaryData)
 {
-    if (fork() == 0) {
+    auto child = fork();
+    ASSERT_NE(child, -1);
+    if (child == 0) {
         close(sv[1]);
         std::string data = "just-text-no-fd";
         ASSERT_NE(write(sv[0], data.data(), data.size()), -1);
         close(sv[0]);
-        _exit(0);
+        _exit(EXIT_SUCCESS);
     }
 
     close(sv[0]);
     auto res = recvFdWithPayload(sv[1], 1024);
     EXPECT_FALSE(res.has_value());
-    wait(nullptr);
+    waitpid(child, nullptr, 0);
 }
 
 TEST_F(SocketFdTest, PayloadBufferTruncation)
 {
     const std::string long_payload(200, 'Z');
-    if (fork() == 0) {
+    auto child = fork();
+    ASSERT_NE(child, -1);
+    if (child == 0) {
         close(sv[1]);
         auto ret = sendFdWithPayload(sv[0], STDOUT_FILENO, long_payload);
         EXPECT_TRUE(ret) << ret.error();
         close(sv[0]);
-        _exit(0);
+        _exit(EXIT_SUCCESS);
     }
     close(sv[0]);
 
@@ -109,15 +113,20 @@ TEST_F(SocketFdTest, PayloadBufferTruncation)
         close(res->fd);
     }
 
-    wait(nullptr);
+    waitpid(child, nullptr, 0);
 }
 
 TEST_F(SocketFdTest, SignalInterruptionRecovery)
 {
-    auto handler = signal(SIGUSR1, [](int) { });
-    ASSERT_NE(handler, SIG_ERR);
+    struct sigaction sa{};
+    sa.sa_handler = []([[maybe_unused]] int sig) -> void { };
+    sigemptyset(&sa.sa_mask);
+    struct sigaction oldsa{};
+    ASSERT_NE(-1, sigaction(SIGUSR1, &sa, &oldsa));
 
-    if (fork() == 0) {
+    auto child = fork();
+    ASSERT_NE(child, -1);
+    if (child == 0) {
         close(sv[1]);
         usleep(50000);
         kill(getppid(), SIGUSR1);
@@ -125,7 +134,7 @@ TEST_F(SocketFdTest, SignalInterruptionRecovery)
         auto ret = sendFdWithPayload(sv[0], STDERR_FILENO, "recovered");
         EXPECT_TRUE(ret) << ret.error();
         close(sv[0]);
-        _exit(0);
+        _exit(EXIT_SUCCESS);
     }
 
     close(sv[0]);
@@ -137,22 +146,24 @@ TEST_F(SocketFdTest, SignalInterruptionRecovery)
         close(res->fd);
     }
 
-    wait(nullptr);
+    waitpid(child, nullptr, 0);
 
-    ASSERT_NE(signal(SIGUSR1, handler), SIG_ERR);
+    ASSERT_NE(-1, sigaction(SIGUSR1, &oldsa, nullptr));
 }
 
 TEST_F(SocketFdTest, PeerClosedBeforeSending)
 {
-    if (fork() == 0) {
+    auto child = fork();
+    ASSERT_NE(child, -1);
+    if (child == 0) {
         close(sv[1]);
         close(sv[0]);
-        _exit(0);
+        _exit(EXIT_SUCCESS);
     }
     close(sv[0]);
     auto res = recvFdWithPayload(sv[1], 1024);
     EXPECT_FALSE(res.has_value());
-    wait(nullptr);
+    waitpid(child, nullptr, 0);
 }
 
 TEST_F(SocketFdTest, SendInvalidFdHandle)
@@ -164,11 +175,12 @@ TEST_F(SocketFdTest, SendInvalidFdHandle)
 TEST_F(SocketFdTest, LargePayloadHandling)
 {
     const std::string large_payload(65536, 'B');
-    if (fork() == 0) {
+    auto child = fork();
+    if (child == 0) {
         close(sv[1]);
         auto ret = sendFdWithPayload(sv[0], STDIN_FILENO, large_payload);
         close(sv[0]);
-        _exit(0);
+        _exit(EXIT_SUCCESS);
     }
     close(sv[0]);
     auto res = recvFdWithPayload(sv[1], 70000);
@@ -179,5 +191,5 @@ TEST_F(SocketFdTest, LargePayloadHandling)
         close(res->fd);
     }
 
-    wait(nullptr);
+    waitpid(child, nullptr, 0);
 }

@@ -18,6 +18,7 @@ pfl_add_executable(
   src/linglong/builder/source_fetcher_test.cpp
   src/linglong/cli/cli_test.cpp
   src/linglong/common/strings_test.cpp
+  src/linglong/common/socket_test.cpp
   src/linglong/common/xdg_test.cpp
   src/linglong/mocks/layer_packager_mock.h
   src/linglong/mocks/linglong_builder_mock.h
@@ -59,6 +60,7 @@ pfl_add_executable(
   src/linglong/utils/transaction_test.cpp
   src/linglong/utils/xdg/directory_test.cpp
   src/main.cpp
+
 
   # ll-driver-detect tests
   ${PROJECT_SOURCE_DIR}/apps/ll-driver-detect/src/nvidia_driver_detector.cpp

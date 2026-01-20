@@ -8,25 +8,22 @@
 
 #include "configure.h"
 #include "linglong/api/types/helper.h"
-#include "linglong/api/types/v1/Generators.hpp"
+#include "linglong/api/types/v1/Generators.hpp" // IWYU pragma: keep
 #include "linglong/api/types/v1/PackageInfoV2.hpp"
 #include "linglong/api/types/v1/PackageManager1PruneResult.hpp"
 #include "linglong/api/types/v1/Repo.hpp"
 #include "linglong/api/types/v1/State.hpp"
-#include "linglong/common/dir.h"
+#include "linglong/common/error.h"
 #include "linglong/common/strings.h"
 #include "linglong/extension/extension.h"
 #include "linglong/package/layer_file.h"
 #include "linglong/package/layer_packager.h"
 #include "linglong/package/reference.h"
-#include "linglong/package/uab_file.h"
 #include "linglong/package_manager/package_task.h"
 #include "linglong/package_manager/package_update.h"
 #include "linglong/package_manager/ref_installation.h"
 #include "linglong/package_manager/uab_installation.h"
-#include "linglong/repo/config.h"
 #include "linglong/repo/ostree_repo.h"
-#include "linglong/runtime/run_context.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/finally/finally.h"
 #include "linglong/utils/hooks.h"
@@ -34,7 +31,6 @@
 #include "linglong/utils/packageinfo_handler.h"
 #include "linglong/utils/serialize/json.h"
 #include "linglong/utils/transaction.h"
-#include "ocppi/runtime/RunOption.hpp"
 
 #include <QDBusInterface>
 #include <QDBusReply>
@@ -252,14 +248,16 @@ PackageManager::getAllRunningContainers() noexcept
     LINGLONG_TRACE("lock whole repo")
     lockFd = ::open(repoLockPath, O_RDWR | O_CREAT, 0644);
     if (lockFd == -1) {
-        return LINGLONG_ERR(
-          fmt::format("failed to create lock file {}: {}", repoLockPath, errorString(errno)));
+        return LINGLONG_ERR(fmt::format("failed to create lock file {}: {}",
+                                        repoLockPath,
+                                        common::error::errorString(errno)));
     }
 
     struct flock locker{ .l_type = F_WRLCK, .l_whence = SEEK_SET, .l_start = 0, .l_len = 0 };
 
     if (::fcntl(lockFd, F_SETLK, &locker) == -1) {
-        return LINGLONG_ERR(fmt::format("failed to lock {}: {}", repoLockPath, errorString(errno)));
+        return LINGLONG_ERR(
+          fmt::format("failed to lock {}: {}", repoLockPath, common::error::errorString(errno)));
     }
 
     return LINGLONG_OK;
@@ -277,7 +275,7 @@ PackageManager::getAllRunningContainers() noexcept
 
     if (::fcntl(lockFd, F_SETLK, &unlocker)) {
         return LINGLONG_ERR(
-          fmt::format("failed to unlock {}: {}", repoLockPath, errorString(errno)));
+          fmt::format("failed to unlock {}: {}", repoLockPath, common::error::errorString(errno)));
     }
 
     ::close(lockFd);

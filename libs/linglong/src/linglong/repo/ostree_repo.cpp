@@ -13,6 +13,8 @@
 #include "linglong/api/types/v1/Repo.hpp"
 #include "linglong/api/types/v1/RepositoryCacheLayersItem.hpp"
 #include "linglong/api/types/v1/RepositoryCacheMergedItem.hpp"
+#include "linglong/common/formatter.h"
+#include "linglong/common/gkeyfile_wrapper.h"
 #include "linglong/common/strings.h"
 #include "linglong/package/fuzzy_reference.h"
 #include "linglong/package/layer_dir.h"
@@ -24,7 +26,6 @@
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/file.h"
 #include "linglong/utils/finally/finally.h"
-#include "linglong/utils/gkeyfile_wrapper.h"
 #include "linglong/utils/log/log.h"
 #include "linglong/utils/serialize/json.h"
 #include "linglong/utils/serialize/packageinfo_handler.h"
@@ -2727,7 +2728,7 @@ utils::error::Result<void> desktopFileRewrite(const QString &filePath, const QSt
 {
     LINGLONG_TRACE(fmt::format("rewrite desktop file {}", filePath.toStdString()));
 
-    auto file = utils::GKeyFileWrapper::New(filePath);
+    auto file = common::GKeyFileWrapper::New(filePath);
     if (!file) {
         return LINGLONG_ERR(file);
     }
@@ -2762,8 +2763,8 @@ utils::error::Result<void> desktopFileRewrite(const QString &filePath, const QSt
         file->setValue("Exec", buildDesktopExec(rawExec, id), group);
     }
 
-    file->setValue("TryExec", LINGLONG_CLIENT_PATH, utils::GKeyFileWrapper::DesktopEntry);
-    file->setValue("X-linglong", id, utils::GKeyFileWrapper::DesktopEntry);
+    file->setValue("TryExec", LINGLONG_CLIENT_PATH, common::GKeyFileWrapper::DesktopEntry);
+    file->setValue("X-linglong", id, common::GKeyFileWrapper::DesktopEntry);
 
     // save file
     auto ret = file->saveToFile(filePath);
@@ -2778,12 +2779,12 @@ utils::error::Result<void> dbusServiceRewrite(const QString &filePath, const QSt
 {
     LINGLONG_TRACE(fmt::format("rewrite dbus service file {}", filePath.toStdString()));
 
-    auto file = utils::GKeyFileWrapper::New(filePath);
+    auto file = common::GKeyFileWrapper::New(filePath);
     if (!file) {
         return LINGLONG_ERR(file);
     }
 
-    auto hasExecRet = file->hasKey("Exec", utils::GKeyFileWrapper::DBusService);
+    auto hasExecRet = file->hasKey("Exec", common::GKeyFileWrapper::DBusService);
     if (!hasExecRet) {
         return LINGLONG_ERR(hasExecRet);
     }
@@ -2793,7 +2794,7 @@ utils::error::Result<void> dbusServiceRewrite(const QString &filePath, const QSt
         return LINGLONG_OK;
     }
 
-    auto originExec = file->getValue<QString>("Exec", utils::GKeyFileWrapper::DBusService);
+    auto originExec = file->getValue<QString>("Exec", common::GKeyFileWrapper::DBusService);
     if (!originExec) {
         return LINGLONG_ERR(originExec);
     }
@@ -2805,7 +2806,7 @@ utils::error::Result<void> dbusServiceRewrite(const QString &filePath, const QSt
     }
 
     auto newExec = QString("%1 run %2 -- %3").arg(LINGLONG_CLIENT_PATH, id, rawExec);
-    file->setValue("Exec", newExec, utils::GKeyFileWrapper::DBusService);
+    file->setValue("Exec", newExec, common::GKeyFileWrapper::DBusService);
 
     auto ret = file->saveToFile(filePath);
     if (!ret) {
@@ -2823,12 +2824,12 @@ utils::error::Result<void> systemdServiceRewrite(const QString &filePath, const 
     // NOTE: The key is allowed to be repeated in the service group
     QStringList execKeys{ "ExecStart", "ExecStartPost", "ExecCondition",
                           "ExecStop",  "ExecStopPost",  "ExecReload" };
-    auto file = utils::GKeyFileWrapper::New(filePath);
+    auto file = common::GKeyFileWrapper::New(filePath);
     if (!file) {
         return LINGLONG_ERR(file);
     }
 
-    auto keysRet = file->getkeys(utils::GKeyFileWrapper::SystemdService);
+    auto keysRet = file->getkeys(common::GKeyFileWrapper::SystemdService);
     if (!keysRet) {
         return LINGLONG_ERR(keysRet);
     }
@@ -2839,7 +2840,7 @@ utils::error::Result<void> systemdServiceRewrite(const QString &filePath, const 
             continue;
         }
 
-        auto originExec = file->getValue<QString>(key, utils::GKeyFileWrapper::SystemdService);
+        auto originExec = file->getValue<QString>(key, common::GKeyFileWrapper::SystemdService);
         if (!originExec) {
             return LINGLONG_ERR(originExec);
         }
@@ -2851,7 +2852,7 @@ utils::error::Result<void> systemdServiceRewrite(const QString &filePath, const 
         }
 
         auto newExec = QString("%1 run %2 -- %3").arg(LINGLONG_CLIENT_PATH, id, rawExec);
-        file->setValue(key, newExec, utils::GKeyFileWrapper::SystemdService);
+        file->setValue(key, newExec, common::GKeyFileWrapper::SystemdService);
     }
 
     auto ret = file->saveToFile(filePath);
@@ -2866,7 +2867,7 @@ utils::error::Result<void> contextMenuRewrite(const QString &filePath, const QSt
 {
     LINGLONG_TRACE(fmt::format("rewrite context menu{}", filePath.toStdString()));
 
-    auto file = utils::GKeyFileWrapper::New(filePath);
+    auto file = common::GKeyFileWrapper::New(filePath);
     if (!file) {
         return LINGLONG_ERR(file);
     }

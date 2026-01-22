@@ -13,6 +13,7 @@
 #include "linglong/api/types/v1/RepositoryCacheLayersItem.hpp"
 #include "linglong/cli/interactive_notifier.h"
 #include "linglong/cli/printer.h"
+#include "linglong/common/serialize/json.h"
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/runtime/container_builder.h"
 #include "linglong/utils/error/error.h"
@@ -238,7 +239,7 @@ private:
             return LINGLONG_ERR(reply.error().message(), reply.error().type());
         }
 
-        auto result = utils::serialize::fromQVariantMap<T>(reply.value());
+        auto result = common::serialize::fromQVariantMap<T>(reply.value());
         if (!result) {
             LogF("bug detected: {}", result.error());
             std::abort();

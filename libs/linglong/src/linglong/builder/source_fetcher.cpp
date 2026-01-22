@@ -7,6 +7,7 @@
 #include "source_fetcher.h"
 
 #include "configure.h"
+#include "linglong/common/formatter.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/global/initialize.h"
 #include "linglong/utils/log/log.h"

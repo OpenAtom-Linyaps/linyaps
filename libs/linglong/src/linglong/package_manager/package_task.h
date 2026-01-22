@@ -5,8 +5,8 @@
 #pragma once
 
 #include "linglong/api/types/v1/State.hpp"
+#include "linglong/common/dbus/properties_forwarder.h"
 #include "linglong/package_manager/task.h"
-#include "linglong/utils/dbus/properties_forwarder.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/log/log.h"
 
@@ -87,7 +87,7 @@ Q_SIGNALS:
 private:
     friend class PackageTaskQueue;
     GCancellable *m_cancelFlag{ nullptr };
-    utils::dbus::PropertiesForwarder *m_forwarder{ nullptr };
+    common::dbus::PropertiesForwarder *m_forwarder{ nullptr };
 };
 
 // PackageTaskQueue is used to manage tasks and run them in a separated thread

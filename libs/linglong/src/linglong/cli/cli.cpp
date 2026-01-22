@@ -298,7 +298,7 @@ void Cli::interaction(const QDBusObjectPath &object_path,
     }
 
     auto messageType = static_cast<api::types::v1::InteractionMessageType>(messageID);
-    auto msg = utils::serialize::fromQVariantMap<
+    auto msg = common::serialize::fromQVariantMap<
       api::types::v1::PackageManager1RequestInteractionAdditionalMessage>(additionalMessage);
 
     std::vector<std::string> actions{ "yes", "Yes", "no", "No" };
@@ -348,7 +348,7 @@ void Cli::interaction(const QDBusObjectPath &object_path,
     auto reply = api::types::v1::InteractionReply{ .action = action };
 
     QDBusPendingReply<void> dbusReply =
-      this->pkgMan.ReplyInteraction(object_path, utils::serialize::toQVariantMap(reply));
+      this->pkgMan.ReplyInteraction(object_path, common::serialize::toQVariantMap(reply));
     dbusReply.waitForFinished();
     if (dbusReply.isError()) {
         this->printer.printErr(
@@ -964,7 +964,7 @@ int Cli::installFromFile(const QFileInfo &fileInfo,
     auto pendingReply =
       this->pkgMan.InstallFromFile(dbusFileDescriptor,
                                    fileInfo.suffix(),
-                                   utils::serialize::toQVariantMap(commonOptions));
+                                   common::serialize::toQVariantMap(commonOptions));
     res = waitTaskCreated(pendingReply, TaskType::InstallFromFile);
     if (!res) {
         this->handleCommonError(res.error());
@@ -1030,7 +1030,7 @@ int Cli::install(const InstallOptions &options)
 
     LogD("install module: {}", common::strings::join(*params.package.modules));
 
-    auto pendingReply = this->pkgMan.Install(utils::serialize::toQVariantMap(params));
+    auto pendingReply = this->pkgMan.Install(common::serialize::toQVariantMap(params));
     auto res = waitTaskCreated(pendingReply, TaskType::Install);
     if (!res) {
         handleInstallError(res.error(), params);
@@ -1094,7 +1094,7 @@ int Cli::upgrade(const UpgradeOptions &options)
         params.packages.emplace_back(std::move(package));
     }
 
-    auto pendingReply = this->pkgMan.Update(utils::serialize::toQVariantMap(params));
+    auto pendingReply = this->pkgMan.Update(common::serialize::toQVariantMap(params));
     auto res = waitTaskCreated(pendingReply, TaskType::Upgrade);
     if (!res) {
         handleUpgradeError(res.error());
@@ -1155,7 +1155,7 @@ int Cli::search(const SearchOptions &options)
               return;
           }
           auto result =
-            utils::serialize::fromQVariantMap<api::types::v1::PackageManager1SearchResult>(data);
+            common::serialize::fromQVariantMap<api::types::v1::PackageManager1SearchResult>(data);
           if (!result) {
               this->printer.printErr(result.error());
               loop.exit(-1);
@@ -1222,7 +1222,7 @@ int Cli::search(const SearchOptions &options)
           loop.exit(0);
       });
 
-    auto pendingReply = this->pkgMan.Search(utils::serialize::toQVariantMap(params));
+    auto pendingReply = this->pkgMan.Search(common::serialize::toQVariantMap(params));
     auto result = waitDBusReply<api::types::v1::PackageManager1JobInfo>(pendingReply);
     if (!result) {
         this->printer.printErr(result.error());
@@ -1254,7 +1254,7 @@ int Cli::prune()
                     return;
                 }
                 auto ret =
-                  utils::serialize::fromQVariantMap<api::types::v1::PackageManager1PruneResult>(
+                  common::serialize::fromQVariantMap<api::types::v1::PackageManager1PruneResult>(
                     data);
                 if (!ret) {
                     this->printer.printErr(ret.error());
@@ -1315,7 +1315,7 @@ int Cli::uninstall(const UninstallOptions &options)
         params.package.packageManager1PackageModule = options.module;
     }
 
-    auto pendingReply = this->pkgMan.Uninstall(utils::serialize::toQVariantMap(params));
+    auto pendingReply = this->pkgMan.Uninstall(common::serialize::toQVariantMap(params));
     auto res = waitTaskCreated(pendingReply, TaskType::Uninstall);
     if (!res) {
         this->handleUninstallError(res.error());
@@ -1399,7 +1399,7 @@ int Cli::repo(CLI::App *app, const RepoOptions &options)
         return -1;
     }
 
-    auto cfg = utils::serialize::fromQVariantMap<api::types::v1::RepoConfigV2>(propCfg);
+    auto cfg = common::serialize::fromQVariantMap<api::types::v1::RepoConfigV2>(propCfg);
     if (!cfg) {
         qCritical() << cfg.error();
         qCritical() << "linglong bug detected.";
@@ -1462,7 +1462,7 @@ int Cli::repo(CLI::App *app, const RepoOptions &options)
           .priority = 0,
           .url = url,
         });
-        return this->setRepoConfig(utils::serialize::toQVariantMap(cfgRef));
+        return this->setRepoConfig(common::serialize::toQVariantMap(cfgRef));
     }
 
     auto existingRepo =
@@ -1496,7 +1496,7 @@ int Cli::repo(CLI::App *app, const RepoOptions &options)
             }
         }
 
-        return this->setRepoConfig(utils::serialize::toQVariantMap(cfgRef));
+        return this->setRepoConfig(common::serialize::toQVariantMap(cfgRef));
     }
 
     if (argsParsed("update")) {
@@ -1506,17 +1506,17 @@ int Cli::repo(CLI::App *app, const RepoOptions &options)
         }
 
         existingRepo->url = url;
-        return this->setRepoConfig(utils::serialize::toQVariantMap(cfgRef));
+        return this->setRepoConfig(common::serialize::toQVariantMap(cfgRef));
     }
 
     if (argsParsed("enable-mirror")) {
         existingRepo->mirrorEnabled = true;
-        return this->setRepoConfig(utils::serialize::toQVariantMap(cfgRef));
+        return this->setRepoConfig(common::serialize::toQVariantMap(cfgRef));
     }
 
     if (argsParsed("disable-mirror")) {
         existingRepo->mirrorEnabled = false;
-        return this->setRepoConfig(utils::serialize::toQVariantMap(cfgRef));
+        return this->setRepoConfig(common::serialize::toQVariantMap(cfgRef));
     }
 
     if (argsParsed("set-default")) {
@@ -1530,7 +1530,7 @@ int Cli::repo(CLI::App *app, const RepoOptions &options)
                     break;
                 }
             }
-            return this->setRepoConfig(utils::serialize::toQVariantMap(cfgRef));
+            return this->setRepoConfig(common::serialize::toQVariantMap(cfgRef));
         }
 
         return 0;
@@ -1538,7 +1538,7 @@ int Cli::repo(CLI::App *app, const RepoOptions &options)
 
     if (argsParsed("set-priority")) {
         existingRepo->priority = options.repoPriority;
-        return this->setRepoConfig(utils::serialize::toQVariantMap(cfgRef));
+        return this->setRepoConfig(common::serialize::toQVariantMap(cfgRef));
     }
 
     this->printer.printErr(LINGLONG_ERRV("unknown operation"));

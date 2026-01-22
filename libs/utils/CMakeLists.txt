@@ -14,12 +14,6 @@ pfl_add_library(
   src/linglong/utils/cmd.h
   src/linglong/utils/env.cpp
   src/linglong/utils/env.h
-  src/linglong/utils/dbus/log.cpp
-  src/linglong/utils/dbus/log.h
-  src/linglong/utils/dbus/properties_forwarder.cpp
-  src/linglong/utils/dbus/properties_forwarder.h
-  src/linglong/utils/dbus/register.cpp
-  src/linglong/utils/dbus/register.h
   src/linglong/utils/error/details/error_impl.cpp
   src/linglong/utils/error/details/error_impl.h
   src/linglong/utils/error/error.cpp
@@ -31,7 +25,6 @@ pfl_add_library(
   src/linglong/utils/finally/finally.cpp
   src/linglong/utils/finally/finally.h
   src/linglong/utils/gettext.h
-  src/linglong/utils/gkeyfile_wrapper.h
   src/linglong/utils/global/initialize.cpp
   src/linglong/utils/global/initialize.h
   src/linglong/utils/hooks.cpp

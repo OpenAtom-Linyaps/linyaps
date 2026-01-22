@@ -6,6 +6,7 @@
 
 #include <gtest/gtest.h>
 
+#include "common/tempdir.h"
 #include "driver_detection_config.h"
 #include "driver_detector.h"
 #include "nvidia_driver_detector.h"
@@ -13,27 +14,8 @@
 #include <filesystem>
 #include <string>
 
-namespace {
-std::filesystem::path GetTempFilePath()
-{
-    return std::filesystem::temp_directory_path() / ("test_version");
-}
-} // namespace
-
 class DriverDetectorTest : public ::testing::Test
 {
-protected:
-    void SetUp() override
-    {
-        versionFilePath = GetTempFilePath();
-        // Ensure the file does not exist initially
-        std::filesystem::remove(versionFilePath);
-        ASSERT_FALSE(versionFilePath.empty()) << "Failed to create temporary directory";
-    }
-
-    void TearDown() override { std::filesystem::remove(versionFilePath); }
-
-    std::filesystem::path versionFilePath;
 };
 
 TEST_F(DriverDetectorTest, NvidiaDriverDetectorInitialization)
@@ -77,6 +59,8 @@ TEST_F(DriverDetectorTest, NvidiaDriverDetectorPackageCheck)
 
 TEST_F(DriverDetectorTest, DriverDetectionConfigManagerSave)
 {
+    TempDir temp_dir;
+    auto versionFilePath = temp_dir.path() / "test_version";
     linglong::driver::detect::DriverDetectionConfigManager configManager(versionFilePath.string());
 
     // Load default config
@@ -93,6 +77,8 @@ TEST_F(DriverDetectorTest, DriverDetectionConfigManagerSave)
 
 TEST_F(DriverDetectorTest, DriverDetectionConfigManagerRoundTrip)
 {
+    TempDir temp_dir;
+    auto versionFilePath = temp_dir.path() / "test_version";
     // Create and configure first manager
     linglong::driver::detect::DriverDetectionConfigManager configManager1(versionFilePath.string());
     ASSERT_TRUE(configManager1.loadConfig());
@@ -133,6 +119,8 @@ TEST_F(DriverDetectorTest, GraphicsDriverInfoStructure)
 
 TEST_F(DriverDetectorTest, ConfigManagerUserChoice)
 {
+    TempDir temp_dir;
+    auto versionFilePath = temp_dir.path() / "test_version";
     linglong::driver::detect::DriverDetectionConfigManager configManager(versionFilePath.string());
     ASSERT_TRUE(configManager.loadConfig());
 

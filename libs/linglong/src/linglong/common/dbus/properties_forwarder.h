@@ -10,7 +10,7 @@
 #include <QDBusObjectPath>
 #include <QObject>
 
-namespace linglong::utils::dbus {
+namespace linglong::common::dbus {
 
 class PropertiesForwarder : public QObject
 {
@@ -23,7 +23,7 @@ public:
     PropertiesForwarder(PropertiesForwarder &&) = delete;
     PropertiesForwarder &operator=(PropertiesForwarder &&) = delete;
 
-    error::Result<void> forward() noexcept;
+    utils::error::Result<void> forward() noexcept;
 
 public Q_SLOTS:
     void PropertyChanged();
@@ -35,4 +35,4 @@ private:
     QVariantMap propCache;
 };
 
-} // namespace linglong::utils::dbus
+} // namespace linglong::common::dbus

@@ -9,37 +9,11 @@
 
 #include <fmt/format.h>
 
-#include <QString>
-#include <QStringList>
-
 #include <filesystem>
 #include <string_view>
 
 template <>
-struct fmt::formatter<QString> : fmt::formatter<std::string_view>
-{
-#if FMT_VERSION >= 70000
-    auto format(const QString &qstr, fmt::format_context &ctx) const
-      -> fmt::format_context::iterator;
-#else
-    auto format(const QString &qstr, fmt::format_context &ctx) -> fmt::format_context::iterator;
-#endif
-};
-
-template <>
-struct fmt::formatter<QStringList> : fmt::formatter<std::string_view>
-{
-#if FMT_VERSION >= 70000
-    auto format(const QStringList &qstrList, fmt::format_context &ctx) const
-      -> fmt::format_context::iterator;
-#else
-    auto format(const QStringList &qstrList, fmt::format_context &ctx)
-      -> fmt::format_context::iterator;
-#endif
-};
-
-template <>
-struct fmt::formatter<linglong::utils::error::Error> : fmt::formatter<QString>
+struct fmt::formatter<linglong::utils::error::Error> : fmt::formatter<std::string_view>
 {
 #if FMT_VERSION >= 70000
     auto format(const linglong::utils::error::Error &error, fmt::format_context &ctx) const
@@ -51,7 +25,7 @@ struct fmt::formatter<linglong::utils::error::Error> : fmt::formatter<QString>
 };
 
 template <>
-struct fmt::formatter<std::filesystem::path> : fmt::formatter<std::string>
+struct fmt::formatter<std::filesystem::path> : fmt::formatter<std::string_view>
 {
 #if FMT_VERSION >= 70000
     auto format(const std::filesystem::path &path, fmt::format_context &ctx) const

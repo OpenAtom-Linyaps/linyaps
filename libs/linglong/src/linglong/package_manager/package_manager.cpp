@@ -14,6 +14,7 @@
 #include "linglong/api/types/v1/Repo.hpp"
 #include "linglong/api/types/v1/State.hpp"
 #include "linglong/common/error.h"
+#include "linglong/common/serialize/json.h"
 #include "linglong/common/strings.h"
 #include "linglong/extension/extension.h"
 #include "linglong/package/layer_file.h"
@@ -59,7 +60,7 @@ QVariantMap toDBusReply(const utils::error::Result<T> &x, std::string type = "di
 {
     Q_ASSERT(!x.has_value());
 
-    return utils::serialize::toQVariantMap(
+    return common::serialize::toQVariantMap(
       api::types::v1::CommonResult{ .code = x.error().code(),       // NOLINT
                                     .message = x.error().message(), // NOLINT
                                     .type = std::move(type) });
@@ -69,7 +70,7 @@ QVariantMap toDBusReply(utils::error::ErrorCode code,
                         const std::string &message,
                         const std::string &type = "display") noexcept
 {
-    return utils::serialize::toQVariantMap(
+    return common::serialize::toQVariantMap(
       api::types::v1::CommonResult{ .code = static_cast<int>(code), // NOLINT
                                     .message = message,             // NOLINT
                                     .type = type });
@@ -229,7 +230,7 @@ PackageManager::getAllRunningContainers() noexcept
 
             auto content =
               utils::serialize::LoadJSONFile<api::types::v1::ContainerProcessStateInfo>(
-                QString::fromStdString(process_entry.path().string()));
+                process_entry.path());
             if (!content) {
                 return LINGLONG_ERR(QStringLiteral("failed to load info from %1: %2")
                                       .arg(process_entry.path().c_str())
@@ -430,13 +431,13 @@ void PackageManager::deferredUninstall() noexcept
 
 auto PackageManager::getConfiguration() const noexcept -> QVariantMap
 {
-    return utils::serialize::toQVariantMap(this->repo.getConfig());
+    return common::serialize::toQVariantMap(this->repo.getConfig());
 }
 
 void PackageManager::setConfiguration(const QVariantMap &parameters) noexcept
 {
     LogI("set configuration for package manager");
-    auto cfg = utils::serialize::fromQVariantMap<api::types::v1::RepoConfigV2>(parameters);
+    auto cfg = common::serialize::fromQVariantMap<api::types::v1::RepoConfigV2>(parameters);
     if (!cfg) {
         sendErrorReply(QDBusError::InvalidArgs, QString::fromStdString(cfg.error().message()));
         return;
@@ -575,7 +576,7 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
               && !options.skipInteraction) {
               Q_EMIT RequestInteraction(QDBusObjectPath(taskRef.taskObjectPath().c_str()),
                                         static_cast<int>(msgType),
-                                        utils::serialize::toQVariantMap(additionalMessage));
+                                        common::serialize::toQVariantMap(additionalMessage));
               QEventLoop loop;
               auto conn = connect(
                 this,
@@ -583,7 +584,7 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
                 [&taskRef, &loop](const QVariantMap &reply) {
                     // handle reply
                     auto interactionReply =
-                      utils::serialize::fromQVariantMap<api::types::v1::InteractionReply>(reply);
+                      common::serialize::fromQVariantMap<api::types::v1::InteractionReply>(reply);
                     if (interactionReply->action != "yes") {
                         taskRef.updateState(linglong::api::types::v1::State::Canceled, "canceled");
                     }
@@ -686,7 +687,7 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
     auto &taskRef = taskRet->get();
     Q_EMIT TaskAdded(QDBusObjectPath{ taskRef.taskObjectPath().c_str() });
     taskRef.updateState(linglong::api::types::v1::State::Queued, "queued to install from layer");
-    return utils::serialize::toQVariantMap(api::types::v1::PackageManager1PackageTaskResult{
+    return common::serialize::toQVariantMap(api::types::v1::PackageManager1PackageTaskResult{
       .taskObjectPath = taskRef.taskObjectPath(),
       .code = 0,
       .message = (realFile + " is now installing").toStdString(),
@@ -727,7 +728,7 @@ auto PackageManager::InstallFromFile(const QDBusUnixFileDescriptor &fd,
         return toDBusReply(utils::error::ErrorCode::Failed, "invalid file descriptor");
     }
 
-    auto opts = utils::serialize::fromQVariantMap<api::types::v1::CommonOptions>(options);
+    auto opts = common::serialize::fromQVariantMap<api::types::v1::CommonOptions>(options);
     if (!opts) {
         return toDBusReply(opts);
     }
@@ -750,7 +751,7 @@ auto PackageManager::InstallFromFile(const QDBusUnixFileDescriptor &fd,
 auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariantMap
 {
     auto paras =
-      utils::serialize::fromQVariantMap<api::types::v1::PackageManager1InstallParameters>(
+      common::serialize::fromQVariantMap<api::types::v1::PackageManager1InstallParameters>(
         parameters);
     if (!paras) {
         return toDBusReply(utils::error::ErrorCode::AppInstallFailed, paras.error().message());
@@ -796,7 +797,7 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
 auto PackageManager::Uninstall(const QVariantMap &parameters) noexcept -> QVariantMap
 {
     auto paras =
-      utils::serialize::fromQVariantMap<api::types::v1::PackageManager1UninstallParameters>(
+      common::serialize::fromQVariantMap<api::types::v1::PackageManager1UninstallParameters>(
         parameters);
     if (!paras) {
         return toDBusReply(utils::error::ErrorCode::AppUninstallFailed, paras.error().message());
@@ -897,7 +898,7 @@ auto PackageManager::Uninstall(const QVariantMap &parameters) noexcept -> QVaria
     auto &taskRef = taskRet->get();
     Q_EMIT TaskAdded(QDBusObjectPath{ taskRef.taskObjectPath().c_str() });
     taskRef.updateState(linglong::api::types::v1::State::Queued, "queued to uninstall");
-    return utils::serialize::toQVariantMap(api::types::v1::PackageManager1PackageTaskResult{
+    return common::serialize::toQVariantMap(api::types::v1::PackageManager1PackageTaskResult{
       .taskObjectPath = taskRef.taskObjectPath(),
       .code = 0,
       .message = refSpec + " is now uninstalling",
@@ -949,8 +950,9 @@ utils::error::Result<void> PackageManager::Uninstall(PackageTask &taskContext,
 
 auto PackageManager::Update(const QVariantMap &parameters) noexcept -> QVariantMap
 {
-    auto paras = utils::serialize::fromQVariantMap<api::types::v1::PackageManager1UpdateParameters>(
-      parameters);
+    auto paras =
+      common::serialize::fromQVariantMap<api::types::v1::PackageManager1UpdateParameters>(
+        parameters);
     if (!paras) {
         return toDBusReply(utils::error::ErrorCode::AppUpgradeFailed, paras.error().message());
     }
@@ -1079,8 +1081,9 @@ utils::error::Result<void> PackageManager::uninstallRef(
 
 auto PackageManager::Search(const QVariantMap &parameters) noexcept -> QVariantMap
 {
-    auto paras = utils::serialize::fromQVariantMap<api::types::v1::PackageManager1SearchParameters>(
-      parameters);
+    auto paras =
+      common::serialize::fromQVariantMap<api::types::v1::PackageManager1SearchParameters>(
+        parameters);
     if (!paras) {
         return toDBusReply(paras);
     }
@@ -1110,7 +1113,7 @@ auto PackageManager::Search(const QVariantMap &parameters) noexcept -> QVariantM
 
           Q_EMIT this->SearchFinished(
             QString::fromStdString(task.taskID()),
-            utils::serialize::toQVariantMap(api::types::v1::PackageManager1SearchResult{
+            common::serialize::toQVariantMap(api::types::v1::PackageManager1SearchResult{
               .packages = std::move(pkgs),
               .code = 0,
               .message = "",
@@ -1124,7 +1127,7 @@ auto PackageManager::Search(const QVariantMap &parameters) noexcept -> QVariantM
     auto &taskRef = task->get();
     taskRef.updateState(linglong::api::types::v1::State::Queued,
                         fmt::format("search {}", paras->id));
-    auto result = utils::serialize::toQVariantMap(api::types::v1::PackageManager1JobInfo{
+    auto result = common::serialize::toQVariantMap(api::types::v1::PackageManager1JobInfo{
       .id = taskRef.taskID(),
       .code = 0,
       .message = "",
@@ -1214,7 +1217,7 @@ auto PackageManager::Prune() noexcept -> QVariantMap
             .message = "",
         };
         Q_EMIT PruneFinished(QString::fromStdString(task.taskID()),
-                             utils::serialize::toQVariantMap(result));
+                             common::serialize::toQVariantMap(result));
         task.updateState(linglong::api::types::v1::State::Succeed, "prune");
     });
     if (!task) {
@@ -1223,7 +1226,7 @@ auto PackageManager::Prune() noexcept -> QVariantMap
 
     auto &taskRef = task->get();
     taskRef.updateState(linglong::api::types::v1::State::Queued, "prune");
-    auto result = utils::serialize::toQVariantMap(api::types::v1::PackageManager1JobInfo{
+    auto result = common::serialize::toQVariantMap(api::types::v1::PackageManager1JobInfo{
       .id = taskRef.taskID(),
       .code = 0,
       .message = "",
@@ -1459,12 +1462,12 @@ bool PackageManager::waitConfirm(
 {
     Q_EMIT RequestInteraction(QDBusObjectPath(taskRef.taskObjectPath().c_str()),
                               static_cast<int>(msgType),
-                              utils::serialize::toQVariantMap(additionalMessage));
+                              common::serialize::toQVariantMap(additionalMessage));
     QEventLoop loop;
     auto conn =
       connect(this, &PackageManager::ReplyReceived, [&taskRef, &loop](const QVariantMap &reply) {
           auto interactionReply =
-            utils::serialize::fromQVariantMap<api::types::v1::InteractionReply>(reply);
+            common::serialize::fromQVariantMap<api::types::v1::InteractionReply>(reply);
           if (interactionReply->action != "yes") {
               taskRef.updateState(linglong::api::types::v1::State::Canceled, "canceled");
           }
@@ -1507,7 +1510,7 @@ QVariantMap PackageManager::runActionOnTaskQueue(std::shared_ptr<Action> action)
     auto &taskRef = taskRet->get();
     Q_EMIT TaskAdded(QDBusObjectPath{ taskRef.taskObjectPath().c_str() });
     taskRef.updateState(linglong::api::types::v1::State::Queued, action->getTaskName());
-    return utils::serialize::toQVariantMap(api::types::v1::PackageManager1PackageTaskResult{
+    return common::serialize::toQVariantMap(api::types::v1::PackageManager1PackageTaskResult{
       .taskObjectPath = taskRef.taskObjectPath(),
       .code = 0,
       .message = action->getTaskName() + " is queued",

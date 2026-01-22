@@ -15,7 +15,7 @@
 #include <QFile>
 #include <QString>
 
-namespace linglong::utils {
+namespace linglong::common {
 
 class GKeyFileWrapper final
 {
@@ -32,7 +32,7 @@ public:
     auto operator=(const GKeyFileWrapper &) -> GKeyFileWrapper & = delete;
     ~GKeyFileWrapper() = default;
 
-    static auto New(const QString &filePath) -> error::Result<GKeyFileWrapper>
+    static auto New(const QString &filePath) -> utils::error::Result<GKeyFileWrapper>
     {
         LINGLONG_TRACE(fmt::format("create GKeyFileWrapper for {}", filePath.toStdString()));
 
@@ -63,7 +63,7 @@ public:
     }
 
     template <typename Value>
-    auto getValue(const QString &key, const GroupName &group) const -> error::Result<Value>
+    auto getValue(const QString &key, const GroupName &group) const -> utils::error::Result<Value>
     {
         LINGLONG_TRACE(fmt::format("get {} from {}", key.toStdString(), group.toStdString()));
 
@@ -94,7 +94,7 @@ public:
         return result;
     }
 
-    auto getkeys(const QString &group) -> error::Result<QStringList>
+    auto getkeys(const QString &group) -> utils::error::Result<QStringList>
     {
         LINGLONG_TRACE("get keys from " + group.toStdString());
 
@@ -117,7 +117,7 @@ public:
         return result;
     }
 
-    auto saveToFile(const QString &filepath) -> error::Result<void>
+    auto saveToFile(const QString &filepath) -> utils::error::Result<void>
     {
         LINGLONG_TRACE(fmt::format("save to {}", filepath.toStdString()));
 
@@ -131,7 +131,7 @@ public:
         return LINGLONG_OK;
     }
 
-    auto hasKey(const QString &key, const GroupName &group) -> error::Result<bool>
+    auto hasKey(const QString &key, const GroupName &group) -> utils::error::Result<bool>
     {
         LINGLONG_TRACE(
           fmt::format("check {} is in {} or not", key.toStdString(), group.toStdString()));
@@ -157,4 +157,4 @@ private:
     std::unique_ptr<GKeyFile, decltype(&g_key_file_free)> gKeyFile;
 };
 
-} // namespace linglong::utils
+} // namespace linglong::common

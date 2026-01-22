@@ -4,8 +4,8 @@
 
 #include <gtest/gtest.h>
 
+#include "linglong/common/gkeyfile_wrapper.h"
 #include "linglong/utils/error/error.h"
-#include "linglong/utils/gkeyfile_wrapper.h"
 
 #include <QTemporaryFile>
 #include <QTextStream>
@@ -48,7 +48,7 @@ protected:
 
 TEST_F(GKeyFileWrapperTest, NewWithNonExistentFile)
 {
-    auto result = linglong::utils::GKeyFileWrapper::New("/nonexistent/file.ini");
+    auto result = linglong::common::GKeyFileWrapper::New("/nonexistent/file.ini");
     EXPECT_FALSE(result.has_value());
     EXPECT_TRUE(result.error().message().find("no such file") != std::string::npos);
 }
@@ -63,7 +63,7 @@ Icon=test-icon
 
     createTestFile(content);
 
-    auto result = linglong::utils::GKeyFileWrapper::New(tempFilePath);
+    auto result = linglong::common::GKeyFileWrapper::New(tempFilePath);
     EXPECT_TRUE(result.has_value());
 }
 
@@ -76,7 +76,7 @@ Name=Test Application
 
     createTestFile(content);
 
-    auto result = linglong::utils::GKeyFileWrapper::New(tempFilePath);
+    auto result = linglong::common::GKeyFileWrapper::New(tempFilePath);
     EXPECT_FALSE(result.has_value());
 }
 
@@ -88,23 +88,23 @@ Name=Test Application
 
     createTestFile(content);
 
-    auto result = linglong::utils::GKeyFileWrapper::New(tempFilePath);
+    auto result = linglong::common::GKeyFileWrapper::New(tempFilePath);
     ASSERT_TRUE(result.has_value());
 
     auto &wrapper = *result;
 
     // 设置新值
-    wrapper.setValue("Exec", "/usr/bin/new-app", linglong::utils::GKeyFileWrapper::DesktopEntry);
+    wrapper.setValue("Exec", "/usr/bin/new-app", linglong::common::GKeyFileWrapper::DesktopEntry);
 
     // 获取值
     auto execValue =
-      wrapper.getValue<QString>("Exec", linglong::utils::GKeyFileWrapper::DesktopEntry);
+      wrapper.getValue<QString>("Exec", linglong::common::GKeyFileWrapper::DesktopEntry);
     EXPECT_TRUE(execValue.has_value());
     EXPECT_EQ(*execValue, "/usr/bin/new-app");
 
     // 获取已存在的值
     auto nameValue =
-      wrapper.getValue<QString>("Name", linglong::utils::GKeyFileWrapper::DesktopEntry);
+      wrapper.getValue<QString>("Name", linglong::common::GKeyFileWrapper::DesktopEntry);
     EXPECT_TRUE(nameValue.has_value());
     EXPECT_EQ(*nameValue, "Test Application");
 }
@@ -117,14 +117,14 @@ Name=Test Application
 
     createTestFile(content);
 
-    auto result = linglong::utils::GKeyFileWrapper::New(tempFilePath);
+    auto result = linglong::common::GKeyFileWrapper::New(tempFilePath);
     ASSERT_TRUE(result.has_value());
 
     auto &wrapper = *result;
 
     // 获取不存在的键
     auto nonExistentValue =
-      wrapper.getValue<QString>("NonExistentKey", linglong::utils::GKeyFileWrapper::DesktopEntry);
+      wrapper.getValue<QString>("NonExistentKey", linglong::common::GKeyFileWrapper::DesktopEntry);
     EXPECT_FALSE(nonExistentValue.has_value());
 }
 
@@ -136,7 +136,7 @@ Name=Test Application
 
     createTestFile(content);
 
-    auto result = linglong::utils::GKeyFileWrapper::New(tempFilePath);
+    auto result = linglong::common::GKeyFileWrapper::New(tempFilePath);
     ASSERT_TRUE(result.has_value());
 
     auto &wrapper = *result;
@@ -160,7 +160,7 @@ ExecStart=/usr/bin/test-service
 
     createTestFile(content);
 
-    auto result = linglong::utils::GKeyFileWrapper::New(tempFilePath);
+    auto result = linglong::common::GKeyFileWrapper::New(tempFilePath);
     ASSERT_TRUE(result.has_value());
 
     auto &wrapper = *result;
@@ -182,12 +182,12 @@ Icon=test-icon
 
     createTestFile(content);
 
-    auto result = linglong::utils::GKeyFileWrapper::New(tempFilePath);
+    auto result = linglong::common::GKeyFileWrapper::New(tempFilePath);
     ASSERT_TRUE(result.has_value());
 
     auto &wrapper = *result;
 
-    auto keys = wrapper.getkeys(linglong::utils::GKeyFileWrapper::DesktopEntry);
+    auto keys = wrapper.getkeys(linglong::common::GKeyFileWrapper::DesktopEntry);
     EXPECT_TRUE(keys.has_value());
     EXPECT_EQ(keys->size(), 3);
     EXPECT_TRUE(keys->contains("Name"));
@@ -203,7 +203,7 @@ Name=Test Application
 
     createTestFile(content);
 
-    auto result = linglong::utils::GKeyFileWrapper::New(tempFilePath);
+    auto result = linglong::common::GKeyFileWrapper::New(tempFilePath);
     ASSERT_TRUE(result.has_value());
 
     auto &wrapper = *result;
@@ -220,7 +220,7 @@ Name=Test Application
 
     createTestFile(content);
 
-    auto result = linglong::utils::GKeyFileWrapper::New(tempFilePath);
+    auto result = linglong::common::GKeyFileWrapper::New(tempFilePath);
     ASSERT_TRUE(result.has_value());
 
     auto &wrapper = *result;
@@ -228,8 +228,8 @@ Name=Test Application
     // 修改内容
     wrapper.setValue("Exec",
                      "/usr/bin/modified-app",
-                     linglong::utils::GKeyFileWrapper::DesktopEntry);
-    wrapper.setValue("Icon", "modified-icon", linglong::utils::GKeyFileWrapper::DesktopEntry);
+                     linglong::common::GKeyFileWrapper::DesktopEntry);
+    wrapper.setValue("Icon", "modified-icon", linglong::common::GKeyFileWrapper::DesktopEntry);
 
     // 保存到新文件
     QString newFilePath = tempFilePath + ".new";
@@ -237,16 +237,16 @@ Name=Test Application
     EXPECT_TRUE(saveResult.has_value());
 
     // 验证新文件内容
-    auto newWrapper = linglong::utils::GKeyFileWrapper::New(newFilePath);
+    auto newWrapper = linglong::common::GKeyFileWrapper::New(newFilePath);
     EXPECT_TRUE(newWrapper.has_value());
 
     auto execValue =
-      newWrapper->getValue<QString>("Exec", linglong::utils::GKeyFileWrapper::DesktopEntry);
+      newWrapper->getValue<QString>("Exec", linglong::common::GKeyFileWrapper::DesktopEntry);
     EXPECT_TRUE(execValue.has_value());
     EXPECT_EQ(*execValue, "/usr/bin/modified-app");
 
     auto iconValue =
-      newWrapper->getValue<QString>("Icon", linglong::utils::GKeyFileWrapper::DesktopEntry);
+      newWrapper->getValue<QString>("Icon", linglong::common::GKeyFileWrapper::DesktopEntry);
     EXPECT_TRUE(iconValue.has_value());
     EXPECT_EQ(*iconValue, "modified-icon");
 
@@ -263,23 +263,23 @@ Exec=/usr/bin/test-app
 
     createTestFile(content);
 
-    auto result = linglong::utils::GKeyFileWrapper::New(tempFilePath);
+    auto result = linglong::common::GKeyFileWrapper::New(tempFilePath);
     ASSERT_TRUE(result.has_value());
 
     auto &wrapper = *result;
 
     // 测试存在的键
-    auto hasName = wrapper.hasKey("Name", linglong::utils::GKeyFileWrapper::DesktopEntry);
+    auto hasName = wrapper.hasKey("Name", linglong::common::GKeyFileWrapper::DesktopEntry);
     EXPECT_TRUE(hasName.has_value());
     EXPECT_TRUE(*hasName);
 
-    auto hasExec = wrapper.hasKey("Exec", linglong::utils::GKeyFileWrapper::DesktopEntry);
+    auto hasExec = wrapper.hasKey("Exec", linglong::common::GKeyFileWrapper::DesktopEntry);
     EXPECT_TRUE(hasExec.has_value());
     EXPECT_TRUE(*hasExec);
 
     // 测试不存在的键
     auto hasNonExistent =
-      wrapper.hasKey("NonExistentKey", linglong::utils::GKeyFileWrapper::DesktopEntry);
+      wrapper.hasKey("NonExistentKey", linglong::common::GKeyFileWrapper::DesktopEntry);
     EXPECT_TRUE(hasNonExistent.has_value());
     EXPECT_FALSE(*hasNonExistent);
 }
@@ -292,7 +292,7 @@ Name=Test Application
 
     createTestFile(content);
 
-    auto result = linglong::utils::GKeyFileWrapper::New(tempFilePath);
+    auto result = linglong::common::GKeyFileWrapper::New(tempFilePath);
     ASSERT_TRUE(result.has_value());
 
     auto &wrapper = *result;
@@ -304,10 +304,10 @@ Name=Test Application
 TEST_F(GKeyFileWrapperTest, Constants)
 {
     // 测试常量定义
-    EXPECT_EQ(linglong::utils::GKeyFileWrapper::DesktopEntry, "Desktop Entry");
-    EXPECT_EQ(linglong::utils::GKeyFileWrapper::DBusService, "D-BUS Service");
-    EXPECT_EQ(linglong::utils::GKeyFileWrapper::SystemdService, "Service");
-    EXPECT_EQ(linglong::utils::GKeyFileWrapper::ContextMenu, "Menu Entry");
+    EXPECT_EQ(linglong::common::GKeyFileWrapper::DesktopEntry, "Desktop Entry");
+    EXPECT_EQ(linglong::common::GKeyFileWrapper::DBusService, "D-BUS Service");
+    EXPECT_EQ(linglong::common::GKeyFileWrapper::SystemdService, "Service");
+    EXPECT_EQ(linglong::common::GKeyFileWrapper::ContextMenu, "Menu Entry");
 }
 
 TEST_F(GKeyFileWrapperTest, EmptyFile)
@@ -315,7 +315,7 @@ TEST_F(GKeyFileWrapperTest, EmptyFile)
     // 创建空文件
     createTestFile("");
 
-    auto result = linglong::utils::GKeyFileWrapper::New(tempFilePath);
+    auto result = linglong::common::GKeyFileWrapper::New(tempFilePath);
     EXPECT_TRUE(result.has_value());
 
     auto &wrapper = *result;
@@ -333,41 +333,41 @@ Name=Original Name
 
     createTestFile(content);
 
-    auto result = linglong::utils::GKeyFileWrapper::New(tempFilePath);
+    auto result = linglong::common::GKeyFileWrapper::New(tempFilePath);
     ASSERT_TRUE(result.has_value());
 
     auto &wrapper = *result;
 
     // 执行多个操作
-    wrapper.setValue("Name", "Updated Name", linglong::utils::GKeyFileWrapper::DesktopEntry);
+    wrapper.setValue("Name", "Updated Name", linglong::common::GKeyFileWrapper::DesktopEntry);
     wrapper.setValue("Exec",
                      "/usr/bin/updated-app",
-                     linglong::utils::GKeyFileWrapper::DesktopEntry);
-    wrapper.setValue("Icon", "updated-icon", linglong::utils::GKeyFileWrapper::DesktopEntry);
+                     linglong::common::GKeyFileWrapper::DesktopEntry);
+    wrapper.setValue("Icon", "updated-icon", linglong::common::GKeyFileWrapper::DesktopEntry);
 
     // 验证所有更改
     auto nameValue =
-      wrapper.getValue<QString>("Name", linglong::utils::GKeyFileWrapper::DesktopEntry);
+      wrapper.getValue<QString>("Name", linglong::common::GKeyFileWrapper::DesktopEntry);
     EXPECT_TRUE(nameValue.has_value());
     EXPECT_EQ(*nameValue, "Updated Name");
 
     auto execValue =
-      wrapper.getValue<QString>("Exec", linglong::utils::GKeyFileWrapper::DesktopEntry);
+      wrapper.getValue<QString>("Exec", linglong::common::GKeyFileWrapper::DesktopEntry);
     EXPECT_TRUE(execValue.has_value());
     EXPECT_EQ(*execValue, "/usr/bin/updated-app");
 
     auto iconValue =
-      wrapper.getValue<QString>("Icon", linglong::utils::GKeyFileWrapper::DesktopEntry);
+      wrapper.getValue<QString>("Icon", linglong::common::GKeyFileWrapper::DesktopEntry);
     EXPECT_TRUE(iconValue.has_value());
     EXPECT_EQ(*iconValue, "updated-icon");
 
     // 验证键的存在
-    auto hasAllKeys = wrapper.hasKey("Name", linglong::utils::GKeyFileWrapper::DesktopEntry);
+    auto hasAllKeys = wrapper.hasKey("Name", linglong::common::GKeyFileWrapper::DesktopEntry);
     EXPECT_TRUE(hasAllKeys.has_value());
     EXPECT_TRUE(*hasAllKeys);
 
     // 验证组中的键数量
-    auto keys = wrapper.getkeys(linglong::utils::GKeyFileWrapper::DesktopEntry);
+    auto keys = wrapper.getkeys(linglong::common::GKeyFileWrapper::DesktopEntry);
     EXPECT_TRUE(keys.has_value());
     EXPECT_EQ(keys->size(), 3);
 }

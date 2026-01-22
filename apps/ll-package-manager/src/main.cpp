@@ -6,11 +6,11 @@
 
 #include "configure.h"
 #include "linglong/adaptors/package_manager/package_manager1.h"
+#include "linglong/common/dbus/register.h"
 #include "linglong/package_manager/package_manager.h"
 #include "linglong/repo/config.h"
 #include "linglong/repo/migrate.h"
 #include "linglong/repo/ostree_repo.h"
-#include "linglong/utils/dbus/register.h"
 #include "linglong/utils/global/initialize.h"
 #include "ocppi/cli/CLI.hpp"
 #include "ocppi/cli/crun/Crun.hpp"
@@ -19,8 +19,8 @@
 
 #include <filesystem>
 
+using namespace linglong::common::dbus;
 using namespace linglong::utils::global;
-using namespace linglong::utils::dbus;
 
 namespace {
 void withDBusDaemon(ocppi::cli::CLI &cli)

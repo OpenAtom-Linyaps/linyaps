@@ -4,14 +4,16 @@
 
 #include "properties_forwarder.h"
 
+#include "linglong/utils/log/log.h"
+
 #include <QCoreApplication>
 #include <QDBusMessage>
-#include <QDebug>
 #include <QMetaProperty>
 
+#include <cstdlib>
 #include <utility>
 
-namespace linglong::utils::dbus {
+namespace linglong::common::dbus {
 
 PropertiesForwarder::PropertiesForwarder(QDBusConnection connection,
                                          QString path,
@@ -23,12 +25,14 @@ PropertiesForwarder::PropertiesForwarder(QDBusConnection connection,
     , connection(std::move(connection))
 {
     if (parent == nullptr) {
-        qFatal("parent is nullptr");
+        LogE("parent is nullptr");
+        std::abort();
     }
 
     const auto *mo = parent->metaObject();
     if (mo == nullptr) {
-        qFatal("couldn't find metaObject of parent.");
+        LogE("couldn't find metaObject of parent.");
+        std::abort();
     }
 
     for (auto i = mo->propertyOffset(); i < mo->propertyCount(); ++i) {
@@ -43,7 +47,7 @@ PropertiesForwarder::PropertiesForwarder(QDBusConnection connection,
     }
 }
 
-error::Result<void> PropertiesForwarder::forward() noexcept
+utils::error::Result<void> PropertiesForwarder::forward() noexcept
 {
     LINGLONG_TRACE("forward propertiesChanged")
     auto msg = QDBusMessage::createSignal(this->path,
@@ -66,7 +70,7 @@ void PropertiesForwarder::PropertyChanged()
 
     const auto *mo = sender->metaObject();
     if (mo == nullptr) {
-        qCritical() << __PRETTY_FUNCTION__ << "relay propertiesChanged failed.";
+        LogE("relay propertiesChanged failed.");
         return;
     }
 
@@ -87,7 +91,7 @@ void PropertiesForwarder::PropertyChanged()
     }
 
     if (propName.isEmpty()) {
-        qCritical() << "can't find corresponding property:" << signature;
+        LogE("can't find corresponding property: {}", signature.toStdString());
         return;
     }
 
@@ -100,4 +104,4 @@ void PropertiesForwarder::PropertyChanged()
     propCache.insert(propName, prop.read(sender));
 }
 
-} // namespace linglong::utils::dbus
+} // namespace linglong::common::dbus

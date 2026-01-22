@@ -7,29 +7,6 @@
 #include "formatter.h"
 
 #if FMT_VERSION >= 70000
-auto fmt::formatter<QString>::format(const QString &qstr, fmt::format_context &ctx) const
-  -> fmt::format_context::iterator
-#else
-auto fmt::formatter<QString>::format(const QString &qstr, fmt::format_context &ctx)
-  -> fmt::format_context::iterator
-#endif
-{
-    return formatter<std::string_view>::format(qstr.toStdString(), ctx);
-}
-
-#if FMT_VERSION >= 70000
-auto fmt::formatter<QStringList>::format(const QStringList &qstrList,
-                                         fmt::format_context &ctx) const
-  -> fmt::format_context::iterator
-#else
-auto fmt::formatter<QStringList>::format(const QStringList &qstrList, fmt::format_context &ctx)
-  -> fmt::format_context::iterator
-#endif
-{
-    return formatter<std::string_view>::format(qstrList.join(" ").toStdString(), ctx);
-}
-
-#if FMT_VERSION >= 70000
 auto fmt::formatter<linglong::utils::error::Error>::format(
   const linglong::utils::error::Error &error, fmt::format_context &ctx) const
   -> fmt::format_context::iterator
@@ -54,5 +31,5 @@ auto fmt::formatter<std::filesystem::path>::format(const std::filesystem::path &
   -> fmt::format_context::iterator
 #endif
 {
-    return formatter<std::string>::format(path.string(), ctx);
+    return formatter<std::string_view>::format(path.string(), ctx);
 }

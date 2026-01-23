@@ -1737,6 +1737,8 @@ void OSTreeRepo::unexportReference(const std::string &layerDir) noexcept
         }
     }
 
+    this->updateSharedInfo();
+
     std::function<void(const QString &path)> removeEmptySubdirectories =
       [&removeEmptySubdirectories](const QString &path) {
           QDir dir(path);
@@ -1763,7 +1765,6 @@ void OSTreeRepo::unexportReference(const std::string &layerDir) noexcept
           }
       };
     removeEmptySubdirectories(entriesDir.absolutePath());
-    this->updateSharedInfo();
 }
 
 void OSTreeRepo::unexportReference(const package::Reference &ref) noexcept

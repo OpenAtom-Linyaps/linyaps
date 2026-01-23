@@ -609,6 +609,7 @@ int main(int argc, char **argv) // NOLINT
         print_info("Failed to run child process");
         return -1;
     }
+    print_info("run child " + std::to_string(child));
 
     auto epfd = create_epoll();
     if (!epfd) {
@@ -642,7 +643,7 @@ int main(int argc, char **argv) // NOLINT
     file_descriptor_wrapper timerfd;
     bool done{ false };
     std::array<struct epoll_event, 10> events{};
-    WaitPidResult waitChild{ .pid = child };
+    auto waitTarget = child;
     int childExitCode = 0;
     while (true) {
         ret = ::epoll_wait(epfd, events.data(), events.size(), -1);
@@ -658,7 +659,8 @@ int main(int argc, char **argv) // NOLINT
         for (auto i = 0; i < ret; ++i) {
             const auto event = events.at(i);
             if (event.data.fd == sigfd) {
-                if (!handle_sigevent(sigfd, waitChild.pid, waitChild)) {
+                WaitPidResult waitChild{ .pid = -1 };
+                if (!handle_sigevent(sigfd, waitTarget, waitChild)) {
                     return -1;
                 }
 
@@ -666,10 +668,10 @@ int main(int argc, char **argv) // NOLINT
                     // Init process will propagate received signals to all child processes (using
                     // pid -1) after initial child exits
                     if (WIFEXITED(waitChild.status)) {
-                        waitChild.pid = -1;
+                        waitTarget = -1;
                         childExitCode = WEXITSTATUS(waitChild.status);
                     } else if (WIFSIGNALED(waitChild.status)) {
-                        waitChild.pid = -1;
+                        waitTarget = -1;
                         childExitCode = 128 + WTERMSIG(waitChild.status);
                     }
 
@@ -711,5 +713,6 @@ int main(int argc, char **argv) // NOLINT
         }
     }
 
+    print_info("init exit with code " + std::to_string(childExitCode));
     return childExitCode;
 }

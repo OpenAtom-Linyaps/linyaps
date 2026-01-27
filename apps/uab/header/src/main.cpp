@@ -283,7 +283,7 @@ int mountSelfBundle(const lightElf::native_elf &elf,
             }
         }
 
-        return erofsfuse_main(4, const_cast<char **>(erofs_argv.data()));
+        _exit(erofsfuse_main(4, const_cast<char **>(erofs_argv.data())));
     }
 
     int status{ 0 };

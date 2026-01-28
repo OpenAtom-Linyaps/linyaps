@@ -105,12 +105,12 @@ LayerPackager::pack(const LayerDir &dir, const QString &layerFilePath) const
     }
 
     if (!layer.open(QIODevice::WriteOnly | QIODevice::Append)) {
-        return LINGLONG_ERR(layer);
+        return LINGLONG_ERR(layer.errorString().toStdString());
     }
 
     const auto &number = magicNumber();
     if (layer.write(number) < 0) {
-        return LINGLONG_ERR(layer);
+        return LINGLONG_ERR(layer.errorString().toStdString());
     }
 
     // generate LayerInfo
@@ -137,11 +137,11 @@ LayerPackager::pack(const LayerDir &dir, const QString &layerFilePath) const
     Q_ASSERT(dataSizeStream.status() == QDataStream::Status::Ok);
 
     if (layer.write(dataSizeBytes) < 0) {
-        return LINGLONG_ERR(layer);
+        return LINGLONG_ERR(layer.errorString().toStdString());
     }
 
     if (layer.write(data) < 0) {
-        return LINGLONG_ERR(layer);
+        return LINGLONG_ERR(layer.errorString().toStdString());
     }
 
     layer.close();
@@ -190,7 +190,8 @@ utils::error::Result<void> LayerPackager::copyFile(LayerFile &file,
     while (true) {
         auto n = file.read(buff, 4096);
         if (n < 0) {
-            return LINGLONG_ERR("Failed to read from layer file: " + file.errorString());
+            return LINGLONG_ERR("Failed to read from layer file: "
+                                + file.errorString().toStdString());
         }
         if (n == 0) {
             break;

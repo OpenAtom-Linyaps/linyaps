@@ -8,10 +8,13 @@
 
 #include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/utils/error/error.h"
+#include "linglong/utils/log/log.h"
 #include "linglong/utils/serialize/yaml.h"
 #include "ytj/ytj.hpp"
 
 #include <fmt/format.h>
+
+#include <QStringList>
 
 #include <fstream>
 
@@ -53,11 +56,11 @@ utils::error::Result<api::types::v1::RepoConfigV2> loadConfig(const QStringList 
     for (const auto &file : files) {
         auto config = loadConfig(file);
         if (!config.has_value()) {
-            qDebug() << "Failed to load repo config from" << file << ":" << config.error();
+            LogD("Failed to load repo config from {}: {}", file.toStdString(), config.error());
             continue;
         }
 
-        qDebug() << "load repo config from" << file;
+        LogD("load repo config from {}", file.toStdString());
         return config;
     }
 

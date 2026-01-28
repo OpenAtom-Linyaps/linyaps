@@ -8,10 +8,10 @@
 #include "driver_detection_config.h"
 #include "driver_detection_manager.h"
 #include "driver_detector.h"
+#include "linglong/common/global/initialize.h"
 #include "linglong/utils/cmd.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/gettext.h"
-#include "linglong/utils/global/initialize.h"
 #include "tl/expected.hpp"
 
 #include <CLI/CLI.hpp>
@@ -130,8 +130,8 @@ int main(int argc, char *argv[])
     bindtextdomain(PACKAGE_LOCALE_DOMAIN, PACKAGE_LOCALE_DIR);
     textdomain(PACKAGE_LOCALE_DOMAIN);
 
-    linglong::utils::global::applicationInitialize();
-    linglong::utils::global::initLinyapsLogSystem(linglong::utils::log::LogBackend::Console);
+    linglong::common::global::applicationInitialize();
+    linglong::common::global::initLinyapsLogSystem(linglong::utils::log::LogBackend::Console);
 
     DriverDetectOptions options;
     CLI::App cliApp{ "Linglong Graphics Driver Detection Tool" };

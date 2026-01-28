@@ -7,6 +7,7 @@
 
 #include "linglong/package/fallback_version.h"
 #include "linglong/package/versionv2.h"
+#include "linglong/utils/log/log.h"
 
 #include <fmt/format.h>
 
@@ -72,7 +73,7 @@ std::vector<linglong::api::types::v1::PackageInfoV2> Version::filterByFuzzyVersi
     for (auto it = list.begin(); it != list.end();) {
         auto packageVerRet = package::Version::parse(it->version.c_str());
         if (!packageVerRet) {
-            qWarning() << "Ignore invalid package record " << packageVerRet.error();
+            LogW("Ignore invalid package record {}", packageVerRet.error());
             it = list.erase(it);
             continue;
         }

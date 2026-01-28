@@ -73,17 +73,17 @@ utils::error::Result<void> executeHookCommands(
 
         if (!WIFEXITED(ret)) {
             int signalNum = WTERMSIG(ret);
-            return LINGLONG_ERR(QString("Command '%1' terminated by signal %2 (%3).")
-                                  .arg(QString::fromStdString(fullCommand))
-                                  .arg(signalNum)
-                                  .arg(strsignal(signalNum)));
+            return LINGLONG_ERR(fmt::format("Command '{}' terminated by signal {} ({}).",
+                                            fullCommand,
+                                            signalNum,
+                                            strsignal(signalNum)));
         }
 
         int exitStatus = WEXITSTATUS(ret);
         if (exitStatus != 0) {
-            return LINGLONG_ERR(QString("Command '%1' exited with non-zero status: %2.")
-                                  .arg(QString::fromStdString(fullCommand))
-                                  .arg(exitStatus));
+            return LINGLONG_ERR(fmt::format("Command '{}' exited with non-zero status: {}.",
+                                            fullCommand,
+                                            exitStatus));
         }
     }
     return LINGLONG_OK;
@@ -97,8 +97,8 @@ utils::error::Result<void> InstallHookManager::parseInstallHooks()
     for (const auto &entry : std::filesystem::directory_iterator(LINGLONG_INSTALL_HOOKS_DIR, ec)) {
         if (ec) {
             return LINGLONG_ERR(
-              QString("Failed to iterate directory %1: %2")
-                .arg(LINGLONG_INSTALL_HOOKS_DIR, QString::fromStdString(ec.message())));
+              fmt::format("Failed to iterate directory {}", LINGLONG_INSTALL_HOOKS_DIR),
+              ec);
         }
 
         if (!std::filesystem::is_regular_file(entry.status(ec))) {
@@ -110,7 +110,7 @@ utils::error::Result<void> InstallHookManager::parseInstallHooks()
 
         std::ifstream file(entry.path());
         if (!file.is_open()) {
-            return LINGLONG_ERR(QString{ "Couldn't open file: %1" }.arg(entry.path().c_str()));
+            return LINGLONG_ERR(fmt::format("Couldn't open file: {}", entry.path()));
         }
 
         std::string line;

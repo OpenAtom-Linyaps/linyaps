@@ -42,6 +42,8 @@ pfl_add_library(
   src/linglong/common/formatter.cpp
   src/linglong/common/formatter.h
   src/linglong/common/gkeyfile_wrapper.h
+  src/linglong/common/global/initialize.cpp
+  src/linglong/common/global/initialize.h
   src/linglong/common/serialize/json.cpp
   src/linglong/common/serialize/json.h
   src/linglong/extension/extension.cpp
@@ -119,6 +121,7 @@ pfl_add_library(
   linglong::dbus-api
   linglong::utils
   linglong::api
+  PkgConfig::glib2
   PkgConfig::ostree1
   PkgConfig::systemd
   PkgConfig::ELF

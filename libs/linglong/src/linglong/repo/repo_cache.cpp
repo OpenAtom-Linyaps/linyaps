@@ -7,6 +7,7 @@
 #include "repo_cache.h"
 
 #include "configure.h"
+#include "linglong/common/formatter.h"
 #include "linglong/package/version.h"
 #include "linglong/utils/log/log.h"
 #include "linglong/utils/serialize/json.h"
@@ -36,8 +37,7 @@ RepoCache::create(const std::filesystem::path &cacheFile,
     std::error_code ec;
     if (!std::filesystem::exists(repoCache->cacheFile, ec)) {
         if (ec) {
-            return LINGLONG_ERR(
-              QString{ "checking file existence failed: %1" }.arg(ec.message().c_str()));
+            return LINGLONG_ERR("checking file existence failed", ec);
         }
 
         auto ret = repoCache->rebuildCache(repoConfig, repo);
@@ -90,7 +90,7 @@ utils::error::Result<void> RepoCache::rebuildCache(const api::types::v1::RepoCon
     std::vector<std::string_view> refs;
 
     if (ostree_repo_list_refs(&repo, nullptr, &refsTable, nullptr, &gErr) == FALSE) {
-        return LINGLONG_ERR("ostree_repo_list_refs", gErr);
+        return LINGLONG_ERR(fmt::format("ostree_repo_list_refs {}", ptr_view(gErr)));
     }
 
     // we couldn't report error within below lambda and for_each wouldn't return early if error
@@ -107,7 +107,7 @@ utils::error::Result<void> RepoCache::rebuildCache(const api::types::v1::RepoCon
     for (auto ref : refs) {
         auto pos = ref.find(':');
         if (pos == std::string::npos) {
-            qWarning() << "invalid ref: " << ref.data();
+            LogW("invalid ref: {}", ref.data());
             continue;
         }
 
@@ -118,7 +118,7 @@ utils::error::Result<void> RepoCache::rebuildCache(const api::types::v1::RepoCon
         g_autoptr(GError) gErr{ nullptr };
         g_autoptr(GFile) root{ nullptr };
         if (ostree_repo_read_commit(&repo, ref.data(), &root, &commit, nullptr, &gErr) == FALSE) {
-            qWarning() << "ostree_repo_read_commit failed:" << gErr->message;
+            LogW("ostree_repo_read_commit failed: {}", ptr_view(gErr));
             continue;
         }
         item.commit = commit;
@@ -128,7 +128,7 @@ utils::error::Result<void> RepoCache::rebuildCache(const api::types::v1::RepoCon
         g_clear_error(&gErr);
         g_autofree gchar *content = nullptr;
         if (!g_file_load_contents(infoFile, nullptr, &content, nullptr, nullptr, &gErr)) {
-            return LINGLONG_ERR("g_file_load_contents", gErr);
+            return LINGLONG_ERR(fmt::format("g_file_load_contents: {}", ptr_view(gErr)));
         }
         auto info = utils::serialize::parsePackageInfo(content);
         if (!info) {
@@ -142,7 +142,7 @@ utils::error::Result<void> RepoCache::rebuildCache(const api::types::v1::RepoCon
 
     // FIXME: ll-cli may initialize repo, it can make states.json own by root
     if (getuid() == 0) {
-        std::cerr << "Rebuild the cache by root, skip to write data to states.json";
+        LogE("Rebuild the cache by root, skip to write data to states.json");
         return LINGLONG_OK;
     }
 
@@ -283,12 +283,12 @@ RepoCache::queryLayerItem(const repoCacheQuery &query) const noexcept
     std::sort(layers_view.begin(), layers_view.end(), [](itemRef lhs, itemRef rhs) {
         auto lhsVersion = linglong::package::Version::parse(lhs.get().info.version.c_str());
         if (!lhsVersion) {
-            qCritical() << "Failed to parse lhs version: " << lhs.get().info.version.c_str();
+            LogE("Failed to parse lhs version: {}", lhs.get().info.version);
             return false;
         }
         auto rhsVersion = linglong::package::Version::parse(rhs.get().info.version.c_str());
         if (!rhsVersion) {
-            qCritical() << "Failed to parse rhs version: " << rhs.get().info.version.c_str();
+            LogE("Failed to parse rhs version: {}", rhs.get().info.version);
             return false;
         }
         return *lhsVersion > *rhsVersion;
@@ -316,8 +316,7 @@ utils::error::Result<void> RepoCache::writeToDisk()
     std::error_code ec;
     auto parent_path = this->cacheFile.parent_path();
     if (!std::filesystem::exists(parent_path, ec)) {
-        return LINGLONG_ERR("The parent directory of state.json doesn't exist:"
-                            + QString::fromStdString(ec.message()));
+        return LINGLONG_ERR("The parent directory of state.json doesn't exist", ec);
     }
 
     auto dumpStatus = [](const std::filesystem::path &p, std::error_code &ec) {
@@ -328,31 +327,30 @@ utils::error::Result<void> RepoCache::writeToDisk()
         auto targetPerm = status.permissions();
 
         using std::filesystem::perms;
-        auto out = qInfo().nospace();
-        out << QString::fromStdString(p.string()) << ":";
-        auto show = [&out, targetPerm](char op, perms perm) {
-            out << (perms::none == (perm & targetPerm) ? '-' : op);
+        auto show = [targetPerm](char op, perms perm) {
+            return perms::none == (perm & targetPerm) ? '-' : op;
         };
-        show('r', perms::owner_read);
-        show('w', perms::owner_write);
-        show('x', perms::owner_exec);
-        show('r', perms::group_read);
-        show('w', perms::group_write);
-        show('x', perms::group_exec);
-        show('r', perms::others_read);
-        show('w', perms::others_write);
-        show('x', perms::others_exec);
+        LogI("{}: {}{}{}{}{}{}{}{}{}",
+             p.string(),
+             show('r', perms::owner_read),
+             show('w', perms::owner_write),
+             show('x', perms::owner_exec),
+             show('r', perms::group_read),
+             show('w', perms::group_write),
+             show('x', perms::group_exec),
+             show('r', perms::others_read),
+             show('w', perms::others_write),
+             show('x', perms::others_exec));
         ec.clear();
     };
 
     auto tmpFile = parent_path / ("temp-" + this->cacheFile.filename().string());
     auto ofs = std::ofstream(tmpFile);
     if (!ofs.is_open()) { // dump all info
-        qInfo() << "process uid:" << ::getuid() << "process gid:" << ::getgid();
+        LogI("process uid {}, process gid {}", ::getuid(), ::getgid());
         dumpStatus(parent_path, ec);
         if (ec) {
-            qCritical() << "get status of directory" << QString::fromStdString(parent_path)
-                        << "error:" << QString::fromStdString(ec.message());
+            LogE("get status of directory {} error: {}", parent_path.string(), ec.message());
         }
         return LINGLONG_ERR("failed to update cache");
     }
@@ -363,30 +361,26 @@ utils::error::Result<void> RepoCache::writeToDisk()
 
     std::filesystem::rename(tmpFile, this->cacheFile, ec);
     if (ec) {
-        qCritical().nospace() << "failed to rename from "
-                              << QString::fromStdString(tmpFile.string()) << " to "
-                              << QString::fromStdString(this->cacheFile.string()) << ": "
-                              << QString::fromStdString(ec.message());
+        LogE("failed to rename from {} to {}: {}",
+             tmpFile.string(),
+             this->cacheFile.string(),
+             ec.message());
         // dump status of original file
         if (std::filesystem::exists(this->cacheFile, ec)) {
             dumpStatus(this->cacheFile, ec);
             if (ec) {
-                qCritical() << "get status of file"
-                            << QString::fromStdString(this->cacheFile.string())
-                            << "error:" << QString::fromStdString(ec.message());
+                LogE("failed to get status of file {}: {}", this->cacheFile.string(), ec.message());
                 ec.clear();
             }
         }
         if (ec) {
-            qCritical() << "couldn't check the existence of" << this->cacheFile.c_str() << ":"
-                        << QString::fromStdString(ec.message());
+            LogE("couldn't check the existence of {}: {}", this->cacheFile.c_str(), ec.message());
             ec.clear();
         }
 
         std::filesystem::remove(tmpFile, ec);
         if (ec) {
-            qCritical() << "check file" << QString::fromStdString(this->cacheFile.string())
-                        << "exist error:" << QString::fromStdString(ec.message());
+            LogE("failed to remove file {}: {}", tmpFile.string(), ec.message());
         }
 
         return LINGLONG_ERR("failed to update cache");
@@ -395,7 +389,7 @@ utils::error::Result<void> RepoCache::writeToDisk()
     auto versionTag = parent_path / ".version";
     ofs.open(parent_path / ".version", std::ios::out | std::ios::trunc);
     if (ofs.fail()) {
-        qWarning() << "failed to open file" << versionTag.c_str();
+        LogE("failed to open file {}", versionTag.string());
         return LINGLONG_OK;
     }
 

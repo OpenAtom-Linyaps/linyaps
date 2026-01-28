@@ -7,7 +7,6 @@
 #include "../mocks/linglong_builder_mock.h"
 #include "linglong/builder/linglong_builder.h"
 #include "linglong/utils/error/error.h"
-#include "linglong/utils/global/initialize.h"
 
 #include <filesystem>
 #include <fstream>

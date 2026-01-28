@@ -131,7 +131,7 @@ utils::error::Result<void> LayerFile::saveTo(const QString &destination) noexcep
     LINGLONG_TRACE(fmt::format("save layer file to {}", destination.toStdString()));
 
     if (!this->copy(destination)) {
-        return LINGLONG_ERR(*this);
+        return LINGLONG_ERR(this->errorString().toStdString());
     }
 
     return LINGLONG_OK;

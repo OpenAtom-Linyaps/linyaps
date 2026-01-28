@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "linglong/common/formatter.h"
 #include "linglong/utils/error/error.h"
 
 #include <fmt/format.h>
@@ -48,7 +49,7 @@ public:
                                   G_KEY_FILE_KEEP_TRANSLATIONS,
                                   &gErr);
         if (gErr != nullptr) {
-            return LINGLONG_ERR("g_key_file_load_from_file", gErr);
+            return LINGLONG_ERR(fmt::format("g_key_file_load_from_file {}", ptr_view(gErr)));
         }
 
         return entry;
@@ -74,7 +75,7 @@ public:
                                                         &gErr);
 
         if (gErr != nullptr) {
-            return LINGLONG_ERR("g_key_file_get_string", gErr);
+            return LINGLONG_ERR(fmt::format("g_key_file_get_string {}", ptr_view(gErr)));
         }
 
         return value;
@@ -105,7 +106,7 @@ public:
                                                  &length,
                                                  &gErr);
         if (gErr != nullptr) {
-            return LINGLONG_ERR("g_key_file_get_keys", gErr);
+            return LINGLONG_ERR(fmt::format("g_key_file_get_keys {}", ptr_view(gErr)));
         }
 
         QStringList result;
@@ -125,7 +126,7 @@ public:
 
         g_key_file_save_to_file(this->gKeyFile.get(), filepath.toLocal8Bit().constData(), &gErr);
         if (gErr != nullptr) {
-            return LINGLONG_ERR("g_key_file_save_to_file", gErr);
+            return LINGLONG_ERR(fmt::format("g_key_file_save_to_file {}", ptr_view(gErr)));
         }
 
         return LINGLONG_OK;
@@ -143,7 +144,7 @@ public:
                                &gErr)
             == FALSE) {
             if (gErr != nullptr) {
-                return LINGLONG_ERR("g_key_file_has_key", gErr);
+                return LINGLONG_ERR(fmt::format("g_key_file_has_key {}", ptr_view(gErr)));
             }
             return false;
         }

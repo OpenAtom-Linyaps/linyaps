@@ -13,7 +13,6 @@
 #include "linglong/repo/client_factory.h"
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/utils/error/error.h"
-#include "linglong/utils/global/initialize.h"
 
 #include <cstdio>
 #include <cstdlib>

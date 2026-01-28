@@ -17,4 +17,5 @@ pfl_add_executable(
   LINK_LIBRARIES
   PRIVATE
   CLI11::CLI11
+  linglong::linglong
   linglong::utils)

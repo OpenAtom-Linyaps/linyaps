@@ -5,9 +5,9 @@
 #include "dbus_notifier.h"
 
 #include "linglong/utils/finally/finally.h"
+#include "linglong/utils/log/log.h"
 
 #include <QDBusReply>
-#include <QDebug>
 #include <QEventLoop>
 
 namespace linglong::cli {
@@ -45,7 +45,7 @@ linglong::utils::error::Result<QStringList> DBusNotifier::getCapabilities() noex
 
     QDBusReply<QStringList> reply = inter.call(QDBus::Block, "GetCapabilities");
     if (!reply.isValid()) {
-        auto msg = "invoke GetCapabilities error:" + reply.error().message();
+        auto msg = "invoke GetCapabilities error:" + reply.error().message().toStdString();
         return LINGLONG_ERR(msg);
     }
 
@@ -74,7 +74,7 @@ linglong::utils::error::Result<quint32> DBusNotifier::notify(const QString &appN
                                            hints,
                                            expireTimeout);
     if (!reply.isValid()) {
-        auto msg = "send notification error:" + reply.error().message();
+        auto msg = "send notification error:" + reply.error().message().toStdString();
         return LINGLONG_ERR(msg);
     }
 
@@ -94,7 +94,7 @@ utils::error::Result<void> DBusNotifier::notify(const api::types::v1::Interactio
                               { { "urgency", 1 } },
                               -1);
     if (!reply) {
-        return LINGLONG_ERR("failed to notify: " + reply.error().message());
+        return LINGLONG_ERR("failed to notify", reply);
     }
 
     return LINGLONG_OK;
@@ -148,7 +148,7 @@ DBusNotifier::request(const api::types::v1::InteractionRequest &request)
                               { { "urgency", 1 } },
                               0);
     if (!reply) {
-        return LINGLONG_ERR("failed to notify: " + reply.error().message());
+        return LINGLONG_ERR("failed to notify", reply);
     }
     notificationID = *reply;
 
@@ -176,8 +176,7 @@ DBusNotifier::request(const api::types::v1::InteractionRequest &request)
         break;
     }
 
-    qCritical() << "unexpected reason:" << static_cast<int>(reason)
-                << "control flow shouldn't be here:" << __FILE__ << __LINE__;
+    LogE("unexpected reason: {}", static_cast<int>(reason));
     std::abort();
 }
 

@@ -7,11 +7,11 @@
 #include "configure.h"
 #include "linglong/adaptors/package_manager/package_manager1.h"
 #include "linglong/common/dbus/register.h"
+#include "linglong/common/global/initialize.h"
 #include "linglong/package_manager/package_manager.h"
 #include "linglong/repo/config.h"
 #include "linglong/repo/migrate.h"
 #include "linglong/repo/ostree_repo.h"
-#include "linglong/utils/global/initialize.h"
 #include "ocppi/cli/CLI.hpp"
 #include "ocppi/cli/crun/Crun.hpp"
 
@@ -19,36 +19,33 @@
 
 #include <filesystem>
 
-using namespace linglong::common::dbus;
-using namespace linglong::utils::global;
-
 namespace {
 void withDBusDaemon(ocppi::cli::CLI &cli)
 {
     auto config = linglong::repo::loadConfig(
       { LINGLONG_ROOT "/config.yaml", LINGLONG_DATA_DIR "/config.yaml" });
     if (!config.has_value()) {
-        qCritical() << config.error();
+        LogE("load config failed: {}", config.error());
         QCoreApplication::exit(-1);
         return;
     }
 
     auto repoRoot = QDir(LINGLONG_ROOT);
     if (!repoRoot.exists() && !repoRoot.mkpath(".")) {
-        qCritical() << "failed to create repository directory" << repoRoot.absolutePath();
+        LogE("failed to create repository directory {}", repoRoot.absolutePath().toStdString());
         std::abort();
     }
 
     auto ret = linglong::repo::tryMigrate(LINGLONG_ROOT, *config);
     if (ret == linglong::repo::MigrateResult::Failed) {
-        qCritical() << "failed to migrate repository";
+        LogE("failed to migrate repository");
         QCoreApplication::exit(-1);
     }
     auto *ostreeRepo = new linglong::repo::OSTreeRepo(repoRoot, *config);
     ostreeRepo->setParent(QCoreApplication::instance());
     auto result = ostreeRepo->fixExportAllEntries();
     if (!result.has_value()) {
-        qCritical() << result.error().message();
+        LogE("fix export all entries failed: {}", result.error());
     }
 
     auto *containerBuilder = new linglong::runtime::ContainerBuilder(cli);
@@ -59,47 +56,51 @@ void withDBusDaemon(ocppi::cli::CLI &cli)
                                                                  *containerBuilder,
                                                                  QCoreApplication::instance());
     new linglong::adaptors::package_manger::PackageManager1(packageManager);
-    result = registerDBusObject(conn, "/org/deepin/linglong/PackageManager1", packageManager);
+    result = linglong::common::dbus::registerDBusObject(conn,
+                                                        "/org/deepin/linglong/PackageManager1",
+                                                        packageManager);
     if (!result.has_value()) {
-        qCritical().noquote() << "Launching failed:" << Qt::endl << result.error().message();
+        LogE("register dbus object failed: {}", result.error());
         QCoreApplication::exit(-1);
         return;
     }
     QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit, [conn] {
-        unregisterDBusObject(conn, "/org/deepin/linglong/PackageManager1");
+        linglong::common::dbus::unregisterDBusObject(conn, "/org/deepin/linglong/PackageManager1");
     });
 
-    result = registerDBusService(conn, "org.deepin.linglong.PackageManager1");
+    result =
+      linglong::common::dbus::registerDBusService(conn, "org.deepin.linglong.PackageManager1");
     if (!result.has_value()) {
-        qCritical().noquote() << "Launching failed:" << Qt::endl << result.error().message();
+        LogE("register dbus service failed: {}", result.error());
         QCoreApplication::exit(-1);
         return;
     }
     QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit, [conn] {
-        auto result = unregisterDBusService(conn,
-                                            // FIXME: use cmake option
-                                            "org.deepin.linglong.PackageManager1");
+        auto result =
+          linglong::common::dbus::unregisterDBusService(conn,
+                                                        // FIXME: use cmake option
+                                                        "org.deepin.linglong.PackageManager1");
         if (!result.has_value()) {
-            qWarning().noquote() << "During exiting:" << Qt::endl << result.error().message();
+            LogW("unregister dbus service failed: {}", result.error());
         }
     });
 }
 
 void withoutDBusDaemon(ocppi::cli::CLI &cli)
 {
-    qInfo() << "Running linglong package manager without dbus daemon...";
+    LogI("Running linglong package manager without dbus daemon...");
 
     auto config = linglong::repo::loadConfig(
       { LINGLONG_ROOT "/config.yaml", LINGLONG_DATA_DIR "/config.yaml" });
     if (!config.has_value()) {
-        qCritical() << config.error();
+        LogE("load config failed: {}", config.error());
         QCoreApplication::exit(-1);
         return;
     }
 
     auto repoRoot = QDir(LINGLONG_ROOT);
     if (!repoRoot.exists() && !repoRoot.mkpath(".")) {
-        qCritical() << "failed to create repository directory" << repoRoot.absolutePath();
+        LogE("failed to create repository directory {}", repoRoot.absolutePath().toStdString());
         std::abort();
     }
 
@@ -107,7 +108,7 @@ void withoutDBusDaemon(ocppi::cli::CLI &cli)
     ostreeRepo->setParent(QCoreApplication::instance());
     auto result = ostreeRepo->fixExportAllEntries();
     if (!result.has_value()) {
-        qCritical() << result.error().message();
+        LogE("fix export all entries failed: {}", result.error());
     }
 
     auto *containerBuilder = new linglong::runtime::ContainerBuilder(cli);
@@ -121,7 +122,7 @@ void withoutDBusDaemon(ocppi::cli::CLI &cli)
     auto server = new QDBusServer("unix:path=/tmp/linglong-package-manager.socket",
                                   QCoreApplication::instance());
     if (!server->isConnected()) {
-        qCritical() << "listen on socket:" << server->lastError();
+        LogE("listen on socket: {}", server->lastError().message().toStdString());
         QCoreApplication::exit(-1);
         return;
     }
@@ -129,17 +130,21 @@ void withoutDBusDaemon(ocppi::cli::CLI &cli)
         if (QDir::root().remove("/tmp/linglong-package-manager.socket")) {
             return;
         }
-        qCritical() << "failed to remove /tmp/linglong-package-manager.socket.";
+        LogE("failed to remove /tmp/linglong-package-manager.socket.");
     });
 
     QObject::connect(server, &QDBusServer::newConnection, [packageManager](QDBusConnection conn) {
-        auto res = registerDBusObject(conn, "/org/deepin/linglong/PackageManager1", packageManager);
+        auto res =
+          linglong::common::dbus::registerDBusObject(conn,
+                                                     "/org/deepin/linglong/PackageManager1",
+                                                     packageManager);
         if (!res.has_value()) {
-            qCritical() << res.error().code() << res.error().message();
+            LogE("register dbus object failed: {}", res.error());
             return;
         }
         QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit, [conn]() {
-            unregisterDBusObject(conn, "/org/deepin/linglong/PackageManager1");
+            linglong::common::dbus::unregisterDBusObject(conn,
+                                                         "/org/deepin/linglong/PackageManager1");
         });
     });
 }
@@ -150,8 +155,8 @@ auto main(int argc, char *argv[]) -> int
 {
     QCoreApplication app(argc, argv);
 
-    applicationInitialize();
-    initLinyapsLogSystem(linglong::utils::log::LogBackend::Journal);
+    linglong::common::global::applicationInitialize();
+    linglong::common::global::initLinyapsLogSystem(linglong::utils::log::LogBackend::Journal);
 
     auto ociRuntimeCLI = qgetenv("LINGLONG_OCI_RUNTIME");
     if (ociRuntimeCLI.isEmpty()) {
@@ -160,7 +165,7 @@ auto main(int argc, char *argv[]) -> int
 
     auto path = QStandardPaths::findExecutable(ociRuntimeCLI);
     if (path.isEmpty()) {
-        qCritical() << ociRuntimeCLI << "not found";
+        LogE("{} not found", ociRuntimeCLI.toStdString());
         return -1;
     }
 

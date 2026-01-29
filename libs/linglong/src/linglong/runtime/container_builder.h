@@ -14,6 +14,7 @@
 #include "ocppi/cli/CLI.hpp"
 
 #include <QCryptographicHash>
+#include <QObject>
 
 namespace linglong::runtime {
 

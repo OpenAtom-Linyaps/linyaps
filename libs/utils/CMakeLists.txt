@@ -25,8 +25,6 @@ pfl_add_library(
   src/linglong/utils/finally/finally.cpp
   src/linglong/utils/finally/finally.h
   src/linglong/utils/gettext.h
-  src/linglong/utils/global/initialize.cpp
-  src/linglong/utils/global/initialize.h
   src/linglong/utils/hooks.cpp
   src/linglong/utils/hooks.h
   src/linglong/utils/log/formatter.cpp
@@ -54,14 +52,11 @@ pfl_add_library(
   cxx_std_17
   LINK_LIBRARIES
   PUBLIC
-  Qt${QT_VERSION_MAJOR}::Core
-  Qt${QT_VERSION_MAJOR}::DBus
-  PkgConfig::glib2
+  PkgConfig::cap
   PkgConfig::systemd
   fmt::fmt
-  tl::expected
-  ytj::ytj
-  linglong::ocppi
   linglong::api
   linglong::common
-  PkgConfig::cap)
+  linglong::ocppi
+  tl::expected
+  ytj::ytj)

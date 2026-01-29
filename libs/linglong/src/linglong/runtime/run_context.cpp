@@ -126,7 +126,7 @@ utils::error::Result<void> RunContext::resolve(const linglong::package::Referenc
     } else if (info.kind == "runtime") {
         runtimeLayer = std::move(layer).value();
     } else {
-        return LINGLONG_ERR("kind " + QString::fromStdString(info.kind) + " is not runnable");
+        return LINGLONG_ERR(fmt::format("kind {} is not runnable", info.kind));
     }
 
     // base layer must be resolved for all kinds
@@ -218,8 +218,7 @@ utils::error::Result<void> RunContext::resolve(const api::types::v1::BuilderProj
     } else if (target.package.kind == "runtime") {
         runtimeOutput = buildOutput;
     } else {
-        return LINGLONG_ERR("can't resolve run context from package kind "
-                            + QString::fromStdString(target.package.kind));
+        return LINGLONG_ERR("can't resolve run context from package kind " + target.package.kind);
     }
 
     auto baseFuzzyRef = package::FuzzyReference::parse(target.base);
@@ -325,7 +324,7 @@ utils::error::Result<void> RunContext::resolveLayer(bool depsBinaryOnly,
 
     for (auto &ext : extensionLayers) {
         if (!ext.resolveLayer()) {
-            qWarning() << "ignore failed extension layer";
+            LogW("ignore failed extension layer");
             continue;
         }
 
@@ -575,7 +574,7 @@ utils::error::Result<void> RunContext::fillContextCfg(
 
     auto bundleDir = runtime::makeBundleDir(containerID, bundleSuffix);
     if (!bundleDir) {
-        return LINGLONG_ERR("failed to get bundle dir of " + QString::fromStdString(containerID));
+        return LINGLONG_ERR("failed to get bundle dir of " + containerID);
     }
     bundle = *bundleDir;
     builder.setBundlePath(bundle);

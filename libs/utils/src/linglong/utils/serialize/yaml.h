@@ -43,7 +43,7 @@ error::Result<T> LoadYAMLFile(const std::filesystem::path &filename) noexcept
 
     std::ifstream file_stream(filename);
     if (!file_stream.is_open()) {
-        return LINGLONG_ERR("Failed to open file: " + QString::fromStdString(filename));
+        return LINGLONG_ERR("Failed to open file: " + filename.string());
     }
 
     return LoadYAML<T>(file_stream);

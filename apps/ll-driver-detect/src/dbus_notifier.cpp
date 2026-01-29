@@ -33,7 +33,7 @@ utils::error::Result<void> DBusNotifier::init()
                             this,
                             SLOT(forwardActionInvoked(quint32, QString)))) {
         return LINGLONG_ERR("couldn't connect to signal ActionInvoked:"
-                            + connection.lastError().message());
+                            + connection.lastError().message().toStdString());
     }
 
     if (!connection.connect(dbusInterface_.service(),
@@ -43,7 +43,7 @@ utils::error::Result<void> DBusNotifier::init()
                             this,
                             SLOT(forwardNotificationClosed(quint32, quint32)))) {
         return LINGLONG_ERR("couldn't connect to signal NotificationClosed:"
-                            + connection.lastError().message());
+                            + connection.lastError().message().toStdString());
     }
     return LINGLONG_OK;
 }
@@ -172,7 +172,7 @@ utils::error::Result<quint32> DBusNotifier::sendDBusNotification(const QString &
         .call("Notify", appName, replaceId, icon, summary, body, actions, hints, timeout);
 
     if (message.type() == QDBusMessage::ErrorMessage) {
-        return LINGLONG_ERR(QString("Failed to send notification: %1").arg(message.errorMessage()));
+        return LINGLONG_ERR("Failed to send notification: " + message.errorMessage().toStdString());
     }
 
     if (message.arguments().isEmpty()) {

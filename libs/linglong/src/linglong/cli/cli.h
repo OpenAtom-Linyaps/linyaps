@@ -18,7 +18,6 @@
 #include "linglong/runtime/container_builder.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/log/log.h"
-#include "linglong/utils/serialize/json.h"
 
 #include <CLI/CLI.hpp>
 
@@ -236,7 +235,7 @@ private:
 
         reply.waitForFinished();
         if (reply.isError()) {
-            return LINGLONG_ERR(reply.error().message(), reply.error().type());
+            return LINGLONG_ERR(reply.error().message().toStdString(), reply.error().type());
         }
 
         auto result = common::serialize::fromQVariantMap<T>(reply.value());

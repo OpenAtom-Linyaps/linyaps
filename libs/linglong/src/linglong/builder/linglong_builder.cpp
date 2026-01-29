@@ -10,6 +10,7 @@
 #include "linglong/api/types/v1/ExportDirs.hpp"
 #include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/builder/printer.h"
+#include "linglong/common/global/initialize.h"
 #include "linglong/oci-cfg-generators/container_cfg_builder.h"
 #include "linglong/package/architecture.h"
 #include "linglong/package/fuzzy_reference.h"
@@ -24,7 +25,6 @@
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/file.h"
 #include "linglong/utils/finally/finally.h"
-#include "linglong/utils/global/initialize.h"
 #include "linglong/utils/log/log.h"
 #include "linglong/utils/serialize/json.h"
 #include "linglong/utils/serialize/packageinfo_handler.h"
@@ -33,7 +33,6 @@
 
 #include <fmt/ranges.h>
 #include <nlohmann/json.hpp>
-#include <qdebug.h>
 #include <uuid.h>
 
 #include <QDir>
@@ -135,8 +134,8 @@ utils::error::Result<void> pullDependency(const package::Reference &ref,
     printReplacedText(
       fmt::format("{:<35}{:<15}{:<15}waiting ...", ref.id, ref.version.toString(), module),
       2);
-    QObject::connect(utils::global::GlobalTaskControl::instance(),
-                     &utils::global::GlobalTaskControl::OnCancel,
+    QObject::connect(common::global::GlobalTaskControl::instance(),
+                     &common::global::GlobalTaskControl::OnCancel,
                      [&tmpTask]() {
                          tmpTask.Cancel();
                      });
@@ -458,21 +457,19 @@ Builder::ensureUtils(const std::string &id, const package::Architecture &arch) n
     // the target and the current architectures.
     auto baseRef = clearDependency(info.base, false, true);
     if (!baseRef) {
-        return LINGLONG_ERR("base not exist: " + QString::fromStdString(info.base));
+        return LINGLONG_ERR("base not exist: " + info.base);
     }
     if (!pullDependency(*baseRef, this->repo, "binary")) {
-        return LINGLONG_ERR("failed to pull base binary " + QString::fromStdString(info.base));
+        return LINGLONG_ERR("failed to pull base binary " + info.base);
     }
 
     if (info.runtime) {
         auto runtimeRef = clearDependency(info.runtime.value(), false, true);
         if (!runtimeRef) {
-            return LINGLONG_ERR("runtime not exist: "
-                                + QString::fromStdString(info.runtime.value()));
+            return LINGLONG_ERR("runtime not exist: " + info.runtime.value());
         }
         if (!pullDependency(*runtimeRef, this->repo, "binary")) {
-            return LINGLONG_ERR("failed to pull runtime binary "
-                                + QString::fromStdString(info.runtime.value()));
+            return LINGLONG_ERR("failed to pull runtime binary " + info.runtime.value());
         }
     }
 
@@ -487,7 +484,7 @@ utils::error::Result<package::Reference> Builder::clearDependency(const std::str
 
     auto fuzzyRef = package::FuzzyReference::parse(ref);
     if (!fuzzyRef) {
-        return LINGLONG_ERR(QString::fromStdString("invalid ref ") + ref.c_str());
+        return LINGLONG_ERR("invalid ref " + ref);
     }
 
     auto res = repo.clearReference(*fuzzyRef,
@@ -663,7 +660,7 @@ utils::error::Result<void> Builder::processBuildDepends() noexcept
 
     if (!cfgBuilder.build()) {
         auto err = cfgBuilder.getError();
-        return LINGLONG_ERR("build cfg error: " + QString::fromStdString(err.reason));
+        return LINGLONG_ERR("build cfg error: " + err.reason);
     }
 
     auto container = this->containerBuilder.create(cfgBuilder);
@@ -763,9 +760,11 @@ utils::error::Result<bool> Builder::buildStageBuild(const QStringList &args) noe
     }
 
     // initialize the cache dir
-    QDir appCache(QString::fromStdString(internalDir / "cache"));
-    if (!appCache.mkpath(".")) {
-        return LINGLONG_ERR("make path " + appCache.absolutePath() + ": failed.");
+    auto appCache = internalDir / "cache";
+    std::error_code ec;
+    std::filesystem::create_directories(appCache, ec);
+    if (ec) {
+        return LINGLONG_ERR(fmt::format("failed to create cache directory {}", appCache), ec);
     }
 
     linglong::generator::ContainerCfgBuilder cfgBuilder;
@@ -798,17 +797,12 @@ utils::error::Result<bool> Builder::buildStageBuild(const QStringList &args) noe
     }
 
     // write ld.so.conf
-    QString ldConfPath = appCache.absoluteFilePath("ld.so.conf");
+    auto ldConfPath = appCache / "ld.so.conf";
     std::string triplet = package::Architecture::currentCPUArchitecture().getTriplet();
-    std::string ldRawConf = cfgBuilder.ldConf(triplet);
-
-    QFile ldsoconf{ ldConfPath };
-    if (!ldsoconf.open(QIODevice::WriteOnly)) {
-        return LINGLONG_ERR(ldsoconf);
+    auto ret = utils::writeFile(ldConfPath, cfgBuilder.ldConf(triplet));
+    if (!ret) {
+        return LINGLONG_ERR(ret);
     }
-    ldsoconf.write(ldRawConf.c_str());
-    // must be closed here, this conf will be used later.
-    ldsoconf.close();
 
     cfgBuilder.addExtraMounts(std::vector<ocppi::runtime::config::types::Mount>{
       ocppi::runtime::config::types::Mount{ .destination = LINGLONG_BUILDER_HELPER,
@@ -822,12 +816,12 @@ utils::error::Result<bool> Builder::buildStageBuild(const QStringList &args) noe
       ocppi::runtime::config::types::Mount{ .destination =
                                               "/etc/ld.so.conf.d/zz_deepin-linglong-app.conf",
                                             .options = { { "rbind", "ro" } },
-                                            .source = ldConfPath.toStdString(),
+                                            .source = ldConfPath,
                                             .type = "bind" } });
 
     if (!cfgBuilder.build()) {
         auto err = cfgBuilder.getError();
-        return LINGLONG_ERR("build cfg error: " + QString::fromStdString(err.reason));
+        return LINGLONG_ERR("build cfg error: " + err.reason);
     }
 
     auto container = this->containerBuilder.create(cfgBuilder);
@@ -935,7 +929,7 @@ utils::error::Result<void> Builder::buildStagePreCommit() noexcept
 
     if (!cfgBuilder.build()) {
         auto err = cfgBuilder.getError();
-        return LINGLONG_ERR("build cfg error: " + QString::fromStdString(err.reason));
+        return LINGLONG_ERR("build cfg error: " + err.reason);
     }
 
     auto container = this->containerBuilder.create(cfgBuilder);
@@ -978,7 +972,7 @@ utils::error::Result<void> Builder::generateAppConf() noexcept
 
     // generate application's configure file
     auto scriptFile = QString(LINGLONG_LIBEXEC_DIR) + "/app-conf-generator";
-    auto useInstalledFile = utils::global::linglongInstalled() && QFile(scriptFile).exists();
+    auto useInstalledFile = common::global::linglongInstalled() && QFile(scriptFile).exists();
     QScopedPointer<QTemporaryDir> dir;
     if (!useInstalledFile) {
         LogD("Dumping app-conf-generator from qrc...");
@@ -1117,21 +1111,23 @@ utils::error::Result<void> Builder::generateEntries() noexcept
     const std::filesystem::path exportDirConfigPath = LINGLONG_DATA_DIR "/export-dirs.json";
     if (!std::filesystem::exists(exportDirConfigPath)) {
         return LINGLONG_ERR(
-          QString{ "this export config file doesn't exist: %1" }.arg(exportDirConfigPath.c_str()));
+          fmt::format("this export config file doesn't exist: {}", exportDirConfigPath));
     }
     auto exportDirConfig =
       linglong::utils::serialize::LoadJSONFile<linglong::api::types::v1::ExportDirs>(
         exportDirConfigPath);
     if (!exportDirConfig) {
         return LINGLONG_ERR(
-          QString{ "failed to load export config file: %1" }.arg(exportDirConfigPath.c_str()));
+          fmt::format("failed to load export config file {}", exportDirConfigPath),
+          exportDirConfig);
     }
 
     QDir binaryFiles(QString::fromStdString(internalDir / "output" / "binary" / "files"));
     QDir binaryEntries(QString::fromStdString(internalDir / "output" / "binary" / "entries"));
 
     if (!binaryEntries.mkpath(".")) {
-        return LINGLONG_ERR("make path " + binaryEntries.absolutePath() + ": failed.");
+        return LINGLONG_ERR("make path " + binaryEntries.absolutePath().toStdString()
+                            + ": failed.");
     }
 
     if (binaryFiles.exists("share")) {
@@ -1491,15 +1487,11 @@ utils::error::Result<void> Builder::exportUAB(const ExportOption &option,
             std::error_code ec;
             const auto relativeBundleFile = std::filesystem::relative(bundleFile, workingDir, ec);
             if (ec) {
-                return LINGLONG_ERR(
-                  fmt::format("failed to get relative path {}: {}", bundleFile, ec.message())
-                    .c_str());
+                return LINGLONG_ERR(fmt::format("failed to get relative path {}", bundleFile), ec);
             }
             const auto relativeBundleDir = std::filesystem::relative(bundleDir, workingDir, ec);
             if (ec) {
-                return LINGLONG_ERR(
-                  fmt::format("failed to get relative path {}: {}", bundleDir, ec.message())
-                    .c_str());
+                return LINGLONG_ERR(fmt::format("failed to get relative path {}", bundleDir), ec);
             }
             if (common::strings::starts_with(relativeBundleFile.string(), "../")
                 || common::strings::starts_with(relativeBundleDir.string(), "../")) {
@@ -1708,7 +1700,7 @@ utils::error::Result<void> Builder::extractLayer(const QString &layerPath,
 
     QDir destDir = destination;
     if (destDir.exists()) {
-        return LINGLONG_ERR(destination + " already exists");
+        return LINGLONG_ERR(destination.toStdString() + " already exists");
     }
 
     package::LayerPackager pkg;
@@ -1861,7 +1853,7 @@ utils::error::Result<void> Builder::run(std::vector<std::string> modules,
     });
 
     auto appCache = internalDir / "cache";
-    std::string ldConfPath = appCache / "ld.so.conf";
+    auto ldConfPath = appCache / "ld.so.conf";
     applicationMounts.push_back(ocppi::runtime::config::types::Mount{
       .destination = "/etc/ld.so.conf.d/zz_deepin-linglong-app.conf",
       .options = { { "rbind", "ro" } },
@@ -1891,19 +1883,14 @@ utils::error::Result<void> Builder::run(std::vector<std::string> modules,
 
         // write ld.so.conf
         std::string triplet = package::Architecture::currentCPUArchitecture().getTriplet();
-        std::string ldRawConf = cfgBuilder.ldConf(triplet);
-
-        QFile ldsoconf{ ldConfPath.c_str() };
-        if (!ldsoconf.open(QIODevice::WriteOnly)) {
-            return LINGLONG_ERR(ldsoconf);
+        res = utils::writeFile(ldConfPath, cfgBuilder.ldConf(triplet));
+        if (!res) {
+            return LINGLONG_ERR(res);
         }
-        ldsoconf.write(ldRawConf.c_str());
-        // must be closed here, this conf will be used later.
-        ldsoconf.close();
 
         if (!cfgBuilder.build()) {
             auto err = cfgBuilder.getError();
-            return LINGLONG_ERR("build cfg error: " + QString::fromStdString(err.reason));
+            return LINGLONG_ERR("build cfg error: " + err.reason);
         }
 
         auto container = this->containerBuilder.create(cfgBuilder);
@@ -1955,7 +1942,7 @@ utils::error::Result<void> Builder::run(std::vector<std::string> modules,
 
     if (!cfgBuilder.build()) {
         auto err = cfgBuilder.getError();
-        return LINGLONG_ERR("build cfg error: " + QString::fromStdString(err.reason));
+        return LINGLONG_ERR("build cfg error: " + err.reason);
     }
 
     auto container = this->containerBuilder.create(cfgBuilder);
@@ -2028,19 +2015,14 @@ utils::error::Result<void> Builder::runFromRepo(const package::Reference &ref,
 
         // write ld.so.conf
         std::string triplet = package::Architecture::currentCPUArchitecture().getTriplet();
-        std::string ldRawConf = cfgBuilder.ldConf(triplet);
-
-        QFile ldsoconf{ ldConfPath.c_str() };
-        if (!ldsoconf.open(QIODevice::WriteOnly)) {
-            return LINGLONG_ERR(ldsoconf);
+        res = utils::writeFile(ldConfPath, cfgBuilder.ldConf(triplet));
+        if (!res) {
+            return LINGLONG_ERR(res);
         }
-        ldsoconf.write(ldRawConf.c_str());
-        // must be closed here, this conf will be used later.
-        ldsoconf.close();
 
         if (!cfgBuilder.build()) {
             auto err = cfgBuilder.getError();
-            return LINGLONG_ERR("build cfg error: " + QString::fromStdString(err.reason));
+            return LINGLONG_ERR("build cfg error: " + err.reason);
         }
 
         auto container = this->containerBuilder.create(cfgBuilder);
@@ -2080,7 +2062,7 @@ utils::error::Result<void> Builder::runFromRepo(const package::Reference &ref,
 
     if (!cfgBuilder.build()) {
         auto err = cfgBuilder.getError();
-        return LINGLONG_ERR("build cfg error: " + QString::fromStdString(err.reason));
+        return LINGLONG_ERR("build cfg error: " + err.reason);
     }
 
     auto container = this->containerBuilder.create(cfgBuilder);
@@ -2134,15 +2116,7 @@ utils::error::Result<void> Builder::generateEntryScript() noexcept
     LINGLONG_TRACE("generate entry script");
 
     auto &project = *this->project;
-    QFile entry{ QString::fromStdString(internalDir / "entry.sh") };
-    if (entry.exists() && !entry.remove()) {
-        return LINGLONG_ERR(entry);
-    }
-
-    if (!entry.open(QIODevice::WriteOnly)) {
-        return LINGLONG_ERR(entry);
-    }
-
+    auto entry = internalDir / "entry.sh";
     std::string scriptContent = R"(#!/bin/bash
 set -e
 
@@ -2162,23 +2136,17 @@ set -e
         scriptContent.append(LINGLONG_BUILDER_HELPER "/symbols-strip.sh\n");
     }
 
-    auto writeBytes = scriptContent.size();
-    auto bytesWrite = entry.write(scriptContent.c_str());
-
-    if (bytesWrite == -1 || (qint64)writeBytes != bytesWrite) {
-        return LINGLONG_ERR("Failed to write script content to file", entry);
-    }
-
-    entry.close();
-    if (entry.error() != QFile::NoError) {
-        return LINGLONG_ERR(entry);
+    auto res = utils::writeFile(entry, scriptContent);
+    if (!res) {
+        return LINGLONG_ERR(res);
     }
 
     LogD("build script: {}", scriptContent);
 
-    if (!entry.setPermissions(QFileDevice::ReadOwner | QFileDevice::WriteOwner
-                              | QFileDevice::ExeOwner)) {
-        return LINGLONG_ERR("set file permission error:", entry);
+    std::error_code ec;
+    std::filesystem::permissions(entry, std::filesystem::perms::owner_all, ec);
+    if (ec) {
+        return LINGLONG_ERR("set file permission error", ec);
     }
     LogD("generated entry.sh success");
 

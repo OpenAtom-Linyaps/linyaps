@@ -351,7 +351,7 @@ TEST_F(FileTest, WriteFile)
 
     // Test writing empty content
     fs::path empty_file = dest_dir / "empty.txt";
-    result = linglong::utils::writeFile(empty_file.string(), "\0");
+    result = linglong::utils::writeFile(empty_file.string(), "");
     ASSERT_TRUE(result.has_value()) << result.error().message();
     EXPECT_TRUE(fs::exists(empty_file));
 

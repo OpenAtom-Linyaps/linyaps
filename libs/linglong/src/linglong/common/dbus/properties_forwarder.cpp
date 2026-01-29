@@ -4,6 +4,7 @@
 
 #include "properties_forwarder.h"
 
+#include "linglong/common/formatter.h"
 #include "linglong/utils/log/log.h"
 
 #include <QCoreApplication>
@@ -57,7 +58,7 @@ utils::error::Result<void> PropertiesForwarder::forward() noexcept
 
     if (!connection.send(msg)) {
         return LINGLONG_ERR(
-          QString{ "send dbus message failed: %1" }.arg(connection.lastError().message()));
+          fmt::format("send dbus message failed: {}", connection.lastError().message()));
     }
 
     return LINGLONG_OK;

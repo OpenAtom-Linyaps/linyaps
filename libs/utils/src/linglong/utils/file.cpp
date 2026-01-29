@@ -103,8 +103,7 @@ calculateDirectorySize(const std::filesystem::path &dir) noexcept
 
     auto fsIter = std::filesystem::recursive_directory_iterator{ dir, ec };
     if (ec) {
-        return LINGLONG_ERR(
-          QString{ "failed to calculate directory size: %1" }.arg(ec.message().c_str()));
+        return LINGLONG_ERR("failed to calculate directory size", ec);
     }
 
     for (const auto &entry : fsIter) {
@@ -121,9 +120,7 @@ calculateDirectorySize(const std::filesystem::path &dir) noexcept
             continue;
         }
         if (ec) {
-            return LINGLONG_ERR(
-              QString{ "failed to get entry type of %1: %2" }.arg(entry.path().c_str(),
-                                                                  ec.message().c_str()));
+            return LINGLONG_ERR(fmt::format("failed to get entry type of {}", entry.path()), ec);
         }
 
         if (entry.is_directory(ec)) {
@@ -137,9 +134,7 @@ calculateDirectorySize(const std::filesystem::path &dir) noexcept
             continue;
         }
         if (ec) {
-            return LINGLONG_ERR(
-              QString{ "failed to get entry type of %1: %2" }.arg(entry.path().c_str(),
-                                                                  ec.message().c_str()));
+            return LINGLONG_ERR(fmt::format("failed to get entry type of {}", entry.path()), ec);
         }
 
         size += entry.file_size();

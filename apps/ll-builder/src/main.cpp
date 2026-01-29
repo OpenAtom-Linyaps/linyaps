@@ -9,6 +9,7 @@
 #include "linglong/builder/config.h"
 #include "linglong/builder/linglong_builder.h"
 #include "linglong/cli/cli.h"
+#include "linglong/common/global/initialize.h"
 #include "linglong/package/architecture.h"
 #include "linglong/package/version.h"
 #include "linglong/repo/client_factory.h"
@@ -16,7 +17,6 @@
 #include "linglong/repo/migrate.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/gettext.h"
-#include "linglong/utils/global/initialize.h"
 #include "linglong/utils/log/log.h"
 #include "linglong/utils/namespace.h"
 #include "linglong/utils/serialize/yaml.h"
@@ -136,18 +136,18 @@ getProjectYAMLPath(const std::filesystem::path &projectDir, const std::string &u
 
 int handleCreate(const CreateCommandOptions &options)
 {
-    qInfo() << "Handling create for project:" << QString::fromStdString(options.projectName);
+    LogI("Handling create for project: {}", options.projectName);
 
     auto name = QString::fromStdString(options.projectName);
     QDir projectDir = QDir::current().absoluteFilePath(name);
     if (projectDir.exists()) {
-        qCritical() << name << "project dir already exists";
+        LogE("{} project dir already exists", options.projectName);
         return -1;
     }
 
     auto ret = projectDir.mkpath(".");
     if (!ret) {
-        qCritical() << "create project dir failed:" << projectDir.absolutePath();
+        LogE("create project dir failed: {}", projectDir.absolutePath().toStdString());
         return -1;
     }
 
@@ -156,23 +156,25 @@ int handleCreate(const CreateCommandOptions &options)
 
     if (!QFileInfo::exists(templateFilePath)) {
         templateFilePath = ":/example.yaml"; // Use Qt resource fallback
-        qInfo() << "Using template file from Qt resources:" << templateFilePath;
+        LogI("Using template file from Qt resources: {}", templateFilePath);
     } else {
-        qInfo() << "Using template file from system path:" << templateFilePath;
+        LogI("Using template file from system path: {}", templateFilePath);
     }
 
     QFile templateFile(templateFilePath);
     QFile configFile(configFilePath);
 
     if (!templateFile.open(QIODevice::ReadOnly)) {
-        qCritical() << "Failed to open template file:" << templateFilePath
-                    << "Error:" << templateFile.errorString();
+        LogE("Failed to open template file {}: {}",
+             templateFilePath,
+             templateFile.errorString().toStdString());
         return -1;
     }
 
     if (!configFile.open(QIODevice::WriteOnly)) {
-        qCritical() << "Failed to open config file for writing:" << configFilePath
-                    << "Error:" << configFile.errorString();
+        LogE("Failed to open config file {} for writing: {}",
+             configFilePath.toStdString(),
+             configFile.errorString().toStdString());
         return -1;
     }
 
@@ -180,18 +182,21 @@ int handleCreate(const CreateCommandOptions &options)
     rawData.replace("@ID@", name.toUtf8());
 
     if (configFile.write(rawData) <= 0) {
-        qCritical() << "Failed to write config file:" << configFilePath
-                    << "Error:" << configFile.errorString();
+        LogE("Failed to write config file {}: {}",
+             configFilePath.toStdString(),
+             configFile.errorString().toStdString());
         return -1;
     }
 
-    qInfo() << "Project" << name << "created successfully at" << projectDir.absolutePath();
+    LogI("Project {} created successfully at {}",
+         options.projectName,
+         projectDir.absolutePath().toStdString());
     return 0;
 }
 
 int handleBuild(linglong::builder::Builder &builder, const BuildCommandOptions &options)
 {
-    qInfo() << "Handling build command";
+    LogI("Handling build command");
 
     auto cfg = builder.getConfig();
 
@@ -219,11 +224,11 @@ int handleBuild(linglong::builder::Builder &builder, const BuildCommandOptions &
         ret = builder.build();
     }
     if (!ret) {
-        qCritical() << "Build failed: " << ret.error();
+        LogE("Build failed: {}", ret.error());
         return ret.error().code();
     }
 
-    qInfo() << "Build completed successfully.";
+    LogI("Build completed successfully.");
 
     return 0;
 }
@@ -260,14 +265,14 @@ int handleExport(linglong::builder::Builder &builder, const ExportCommandOptions
     auto exportOpts = options.exportSpecificOptions;
     // layer 默认使用lz4, 保持和之前版本的兼容
     if (exportOpts.compressor.empty()) {
-        qInfo() << "Compressor not specified, defaulting to lz4 for layer export.";
+        LogI("Compressor not specified, defaulting to lz4 for layer export.");
         exportOpts.compressor = "lz4";
     }
 
     if (options.layerMode) {
         auto result = builder.exportLayer(exportOpts);
         if (!result) {
-            qCritical() << "Export layer failed: " << result.error();
+            LogE("Export layer failed: {}", result.error());
             return result.error().code();
         }
 
@@ -276,7 +281,7 @@ int handleExport(linglong::builder::Builder &builder, const ExportCommandOptions
 
     auto result = builder.exportUAB(exportOpts, options.outputFile);
     if (!result) {
-        qCritical() << "Export UAB failed: " << result.error();
+        LogE("Export UAB failed: {}", result.error());
         return result.error().code();
     }
 
@@ -285,22 +290,21 @@ int handleExport(linglong::builder::Builder &builder, const ExportCommandOptions
 
 int handlePush(linglong::builder::Builder &builder, const PushCommandOptions &options)
 {
-    qInfo() << "Handling push command";
+    LogI("Handling push command");
     const auto &repoOpts = options.repoOptions;
 
     for (const auto &module : options.pushModules) {
-        qInfo() << "Pushing module:" << QString::fromStdString(module);
+        LogI("Pushing module: {}", module);
 
         auto result = builder.push(module, repoOpts.repoUrl, repoOpts.repoName);
         if (!result) {
-            qCritical() << "Push failed for module" << QString::fromStdString(module) << ":"
-                        << result.error();
+            LogE("Push failed for module {}: {}", module, result.error());
             return result.error().code();
         }
-        qInfo() << "Module" << QString::fromStdString(module) << "pushed successfully.";
+        LogI("Module {} pushed successfully.", module);
     }
 
-    qInfo() << "All modules pushed successfully.";
+    LogI("All modules pushed successfully.");
     return 0;
 }
 
@@ -352,18 +356,20 @@ int handleImportDir(linglong::repo::OSTreeRepo &repo, const ImportDirCommandOpti
 
 int handleExtract(const ExtractCommandOptions &options)
 {
+    LogI("Handling extract command for layer file: {} to directory: {}",
+         options.layerFile,
+         options.dir);
+
     QString layerFile = QString::fromStdString(options.layerFile);
     QString targetDir = QString::fromStdString(options.dir);
-    qInfo() << "Handling extract command for layer file:" << layerFile
-            << "to directory:" << targetDir;
 
     auto result = linglong::builder::Builder::extractLayer(layerFile, targetDir);
     if (!result) {
-        qCritical() << "Extract layer failed: " << result.error();
+        LogE("Extract layer failed: {}", result.error());
         return result.error().code();
     }
 
-    qInfo() << "Layer extraction completed successfully.";
+    LogI("Layer extraction completed successfully.");
     return 0;
 }
 
@@ -400,7 +406,7 @@ int handleRepoAdd(linglong::repo::OSTreeRepo &repo, linglong::cli::RepoOptions &
         return r.alias.value_or(r.name) == alias;
     });
     if (isExist) {
-        std::cerr << "repo " + alias + " already exist." << std::endl;
+        LogE("repo {} already exist.", alias);
         return -1;
     }
 
@@ -448,7 +454,7 @@ int handleRepoRemove(linglong::repo::OSTreeRepo &repo, linglong::cli::RepoOption
         return -1;
     }
 
-    qInfo() << "Repository" << QString::fromStdString(alias) << "removed successfully.";
+    LogI("Repository {} removed successfully.", alias);
     return 0;
 }
 
@@ -480,7 +486,7 @@ int handleRepoUpdate(linglong::repo::OSTreeRepo &repo, linglong::cli::RepoOption
         return -1;
     }
 
-    qInfo() << "Repository" << QString::fromStdString(alias) << "updated successfully.";
+    LogI("Repository {} updated successfully.", alias);
     return 0;
 }
 
@@ -506,9 +512,9 @@ int handleRepoSetDefault(linglong::repo::OSTreeRepo &repo, linglong::cli::RepoOp
             std::cerr << ret.error().message() << std::endl;
             return -1;
         }
-        qInfo() << "Default repository set to" << QString::fromStdString(alias) << "successfully.";
+        LogI("Default repository set to {} successfully.", alias);
     } else {
-        qInfo() << QString::fromStdString(alias) << "is already the default repository.";
+        LogI("{} is already the default repository.", alias);
     }
 
     return 0;
@@ -639,34 +645,35 @@ std::vector<std::string> getProjectModule(const linglong::api::types::v1::Builde
 std::optional<std::filesystem::path>
 backupFailedMigrationRepo(const std::filesystem::path &repoPath)
 {
-    qWarning() << "Repository migration failed. Attempting to back up the old repository:"
-               << QString::fromStdString(repoPath.string());
+    LogW("Repository migration failed. Attempting to back up the old repository {}",
+         repoPath.string());
 
     auto backupDirPattern = (repoPath.parent_path() / "linglong-builder.old-XXXXXX").string();
     std::error_code ec;
 
     char *backupDir = ::mkdtemp(backupDirPattern.data());
     if (backupDir == nullptr) {
-        qCritical() << "we couldn't generate a temporary directory for migrate, old repo will "
-                       "be removed.";
+        LogE("we couldn't generate a temporary directory for migrate, old repo will be removed.");
         std::filesystem::remove_all(repoPath, ec); // Use remove_all for directories
         if (ec) {
-            qCritical() << "failed to remove the old repo:" << QString::fromStdString(repoPath);
+            LogE("failed to remove the old repo: {}", repoPath);
         }
         return std::nullopt;
     }
 
     std::filesystem::rename(repoPath, backupDir, ec);
     if (ec) {
-        qCritical() << "Failed to move the old repository to the backup location (" << backupDir
-                    << "). Error:" << ec.message().c_str() << "Please move or remove it manually:"
-                    << QString::fromStdString(repoPath.string());
+        LogE("Failed to move the old repository to the backup location ({}): {}\nPlease move or "
+             "remove it manually: {}",
+             backupDir,
+             ec.message(),
+             repoPath.string());
         // Attempt to clean up the created backup directory if rename failed
         return std::nullopt;
     }
 
-    qInfo() << "Old repository successfully backed up to:" << backupDir
-            << ". All data will need to be pulled again.";
+    LogI("Old repository successfully backed up to: {}. All data will need to be pulled again.",
+         backupDir);
     return backupDir;
 }
 
@@ -680,8 +687,8 @@ int main(int argc, char **argv)
     // 初始化 qt qrc
     Q_INIT_RESOURCE(builder_releases);
     // 初始化应用，builder在非tty环境也输出日志
-    linglong::utils::global::applicationInitialize(true);
-    linglong::utils::global::initLinyapsLogSystem(linglong::utils::log::LogBackend::Console);
+    linglong::common::global::applicationInitialize();
+    linglong::common::global::initLinyapsLogSystem(linglong::utils::log::LogBackend::Console);
 
     CLI::App commandParser{ _("linyaps builder CLI \n"
                               "A CLI program to build linyaps application\n") };
@@ -1008,7 +1015,7 @@ You can report bugs to the linyaps team under this project: https://github.com/O
       linglong::repo::loadConfig({ QString::fromStdString(builderCfg->repo + "/config.yaml"),
                                    LINGLONG_DATA_DIR "/config.yaml" });
     if (!repoCfg) {
-        qCritical() << repoCfg.error();
+        LogE("{}", repoCfg.error());
         return -1;
     }
 
@@ -1021,7 +1028,7 @@ You can report bugs to the linyaps team under this project: https://github.com/O
 
     auto repoRoot = QDir{ QString::fromStdString(builderCfg->repo) };
     if (!repoRoot.exists() && !repoRoot.mkpath(".")) {
-        qCritical() << "failed to create the repository of builder.";
+        LogE("failed to create the repository of builder.");
         return -1;
     }
 
@@ -1063,7 +1070,7 @@ You can report bugs to the linyaps team under this project: https://github.com/O
 
     auto path = QStandardPaths::findExecutable(ociRuntimeCLI);
     if (path.isEmpty()) {
-        qCritical() << ociRuntimeCLI << "not found";
+        LogE("{} not found", ociRuntimeCLI.toStdString());
         return -1;
     }
 

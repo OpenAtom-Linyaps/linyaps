@@ -121,41 +121,6 @@ TEST(Error, WarpStdErrorCode)
     ASSERT_TRUE(strings::contains(msg, se.what())) << msg;
 }
 
-TEST(Error, WarpQtFile)
-{
-    EnvironmentVariableGuard guard("LINYAPS_BACKTRACE", "1");
-    auto res = []() -> Result<void> {
-        LINGLONG_TRACE("test LINGLONG_ERR");
-        QFile file("/not_exists_file");
-        if (!file.open(QIODevice::ReadOnly)) {
-            return LINGLONG_ERR("open file failed", file);
-        }
-        return LINGLONG_OK;
-    }();
-    ASSERT_FALSE(res.has_value());
-    auto msg = res.error().message();
-    ASSERT_TRUE(strings::contains(msg, "test LINGLONG_ERR")) << msg;
-    ASSERT_TRUE(strings::contains(msg, "open file failed")) << msg;
-    ASSERT_TRUE(strings::contains(msg, "No such file or directory")) << msg;
-}
-
-TEST(Error, WarpGError)
-{
-    EnvironmentVariableGuard guard("LINYAPS_BACKTRACE", "1");
-    auto res = []() -> Result<void> {
-        LINGLONG_TRACE("test LINGLONG_ERR with GError");
-        g_autoptr(GError) gErr =
-          g_error_new_literal(G_FILE_ERROR, G_FILE_ERROR_FAILED, "GError test");
-        return LINGLONG_ERR("GLib operation failed", gErr);
-    }();
-
-    ASSERT_FALSE(res.has_value());
-    auto msg = res.error().message();
-    ASSERT_TRUE(strings::contains(msg, "test LINGLONG_ERR with GError")) << msg;
-    ASSERT_TRUE(strings::contains(msg, "GLib operation failed")) << msg;
-    ASSERT_TRUE(strings::contains(msg, "GError test")) << msg;
-}
-
 TEST(Error, WarpSystemError)
 {
     EnvironmentVariableGuard guard("LINYAPS_BACKTRACE", "1");
@@ -270,22 +235,6 @@ TEST(Error, WarpErrorWithCustomCode)
     ASSERT_EQ(res.error().code(), 12345);
 }
 
-TEST(Error, WarpQStringMessage)
-{
-    EnvironmentVariableGuard guard("LINYAPS_BACKTRACE", "1");
-    auto res = []() -> Result<void> {
-        LINGLONG_TRACE("test LINGLONG_ERR with QString message");
-        QString errorMsg = QString("Error occurred at line %1").arg(__LINE__);
-        return LINGLONG_ERR(errorMsg, ErrorCode::Unknown);
-    }();
-
-    ASSERT_FALSE(res.has_value());
-    auto msg = res.error().message();
-    ASSERT_TRUE(strings::contains(msg, "test LINGLONG_ERR with QString message")) << msg;
-    ASSERT_TRUE(strings::contains(msg, "Error occurred at line")) << msg;
-    ASSERT_EQ(res.error().code(), static_cast<int>(ErrorCode::Unknown));
-}
-
 TEST(Error, WarpStdStringMessage)
 {
     EnvironmentVariableGuard guard("LINYAPS_BACKTRACE", "1");
@@ -300,22 +249,6 @@ TEST(Error, WarpStdStringMessage)
     ASSERT_TRUE(strings::contains(msg, "test LINGLONG_ERR with std::string message")) << msg;
     ASSERT_TRUE(strings::contains(msg, "Standard string error message")) << msg;
     ASSERT_EQ(res.error().code(), static_cast<int>(ErrorCode::AppNotFoundFromRemote));
-}
-
-TEST(Error, WarpEmptyFile)
-{
-    EnvironmentVariableGuard guard("LINYAPS_BACKTRACE", "1");
-    auto res = []() -> Result<void> {
-        LINGLONG_TRACE("test LINGLONG_ERR with empty QFile");
-        QFile emptyFile;
-        return LINGLONG_ERR(emptyFile);
-    }();
-
-    ASSERT_FALSE(res.has_value());
-    auto msg = res.error().message();
-    ASSERT_TRUE(strings::contains(msg, "test LINGLONG_ERR with empty QFile")) << msg;
-    // 空QFile会有特定的错误信息
-    ASSERT_TRUE(strings::contains(msg, "Unknown error")) << msg;
 }
 
 TEST(Error, SuccessCase)

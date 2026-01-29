@@ -6,15 +6,13 @@
 
 #include <gtest/gtest.h>
 
-#include "linglong/utils/global/initialize.h"
+#include "linglong/common/global/initialize.h"
 
 #include <QByteArray>
 
 int main(int argc, char **argv)
 {
-    qputenv("QT_FORCE_STDERR_LOGGING", QByteArray("1"));
-    linglong::utils::global::installMessageHandler();
-    linglong::utils::global::initLinyapsLogSystem(linglong::utils::log::LogBackend::Console);
+    linglong::common::global::initLinyapsLogSystem(linglong::utils::log::LogBackend::Console);
     testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }

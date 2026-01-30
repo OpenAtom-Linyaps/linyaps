@@ -8,6 +8,7 @@
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/log/log.h"
 
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 

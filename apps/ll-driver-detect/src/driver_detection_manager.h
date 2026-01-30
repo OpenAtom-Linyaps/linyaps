@@ -6,6 +6,7 @@
 
 #include "driver_detector.h"
 
+#include <algorithm>
 #include <memory>
 #include <vector>
 

@@ -1414,12 +1414,6 @@ utils::error::Result<void> Builder::exportUAB(const ExportOption &option,
         return LINGLONG_ERR(curRef);
     }
 
-    if (!distributedOnly && package::Architecture::currentCPUArchitecture() != curRef->arch) {
-        return LINGLONG_ERR(
-          "can't export different architecture UAB in executable mode, if you want to export UAB "
-          "in distributed mode, please use --ref option instead");
-    }
-
     // Retrieves static files from the ll-builder-utils matching the target architecture if
     // available, including uab-header, uab-loader, ll-box. Fallback to defaults if ll-builder-utils
     // is not found or fails.

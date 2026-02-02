@@ -5,34 +5,19 @@
 #include <gtest/gtest.h>
 
 #include "application_singleton.h"
+#include "common/tempdir.h"
 
 #include <filesystem>
 #include <memory>
 
-namespace {
-std::filesystem::path GetTempLockFilePath()
-{
-    return std::filesystem::temp_directory_path() / "ll_driver_detect_singleton_test.lock";
-}
-} // namespace
-
 class ApplicationSingletonTest : public ::testing::Test
 {
-protected:
-    void SetUp() override
-    {
-        lockFilePath = GetTempLockFilePath();
-        // Ensure the file does not exist initially
-        std::filesystem::remove(lockFilePath);
-    }
-
-    void TearDown() override { std::filesystem::remove(lockFilePath); }
-
-    std::filesystem::path lockFilePath;
 };
 
 TEST_F(ApplicationSingletonTest, CanAcquireLockWhenNoOneHasIt)
 {
+    TempDir temp_dir;
+    auto lockFilePath = temp_dir.path() / "ll_driver_detect_singleton_test.lock";
     using namespace linglong::driver::detect;
     ApplicationSingleton singleton(lockFilePath.string());
 
@@ -48,6 +33,8 @@ TEST_F(ApplicationSingletonTest, CannotAcquireLockWhenAnotherInstanceHoldsIt)
 {
     using namespace linglong::driver::detect;
 
+    TempDir temp_dir;
+    auto lockFilePath = temp_dir.path() / "ll_driver_detect_singleton_test.lock";
     // First instance acquires the lock
     ApplicationSingleton singleton1(lockFilePath.string());
     auto result1 = singleton1.tryAcquireLock();
@@ -65,8 +52,9 @@ TEST_F(ApplicationSingletonTest, CannotAcquireLockWhenAnotherInstanceHoldsIt)
 
 TEST_F(ApplicationSingletonTest, CanAcquireLockAfterItIsReleased)
 {
+    TempDir temp_dir;
+    auto lockFilePath = temp_dir.path() / "ll_driver_detect_singleton_test.lock";
     using namespace linglong::driver::detect;
-
     // Create a scope for the first singleton
     {
         ApplicationSingleton singleton1(lockFilePath.string());
@@ -87,6 +75,8 @@ TEST_F(ApplicationSingletonTest, CanAcquireLockAfterItIsReleased)
 
 TEST_F(ApplicationSingletonTest, ReleasingLockManuallyWorks)
 {
+    TempDir temp_dir;
+    auto lockFilePath = temp_dir.path() / "ll_driver_detect_singleton_test.lock";
     using namespace linglong::driver::detect;
     ApplicationSingleton singleton1(lockFilePath.string());
     auto result1 = singleton1.tryAcquireLock();
@@ -108,6 +98,8 @@ TEST_F(ApplicationSingletonTest, ReleasingLockManuallyWorks)
 
 TEST_F(ApplicationSingletonTest, CreatesDirectoryForLockFile)
 {
+    TempDir temp_dir;
+    auto lockFilePath = temp_dir.path() / "ll_driver_detect_singleton_test.lock";
     using namespace linglong::driver::detect;
     auto deepLockPath = std::filesystem::temp_directory_path() / "deep_dir_for_test" / "test.lock";
     std::filesystem::remove(deepLockPath);

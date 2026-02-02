@@ -9,12 +9,12 @@
 
 #include <gelf.h>
 #include <getopt.h>
-#include <linux/limits.h>
 #include <nlohmann/json.hpp>
 #include <sys/mount.h>
 
 #include <array>
 #include <atomic>
+#include <climits>
 #include <cstring>
 #include <filesystem>
 #include <iomanip>

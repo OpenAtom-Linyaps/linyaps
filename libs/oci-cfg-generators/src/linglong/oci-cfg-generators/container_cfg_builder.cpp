@@ -15,9 +15,9 @@
 #include "sha256.h"
 
 #include <fmt/format.h>
-#include <linux/limits.h>
 
 #include <algorithm>
+#include <climits>
 #include <fstream>
 #include <iomanip>
 #include <iostream>

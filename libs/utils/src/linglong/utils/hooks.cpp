@@ -15,6 +15,7 @@
 #include <fmt/format.h>
 
 #include <array>
+#include <climits>
 #include <cstdlib>
 #include <cstring>
 #include <filesystem>

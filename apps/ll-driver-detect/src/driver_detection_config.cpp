@@ -42,8 +42,9 @@ bool DriverDetectionConfigManager::loadConfig()
     }
 
     // Parse configuration
-    if (jsonConfig.contains("neverRemind") && jsonConfig["neverRemind"].is_boolean()) {
-        config.neverRemind = jsonConfig["neverRemind"];
+    auto neverRemindIter = jsonConfig.find("neverRemind");
+    if (neverRemindIter != jsonConfig.end() && neverRemindIter->is_boolean()) {
+        config.neverRemind = *neverRemindIter;
     }
 
     return true;

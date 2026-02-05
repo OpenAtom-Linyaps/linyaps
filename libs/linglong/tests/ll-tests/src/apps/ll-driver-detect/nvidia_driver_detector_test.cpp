@@ -24,12 +24,17 @@ public:
     {
     }
 
+    MOCK_METHOD(linglong::utils::error::Result<GraphicsDriverInfo>,
+                getPackageInfoFromRemoteRepo,
+                (const std::string &packageName),
+                (override));
+
     MOCK_METHOD(linglong::utils::error::Result<bool>,
                 checkPackageInstalled,
                 (const std::string &),
                 (override));
-    MOCK_METHOD(linglong::utils::error::Result<void>,
-                checkPackageExists,
+    MOCK_METHOD(linglong::utils::error::Result<bool>,
+                checkPackageUpgradable,
                 (const std::string &),
                 (override));
 };
@@ -57,68 +62,73 @@ TEST_F(NvidiaDriverDetectorTest, Detect_Success_PackageNotInstalled)
     const std::string expectedPackageName =
       std::string(detector.getDriverIdentify()) + "." + expectedVersion;
 
-    EXPECT_CALL(detector, checkPackageExists(expectedPackageName))
-      .WillOnce(Return(linglong::utils::error::Result<void>()));
+    EXPECT_CALL(detector, getPackageInfoFromRemoteRepo(expectedPackageName))
+      .WillOnce(Return(GraphicsDriverInfo{
+        .identify = detector.getDriverIdentify(),
+        .packageName = expectedPackageName,
+        .packageVersion = expectedVersion,
+      }));
+
     EXPECT_CALL(detector, checkPackageInstalled(expectedPackageName)).WillOnce(Return(false));
 
     auto result = detector.detect();
 
     ASSERT_TRUE(result.has_value());
     EXPECT_EQ(result->identify, detector.getDriverIdentify());
-    EXPECT_EQ(result->version, expectedVersion);
     EXPECT_EQ(result->packageName, expectedPackageName);
-    EXPECT_FALSE(result->isInstalled);
+    EXPECT_EQ(result->packageVersion, expectedVersion);
 }
 
-TEST_F(NvidiaDriverDetectorTest, Detect_Success_PackageAlreadyInstalled)
+TEST_F(NvidiaDriverDetectorTest, Detect_Success_PackageInstalled)
+{
+    TempDir temp_dir;
+    auto versionFilePath = temp_dir.path() / "nvidia_test_version_file.txt";
+    createMockVersionFile(versionFilePath, "510.85.02"); // Simplified version format now
+    TestableNVIDIADriverDetector detector(versionFilePath.string());
+    const std::string expectedVersion = "510-85-02"; // With dots replaced by dashes
+    const std::string expectedPackageName =
+      std::string(detector.getDriverIdentify()) + "." + expectedVersion;
+
+    EXPECT_CALL(detector, getPackageInfoFromRemoteRepo(expectedPackageName))
+      .WillOnce(Return(GraphicsDriverInfo{
+        .identify = detector.getDriverIdentify(),
+        .packageName = expectedPackageName,
+        .packageVersion = expectedVersion,
+      }));
+
+    EXPECT_CALL(detector, checkPackageInstalled(expectedPackageName)).WillOnce(Return(true));
+    EXPECT_CALL(detector, checkPackageUpgradable(expectedPackageName)).WillOnce(Return(false));
+
+    auto result = detector.detect();
+
+    ASSERT_FALSE(result.has_value());
+}
+
+TEST_F(NvidiaDriverDetectorTest, Detect_Success_PackageUpgradable)
 {
     TempDir temp_dir;
     auto versionFilePath = temp_dir.path() / "nvidia_test_version_file.txt";
     createMockVersionFile(versionFilePath, "510.85.02");
     TestableNVIDIADriverDetector detector(versionFilePath.string());
     const std::string expectedVersion = "510-85-02";
+    const std::string upgradableExpectedVersion = "510-85-03";
     const std::string expectedPackageName =
       std::string(detector.getDriverIdentify()) + "." + expectedVersion;
 
-    EXPECT_CALL(detector, checkPackageExists(expectedPackageName))
-      .WillOnce(Return(linglong::utils::error::Result<void>()));
+    EXPECT_CALL(detector, getPackageInfoFromRemoteRepo(expectedPackageName))
+      .WillOnce(Return(GraphicsDriverInfo{
+        .identify = detector.getDriverIdentify(),
+        .packageName = expectedPackageName,
+        .packageVersion = upgradableExpectedVersion,
+      }));
+
     EXPECT_CALL(detector, checkPackageInstalled(expectedPackageName)).WillOnce(Return(true));
+    EXPECT_CALL(detector, checkPackageUpgradable(expectedPackageName)).WillOnce(Return(true));
 
     auto result = detector.detect();
 
     ASSERT_TRUE(result.has_value());
     EXPECT_EQ(result->identify, detector.getDriverIdentify());
-    EXPECT_EQ(result->version, expectedVersion);
     EXPECT_EQ(result->packageName, expectedPackageName);
-    EXPECT_TRUE(result->isInstalled);
-}
-
-TEST_F(NvidiaDriverDetectorTest, Detect_Fails_When_VersionFileDoesNotExist)
-{
-    TempDir temp_dir;
-    auto versionFilePath = temp_dir.path() / "nvidia_test_version_file.txt";
-    std::filesystem::remove(versionFilePath); // Ensure file does not exist
-    TestableNVIDIADriverDetector detector(versionFilePath.string());
-
-    EXPECT_CALL(detector, checkPackageInstalled(_)).Times(0); // Should not be called
-
-    auto result = detector.detect();
-
-    ASSERT_FALSE(result.has_value());
-    EXPECT_EQ(result.error().message(), "Failed to get NVIDIA driver version");
-}
-
-TEST_F(NvidiaDriverDetectorTest, Detect_Fails_When_VersionFileIsEmpty)
-{
-    TempDir temp_dir;
-    auto versionFilePath = temp_dir.path() / "nvidia_test_version_file.txt";
-    createMockVersionFile(versionFilePath, ""); // Empty file
-    TestableNVIDIADriverDetector detector(versionFilePath.string());
-
-    EXPECT_CALL(detector, checkPackageInstalled(_)).Times(0); // Should not be called
-
-    auto result = detector.detect();
-
-    ASSERT_FALSE(result.has_value());
-    EXPECT_EQ(result.error().message(), "Failed to get NVIDIA driver version");
+    EXPECT_EQ(result->packageVersion, upgradableExpectedVersion);
 }

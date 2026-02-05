@@ -68,7 +68,6 @@ pfl_add_executable(
   ${PROJECT_SOURCE_DIR}/apps/ll-driver-detect/src/dbus_notifier.cpp
   ${PROJECT_SOURCE_DIR}/apps/ll-driver-detect/src/application_singleton.cpp
   ${PROJECT_SOURCE_DIR}/apps/ll-driver-detect/src/driver_detection_manager.cpp
-  src/apps/ll-driver-detect/driver_detector_test.cpp
   src/apps/ll-driver-detect/nvidia_driver_detector_test.cpp
   src/apps/ll-driver-detect/driver_detection_config_test.cpp
   src/apps/ll-driver-detect/application_singleton_test.cpp

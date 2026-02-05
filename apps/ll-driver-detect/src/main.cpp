@@ -8,7 +8,7 @@
 #include "driver_detection_config.h"
 #include "driver_detection_manager.h"
 #include "driver_detector.h"
-#include "linglong/utils/cmd.h"
+#include "linglong/utils/global/initialize.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/gettext.h"
 #include "linglong/utils/global/initialize.h"
@@ -86,41 +86,6 @@ linglong::utils::error::Result<DriverDetectionConfigManager> setupConfigManager(
     return configManager;
 }
 
-linglong::utils::error::Result<void>
-installDriverPackage(const std::vector<GraphicsDriverInfo> &drivers)
-{
-    LINGLONG_TRACE("installDriverPackage")
-
-    try {
-        for (const auto &driverInfo : drivers) {
-            LogD("Processing driver: Identify={}, Version={}, Package={}, Installed={}",
-                 driverInfo.identify,
-                 driverInfo.version,
-                 driverInfo.packageName,
-                 driverInfo.isInstalled);
-
-            if (driverInfo.isInstalled) {
-                LogD("Driver package is already installed: {}", driverInfo.packageName);
-                continue;
-            }
-
-            // Execute ll-cli install command to install the package
-            auto ret = linglong::utils::Cmd("ll-cli").exec({ "install", driverInfo.packageName });
-            if (!ret) {
-                return LINGLONG_ERR("Installation command failed: " + ret.error().message());
-            }
-
-            LogD("Driver package installation command executed successfully: {}", *ret);
-        }
-
-        return LINGLONG_OK;
-    } catch (const std::exception &e) {
-        return LINGLONG_ERR("Failed to install driver package: " + std::string(e.what()));
-    }
-
-    return LINGLONG_OK;
-}
-
 } // namespace
 
 int main(int argc, char *argv[])
@@ -191,7 +156,7 @@ int main(int argc, char *argv[])
     DriverDetectionManager detectionManager;
 
     // Run driver detection and handling for all available drivers
-    auto result = detectionManager.detectAllDrivers();
+    auto result = detectionManager.detectAvailableDrivers();
 
     if (!result) {
         LogF("Driver detection failed: {}", result.error().message());
@@ -201,8 +166,8 @@ int main(int argc, char *argv[])
 
     const auto &detectionResult = *result;
 
-    if (!detectionResult.hasAvailableDrivers()) {
-        std::cout << "No available graphics drivers detected or already installed" << std::endl;
+    if (detectionResult.size() == 0) {
+        LogD("No graphics drivers detected that require installation or upgrade");
         return 0;
     }
 
@@ -211,22 +176,21 @@ int main(int argc, char *argv[])
                      "will be performed."
                   << std::endl;
         std::cout << "Detected drivers:" << std::endl;
-        for (const auto &driverInfo : detectionResult.detectedDrivers) {
+        for (const auto &info : detectionResult) {
             std::cout << "----------------------------------------" << std::endl;
-            std::cout << "  Identify: " << driverInfo.identify << std::endl;
-            std::cout << "  Version: " << driverInfo.version << std::endl;
-            std::cout << "  Package: " << driverInfo.packageName << std::endl;
-            std::cout << "  Installed: " << (driverInfo.isInstalled ? "Yes" : "No") << std::endl;
+            std::cout << "  Identify: " << info.identify << std::endl;
+            std::cout << "  Version: " << info.packageVersion << std::endl;
+            std::cout << "  Package: " << info.packageName << std::endl;
             std::cout << "----------------------------------------" << std::endl;
         }
         return 0;
     }
 
-    LogD("Detected {} graphics driver(s)", detectionResult.detectedDrivers.size());
+    LogD("Detected {} graphics driver(s)", detectionResult.size());
 
     if (options.installOnly) {
         std::cout << "Install-only: installing detected drivers without notifications" << std::endl;
-        auto installResult = installDriverPackage(detectionResult.detectedDrivers);
+        auto installResult = detectionManager.installDriverPackage(detectionResult);
         if (!installResult) {
             LogW("Failed to install driver package {}: {}",
                  options.packageName,
@@ -270,7 +234,7 @@ int main(int argc, char *argv[])
     if (response.action == kActionInstallNow && response.success) {
         LogD("User chose to install graphics driver");
 
-        auto installResult = installDriverPackage(detectionResult.detectedDrivers);
+        auto installResult = detectionManager.installDriverPackage(detectionResult);
         if (!installResult) {
             LogW("Failed to install driver package: {}", installResult.error().message());
             return 1;

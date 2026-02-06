@@ -21,7 +21,8 @@ public:
     // Detect all available graphics drivers on the system
     // Returns all detected drivers, or empty vector if none found
     utils::error::Result<std::vector<GraphicsDriverInfo>> detectAvailableDrivers();
-    linglong::utils::error::Result<void> installDriverPackage(const std::vector<GraphicsDriverInfo> &drivers);
+    linglong::utils::error::Result<void>
+    installDriverPackage(const std::vector<GraphicsDriverInfo> &drivers);
 
 protected:
     // Register all available driver detectors

@@ -56,10 +56,14 @@ private:
 
     ActionOperation operation;
     std::string taskName;
+    std::string taskMessage;
     utils::Transaction transaction;
     std::optional<api::types::v1::Repo> usedRepo;
     repo::RemotePackages candidates;
     PackageTask *mainTask;
+    uint64_t taskTotalSize;
+    uint64_t taskNeededSize;
+    uint64_t taskFetchedSize;
 };
 
 } // namespace linglong::service

@@ -4,10 +4,13 @@
 
 #include "ref_installation.h"
 
+#include "linglong/package_manager/data_monitor.h"
 #include "linglong/package_manager/package_manager.h"
 #include "linglong/repo/ostree_repo.h"
-#include "linglong/repo/repo_cache.h"
 #include "linglong/utils/log/log.h"
+
+#include <chrono>
+#include <thread>
 
 namespace linglong::service {
 
@@ -56,6 +59,9 @@ RefInstallationAction::RefInstallationAction(package::FuzzyReference fuzzyRef,
     , fuzzyRef(std::move(fuzzyRef))
     , modules(std::move(modules))
     , usedRepo(std::move(usedRepo))
+    , taskTotalSize(0)
+    , taskNeededSize(0)
+    , taskFetchedSize(0)
 {
     taskName = fmt::format("Install {}", this->fuzzyRef.toString());
 }
@@ -65,19 +71,33 @@ utils::error::Result<void> RefInstallationAction::doAction(PackageTask &task)
     LINGLONG_TRACE("ref installation do action");
 
     mainTask = &task;
-    TaskContainer taskContainer(task, { 10, 85, 5 });
 
-    auto res = preInstall(taskContainer.next());
+    DataMonitor monitor(5, 1, [this](DataMonitor &m) {
+        mainTask->updateMessage(
+          fmt::format("{} {:>9}", taskMessage, fmt::format("[{}]", m.getHumanSpeed())));
+    });
+
+    QObject::connect(mainTask, &service::PackageTask::DataArrived, [this, &monitor](uint arrived) {
+        monitor.dataArrived(arrived);
+        monitor.start();
+
+        taskFetchedSize += arrived;
+        if (taskTotalSize > 0 && taskNeededSize > 0) {
+            mainTask->updateProgress(taskFetchedSize * 100.0 / taskNeededSize);
+        }
+    });
+
+    auto res = preInstall(task);
     if (!res) {
         return res;
     }
 
-    res = install(taskContainer.next());
+    res = install(task);
     if (!res) {
         return res;
     }
 
-    return postInstall(taskContainer.next());
+    return postInstall(task);
 }
 
 utils::error::Result<void> RefInstallationAction::preInstall(Task &task)
@@ -85,7 +105,7 @@ utils::error::Result<void> RefInstallationAction::preInstall(Task &task)
     LINGLONG_TRACE("ref installation preInstall");
 
     task.updateState(linglong::api::types::v1::State::Processing,
-                     fmt::format("Installing {}", fuzzyRef.toString()));
+                     fmt::format("Installing {} - Preparing...", fuzzyRef.id));
 
     auto extraOnly = extraModuleOnly(modules);
     auto localRef = repo.latestLocalReference(fuzzyRef);
@@ -196,27 +216,133 @@ utils::error::Result<void> RefInstallationAction::install(Task &task)
         return LINGLONG_ERR("no modules found");
     }
 
-    auto res = pm.installRef(task, *operation.newRef, installModules);
-    if (!res) {
-        return LINGLONG_ERR(res);
+    auto meta = repo.fetchRefMetaData(*operation.newRef, installModules.front(), true);
+    if (!meta) {
+        return LINGLONG_ERR(meta);
     }
 
-    auto ref = repo.getLayerItem(newRef);
-    if (!ref) {
-        return LINGLONG_ERR(ref);
+    auto info = meta->getPackageInfo();
+    if (!info) {
+        return LINGLONG_ERR(info);
     }
 
-    if (ref->info.kind == "app") {
-        auto res = pm.installAppDepends(task, ref->info);
+    std::vector<std::tuple<package::ReferenceWithRepo, std::string, repo::RefMetaData>>
+      refsToInstall;
+    refsToInstall.emplace_back(
+      std::make_tuple(*operation.newRef, installModules.front(), std::move(meta).value()));
+
+    auto gatherToInstallInfo = [this,
+                                &refsToInstall](package::ReferenceWithRepo refRepo,
+                                                std::string module) -> utils::error::Result<void> {
+        LINGLONG_TRACE("gather to install info");
+        auto meta = repo.fetchRefMetaData(refRepo, module);
+        if (!meta) {
+            return LINGLONG_ERR(meta);
+        }
+
+        refsToInstall.emplace_back(
+          std::make_tuple(std::move(refRepo), std::move(module), std::move(meta).value()));
+        return LINGLONG_OK;
+    };
+
+    for (auto it = installModules.begin() + 1; it != installModules.end(); ++it) {
+        auto res = gatherToInstallInfo(*operation.newRef, *it);
         if (!res) {
             return LINGLONG_ERR(res);
         }
+    }
 
-        res = postInstallApp(task);
+    bool isApp = (info->kind == "app");
+    if (isApp) {
+        auto gatherDepsToInstall =
+          [this, gatherToInstallInfo](
+            const std::string &refStr,
+            const std::optional<std::string> &channel) -> utils::error::Result<void> {
+            LINGLONG_TRACE("gather to install info from deps");
+            auto toInstall = pm.needToInstall(refStr, channel);
+            if (!toInstall) {
+                return LINGLONG_ERR(toInstall);
+            }
+
+            if (toInstall->has_value()) {
+                auto res = gatherToInstallInfo(std::move(*toInstall).value(), "binary");
+                if (!res) {
+                    return LINGLONG_ERR(res);
+                }
+            }
+
+            return LINGLONG_OK;
+        };
+
+        auto gatherAppDepsToInstall =
+          [gatherDepsToInstall](
+            const api::types::v1::PackageInfoV2 &info) -> utils::error::Result<void> {
+            LINGLONG_TRACE("gather app deps to install info");
+            auto res = gatherDepsToInstall(info.base, info.channel);
+            if (!res) {
+                return LINGLONG_ERR(res);
+            }
+
+            if (info.runtime) {
+                res = gatherDepsToInstall(*info.runtime, info.channel);
+                if (!res) {
+                    return LINGLONG_ERR(res);
+                }
+            }
+
+            return LINGLONG_OK;
+        };
+
+        auto res = gatherAppDepsToInstall(*info);
         if (!res) {
             return LINGLONG_ERR(res);
         }
     }
+
+    for (const auto &ref : refsToInstall) {
+        const auto &[refRepo, module, meta] = ref;
+        auto stat = repo.getRefStatistics(meta);
+        if (!stat) {
+            LogW("failed to get stat {}", stat.error());
+            continue;
+        }
+
+        taskTotalSize += stat->archived;
+        taskNeededSize += stat->needed_archived;
+    }
+
+    LogD("install total size {}, need download size {}", taskTotalSize, taskNeededSize);
+
+    utils::Transaction transaction;
+    // uninstall target ref if failed
+    transaction.addRollBack([this]() noexcept {
+        auto res = pm.tryUninstallRef(operation.newRef->reference);
+        if (!res) {
+            LogW("failed to roll back installed {}: {}",
+                 operation.newRef->reference.toString(),
+                 res.error());
+        }
+    });
+    for (const auto &ref : refsToInstall) {
+        const auto &[refRepo, module, meta] = ref;
+
+        taskMessage = fmt::format("Installing {}/{}", refRepo.reference.toString(), module);
+        task.updateMessage(taskMessage);
+
+        auto res = pm.installRefModule(task, refRepo, module);
+        if (!res) {
+            return LINGLONG_ERR(res);
+        }
+    }
+
+    if (isApp) {
+        auto res = postInstallApp(task);
+        if (!res) {
+            return LINGLONG_ERR(res);
+        }
+    }
+
+    transaction.commit();
 
     return LINGLONG_OK;
 }
@@ -245,10 +371,11 @@ utils::error::Result<void> RefInstallationAction::postInstall(Task &task)
         LogE("failed to merge modules: {}", mergeRet.error());
     }
 
+    auto &repo = operation.newRef->repo;
     task.updateState(linglong::api::types::v1::State::Succeed,
                      fmt::format("Install {} (from repo: {}) success",
                                  operation.newRef->reference.toString(),
-                                 operation.newRef->repo.name));
+                                 repo.alias.value_or(repo.name)));
 
     return LINGLONG_OK;
 }

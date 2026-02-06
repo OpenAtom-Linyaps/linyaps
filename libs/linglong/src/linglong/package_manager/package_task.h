@@ -47,7 +47,9 @@ public:
     void onStateChanged() noexcept override;
 
     // message report when progress or state changed
-    void onMessage() noexcept override { }
+    void onMessage() noexcept override;
+
+    void onDataArrived(uint arrived) noexcept override { Q_EMIT DataArrived(arrived); }
 
     void onHandled(uint handled, uint total) noexcept override
     {
@@ -79,6 +81,7 @@ Q_SIGNALS:
     void StateChanged(int newState);
     void PercentageChanged(double newPercentage);
     void MessageChanged(QString newMessage);
+    void DataArrived(uint arrived);
     void PartChanged(uint fetched, uint request);
     void CodeChanged(int newCode);
 

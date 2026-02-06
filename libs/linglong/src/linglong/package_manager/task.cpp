@@ -18,6 +18,18 @@ Task::Task(std::function<void(Task &)> job)
     m_taskID = fmt::format("{}", fmt::join(uuid, ""));
 }
 
+void Task::resetProgress(std::optional<std::string> message)
+{
+    m_percentage = 0;
+    if (message) {
+        updateMessage(std::move(message).value());
+    }
+
+    if (m_reporter != nullptr) {
+        m_reporter->onProgress();
+    }
+}
+
 void Task::updateProgress(double percentage, std::optional<std::string> message)
 {
     if (percentage < 0 || percentage > 100) {
@@ -55,6 +67,13 @@ void Task::reportError(linglong::utils::error::Error &&err) noexcept
 
     if (m_reporter != nullptr) {
         m_reporter->onStateChanged();
+    }
+}
+
+void Task::reportDataArrived(uint arrived) noexcept
+{
+    if (m_reporter != nullptr) {
+        m_reporter->onDataArrived(arrived);
     }
 }
 

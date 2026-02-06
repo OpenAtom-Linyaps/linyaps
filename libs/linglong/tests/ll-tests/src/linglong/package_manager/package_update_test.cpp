@@ -8,6 +8,7 @@
 #include <gtest/gtest.h>
 
 #include "../../common/tempdir.h"
+#include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/api/types/v1/PackageInfoV2.hpp"
 #include "linglong/package_manager/package_manager.h"
 #include "linglong/package_manager/package_update.h"
@@ -20,9 +21,98 @@ namespace {
 using namespace linglong;
 using ::testing::_;
 using ::testing::AllOf;
+using ::testing::DoAll;
 using ::testing::Field;
 using ::testing::IsSubsetOf;
 using ::testing::Return;
+using ::testing::SetArgReferee;
+
+namespace testdata {
+
+api::types::v1::PackageInfoV2 baseV100{
+    .arch = std::vector<std::string>{ "x86_64" },
+    .base = "",
+    .channel = "main",
+    .id = "base",
+    .kind = "base",
+    .packageInfoV2Module = "binary",
+    .name = "base",
+    .version = "1.0.0",
+};
+
+api::types::v1::PackageInfoV2 baseV101{
+    .arch = std::vector<std::string>{ "x86_64" },
+    .base = "",
+    .channel = "main",
+    .id = "base",
+    .kind = "base",
+    .packageInfoV2Module = "binary",
+    .name = "base",
+    .version = "1.0.1",
+};
+
+api::types::v1::PackageInfoV2 runtimeV100{
+    .arch = std::vector<std::string>{ "x86_64" },
+    .base = "",
+    .channel = "main",
+    .extensions = std::vector<api::types::v1::ExtensionDefine>{ api::types::v1::ExtensionDefine{
+      .directory = "/tmp", .name = "extension", .version = "1.0.0" } },
+    .id = "runtime",
+    .kind = "runtime",
+    .packageInfoV2Module = "binary",
+    .name = "runtime",
+    .version = "1.0.0",
+};
+
+api::types::v1::PackageInfoV2 idV100{
+    .arch = std::vector<std::string>{ "x86_64" },
+    .base = "main:base/1.0.0/x86_64",
+    .channel = "main",
+    .id = "id1",
+    .kind = "app",
+    .packageInfoV2Module = "binary",
+    .name = "id1",
+    .runtime = "main:runtime/1.0.0/x86_64",
+    .version = "1.0.0",
+};
+
+api::types::v1::PackageInfoV2 id2V100{
+    .arch = std::vector<std::string>{ "x86_64" },
+    .base = "main:base/1.0.0/x86_64",
+    .channel = "main",
+    .id = "id2",
+    .kind = "app",
+    .packageInfoV2Module = "binary",
+    .name = "id2",
+    .runtime = "main:runtime/1.0.0/x86_64",
+    .version = "1.0.0",
+};
+
+api::types::v1::PackageInfoV2 id2V110{
+    .arch = std::vector<std::string>{ "x86_64" },
+    .base = "main:base/1.0.1/x86_64",
+    .channel = "main",
+    .id = "id2",
+    .kind = "app",
+    .packageInfoV2Module = "binary",
+    .name = "id2",
+    .runtime = "main:runtime/1.0.0/x86_64",
+    .version = "1.1.0",
+};
+
+api::types::v1::PackageInfoV2 extension{
+    .arch = std::vector<std::string>{ "x86_64" },
+    .base = "main:base/1.0.1/x86_64",
+    .channel = "main",
+    .id = "extension",
+    .kind = "extension",
+    .packageInfoV2Module = "binary",
+    .name = "extension",
+    .runtime = "main:runtime/1.0.0/x86_64",
+    .version = "1.0.0",
+};
+
+} // namespace testdata
 
 class MockPackageManager : public service::PackageManager
 {
@@ -32,11 +122,19 @@ public:
     {
     }
 
+    MOCK_METHOD((utils::error::Result<
+                  std::optional<std::pair<package::ReferenceWithRepo, std::vector<std::string>>>>),
+                needToUpgrade,
+                (const package::FuzzyReference &fuzzy,
+                 std::optional<package::Reference> &local,
+                 bool installIfMissing),
+                (override));
+
     MOCK_METHOD(utils::error::Result<void>,
-                installRef,
+                installRefModule,
                 (service::Task & task,
                  const package::ReferenceWithRepo &ref,
-                 std::vector<std::string> modules),
+                 const std::string &module),
                 (override, noexcept));
 
     MOCK_METHOD(utils::error::Result<void>,
@@ -62,17 +160,14 @@ public:
                 (),
                 (override, const, noexcept));
 
-    MOCK_METHOD(utils::error::Result<package::ReferenceWithRepo>,
-                latestRemoteReference,
-                (const package::FuzzyReference &fuzzyRef),
-                (override, const, noexcept));
+    MOCK_METHOD(utils::error::Result<repo::RefMetaData>,
+                fetchRefMetaData,
+                (const package::ReferenceWithRepo &ref, const std::string &module, bool fetchInfo),
+                (override, noexcept));
 
-    MOCK_METHOD(utils::error::Result<package::Reference>,
-                clearReference,
-                (const package::FuzzyReference &fuzzy,
-                 const repo::clearReferenceOption &opts,
-                 const std::string &module,
-                 const std::optional<std::string> &repo),
+    MOCK_METHOD(utils::error::Result<repo::RefStatistics>,
+                getRefStatistics,
+                (const repo::RefMetaData &meta),
                 (override, const, noexcept));
 
     MOCK_METHOD(utils::error::Result<api::types::v1::RepositoryCacheLayersItem>,
@@ -82,15 +177,7 @@ public:
                  const std::optional<std::string> &subRef),
                 (override, const, noexcept));
 
-    MOCK_METHOD(std::vector<std::string>,
-                getModuleList,
-                (const package::Reference &ref),
-                (override, const, noexcept));
-
-    MOCK_METHOD(utils::error::Result<std::vector<std::string>>,
-                getRemoteModuleList,
-                (const package::Reference &ref, const api::types::v1::Repo &repo),
-                (override, const, noexcept));
+    MOCK_METHOD(utils::error::Result<void>, mergeModules, (), (override, const, noexcept));
 };
 
 class PackageUpdateActionTest : public ::testing::Test
@@ -126,195 +213,92 @@ TEST_F(PackageUpdateActionTest, Update)
     auto action =
       service::PackageUpdateAction::create(std::vector<api::types::v1::PackageManager1Package>(),
                                            false,
+                                           false,
                                            *pm,
                                            *repo);
 
-    // two apps, id1 and id2 are installed locally
     EXPECT_CALL(*repo, listLocalApps())
       .WillOnce(Return(std::vector<api::types::v1::PackageInfoV2>{
-        api::types::v1::PackageInfoV2{
-          .arch = std::vector<std::string>{ "x86_64" },
-          .base = "base",
-          .channel = "main",
-          .id = "id1",
-          .kind = "app",
-          .packageInfoV2Module = "binary",
-          .runtime = "runtime",
-          .version = "1.0.0",
-        },
-        api::types::v1::PackageInfoV2{
-          .arch = std::vector<std::string>{ "x86_64" },
-          .base = "base",
-          .channel = "main",
-          .id = "id2",
-          .kind = "app",
-          .packageInfoV2Module = "binary",
-          .runtime = "runtime",
-          .version = "1.0.0",
-        },
+        testdata::idV100,
+        testdata::id2V100,
       }));
 
     auto res = action->prepare();
     ASSERT_TRUE(res.has_value());
 
-    // id1 has no update
-    EXPECT_CALL(*repo,
-                latestRemoteReference(AllOf(Field(&package::FuzzyReference::id, "id1"),
-                                            Field(&package::FuzzyReference::channel, "main"))))
-      .WillOnce(Return(package::ReferenceWithRepo{
-        .repo = api::types::v1::Repo{ .name = "repo" },
-        .reference = package::Reference::parse("main:id1/1.0.0/x86_64").value() }));
+    auto baseRef = package::Reference::fromPackageInfo(testdata::baseV101);
+    ASSERT_TRUE(baseRef.has_value());
 
-    // id2 has update
-    EXPECT_CALL(*repo,
-                latestRemoteReference(AllOf(Field(&package::FuzzyReference::id, "id2"),
-                                            Field(&package::FuzzyReference::channel, "main"))))
-      .WillOnce(Return(package::ReferenceWithRepo{
-        .repo = api::types::v1::Repo{ .name = "repo" },
-        .reference = package::Reference::parse("main:id2/1.1.0/x86_64").value() }));
+    auto runtimeRef = package::Reference::fromPackageInfo(testdata::runtimeV100);
+    ASSERT_TRUE(runtimeRef.has_value());
 
-    // base has update
-    EXPECT_CALL(*repo,
-                latestRemoteReference(AllOf(Field(&package::FuzzyReference::id, "base"),
-                                            Field(&package::FuzzyReference::channel, "main"))))
-      .WillOnce(Return(package::ReferenceWithRepo{
-        .repo = api::types::v1::Repo{ .name = "repo" },
-        .reference = package::Reference::parse("main:base/1.0.1/x86_64").value() }));
+    EXPECT_CALL(*pm, needToUpgrade(_, _, false))
+      // id1: app has no updates
+      .WillOnce(Return(std::nullopt))
+      // id1: runtime's extension has no updates
+      .WillOnce(Return(std::nullopt))
+      // id2: app has updates
+      .WillOnce(Return(std::make_pair(
+        package::ReferenceWithRepo{ .repo = api::types::v1::Repo{ .name = "repo" },
+                                    .reference =
+                                      package::Reference::parse("main:id2/1.1.0/x86_64").value() },
+        std::vector<std::string>{ "binary", "develop" })))
+      // id2's dependencies: runtime's extension has no updates
+      .WillOnce(Return(std::nullopt));
 
-    EXPECT_CALL(*repo,
-                clearReference(AllOf(Field(&package::FuzzyReference::id, "base"),
-                                     Field(&package::FuzzyReference::channel, "main")),
-                               _,
-                               _,
-                               _))
-      .WillOnce(Return(package::Reference::parse("main:base/1.0.0/x86_64").value()))
-      .WillOnce(Return(package::Reference::parse("main:base/1.0.1/x86_64").value()));
+    EXPECT_CALL(*pm, needToUpgrade(_, _, true))
+      // id1: base has updates
+      .WillOnce(Return(std::make_pair(
+        package::ReferenceWithRepo{ .repo = api::types::v1::Repo{ .name = "repo" },
+                                    .reference =
+                                      package::Reference::parse("main:base/1.0.1/x86_64").value() },
+        std::vector<std::string>{ "binary" })))
+      // id1: runtime has no updates
+      .WillOnce(DoAll(SetArgReferee<1>(*runtimeRef), Return(std::nullopt)))
+      // id2's dependencies: base has no updates
+      .WillOnce(DoAll(SetArgReferee<1>(*baseRef), Return(std::nullopt)))
+      // id2's dependencies: runtime has no updates
+      .WillOnce(DoAll(SetArgReferee<1>(*runtimeRef), Return(std::nullopt)));
 
-    EXPECT_CALL(*repo,
-                latestRemoteReference(AllOf(Field(&package::FuzzyReference::id, "runtime"),
-                                            Field(&package::FuzzyReference::channel, "main"))))
-      .WillOnce(Return(package::ReferenceWithRepo{
-        .repo = api::types::v1::Repo{ .name = "repo" },
-        .reference = package::Reference::parse("main:runtime/1.0.0/x86_64").value() }));
+    EXPECT_CALL(*repo, fetchRefMetaData(_, "binary", true))
+      .WillOnce(Return(repo::RefMetaData{ "rev1", nlohmann::json(testdata::baseV101).dump() }))
+      .WillOnce(Return(repo::RefMetaData{ "rev2", nlohmann::json(testdata::id2V110).dump() }));
+    EXPECT_CALL(*repo, fetchRefMetaData(_, "develop", false))
+      .WillOnce(Return(repo::RefMetaData{ "rev3", nlohmann::json(testdata::id2V110).dump() }));
 
-    EXPECT_CALL(*repo,
-                clearReference(AllOf(Field(&package::FuzzyReference::id, "runtime"),
-                                     Field(&package::FuzzyReference::channel, "main")),
-                               _,
-                               _,
-                               _))
-      .WillOnce(Return(package::Reference::parse("main:runtime/1.0.0/x86_64").value()))
-      .WillOnce(Return(package::Reference::parse("main:runtime/1.0.0/x86_64").value()));
+    EXPECT_CALL(*repo, getRefStatistics(_)).WillRepeatedly([](const repo::RefMetaData &) {
+        return utils::error::Result<repo::RefStatistics>{
+            repo::RefStatistics{ .archived = 1024, .needed_archived = 512 }
+        };
+    });
 
-    EXPECT_CALL(*repo,
-                latestRemoteReference(AllOf(Field(&package::FuzzyReference::id, "extension"),
-                                            Field(&package::FuzzyReference::channel, "main"))))
-      .WillOnce(Return(package::ReferenceWithRepo{
-        .repo = api::types::v1::Repo{ .name = "repo" },
-        .reference = package::Reference::parse("main:extension/1.0.0/x86_64").value() }));
+    EXPECT_CALL(*repo, getLayerItem(_, _, _))
+      .WillOnce(Return(utils::error::Result<api::types::v1::RepositoryCacheLayersItem>{
+        api::types::v1::RepositoryCacheLayersItem{
+          .info = testdata::runtimeV100,
+        } }))
+      .WillOnce(Return(utils::error::Result<api::types::v1::RepositoryCacheLayersItem>{
+        api::types::v1::RepositoryCacheLayersItem{
+          .info = testdata::baseV101,
+        } }))
+      .WillOnce(Return(utils::error::Result<api::types::v1::RepositoryCacheLayersItem>{
+        api::types::v1::RepositoryCacheLayersItem{
+          .info = testdata::runtimeV100,
+        } }));
 
-    EXPECT_CALL(*repo,
-                clearReference(AllOf(Field(&package::FuzzyReference::id, "extension"),
-                                     Field(&package::FuzzyReference::channel, "main")),
-                               _,
-                               _,
-                               _))
-      .WillOnce(Return(package::Reference::parse("main:extension/1.0.0/x86_64").value()))
-      .WillOnce(Return(package::Reference::parse("main:extension/1.0.0/x86_64").value()));
+    EXPECT_CALL(*pm, installRefModule(_, _, _))
+      .WillRepeatedly([](service::Task &, const package::ReferenceWithRepo &, const std::string &) {
+          return utils::error::Result<void>{};
+      });
 
-    EXPECT_CALL(*repo, getModuleList(_))
-      .WillOnce(Return(std::vector<std::string>{ "binary", "develop" }))
-      .WillOnce(Return(std::vector<std::string>{ "binary", "develop", "other1" }));
+    EXPECT_CALL(*repo, mergeModules()).WillOnce([]() {
+        return utils::error::Result<void>{};
+    });
 
-    EXPECT_CALL(*repo, getRemoteModuleList(_, _))
-      .WillOnce(Return(std::vector<std::string>{ "binary", "develop" }))
-      .WillOnce(Return(std::vector<std::string>{ "binary", "develop", "other2" }));
-
-    EXPECT_CALL(*pm, installRef(_, _, IsSubsetOf(std::vector<std::string>{ "binary", "develop" })))
-      .WillOnce(Return(utils::error::Result<void>{}))
-      .WillOnce(Return(utils::error::Result<void>{}));
-
-    auto baseItem =
-      api::types::v1::RepositoryCacheLayersItem{ .info = api::types::v1::PackageInfoV2{
-                                                   .arch = std::vector<std::string>{ "x86_64" },
-                                                   .base = "base",
-                                                   .channel = "main",
-                                                   .id = "base",
-                                                   .kind = "base",
-                                                   .packageInfoV2Module = "binary",
-                                                   .runtime = "runtime",
-                                                   .version = "1.0.0",
-                                                 } };
-    EXPECT_CALL(*repo,
-                getLayerItem(AllOf(Field(&package::Reference::id, "base"),
-                                   Field(&package::Reference::channel, "main")),
-                             _,
-                             _))
-      .WillOnce(Return(baseItem))
-      .WillOnce(Return(baseItem));
-
-    auto runtimeItem =
-      api::types::v1::RepositoryCacheLayersItem{ .info = api::types::v1::PackageInfoV2{
-                                                   .arch = std::vector<std::string>{ "x86_64" },
-                                                   .base = "base",
-                                                   .channel = "main",
-                                                   .extensions =
-                                                     std::vector<api::types::v1::ExtensionDefine>{
-                                                       api::types::v1::ExtensionDefine{
-                                                         .name = "extension",
-                                                         .version = "1.0.0",
-                                                       },
-                                                     },
-                                                   .id = "runtime",
-                                                   .kind = "base",
-                                                   .packageInfoV2Module = "binary",
-                                                   .runtime = "runtime",
-                                                   .version = "1.0.0",
-                                                 } };
-
-    EXPECT_CALL(*repo,
-                getLayerItem(AllOf(Field(&package::Reference::id, "runtime"),
-                                   Field(&package::Reference::channel, "main")),
-                             _,
-                             _))
-      .WillOnce(Return(runtimeItem))
-      .WillOnce(Return(runtimeItem));
-
-    auto appId2Item =
-      api::types::v1::RepositoryCacheLayersItem{ .info = api::types::v1::PackageInfoV2{
-                                                   .arch = std::vector<std::string>{ "x86_64" },
-                                                   .base = "base",
-                                                   .channel = "main",
-                                                   .id = "id2",
-                                                   .kind = "app",
-                                                   .packageInfoV2Module = "binary",
-                                                   .runtime = "runtime",
-                                                   .version = "1.0.0",
-                                                 } };
-    EXPECT_CALL(*repo,
-                getLayerItem(AllOf(Field(&package::Reference::id, "id2"),
-                                   Field(&package::Reference::channel, "main")),
-                             _,
-                             _))
-      .WillOnce(Return(appId2Item));
-
-    EXPECT_CALL(
-      *pm,
-      switchAppVersion(
-        AllOf(Field(&package::Reference::id, "id2"),
-              Field(&package::Reference::channel, "main"),
-              Field(&package::Reference::version, package::Version::parse("1.0.0").value())),
-        AllOf(Field(&package::Reference::id, "id2"),
-              Field(&package::Reference::channel, "main"),
-              Field(&package::Reference::version, package::Version::parse("1.1.0").value())),
-        true))
-      .WillOnce(Return(utils::error::Result<void>{}));
+    EXPECT_CALL(*pm, switchAppVersion(_, _, true)).WillOnce(Return(utils::error::Result<void>{}));
 
     service::PackageTask task({});
     res = action->doAction(task);
-    if (!res) {
-        LogE("failed to update app {}", res.error());
-    }
     ASSERT_TRUE(res.has_value());
 }
 

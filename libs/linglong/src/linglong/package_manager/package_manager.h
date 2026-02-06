@@ -12,6 +12,7 @@
 #include "linglong/api/types/v1/PackageManager1RequestInteractionAdditionalMessage.hpp"
 #include "linglong/api/types/v1/Repo.hpp"
 #include "linglong/api/types/v1/UabLayer.hpp"
+#include "linglong/package/fuzzy_reference.h"
 #include "linglong/package/reference.h"
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/runtime/container_builder.h"
@@ -78,6 +79,13 @@ public
 
     virtual utils::error::Result<void> installAppDepends(Task &task,
                                                          const api::types::v1::PackageInfoV2 &app);
+    virtual utils::error::Result<std::optional<package::ReferenceWithRepo>>
+    needToInstall(const std::string &refStr, std::optional<std::string> channel);
+    virtual utils::error::Result<
+      std::optional<std::pair<package::ReferenceWithRepo, std::vector<std::string>>>>
+    needToUpgrade(const package::FuzzyReference &fuzzyRef,
+                  std::optional<package::Reference> &local,
+                  bool installIfMissing = false);
     virtual utils::error::Result<void>
     installDependsRef(Task &task,
                       const std::string &refStr,
@@ -86,6 +94,9 @@ public
     virtual utils::error::Result<void> installRef(Task &task,
                                                   const package::ReferenceWithRepo &ref,
                                                   std::vector<std::string> modules) noexcept;
+    virtual utils::error::Result<void> installRefModule(Task &task,
+                                                        const package::ReferenceWithRepo &ref,
+                                                        const std::string &module) noexcept;
     utils::error::Result<void> Uninstall(PackageTask &taskContext,
                                          const package::Reference &ref,
                                          const std::string &module) noexcept;
@@ -93,6 +104,8 @@ public
     utils::error::Result<void>
     uninstallRef(const package::Reference &ref,
                  std::optional<std::vector<std::string>> modules = std::nullopt) noexcept;
+    utils::error::Result<void> uninstallRefModule(const package::Reference &ref,
+                                                  const std::string &module) noexcept;
 
 Q_SIGNALS:
     void TaskAdded(QDBusObjectPath object_path);

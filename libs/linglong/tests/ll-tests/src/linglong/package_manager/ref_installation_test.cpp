@@ -8,6 +8,7 @@
 #include <gtest/gtest.h>
 
 #include "../../common/tempdir.h"
+#include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/api/types/v1/PackageInfoV2.hpp"
 #include "linglong/package_manager/package_manager.h"
 #include "linglong/package_manager/ref_installation.h"
@@ -15,6 +16,8 @@
 #include "linglong/repo/remote_packages.h"
 #include "linglong/runtime/container_builder.h"
 #include "ocppi/cli/crun/Crun.hpp"
+
+#include <nlohmann/json.hpp>
 
 namespace {
 
@@ -33,10 +36,10 @@ public:
     }
 
     MOCK_METHOD(utils::error::Result<void>,
-                installRef,
+                installRefModule,
                 (service::Task & task,
                  const package::ReferenceWithRepo &ref,
-                 std::vector<std::string> modules),
+                 const std::string &module),
                 (override, noexcept));
 
     MOCK_METHOD(utils::error::Result<void>,
@@ -47,14 +50,14 @@ public:
                 (override, noexcept));
 
     MOCK_METHOD(utils::error::Result<void>,
-                installAppDepends,
-                (service::Task & task, const api::types::v1::PackageInfoV2 &info),
-                (override, noexcept));
-
-    MOCK_METHOD(utils::error::Result<void>,
                 applyApp,
                 (const package::Reference &ref),
                 (override, noexcept));
+
+    MOCK_METHOD(utils::error::Result<std::optional<package::ReferenceWithRepo>>,
+                needToInstall,
+                (const std::string &refStr, std::optional<std::string> channel),
+                (override));
 };
 
 class MockRepo : public repo::OSTreeRepo
@@ -89,6 +92,18 @@ public:
                 listLocalBy,
                 (const repo::repoCacheQuery &query),
                 (override, const, noexcept));
+
+    MOCK_METHOD(utils::error::Result<repo::RefMetaData>,
+                fetchRefMetaData,
+                (const package::ReferenceWithRepo &ref, const std::string &module, bool fetchInfo),
+                (override, noexcept));
+
+    MOCK_METHOD(utils::error::Result<repo::RefStatistics>,
+                getRefStatistics,
+                (const repo::RefMetaData &meta),
+                (override, const, noexcept));
+
+    MOCK_METHOD(utils::error::Result<void>, mergeModules, (), (override, const, noexcept));
 };
 
 class RefInstallationTest : public ::testing::Test
@@ -131,32 +146,44 @@ TEST_F(RefInstallationTest, InstallApp)
 
     EXPECT_CALL(*repo, latestLocalReference(_)).WillOnce(Return(LINGLONG_ERR("")));
 
+    api::types::v1::PackageInfoV2 info{
+        .arch = { "x86_64" },
+        .base = "base",
+        .channel = "main",
+        .id = "id",
+        .kind = "app",
+        .packageInfoV2Module = "binary",
+        .runtime = "runtime",
+        .version = "1.0.0",
+    };
+
     repo::RemotePackages remote;
     remote.addPackages(api::types::v1::Repo{ .name = "repo" },
-                       std::vector<api::types::v1::PackageInfoV2>{ api::types::v1::PackageInfoV2{
-                         .arch = { "x86_64" },
-                         .base = "base",
-                         .channel = "main",
-                         .id = "id",
-                         .kind = "app",
-                         .packageInfoV2Module = "binary",
-                         .runtime = "runtime",
-                         .version = "1.0.0",
-                       } });
+                       std::vector<api::types::v1::PackageInfoV2>{ info });
     EXPECT_CALL(*repo, matchRemoteByPriority(_, _)).WillOnce(Return(std::move(remote)));
-
-    EXPECT_CALL(*pm, installRef(_, _, _)).WillOnce(Return(utils::error::Result<void>{}));
 
     EXPECT_CALL(*repo, listLocalBy(_))
       .WillOnce(Return(std::vector<api::types::v1::RepositoryCacheLayersItem>{}));
 
-    api::types::v1::RepositoryCacheLayersItem item;
-    item.info.kind = "app";
-    EXPECT_CALL(*repo, getLayerItem(_, _, _)).WillOnce(Return(item));
+    EXPECT_CALL(*repo, fetchRefMetaData(_, "binary", true))
+      .WillOnce(Return(repo::RefMetaData{ "rev123", nlohmann::json(info).dump() }));
 
-    EXPECT_CALL(*pm, installAppDepends(_, _)).WillOnce(Return(utils::error::Result<void>{}));
+    EXPECT_CALL(*repo, getRefStatistics(_)).WillOnce([](const repo::RefMetaData &) {
+        return utils::error::Result<repo::RefStatistics>{
+            repo::RefStatistics{ .archived = 1000, .needed_archived = 500 }
+        };
+    });
+
+    EXPECT_CALL(*pm, installRefModule(_, _, "binary"))
+      .WillOnce(Return(utils::error::Result<void>{}));
+
+    EXPECT_CALL(*pm, needToInstall("base", _)).WillOnce(Return(std::nullopt));
+    EXPECT_CALL(*pm, needToInstall("runtime", _)).WillOnce(Return(std::nullopt));
 
     EXPECT_CALL(*pm, applyApp(_)).WillOnce(Return(utils::error::Result<void>{}));
+    EXPECT_CALL(*repo, mergeModules()).WillOnce([]() {
+        return utils::error::Result<void>{};
+    });
 
     service::PackageTask task({});
     ASSERT_TRUE(action->prepare());
@@ -175,7 +202,7 @@ TEST_F(RefInstallationTest, InstallNoAppFound)
 
     EXPECT_CALL(*repo, latestLocalReference(_)).WillOnce(Return(LINGLONG_ERR("")));
 
-    repo::RemotePackages remote;
+    repo::RemotePackages remote; // Empty remote packages
     EXPECT_CALL(*repo, matchRemoteByPriority(_, _)).WillOnce(Return(std::move(remote)));
 
     service::PackageTask task({});
@@ -202,42 +229,53 @@ TEST_F(RefInstallationTest, InstallExtraOnly)
     EXPECT_CALL(*repo, getLayerItem(localRef, "develop", _))
       .WillOnce(Return(LINGLONG_ERR("not found")));
 
+    api::types::v1::PackageInfoV2 infoBinary{
+        .arch = { "x86_64" },
+        .base = "base",
+        .channel = "main",
+        .id = "id",
+        .kind = "app",
+        .packageInfoV2Module = "binary",
+        .runtime = "runtime",
+        .version = "1.0.0",
+    };
+
+    api::types::v1::PackageInfoV2 infoDevelop{
+        .arch = { "x86_64" },
+        .base = "base",
+        .channel = "main",
+        .id = "id",
+        .kind = "app",
+        .packageInfoV2Module = "develop",
+        .runtime = "runtime",
+        .version = "1.0.0",
+    };
+
     repo::RemotePackages remote;
-    remote.addPackages(
-      api::types::v1::Repo{ .name = "repo" },
-      std::vector<api::types::v1::PackageInfoV2>{ api::types::v1::PackageInfoV2{
-                                                    .arch = { "x86_64" },
-                                                    .base = "base",
-                                                    .channel = "main",
-                                                    .id = "id",
-                                                    .kind = "app",
-                                                    .packageInfoV2Module = "binary",
-                                                    .runtime = "runtime",
-                                                    .version = "1.0.0",
-                                                  },
-                                                  api::types::v1::PackageInfoV2{
-                                                    .arch = { "x86_64" },
-                                                    .base = "base",
-                                                    .channel = "main",
-                                                    .id = "id",
-                                                    .kind = "app",
-                                                    .packageInfoV2Module = "develop",
-                                                    .runtime = "runtime",
-                                                    .version = "1.0.0",
-                                                  } });
+    remote.addPackages(api::types::v1::Repo{ .name = "repo" },
+                       std::vector<api::types::v1::PackageInfoV2>{ infoBinary, infoDevelop });
 
     EXPECT_CALL(*repo, matchRemoteByPriority(_, _)).WillOnce(Return(std::move(remote)));
 
-    EXPECT_CALL(*pm, installRef(_, _, std::vector<std::string>{ "develop" }))
+    EXPECT_CALL(*repo, fetchRefMetaData(_, "develop", true))
+      .WillOnce(Return(repo::RefMetaData{ "rev124", nlohmann::json(infoDevelop).dump() }));
+
+    EXPECT_CALL(*repo, getRefStatistics(_)).WillOnce([](const repo::RefMetaData &) {
+        return utils::error::Result<repo::RefStatistics>{
+            repo::RefStatistics{ .archived = 1000, .needed_archived = 500 }
+        };
+    });
+
+    EXPECT_CALL(*pm, installRefModule(_, _, "develop"))
       .WillOnce(Return(utils::error::Result<void>{}));
 
-    api::types::v1::RepositoryCacheLayersItem item;
-    item.info.kind = "app";
-    EXPECT_CALL(*repo, getLayerItem(localRef, "binary", _)).WillOnce(Return(item));
-
-    EXPECT_CALL(*pm, installAppDepends(_, _)).WillOnce(Return(utils::error::Result<void>{}));
+    EXPECT_CALL(*pm, needToInstall("base", _)).WillOnce(Return(std::nullopt));
+    EXPECT_CALL(*pm, needToInstall("runtime", _)).WillOnce(Return(std::nullopt));
 
     EXPECT_CALL(*pm, applyApp(_)).WillOnce(Return(utils::error::Result<void>{}));
+    EXPECT_CALL(*repo, mergeModules()).WillOnce([]() {
+        return utils::error::Result<void>{};
+    });
 
     service::PackageTask task({});
     ASSERT_TRUE(action->prepare());
@@ -256,44 +294,61 @@ TEST_F(RefInstallationTest, InstallMultipleModules)
 
     EXPECT_CALL(*repo, latestLocalReference(_)).WillOnce(Return(LINGLONG_ERR("")));
 
+    api::types::v1::PackageInfoV2 infoBinary{
+        .arch = { "x86_64" },
+        .base = "base",
+        .channel = "main",
+        .id = "id",
+        .kind = "app",
+        .packageInfoV2Module = "binary",
+        .runtime = "runtime",
+        .version = "1.0.0",
+    };
+
+    api::types::v1::PackageInfoV2 infoDevelop{
+        .arch = { "x86_64" },
+        .base = "base",
+        .channel = "main",
+        .id = "id",
+        .kind = "app",
+        .packageInfoV2Module = "develop",
+        .runtime = "runtime",
+        .version = "1.0.0",
+    };
+
     repo::RemotePackages remote;
-    remote.addPackages(
-      api::types::v1::Repo{ .name = "repo" },
-      std::vector<api::types::v1::PackageInfoV2>{ api::types::v1::PackageInfoV2{
-                                                    .arch = { "x86_64" },
-                                                    .base = "base",
-                                                    .channel = "main",
-                                                    .id = "id",
-                                                    .kind = "app",
-                                                    .packageInfoV2Module = "binary",
-                                                    .runtime = "runtime",
-                                                    .version = "1.0.0",
-                                                  },
-                                                  api::types::v1::PackageInfoV2{
-                                                    .arch = { "x86_64" },
-                                                    .base = "base",
-                                                    .channel = "main",
-                                                    .id = "id",
-                                                    .kind = "app",
-                                                    .packageInfoV2Module = "develop",
-                                                    .runtime = "runtime",
-                                                    .version = "1.0.0",
-                                                  } });
+    remote.addPackages(api::types::v1::Repo{ .name = "repo" },
+                       std::vector<api::types::v1::PackageInfoV2>{ infoBinary, infoDevelop });
 
     EXPECT_CALL(*repo, matchRemoteByPriority(_, _)).WillOnce(Return(std::move(remote)));
-
-    EXPECT_CALL(*pm, installRef(_, _, std::vector<std::string>{ "binary", "develop" }))
-      .WillOnce(Return(utils::error::Result<void>{}));
-
-    api::types::v1::RepositoryCacheLayersItem item;
-    item.info.kind = "app";
-    EXPECT_CALL(*repo, getLayerItem(_, _, _)).WillOnce(Return(item));
 
     EXPECT_CALL(*repo, listLocalBy(_))
       .WillOnce(Return(std::vector<api::types::v1::RepositoryCacheLayersItem>{}));
 
-    EXPECT_CALL(*pm, installAppDepends(_, _)).WillOnce(Return(utils::error::Result<void>{}));
+    EXPECT_CALL(*repo, fetchRefMetaData(_, "binary", true))
+      .WillOnce(Return(repo::RefMetaData{ "rev123", nlohmann::json(infoBinary).dump() }));
+
+    EXPECT_CALL(*repo, fetchRefMetaData(_, "develop", false))
+      .WillOnce(Return(repo::RefMetaData{ "rev124", nlohmann::json(infoDevelop).dump() }));
+
+    EXPECT_CALL(*repo, getRefStatistics(_)).WillRepeatedly([](const repo::RefMetaData &) {
+        return utils::error::Result<repo::RefStatistics>{
+            repo::RefStatistics{ .archived = 1000, .needed_archived = 500 }
+        };
+    });
+
+    EXPECT_CALL(*pm, installRefModule(_, _, "binary"))
+      .WillOnce(Return(utils::error::Result<void>{}));
+    EXPECT_CALL(*pm, installRefModule(_, _, "develop"))
+      .WillOnce(Return(utils::error::Result<void>{}));
+
+    EXPECT_CALL(*pm, needToInstall("base", _)).WillOnce(Return(std::nullopt));
+    EXPECT_CALL(*pm, needToInstall("runtime", _)).WillOnce(Return(std::nullopt));
+
     EXPECT_CALL(*pm, applyApp(_)).WillOnce(Return(utils::error::Result<void>{}));
+    EXPECT_CALL(*repo, mergeModules()).WillOnce([]() {
+        return utils::error::Result<void>{};
+    });
 
     service::PackageTask task({});
     ASSERT_TRUE(action->prepare());
@@ -310,23 +365,23 @@ TEST_F(RefInstallationTest, InstallDowngrade)
     auto action =
       service::RefInstallationAction::create(fuzzy, modules, *pm, *repo, opts, std::nullopt);
 
-    // Local app is newer
     auto localRef = package::Reference::parse("main:id/2.0.0/x86_64").value();
     EXPECT_CALL(*repo, latestLocalReference(_)).WillOnce(Return(localRef));
 
-    // Remote is older
+    api::types::v1::PackageInfoV2 info{
+        .arch = { "x86_64" },
+        .base = "base",
+        .channel = "main",
+        .id = "id",
+        .kind = "app",
+        .packageInfoV2Module = "binary",
+        .runtime = "runtime",
+        .version = "1.0.0",
+    };
+
     repo::RemotePackages remote;
     remote.addPackages(api::types::v1::Repo{ .name = "repo" },
-                       std::vector<api::types::v1::PackageInfoV2>{ api::types::v1::PackageInfoV2{
-                         .arch = { "x86_64" },
-                         .base = "base",
-                         .channel = "main",
-                         .id = "id",
-                         .kind = "app",
-                         .packageInfoV2Module = "binary",
-                         .runtime = "runtime",
-                         .version = "1.0.0",
-                       } });
+                       std::vector<api::types::v1::PackageInfoV2>{ info });
 
     EXPECT_CALL(*repo, matchRemoteByPriority(_, _)).WillOnce(Return(std::move(remote)));
 
@@ -345,15 +400,25 @@ TEST_F(RefInstallationTest, InstallDowngrade)
           },
         } }));
 
-    EXPECT_CALL(*pm, installRef(_, _, std::vector<std::string>{ "binary" }))
+    EXPECT_CALL(*repo, fetchRefMetaData(_, "binary", true))
+      .WillOnce(Return(repo::RefMetaData{ "rev123", nlohmann::json(info).dump() }));
+
+    EXPECT_CALL(*repo, getRefStatistics(_)).WillOnce([](const repo::RefMetaData &) {
+        return utils::error::Result<repo::RefStatistics>{
+            repo::RefStatistics{ .archived = 1000, .needed_archived = 500 }
+        };
+    });
+
+    EXPECT_CALL(*pm, installRefModule(_, _, "binary"))
       .WillOnce(Return(utils::error::Result<void>{}));
 
-    api::types::v1::RepositoryCacheLayersItem item;
-    item.info.kind = "app";
-    EXPECT_CALL(*repo, getLayerItem(_, _, _)).WillOnce(Return(item));
+    EXPECT_CALL(*pm, needToInstall("base", _)).WillOnce(Return(std::nullopt));
+    EXPECT_CALL(*pm, needToInstall("runtime", _)).WillOnce(Return(std::nullopt));
 
-    EXPECT_CALL(*pm, installAppDepends(_, _)).WillOnce(Return(utils::error::Result<void>{}));
     EXPECT_CALL(*pm, switchAppVersion(_, _, true)).WillOnce(Return(utils::error::Result<void>{}));
+    EXPECT_CALL(*repo, mergeModules()).WillOnce([]() {
+        return utils::error::Result<void>{};
+    });
 
     service::PackageTask task({});
     ASSERT_TRUE(action->prepare());

@@ -71,16 +71,9 @@ namespace {
 
 struct ostreeUserData
 {
-    bool caught_error{ false };
-    guint fetched{ 0 };
-    guint requested{ 0 };
-    guint bytes_transferred{ 0 };
+    guint last_bytes_transferred{ 0 };
     char *ostree_status{ nullptr };
     service::Task *taskContext{ nullptr };
-    guint64 needed_archived{ 0 };
-    guint64 needed_unpacked{ 0 };
-    guint64 needed_objects{ 0 };
-    double progress{ 0 };
 
     ~ostreeUserData() { g_clear_pointer(&ostree_status, g_free); }
 };
@@ -90,45 +83,39 @@ void progress_changed(OstreeAsyncProgress *progress, gpointer user_data)
     auto *data = static_cast<ostreeUserData *>(user_data);
     g_clear_pointer(&data->ostree_status, g_free);
 
+    gboolean caught_error{ false };
+    guint fetched{ 0 };
+    guint requested{ 0 };
+    guint64 bytes_transferred{ 0 };
+
     ostree_async_progress_get(progress,
                               "fetched",
                               "u",
-                              &data->fetched,
+                              &fetched,
                               "requested",
                               "u",
-                              &data->requested,
+                              &requested,
                               "caught-error",
                               "b",
-                              &data->caught_error,
+                              &caught_error,
                               "bytes-transferred",
                               "t",
-                              &data->bytes_transferred,
+                              &bytes_transferred,
                               "status",
                               "s",
                               &data->ostree_status,
                               nullptr);
 
-    if (data->requested == 0) {
+    if (requested == 0) {
         return;
     }
 
-    guint64 request, fetched;
-    // use needed_archived to calculate progress if possible
-    // otherwise use requested and fetched
-    if (data->needed_archived) {
-        request = data->needed_archived;
-        fetched = data->bytes_transferred;
-    } else {
-        request = data->requested;
-        fetched = data->fetched;
-    }
+    // report bytes transferred
+    data->taskContext->reportDataArrived(bytes_transferred - data->last_bytes_transferred);
+    data->last_bytes_transferred = bytes_transferred;
 
     // report actual fetched and requestd data
-    data->taskContext->reportDataHandled(data->fetched, data->requested);
-
-    data->progress =
-      std::min(std::max(static_cast<double>(fetched) / request * 100.0, data->progress), 100.0);
-    data->taskContext->updateProgress(data->progress);
+    data->taskContext->reportDataHandled(fetched, requested);
 }
 
 std::string ostreeRefFromLayerItem(const api::types::v1::RepositoryCacheLayersItem &layer)
@@ -168,9 +155,6 @@ ostreeSpecFromReferenceV2(const package::Reference &ref,
                           std::string module = "binary",
                           const std::optional<std::string> &subRef = std::nullopt) noexcept
 {
-    if (module == "runtime") {
-        module = "binary";
-    }
     auto ret = ref.channel + "/" + ref.id + "/" + ref.version.toString() + "/" + ref.arch.toString()
       + "/" + module;
 
@@ -507,6 +491,17 @@ std::optional<package::Reference> matchReference(const api::types::v1::PackageIn
 }
 
 } // namespace
+
+utils::error::Result<api::types::v1::PackageInfoV2> RefMetaData::getPackageInfo() const noexcept
+{
+    LINGLONG_TRACE(fmt::format("getPackageInfo from rev {}", rev));
+
+    if (packageInfoContent.empty()) {
+        return LINGLONG_ERR("package info is not provided");
+    }
+
+    return utils::serialize::parsePackageInfo(packageInfoContent);
+}
 
 utils::error::Result<void>
 OSTreeRepo::removeOstreeRef(const api::types::v1::RepositoryCacheLayersItem &layer) noexcept
@@ -1106,6 +1101,146 @@ utils::error::Result<void> OSTreeRepo::prune()
     return LINGLONG_OK;
 }
 
+utils::error::Result<RefMetaData>
+OSTreeRepo::fetchRefMetaData(const package::ReferenceWithRepo &refRepo,
+                             const std::string &module,
+                             bool fetchPackageInfo) noexcept
+{
+    auto refString = ostreeSpecFromReferenceV2(refRepo.reference, std::nullopt, module);
+    auto repoName = refRepo.repo.alias.value_or(refRepo.repo.name);
+    LINGLONG_TRACE(fmt::format("fetch info.json from {}:{}", repoName, refString));
+
+    g_autoptr(GError) gErr = nullptr;
+
+    GVariantBuilder builder = this->initOStreePullOptions(refString);
+    if (fetchPackageInfo) {
+        std::vector<const char *> subdirs{ "/info.json", nullptr };
+        g_variant_builder_add(&builder,
+                              "{s@v}",
+                              "subdirs",
+                              g_variant_new_variant(g_variant_new_strv(subdirs.data(), -1)));
+    } else {
+        g_variant_builder_add(
+          &builder,
+          "{s@v}",
+          "flags",
+          g_variant_new_variant(g_variant_new_int32(OSTREE_REPO_PULL_FLAGS_COMMIT_ONLY)));
+    }
+
+    g_autoptr(GVariant) pull_options = g_variant_ref_sink(g_variant_builder_end(&builder));
+    auto status = ostree_repo_pull_with_options(this->ostreeRepo.get(),
+                                                repoName.c_str(),
+                                                pull_options,
+                                                nullptr,
+                                                nullptr,
+                                                &gErr);
+    if (status == FALSE) {
+        return LINGLONG_ERR(fmt::format("ostree_repo_pull_with_options {}", ptr_view(gErr)));
+    }
+    g_clear_error(&gErr);
+
+    auto removeRef = utils::finally::finally([this, &repoName, &refString] {
+        g_autoptr(GError) gErr = nullptr;
+        if (ostree_repo_set_ref_immediate(this->ostreeRepo.get(),
+                                          repoName.c_str(),
+                                          refString.c_str(),
+                                          nullptr,
+                                          nullptr,
+                                          &gErr)
+            == FALSE) {
+            LogE("ostree_repo_set_ref_immediate {}", ptr_view(gErr));
+        }
+    });
+
+    g_autofree char *resolved_rev = NULL;
+    if (!ostree_repo_resolve_rev(this->ostreeRepo.get(),
+                                 refString.c_str(),
+                                 FALSE,
+                                 &resolved_rev,
+                                 &gErr)) {
+        return LINGLONG_ERR(fmt::format("ostree_repo_resolve_rev {}", ptr_view(gErr)));
+    }
+    g_clear_error(&gErr);
+
+    if (!fetchPackageInfo) {
+        return RefMetaData(resolved_rev);
+    }
+
+    g_autofree char *commit = nullptr;
+    g_autoptr(GFile) layerRootDir = nullptr;
+    if (ostree_repo_read_commit(this->ostreeRepo.get(),
+                                refString.c_str(),
+                                &layerRootDir,
+                                &commit,
+                                nullptr,
+                                &gErr)
+        == 0) {
+        return LINGLONG_ERR(fmt::format("ostree_repo_read_commit {}", ptr_view(gErr)));
+    }
+    g_clear_error(&gErr);
+
+    g_autoptr(GFile) infoFile = g_file_resolve_relative_path(layerRootDir, "info.json");
+    g_autofree gchar *content = nullptr;
+    gsize length = 0;
+    if (!g_file_load_contents(infoFile, nullptr, &content, &length, nullptr, &gErr)) {
+        return LINGLONG_ERR(fmt::format("g_file_load_contents: {}", ptr_view(gErr)));
+    }
+    g_clear_error(&gErr);
+
+    return RefMetaData(resolved_rev, std::string_view(content, length));
+}
+
+utils::error::Result<RefStatistics>
+OSTreeRepo::getRefStatistics(const RefMetaData &meta) const noexcept
+{
+    LINGLONG_TRACE(fmt::format("statistics ref {}", meta.getRev()));
+
+    g_autoptr(GError) gErr = nullptr;
+    g_autoptr(GVariant) commit = NULL;
+    if (!ostree_repo_load_variant(this->ostreeRepo.get(),
+                                  OSTREE_OBJECT_TYPE_COMMIT,
+                                  meta.getRev().c_str(),
+                                  &commit,
+                                  &gErr)) {
+        return LINGLONG_ERR(fmt::format("ostree_repo_load_variant {}", ptr_view(gErr)));
+    }
+    g_clear_error(&gErr);
+
+    g_autoptr(GPtrArray) sizes = NULL;
+    if (!ostree_commit_get_object_sizes(commit, &sizes, &gErr)) {
+        return LINGLONG_ERR(fmt::format("ostree_commit_get_object_sizes {}", ptr_view(gErr)));
+    }
+    g_clear_error(&gErr);
+
+    RefStatistics stat = { 0 };
+    for (guint i = 0; i < sizes->len; i++) {
+        OstreeCommitSizesEntry *entry = (OstreeCommitSizesEntry *)sizes->pdata[i];
+        stat.archived += entry->archived;
+        stat.unpacked += entry->unpacked;
+        ++stat.objects;
+
+        gboolean exists;
+        if (!ostree_repo_has_object(this->ostreeRepo.get(),
+                                    entry->objtype,
+                                    entry->checksum,
+                                    &exists,
+                                    NULL,
+                                    &gErr)) {
+            return LINGLONG_ERR(fmt::format("ostree_repo_has_object {}", ptr_view(gErr)));
+        }
+        g_clear_error(&gErr);
+
+        // Object not in local repo, so we need to download it
+        if (!exists) {
+            stat.needed_archived += entry->archived;
+            stat.needed_unpacked += entry->unpacked;
+            stat.needed_objects++;
+        }
+    }
+
+    return stat;
+}
+
 // 初始化一个GVariantBuilder
 GVariantBuilder OSTreeRepo::initOStreePullOptions(const std::string &ref) noexcept
 {
@@ -1129,116 +1264,18 @@ GVariantBuilder OSTreeRepo::initOStreePullOptions(const std::string &ref) noexce
     return builder;
 }
 
-// 在pull之前获取commit size，用于计算进度，需要服务器支持ostree.sizes
-utils::error::Result<std::vector<guint64>>
-OSTreeRepo::getCommitSize(const std::string &remote, const std::string &refString) noexcept
-{
-    LINGLONG_TRACE("get commit size " + refString);
-#if OSTREE_CHECK_VERSION(2020, 1)
-    g_autoptr(GError) gErr = nullptr;
-    GVariantBuilder builder = this->initOStreePullOptions(refString);
-    // 设置flags只获取commit的metadata
-    g_variant_builder_add(
-      &builder,
-      "{s@v}",
-      "flags",
-      g_variant_new_variant(g_variant_new_int32(OSTREE_REPO_PULL_FLAGS_COMMIT_ONLY)));
-    g_autoptr(GVariant) pull_options = g_variant_ref_sink(g_variant_builder_end(&builder));
-    // 获取commit的metadata
-    auto status = ostree_repo_pull_with_options(this->ostreeRepo.get(),
-                                                remote.c_str(),
-                                                pull_options,
-                                                nullptr,
-                                                nullptr,
-                                                &gErr);
-    if (status == FALSE) {
-        return LINGLONG_ERR(fmt::format("ostree_repo_pull {}", ptr_view(gErr)));
-    }
-    // 使用refString获取commit的sha256
-    g_autofree char *resolved_rev = NULL;
-    if (!ostree_repo_resolve_rev(this->ostreeRepo.get(),
-                                 refString.c_str(),
-                                 FALSE,
-                                 &resolved_rev,
-                                 &gErr)) {
-        return LINGLONG_ERR(fmt::format("ostree_repo_resolve_rev {}", ptr_view(gErr)));
-    }
-    // 使用sha256获取commit id
-    g_autoptr(GVariant) commit = NULL;
-    if (!ostree_repo_load_variant(this->ostreeRepo.get(),
-                                  OSTREE_OBJECT_TYPE_COMMIT,
-                                  resolved_rev,
-                                  &commit,
-                                  &gErr)) {
-        return LINGLONG_ERR(fmt::format("ostree_repo_load_variant {}", ptr_view(gErr)));
-    }
-    g_autoptr(GPtrArray) sizes = NULL;
-    // 获取commit中的所有对象大小
-    if (!ostree_commit_get_object_sizes(commit, &sizes, &gErr))
-        return LINGLONG_ERR(fmt::format("ostree_commit_get_object_sizes {}", ptr_view(gErr)));
-    // 计算需要下载的文件大小
-    guint64 needed_archived = 0;
-    // 计算需要解压的文件大小
-    guint64 needed_unpacked = 0;
-    // 计算需要下载的文件数量
-    guint64 needed_objects = 0;
-    // 遍历commit中的所有对象，如果对象不存在，则需要下载
-    for (guint i = 0; i < sizes->len; i++) {
-        OstreeCommitSizesEntry *entry = (OstreeCommitSizesEntry *)sizes->pdata[i];
-        gboolean exists;
-        if (!ostree_repo_has_object(this->ostreeRepo.get(),
-                                    entry->objtype,
-                                    entry->checksum,
-                                    &exists,
-                                    NULL,
-                                    &gErr))
-            return LINGLONG_ERR(fmt::format("ostree_repo_has_object {}", ptr_view(gErr)));
-
-        // Object not in local repo, so we need to download it
-        if (!exists) {
-            needed_archived += entry->archived;
-            needed_unpacked += entry->unpacked;
-            needed_objects++;
-        }
-    }
-    // 删除ref
-    if (!ostree_repo_set_ref_immediate(this->ostreeRepo.get(),
-                                       remote.c_str(),
-                                       refString.c_str(),
-                                       nullptr,
-                                       nullptr,
-                                       &gErr)) {
-        return LINGLONG_ERR(fmt::format("ostree_repo_set_ref_immediate {}", ptr_view(gErr)));
-    }
-    return std::vector<guint64>{ needed_archived, needed_unpacked, needed_objects };
-#else
-    return LINGLONG_ERR("ostree_repo_pull_with_options is not supported");
-#endif
-}
-
 utils::error::Result<void> OSTreeRepo::pull(service::Task &taskContext,
-                                            const package::Reference &reference,
-                                            const std::string &module,
-                                            const api::types::v1::Repo &repo) noexcept
+                                            const package::ReferenceWithRepo &refRepo,
+                                            const std::string &module) noexcept
 {
-    // Note: if module is runtime, refString will be channel:id/version/binary.
-    // because we need considering update channel:id/version/runtime to channel:id/version/binary.
-    auto refString = ostreeSpecFromReferenceV2(reference, std::nullopt, module);
-    auto repoName = repo.alias.value_or(repo.name);
+    auto refString = ostreeSpecFromReferenceV2(refRepo.reference, std::nullopt, module);
+    auto repoName = refRepo.repo.alias.value_or(refRepo.repo.name);
     LINGLONG_TRACE(fmt::format("pull {} from {}", refString, repoName));
 
     auto *cancellable = taskContext.cancellable();
 
-    ostreeUserData data{ .taskContext = &taskContext };
-
-    auto sizes = this->getCommitSize(repoName, refString);
-    if (!sizes.has_value()) {
-        LogD("get commit size error: {}", sizes.error().message());
-    } else if (sizes->size() >= 3) {
-        data.needed_archived = sizes->at(0);
-        data.needed_unpacked = sizes->at(1);
-        data.needed_objects = sizes->at(2);
-    }
+    ostreeUserData data;
+    data.taskContext = &taskContext;
 
     g_autoptr(OstreeAsyncProgress) progress =
       ostree_async_progress_new_and_connect(progress_changed, (void *)&data);
@@ -1272,7 +1309,7 @@ utils::error::Result<void> OSTreeRepo::pull(service::Task &taskContext,
           ostree_async_progress_new_and_connect(progress_changed, (void *)&data);
         Q_ASSERT(progress != nullptr);
         // fallback to old ref
-        refString = ostreeSpecFromReference(reference, std::nullopt, module);
+        refString = ostreeSpecFromReference(refRepo.reference, std::nullopt, module);
         LogW("fallback to module runtime, pull {}", refString);
 
         g_clear_error(&gErr);

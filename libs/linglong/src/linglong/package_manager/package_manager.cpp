@@ -898,7 +898,8 @@ utils::error::Result<void> PackageManager::Uninstall(PackageTask &taskContext,
 {
     LINGLONG_TRACE(fmt::format("uninstall ref {} {}", ref.toString(), module));
 
-    taskContext.updateState(api::types::v1::State::Processing, "start to uninstalling package");
+    taskContext.updateState(api::types::v1::State::Processing,
+                            fmt::format("Uninstalling {}", ref.toString()));
 
     std::vector<std::string> removedModules{ module };
 
@@ -944,13 +945,44 @@ auto PackageManager::Update(const QVariantMap &parameters) noexcept -> QVariantM
         return toDBusReply(utils::error::ErrorCode::AppUpgradeFailed, paras.error().message());
     }
 
-    auto action = PackageUpdateAction::create(paras->packages, paras->depsOnly, *this, repo);
+    auto action =
+      PackageUpdateAction::create(paras->packages, paras->appOnly, paras->depsOnly, *this, repo);
     if (!action) {
         return toDBusReply(utils::error::ErrorCode::AppUpgradeFailed,
                            "failed to create update action");
     }
 
     return runActionOnTaskQueue(action);
+}
+
+utils::error::Result<void> PackageManager::installRefModule(Task &task,
+                                                            const package::ReferenceWithRepo &ref,
+                                                            const std::string &module) noexcept
+{
+    LINGLONG_TRACE(fmt::format("install ref module {}/{}", ref.reference.toString(), module));
+
+    if (repo.isMarkedDeleted(ref.reference, module)) {
+        auto res = repo.markDeleted(ref.reference, false, module);
+        if (res) {
+            return LINGLONG_OK;
+        }
+
+        LogW(fmt::format("failed to unmark deleted {} {}, try to pull",
+                         ref.reference.toString(),
+                         module));
+    }
+
+    auto res = repo.pull(task, ref, module);
+    if (!res) {
+        return LINGLONG_ERR(res);
+    }
+
+    res = executePostInstallHooks(ref.reference);
+    if (!res) {
+        LogW(fmt::format("failed to execute postInstall hooks {}", ref.reference.toString()));
+    }
+
+    return LINGLONG_OK;
 }
 
 utils::error::Result<void> PackageManager::installRef(Task &task,
@@ -987,7 +1019,7 @@ utils::error::Result<void> PackageManager::installRef(Task &task,
                              module));
         }
 
-        auto res = repo.pull(taskPart, ref.reference, module, ref.repo);
+        auto res = repo.pull(taskPart, ref, module);
         if (!res) {
             return LINGLONG_ERR(res);
         }
@@ -1051,16 +1083,29 @@ utils::error::Result<void> PackageManager::uninstallRef(
          common::strings::join(modules.value(), ','));
 
     for (const auto &module : modules.value()) {
-        auto res = this->repo.remove(ref, module);
+        auto res = uninstallRefModule(ref, module);
         if (!res) {
-            LogW(fmt::format("failed to remove {} {}: {}", ref.toString(), module, res.error()));
+            LogW(fmt::format("failed to uninstall {}/{}: {}", ref.toString(), module, res.error()));
             continue;
         }
+    }
 
-        res = executePostUninstallHooks(ref);
-        if (!res) {
-            LogW(fmt::format("failed to execute postUninstall hooks {}", ref.toString()));
-        }
+    return LINGLONG_OK;
+}
+
+utils::error::Result<void> PackageManager::uninstallRefModule(const package::Reference &ref,
+                                                              const std::string &module) noexcept
+{
+    LINGLONG_TRACE(fmt::format("uninstall ref module {}/{}", ref.toString(), module));
+
+    auto res = this->repo.remove(ref, module);
+    if (!res) {
+        return LINGLONG_ERR(res);
+    }
+
+    res = executePostUninstallHooks(ref);
+    if (!res) {
+        LogW(fmt::format("failed to execute postUninstall hooks {}", ref.toString()));
     }
 
     return LINGLONG_OK;
@@ -1128,19 +1173,138 @@ PackageManager::installAppDepends(Task &task, const api::types::v1::PackageInfoV
 {
     LINGLONG_TRACE(fmt::format("install app depends for {}", app.id));
 
-    auto res = installDependsRef(task, app.base, app.channel);
+    TaskContainer taskContainer(task, app.runtime ? 2 : 1);
+
+    auto res = installDependsRef(taskContainer.next(), app.base, app.channel);
     if (!res) {
         return LINGLONG_ERR(res);
     }
 
     if (app.runtime) {
-        res = installDependsRef(task, *app.runtime, app.channel);
+        res = installDependsRef(taskContainer.next(), *app.runtime, app.channel);
         if (!res) {
             return LINGLONG_ERR(res);
         }
     }
 
     return LINGLONG_OK;
+}
+
+utils::error::Result<std::optional<package::ReferenceWithRepo>>
+PackageManager::needToInstall(const std::string &refStr, std::optional<std::string> channel)
+{
+    LINGLONG_TRACE(
+      fmt::format("need to install ref {} channel {}", refStr, channel ? *channel : "any"));
+
+    auto fuzzyRef = package::FuzzyReference::parse(refStr);
+    if (!fuzzyRef) {
+        return LINGLONG_ERR(fuzzyRef);
+    }
+
+    // use provided channel if not set in fuzzyRef
+    if (channel && !fuzzyRef->channel) {
+        fuzzyRef->channel = *channel;
+    }
+
+    auto local = this->repo.clearReference(*fuzzyRef,
+                                           {
+                                             .forceRemote = false,
+                                             .fallbackToRemote = false,
+                                             .semanticMatching = true,
+                                           });
+    // if the ref is already installed, do nothing
+    if (local) {
+        return std::nullopt;
+    }
+
+    auto remote = this->repo.latestRemoteReference(*fuzzyRef);
+    if (!remote) {
+        return LINGLONG_ERR(remote);
+    }
+
+    return remote;
+}
+
+utils::error::Result<std::optional<std::pair<package::ReferenceWithRepo, std::vector<std::string>>>>
+PackageManager::needToUpgrade(const package::FuzzyReference &fuzzyRef,
+                              std::optional<package::Reference> &local,
+                              bool installIfMissing)
+{
+    LINGLONG_TRACE(fmt::format("need to upgrade ref {}", fuzzyRef.toString()));
+
+    if (!local) {
+        auto res = this->repo.clearReference(fuzzyRef,
+                                             {
+                                               .forceRemote = false,
+                                               .fallbackToRemote = false,
+                                               .semanticMatching = true,
+                                             });
+        if (res) {
+            local = std::move(res).value();
+        }
+    }
+
+    if (!local && !installIfMissing) {
+        return std::nullopt;
+    }
+
+    auto candidates = repo.matchRemoteByPriority(fuzzyRef);
+    if (!candidates) {
+        return LINGLONG_ERR(candidates);
+    }
+
+    auto target = candidates->getLatestPackage();
+    if (!target) {
+        return LINGLONG_ERR(target);
+    }
+
+    auto remoteRef = package::Reference::fromPackageInfo(target->second.get());
+    if (!remoteRef) {
+        return LINGLONG_ERR(remoteRef);
+    }
+
+    auto installModules = std::vector<std::string>{};
+    std::vector<std::string> modules;
+    if (!local) {
+        modules = { "binary" };
+    } else {
+        modules = repo.getModuleList(*local);
+    }
+
+    if (!local || remoteRef->version > local->version) {
+        auto remoteModules = candidates->getReferenceModules(*remoteRef);
+        if (remoteModules.empty()) {
+            return LINGLONG_ERR(fmt::format("no modules found for {}", remoteRef->toString()),
+                                utils::error::ErrorCode::AppUpgradeFailed);
+        }
+
+        for (const auto &module : modules) {
+            if (std::find(remoteModules.begin(), remoteModules.end(), module)
+                != remoteModules.end()) {
+                installModules.emplace_back(module);
+                continue;
+            }
+
+            // update to binary module if runtime module is not found
+            if (module == "runtime"
+                && std::find(remoteModules.begin(), remoteModules.end(), "binary")
+                  != remoteModules.end()) {
+                installModules.emplace_back("binary");
+                continue;
+            }
+        }
+        if (installModules.empty()) {
+            return LINGLONG_ERR(fmt::format("no modules found to upgrade {}", local->toString()),
+                                utils::error::ErrorCode::AppUpgradeFailed);
+        }
+
+        return std::make_pair(
+          package::ReferenceWithRepo{ .repo = target->first,
+                                      .reference = std::move(remoteRef).value() },
+          installModules);
+    }
+
+    return std::nullopt;
 }
 
 utils::error::Result<void> PackageManager::installDependsRef(Task &task,

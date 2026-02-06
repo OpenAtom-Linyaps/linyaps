@@ -84,6 +84,7 @@ struct InstallOptions
 struct UpgradeOptions
 {
     std::string appid; // 可选，为空时升级所有应用
+    bool appOnly{ false };
     bool depsOnly{ false };
 };
 

@@ -37,6 +37,39 @@ struct clearReferenceOption
     bool semanticMatching = false; // semantic matching compatible version
 };
 
+class RefMetaData
+{
+public:
+    RefMetaData(const std::string_view &rev)
+        : rev(rev)
+    {
+    }
+
+    RefMetaData(const std::string_view &rev, const std::string_view &packageInfo)
+        : rev(rev)
+        , packageInfoContent(packageInfo)
+    {
+    }
+
+    utils::error::Result<api::types::v1::PackageInfoV2> getPackageInfo() const noexcept;
+
+    std::string getRev() const noexcept { return rev; }
+
+private:
+    std::string rev;
+    std::string packageInfoContent;
+};
+
+struct RefStatistics
+{
+    uint64_t archived;
+    uint64_t unpacked;
+    uint64_t objects;
+    uint64_t needed_archived;
+    uint64_t needed_unpacked;
+    uint64_t needed_objects;
+};
+
 class OSTreeRepo : public QObject
 
 {
@@ -76,9 +109,8 @@ public:
                  const package::Reference &reference,
                  const std::string &module = "binary") const noexcept;
     [[nodiscard]] utils::error::Result<void> pull(service::Task &taskContext,
-                                                  const package::Reference &reference,
-                                                  const std::string &module,
-                                                  const api::types::v1::Repo &repo) noexcept;
+                                                  const package::ReferenceWithRepo &refRepo,
+                                                  const std::string &module) noexcept;
 
     [[nodiscard]] virtual utils::error::Result<package::Reference>
     clearReference(const package::FuzzyReference &fuzzy,
@@ -114,6 +146,13 @@ public:
 
     utils::error::Result<void> prune();
 
+    virtual utils::error::Result<RefMetaData>
+    fetchRefMetaData(const package::ReferenceWithRepo &refRepo,
+                     const std::string &module = "binary",
+                     bool fetchPackageInfo = false) noexcept;
+    virtual utils::error::Result<RefStatistics>
+    getRefStatistics(const RefMetaData &meta) const noexcept;
+
     // exportReference should be called when LayerDir of ref is existed in local repo
     void exportReference(const package::Reference &ref) noexcept;
     // unexportReference should be called when LayerDir of ref is existed in local repo
@@ -128,7 +167,7 @@ public:
     bool isMarkedDeleted(const package::Reference &ref, const std::string &module) const noexcept;
 
     // 扫描layers变动，重新合并变动layer的modules
-    [[nodiscard]] utils::error::Result<void> mergeModules() const noexcept;
+    [[nodiscard]] virtual utils::error::Result<void> mergeModules() const noexcept;
     // 获取合并后的layerDir，如果没有找到则返回binary模块的layerDir
     [[nodiscard]] virtual utils::error::Result<package::LayerDir>
     getMergedModuleDir(const package::Reference &ref,

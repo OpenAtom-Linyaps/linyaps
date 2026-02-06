@@ -4,10 +4,10 @@
 
 #include "nvidia_driver_detector.h"
 
+#include "linglong/package/version.h"
 #include "linglong/utils/cmd.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/log/log.h"
-#include "linglong/package/version.h"
 
 #include <nlohmann/json.hpp>
 

@@ -333,9 +333,11 @@ void addUpgradeCommand(CLI::App &commandParser,
                    _("Specify the application ID. If it not be specified, all "
                      "applications will be upgraded"))
       ->check(validatorString);
-    cliUpgrade->add_flag("--deps-only",
-                         upgradeOptions.depsOnly,
-                         _("Only upgrade dependencies of application"));
+    auto depsOnly = cliUpgrade->add_flag("--deps-only",
+                                         upgradeOptions.depsOnly,
+                                         _("Only upgrade dependencies of application"));
+    cliUpgrade->add_flag("--app-only", upgradeOptions.appOnly, _("Only upgrade application"))
+      ->excludes(depsOnly);
 }
 
 // Function to add the search subcommand

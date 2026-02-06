@@ -6,6 +6,7 @@
 
 #include "linglong/api/types/v1/CommonOptions.hpp"
 #include "linglong/extension/extension.h"
+#include "linglong/package_manager/data_monitor.h"
 #include "linglong/package_manager/package_manager.h"
 #include "linglong/package_manager/package_task.h"
 #include "linglong/repo/ostree_repo.h"
@@ -15,22 +16,28 @@ namespace linglong::service {
 
 std::shared_ptr<PackageUpdateAction>
 PackageUpdateAction::create(std::vector<api::types::v1::PackageManager1Package> toUpgrade,
+                            bool appOnly,
                             bool depsOnly,
                             PackageManager &pm,
                             repo::OSTreeRepo &repo)
 {
-    auto p = new PackageUpdateAction(std::move(toUpgrade), depsOnly, pm, repo);
+    auto p = new PackageUpdateAction(std::move(toUpgrade), appOnly, depsOnly, pm, repo);
     return std::shared_ptr<PackageUpdateAction>(p);
 }
 
 PackageUpdateAction::PackageUpdateAction(
   std::vector<api::types::v1::PackageManager1Package> toUpgrade,
+  bool appOnly,
   bool depsOnly,
   PackageManager &pm,
   repo::OSTreeRepo &repo)
     : Action(pm, repo, api::types::v1::CommonOptions{})
     , toUpgrade(std::move(toUpgrade))
+    , appOnly(appOnly)
     , depsOnly(depsOnly)
+    , taskTotalSize(0)
+    , taskNeededSize(0)
+    , taskFetchedSize(0)
 {
 }
 
@@ -74,7 +81,7 @@ utils::error::Result<void> PackageUpdateAction::doAction(PackageTask &task)
 {
     LINGLONG_TRACE("package update action");
 
-    task.updateState(linglong::api::types::v1::State::Processing, "updating applications");
+    task.updateState(linglong::api::types::v1::State::Processing, "Updating applications");
 
     if (!prepared) {
         return LINGLONG_ERR("action not prepared");
@@ -92,18 +99,36 @@ utils::error::Result<void> PackageUpdateAction::update(PackageTask &task)
 {
     LINGLONG_TRACE("package update");
 
-    TaskContainer container(task, appsToUpgrade.size());
+    DataMonitor monitor(5, 1, [this, &task](DataMonitor &m) {
+        task.updateMessage(
+          fmt::format("{} {:>9}", taskMessage, fmt::format("[{}]", m.getHumanSpeed())));
+    });
+
+    QObject::connect(&task,
+                     &service::PackageTask::DataArrived,
+                     [this, &task, &monitor](uint arrived) {
+                         monitor.dataArrived(arrived);
+                         monitor.start();
+                         monitor.pause(false);
+
+                         if (taskTotalSize > 0 && taskNeededSize > 0) {
+                             taskFetchedSize += arrived;
+                             task.updateProgress(taskFetchedSize * 100.0 / taskNeededSize);
+                         }
+                     });
+
     bool allFailed = true;
     for (const auto &app : appsToUpgrade) {
         if (task.isTaskDone()) {
             return LINGLONG_ERR("task was cancelled");
         }
 
-        auto res = updateApp(container.next(), app, depsOnly);
+        auto res = updateApp(task, app, appOnly, depsOnly);
         if (!res) {
             LogW("failed to update app {}: {}", app.id, res.error());
             continue;
         }
+        monitor.pause(true);
         allFailed = false;
     }
 
@@ -112,7 +137,7 @@ utils::error::Result<void> PackageUpdateAction::update(PackageTask &task)
                             utils::error::ErrorCode::AppUpgradeFailed);
     }
 
-    task.updateState(linglong::api::types::v1::State::Succeed, "update apps success");
+    task.updateState(linglong::api::types::v1::State::Succeed, "Update applications success");
 
     return LINGLONG_OK;
 }
@@ -131,207 +156,101 @@ utils::error::Result<void> PackageUpdateAction::postUpdate([[maybe_unused]] Task
 
 utils::error::Result<void> PackageUpdateAction::updateApp(Task &task,
                                                           const api::types::v1::PackageInfoV2 &app,
+                                                          bool appOnly,
                                                           bool depsOnly)
 {
-    LINGLONG_TRACE(fmt::format("update app: {} dpesOnly: {}", app.id, depsOnly));
+    LINGLONG_TRACE(
+      fmt::format("update app: {} appOnly: {} depsOnly: {}", app.id, appOnly, depsOnly));
 
-    task.updateProgress(1, fmt::format("updating {}", app.id));
+    // reset task status
+    taskTotalSize = 0;
+    taskNeededSize = 0;
+    taskFetchedSize = 0;
 
-    if (depsOnly) {
-        return updateAppDepends(task, app);
-    }
+    taskMessage = fmt::format("Checking for updates {}", app.id);
+    task.resetProgress(taskMessage);
 
     auto localRef = package::Reference::fromPackageInfo(app);
     if (!localRef) {
-        return LINGLONG_ERR(localRef.error());
+        return LINGLONG_ERR(localRef);
     }
 
-    auto fuzzyRef =
-      package::FuzzyReference::create(app.channel, app.id, std::nullopt, std::nullopt);
-    if (!fuzzyRef) {
-        return LINGLONG_ERR(fuzzyRef.error());
-    }
+    RefsToInstall refsToInstall;
 
-    auto remoteRef = this->latestRemoteReference(*fuzzyRef);
-    if (!remoteRef) {
-        return LINGLONG_ERR(remoteRef.error());
-    }
-
-    task.updateProgress(5);
-
-    if (remoteRef->get().reference.version <= localRef->version) {
-        return updateAppDepends(task, app);
-    }
-
-    return updateApp(task, *localRef, remoteRef->get());
-}
-
-utils::error::Result<void> PackageUpdateAction::updateApp(
-  Task &task, const package::Reference &localRef, const package::ReferenceWithRepo &remoteRef)
-{
-    LINGLONG_TRACE(
-      fmt::format("update app from {} to {}", localRef.toString(), remoteRef.reference.toString()));
-
-    TaskContainer container(task, 3);
-    auto res = updateRef(container.next(), localRef, remoteRef);
-    if (!res) {
-        return LINGLONG_ERR(res);
-    }
-
-    // use updated package info
-    auto app = repo.getLayerItem(remoteRef.reference);
-    if (!app) {
-        return LINGLONG_ERR(app.error());
-    }
-
-    res = updateAppDepends(container.next(), app->info);
-    if (!res) {
-        return LINGLONG_ERR(res.error());
-    }
-
-    return postUpdateApp(container.next(), localRef, remoteRef);
-}
-
-utils::error::Result<void> PackageUpdateAction::updateRef(Task &task,
-                                                          const package::Reference &local,
-                                                          const package::ReferenceWithRepo &remote)
-{
-    LINGLONG_TRACE(
-      fmt::format("update ref from {} to {}", local.toString(), remote.reference.toString()));
-
-    auto modules = repo.getModuleList(local);
-    auto remoteModules = repo.getRemoteModuleList(remote.reference, remote.repo);
-    if (!remoteModules) {
-        return LINGLONG_ERR(remoteModules.error());
-    }
-
-    if (remoteModules->empty()) {
-        return LINGLONG_ERR(fmt::format("no modules found for {}", remote.reference.toString()),
-                            utils::error::ErrorCode::AppUpgradeFailed);
-    }
-
-    task.updateProgress(5);
-
-    auto installModules = std::vector<std::string>{};
-    for (const auto &module : modules) {
-        if (std::find(remoteModules->begin(), remoteModules->end(), module)
-            != remoteModules->end()) {
-            installModules.emplace_back(module);
-            continue;
+    if (!depsOnly) {
+        auto fuzzyRef =
+          package::FuzzyReference::create(app.channel, app.id, std::nullopt, std::nullopt);
+        if (!fuzzyRef) {
+            return LINGLONG_ERR(fuzzyRef);
         }
 
-        // update to binary module if runtime module is not found
-        if (module == "runtime"
-            && std::find(remoteModules->begin(), remoteModules->end(), "binary")
-              != remoteModules->end()) {
-            installModules.emplace_back("binary");
-            continue;
-        }
-    }
-    if (installModules.empty()) {
-        return LINGLONG_ERR(fmt::format("no modules found to upgrade {}", local.toString()),
-                            utils::error::ErrorCode::AppUpgradeFailed);
-    }
-
-    return pm.installRef(task, remote, installModules);
-}
-
-utils::error::Result<void>
-PackageUpdateAction::updateAppDepends(Task &task, const api::types::v1::PackageInfoV2 &app)
-{
-    LINGLONG_TRACE(fmt::format("update app depends for {}", app.id));
-
-    TaskContainer container(task, 3);
-
-    auto ret = updateDependsRef(container.next(), app.base, app.channel);
-    if (!ret) {
-        return LINGLONG_ERR(ret);
-    }
-
-    if (app.runtime) {
-        ret = updateDependsRef(container.next(), *app.runtime, app.channel);
-        if (!ret) {
-            return LINGLONG_ERR(ret.error());
+        std::optional<package::Reference> local = std::move(localRef).value();
+        auto res = gatherRefsToUpdate(refsToInstall, *fuzzyRef, local);
+        if (!res) {
+            return LINGLONG_ERR(res);
         }
     }
 
-    updateExtensions(container.next(), app);
-
-    return LINGLONG_OK;
-}
-
-void PackageUpdateAction::updateExtensions(Task &task, const api::types::v1::PackageInfoV2 &info)
-{
-    if (!info.extensions) {
-        return;
+    std::optional<api::types::v1::PackageInfoV2> newAppInfo;
+    if (!refsToInstall.empty()) {
+        auto info = refsToInstall.front().second.front().second.getPackageInfo();
+        if (!info) {
+            return LINGLONG_ERR(info);
+        }
+        newAppInfo = std::move(info).value();
     }
 
-    for (const auto &extension : *info.extensions) {
-        std::string name = extension.name;
-        auto ext = extension::ExtensionFactory::makeExtension(name);
-        if (!ext->shouldEnable(name)) {
-            continue;
-        }
-        auto ret = updateDependsRef(task, name, info.channel, extension.version, true);
-        if (!ret) {
-            LogW("failed to update extension {}", name);
-            continue;
+    if (!appOnly) {
+        auto res = gatherAppDepsToUpgrade(refsToInstall, newAppInfo ? newAppInfo.value() : app);
+        if (!res) {
+            return LINGLONG_ERR(res);
         }
     }
-}
 
-utils::error::Result<void> PackageUpdateAction::updateDependsRef(Task &task,
-                                                                 const std::string &refStr,
-                                                                 std::optional<std::string> channel,
-                                                                 std::optional<std::string> version,
-                                                                 bool isExtension)
-{
-    LINGLONG_TRACE(fmt::format("update depends ref {}", refStr));
+    for (const auto &[refRepo, modules] : refsToInstall) {
+        for (const auto &[module, meta] : modules) {
+            auto stat = repo.getRefStatistics(meta);
+            if (!stat) {
+                LogW("failed to get stat {}", stat.error());
+                continue;
+            }
 
-    auto fuzzyRef = package::FuzzyReference::parse(refStr);
-    if (!fuzzyRef) {
-        return LINGLONG_ERR(fuzzyRef.error());
+            taskTotalSize += stat->archived;
+            taskNeededSize += stat->needed_archived;
+        }
     }
 
-    // use provided channel/version if not set in fuzzyRef
-    if (channel && !fuzzyRef->channel) {
-        fuzzyRef->channel = *channel;
-    }
-    if (version && !fuzzyRef->version) {
-        fuzzyRef->version = version;
-    }
+    LogD("update total size {}, need download size {}", taskTotalSize, taskNeededSize);
 
-    auto local = this->repo.clearReference(*fuzzyRef,
-                                           {
-                                             .forceRemote = false,
-                                             .fallbackToRemote = false,
-                                             .semanticMatching = true,
-                                           });
-
-    std::optional<std::reference_wrapper<package::Reference>> ref;
-    if (local) {
-        auto remote = this->latestRemoteReference(*fuzzyRef);
-        if (remote && remote->get().reference.version > local->version) {
-            auto res = updateRef(task, *local, *remote);
+    utils::Transaction transaction;
+    if (newAppInfo) {
+        // uninstall target ref if failed
+        transaction.addRollBack([this, &ref = refsToInstall.front().first.reference]() noexcept {
+            auto res = pm.tryUninstallRef(ref);
             if (!res) {
-                return LINGLONG_ERR(res.error());
+                LogW("failed to roll back updated {}: {}", ref.toString(), res.error());
             }
-            ref = remote->get().reference;
-        } else {
-            ref = *local;
-        }
-
-        // try update extensions if this is not an extension
-        if (!isExtension) {
-            auto current = repo.getLayerItem(*ref);
-            if (!current) {
-                return LINGLONG_ERR(current.error());
-            }
-            updateExtensions(task, current->info);
-        }
-    } else {
-        // TODO auto-install
+        });
     }
+    for (const auto &[refRepo, modules] : refsToInstall) {
+        for (const auto &[module, meta] : modules) {
+            taskMessage = fmt::format("Updating {}/{}", refRepo.reference.toString(), module);
+            task.updateMessage(taskMessage);
+            auto res = pm.installRefModule(task, refRepo, module);
+            if (!res) {
+                return LINGLONG_ERR(res);
+            }
+        }
+    }
+
+    if (!depsOnly && newAppInfo) {
+        auto res = postUpdateApp(task, *localRef, refsToInstall.front().first);
+        if (!res) {
+            return LINGLONG_ERR(res);
+        }
+    }
+
+    transaction.commit();
 
     return LINGLONG_OK;
 }
@@ -351,22 +270,142 @@ PackageUpdateAction::postUpdateApp([[maybe_unused]] Task &task,
     return LINGLONG_OK;
 }
 
-utils::error::Result<std::reference_wrapper<package::ReferenceWithRepo>>
-PackageUpdateAction::latestRemoteReference(const package::FuzzyReference &fuzzyRef)
+utils::error::Result<void>
+PackageUpdateAction::gatherRefsToUpdate(RefsToInstall &refsToInstall,
+                                        const package::FuzzyReference &fuzzyRef,
+                                        std::optional<package::Reference> &local,
+                                        bool installIfMissing)
 {
-    LINGLONG_TRACE("latest remote reference from cache");
+    LINGLONG_TRACE("gather refs to update");
 
-    auto key = fuzzyRef.toString();
-    if (candidates.find(key) != candidates.end()) {
-        return candidates.at(key);
+    LogD("needToUpgrade {}", fuzzyRef.toString());
+
+    auto res = pm.needToUpgrade(fuzzyRef, local, installIfMissing);
+    if (!res) {
+        return LINGLONG_ERR(res);
     }
 
-    auto remote = repo.latestRemoteReference(fuzzyRef);
-    if (!remote) {
-        return LINGLONG_ERR(remote.error());
+    if (res->has_value()) {
+        const auto &[remoteRef, modules] = res->value();
+        std::vector<std::pair<std::string, repo::RefMetaData>> modulePairs;
+        // fetch package info only once for the same ref
+        bool fetchPackageInfo = true;
+        for (const auto &module : modules) {
+            auto meta = repo.fetchRefMetaData(remoteRef, module, fetchPackageInfo);
+            if (!meta) {
+                return LINGLONG_ERR(meta);
+            }
+            modulePairs.emplace_back(module, std::move(meta).value());
+            fetchPackageInfo = false;
+        }
+        refsToInstall.emplace_back(remoteRef, std::move(modulePairs));
     }
-    auto res = candidates.emplace(key, std::move(remote).value());
-    return res.first->second;
+
+    return LINGLONG_OK;
+}
+
+utils::error::Result<void> PackageUpdateAction::gatherExtensionsToUpdate(
+  RefsToInstall &refsToInstall, const api::types::v1::PackageInfoV2 &info)
+{
+    LINGLONG_TRACE("gather extensions to upgrade info");
+
+    if (!info.extensions) {
+        return LINGLONG_OK;
+    }
+
+    for (const auto &extension : *info.extensions) {
+        std::string name = extension.name;
+        auto ext = extension::ExtensionFactory::makeExtension(name);
+        if (!ext->shouldEnable(name)) {
+            continue;
+        }
+        auto res = gatherDepsToUpdate(refsToInstall,
+                                      fmt::format("{}/{}", name, extension.version),
+                                      info.channel,
+                                      true);
+        if (!res) {
+            return LINGLONG_ERR(res);
+        }
+    }
+
+    return LINGLONG_OK;
+}
+
+utils::error::Result<void> PackageUpdateAction::gatherDepsToUpdate(RefsToInstall &refsToInstall,
+                                                                   const std::string &refStr,
+                                                                   const std::string &channel,
+                                                                   bool isExtension)
+{
+    LINGLONG_TRACE("gather to upgrade info from deps");
+
+    auto fuzzyRef = package::FuzzyReference::parse(refStr);
+    if (!fuzzyRef) {
+        return LINGLONG_ERR(fuzzyRef);
+    }
+
+    if (!channel.empty() && !fuzzyRef->channel) {
+        fuzzyRef->channel = channel;
+    }
+
+    std::optional<package::Reference> local;
+    RefsToInstall tmp;
+    auto res = gatherRefsToUpdate(tmp, *fuzzyRef, local, !isExtension);
+    if (!res) {
+        return LINGLONG_ERR(res);
+    }
+
+    if (!isExtension) {
+        api::types::v1::PackageInfoV2 info;
+        if (!tmp.empty()) {
+            auto res = tmp.front().second.front().second.getPackageInfo();
+            if (!res) {
+                return LINGLONG_ERR(res);
+            }
+            info = std::move(res).value();
+        } else {
+            if (local) {
+                auto layer = repo.getLayerItem(*local);
+                if (!layer) {
+                    return LINGLONG_ERR(layer);
+                }
+
+                info = layer->info;
+            }
+        }
+
+        auto res = gatherExtensionsToUpdate(tmp, info);
+        if (!res) {
+            return LINGLONG_ERR(res);
+        }
+    }
+
+    std::move(tmp.begin(), tmp.end(), std::back_inserter(refsToInstall));
+    return LINGLONG_OK;
+}
+
+utils::error::Result<void> PackageUpdateAction::gatherAppDepsToUpgrade(
+  RefsToInstall &refsToInstall, const api::types::v1::PackageInfoV2 &info)
+{
+    LINGLONG_TRACE("gather app deps to upgrade info");
+
+    auto res = gatherDepsToUpdate(refsToInstall, info.base, info.channel);
+    if (!res) {
+        return LINGLONG_ERR(res);
+    }
+
+    if (info.runtime) {
+        res = gatherDepsToUpdate(refsToInstall, *info.runtime, info.channel);
+        if (!res) {
+            return LINGLONG_ERR(res);
+        }
+    }
+
+    res = gatherExtensionsToUpdate(refsToInstall, info);
+    if (!res) {
+        return LINGLONG_ERR(res);
+    }
+
+    return LINGLONG_OK;
 }
 
 } // namespace linglong::service

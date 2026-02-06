@@ -139,7 +139,10 @@ utils::error::Result<void> pullDependency(const package::Reference &ref,
                      [&tmpTask]() {
                          tmpTask.Cancel();
                      });
-    auto res = repo.pull(tmpTask, ref, module, repo.getDefaultRepo());
+    auto res =
+      repo.pull(tmpTask,
+                package::ReferenceWithRepo{ .repo = repo.getDefaultRepo(), .reference = ref },
+                module);
     if (!res) {
         return LINGLONG_ERR(res);
     }

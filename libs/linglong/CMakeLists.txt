@@ -64,6 +64,8 @@ pfl_add_library(
   src/linglong/package/layer_packager.h
   src/linglong/package_manager/action.cpp
   src/linglong/package_manager/action.h
+  src/linglong/package_manager/data_monitor.cpp
+  src/linglong/package_manager/data_monitor.h
   src/linglong/package_manager/package_manager.cpp
   src/linglong/package_manager/package_manager.h
   src/linglong/package_manager/package_task.cpp

@@ -1034,7 +1034,8 @@
       "description": "package manager update result",
       "required": [
         "packages",
-        "depsOnly"
+        "depsOnly",
+        "appOnly"
       ],
       "properties": {
         "packages": {
@@ -1047,6 +1048,10 @@
         "depsOnly": {
           "type": "boolean",
           "description": "upgrade dependencies only"
+        },
+        "appOnly": {
+          "type": "boolean",
+          "description": "upgrade applications only"
         }
       }
     },

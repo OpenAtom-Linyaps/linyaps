@@ -282,8 +282,12 @@ void CLIPrinter::printProgress(double percentage, const std::string &message)
 {
     auto &stdout = std::cout;
     stdout << "\r\33[K"
-           << "\033[?25l" << message << ": " << std::fixed << std::setprecision(2) << percentage
-           << "%" << std::defaultfloat << "\033[?25h";
+           << "\033[?25l" << message;
+    if (percentage > 0) {
+        stdout << " " << std::fixed << std::setprecision(2) << percentage << "%"
+               << std::defaultfloat;
+    }
+    stdout << "\033[?25h";
     stdout.flush();
 }
 

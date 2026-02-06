@@ -27,6 +27,8 @@ public:
 
     void onProgress() noexcept override { m_progress.emplace_back(m_task.percentage()); }
 
+    MOCK_METHOD(void, onDataArrived, (uint arrived), (override, noexcept));
+
     MOCK_METHOD(void, onHandled, (uint handled, uint total), (override, noexcept));
 
     MOCK_METHOD(void, onStateChanged, (), (override, noexcept));
@@ -185,6 +187,17 @@ TEST(Task, reportError)
 
     EXPECT_EQ(task.state(), linglong::api::types::v1::State::Failed);
     EXPECT_EQ(task.message(), "test error");
+}
+
+TEST(Task, reportDataArrived)
+{
+    Task task;
+    TaskTester tester(task);
+    task.setReporter(&tester);
+
+    EXPECT_CALL(tester, onDataArrived(10)).Times(1);
+
+    task.reportDataArrived(10);
 }
 
 TEST(Task, reportDataHandled)

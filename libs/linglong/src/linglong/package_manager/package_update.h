@@ -7,6 +7,7 @@
 #include "linglong/api/types/v1/PackageManager1Package.hpp"
 #include "linglong/package/reference.h"
 #include "linglong/package_manager/action.h"
+#include "linglong/repo/ostree_repo.h"
 #include "linglong/utils/transaction.h"
 
 namespace linglong::package {
@@ -20,8 +21,13 @@ class Task;
 class PackageUpdateAction : public Action
 {
 public:
+    using RefsToInstall =
+      std::vector<std::pair<package::ReferenceWithRepo,
+                            std::vector<std::pair<std::string, repo::RefMetaData>>>>;
+
     static std::shared_ptr<PackageUpdateAction>
     create(std::vector<api::types::v1::PackageManager1Package> toUpgrade,
+           bool appOnly,
            bool depsOnly,
            PackageManager &pm,
            repo::OSTreeRepo &repo);
@@ -39,42 +45,42 @@ protected:
 
 private:
     PackageUpdateAction(std::vector<api::types::v1::PackageManager1Package> toUpgrade,
+                        bool appOnly,
                         bool depsOnly,
                         PackageManager &pm,
                         repo::OSTreeRepo &repo);
 
-    utils::error::Result<void> updateApp(Task &task,
-                                         const api::types::v1::PackageInfoV2 &app,
-                                         bool depsOnly);
-    utils::error::Result<void> updateApp(Task &task,
-                                         const package::Reference &localRef,
-                                         const package::ReferenceWithRepo &remoteRef);
-    utils::error::Result<void> updateRef(Task &task,
-                                         const package::Reference &local,
-                                         const package::ReferenceWithRepo &remote);
-    utils::error::Result<void> updateAppDepends(Task &task,
-                                                const api::types::v1::PackageInfoV2 &app);
-    void updateExtensions(Task &task, const api::types::v1::PackageInfoV2 &info);
-    utils::error::Result<void> updateDependsRef(Task &task,
-                                                const std::string &refStr,
-                                                std::optional<std::string> channel = std::nullopt,
-                                                std::optional<std::string> version = std::nullopt,
-                                                bool isExtension = false);
+    utils::error::Result<void>
+    updateApp(Task &task, const api::types::v1::PackageInfoV2 &app, bool appOnly, bool depsOnly);
     utils::error::Result<void> postUpdateApp(Task &task,
                                              const package::Reference &localRef,
                                              const package::ReferenceWithRepo &remoteRef);
 
-    utils::error::Result<std::reference_wrapper<package::ReferenceWithRepo>>
-    latestRemoteReference(const package::FuzzyReference &fuzzyRef);
+    utils::error::Result<void> gatherRefsToUpdate(RefsToInstall &refsToInstall,
+                                                  const package::FuzzyReference &fuzzyRef,
+                                                  std::optional<package::Reference> &local,
+                                                  bool installIfMissing = false);
+    utils::error::Result<void> gatherExtensionsToUpdate(RefsToInstall &refsToInstall,
+                                                        const api::types::v1::PackageInfoV2 &info);
+    utils::error::Result<void> gatherDepsToUpdate(RefsToInstall &refsToInstall,
+                                                  const std::string &refStr,
+                                                  const std::string &channel,
+                                                  bool isExtension = false);
+    utils::error::Result<void> gatherAppDepsToUpgrade(RefsToInstall &refsToInstall,
+                                                      const api::types::v1::PackageInfoV2 &info);
 
     std::vector<api::types::v1::PackageManager1Package> toUpgrade;
+    bool appOnly;
     bool depsOnly;
 
     std::string taskName;
+    std::string taskMessage;
     utils::Transaction transaction;
     bool prepared = false;
     std::vector<api::types::v1::PackageInfoV2> appsToUpgrade;
-    std::map<std::string, package::ReferenceWithRepo> candidates;
+    uint64_t taskTotalSize;
+    uint64_t taskNeededSize;
+    uint64_t taskFetchedSize;
 };
 
 } // namespace linglong::service

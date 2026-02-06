@@ -39,7 +39,7 @@ void PackageTask::onProgress() noexcept
     auto taskPercentage = percentage();
     auto taskMessage = Task::message();
 
-    LogD("task {} onProgress {} {}", taskID(), taskPercentage, taskMessage);
+    LogD("task {} onProgress {}: {}", taskID(), taskPercentage, taskMessage);
 
     Q_EMIT MessageChanged(QString::fromStdString(taskMessage));
     Q_EMIT PercentageChanged(taskPercentage);
@@ -52,11 +52,21 @@ void PackageTask::onStateChanged() noexcept
     auto taskMessage = Task::message();
     auto taskCode = static_cast<int>(code());
 
-    LogD("task {} updateState {} {}", taskID(), taskState, taskMessage);
+    LogD("task {} updateState {}: {}", taskID(), taskState, taskMessage);
 
     Q_EMIT StateChanged(taskState);
     Q_EMIT MessageChanged(QString::fromStdString(taskMessage));
     Q_EMIT CodeChanged(taskCode);
+    Q_EMIT changePropertiesDone();
+}
+
+void PackageTask::onMessage() noexcept
+{
+    auto taskMessage = Task::message();
+
+    LogD("task {} updateMessage {}", taskID(), taskMessage);
+
+    Q_EMIT MessageChanged(QString::fromStdString(taskMessage));
     Q_EMIT changePropertiesDone();
 }
 

@@ -17,6 +17,7 @@ public:
     virtual ~TaskReporter() = default;
     virtual void onProgress() noexcept = 0;
     virtual void onStateChanged() noexcept = 0;
+    virtual void onDataArrived(uint arrived) noexcept = 0;
     virtual void onHandled(uint handled, uint total) noexcept = 0;
     virtual void onMessage() noexcept = 0;
 };
@@ -42,10 +43,12 @@ public:
         }
     }
 
+    virtual void resetProgress(std::optional<std::string> message = std::nullopt);
     virtual void updateProgress(double percentage,
                                 std::optional<std::string> message = std::nullopt);
     virtual void updateState(linglong::api::types::v1::State state, const std::string &message);
     virtual void reportError(linglong::utils::error::Error &&err) noexcept;
+    virtual void reportDataArrived(uint arrived) noexcept;
     virtual void reportDataHandled(uint handled, uint total) noexcept;
     virtual void updateMessage(const std::string &message) noexcept;
 
@@ -118,6 +121,16 @@ public:
         m_owner.get().updateMessage(message);
     }
 
+    void reportDataArrived(uint arrived) noexcept override
+    {
+        m_owner.get().reportDataArrived(arrived);
+    }
+
+    void reportDataHandled(uint handled, uint total) noexcept override
+    {
+        m_owner.get().reportDataHandled(handled, total);
+    }
+
     [[nodiscard]] bool isTaskDone() const noexcept override { return m_owner.get().isTaskDone(); }
 
 private:
@@ -147,6 +160,8 @@ private:
     void onProgress() noexcept override;
 
     void onStateChanged() noexcept override { }
+
+    void onDataArrived([[maybe_unused]] uint arrived) noexcept override { }
 
     void onHandled([[maybe_unused]] uint handled, [[maybe_unused]] uint total) noexcept override { }
 

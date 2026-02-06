@@ -132,7 +132,7 @@ utils::error::Result<void> RepoCache::rebuildCache(const api::types::v1::RepoCon
         }
         auto info = utils::serialize::parsePackageInfo(content);
         if (!info) {
-            LogW("invalid info.json: {}", info.error());
+            LogW("invalid info.json on ref {}: {}", ref, info.error());
             continue;
         }
 

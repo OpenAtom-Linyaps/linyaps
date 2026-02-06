@@ -16,17 +16,12 @@ using namespace linglong::driver::detect;
 class FakeSuccessDetector : public DriverDetector
 {
 public:
-    FakeSuccessDetector(std::string identify, std::string version, bool installed)
-        : info_{ std::move(identify), std::move(version), "some-package", installed }
+    FakeSuccessDetector(std::string identify, std::string name, std::string version)
+        : info_{ std::move(identify), std::move(name), std::move(version) }
     {
     }
 
     linglong::utils::error::Result<GraphicsDriverInfo> detect() override { return info_; }
-
-    linglong::utils::error::Result<bool> checkPackageInstalled(const std::string &) override
-    {
-        return info_.isInstalled;
-    }
 
     std::string getDriverIdentify() const override { return info_.identify; }
 
@@ -42,12 +37,6 @@ public:
     {
         LINGLONG_TRACE("Fake detector failed as intended")
         return LINGLONG_ERR("Fake detector failed as intended");
-    }
-
-    linglong::utils::error::Result<bool> checkPackageInstalled(const std::string &) override
-    {
-        LINGLONG_TRACE("Fake detector failed as intended")
-        return LINGLONG_ERR("Should not be called");
     }
 
     std::string getDriverIdentify() const override { return "fake-failure"; }
@@ -74,6 +63,6 @@ class DriverDetectionManagerTest : public ::testing::Test
 TEST_F(DriverDetectionManagerTest, DetectAllDrivers_NoDetectors)
 {
     TestableDriverDetectionManager manager;
-    auto result = manager.detectAllDrivers();
+    auto result = manager.detectAvailableDrivers();
     ASSERT_TRUE(result.has_value());
 }

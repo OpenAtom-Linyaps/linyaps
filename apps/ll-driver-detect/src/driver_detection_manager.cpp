@@ -4,6 +4,7 @@
 
 #include "driver_detection_manager.h"
 
+#include "linglong/utils/cmd.h"
 #include "linglong/utils/log/log.h"
 #include "nvidia_driver_detector.h"
 
@@ -14,9 +15,10 @@ DriverDetectionManager::DriverDetectionManager()
     registerDetectors();
 }
 
-utils::error::Result<DriverDetectionResult> DriverDetectionManager::detectAllDrivers()
+utils::error::Result<std::vector<GraphicsDriverInfo>>
+DriverDetectionManager::detectAvailableDrivers()
 {
-    DriverDetectionResult result;
+    std::vector<GraphicsDriverInfo> detectedDrivers;
 
     for (const auto &detector : detectors_) {
         auto detectionResult = detector->detect();
@@ -27,13 +29,13 @@ utils::error::Result<DriverDetectionResult> DriverDetectionManager::detectAllDri
             continue;
         }
 
-        result.detectedDrivers.emplace_back(*detectionResult);
+        detectedDrivers.emplace_back(*detectionResult);
         LogD("Detected driver: {} version: {}",
              detectionResult->packageName,
-             detectionResult->version);
+             detectionResult->packageVersion);
     }
 
-    return result;
+    return detectedDrivers;
 }
 
 void DriverDetectionManager::registerDetectors()
@@ -44,6 +46,35 @@ void DriverDetectionManager::registerDetectors()
     // TODO: Add other driver detector
 
     LogD("Registered {} driver detectors", detectors_.size());
+}
+
+linglong::utils::error::Result<void>
+DriverDetectionManager::installDriverPackage(const std::vector<GraphicsDriverInfo> &drivers)
+{
+    LINGLONG_TRACE("installDriverPackage")
+
+    try {
+        for (const auto &info : drivers) {
+            LogD("Processing driver: Identify={}, Version={}, Package={}",
+                 info.identify,
+                 info.packageVersion,
+                 info.packageName);
+
+            // Execute ll-cli install command to install the package
+            auto packageRef = info.packageName + "/" + info.packageVersion;
+            auto ret = linglong::utils::Cmd("ll-cli").exec(
+              { "install", packageRef, "--repo", info.repoName });
+            if (!ret) {
+                return LINGLONG_ERR("Installation command failed: " + ret.error().message());
+            }
+
+            LogD("Driver package installation command executed successfully: {}", *ret);
+        }
+
+        return LINGLONG_OK;
+    } catch (const std::exception &e) {
+        return LINGLONG_ERR("Failed to install driver package: " + std::string(e.what()));
+    }
 }
 
 } // namespace linglong::driver::detect

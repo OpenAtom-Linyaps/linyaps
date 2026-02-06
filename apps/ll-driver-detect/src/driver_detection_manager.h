@@ -11,19 +11,6 @@
 
 namespace linglong::driver::detect {
 
-// Result of driver detection for all available drivers
-struct DriverDetectionResult
-{
-    std::vector<GraphicsDriverInfo> detectedDrivers;
-
-    bool hasAvailableDrivers() const
-    {
-        return std::any_of(detectedDrivers.begin(), detectedDrivers.end(), [](const auto &driver) {
-            return !driver.isInstalled;
-        });
-    }
-};
-
 // Manager class that coordinates detection of multiple graphics drivers
 class DriverDetectionManager
 {
@@ -33,12 +20,12 @@ public:
 
     // Detect all available graphics drivers on the system
     // Returns all detected drivers, or empty vector if none found
-    utils::error::Result<DriverDetectionResult> detectAllDrivers();
+    utils::error::Result<std::vector<GraphicsDriverInfo>> detectAvailableDrivers();
+    linglong::utils::error::Result<void> installDriverPackage(const std::vector<GraphicsDriverInfo> &drivers);
 
 protected:
     // Register all available driver detectors
     virtual void registerDetectors();
-
     std::vector<std::unique_ptr<DriverDetector>> detectors_;
 };
 

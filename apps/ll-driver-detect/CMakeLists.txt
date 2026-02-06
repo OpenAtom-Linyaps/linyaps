@@ -16,5 +16,4 @@ pfl_add_executable(
   ./src/dbus_notifier.cpp
   LINK_LIBRARIES
   PRIVATE
-  CLI11::CLI11
-  linglong::utils)
+  linglong::linglong)

@@ -13,9 +13,9 @@ namespace linglong::driver::detect {
 struct GraphicsDriverInfo
 {
     std::string identify;
-    std::string version;
     std::string packageName;
-    bool isInstalled = false;
+    std::string packageVersion;
+    std::string repoName{ "stable" };
 };
 
 class DriverDetector
@@ -28,6 +28,9 @@ public:
 
     // Check if the driver package is installed
     virtual utils::error::Result<bool> checkPackageInstalled(const std::string &packageName) = 0;
+
+    // Check if the driver package can upgraded
+    virtual utils::error::Result<bool> checkPackageUpgradable(const std::string &packageName) = 0;
 
     // Get the Identify of driver this detector handles
     virtual std::string getDriverIdentify() const = 0;

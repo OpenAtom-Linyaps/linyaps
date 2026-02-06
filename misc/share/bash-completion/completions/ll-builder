@@ -16,6 +16,10 @@ __ll_builder_get_repo_name_list() {
         ll-builder repo show | tail -n+3 | awk '{print $1}' | tr "\n" " "
 }
 
+__ll_builder_get_commited_list() {
+        ll-builder list | tr "\n" " "
+}
+
 __filter_exist_options() {
         local aviable_opts
         for opt in $1; do
@@ -56,7 +60,7 @@ _ll_builder_complete() {
                 # Nothing here
                 ;;
         build)
-                local build_options="--file --arch --exec --offline"
+                local build_options="--file --arch --offline"
                 build_options+=" --full-develop-module"
                 build_options+=" --skip-fetch-source"
                 build_options+=" --skip-pull-depend"
@@ -74,6 +78,16 @@ _ll_builder_complete() {
         export)
                 local export_options="--file --icon --layer --loader --no-develop"
                 output_options="${output_options} ${export_options}"
+
+                if [[ ${prev} == "--ref" ]]; then
+                        output_options="${output_options} $(__ll_builder_get_commited_list)"
+                else
+                        output_options="${output_options} --ref"
+                fi
+                ;;
+        remove)
+                local remove_options="--no-clean-objects"
+                output_options="${output_options} ${remove_options} $(__ll_builder_get_commited_list)"
                 ;;
         push)
                 local push_options="--file --repo-url --repo-name --channel --module"

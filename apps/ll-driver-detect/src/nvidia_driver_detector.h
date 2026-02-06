@@ -25,8 +25,11 @@ public:
     // Check if the driver package is installed
     utils::error::Result<bool> checkPackageInstalled(const std::string &packageName) override;
 
+    utils::error::Result<bool> checkPackageUpgradable(const std::string &packageName) override;
+
     // Check if the driver package exists in repo
-    virtual utils::error::Result<void> checkPackageExists(const std::string &packageName);
+    virtual utils::error::Result<GraphicsDriverInfo>
+    getPackageInfoFromRemoteRepo(const std::string &packageName);
 
     // Get the type of driver this detector handles
     std::string getDriverIdentify() const override { return kNvidiaPackageIdentify; }
@@ -34,6 +37,9 @@ public:
 private:
     // Get driver version from the specified file path
     std::string getDriverVersion();
+    utils::error::Result<GraphicsDriverInfo>
+    getInstalledGraphicsDriverInfo(const std::string &packageName) const;
+    bool compareVersions(std::string_view v1, std::string_view v2) const noexcept;
 
     std::string versionFilePath_;
 };

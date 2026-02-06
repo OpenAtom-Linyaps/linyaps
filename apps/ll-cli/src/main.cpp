@@ -32,6 +32,7 @@
 #include <cstddef>
 #include <functional>
 #include <memory>
+#include <string_view>
 #include <thread>
 
 #include <fcntl.h>
@@ -67,37 +68,13 @@ void startProcess(const QString &program, const QStringList &args = {})
 std::vector<std::string> transformOldExec(int argc, char **argv) noexcept
 {
     std::vector<std::string> res;
-    std::reverse_copy(argv + 1, argv + argc, std::back_inserter(res));
-    if (std::find(res.rbegin(), res.rend(), "run") == res.rend()) {
-        return res;
-    }
 
-    auto exec = std::find(res.rbegin(), res.rend(), "--exec");
-    if (exec == res.rend()) {
-        return res;
-    }
-
-    if ((exec + 1) == res.rend() || (exec + 2) != res.rend()) {
-        *exec = "--";
-        qDebug() << "replace `--exec` with `--`";
-        return res;
-    }
-
-    wordexp_t words;
-    auto _ = linglong::utils::finally::finally([&]() {
-        wordfree(&words);
-    });
-
-    if (auto ret = wordexp((exec + 1)->c_str(), &words, 0); ret != 0) {
-        qCritical() << "wordexp on" << (exec + 1)->c_str() << "failed with" << ret
-                    << "transform old exec arguments failed.";
-        return res;
-    }
-
-    auto it = res.erase(res.rend().base(), exec.base());
-    res.emplace(it, "--");
-    for (decltype(words.we_wordc) i = 0; i < words.we_wordc; ++i) {
-        res.emplace(res.begin(), words.we_wordv[i]);
+    for (int i = argc - 1; i > 0; --i) {
+        if (std::string_view(argv[i]) == "--exec") {
+            res.emplace_back("--");
+        } else {
+            res.emplace_back(argv[i]);
+        }
     }
 
     return res;

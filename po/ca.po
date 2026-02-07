@@ -382,6 +382,17 @@ msgid ""
 "# find all of runtime(s) of remote\n"
 "ll-cli search . --type=runtime"
 msgstr ""
+"Ús: ll-cli search [OPCIONS] PARAULES CLAU\n"
+"\n"
+"Exemple:\n"
+"# cerca remotament aplicacions, bases o entorns d'execució per paraules clau\n"
+"ll-cli search org.deepin.demo\n"
+"# cerca totes les aplicacions del remot\n"
+"ll-cli search.\n"
+"# cerca totes les bases del remot\n"
+"ll-cli search . --type=base\n"
+"# cerca tots els temps d'execució del remot\n"
+"ll-cli search . --type=runtime"
 
 #: ../apps/ll-cli/src/main.cpp:385
 msgid "Specify the Keywords"
@@ -1075,40 +1086,45 @@ msgstr "s'inicia"
 #. Define command line options
 #: ../apps/ll-driver-detect/src/main.cpp:104
 msgid "Force installation even if recently reminded"
-msgstr ""
+msgstr "Força la instal·lació fins i tot si s'ha recordat recentment."
 
 #: ../apps/ll-driver-detect/src/main.cpp:107
 msgid "Check for drivers only without installing or notifying"
 msgstr ""
+"Comprova només els controladors sense instal·lar-los ni notificar-los."
 
 #: ../apps/ll-driver-detect/src/main.cpp:110
 msgid "Only install drivers without notifications"
-msgstr ""
+msgstr "Instal·la només els controladors sense notificacions."
 
 #: ../apps/ll-driver-detect/src/main.cpp:216
 msgid "Graphics Driver Available"
-msgstr ""
+msgstr "Controlador de gràfics disponible"
 
 #: ../apps/ll-driver-detect/src/main.cpp:217
 msgid ""
 "Graphics driver package is available that can improve performance for some Linyaps applications.\n"
 "Would you like to install it?"
 msgstr ""
+"Hi ha disponible un paquet de controladors gràfics que pot millorar el rendiment d'algunes aplicacions de Linyaps.\n"
+"Voleu instal·lar-lo?"
 
 #: ../apps/ll-driver-detect/src/main.cpp:221
 msgid "Install Now"
-msgstr ""
+msgstr "Instal·la'l ara"
 
 #: ../apps/ll-driver-detect/src/main.cpp:221
 msgid "Don't Remind"
-msgstr ""
+msgstr "No ho recordis."
 
 #: ../apps/ll-driver-detect/src/main.cpp:247
 msgid "Graphics Driver Installation Completed"
-msgstr ""
+msgstr "Instal·lació del controlador de gràfics completada"
 
 #: ../apps/ll-driver-detect/src/main.cpp:249
 msgid ""
 "Graphics driver package has been installed.\n"
 "Restart the Linyaps app to experience the performance improvement."
 msgstr ""
+"S'ha instal·lat el paquet de controladors gràfics.\n"
+"Reinicieu l'aplicació Linyaps per experimentar la millora del rendiment."

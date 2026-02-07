@@ -145,7 +145,7 @@ msgstr "Executa una aplicació"
 #. add sub command run options
 #: ../apps/ll-cli/src/main.cpp:160
 msgid "Specify the application ID"
-msgstr "Especifiqueu l'ID de l'aplicació."
+msgstr "Especifica l'ID de l'aplicació."
 
 #: ../apps/ll-cli/src/main.cpp:163
 msgid ""
@@ -190,15 +190,15 @@ msgstr ""
 
 #: ../apps/ll-cli/src/main.cpp:195
 msgid "Specify the base used by the application to run"
-msgstr "Especifiqueu la base que usa l'aplicació per executar-se."
+msgstr "Especifica la base que usa l'aplicació per executar-se."
 
 #: ../apps/ll-cli/src/main.cpp:201
 msgid "Specify the runtime used by the application to run"
-msgstr "Especifiqueu l'entorn d'execució que usa l'aplicació per executar-se."
+msgstr "Especifica l'entorn d'execució que usa l'aplicació per executar-se."
 
 #: ../apps/ll-cli/src/main.cpp:207
 msgid "Specify extension(s) used by the application to run"
-msgstr "Especifiqueu les extensions que usa l'aplicació per executar-se."
+msgstr "Especifica les extensions que usa l'aplicació per executar-se."
 
 #: ../apps/ll-cli/src/main.cpp:213
 msgid "Run the application in privileged mode"
@@ -227,12 +227,12 @@ msgstr "Introduïu l'espai de noms on s'executa l'aplicació."
 #: ../apps/ll-cli/src/main.cpp:243
 msgid "Specify the application running instance(you can get it by ps command)"
 msgstr ""
-"Especifiqueu la instància de l'aplicació que s'executa (la podeu obtenir "
+"Especifica la instància de l'aplicació que s'executa (la podeu obtenir "
 "mitjançant l'ordre ps)."
 
 #: ../apps/ll-cli/src/main.cpp:247
 msgid "Specify working directory"
-msgstr "Especifiqueu el directori de treball"
+msgstr "Especifiqueu el directori de treball."
 
 #: ../apps/ll-cli/src/main.cpp:256
 msgid "Stop running applications"
@@ -248,7 +248,7 @@ msgstr "Especifiqueu el senyal que voleu enviar a l'aplicació."
 
 #: ../apps/ll-cli/src/main.cpp:265
 msgid "Specify the running application"
-msgstr "Especifiqueu l'aplicació en execució."
+msgstr "Especifica l'aplicació en execució."
 
 #: ../apps/ll-cli/src/main.cpp:276
 msgid "Installing an application or runtime"
@@ -387,11 +387,11 @@ msgstr ""
 "Exemple:\n"
 "# cerca remotament aplicacions, bases o entorns d'execució per paraules clau\n"
 "ll-cli search org.deepin.demo\n"
-"# cerca totes les aplicacions del remot\n"
+"# cerca totes les aplicacions del repositori remot\n"
 "ll-cli search.\n"
-"# cerca totes les bases del remot\n"
+"# cerca totes les bases del repositori remot\n"
 "ll-cli search . --type=base\n"
-"# cerca tots els temps d'execució del remot\n"
+"# cerca tots els temps d'execució del repositori remot\n"
 "ll-cli search . --type=runtime"
 
 #: ../apps/ll-cli/src/main.cpp:385
@@ -406,7 +406,7 @@ msgstr ""
 
 #: ../apps/ll-cli/src/main.cpp:396
 msgid "Specify the repo"
-msgstr "Especifiqueu el repositori"
+msgstr "Especifiqueu el repositori."
 
 #: ../apps/ll-cli/src/main.cpp:401
 msgid "Include develop application in result"
@@ -902,7 +902,7 @@ msgstr "Executa en mode de depuració (activa el mòdul de desenvolupament)."
 
 #: ../apps/ll-builder/src/main.cpp:797
 msgid "Specify extension(s) used by the app to run"
-msgstr "Especifiqueu les extensions que usa l'aplicació per executar-se."
+msgstr "Especifica les extensions que usa l'aplicació per executar-se."
 
 #: ../apps/ll-builder/src/main.cpp:803
 msgid "List built linyaps app"

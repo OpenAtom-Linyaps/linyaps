@@ -376,6 +376,17 @@ msgid ""
 "# find all of runtime(s) of remote\n"
 "ll-cli search . --type=runtime"
 msgstr ""
+"Polecenie: ll-cli search [OPCJE] SŁOWA KLUCZOWE\n"
+"\n"
+"Przykład:\n"
+"# znajdź zdalnie aplikacje, bazy i środowiska wykonawcze\n"
+"ll-cli search org.deepin.demo\n"
+"# znajdź wszystkie aplikacje repozytorium\n"
+"ll-cli search .\n"
+"# znajdź wszystkie bazy repozytorium\n"
+"ll-cli search . --type=base\n"
+"# znajdź wszystkie środowiska wykonawcze repozytorium\n"
+"ll-cli search . --type=runtime"
 
 #: ../apps/ll-cli/src/main.cpp:385
 msgid "Specify the Keywords"
@@ -579,24 +590,24 @@ msgstr "Polecenie: ll-cli prune [OPCJE]"
 
 #: ../apps/ll-cli/src/main.cpp:579
 msgid "Display the inspect information of the installed application"
-msgstr ""
+msgstr "Pokaż informacje zainstalowanej aplikacji"
 
 #: ../apps/ll-cli/src/main.cpp:581
 msgid "Usage: ll-cli inspect SUBCOMMAND [OPTIONS]"
-msgstr ""
+msgstr "Polecenie: ll-cli inspect PODKOMENDA [OPCJE]"
 
 #: ../apps/ll-cli/src/main.cpp:588
 msgid ""
 "Display the data(bundle) directory of the installed(running) application"
-msgstr ""
+msgstr "Wyświetl katalog danych zainstalowanej(uruchomionej) aplikacji"
 
 #: ../apps/ll-cli/src/main.cpp:589
 msgid "Usage: ll-cli inspect dir [OPTIONS] APP"
-msgstr ""
+msgstr "Polecenie: ll-cli inspect dir [OPCJE] APLIKACJA"
 
 #: ../apps/ll-cli/src/main.cpp:593
 msgid "Specify the application ID, and it can also be reference"
-msgstr ""
+msgstr "Podaj ID aplikacji"
 
 #: ../apps/ll-cli/src/main.cpp:599
 msgid "Specify the directory type (layer or bundle),the default is layer"

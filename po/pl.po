@@ -910,7 +910,7 @@ msgstr "Polecenie: ll-builder remove [OPCJE] [APLIKACJA...]"
 
 #: ../apps/ll-builder/src/main.cpp:809
 msgid "Do not clean objects files before remove apps"
-msgstr ""
+msgstr "Nie usuwaj plików obiektów przed usunięciem aplikacji"
 
 #. build export
 #: ../apps/ll-builder/src/main.cpp:813
@@ -1072,40 +1072,44 @@ msgstr "w trakcie uruchamiania"
 #. Define command line options
 #: ../apps/ll-driver-detect/src/main.cpp:104
 msgid "Force installation even if recently reminded"
-msgstr ""
+msgstr "Wymuś instalację nawet jeśli pojawi się ostrzeżenie"
 
 #: ../apps/ll-driver-detect/src/main.cpp:107
 msgid "Check for drivers only without installing or notifying"
-msgstr ""
+msgstr "Sprawdź wersje sterowników, bez instalacji i powiadomienia"
 
 #: ../apps/ll-driver-detect/src/main.cpp:110
 msgid "Only install drivers without notifications"
-msgstr ""
+msgstr "Zainstaluj sterownik bez powiadomienia"
 
 #: ../apps/ll-driver-detect/src/main.cpp:216
 msgid "Graphics Driver Available"
-msgstr ""
+msgstr "Dostępny jest sterownik graficzny"
 
 #: ../apps/ll-driver-detect/src/main.cpp:217
 msgid ""
 "Graphics driver package is available that can improve performance for some Linyaps applications.\n"
 "Would you like to install it?"
 msgstr ""
+"Pakiet sterowników graficznych, który może zwiększyć wydajność aplikacji "
+"Linyaps jest dostępny. Czy chcesz go zainstalować?"
 
 #: ../apps/ll-driver-detect/src/main.cpp:221
 msgid "Install Now"
-msgstr ""
+msgstr "Zainstaluj teraz"
 
 #: ../apps/ll-driver-detect/src/main.cpp:221
 msgid "Don't Remind"
-msgstr ""
+msgstr "Nie przypominaj"
 
 #: ../apps/ll-driver-detect/src/main.cpp:247
 msgid "Graphics Driver Installation Completed"
-msgstr ""
+msgstr "Zakończono instalację sterownika graficznego"
 
 #: ../apps/ll-driver-detect/src/main.cpp:249
 msgid ""
 "Graphics driver package has been installed.\n"
 "Restart the Linyaps app to experience the performance improvement."
 msgstr ""
+"Pakiet sterowników graficznych został zainstalowany.\n"
+"Zrestartuj aplikację Linyaps, aby zastosować zmiany."

@@ -611,12 +611,12 @@ msgstr "Podaj ID aplikacji"
 
 #: ../apps/ll-cli/src/main.cpp:599
 msgid "Specify the directory type (layer or bundle),the default is layer"
-msgstr ""
+msgstr "Określ typ katalogu (layer lub bundle), domyślny jest typ layer"
 
 #: ../apps/ll-cli/src/main.cpp:606
 msgid ""
 "Specify the module type (binary or develop). Only works when type is layer"
-msgstr ""
+msgstr "Określ typ modułu (binarny lub develop). Działa tylko dla typu layer."
 
 #: ../apps/ll-cli/src/main.cpp:638
 msgid ""
@@ -671,7 +671,7 @@ msgstr "Wyświetl informacje debug (poszerzone logi)"
 
 #: ../apps/ll-cli/src/main.cpp:676
 msgid "Don't output progress information"
-msgstr ""
+msgstr "Nie wysyłaj informacji postępu instalacji"
 
 #. groups for subcommands
 #: ../apps/ll-cli/src/main.cpp:693
@@ -709,7 +709,7 @@ msgstr "Nazwa"
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:73
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:136
 msgid "Version"
-msgstr ""
+msgstr "Wersja"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:74
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:137
@@ -791,6 +791,8 @@ msgid ""
 "If you found any problems during use\n"
 "You can report bugs to the linyaps team under this project: https://github.com/OpenAtom-Linyaps/linyaps/issues"
 msgstr ""
+"Jeśli znajdziesz jakiś problem, \n"
+"możesz zgłosić błąd do zespołu linyaps pod tym adresem: https://github.com/OpenAtom-Linyaps/linyaps/issues"
 
 #: ../apps/ll-builder/src/main.cpp:724
 msgid "Create linyaps build template project"
@@ -888,7 +890,7 @@ msgstr "Uruchom w trybie debug (włącz moduł develop)"
 
 #: ../apps/ll-builder/src/main.cpp:797
 msgid "Specify extension(s) used by the app to run"
-msgstr ""
+msgstr "Wybierz rozszerzenia wymagane do uruchomienia aplikacji"
 
 #: ../apps/ll-builder/src/main.cpp:803
 msgid "List built linyaps app"

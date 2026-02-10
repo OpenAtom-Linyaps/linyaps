@@ -927,7 +927,7 @@ msgstr "Ikona uab (opcjonalne)"
 
 #: ../apps/ll-builder/src/main.cpp:831
 msgid "Export to linyaps layer file (deprecated)"
-msgstr "Eksportuj do pliku warstwy linyaps (brak wsparcia)"
+msgstr "Eksportuj do pliku warstwy linyaps (przestarzałe)"
 
 #: ../apps/ll-builder/src/main.cpp:834
 msgid "Use custom loader"

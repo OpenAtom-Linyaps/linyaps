@@ -628,7 +628,7 @@ msgstr ""
 
 #: ../apps/ll-cli/src/main.cpp:646 ../apps/ll-builder/src/main.cpp:695
 msgid "Print this help message and exit"
-msgstr "Wyświetl tę wiadomość i zakończ"
+msgstr "Wyświetl wiadomość pomocniczą i zakończ"
 
 #: ../apps/ll-cli/src/main.cpp:647 ../apps/ll-builder/src/main.cpp:696
 msgid "Expand all help"

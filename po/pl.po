@@ -195,15 +195,15 @@ msgstr ""
 
 #: ../apps/ll-cli/src/main.cpp:207
 msgid "Specify extension(s) used by the application to run"
-msgstr ""
+msgstr "Wybierz rozszerzenia wymagane do uruchomienia aplikacji"
 
 #: ../apps/ll-cli/src/main.cpp:213
 msgid "Run the application in privileged mode"
-msgstr ""
+msgstr "Uruchom aplikacje w trybie uprzywilejowanym"
 
 #: ../apps/ll-cli/src/main.cpp:215
 msgid "Add capabilities to the application"
-msgstr ""
+msgstr "Dodaj opcje do aplikacji"
 
 #: ../apps/ll-cli/src/main.cpp:219 ../apps/ll-cli/src/main.cpp:250
 msgid "Run commands in a running sandbox"
@@ -323,7 +323,7 @@ msgstr "Odinstaluj określony moduł"
 
 #: ../apps/ll-cli/src/main.cpp:331
 msgid "Force uninstall base or runtime"
-msgstr ""
+msgstr "Wymuś odinstalowanie bazy lub środowiska wykonawczego"
 
 #. below options are used for compatibility with old ll-cli
 #: ../apps/ll-cli/src/main.cpp:334
@@ -352,7 +352,7 @@ msgstr ""
 
 #: ../apps/ll-cli/src/main.cpp:360
 msgid "Only upgrade dependencies of application"
-msgstr ""
+msgstr "Zaktualizuj tylko zależności aplikacji"
 
 #: ../apps/ll-cli/src/main.cpp:370
 msgid ""

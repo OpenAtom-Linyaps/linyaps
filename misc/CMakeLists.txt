@@ -38,6 +38,7 @@ configure_files(
   share/bash-completion/completions/ll-builder
   share/bash-completion/completions/ll-cli
   share/zsh/vendor-completions/_ll-cli
+  share/fish/vendor_completions.d/ll-cli.fish
   share/dbus-1/system.d/org.deepin.linglong.PackageManager1.conf
   share/dbus-1/system-services/org.deepin.linglong.PackageManager1.service
   share/linglong/export-dirs.json
@@ -60,6 +61,12 @@ set(ZSH_COMPLETIONS_DIR ${CMAKE_INSTALL_DATADIR}/zsh)
 
 install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/share/zsh/vendor-completions
         DESTINATION ${ZSH_COMPLETIONS_DIR})
+
+# fish-completion
+set(FISH_COMPLETIONS_DIR ${CMAKE_INSTALL_DATADIR}/fish)
+
+install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/share/fish/vendor_completions.d
+        DESTINATION ${FISH_COMPLETIONS_DIR})
 
 # dbus
 set(DBUS_SYSTEM_BUS_DIR ${CMAKE_INSTALL_DATADIR}/dbus-1)

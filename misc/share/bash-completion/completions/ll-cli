@@ -9,145 +9,158 @@
 #set -x
 
 __ll_cli_get_container_list() {
-        ll-cli ps | tail -n+2 | awk '{print $1}' | tr '\n' ' '
+    ll-cli ps 2>/dev/null | awk 'NR>1 {print $1}'
 }
 
 __ll_cli_get_installed_app_list() {
-        ll-cli list --type=app | tail -n+2 | awk '{print $1}' | tr '\n' ' '
+    ll-cli list --type=app 2>/dev/null | awk 'NR>1 {print $1}'
 }
 
 __ll_cli_get_installed_list() {
-        ll-cli list | tail -n+2 | awk '{print $1}' | tr '\n' ' '
+    ll-cli list 2>/dev/null | awk 'NR>1 {print $1}'
 }
 
 __ll_cli_get_layer_list() {
-        ls $1*.layer 2>/dev/null | tr '\n' ' '
+    ls -- "${1:-}"*.layer 2>/dev/null | tr '\n' ' '
 }
 
 __ll_cli_get_repo_alias_list() {
-        ll-cli repo show | tail -n+3 | awk '{print $3}' | tr "\n" " "
+    ll-cli repo show 2>/dev/null | awk 'NR>2 {print $3}'
 }
 
 __filter_exist_options() {
-        local aviable_opts
-        for opt in $1; do
-                local blank=" "
-                for word in "${COMP_WORDS[@]}"; do
-                        if [[ "x${word}" == "x${opt}" ]]; then
-                                opt=""
-                                blank=""
-                                break
-                        fi
-                done
-                aviable_opts+="${opt}"
-                aviable_opts+="${blank}"
+    local all_candidates=($1)
+    local filtered=()
+    for opt in "${all_candidates[@]}"; do
+        local found=0
+        for word in "${COMP_WORDS[@]}"; do
+            if [[ "$word" == "$opt" ]]; then
+                found=1
+                break
+            fi
         done
-        echo ${aviable_opts}
+        # 如果当前选项不在已输入的单词中，则加入候选列表
+        [[ $found -eq 0 ]] && filtered+=("$opt")
+    done
+    echo "${filtered[@]}"
 }
 
-_ll_cli_complete() {
-        local cur prev output_options subcommand
-        COMPREPLY=()
+_ll_cli_completion() {
+    local cur prev words cword
+    _get_comp_words_by_ref -n : cur prev words cword 2>/dev/null || {
         cur="${COMP_WORDS[COMP_CWORD]}"
         prev="${COMP_WORDS[COMP_CWORD - 1]}"
+        words=("${COMP_WORDS[@]}")
+        cword=$COMP_CWORD
+    }
 
-        # Define the options and subcommands
-        local common_options="-h --help --help-all"
-        local global_options="--version --json"
-        local subcommands="run ps enter kill prune install uninstall upgrade list info content search repo"
+    local subcommands="run ps enter kill install uninstall upgrade search list repo info content prune"
+    local global_opts="--help --help-all --json --verbose -v --no-progress"
 
-        output_options="$common_options"
-        # For the first word (command or options)
-        if [[ ${COMP_CWORD} -lt 2 ]]; then
-                output_options="${output_options} ${global_options} ${subcommands}"
-                COMPREPLY=($(compgen -W "${output_options}" -- "${cur}"))
-                return 0
-        elif [[ ${COMP_CWORD} -eq 2 && ${COMP_WORDS[1]} == -* ]]; then
-                output_options="${output_options} ${subcommands}"
-                COMPREPLY=($(compgen -W "${output_options}" -- "${cur}"))
-                return 0
+    COMPREPLY=()
+    local subcmd=""
+    local i
+
+    # 查找当前的子命令
+    for ((i = 1; i < cword; i++)); do
+        if [[ " $subcommands " =~ " ${words[i]} " ]]; then
+            subcmd="${words[i]}"
+            break
         fi
+    done
 
-        if [[ ${COMP_WORDS[1]} != -* ]]; then
-                subcommand=${COMP_WORDS[1]}
+    if [[ -z "$subcmd" ]]; then
+        if [[ "$cur" == -* ]]; then
+            COMPREPLY=($(compgen -W "$global_opts --version" -- "$cur"))
         else
-                subcommand=${COMP_WORDS[2]}
+            COMPREPLY=($(compgen -W "$subcommands $global_opts --version" -- "$cur"))
         fi
-
-        case ${subcommand} in
-        run)
-                local run_options="--file --url"
-                local installed_list
-                if [[ "${prev}" == "run" ]]; then
-                        installed_list="$(__ll_cli_get_installed_app_list)"
-                fi
-                output_options="${output_options} ${run_options} ${installed_list}"
-                ;;
-        ps)
-                # Nothing here
-                ;;
-        enter)
-                local enter_options="--working-directory"
-                local container_list
-                if [[ "${prev}" == "enter" ]]; then
-                        container_list="$(__ll_cli_get_container_list)"
-                fi
-                output_options="${output_options} ${enter_options} ${container_list}"
-                ;;
-        kill)
-                output_options="${output_options} $(__ll_cli_get_container_list)"
-                ;;
-        prune)
-                # Nothing here
-                ;;
-        install)
-                install_options="--module --force -y"
-                output_options="${output_options} ${install_options}"
-                COMPREPLY=($(compgen -W "${output_options}" -- "${cur}"))
-                _filedir @(layer|uab)
-                return 0
-                ;;
-        uninstall)
-                local uninstall_options
-                local installed_list
-                if [[ "${prev}" == "uninstall" ]]; then
-                        installed_list="$(__ll_cli_get_installed_app_list)"
-                fi
-                output_options="${output_options} ${uninstall_options} ${installed_list}"
-                ;;
-        upgrade)
-                output_options="${output_options} $(__ll_cli_get_installed_list)"
-                ;;
-        list)
-                list_options="--type --upgradable"
-                output_options="${output_options} ${list_options}"
-                ;;
-        info)
-                output_options="${output_options} $(__ll_cli_get_installed_list) $(__ll_cli_get_layer_list ${cur}))"
-                ;;
-        content)
-                output_options="${output_options} $(__ll_cli_get_installed_app_list)"
-                ;;
-        search)
-                search_options="--type --dev"
-                output_options="${output_options} ${search_options}"
-                ;;
-        repo)
-                local repo_subcommands="add remove update set-default show"
-                if [[ ${prev} == "repo" ]]; then
-                        output_options="${output_options} ${repo_subcommands}"
-                fi
-
-                if [[ ${prev} == "remove" || ${prev} == "set-default" ]]; then
-                        output_options="${output_options} $(__ll_cli_get_repo_alias_list)"
-                fi
-                ;;
-        esac
-
-        output_options="$(__filter_exist_options "${output_options}")"
-        COMPREPLY=($(compgen -W "${output_options}" -- "${cur}"))
-
         return 0
+    fi
+
+    local opts=""
+    case "$subcmd" in
+    run)
+        if [[ "$prev" == "run" ]]; then
+            opts="$(__ll_cli_get_installed_app_list)"
+        else
+            opts="--file --url --env --base --runtime --extensions"
+        fi
+        ;;
+    enter)
+        if [[ "$prev" == "enter" ]]; then
+            opts="$(__ll_cli_get_container_list)"
+        else
+            opts="--working-directory"
+        fi
+        ;;
+    kill)
+        if [[ "$prev" == "kill" || "$prev" == "-s" || "$prev" == "--signal" ]]; then
+            [[ "$prev" == "kill" ]] && opts="$(__ll_cli_get_container_list)"
+            [[ "$prev" != "kill" ]] && opts="SIGTERM SIGKILL SIGINT SIGHUP"
+        else
+            opts="--signal -s"
+        fi
+        ;;
+    install)
+        opts="--module --repo --force -y"
+
+        if [[ "$cur" != -* ]]; then
+            _filedir '@(layer|uab)'
+
+            if [[ ${#COMPREPLY[@]} -gt 0 ]]; then
+                local filtered_opts=$(__filter_exist_options "$opts $global_opts")
+                COMPREPLY+=($(compgen -W "$filtered_opts" -- "$cur"))
+                return 0
+            fi
+        fi
+        ;;
+    upgrade)
+        opts="$(__ll_cli_get_installed_app_list)"
+        ;;
+    uninstall)
+        if [[ "$prev" == "uninstall" ]]; then
+            opts="$(__ll_cli_get_installed_app_list)"
+        else
+            opts="--module --force"
+        fi
+        ;;
+    search | list)
+        if [[ "$prev" == "--type" ]]; then
+            opts="runtime base app all"
+        else
+            [[ "$subcmd" == "search" ]] && opts="--type --repo --dev --show-all-version"
+            [[ "$subcmd" == "list" ]] && opts="--type --upgradable"
+        fi
+        ;;
+    repo)
+        local repo_subs="add remove update set-default show set-priority enable-mirror disable-mirror"
+        if [[ "$prev" == "repo" ]]; then
+            opts="$repo_subs"
+        elif [[ " remove update set-default set-priority enable-mirror disable-mirror " =~ " $prev " ]]; then
+            opts="$(__ll_cli_get_repo_alias_list)"
+        elif [[ " ${words[*]} " =~ " add " ]]; then
+            opts="--alias"
+        fi
+        ;;
+    info)
+        opts="$(__ll_cli_get_installed_list) $(__ll_cli_get_layer_list ${cur})"
+        ;;
+    content)
+        opts="$(__ll_cli_get_installed_list)"
+        ;;
+    esac
+
+    local total_candidates="$opts $global_opts"
+
+    local final_opts
+    final_opts=$(__filter_exist_options "$total_candidates")
+
+    if [[ -n "$final_opts" ]]; then
+        COMPREPLY=($(compgen -W "$final_opts" -- "$cur"))
+    fi
+
+    return 0
 }
 
-complete -F _ll_cli_complete ll-cli
+complete -F _ll_cli_completion -o default ll-cli

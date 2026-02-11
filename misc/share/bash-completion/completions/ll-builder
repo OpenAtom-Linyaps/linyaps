@@ -1,127 +1,126 @@
 #!/bin/env bash
 
-# SPDX-FileCopyrightText: 2023 - 2025 UnionTech Software Technology Co., Ltd.
+# SPDX-FileCopyrightText: 2023 - 2026 UnionTech Software Technology Co., Ltd.
 #
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
 # linglong builder completion
 
-#set -x
-
 __ll_builder_get_layer_list() {
-        ls $1*.layer 2>/dev/null | tr '\n' ' '
+    ls *.layer 2>/dev/null | tr '\n' ' '
 }
 
 __ll_builder_get_repo_name_list() {
-        ll-builder repo show | tail -n+3 | awk '{print $1}' | tr "\n" " "
+    ll-builder repo show 2>/dev/null | tail -n+3 | awk '{print $3 ? $3 : $1}' | tr "\n" " "
 }
 
 __ll_builder_get_commited_list() {
-        ll-builder list | tr "\n" " "
+    ll-builder list 2>/dev/null | tr "\n" " "
 }
 
 __filter_exist_options() {
-        local aviable_opts
-        for opt in $1; do
-                local blank=" "
-                for word in "${COMP_WORDS[@]}"; do
-                        if [[ "x$word" == "x$opt" ]]; then
-                                opt=""
-                                blank=""
-                                break
-                        fi
-                done
-                aviable_opts+="$opt"
-                aviable_opts+="$blank"
+    local aviable_opts
+    for opt in $1; do
+        local blank=" "
+        for word in "${COMP_WORDS[@]}"; do
+            if [[ "x$word" == "x$opt" ]]; then
+                opt=""
+                blank=""
+                break
+            fi
         done
-        echo $aviable_opts
+        aviable_opts+="$opt"
+        aviable_opts+="$blank"
+    done
+    echo $aviable_opts
 }
 
 _ll_builder_complete() {
-        local cur prev output_options subcommand
-        COMPREPLY=()
-        cur="${COMP_WORDS[COMP_CWORD]}"
-        prev="${COMP_WORDS[COMP_CWORD - 1]}"
+    local cur prev output_options
+    COMPREPLY=()
+    cur="${COMP_WORDS[COMP_CWORD]}"
+    prev="${COMP_WORDS[COMP_CWORD - 1]}"
 
-        # Define the options and subcommands
-        local common_options="-h --help --help-all"
-        local subcommands="create build run export push import extract repo migrate"
+    local subcommands="create build run export push import import-dir extract repo list remove"
+    local version_options="--version"
+    local common_options="-h --help --help-all"
 
-        output_options="$common_options"
-        # For the first word (command or options)
-        if [[ ${COMP_CWORD} -lt 2 ]]; then
-                output_options="${output_options} ${subcommands}"
-                COMPREPLY=($(compgen -W "${output_options}" -- "${cur}"))
-                return 0
-        fi
-
-        case ${COMP_WORDS[1]} in
-        create)
-                # Nothing here
-                ;;
-        build)
-                local build_options="--file --arch --offline"
-                build_options+=" --full-develop-module"
-                build_options+=" --skip-fetch-source"
-                build_options+=" --skip-pull-depend"
-                build_options+=" --skip-run-container"
-                build_options+=" --skip-commit-output"
-                build_options+=" --skip-output-check"
-                build_options+=" --skip-strip-symbols"
-
-                output_options="${output_options} ${build_options}"
-                ;;
-        run)
-                local run_options="--file --url"
-                output_options="${output_options} ${run_options}"
-                ;;
-        export)
-                local export_options="--file --icon --layer --loader --no-develop"
-                output_options="${output_options} ${export_options}"
-
-                if [[ ${prev} == "--ref" ]]; then
-                        output_options="${output_options} $(__ll_builder_get_commited_list)"
-                else
-                        output_options="${output_options} --ref"
-                fi
-                ;;
-        remove)
-                local remove_options="--no-clean-objects"
-                output_options="${output_options} ${remove_options} $(__ll_builder_get_commited_list)"
-                ;;
-        push)
-                local push_options="--file --repo-url --repo-name --channel --module"
-                output_options="${output_options} ${push_options}"
-                ;;
-        import)
-                if [[ ${prev} == "import" ]]; then
-                        output_options="${output_options} $(__ll_builder_get_layer_list)"
-                fi
-                ;;
-        extract)
-                if [[ ${prev} == "extract" ]]; then
-                        output_options="${output_options} $(__ll_builder_get_layer_list)"
-                fi
-                ;;
-        repo)
-                local repo_subcommands="add remove update set-default show"
-                if [[ ${prev} == "repo" ]]; then
-                        output_options="${output_options} ${repo_subcommands}"
-                fi
-
-                if [[ ${prev} == "remove" || ${prev} == "set-default" ]]; then
-                        output_options="${output_options} $(__ll_builder_get_repo_name_list)"
-                fi
-                ;;
-        migrate)
-                # Nothing here
-                ;;
-        esac
-
-        output_options="$(__filter_exist_options "${output_options}")"
+    # 处理一级子命令及根选项补全
+    if [[ ${COMP_CWORD} -eq 1 ]]; then
+        output_options="${subcommands} ${version_options} ${common_options}"
         COMPREPLY=($(compgen -W "${output_options}" -- "${cur}"))
-
         return 0
+    fi
+
+    case ${COMP_WORDS[1]} in
+    create)
+        output_options="${common_options}"
+        ;;
+    build)
+        local build_options="-f --file --offline --isolate-network"
+        build_options+=" --full-develop-module --skip-fetch-source --skip-pull-depend"
+        build_options+=" --skip-run-container --skip-commit-output --skip-output-check --skip-strip-symbols"
+        output_options="${common_options} ${build_options}"
+        ;;
+    run)
+        local run_options="-f --file --modules --debug --extensions"
+        output_options="${common_options} ${run_options}"
+
+        if [[ ${prev} == "--extensions" ]]; then
+            output_options="$(__ll_builder_get_commited_list)"
+        fi
+        ;;
+    export)
+        local export_options="-f --file -z --compressor --icon --layer --loader --no-develop -o --output --ref --modules"
+        output_options="${common_options} ${export_options}"
+
+        case ${prev} in
+        --ref)
+            output_options="$(__ll_builder_get_commited_list)"
+            ;;
+        -z | --compressor)
+            output_options="lz4 lzma zstd"
+            ;;
+        esac
+        ;;
+    remove)
+        local remove_options="--no-clean-objects"
+        output_options="${common_options} ${remove_options} $(__ll_builder_get_commited_list)"
+        ;;
+    push)
+        local push_options="-f --file --repo-url --repo-name --module"
+        output_options="${common_options} ${push_options}"
+        ;;
+    import | import-dir)
+        if [[ ${COMP_CWORD} -eq 2 ]]; then
+            COMPREPLY=($(compgen -f -- "${cur}"))
+            return 0
+        fi
+        ;;
+    extract)
+        if [[ ${COMP_CWORD} -eq 2 ]]; then
+            output_options="$(__ll_builder_get_layer_list)"
+        fi
+        ;;
+    repo)
+        local repo_subcommands="add remove update set-default show enable-mirror disable-mirror"
+        if [[ ${prev} == "repo" ]]; then
+            output_options="${common_options} ${repo_subcommands}"
+        elif [[ " remove update set-default enable-mirror disable-mirror " =~ " ${prev} " ]]; then
+            output_options="$(__ll_builder_get_repo_name_list)"
+        else
+            output_options="${common_options}"
+        fi
+        ;;
+    *)
+        output_options="${common_options}"
+        ;;
+    esac
+
+    output_options="$(__filter_exist_options "${output_options}")"
+    COMPREPLY=($(compgen -W "${output_options}" -- "${cur}"))
+
+    return 0
 }
 
 complete -F _ll_builder_complete ll-builder

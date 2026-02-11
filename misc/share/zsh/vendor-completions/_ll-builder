@@ -1,0 +1,89 @@
+#compdef ll-builder
+
+# SPDX-FileCopyrightText: 2023 - 2026 UnionTech Software Technology Co., Ltd.
+#
+# SPDX-License-Identifier: LGPL-3.0-or-later
+
+_ll_builder_get_commited_list() {
+    ll-builder list 2>/dev/null | tr "\n" " "
+}
+
+_ll_builder_get_repo_name_list() {
+    ll-builder repo show 2>/dev/null | tail -n+3 | awk '{print $3 ? $3 : $1}'
+}
+
+_ll-builder() {
+    local -a subcommands
+    subcommands=(create build run export push import import-dir extract repo list remove)
+
+    _arguments -C \
+        '--version' \
+        '(-h --help --help-all)'{-h,--help,--help-all} \
+        '1: :->cmds' \
+        '*:: :->args'
+
+    case $state in
+        cmds)
+            compadd "$@" $subcommands
+            ;;
+        args)
+            case $line[1] in
+                create)
+                    _arguments '(-h --help --help-all)'{-h,--help,--help-all}
+                    ;;
+                build)
+                    _values '' -f --file --offline --isolate-network --full-develop-module \
+                        --skip-fetch-source --skip-pull-depend --skip-run-container \
+                        --skip-commit-output --skip-output-check --skip-strip-symbols \
+                        -h --help --help-all
+                    ;;
+                run)
+                    _arguments \
+                        '(-f --file)'{-f,--file} \
+                        '--modules' '--debug' \
+                        '--extensions: :($( _ll_builder_get_commited_list ))' \
+                        '(-h --help --help-all)'{-h,--help,--help-all}
+                    ;;
+                export)
+                    _arguments \
+                        '(-f --file)'{-f,--file} '--icon' '--layer' '--loader' '--no-develop' \
+                        '(-o --output)'{-o,--output} '--modules' \
+                        '(-z --compressor)'{-z,--compressor}': :(lz4 lzma zstd)' \
+                        '--ref: :($( _ll_builder_get_commited_list ))' \
+                        '(-h --help --help-all)'{-h,--help,--help-all}
+                    ;;
+                remove)
+                    _arguments \
+                        '--no-clean-objects' \
+                        '*: :($( _ll_builder_get_commited_list ))' \
+                        '(-h --help --help-all)'{-h,--help,--help-all}
+                    ;;
+                push)
+                    _values '' -f --file --repo-url --repo-name --module -h --help --help-all
+                    ;;
+                import|import-dir)
+                    _arguments '1: :_files' '(-h --help --help-all)'{-h,--help,--help-all}
+                    ;;
+                extract)
+                    _arguments '1: :_files -g "*.layer"' '2: :_directories' '(-h --help --help-all)'{-h,--help,--help-all}
+                    ;;
+                repo)
+                    if (( CURRENT == 2 )); then
+                        compadd add remove update set-default show enable-mirror disable-mirror
+                    else
+                        case $words[2] in
+                            remove|update|set-default|enable-mirror|disable-mirror)
+                                compadd $(_ll_builder_get_repo_name_list)
+                                ;;
+                        esac
+                    fi
+                    ;;
+                *)
+                    _arguments '(-h --help --help-all)'{-h,--help,--help-all}
+                    ;;
+            esac
+            ;;
+    esac
+}
+
+_ll-builder "$@"

@@ -4,7 +4,7 @@
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
 # 
 # Translators:
-# Kimmo Kujansuu <mrkujansuu@gmail.com>, 2025
+# Kimmo Kujansuu <mrkujansuu@gmail.com>, 2026
 # 
 #, fuzzy
 msgid ""
@@ -13,7 +13,7 @@ msgstr ""
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2026-02-06 16:31+0800\n"
 "PO-Revision-Date: 2025-04-11 01:38+0000\n"
-"Last-Translator: Kimmo Kujansuu <mrkujansuu@gmail.com>, 2025\n"
+"Last-Translator: Kimmo Kujansuu <mrkujansuu@gmail.com>, 2026\n"
 "Language-Team: Finnish (https://app.transifex.com/linuxdeepin/teams/3976/fi/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -23,17 +23,17 @@ msgstr ""
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:645
 msgid "privileged mode requires running as root"
-msgstr ""
+msgstr "oikeudet vaatii root-käyttäjänä suorittamisen"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1065
 #, c++-format
 msgid "Application {} is not installed."
-msgstr ""
+msgstr "Sovellusta {} ei ole asennettu."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1075
 #, c++-format
 msgid "{} is not an application."
-msgstr ""
+msgstr "{} ei ole sovellus."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1167
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2390
@@ -64,11 +64,13 @@ msgid ""
 "Application already installed, If you want to replace it, try using 'll-cli "
 "install {} --force'"
 msgstr ""
+"Sovellus on jo asennettu. Jos haluat korvata sen, käytä \"ll-cli install {} "
+"--force\""
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2291
 #, c++-format
 msgid "Application {} is not found in remote repo."
-msgstr ""
+msgstr "Sovellusta {} ei löydy palvelimelta."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2294
 msgid "Cannot specify a version when installing a module."
@@ -80,6 +82,8 @@ msgid ""
 "The latest version has been installed. If you want to replace it, try using "
 "'ll-cli install {} --force'"
 msgstr ""
+"Uusin versio on asennettu. Jos haluat vaihtaa sen, kokeile \"ll-cli install "
+"{} --force\""
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2304
 msgid "Install failed"
@@ -104,6 +108,8 @@ msgid ""
 "Multiple versions of the package are installed. Please specify a single version to uninstall:\n"
 "{}"
 msgstr ""
+"Paketista on asennettu useita versioita. Valitse poistettava versio::\n"
+"{}"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2344
 msgid "Base or runtime cannot be uninstalled, please use 'll-cli prune'."

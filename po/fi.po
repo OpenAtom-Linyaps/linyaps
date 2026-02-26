@@ -126,11 +126,11 @@ msgstr "Päivitys epäonnistui"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2395
 msgid "Package not found"
-msgstr ""
+msgstr "Pakettia ei löytynyt"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2398
 msgid "Operation canceled"
-msgstr ""
+msgstr "Toiminto peruutettu"
 
 #: ../apps/ll-cli/src/main.cpp:146 ../apps/ll-builder/src/main.cpp:44
 msgid "Input parameter is empty, please input valid parameter instead"
@@ -193,15 +193,15 @@ msgstr "Määritä sovelluksen käyttämä ajoympäristö"
 
 #: ../apps/ll-cli/src/main.cpp:207
 msgid "Specify extension(s) used by the application to run"
-msgstr ""
+msgstr "Määritä sovelluksen laajennus(et) suoritukseen"
 
 #: ../apps/ll-cli/src/main.cpp:213
 msgid "Run the application in privileged mode"
-msgstr ""
+msgstr "Suorita sovellus etuoikeutetussa tilassa"
 
 #: ../apps/ll-cli/src/main.cpp:215
 msgid "Add capabilities to the application"
-msgstr ""
+msgstr "Lisää ominaisuuksia sovellukselle"
 
 #: ../apps/ll-cli/src/main.cpp:219 ../apps/ll-cli/src/main.cpp:250
 msgid "Run commands in a running sandbox"

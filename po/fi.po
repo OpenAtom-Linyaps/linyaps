@@ -322,7 +322,7 @@ msgstr "Poista tietyn moduulin asennus"
 
 #: ../apps/ll-cli/src/main.cpp:331
 msgid "Force uninstall base or runtime"
-msgstr ""
+msgstr "Pakota alustan tai ajoympäristön poisto"
 
 #. below options are used for compatibility with old ll-cli
 #: ../apps/ll-cli/src/main.cpp:334
@@ -351,7 +351,7 @@ msgstr ""
 
 #: ../apps/ll-cli/src/main.cpp:360
 msgid "Only upgrade dependencies of application"
-msgstr ""
+msgstr "Päivitä vain sovelluksen riippuvuudet"
 
 #: ../apps/ll-cli/src/main.cpp:370
 msgid ""
@@ -697,7 +697,7 @@ msgstr "Nimi"
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:73
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:136
 msgid "Version"
-msgstr ""
+msgstr "Versio"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:74
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:137
@@ -1069,25 +1069,27 @@ msgstr ""
 
 #: ../apps/ll-driver-detect/src/main.cpp:216
 msgid "Graphics Driver Available"
-msgstr ""
+msgstr "Näytönohjaimen ajuri on saatavilla"
 
 #: ../apps/ll-driver-detect/src/main.cpp:217
 msgid ""
 "Graphics driver package is available that can improve performance for some Linyaps applications.\n"
 "Would you like to install it?"
 msgstr ""
+"Näytönohjaimen ohjainpaketti on saatavilla, joka voi parantaa Linyaps-sovellusten suorituskykyä.\n"
+"Haluatko asentaa?"
 
 #: ../apps/ll-driver-detect/src/main.cpp:221
 msgid "Install Now"
-msgstr ""
+msgstr "Asenna nyt"
 
 #: ../apps/ll-driver-detect/src/main.cpp:221
 msgid "Don't Remind"
-msgstr ""
+msgstr "Älä muistuta"
 
 #: ../apps/ll-driver-detect/src/main.cpp:247
 msgid "Graphics Driver Installation Completed"
-msgstr ""
+msgstr "Näytönohjaimen ajurin asennus valmis"
 
 #: ../apps/ll-driver-detect/src/main.cpp:249
 msgid ""

@@ -1528,17 +1528,18 @@ utils::error::Result<void> Builder::exportUAB(const ExportOption &option,
 
     // export single ref
     if (distributedOnly) {
-        auto layerDir = this->repo.getLayerDir(*curRef);
-        if (!layerDir) {
-            return LINGLONG_ERR(layerDir);
-        }
+        for (const auto &module : exportOpts.modules) {
+            auto layerDir = this->repo.getLayerDir(*curRef, module);
+            if (!layerDir) {
+                return LINGLONG_ERR(layerDir);
+            }
 
-        auto ret = packager.appendLayer(*layerDir);
-        if (!ret) {
-            return LINGLONG_ERR(ret);
+            auto ret = packager.appendLayer(*layerDir);
+            if (!ret) {
+                return LINGLONG_ERR(ret);
+            }
         }
-
-        ret = packager.pack(uabFile, true);
+        auto ret = packager.pack(uabFile, true);
         if (!ret) {
             return LINGLONG_ERR(ret);
         }

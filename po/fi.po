@@ -895,7 +895,7 @@ msgstr "Käyttö: ll-builder remove [OPTIONS] [APP...]"
 
 #: ../apps/ll-builder/src/main.cpp:809
 msgid "Do not clean objects files before remove apps"
-msgstr ""
+msgstr "Älä puhdista objektitiedostoja ennen sovelluksen poistamista"
 
 #. build export
 #: ../apps/ll-builder/src/main.cpp:813
@@ -1057,15 +1057,15 @@ msgstr "käynnistyy"
 #. Define command line options
 #: ../apps/ll-driver-detect/src/main.cpp:104
 msgid "Force installation even if recently reminded"
-msgstr ""
+msgstr "Pakota asennus, vaikka muistutus olisi äskettäin tehty"
 
 #: ../apps/ll-driver-detect/src/main.cpp:107
 msgid "Check for drivers only without installing or notifying"
-msgstr ""
+msgstr "Tarkista ajurit asentamatta tai ilmoittamatta"
 
 #: ../apps/ll-driver-detect/src/main.cpp:110
 msgid "Only install drivers without notifications"
-msgstr ""
+msgstr "Asenna ajurit ilman ilmoituksia"
 
 #: ../apps/ll-driver-detect/src/main.cpp:216
 msgid "Graphics Driver Available"
@@ -1096,3 +1096,5 @@ msgid ""
 "Graphics driver package has been installed.\n"
 "Restart the Linyaps app to experience the performance improvement."
 msgstr ""
+"Näytönohjaimen ohjainpaketti on asennettu.\n"
+"Käynnistä Linyaps-sovellus uudelleen niin suorituskyky paranee."

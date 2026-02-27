@@ -46,23 +46,36 @@ utils::error::Result<GraphicsDriverInfo> NVIDIADriverDetector::detect()
         return LINGLONG_ERR("Failed to check if package is installed: "
                             + installedResult.error().message());
     }
+
     if (*installedResult) {
+        if (!packageInfoResult->first) {
+            LogW("NVIDIA driver package is installed locally but not found in remote repo: {}",
+                 linglongPackageName);
+            return LINGLONG_ERR("Cannot find NVIDIA driver package in remote repo.");
+        }
+
         auto upgradableResult = checkPackageUpgradable(linglongPackageName);
         if (!upgradableResult) {
             return LINGLONG_ERR("Failed to check if package is upgradable: "
                                 + upgradableResult.error().message());
         }
         if (*upgradableResult) {
-            LogD("NVIDIA driver package can be upgraded : {}", linglongPackageName);
-            return *packageInfoResult;
+            LogD("NVIDIA driver package can be upgraded : {}, install from remote repo.",
+                 linglongPackageName);
+            return packageInfoResult->second;
         }
         return LINGLONG_ERR("NVIDIA driver package is already installed and up-to-date.");
     }
 
-    return *packageInfoResult;
+    if (!packageInfoResult->first) {
+        return LINGLONG_ERR("NVIDIA driver package not found in remote repo");
+    }
+
+    LogD("NVIDIA driver package is not installed, install from remote repo.");
+    return packageInfoResult->second;
 }
 
-utils::error::Result<GraphicsDriverInfo>
+utils::error::Result<std::pair<bool, GraphicsDriverInfo>>
 NVIDIADriverDetector::getPackageInfoFromRemoteRepo(const std::string &packageName)
 {
     using json = nlohmann::json;
@@ -76,10 +89,11 @@ NVIDIADriverDetector::getPackageInfoFromRemoteRepo(const std::string &packageNam
         return LINGLONG_ERR("Search command failed: " + ret.error().message());
     }
 
+    bool found = false;
+
     try {
         json j = json::parse(*ret);
 
-        bool found = false;
         for (const auto &[category, apps] : j.items()) {
             if (!apps.is_array())
                 continue;
@@ -102,7 +116,7 @@ NVIDIADriverDetector::getPackageInfoFromRemoteRepo(const std::string &packageNam
         return LINGLONG_ERR("Failed to parse search result JSON: " + std::string(e.what()));
     }
 
-    return driverInfo;
+    return std::make_pair(found, driverInfo);
 }
 
 utils::error::Result<bool>
@@ -110,17 +124,12 @@ NVIDIADriverDetector::checkPackageInstalled(const std::string &packageName)
 {
     LINGLONG_TRACE("Check if NVIDIA driver package is installed");
 
-    try {
-        auto installedInfo = getInstalledGraphicsDriverInfo(packageName);
-        if (!installedInfo) {
-            return LINGLONG_ERR("Failed to get installed package info: "
-                                + installedInfo.error().message());
-        }
-
-        return true;
-    } catch (const std::exception &e) {
-        return LINGLONG_ERR("Failed to check package installation: " + std::string(e.what()));
+    auto installedInfo = getInstalledGraphicsDriverInfo(packageName);
+    if (!installedInfo) {
+        return LINGLONG_ERR(installedInfo);
     }
+
+    return installedInfo->first;
 }
 
 utils::error::Result<bool>
@@ -134,19 +143,27 @@ NVIDIADriverDetector::checkPackageUpgradable(const std::string &packageName)
                             + upgradableDriverInfo.error().message());
     }
 
+    if (!upgradableDriverInfo->first) {
+        return LINGLONG_ERR("NVIDIA driver package not found in remote repo");
+    }
+
     auto installedDriverInfo = getInstalledGraphicsDriverInfo(packageName);
     if (!installedDriverInfo) {
         return LINGLONG_ERR("Failed to get installed package info: "
                             + installedDriverInfo.error().message());
     }
 
-    LogD("Driver {} can upgrade from {} to {}",
-         packageName,
-         installedDriverInfo->packageVersion,
-         upgradableDriverInfo->packageVersion);
+    if (!installedDriverInfo->first) {
+        return LINGLONG_ERR("NVIDIA driver package is not installed");
+    }
 
-    return compareVersions(upgradableDriverInfo->packageVersion,
-                           installedDriverInfo->packageVersion);
+    LogD("{} current version:{}, latest version {}",
+         packageName,
+         installedDriverInfo->second.packageVersion,
+         upgradableDriverInfo->second.packageVersion);
+
+    return compareVersions(upgradableDriverInfo->second.packageVersion,
+                           installedDriverInfo->second.packageVersion);
 }
 
 std::string NVIDIADriverDetector::getDriverVersion()
@@ -168,36 +185,52 @@ std::string NVIDIADriverDetector::getDriverVersion()
     return version;
 }
 
-utils::error::Result<GraphicsDriverInfo>
+utils::error::Result<std::pair<bool, GraphicsDriverInfo>>
 NVIDIADriverDetector::getInstalledGraphicsDriverInfo(const std::string &packageName) const
 {
+    using json = nlohmann::json;
+
     LINGLONG_TRACE("Get installed NVIDIA graphics driver info");
 
-    try {
-        // First execute ll-cli info to get the package info
-        auto listResult = linglong::utils::Cmd("ll-cli").exec({ "--json", "info", packageName });
+    GraphicsDriverInfo driverInfo{ getDriverIdentify(), packageName };
 
-        if (!listResult) {
-            return LINGLONG_ERR(
-              "Can not get package info with `ll-cli info`, maybe the package is not installed: "
-              + listResult.error().message());
-        }
-
-        nlohmann::json j = nlohmann::json::parse(*listResult);
-
-        auto it = j.find("version");
-        if (it == j.end() || !it->is_string()) {
-            return LINGLONG_ERR("Package info JSON is invalid or empty");
-        }
-
-        return GraphicsDriverInfo{
-            getDriverIdentify(),
-            packageName,
-            it->get<std::string>(),
-        };
-    } catch (const std::exception &e) {
-        return LINGLONG_ERR("Failed to check package installation: " + std::string(e.what()));
+    auto listResult = linglong::utils::Cmd("ll-cli").exec({ "--json", "list", "--type=extension" });
+    if (!listResult) {
+        return LINGLONG_ERR(listResult);
     }
+
+    bool installed = false;
+    try {
+        json installedExtensions = json::parse(*listResult);
+        if (!installedExtensions.is_array()) {
+            return LINGLONG_ERR("Invalid list result JSON: expected an array");
+        }
+
+        for (const auto &item : installedExtensions) {
+            if (!item.is_object())
+                continue;
+
+            auto idIter = item.find("id");
+            if (idIter == item.end() || !idIter->is_string()
+                || idIter->get<std::string_view>() != packageName) {
+                continue;
+            }
+
+            auto versionIter = item.find("version");
+            if (versionIter == item.end() || !versionIter->is_string()) {
+                return LINGLONG_ERR("Installed package found but version field is missing: "
+                                    + packageName);
+            }
+
+            driverInfo.packageVersion = versionIter->get<std::string_view>();
+            installed = true;
+            break;
+        }
+    } catch (const nlohmann::json::parse_error &e) {
+        return LINGLONG_ERR("Failed to parse installed package JSON: " + std::string(e.what()));
+    }
+
+    return std::make_pair(installed, driverInfo);
 }
 
 bool NVIDIADriverDetector::compareVersions(std::string_view v1, std::string_view v2) const noexcept

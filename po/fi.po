@@ -892,7 +892,7 @@ msgstr "Suorita vikasietotilassa (ottaa käyttöön kehitysmoduulit)"
 
 #: ../apps/ll-builder/src/main.cpp:797
 msgid "Specify extension(s) used by the app to run"
-msgstr ""
+msgstr "Määritä sovelluksen käyttämä(t) laajennukset"
 
 #: ../apps/ll-builder/src/main.cpp:803
 msgid "List built linyaps app"

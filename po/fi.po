@@ -619,6 +619,8 @@ msgstr "Määritä hakemiston tyyppi (layer tai bundle), oletus on layer"
 msgid ""
 "Specify the module type (binary or develop). Only works when type is layer"
 msgstr ""
+"Määritä moduulin tyyppi (binary tai develop). Toimii vain, kun tyyppi on "
+"layer"
 
 #: ../apps/ll-cli/src/main.cpp:638
 msgid ""
@@ -672,7 +674,7 @@ msgstr "Näytä virhesanomat (sanalliset lokit)"
 
 #: ../apps/ll-cli/src/main.cpp:676
 msgid "Don't output progress information"
-msgstr ""
+msgstr "Älä tulosta tietoja prosessin edistymisestä"
 
 #. groups for subcommands
 #: ../apps/ll-cli/src/main.cpp:693
@@ -792,6 +794,8 @@ msgid ""
 "If you found any problems during use\n"
 "You can report bugs to the linyaps team under this project: https://github.com/OpenAtom-Linyaps/linyaps/issues"
 msgstr ""
+"Jos havaitset ongelmia käytön aikana,\n"
+"Voit ilmoittaa vioista linyaps-tiimille täällä: https://github.com/OpenAtom-Linyaps/linyaps/issues"
 
 #: ../apps/ll-builder/src/main.cpp:724
 msgid "Create linyaps build template project"

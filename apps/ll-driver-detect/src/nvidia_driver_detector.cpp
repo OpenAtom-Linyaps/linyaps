@@ -43,9 +43,10 @@ utils::error::Result<GraphicsDriverInfo> NVIDIADriverDetector::detect()
 
     auto installedResult = checkPackageInstalled(linglongPackageName);
     if (!installedResult) {
-        return LINGLONG_ERR("Failed to check if package is installed: "
-                            + installedResult.error().message());
+        LogW("Failed to check if package is installed: {}", installedResult.error().message());
+        return packageInfoResult;
     }
+
     if (*installedResult) {
         auto upgradableResult = checkPackageUpgradable(linglongPackageName);
         if (!upgradableResult) {
@@ -140,7 +141,7 @@ NVIDIADriverDetector::checkPackageUpgradable(const std::string &packageName)
                             + installedDriverInfo.error().message());
     }
 
-    LogD("Driver {} can upgrade from {} to {}",
+    LogD("{} current version:{}, latest version {}",
          packageName,
          installedDriverInfo->packageVersion,
          upgradableDriverInfo->packageVersion);

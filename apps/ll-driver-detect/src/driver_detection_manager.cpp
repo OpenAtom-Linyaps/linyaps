@@ -15,6 +15,12 @@ DriverDetectionManager::DriverDetectionManager()
     registerDetectors();
 }
 
+DriverDetectionManager::DriverDetectionManager(
+  std::vector<std::unique_ptr<DriverDetector>> detectors)
+    : detectors_(std::move(detectors))
+{
+}
+
 utils::error::Result<std::vector<GraphicsDriverInfo>>
 DriverDetectionManager::detectAvailableDrivers()
 {

@@ -16,6 +16,8 @@ class DriverDetectionManager
 {
 public:
     DriverDetectionManager();
+    explicit DriverDetectionManager(std::vector<std::unique_ptr<DriverDetector>> detectors);
+
     virtual ~DriverDetectionManager() = default;
 
     // Detect all available graphics drivers on the system
@@ -24,9 +26,9 @@ public:
     linglong::utils::error::Result<void>
     installDriverPackage(const std::vector<GraphicsDriverInfo> &drivers);
 
-protected:
+private:
     // Register all available driver detectors
-    virtual void registerDetectors();
+    void registerDetectors();
     std::vector<std::unique_ptr<DriverDetector>> detectors_;
 };
 

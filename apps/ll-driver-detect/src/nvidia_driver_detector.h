@@ -28,7 +28,7 @@ public:
     utils::error::Result<bool> checkPackageUpgradable(const std::string &packageName) override;
 
     // Check if the driver package exists in repo
-    virtual utils::error::Result<GraphicsDriverInfo>
+    virtual utils::error::Result<std::pair<bool, GraphicsDriverInfo>>
     getPackageInfoFromRemoteRepo(const std::string &packageName);
 
     // Get the type of driver this detector handles
@@ -37,7 +37,7 @@ public:
 private:
     // Get driver version from the specified file path
     std::string getDriverVersion();
-    utils::error::Result<GraphicsDriverInfo>
+    utils::error::Result<std::pair<bool, GraphicsDriverInfo>>
     getInstalledGraphicsDriverInfo(const std::string &packageName) const;
     bool compareVersions(std::string_view v1, std::string_view v2) const noexcept;
 

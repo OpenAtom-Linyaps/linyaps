@@ -24,7 +24,7 @@ public:
     {
     }
 
-    MOCK_METHOD(linglong::utils::error::Result<GraphicsDriverInfo>,
+    MOCK_METHOD((linglong::utils::error::Result<std::pair<bool, GraphicsDriverInfo>>),
                 getPackageInfoFromRemoteRepo,
                 (const std::string &packageName),
                 (override));
@@ -63,11 +63,12 @@ TEST_F(NvidiaDriverDetectorTest, Detect_Success_PackageNotInstalled)
       std::string(detector.getDriverIdentify()) + "." + expectedVersion;
 
     EXPECT_CALL(detector, getPackageInfoFromRemoteRepo(expectedPackageName))
-      .WillOnce(Return(GraphicsDriverInfo{
-        .identify = detector.getDriverIdentify(),
-        .packageName = expectedPackageName,
-        .packageVersion = expectedVersion,
-      }));
+      .WillOnce(Return(std::make_pair(true,
+                                      GraphicsDriverInfo{
+                                        .identify = detector.getDriverIdentify(),
+                                        .packageName = expectedPackageName,
+                                        .packageVersion = expectedVersion,
+                                      })));
 
     EXPECT_CALL(detector, checkPackageInstalled(expectedPackageName)).WillOnce(Return(false));
 
@@ -90,11 +91,12 @@ TEST_F(NvidiaDriverDetectorTest, Detect_Success_PackageInstalled)
       std::string(detector.getDriverIdentify()) + "." + expectedVersion;
 
     EXPECT_CALL(detector, getPackageInfoFromRemoteRepo(expectedPackageName))
-      .WillOnce(Return(GraphicsDriverInfo{
-        .identify = detector.getDriverIdentify(),
-        .packageName = expectedPackageName,
-        .packageVersion = expectedVersion,
-      }));
+      .WillOnce(Return(std::make_pair(true,
+                                      GraphicsDriverInfo{
+                                        .identify = detector.getDriverIdentify(),
+                                        .packageName = expectedPackageName,
+                                        .packageVersion = expectedVersion,
+                                      })));
 
     EXPECT_CALL(detector, checkPackageInstalled(expectedPackageName)).WillOnce(Return(true));
     EXPECT_CALL(detector, checkPackageUpgradable(expectedPackageName)).WillOnce(Return(false));
@@ -116,11 +118,12 @@ TEST_F(NvidiaDriverDetectorTest, Detect_Success_PackageUpgradable)
       std::string(detector.getDriverIdentify()) + "." + expectedVersion;
 
     EXPECT_CALL(detector, getPackageInfoFromRemoteRepo(expectedPackageName))
-      .WillOnce(Return(GraphicsDriverInfo{
-        .identify = detector.getDriverIdentify(),
-        .packageName = expectedPackageName,
-        .packageVersion = upgradableExpectedVersion,
-      }));
+      .WillOnce(Return(std::make_pair(true,
+                                      GraphicsDriverInfo{
+                                        .identify = detector.getDriverIdentify(),
+                                        .packageName = expectedPackageName,
+                                        .packageVersion = upgradableExpectedVersion,
+                                      })));
 
     EXPECT_CALL(detector, checkPackageInstalled(expectedPackageName)).WillOnce(Return(true));
     EXPECT_CALL(detector, checkPackageUpgradable(expectedPackageName)).WillOnce(Return(true));

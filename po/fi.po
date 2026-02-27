@@ -375,6 +375,19 @@ msgid ""
 "# find all of runtime(s) of remote\n"
 "ll-cli search . --type=runtime"
 msgstr ""
+"Käyttö: ll-cli search [OPTIONS] KEYWORDS\n"
+"\n"
+"Esimerkki:\n"
+"# etsi palvelimelta sovellukse(t), alusta(t) tai ajoympäristö(t) hakusanoilla\n"
+"ll-cli search org.deepin.demo\n"
+"# etsi kaikki sovellukset palvelimelta\n"
+"ll-cli search \n"
+"# etsi alusta(t) palvelimelta\n"
+"ll-cli search . --type=base\n"
+"# etsi ajoympäristö palvelimelta nimellä\n"
+"ll-cli search org.deepin.base --type=runtime\n"
+"# etsi ajoympäristö(t) palvelimelta\n"
+"ll-cli search . --type=runtime"
 
 #: ../apps/ll-cli/src/main.cpp:385
 msgid "Specify the Keywords"
@@ -579,28 +592,28 @@ msgstr "Käyttö: ll-cli prune [OPTIONS]"
 
 #: ../apps/ll-cli/src/main.cpp:579
 msgid "Display the inspect information of the installed application"
-msgstr ""
+msgstr "Näytä asennetun sovelluksen tarkastustiedot"
 
 #: ../apps/ll-cli/src/main.cpp:581
 msgid "Usage: ll-cli inspect SUBCOMMAND [OPTIONS]"
-msgstr ""
+msgstr "Käyttö: ll-cli inspect SUBCOMMAND [OPTIONS]"
 
 #: ../apps/ll-cli/src/main.cpp:588
 msgid ""
 "Display the data(bundle) directory of the installed(running) application"
-msgstr ""
+msgstr "Näytä asennetun (käynnissä olevan) sovelluksen data(bundle)-hakemisto"
 
 #: ../apps/ll-cli/src/main.cpp:589
 msgid "Usage: ll-cli inspect dir [OPTIONS] APP"
-msgstr ""
+msgstr "Käyttö: ll-cli inspect dir [OPTIONS] APP"
 
 #: ../apps/ll-cli/src/main.cpp:593
 msgid "Specify the application ID, and it can also be reference"
-msgstr ""
+msgstr "Määritä sovellus id-tunnus, joka voi olla myös viittaus"
 
 #: ../apps/ll-cli/src/main.cpp:599
 msgid "Specify the directory type (layer or bundle),the default is layer"
-msgstr ""
+msgstr "Määritä hakemiston tyyppi (layer tai bundle), oletus on layer"
 
 #: ../apps/ll-cli/src/main.cpp:606
 msgid ""

@@ -31,7 +31,7 @@ PackageUpdateAction::PackageUpdateAction(
   bool depsOnly,
   PackageManager &pm,
   repo::OSTreeRepo &repo)
-    : Action(pm, repo, api::types::v1::CommonOptions{})
+    : Action(pm, repo, api::types::v1::CommonOptions{ })
     , toUpgrade(std::move(toUpgrade))
     , appOnly(appOnly)
     , depsOnly(depsOnly)

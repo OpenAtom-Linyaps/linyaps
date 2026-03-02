@@ -109,7 +109,7 @@ calculateDirectorySize(const std::filesystem::path &dir) noexcept
     for (const auto &entry : fsIter) {
         auto path = entry.path().string();
         if (entry.is_symlink(ec)) {
-            struct stat64 st{};
+            struct stat64 st{ };
 
             if (::lstat64(path.c_str(), &st) == -1) {
                 return LINGLONG_ERR(
@@ -124,7 +124,7 @@ calculateDirectorySize(const std::filesystem::path &dir) noexcept
         }
 
         if (entry.is_directory(ec)) {
-            struct stat64 st{};
+            struct stat64 st{ };
 
             if (::stat64(path.c_str(), &st) == -1) {
                 return LINGLONG_ERR(fmt::format("failed to get directory size: {}",

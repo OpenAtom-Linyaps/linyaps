@@ -75,7 +75,7 @@ public:
     void operator()() noexcept override
     {
         if constexpr (sizeof...(Args) > 0) {
-            func_with_args(std::make_index_sequence<sizeof...(Args)>{});
+            func_with_args(std::make_index_sequence<sizeof...(Args)>{ });
         } else {
             func();
         }

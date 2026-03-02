@@ -83,7 +83,7 @@ void handleSig() noexcept
         sigaddset(&blocking_mask, sig);
     }
 
-    struct sigaction sa{};
+    struct sigaction sa{ };
 
     sa.sa_handler = [](int sig) -> void {
         cleanAndExit(128 + sig);
@@ -462,11 +462,11 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv) // NOLINT
             if (ec) {
                 std::cerr << "get layer directory " << layerDir << " error:" << ec.message()
                           << " code:" << ec.value() << std::endl;
-                return {};
+                return { };
             }
 
             std::cerr << layerDir << " not exist." << std::endl;
-            return {};
+            return { };
         }
 
         // ignore error code when directory doesn't exist
@@ -479,7 +479,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv) // NOLINT
         }
 
         std::cerr << "layer runtime doesn't exist." << std::endl;
-        return {};
+        return { };
     };
 
     auto rootfs = containerBundle / "rootfs";

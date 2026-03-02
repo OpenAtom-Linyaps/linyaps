@@ -54,7 +54,7 @@ TEST_F(RepoTest, exportDir)
     std::string remoteRepoName = "repo";
 
     // 初始化配置和repo对象
-    auto config = api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 };
+    auto config = api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = { }, .version = 2 };
     QDir repoDir = QString(repoPath.c_str());
     auto ostreeRepo = std::make_unique<MockOstreeRepo>(repoDir, config);
 
@@ -265,7 +265,7 @@ public:
     OSTreeRepoMock(const std::filesystem::path &path)
         : repo::OSTreeRepo(
             QDir(path.c_str()),
-            api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 })
+            api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = { }, .version = 2 })
     {
     }
 
@@ -396,7 +396,7 @@ TEST(OSTreeRepoTest, searchRemote_Empty)
     auto client = apiClient_create_with_base_path(repoConfig.url.c_str(), nullptr, nullptr);
     auto clientAPI = new MockClientAPIWrapper(client);
 
-    std::vector<AppData> test_data = {};
+    std::vector<AppData> test_data = { };
     auto resp = create_response_from_data(test_data);
 
     EXPECT_CALL(*clientAPI, fuzzySearch(_))
@@ -445,7 +445,7 @@ public:
     OSTreeRepoMock(const std::filesystem::path &path)
         : repo::OSTreeRepo(
             QDir(path.c_str()),
-            api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 })
+            api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = { }, .version = 2 })
     {
     }
 
@@ -540,11 +540,11 @@ TEST(OSTreeRepoTest, matchRemoteByPriority_FallbackToLowerPriority)
       }));
 
     EXPECT_CALL(mockRepo, searchRemote(_, _, true))
-      .WillOnce(Return(std::vector<api::types::v1::PackageInfoV2>{}))
+      .WillOnce(Return(std::vector<api::types::v1::PackageInfoV2>{ }))
       .WillOnce(Return(std::vector<api::types::v1::PackageInfoV2>{
         api::types::v1::PackageInfoV2{ .id = "com.example.app", .version = "1.0.0" },
       }))
-      .WillOnce(Return(std::vector<api::types::v1::PackageInfoV2>{}));
+      .WillOnce(Return(std::vector<api::types::v1::PackageInfoV2>{ }));
 
     auto result = repo.matchRemoteByPriority(*fuzzyRef);
 
@@ -576,9 +576,9 @@ TEST(OSTreeRepoTest, matchRemoteByPriority_AllReposEmpty)
       }));
 
     EXPECT_CALL(mockRepo, searchRemote(_, _, true))
-      .WillOnce(Return(std::vector<api::types::v1::PackageInfoV2>{}))
-      .WillOnce(Return(std::vector<api::types::v1::PackageInfoV2>{}))
-      .WillOnce(Return(std::vector<api::types::v1::PackageInfoV2>{}));
+      .WillOnce(Return(std::vector<api::types::v1::PackageInfoV2>{ }))
+      .WillOnce(Return(std::vector<api::types::v1::PackageInfoV2>{ }))
+      .WillOnce(Return(std::vector<api::types::v1::PackageInfoV2>{ }));
 
     auto result = repo.matchRemoteByPriority(*fuzzyRef);
 
@@ -624,7 +624,7 @@ TEST(OSTreeRepoTest, matchRemoteByPriority_NoReposConfigured)
     auto fuzzyRef = package::FuzzyReference::parse("com.example.app");
 
     EXPECT_CALL(mockRepo, getPriorityGroupedRepos())
-      .WillOnce(Return(std::vector<std::vector<api::types::v1::Repo>>{}));
+      .WillOnce(Return(std::vector<std::vector<api::types::v1::Repo>>{ }));
 
     auto result = repo.matchRemoteByPriority(*fuzzyRef);
 
@@ -653,7 +653,7 @@ TEST(OSTreeRepoTest, matchRemoteByPriority_UseHighestPriority)
       }));
 
     EXPECT_CALL(mockRepo, searchRemote(_, _, true))
-      .WillOnce(Return(std::vector<api::types::v1::PackageInfoV2>{}))
+      .WillOnce(Return(std::vector<api::types::v1::PackageInfoV2>{ }))
       .WillOnce(Return(std::vector<api::types::v1::PackageInfoV2>{
         api::types::v1::PackageInfoV2{ .id = "com.example.app", .version = "2.0.0" },
       }))

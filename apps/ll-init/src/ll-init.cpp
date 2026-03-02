@@ -94,8 +94,8 @@ public:
     [[nodiscard]] const sigset_t &current_sigset() const noexcept { return cur_set; }
 
 private:
-    sigset_t cur_set{};
-    sigset_t old_set{};
+    sigset_t cur_set{ };
+    sigset_t old_set{ };
 };
 
 class file_descriptor_wrapper
@@ -182,7 +182,7 @@ template <std::size_t N>
 constexpr auto make_array(const char (&str)[N]) noexcept // NOLINT
 {
     static_assert(N > 0, "N must be greater than 0");
-    std::array<char, N - 1> arr{};
+    std::array<char, N - 1> arr{ };
     for (std::size_t i = 0; i < N - 1; ++i) {
         arr[i] = str[i];
     }
@@ -194,7 +194,7 @@ std::pair<struct sockaddr_un, socklen_t> get_socket_address() noexcept
 {
     constexpr auto fs_addr{ make_array("/run/linglong/init/socket") };
 
-    struct sockaddr_un addr{};
+    struct sockaddr_un addr{ };
     addr.sun_family = AF_UNIX;
 
     std::copy(fs_addr.cbegin(), fs_addr.cend(), &addr.sun_path[0]);
@@ -297,7 +297,7 @@ bool handle_sigevent(const file_descriptor_wrapper &sigfd,
                      struct WaitPidResult &waitChild) noexcept
 {
     while (true) {
-        signalfd_siginfo info{};
+        signalfd_siginfo info{ };
         auto ret = ::read(sigfd, &info, sizeof(info));
         if (ret == -1) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
@@ -318,7 +318,7 @@ bool handle_sigevent(const file_descriptor_wrapper &sigfd,
         }
 
         while (true) {
-            int status{};
+            int status{ };
             auto ret = ::waitpid(-1, &status, WNOHANG);
             if (ret == 0 || (ret == -1 && errno == ECHILD)) {
                 break;
@@ -388,7 +388,7 @@ int handle_timerfdevent(const file_descriptor_wrapper &timerfd) noexcept
     // we don't care how many times we read from the timerfd
     // just traversal the /proc directory once
     while (true) {
-        uint64_t expir{};
+        uint64_t expir{ };
         auto ret = ::read(timerfd, &expir, sizeof(expir));
         if (ret == -1) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
@@ -410,7 +410,7 @@ file_descriptor_wrapper start_timer(const file_descriptor_wrapper &epfd) noexcep
         return timerfd;
     }
 
-    struct itimerspec timer_spec{};
+    struct itimerspec timer_spec{ };
     auto *interval = ::getenv("LINYAPS_INIT_WAIT_INTERVAL");
     constexpr auto default_interval{ 3 };
     if (interval != nullptr) {
@@ -433,14 +433,14 @@ file_descriptor_wrapper start_timer(const file_descriptor_wrapper &epfd) noexcep
     auto ret = ::timerfd_settime(timerfd, 0, &timer_spec, nullptr);
     if (ret == -1) {
         print_sys_error("Failed to set timerfd");
-        return {};
+        return { };
     }
 
     struct epoll_event timer_ev{ .events = EPOLLIN | EPOLLET, .data = { .fd = timerfd } }; // NOLINT
     ret = ::epoll_ctl(epfd, EPOLL_CTL_ADD, timerfd, &timer_ev);
     if (ret == -1) {
         print_sys_error("Failed to add timerfd to epoll");
-        return {};
+        return { };
     }
 
     return timerfd;
@@ -514,7 +514,7 @@ bool handle_client(const file_descriptor_wrapper &unix_socket, const sigConf &co
 
     std::string command_buffer;
     command_buffer.reserve(arg_len);
-    std::array<char, 4096> buffer{};
+    std::array<char, 4096> buffer{ };
     while (true) {
         auto readBytes = ::recv(client, buffer.data(), buffer.size(), 0);
         if (readBytes < 0) {
@@ -642,7 +642,7 @@ int main(int argc, char **argv) // NOLINT
 
     file_descriptor_wrapper timerfd;
     bool done{ false };
-    std::array<struct epoll_event, 10> events{};
+    std::array<struct epoll_event, 10> events{ };
     auto waitTarget = child;
     int childExitCode = 0;
     while (true) {

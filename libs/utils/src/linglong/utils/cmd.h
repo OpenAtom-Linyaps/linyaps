@@ -25,7 +25,7 @@ public:
 
     virtual bool exists() noexcept;
     virtual utils::error::Result<std::string>
-    exec(const std::vector<std::string> &args = {}) noexcept;
+    exec(const std::vector<std::string> &args = { }) noexcept;
     virtual Cmd &setEnv(const std::string &name, const std::string &value) noexcept;
     virtual Cmd &toStdin(std::string content) noexcept;
 

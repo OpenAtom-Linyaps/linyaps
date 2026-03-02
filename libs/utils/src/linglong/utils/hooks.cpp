@@ -154,7 +154,7 @@ utils::error::Result<void> InstallHookManager::executeInstallHooks(int fd) noexc
     std::ostringstream oss;
     oss << "/proc/" << getpid() << "/fd/" << fd;
 
-    std::array<char, PATH_MAX + 1> pathBuf{};
+    std::array<char, PATH_MAX + 1> pathBuf{ };
     auto size = readlink(oss.str().c_str(), pathBuf.data(), PATH_MAX);
 
     if (size == -1) {

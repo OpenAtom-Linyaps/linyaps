@@ -151,7 +151,7 @@ utils::error::Result<void> FileLock::lock(LockType type) noexcept
           fmt::format("use relock to change lock type from {} to {}", type_, type));
     }
 
-    struct flock fl{};
+    struct flock fl{ };
     fl.l_type = (type == LockType::Write) ? F_WRLCK : F_RDLCK;
     fl.l_whence = SEEK_SET;
     fl.l_start = 0;
@@ -191,7 +191,7 @@ utils::error::Result<bool> FileLock::tryLock(LockType type) noexcept
           fmt::format("use relock to change lock type from {} to {}", type_, type));
     }
 
-    struct flock fl{};
+    struct flock fl{ };
     fl.l_type = (type == LockType::Write) ? F_WRLCK : F_RDLCK;
     fl.l_whence = SEEK_SET;
     fl.l_start = 0;
@@ -230,7 +230,7 @@ utils::error::Result<void> FileLock::unlock() noexcept
         return LINGLONG_OK;
     }
 
-    struct flock fl{};
+    struct flock fl{ };
     fl.l_type = F_UNLCK;
     fl.l_whence = SEEK_SET;
     fl.l_start = 0;
@@ -262,7 +262,7 @@ utils::error::Result<void> FileLock::relock(LockType new_type) noexcept
         return LINGLONG_ERR(ret);
     }
 
-    struct flock fl{};
+    struct flock fl{ };
     fl.l_type = (new_type == LockType::Write) ? F_WRLCK : F_RDLCK;
     fl.l_whence = SEEK_SET;
     fl.l_start = 0;

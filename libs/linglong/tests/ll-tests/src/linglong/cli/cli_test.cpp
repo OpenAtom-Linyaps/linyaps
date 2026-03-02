@@ -28,7 +28,7 @@ public:
     MockRepo(const std::filesystem::path &path)
         : repo::OSTreeRepo(
             QDir(path.c_str()),
-            api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 })
+            api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = { }, .version = 2 })
     {
     }
 
@@ -211,7 +211,7 @@ TEST_F(CliTest, listUpgradableMultiApp)
 
 TEST_F(CliTest, listUpgradableEmpty)
 {
-    EXPECT_CALL(*repo, listLocal()).WillOnce(Return(std::vector<api::types::v1::PackageInfoV2>{}));
+    EXPECT_CALL(*repo, listLocal()).WillOnce(Return(std::vector<api::types::v1::PackageInfoV2>{ }));
 
     EXPECT_CALL(*printer, printUpgradeList(IsEmpty())).WillOnce(Return());
     cli->list(cli::ListOptions{ .showUpgradeList = true });

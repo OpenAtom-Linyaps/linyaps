@@ -369,7 +369,7 @@ void PackageManager::deferredUninstall() noexcept
 
         auto [node, isNew] =
           uninstalledLayers.try_emplace(ref->toString(),
-                                        std::vector<api::types::v1::RepositoryCacheLayersItem>{});
+                                        std::vector<api::types::v1::RepositoryCacheLayersItem>{ });
         node->second.push_back(item);
     }
 
@@ -1263,7 +1263,7 @@ PackageManager::needToUpgrade(const package::FuzzyReference &fuzzyRef,
         return LINGLONG_ERR(remoteRef);
     }
 
-    auto installModules = std::vector<std::string>{};
+    auto installModules = std::vector<std::string>{ };
     std::vector<std::string> modules;
     if (!local) {
         modules = { "binary" };

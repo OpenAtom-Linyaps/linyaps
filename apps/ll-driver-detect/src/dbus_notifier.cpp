@@ -68,7 +68,7 @@ DBusNotifier::sendInteractiveNotification(const NotificationRequest &request)
             QObject::disconnect(closeConn);
             QObject::disconnect(actionConn);
         }
-    } signalGuard{ {}, {} };
+    } signalGuard{ { }, { } };
 
     // 连接信号处理函数
     signalGuard.closeConn =
@@ -187,12 +187,12 @@ utils::error::Result<quint32> DBusNotifier::sendDBusNotification(const QString &
 
 void DBusNotifier::forwardActionInvoked(quint32 ID, QString action)
 {
-    Q_EMIT actionInvoked(ID, action, QPrivateSignal{});
+    Q_EMIT actionInvoked(ID, action, QPrivateSignal{ });
 }
 
 void DBusNotifier::forwardNotificationClosed(quint32 ID, quint32 reason)
 {
-    Q_EMIT notificationClosed(ID, reason, QPrivateSignal{});
+    Q_EMIT notificationClosed(ID, reason, QPrivateSignal{ });
 }
 
 } // namespace linglong::driver::detect

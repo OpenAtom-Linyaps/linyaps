@@ -84,7 +84,7 @@ utils::error::Result<std::vector<detail::SubuidRange>> getSubuidRange(uid_t uid,
     const auto *filename = isUid ? "/etc/subuid" : "/etc/subgid";
     std::ifstream file(filename);
     if (!file.is_open()) {
-        return {};
+        return { };
     }
 
     return detail::parseSubuidRanges(file, uid, *username);
@@ -163,7 +163,7 @@ utils::error::Result<int> runInNamespace(int argc, char **argv)
         return -1;
     };
 
-    std::array<int, 2> pair{};
+    std::array<int, 2> pair{ };
     if (socketpair(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0, pair.data()) == -1) {
         return LINGLONG_ERR(
           fmt::format("socketpair failed: {}", common::error::errorString(errno)));

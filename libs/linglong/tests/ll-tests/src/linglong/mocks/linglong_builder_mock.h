@@ -20,7 +20,7 @@ public:
 private:
     static linglong::repo::OSTreeRepo &initTempRepo()
     {
-        auto tempRepoConfig = api::types::v1::RepoConfigV2{};
+        auto tempRepoConfig = api::types::v1::RepoConfigV2{ };
         char tempPath[] = "/tmp/linglong-builder-test-XXXXXX";
         std::string testDir = mkdtemp(tempPath);
         static linglong::repo::OSTreeRepo repo(QDir(testDir.c_str()), tempRepoConfig);

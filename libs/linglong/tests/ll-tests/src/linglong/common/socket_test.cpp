@@ -34,7 +34,7 @@ TEST_F(SocketFdTest, NormalCrossProcessTransfer)
 
     if (pid == 0) {
         close(sv[1]);
-        std::array<int, 2> pipefds{};
+        std::array<int, 2> pipefds{ };
         ASSERT_EQ(pipe(pipefds.data()), 0);
 
         ASSERT_NE(write(pipefds[1], secret.data(), secret.size()), -1);
@@ -118,10 +118,10 @@ TEST_F(SocketFdTest, PayloadBufferTruncation)
 
 TEST_F(SocketFdTest, SignalInterruptionRecovery)
 {
-    struct sigaction sa{};
+    struct sigaction sa{ };
     sa.sa_handler = []([[maybe_unused]] int sig) -> void { };
     sigemptyset(&sa.sa_mask);
-    struct sigaction oldsa{};
+    struct sigaction oldsa{ };
     ASSERT_NE(-1, sigaction(SIGUSR1, &sa, &oldsa));
 
     auto child = fork();

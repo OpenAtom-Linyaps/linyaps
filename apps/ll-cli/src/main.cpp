@@ -45,7 +45,7 @@ using namespace linglong::cli;
 
 namespace {
 
-void startProcess(const QString &program, const QStringList &args = {})
+void startProcess(const QString &program, const QStringList &args = { })
 {
     QProcess process;
     auto envs = process.environment();
@@ -167,7 +167,7 @@ ll-cli run org.deepin.demo -- bash -x /path/to/bash/script)"));
                 "Input parameter is invalid, please input valid parameter instead") };
           }
 
-          return {};
+          return { };
       });
     cliRun
       ->add_option("--base", runOptions.base, _("Specify the base used by the application to run"))
@@ -656,18 +656,18 @@ You can report bugs to the linyaps team under this project: https://github.com/O
                            _("Don't output progress information"));
 
     // subcommand options
-    RunOptions runOptions{};
-    EnterOptions enterOptions{};
-    KillOptions killOptions{};
-    InstallOptions installOptions{};
-    UpgradeOptions upgradeOptions{};
-    SearchOptions searchOptions{};
-    UninstallOptions uninstallOptions{};
-    ListOptions listOptions{};
-    InfoOptions infoOptions{};
-    ContentOptions contentOptions{};
-    RepoOptions repoOptions{};
-    InspectOptions inspectOptions{};
+    RunOptions runOptions{ };
+    EnterOptions enterOptions{ };
+    KillOptions killOptions{ };
+    InstallOptions installOptions{ };
+    UpgradeOptions upgradeOptions{ };
+    SearchOptions searchOptions{ };
+    UninstallOptions uninstallOptions{ };
+    ListOptions listOptions{ };
+    InfoOptions infoOptions{ };
+    ContentOptions contentOptions{ };
+    RepoOptions repoOptions{ };
+    InspectOptions inspectOptions{ };
 
     // groups for subcommands
     auto *CliBuildInGroup = _("Managing installed applications and runtimes");

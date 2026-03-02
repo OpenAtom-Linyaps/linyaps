@@ -69,12 +69,12 @@ struct argOption
 
 std::string resolveRealPath(const std::string &source) noexcept
 {
-    std::array<char, PATH_MAX + 1> resolvedPath{};
+    std::array<char, PATH_MAX + 1> resolvedPath{ };
 
     auto *ptr = ::realpath(source.data(), resolvedPath.data());
     if (ptr == nullptr) {
         std::cerr << "failed to resolve path:" << ::strerror(errno) << std::endl;
-        return {};
+        return { };
     }
 
     return { ptr };
@@ -89,7 +89,7 @@ std::size_t getChunkSize(std::size_t bundleSize) noexcept
     }
 
     std::size_t block_size{ 0 };
-    struct statvfs fs_info{};
+    struct statvfs fs_info{ };
     if (statvfs(".", &fs_info) > 0) {
         block_size = fs_info.f_bsize;
     }
@@ -109,7 +109,7 @@ std::size_t getChunkSize(std::size_t bundleSize) noexcept
 std::string calculateDigest(int fd, std::size_t bundleOffset, std::size_t bundleLength) noexcept
 {
     digest::SHA256 sha256;
-    std::array<std::byte, 32> digest{};
+    std::array<std::byte, 32> digest{ };
     auto *mem = mmap(nullptr, bundleLength, PROT_READ, MAP_PRIVATE, fd, bundleOffset);
     if (mem != MAP_FAILED) {
         posix_madvise(mem, bundleLength, POSIX_FADV_WILLNEED | POSIX_FADV_SEQUENTIAL);
@@ -129,7 +129,7 @@ std::string calculateDigest(int fd, std::size_t bundleOffset, std::size_t bundle
         auto *buf = ::operator new(chunkSize, alignment, std::nothrow);
         if (buf == nullptr) {
             std::cerr << "failed to allocate aligned memory" << std::endl;
-            return {};
+            return { };
         }
 
         auto deleter = [alignment](void *ptr) noexcept {
@@ -150,7 +150,7 @@ std::string calculateDigest(int fd, std::size_t bundleOffset, std::size_t bundle
                 }
 
                 std::cerr << "read uab error:" << ::strerror(errno) << std::endl;
-                return {};
+                return { };
             }
 
             if (bytesRead == 0) {
@@ -204,7 +204,7 @@ std::optional<std::filesystem::path> find_fusermount() noexcept
                 continue;
             }
 
-            struct stat sb{};
+            struct stat sb{ };
             if (stat(entry.path().c_str(), &sb) == -1) {
                 std::cerr << "stat error: " << strerror(errno) << std::endl;
                 continue;
@@ -369,7 +369,7 @@ void handleSig() noexcept
         sigaddset(&blocking_mask, sig);
     }
 
-    struct sigaction sa{};
+    struct sigaction sa{ };
 
     sa.sa_handler = [](int sig) -> void {
         // TODO: maybe not async safe, find a better way to handle signal
@@ -428,7 +428,7 @@ getMetaInfo(const lightElf::native_elf &elf) noexcept
     std::string content(metaSh->sh_size, '\0');
     if (::pread(elf.underlyingFd(), content.data(), metaSh->sh_size, metaSh->sh_offset) == -1) {
         std::cerr << "read failed:" << ::strerror(errno) << std::endl;
-        return {};
+        return { };
     }
 
     std::optional<linglong::api::types::v1::UabMetaInfo> meta;
@@ -601,7 +601,7 @@ argOption parseArgs(const std::vector<std::string_view> &args)
 
 int mountSelf(const lightElf::native_elf &elf,
               const linglong::api::types::v1::UabMetaInfo &metaInfo,
-              const std::filesystem::path &mp = {}) noexcept
+              const std::filesystem::path &mp = { }) noexcept
 {
     if (mountFlag.load(std::memory_order_relaxed)) {
         std::cout << "bundle already has been mounted" << std::endl;

@@ -34,7 +34,7 @@ public:
     MockRepo(const std::filesystem::path &path)
         : repo::OSTreeRepo(
             QDir(path.c_str()),
-            api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 })
+            api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = { }, .version = 2 })
     {
     }
 
@@ -113,7 +113,7 @@ TEST_F(ActionTest, InstallNewApp)
     };
 
     EXPECT_CALL(*repo, listLocalBy(_))
-      .WillOnce(Return(std::vector<api::types::v1::RepositoryCacheLayersItem>{}));
+      .WillOnce(Return(std::vector<api::types::v1::RepositoryCacheLayersItem>{ }));
 
     auto result = mockAction->testActionOperation(packageInfo, false);
     ASSERT_TRUE(result.has_value());

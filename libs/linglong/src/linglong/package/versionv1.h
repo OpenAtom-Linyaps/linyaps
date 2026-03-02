@@ -26,7 +26,7 @@ public:
     uint64_t major = 0;
     uint64_t minor = 0;
     uint64_t patch = 0;
-    std::optional<uint64_t> tweak = {};
+    std::optional<uint64_t> tweak = { };
     [[nodiscard]] bool semanticMatch(const std::string &versionStr) const noexcept;
 
     bool operator==(const VersionV1 &that) const noexcept;

@@ -22,13 +22,13 @@ tl::expected<SocketData, std::string> recvFdWithPayload(int socketFd, std::size_
     }
 
     std::string buffer(bufSize, '\0');
-    struct iovec iov{};
+    struct iovec iov{ };
     iov.iov_base = buffer.data();
     iov.iov_len = buffer.size();
 
-    alignas(struct cmsghdr) std::array<char, CMSG_SPACE(sizeof(int))> control_buf{};
+    alignas(struct cmsghdr) std::array<char, CMSG_SPACE(sizeof(int))> control_buf{ };
 
-    struct msghdr msg{};
+    struct msghdr msg{ };
     msg.msg_iov = &iov;
     msg.msg_iovlen = 1;
     msg.msg_control = control_buf.data();
@@ -99,15 +99,15 @@ tl::expected<void, std::string> sendFdWithPayload(int socketFd, int fd, const st
     bool fdSent{ false };
 
     while (totalSent < payload.size() || !fdSent) {
-        struct msghdr msg{};
-        struct iovec iov{};
+        struct msghdr msg{ };
+        struct iovec iov{ };
 
         iov.iov_base = const_cast<char *>(payload.data() + totalSent);
         iov.iov_len = payload.size() - totalSent;
         msg.msg_iov = &iov;
         msg.msg_iovlen = 1;
 
-        alignas(struct cmsghdr) std::array<std::byte, CMSG_SPACE(sizeof(int))> control_buf{};
+        alignas(struct cmsghdr) std::array<std::byte, CMSG_SPACE(sizeof(int))> control_buf{ };
         if (!fdSent) {
             msg.msg_control = control_buf.data();
             msg.msg_controllen = control_buf.size();
@@ -136,7 +136,7 @@ tl::expected<void, std::string> sendFdWithPayload(int socketFd, int fd, const st
         }
     }
 
-    return {};
+    return { };
 }
 
 } // namespace linglong::common::socket

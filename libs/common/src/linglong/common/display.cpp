@@ -72,7 +72,7 @@ tl::expected<std::filesystem::path, std::string> getXOrgDisplay(std::string_view
         return socketPath;
     }
 
-    return std::filesystem::path{};
+    return std::filesystem::path{ };
 }
 
 tl::expected<std::filesystem::path, std::string> getXOrgAuthFile(std::string_view authFile) noexcept

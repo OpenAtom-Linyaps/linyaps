@@ -39,7 +39,7 @@ void catchUnixSignals(std::initializer_list<int> quitSignals)
     for (auto sig : quitSignals)
         sigaddset(&blocking_mask, sig);
 
-    struct sigaction sa{};
+    struct sigaction sa{ };
 
     sa.sa_handler = handler;
     sa.sa_mask = blocking_mask;
@@ -128,7 +128,7 @@ bool linglongInstalled()
     return QCoreApplication::applicationDirPath() == BINDIR;
 }
 
-auto globalTaskControl = GlobalTaskControl{};
+auto globalTaskControl = GlobalTaskControl{ };
 
 const GlobalTaskControl *GlobalTaskControl::instance()
 {

@@ -40,7 +40,7 @@ QVariant decodeQDBusArgument(const QVariant &v)
     }
     default:
         Q_ASSERT(false);
-        return QVariant{};
+        return QVariant{ };
     }
 }
 

@@ -31,7 +31,7 @@ public:
       std::pair<api::types::v1::ExtensionDefine, std::reference_wrapper<RuntimeLayer>>;
 
     utils::error::Result<void>
-    resolveLayer(const std::vector<std::string> &modules = {},
+    resolveLayer(const std::vector<std::string> &modules = { },
                  const std::optional<std::string> &subRef = std::nullopt);
 
     const api::types::v1::RepositoryCacheLayersItem &getCachedItem() const { return cachedItem; }
@@ -77,7 +77,7 @@ public:
     ~RunContext();
 
     utils::error::Result<void> resolve(const linglong::package::Reference &runnable,
-                                       const ResolveOptions &opts = ResolveOptions{});
+                                       const ResolveOptions &opts = ResolveOptions{ });
 
     utils::error::Result<void> resolve(const api::types::v1::BuilderProject &target,
                                        const std::filesystem::path &buildOutput);

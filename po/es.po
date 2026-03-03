@@ -1086,25 +1086,27 @@ msgstr "Solo instalar controladores sin notificaciones"
 
 #: ../apps/ll-driver-detect/src/main.cpp:216
 msgid "Graphics Driver Available"
-msgstr ""
+msgstr "Controlador de gráficos disponible"
 
 #: ../apps/ll-driver-detect/src/main.cpp:217
 msgid ""
 "Graphics driver package is available that can improve performance for some Linyaps applications.\n"
 "Would you like to install it?"
 msgstr ""
+"Hay disponible un paquete de controladores gráficos que puede mejorar el "
+"rendimiento de algunas aplicaciones Linyaps. ¿Quieres instalarlo?"
 
 #: ../apps/ll-driver-detect/src/main.cpp:221
 msgid "Install Now"
-msgstr ""
+msgstr "Instalar ahora"
 
 #: ../apps/ll-driver-detect/src/main.cpp:221
 msgid "Don't Remind"
-msgstr ""
+msgstr "No recordar"
 
 #: ../apps/ll-driver-detect/src/main.cpp:247
 msgid "Graphics Driver Installation Completed"
-msgstr ""
+msgstr "Instalación del controlador de gráficos completada"
 
 #: ../apps/ll-driver-detect/src/main.cpp:249
 msgid ""

@@ -204,7 +204,7 @@ msgstr "Ejecute la aplicación en modo privilegiado"
 
 #: ../apps/ll-cli/src/main.cpp:215
 msgid "Add capabilities to the application"
-msgstr ""
+msgstr "Añadir capacidades a la aplicación"
 
 #: ../apps/ll-cli/src/main.cpp:219 ../apps/ll-cli/src/main.cpp:250
 msgid "Run commands in a running sandbox"
@@ -329,7 +329,7 @@ msgstr "Desinstalar un módulo especificado"
 
 #: ../apps/ll-cli/src/main.cpp:331
 msgid "Force uninstall base or runtime"
-msgstr ""
+msgstr "Forzar la desinstalación de la base o el tiempo de ejecución"
 
 #. below options are used for compatibility with old ll-cli
 #: ../apps/ll-cli/src/main.cpp:334
@@ -358,7 +358,7 @@ msgstr ""
 
 #: ../apps/ll-cli/src/main.cpp:360
 msgid "Only upgrade dependencies of application"
-msgstr ""
+msgstr "Actualice únicamente las dependencias de la aplicación"
 
 #: ../apps/ll-cli/src/main.cpp:370
 msgid ""
@@ -589,7 +589,7 @@ msgstr "Uso: ll-cli prune [OPCIONES]"
 
 #: ../apps/ll-cli/src/main.cpp:579
 msgid "Display the inspect information of the installed application"
-msgstr ""
+msgstr "Muestra la información de inspección de la aplicación instalada"
 
 #: ../apps/ll-cli/src/main.cpp:581
 msgid "Usage: ll-cli inspect SUBCOMMAND [OPTIONS]"
@@ -599,6 +599,8 @@ msgstr ""
 msgid ""
 "Display the data(bundle) directory of the installed(running) application"
 msgstr ""
+"Muestra el directorio de datos (paquete) de la aplicación instalada (en "
+"ejecución)"
 
 #: ../apps/ll-cli/src/main.cpp:589
 msgid "Usage: ll-cli inspect dir [OPTIONS] APP"
@@ -611,6 +613,8 @@ msgstr ""
 #: ../apps/ll-cli/src/main.cpp:599
 msgid "Specify the directory type (layer or bundle),the default is layer"
 msgstr ""
+"Especifique el tipo de directorio (capa o paquete), el valor predeterminado "
+"es capa"
 
 #: ../apps/ll-cli/src/main.cpp:606
 msgid ""
@@ -669,7 +673,7 @@ msgstr "Mostrar información de depuración (registros detallados)"
 
 #: ../apps/ll-cli/src/main.cpp:676
 msgid "Don't output progress information"
-msgstr ""
+msgstr "No mostrar información de progreso"
 
 #. groups for subcommands
 #: ../apps/ll-cli/src/main.cpp:693
@@ -707,7 +711,7 @@ msgstr "Nombre"
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:73
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:136
 msgid "Version"
-msgstr ""
+msgstr "Versión"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:74
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:137
@@ -888,7 +892,7 @@ msgstr "Ejecutar en modo depuración (habilitar módulo de desarrollo)"
 
 #: ../apps/ll-builder/src/main.cpp:797
 msgid "Specify extension(s) used by the app to run"
-msgstr ""
+msgstr "Especifique las extensiones que utiliza la aplicación para ejecutarse"
 
 #: ../apps/ll-builder/src/main.cpp:803
 msgid "List built linyaps app"
@@ -908,7 +912,7 @@ msgstr "Uso: ll-builder remove [OPCIONES] [APP...]"
 
 #: ../apps/ll-builder/src/main.cpp:809
 msgid "Do not clean objects files before remove apps"
-msgstr ""
+msgstr "No limpie los archivos de objetos antes de eliminar aplicaciones"
 
 #. build export
 #: ../apps/ll-builder/src/main.cpp:813
@@ -1070,15 +1074,15 @@ msgstr "está iniciándose"
 #. Define command line options
 #: ../apps/ll-driver-detect/src/main.cpp:104
 msgid "Force installation even if recently reminded"
-msgstr ""
+msgstr "Forzar la instalación incluso si se le recordó recientemente"
 
 #: ../apps/ll-driver-detect/src/main.cpp:107
 msgid "Check for drivers only without installing or notifying"
-msgstr ""
+msgstr "Comprobar solo los controladores sin instalarlos ni notificarlos"
 
 #: ../apps/ll-driver-detect/src/main.cpp:110
 msgid "Only install drivers without notifications"
-msgstr ""
+msgstr "Solo instalar controladores sin notificaciones"
 
 #: ../apps/ll-driver-detect/src/main.cpp:216
 msgid "Graphics Driver Available"

@@ -159,7 +159,7 @@ utils::error::Result<bool> UABFile::verify() noexcept
           fmt::format("couldn't find bundle section which named {}", bundleSection));
     }
 
-    std::array<char, 4096> buf{};
+    std::array<char, 4096> buf{ };
     std::string digest;
     QCryptographicHash cryptor{ QCryptographicHash::Sha256 };
 
@@ -281,7 +281,7 @@ utils::error::Result<std::filesystem::path> UABFile::extractSignData() noexcept
     auto signSection = getSectionHeader("linglong.bundle.sign");
     if (!signSection) {
         LogI("couldn't get sign data: {} skip", signSection.error());
-        return {};
+        return { };
     }
 
     std::error_code ec;
@@ -334,7 +334,7 @@ utils::error::Result<std::filesystem::path> UABFile::extractSignData() noexcept
 
     auto selfFd = handle();
     auto totalBytes = signSection->sh_size;
-    std::array<unsigned char, 4096> buf{};
+    std::array<unsigned char, 4096> buf{ };
     while (totalBytes > 0) {
         auto bytesRead = totalBytes > buf.size() ? buf.size() : totalBytes;
         auto readBytes = ::read(selfFd, buf.data(), bytesRead);
@@ -413,7 +413,7 @@ utils::error::Result<void> UABFile::saveErofsToFile(const std::string &path)
     auto bundleLength = bundleSh->sh_size;
     // 流式保存bundleSection到path
     std::ofstream ofs(path, std::ios::binary);
-    std::array<char, 4096> buf{};
+    std::array<char, 4096> buf{ };
     while (bundleLength > 0) {
         auto readBytes = bundleLength > buf.size() ? buf.size() : bundleLength;
         auto bytesRead = ::read(handle(), buf.data(), readBytes);

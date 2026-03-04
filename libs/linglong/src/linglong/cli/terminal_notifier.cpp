@@ -59,7 +59,7 @@ TerminalNotifier::request(const api::types::v1::InteractionRequest &request)
 
     std::string action;
     std::cin >> action;
-    auto ret = api::types::v1::InteractionReply{};
+    auto ret = api::types::v1::InteractionReply{ };
     if (needReply) {
         ret.action = std::move(action);
     }

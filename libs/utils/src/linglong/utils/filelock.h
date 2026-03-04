@@ -86,7 +86,7 @@ private:
     std::filesystem::path path;
 
     static inline std::pair<pid_t, std::unordered_map<std::string, bool>> process_locked_paths{
-        ::getpid(), {}
+        ::getpid(), { }
     };
 };
 

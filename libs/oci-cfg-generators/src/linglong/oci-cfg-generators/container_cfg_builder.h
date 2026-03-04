@@ -134,7 +134,7 @@ public:
     ContainerCfgBuilder &bindRemovableStorageMounts() noexcept;
 
     ContainerCfgBuilder &forwardDefaultEnv() noexcept;
-    ContainerCfgBuilder &forwardEnv(const std::vector<std::string> &envList = {}) noexcept;
+    ContainerCfgBuilder &forwardEnv(const std::vector<std::string> &envList = { }) noexcept;
     ContainerCfgBuilder &appendEnv(const std::map<std::string, std::string> &envMap) noexcept;
     ContainerCfgBuilder &appendEnv(const std::string &env,
                                    const std::string &value,

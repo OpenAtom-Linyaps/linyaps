@@ -148,14 +148,14 @@ private:
     constexpr void transform(const std::byte *data, std::size_t block_num)
     {
         for (std::size_t i = 0; i < block_num; ++i) {
-            std::array<uint32_t, 16> M{};
+            std::array<uint32_t, 16> M{ };
             for (int j = 0; j < 16; ++j) {
                 uint32_t tmp = 0;
                 std::memcpy(&tmp, &data[i * 64 + j * 4], 4);
                 M[j] = details::to_big_endian(tmp);
             }
 
-            std::array<uint32_t, 64> W{};
+            std::array<uint32_t, 64> W{ };
             for (std::size_t t = 0; t <= 15; ++t) {
                 W[t] = M[t];
             }
@@ -214,7 +214,7 @@ private:
     };
     std::array<uint32_t, 8> H{ 0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
                                0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19 };
-    std::array<std::byte, 64> m{};
+    std::array<std::byte, 64> m{ };
 };
 
 } // namespace digest

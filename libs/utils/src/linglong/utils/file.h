@@ -24,7 +24,7 @@ calculateDirectorySize(const std::filesystem::path &dir) noexcept;
 void copyDirectory(
   const std::filesystem::path &src,
   const std::filesystem::path &dest,
-  std::function<bool(const std::filesystem::path &)> matcher = {},
+  std::function<bool(const std::filesystem::path &)> matcher = { },
   std::filesystem::copy_options options = std::filesystem::copy_options::copy_symlinks
     | std::filesystem::copy_options::skip_existing);
 

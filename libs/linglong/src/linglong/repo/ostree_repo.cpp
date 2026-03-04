@@ -1635,7 +1635,7 @@ OSTreeRepo::searchRemote(const package::FuzzyReference &fuzzyRef,
     }
 
     if (response->data == nullptr || response->data->count == 0) {
-        return {};
+        return { };
     }
 
     std::vector<api::types::v1::PackageInfoV2> pkgInfos;
@@ -2358,7 +2358,7 @@ utils::error::Result<std::vector<std::string>> OSTreeRepo::getRemoteModuleList(
         return LINGLONG_ERR("list remote reference", fuzzy);
     }
     if (list->size() == 0) {
-        return {};
+        return { };
     }
 
     std::vector<std::string> modules;
@@ -2493,7 +2493,7 @@ utils::error::Result<package::LayerDir> OSTreeRepo::createTempMergedModuleDir(
             close(root);
         });
         g_autoptr(GError) gErr = nullptr;
-        OstreeRepoCheckoutAtOptions opt = {};
+        OstreeRepoCheckoutAtOptions opt = { };
         opt.overwrite_mode = OSTREE_REPO_CHECKOUT_OVERWRITE_ADD_FILES;
         if (ostree_repo_checkout_at(this->ostreeRepo.get(),
                                     &opt,
@@ -2600,7 +2600,7 @@ utils::error::Result<void> OSTreeRepo::mergeModules() const noexcept
                 close(root);
             });
             g_autoptr(GError) gErr = nullptr;
-            OstreeRepoCheckoutAtOptions opt = {};
+            OstreeRepoCheckoutAtOptions opt = { };
             opt.overwrite_mode = OSTREE_REPO_CHECKOUT_OVERWRITE_ADD_FILES;
             if (ostree_repo_checkout_at(this->ostreeRepo.get(),
                                         &opt,

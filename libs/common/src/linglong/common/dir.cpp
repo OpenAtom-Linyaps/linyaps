@@ -41,7 +41,7 @@ std::filesystem::path getUserRuntimeConfigDir() noexcept
     auto configDir = xdg::getXDGConfigHomeDir();
     // If neither XDG_CONFIG_HOME nor HOME is set, return empty path
     if (configDir.empty()) {
-        return {};
+        return { };
     }
 
     return configDir / "linglong";

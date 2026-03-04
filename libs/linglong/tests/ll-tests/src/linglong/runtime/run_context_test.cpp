@@ -26,7 +26,7 @@ public:
     MockRepo(const std::filesystem::path &path)
         : repo::OSTreeRepo(
             QDir(path.c_str()),
-            api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 })
+            api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = { }, .version = 2 })
     {
     }
 
@@ -206,7 +206,7 @@ TEST_F(RuntimeLayerTest, resolveSubRef)
     ASSERT_TRUE(layer.has_value()) << "Failed to create runtime layer: " << layer.error().message();
 
     // Test resolving with sub-reference
-    auto result = layer->resolveLayer({}, "test-uuid-12345");
+    auto result = layer->resolveLayer({ }, "test-uuid-12345");
     ASSERT_TRUE(result.has_value())
       << "Failed to resolve layer with sub-ref: " << result.error().message();
 

@@ -78,7 +78,7 @@ public:
     auto build(const QStringList &args = { "/project/linglong/entry.sh" }) noexcept
       -> utils::error::Result<void>;
 
-    auto exportUAB(const ExportOption &option, const std::filesystem::path &outputFile = {})
+    auto exportUAB(const ExportOption &option, const std::filesystem::path &outputFile = { })
       -> utils::error::Result<void>;
     auto exportLayer(const ExportOption &option) -> utils::error::Result<void>;
 
@@ -97,7 +97,7 @@ public:
     auto run(std::vector<std::string> modules,
              std::vector<std::string> args,
              bool debug = false,
-             std::vector<std::string> extensions = {}) -> utils::error::Result<void>;
+             std::vector<std::string> extensions = { }) -> utils::error::Result<void>;
     auto runtimeCheck() -> utils::error::Result<void>;
     auto runFromRepo(const package::Reference &ref, const std::vector<std::string> &args)
       -> utils::error::Result<void>;

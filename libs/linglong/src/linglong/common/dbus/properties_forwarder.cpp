@@ -54,7 +54,7 @@ utils::error::Result<void> PropertiesForwarder::forward() noexcept
     auto msg = QDBusMessage::createSignal(this->path,
                                           "org.freedesktop.DBus.Properties",
                                           "PropertiesChanged");
-    msg.setArguments({ this->interface, this->propCache, QStringList{} });
+    msg.setArguments({ this->interface, this->propCache, QStringList{ } });
 
     if (!connection.send(msg)) {
         return LINGLONG_ERR(

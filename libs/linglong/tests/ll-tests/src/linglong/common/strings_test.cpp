@@ -48,16 +48,16 @@ TEST(StringsTest, Split)
     EXPECT_EQ(split(",a,b,", ',', splitOption::SkipEmpty), std::vector<std::string>({ "a", "b" }));
     EXPECT_EQ(split("a,b,", ',', splitOption::None), std::vector<std::string>({ "a", "b", "" }));
     EXPECT_EQ(split("", ',', splitOption::None), std::vector<std::string>({ "" }));
-    EXPECT_EQ(split("", ',', splitOption::SkipEmpty), std::vector<std::string>({}));
+    EXPECT_EQ(split("", ',', splitOption::SkipEmpty), std::vector<std::string>({ }));
     EXPECT_EQ(split(",,", ',', splitOption::None), std::vector<std::string>({ "", "", "" }));
-    EXPECT_EQ(split(",,", ',', splitOption::SkipEmpty), std::vector<std::string>({}));
+    EXPECT_EQ(split(",,", ',', splitOption::SkipEmpty), std::vector<std::string>({ }));
 }
 
 TEST(StringsTest, Join)
 {
     EXPECT_EQ(join({ "a", "b", "c" }, ','), "a,b,c");
     EXPECT_EQ(join({ "a" }, ','), "a");
-    EXPECT_EQ(join({}, ','), "");
+    EXPECT_EQ(join({ }, ','), "");
     EXPECT_EQ(join({ "", "", "" }, ','), ",,");
 }
 

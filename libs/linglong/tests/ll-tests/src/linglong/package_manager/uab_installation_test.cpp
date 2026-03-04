@@ -27,7 +27,7 @@ public:
     MockOSTreeRepo(const std::filesystem::path &path)
         : repo::OSTreeRepo(
             QDir(path.c_str()),
-            api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 })
+            api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = { }, .version = 2 })
     {
     }
 

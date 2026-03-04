@@ -43,7 +43,7 @@ std::string validateNonEmptyString(const std::string &parameter)
     if (parameter.empty()) {
         return std::string{ _("Input parameter is empty, please input valid parameter instead") };
     }
-    return {};
+    return { };
 }
 
 linglong::utils::error::Result<linglong::api::types::v1::BuilderProject>

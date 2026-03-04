@@ -66,7 +66,7 @@ std::filesystem::path Cmd::getCommandPath()
         }
     }
 
-    return {};
+    return { };
 }
 
 utils::error::Result<std::string> Cmd::exec(const std::vector<std::string> &args) noexcept

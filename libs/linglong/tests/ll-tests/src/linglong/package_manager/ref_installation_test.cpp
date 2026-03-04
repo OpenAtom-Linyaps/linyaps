@@ -66,7 +66,7 @@ public:
     MockRepo(const std::filesystem::path &path)
         : repo::OSTreeRepo(
             QDir(path.c_str()),
-            api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 })
+            api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = { }, .version = 2 })
     {
     }
 
@@ -163,7 +163,7 @@ TEST_F(RefInstallationTest, InstallApp)
     EXPECT_CALL(*repo, matchRemoteByPriority(_, _)).WillOnce(Return(std::move(remote)));
 
     EXPECT_CALL(*repo, listLocalBy(_))
-      .WillOnce(Return(std::vector<api::types::v1::RepositoryCacheLayersItem>{}));
+      .WillOnce(Return(std::vector<api::types::v1::RepositoryCacheLayersItem>{ }));
 
     EXPECT_CALL(*repo, fetchRefMetaData(_, "binary", true))
       .WillOnce(Return(repo::RefMetaData{ "rev123", nlohmann::json(info).dump() }));
@@ -175,17 +175,17 @@ TEST_F(RefInstallationTest, InstallApp)
     });
 
     EXPECT_CALL(*pm, installRefModule(_, _, "binary"))
-      .WillOnce(Return(utils::error::Result<void>{}));
+      .WillOnce(Return(utils::error::Result<void>{ }));
 
     EXPECT_CALL(*pm, needToInstall("base", _)).WillOnce(Return(std::nullopt));
     EXPECT_CALL(*pm, needToInstall("runtime", _)).WillOnce(Return(std::nullopt));
 
-    EXPECT_CALL(*pm, applyApp(_)).WillOnce(Return(utils::error::Result<void>{}));
+    EXPECT_CALL(*pm, applyApp(_)).WillOnce(Return(utils::error::Result<void>{ }));
     EXPECT_CALL(*repo, mergeModules()).WillOnce([]() {
-        return utils::error::Result<void>{};
+        return utils::error::Result<void>{ };
     });
 
-    service::PackageTask task({});
+    service::PackageTask task({ });
     ASSERT_TRUE(action->prepare());
     ASSERT_TRUE(action->doAction(task));
 }
@@ -205,7 +205,7 @@ TEST_F(RefInstallationTest, InstallNoAppFound)
     repo::RemotePackages remote; // Empty remote packages
     EXPECT_CALL(*repo, matchRemoteByPriority(_, _)).WillOnce(Return(std::move(remote)));
 
-    service::PackageTask task({});
+    service::PackageTask task({ });
     ASSERT_TRUE(action->prepare());
     auto res = action->doAction(task);
     ASSERT_FALSE(res);
@@ -267,17 +267,17 @@ TEST_F(RefInstallationTest, InstallExtraOnly)
     });
 
     EXPECT_CALL(*pm, installRefModule(_, _, "develop"))
-      .WillOnce(Return(utils::error::Result<void>{}));
+      .WillOnce(Return(utils::error::Result<void>{ }));
 
     EXPECT_CALL(*pm, needToInstall("base", _)).WillOnce(Return(std::nullopt));
     EXPECT_CALL(*pm, needToInstall("runtime", _)).WillOnce(Return(std::nullopt));
 
-    EXPECT_CALL(*pm, applyApp(_)).WillOnce(Return(utils::error::Result<void>{}));
+    EXPECT_CALL(*pm, applyApp(_)).WillOnce(Return(utils::error::Result<void>{ }));
     EXPECT_CALL(*repo, mergeModules()).WillOnce([]() {
-        return utils::error::Result<void>{};
+        return utils::error::Result<void>{ };
     });
 
-    service::PackageTask task({});
+    service::PackageTask task({ });
     ASSERT_TRUE(action->prepare());
     ASSERT_TRUE(action->doAction(task));
 }
@@ -323,7 +323,7 @@ TEST_F(RefInstallationTest, InstallMultipleModules)
     EXPECT_CALL(*repo, matchRemoteByPriority(_, _)).WillOnce(Return(std::move(remote)));
 
     EXPECT_CALL(*repo, listLocalBy(_))
-      .WillOnce(Return(std::vector<api::types::v1::RepositoryCacheLayersItem>{}));
+      .WillOnce(Return(std::vector<api::types::v1::RepositoryCacheLayersItem>{ }));
 
     EXPECT_CALL(*repo, fetchRefMetaData(_, "binary", true))
       .WillOnce(Return(repo::RefMetaData{ "rev123", nlohmann::json(infoBinary).dump() }));
@@ -338,19 +338,19 @@ TEST_F(RefInstallationTest, InstallMultipleModules)
     });
 
     EXPECT_CALL(*pm, installRefModule(_, _, "binary"))
-      .WillOnce(Return(utils::error::Result<void>{}));
+      .WillOnce(Return(utils::error::Result<void>{ }));
     EXPECT_CALL(*pm, installRefModule(_, _, "develop"))
-      .WillOnce(Return(utils::error::Result<void>{}));
+      .WillOnce(Return(utils::error::Result<void>{ }));
 
     EXPECT_CALL(*pm, needToInstall("base", _)).WillOnce(Return(std::nullopt));
     EXPECT_CALL(*pm, needToInstall("runtime", _)).WillOnce(Return(std::nullopt));
 
-    EXPECT_CALL(*pm, applyApp(_)).WillOnce(Return(utils::error::Result<void>{}));
+    EXPECT_CALL(*pm, applyApp(_)).WillOnce(Return(utils::error::Result<void>{ }));
     EXPECT_CALL(*repo, mergeModules()).WillOnce([]() {
-        return utils::error::Result<void>{};
+        return utils::error::Result<void>{ };
     });
 
-    service::PackageTask task({});
+    service::PackageTask task({ });
     ASSERT_TRUE(action->prepare());
     ASSERT_TRUE(action->doAction(task));
 }
@@ -410,17 +410,17 @@ TEST_F(RefInstallationTest, InstallDowngrade)
     });
 
     EXPECT_CALL(*pm, installRefModule(_, _, "binary"))
-      .WillOnce(Return(utils::error::Result<void>{}));
+      .WillOnce(Return(utils::error::Result<void>{ }));
 
     EXPECT_CALL(*pm, needToInstall("base", _)).WillOnce(Return(std::nullopt));
     EXPECT_CALL(*pm, needToInstall("runtime", _)).WillOnce(Return(std::nullopt));
 
-    EXPECT_CALL(*pm, switchAppVersion(_, _, true)).WillOnce(Return(utils::error::Result<void>{}));
+    EXPECT_CALL(*pm, switchAppVersion(_, _, true)).WillOnce(Return(utils::error::Result<void>{ }));
     EXPECT_CALL(*repo, mergeModules()).WillOnce([]() {
-        return utils::error::Result<void>{};
+        return utils::error::Result<void>{ };
     });
 
-    service::PackageTask task({});
+    service::PackageTask task({ });
     ASSERT_TRUE(action->prepare());
     auto res = action->doAction(task);
     ASSERT_TRUE(res);

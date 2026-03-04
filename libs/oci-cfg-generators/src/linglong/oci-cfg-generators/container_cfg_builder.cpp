@@ -318,7 +318,7 @@ ContainerCfgBuilder &ContainerCfgBuilder::bindRemovableStorageMounts() noexcept
     std::error_code ec;
 
     std::vector<std::string> propagationPaths{ "/media", "/mnt" };
-    removableStorageMounts = std::vector<Mount>{};
+    removableStorageMounts = std::vector<Mount>{ };
 
     for (const auto &path : propagationPaths) {
         auto mountPath = std::filesystem::path(path);
@@ -485,7 +485,7 @@ ContainerCfgBuilder &ContainerCfgBuilder::bindHostStatics() noexcept
         "/var/cache/fontconfig",
     };
 
-    hostStaticsMount = std::vector<Mount>{};
+    hostStaticsMount = std::vector<Mount>{ };
     for (const auto &loc : statics) {
         bindIfExist(*hostStaticsMount, loc);
     }
@@ -496,14 +496,14 @@ ContainerCfgBuilder &ContainerCfgBuilder::bindHostStatics() noexcept
 ContainerCfgBuilder &ContainerCfgBuilder::bindHome(std::filesystem::path hostHome) noexcept
 {
     homePath = hostHome;
-    homeMount = std::vector<Mount>{};
+    homeMount = std::vector<Mount>{ };
 
     return *this;
 }
 
 ContainerCfgBuilder &ContainerCfgBuilder::enablePrivateDir() noexcept
 {
-    privateMount = std::vector<Mount>{};
+    privateMount = std::vector<Mount>{ };
 
     return *this;
 }
@@ -521,19 +521,19 @@ ContainerCfgBuilder &ContainerCfgBuilder::mapPrivate(std::string containerPath, 
 
 ContainerCfgBuilder &ContainerCfgBuilder::bindIPC() noexcept
 {
-    ipcMount = std::vector<Mount>{};
+    ipcMount = std::vector<Mount>{ };
     return *this;
 }
 
 ContainerCfgBuilder &ContainerCfgBuilder::enableLDCache() noexcept
 {
-    ldCacheMount = std::vector<Mount>{};
+    ldCacheMount = std::vector<Mount>{ };
     return *this;
 }
 
 ContainerCfgBuilder &ContainerCfgBuilder::enableQuirkVolatile() noexcept
 {
-    volatileMount = std::vector<Mount>{};
+    volatileMount = std::vector<Mount>{ };
     return *this;
 }
 
@@ -546,7 +546,7 @@ ContainerCfgBuilder &ContainerCfgBuilder::setExtensionMounts(std::vector<Mount> 
 ContainerCfgBuilder &ContainerCfgBuilder::addExtraMount(Mount extra) noexcept
 {
     if (!extraMount) {
-        extraMount = std::vector<Mount>{};
+        extraMount = std::vector<Mount>{ };
     }
     extraMount->emplace_back(std::move(extra));
     return *this;
@@ -555,7 +555,7 @@ ContainerCfgBuilder &ContainerCfgBuilder::addExtraMount(Mount extra) noexcept
 ContainerCfgBuilder &ContainerCfgBuilder::addExtraMounts(std::vector<Mount> extra) noexcept
 {
     if (!extraMount) {
-        extraMount = std::vector<Mount>{};
+        extraMount = std::vector<Mount>{ };
     }
     std::move(extra.begin(), extra.end(), std::back_inserter(*extraMount));
     return *this;
@@ -563,7 +563,7 @@ ContainerCfgBuilder &ContainerCfgBuilder::addExtraMounts(std::vector<Mount> extr
 
 ContainerCfgBuilder &ContainerCfgBuilder::setStartContainerHooks(std::vector<Hook> hooks) noexcept
 {
-    config.hooks = Hooks{};
+    config.hooks = Hooks{ };
     config.hooks->startContainer = hooks;
 
     return *this;
@@ -611,7 +611,7 @@ std::string ContainerCfgBuilder::ldConf(const std::string &triplet) const
     for (const auto &factor : factors) {
         sha256.update(reinterpret_cast<const std::byte *>(factor.c_str()), factor.size());
     }
-    std::array<std::byte, 32> digest{};
+    std::array<std::byte, 32> digest{ };
     sha256.final(digest.data());
 
     std::stringstream stream;
@@ -655,7 +655,7 @@ bool ContainerCfgBuilder::prepare() noexcept
     config.ociVersion = "1.0.1";
     config.hostname = "linglong";
 
-    auto linux_ = ocppi::runtime::config::types::Linux{};
+    auto linux_ = ocppi::runtime::config::types::Linux{ };
     linux_.namespaces = std::vector<NamespaceReference>{
         NamespaceReference{ .type = NamespaceType::Pid },
         NamespaceReference{ .type = NamespaceType::Mount },
@@ -813,7 +813,7 @@ bool ContainerCfgBuilder::buildMountHome() noexcept
 
     auto checkPrivatePath = [this](const std::filesystem::path &path) -> std::filesystem::path {
         if (!privateMount) {
-            return std::filesystem::path{};
+            return std::filesystem::path{ };
         }
 
         std::error_code ec;
@@ -821,7 +821,7 @@ bool ContainerCfgBuilder::buildMountHome() noexcept
             return privateAppDir / path;
         }
 
-        return std::filesystem::path{};
+        return std::filesystem::path{ };
     };
 
     value = getenv("XDG_CONFIG_HOME");
@@ -1026,7 +1026,7 @@ ContainerCfgBuilder::bindWaylandSocket(const std::filesystem::path &socket) noex
 
 bool ContainerCfgBuilder::buildDisplaySystem() noexcept
 {
-    displayMount = std::vector<Mount>{};
+    displayMount = std::vector<Mount>{ };
 
     if (xOrgSocket) {
         if (!xOrgSocket->empty()) {
@@ -1251,7 +1251,7 @@ bool ContainerCfgBuilder::buildMountLocalTime() noexcept
 {
     // always bind host's localtime
     // assume /etc/localtime is a symlink to /usr/share/zoneinfo/XXX/NNN
-    localtimeMount = std::vector<Mount>{};
+    localtimeMount = std::vector<Mount>{ };
 
     std::filesystem::path localtime{ "/etc/localtime" };
     std::error_code ec;
@@ -1281,7 +1281,7 @@ bool ContainerCfgBuilder::buildMountLocalTime() noexcept
 
 bool ContainerCfgBuilder::buildMountNetworkConf() noexcept
 {
-    networkConfMount = std::vector<Mount>{};
+    networkConfMount = std::vector<Mount>{ };
 
     std::filesystem::path resolvConf{ "/etc/resolv.conf" };
     std::error_code ec;
@@ -1295,7 +1295,7 @@ bool ContainerCfgBuilder::buildMountNetworkConf() noexcept
         if (hostRootMount) {
             auto target = resolvConf;
             if (std::filesystem::is_symlink(resolvConf, ec)) {
-                std::array<char, PATH_MAX + 1> buf{};
+                std::array<char, PATH_MAX + 1> buf{ };
                 auto *rpath = realpath(resolvConf.string().c_str(), buf.data());
                 if (rpath == nullptr) {
                     error_.reason =
@@ -1373,7 +1373,7 @@ bool ContainerCfgBuilder::buildEnv() noexcept
         return false;
     }
 
-    auto env = std::vector<std::string>{};
+    auto env = std::vector<std::string>{ };
     for (const auto &[key, value] : environment) {
         env.emplace_back(key + "=" + value);
 

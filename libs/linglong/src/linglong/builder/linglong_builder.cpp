@@ -117,7 +117,7 @@ utils::error::Result<void> pullDependency(const package::Reference &ref,
         return LINGLONG_OK;
     }
 
-    service::PackageTask tmpTask({});
+    service::PackageTask tmpTask({ });
     auto partChanged = [&ref, module](const uint fetched, const uint requested) {
         auto percentage = (uint)((((double)fetched) / requested) * 100);
         auto progress = fmt::format("({}/{} {}%)", fetched, requested, percentage);
@@ -350,7 +350,7 @@ utils::error::Result<void> Builder::buildStagePrepare() noexcept
     }
 
     if (this->project->package.kind == "app") {
-        if (project->command.value_or(std::vector<std::string>{}).empty()) {
+        if (project->command.value_or(std::vector<std::string>{ }).empty()) {
             return LINGLONG_ERR("command field is required, please specify!");
         }
         installPrefix = "/opt/apps/" + this->project->package.id + "/files";
@@ -671,13 +671,13 @@ utils::error::Result<void> Builder::processBuildDepends() noexcept
         return LINGLONG_ERR(container);
     }
 
-    auto process = ocppi::runtime::config::types::Process{};
+    auto process = ocppi::runtime::config::types::Process{ };
     process.args = { "/bin/bash", "/project/linglong/buildext.sh" };
     process.cwd = "/project";
     process.noNewPrivileges = true;
     process.terminal = true;
 
-    ocppi::runtime::RunOption opt{};
+    ocppi::runtime::RunOption opt{ };
     auto result = (*container)->run(process, opt);
     if (!result) {
         return LINGLONG_ERR("failed to process buildext.apt.buildDepends", result);
@@ -833,12 +833,12 @@ utils::error::Result<bool> Builder::buildStageBuild(const QStringList &args) noe
     }
     LogD("create container success");
 
-    auto arguments = std::vector<std::string>{};
+    auto arguments = std::vector<std::string>{ };
     for (const auto &arg : args) {
         arguments.push_back(arg.toStdString());
     }
 
-    auto process = ocppi::runtime::config::types::Process{};
+    auto process = ocppi::runtime::config::types::Process{ };
     process.args = std::move(arguments);
     process.cwd = "/project";
     process.env = { {
@@ -855,7 +855,7 @@ utils::error::Result<bool> Builder::buildStageBuild(const QStringList &args) noe
     process.terminal = true;
 
     printMessage("[Start Build]");
-    ocppi::runtime::RunOption opt{};
+    ocppi::runtime::RunOption opt{ };
     auto result = (*container)->run(process, opt);
     if (!result) {
         return LINGLONG_ERR(result);
@@ -942,7 +942,7 @@ utils::error::Result<void> Builder::buildStagePreCommit() noexcept
 
     ocppi::runtime::config::types::Process process;
     process.args = std::vector{ std::string("bash"), std::string("/project/linglong/buildext.sh") };
-    ocppi::runtime::RunOption opt{};
+    ocppi::runtime::RunOption opt{ };
     auto result = (*container)->run(process, opt);
     if (!result) {
         return LINGLONG_ERR(result);
@@ -1189,7 +1189,7 @@ utils::error::Result<void> Builder::commitToLocalRepo() noexcept
         .kind = project.package.kind,
         .name = project.package.name,
         .permissions = project.permissions,
-        .runtime = {},
+        .runtime = { },
         .schemaVersion = PACKAGE_INFO_VERSION,
         .version = project.package.version,
     };
@@ -1808,7 +1808,7 @@ utils::error::Result<void> Builder::run(std::vector<std::string> modules,
         return LINGLONG_ERR("Couldn't get HOME env.");
     }
 
-    std::vector<ocppi::runtime::config::types::Mount> applicationMounts{};
+    std::vector<ocppi::runtime::config::types::Mount> applicationMounts{ };
     if (debug) {
         // 生成 host_gdbinit 可使用 gdb --init-command=linglong/host_gdbinit 从宿主机调试
         {
@@ -1901,7 +1901,7 @@ utils::error::Result<void> Builder::run(std::vector<std::string> modules,
                                                           "-X",
                                                           "-C",
                                                           "/run/linglong/cache/ld.so.cache" } };
-        ocppi::runtime::RunOption opt{};
+        ocppi::runtime::RunOption opt{ };
         auto result = (*container)->run(process, opt);
         if (!result) {
             return LINGLONG_ERR("failed to generate ld cache", result);
@@ -1960,7 +1960,7 @@ utils::error::Result<void> Builder::run(std::vector<std::string> modules,
         }
     }
 
-    ocppi::runtime::RunOption opt{};
+    ocppi::runtime::RunOption opt{ };
     auto result = (*container)->run(process, opt);
     if (!result) {
         return LINGLONG_ERR(result);
@@ -2033,7 +2033,7 @@ utils::error::Result<void> Builder::runFromRepo(const package::Reference &ref,
                                                           "-X",
                                                           "-C",
                                                           "/run/linglong/cache/ld.so.cache" } };
-        ocppi::runtime::RunOption opt{};
+        ocppi::runtime::RunOption opt{ };
         auto result = (*container)->run(process, opt);
         if (!result) {
             return LINGLONG_ERR("failed to generate ld cache", result);
@@ -2068,7 +2068,7 @@ utils::error::Result<void> Builder::runFromRepo(const package::Reference &ref,
         return LINGLONG_ERR(container);
     }
 
-    ocppi::runtime::RunOption opt{};
+    ocppi::runtime::RunOption opt{ };
     auto result =
       (*container)->run(ocppi::runtime::config::types::Process{ .args = std::move(args) }, opt);
     if (!result) {
@@ -2232,7 +2232,7 @@ utils::error::Result<bool> Builder::generateDependsScript() noexcept
 
 void Builder::takeTerminalForeground()
 {
-    struct sigaction sa{};
+    struct sigaction sa{ };
 
     sa.sa_handler = SIG_IGN;
     sigaction(SIGTTOU, &sa, NULL);

@@ -250,7 +250,7 @@ public:
         return prerelease_descriptor(prerelease_parts);
     }
 
-    static prerelease_descriptor empty() { return prerelease_descriptor({}); }
+    static prerelease_descriptor empty() { return prerelease_descriptor({ }); }
 
     static prerelease_descriptor initial()
     {

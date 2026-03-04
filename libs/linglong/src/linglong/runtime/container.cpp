@@ -161,7 +161,7 @@ utils::error::Result<void> Container::run(const ocppi::runtime::config::types::P
     });
 
     auto curProcess =
-      std::move(this->cfg.process).value_or(ocppi::runtime::config::types::Process{});
+      std::move(this->cfg.process).value_or(ocppi::runtime::config::types::Process{ });
     mergeProcessConfig(curProcess, process);
     this->cfg.process = std::move(curProcess);
 

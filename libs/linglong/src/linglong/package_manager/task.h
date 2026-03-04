@@ -27,7 +27,7 @@ using ProgressReporter = std::function<void(double)>;
 class Task
 {
 public:
-    Task(std::function<void(Task &)> job = {});
+    Task(std::function<void(Task &)> job = { });
     Task(Task &&) = default;
     Task &operator=(Task &&) = default;
     Task(const Task &) = delete;

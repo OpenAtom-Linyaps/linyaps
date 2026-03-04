@@ -77,13 +77,13 @@ std::vector<std::string> getAutoModuleList() noexcept
 {
     auto getModuleFromLanguageEnv = [](const std::string &lang) -> std::vector<std::string> {
         if (lang.length() < 2) {
-            return {};
+            return { };
         }
 
         if (!std::all_of(lang.begin(), lang.begin() + 2, [](char c) {
                 return 'a' <= c && c <= 'z';
             })) {
-            return {};
+            return { };
         }
 
         std::vector<std::string> modules;
@@ -102,11 +102,11 @@ std::vector<std::string> getAutoModuleList() noexcept
         }
 
         if (lang[2] != '_') {
-            return {};
+            return { };
         }
 
         if (lang.length() < 5) {
-            return {};
+            return { };
         }
 
         modules.push_back("lang_" + lang.substr(0, 5));
@@ -123,7 +123,7 @@ std::vector<std::string> getAutoModuleList() noexcept
             return modules;
         }
 
-        return {};
+        return { };
     };
 
     auto envs = {
@@ -159,7 +159,7 @@ bool delegateToContainerInit(const std::string &containerID,
         ::close(containerSocket);
     });
 
-    struct sockaddr_un addr{};
+    struct sockaddr_un addr{ };
     addr.sun_family = AF_UNIX;
 
     auto bundleDir = linglong::common::dir::getBundleDir(containerID);
@@ -590,7 +590,7 @@ int Cli::run(const RunOptions &options)
         return true;
     };
 
-    auto containers = getCurrentContainers().value_or(std::vector<api::types::v1::CliContainer>{});
+    auto containers = getCurrentContainers().value_or(std::vector<api::types::v1::CliContainer>{ });
     for (const auto &container : containers) {
         LogD("found running container: {}", container.package);
         if (container.package != curAppRef->toString()) {
@@ -715,7 +715,7 @@ int Cli::run(const RunOptions &options)
         return -1;
     }
 
-    ocppi::runtime::RunOption opt{};
+    ocppi::runtime::RunOption opt{ };
     auto result =
       (*container)->run(ocppi::runtime::config::types::Process{ .args = std::move(commands) }, opt);
     if (!result) {
@@ -854,7 +854,7 @@ std::vector<std::string> Cli::getRunningAppContainers(const std::string &appid)
 {
     LINGLONG_TRACE("get app running containers");
 
-    std::vector<std::string> containerIDList{};
+    std::vector<std::string> containerIDList{ };
     auto containers = getCurrentContainers();
     if (!containers) {
         this->printer.printErr(containers.error());
@@ -1108,7 +1108,7 @@ int Cli::search(const SearchOptions &options)
 
     auto params = api::types::v1::PackageManager1SearchParameters{
         .id = options.appid,
-        .repos = {},
+        .repos = { },
     };
 
     auto repoConfig = this->repository.getOrderedConfig();
@@ -1179,7 +1179,7 @@ int Cli::search(const SearchOptions &options)
           }
 
           if (!result->packages) {
-              this->printer.printPackages({});
+              this->printer.printPackages({ });
               loop.exit(0);
               return;
           }
@@ -1291,7 +1291,7 @@ int Cli::uninstall(const UninstallOptions &options)
         return -1;
     }
 
-    auto params = api::types::v1::PackageManager1UninstallParameters{};
+    auto params = api::types::v1::PackageManager1UninstallParameters{ };
     params.options = api::types::v1::CommonOptions{
         .force = options.forceOpt,
         .skipInteraction = false,
@@ -1625,7 +1625,7 @@ int Cli::content(const ContentOptions &options)
 {
     LINGLONG_TRACE("command content");
 
-    QStringList contents{};
+    QStringList contents{ };
 
     auto fuzzyRef = package::FuzzyReference::parse(options.appid);
     if (!fuzzyRef) {
@@ -1696,7 +1696,7 @@ int Cli::content(const ContentOptions &options)
     }
 
     if (std::filesystem::is_symlink(file, ec)) {
-        std::array<char, PATH_MAX + 1> buf{};
+        std::array<char, PATH_MAX + 1> buf{ };
         auto *real = ::realpath(file.c_str(), buf.data());
 
         if (real != nullptr) {
@@ -2019,14 +2019,14 @@ utils::error::Result<void> Cli::generateLDCache(runtime::RunContext &runContext,
         return LINGLONG_ERR(container);
     }
 
-    ocppi::runtime::config::types::Process process{};
+    ocppi::runtime::config::types::Process process{ };
     process.cwd = "/";
     process.noNewPrivileges = true;
     process.terminal = true;
     process.args =
       std::vector<std::string>{ "/sbin/ldconfig", "-X", "-C", "/run/linglong/cache/ld.so.cache" };
 
-    ocppi::runtime::RunOption opt{};
+    ocppi::runtime::RunOption opt{ };
     auto result = (*container)->run(process, opt);
     if (!result) {
         return LINGLONG_ERR(result);

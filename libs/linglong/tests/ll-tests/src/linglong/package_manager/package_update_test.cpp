@@ -151,7 +151,7 @@ public:
     MockRepo(const std::filesystem::path &path)
         : repo::OSTreeRepo(
             QDir(path.c_str()),
-            api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 })
+            api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = { }, .version = 2 })
     {
     }
 
@@ -288,16 +288,16 @@ TEST_F(PackageUpdateActionTest, Update)
 
     EXPECT_CALL(*pm, installRefModule(_, _, _))
       .WillRepeatedly([](service::Task &, const package::ReferenceWithRepo &, const std::string &) {
-          return utils::error::Result<void>{};
+          return utils::error::Result<void>{ };
       });
 
     EXPECT_CALL(*repo, mergeModules()).WillOnce([]() {
-        return utils::error::Result<void>{};
+        return utils::error::Result<void>{ };
     });
 
-    EXPECT_CALL(*pm, switchAppVersion(_, _, true)).WillOnce(Return(utils::error::Result<void>{}));
+    EXPECT_CALL(*pm, switchAppVersion(_, _, true)).WillOnce(Return(utils::error::Result<void>{ }));
 
-    service::PackageTask task({});
+    service::PackageTask task({ });
     res = action->doAction(task);
     ASSERT_TRUE(res.has_value());
 }

@@ -63,7 +63,7 @@ struct std::hash<linglong::package::Reference>
         };
 
         std::size_t seed = 0;
-        auto hasher = std::hash<std::string>{};
+        auto hasher = std::hash<std::string>{ };
         hash_combine(seed, hasher(ref.channel));
         hash_combine(seed, hasher(ref.id));
         hash_combine(seed, hasher(ref.version.toString()));

@@ -196,7 +196,7 @@ utils::error::Result<void> RunContext::resolve(const linglong::package::Referenc
 
     // all reference are cleard , we can get actual layer directory now
     return resolveLayer(options.depsBinaryOnly,
-                        options.appModules.value_or(std::vector<std::string>{}));
+                        options.appModules.value_or(std::vector<std::string>{ }));
 }
 
 utils::error::Result<void> RunContext::resolve(const api::types::v1::BuilderProject &target,
@@ -283,7 +283,7 @@ utils::error::Result<void> RunContext::resolve(const api::types::v1::BuilderProj
         }
     }
 
-    return resolveLayer(false, {});
+    return resolveLayer(false, { });
 }
 
 utils::error::Result<void> RunContext::resolveLayer(bool depsBinaryOnly,
@@ -597,15 +597,15 @@ utils::error::Result<void> RunContext::fillContextCfg(
         }
     }
 
-    std::vector<ocppi::runtime::config::types::Mount> extensionMounts{};
+    std::vector<ocppi::runtime::config::types::Mount> extensionMounts{ };
     if (extensionOutput) {
         extensionMounts.push_back(ocppi::runtime::config::types::Mount{
           .destination = "/opt/extensions/" + targetId,
-          .gidMappings = {},
+          .gidMappings = { },
           .options = { { "rbind" } },
           .source = extensionOutput,
           .type = "bind",
-          .uidMappings = {},
+          .uidMappings = { },
         });
     }
 
@@ -629,11 +629,11 @@ utils::error::Result<void> RunContext::fillContextCfg(
         }
         extensionMounts.push_back(ocppi::runtime::config::types::Mount{
           .destination = "/opt/extensions/" + name,
-          .gidMappings = {},
+          .gidMappings = { },
           .options = { { "rbind", "ro" } },
           .source = ext.getLayerDir()->filesDirPath(),
           .type = "bind",
-          .uidMappings = {},
+          .uidMappings = { },
         });
     }
     if (!extensionMounts.empty()) {
@@ -694,17 +694,17 @@ utils::error::Result<void> RunContext::fillExtraAppMounts(generator::ContainerCf
         const auto &info = layer.getCachedItem().info;
 
         if (info.permissions) {
-            std::vector<ocppi::runtime::config::types::Mount> applicationMounts{};
+            std::vector<ocppi::runtime::config::types::Mount> applicationMounts{ };
             auto bindMount =
               [&applicationMounts](
                 const api::types::v1::ApplicationConfigurationPermissionsBind &bind) {
                   applicationMounts.push_back(ocppi::runtime::config::types::Mount{
                     .destination = bind.destination,
-                    .gidMappings = {},
+                    .gidMappings = { },
                     .options = { { "rbind" } },
                     .source = bind.source,
                     .type = "bind",
-                    .uidMappings = {},
+                    .uidMappings = { },
                   });
               };
 
@@ -713,11 +713,11 @@ utils::error::Result<void> RunContext::fillExtraAppMounts(generator::ContainerCf
                this](const api::types::v1::ApplicationConfigurationPermissionsInnerBind &bind) {
                   applicationMounts.push_back(ocppi::runtime::config::types::Mount{
                     .destination = bind.destination,
-                    .gidMappings = {},
+                    .gidMappings = { },
                     .options = { { "rbind" } },
                     .source = bundle.string() + "/rootfs" + bind.source,
                     .type = "bind",
-                    .uidMappings = {},
+                    .uidMappings = { },
                   });
               };
 
@@ -775,7 +775,7 @@ api::types::v1::ContainerProcessStateInfo RunContext::stateInfo()
         state.runtime = runtimeLayer->getReference().toString();
     }
 
-    state.extensions = std::vector<std::string>{};
+    state.extensions = std::vector<std::string>{ };
     for (auto &ext : extensionLayers) {
         state.extensions->push_back(ext.getReference().toString());
     }

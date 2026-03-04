@@ -119,7 +119,7 @@ getPriorityGroupedRepos(api::types::v1::RepoConfigV2 cfg) noexcept
 {
     auto sortedRepos = getPrioritySortedRepos(std::move(cfg));
     if (sortedRepos.empty()) {
-        return {};
+        return { };
     }
 
     std::vector<std::vector<api::types::v1::Repo>> groupedRepos;

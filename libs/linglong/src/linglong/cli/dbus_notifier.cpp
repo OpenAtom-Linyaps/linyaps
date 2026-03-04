@@ -90,7 +90,7 @@ utils::error::Result<void> DBusNotifier::notify(const api::types::v1::Interactio
                               "",
                               QString::fromStdString(request.summary),
                               QString::fromStdString(request.body.value_or("")),
-                              {},
+                              { },
                               { { "urgency", 1 } },
                               -1);
     if (!reply) {
@@ -182,12 +182,12 @@ DBusNotifier::request(const api::types::v1::InteractionRequest &request)
 
 void DBusNotifier::forwardActionInvoked(quint32 ID, QString action)
 {
-    Q_EMIT actionInvoked(ID, action, QPrivateSignal{});
+    Q_EMIT actionInvoked(ID, action, QPrivateSignal{ });
 }
 
 void DBusNotifier::forwardNotificationClosed(quint32 ID, quint32 reason)
 {
-    Q_EMIT notificationClosed(ID, reason, QPrivateSignal{});
+    Q_EMIT notificationClosed(ID, reason, QPrivateSignal{ });
 }
 
 } // namespace linglong::cli

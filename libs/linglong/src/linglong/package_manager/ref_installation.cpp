@@ -197,7 +197,7 @@ utils::error::Result<void> RefInstallationAction::install(Task &task)
         return LINGLONG_ERR("no modules found");
     }
 
-    auto installModules = std::vector<std::string>{};
+    auto installModules = std::vector<std::string>{ };
     for (const auto &module : modules) {
         if (std::find(remoteModules.begin(), remoteModules.end(), module) != remoteModules.end()) {
             installModules.emplace_back(module);

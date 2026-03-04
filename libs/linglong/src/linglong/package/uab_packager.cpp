@@ -354,8 +354,8 @@ UABPackager::prepareExecutableBundle(const std::filesystem::path &bundleDir) noe
         }
 
         if (!files.empty()) {
-            struct statvfs moduleFilesDirStat{};
-            struct statvfs filesStat{};
+            struct statvfs moduleFilesDirStat{ };
+            struct statvfs filesStat{ };
 
             if (statvfs(moduleFilesDir.c_str(), &moduleFilesDirStat) == -1) {
                 return LINGLONG_ERR("couldn't stat module files directory: "
@@ -635,7 +635,7 @@ UABPackager::prepareDistributedBundle(const std::filesystem::path &bundleDir) no
     }
 
     // check if we can use hard links for optimization (only need to check once)
-    struct statvfs layersDirStat{};
+    struct statvfs layersDirStat{ };
     if (statvfs(layersDir.c_str(), &layersDirStat) == -1) {
         return LINGLONG_ERR("couldn't stat layers directory: " + layersDir.string());
     }
@@ -655,7 +655,7 @@ UABPackager::prepareDistributedBundle(const std::filesystem::path &bundleDir) no
         }
 
         // check if layer and target are on the same filesystem
-        struct statvfs layerStat{};
+        struct statvfs layerStat{ };
         if (statvfs(layerPath.c_str(), &layerStat) == -1) {
             return LINGLONG_ERR("couldn't stat layer directory: " + layerPath.string());
         }

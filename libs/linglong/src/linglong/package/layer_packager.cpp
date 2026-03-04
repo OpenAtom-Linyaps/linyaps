@@ -166,7 +166,9 @@ LayerPackager::pack(const LayerDir &dir, const QString &layerFilePath) const
     }
 
     auto result = LayerFile::New(layerFilePath);
-    Q_ASSERT(result.has_value());
+    if (!result) {
+        return LINGLONG_ERR(result);
+    }
 
     return result;
 }

@@ -7,7 +7,7 @@
 # Gary Wang <wzc782970009@gmail.com>, 2025
 # Isaías Gätjens M <igatjens@gmail.com>, 2025
 # Amaro Martínez <xoas@airmail.cc>, 2025
-# Zaraza, 2025
+# Zaraza, 2026
 # 
 #, fuzzy
 msgid ""
@@ -16,7 +16,7 @@ msgstr ""
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2026-02-06 16:31+0800\n"
 "PO-Revision-Date: 2025-04-11 01:38+0000\n"
-"Last-Translator: Zaraza, 2025\n"
+"Last-Translator: Zaraza, 2026\n"
 "Language-Team: Spanish (https://app.transifex.com/linuxdeepin/teams/3976/es/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -26,17 +26,17 @@ msgstr ""
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:645
 msgid "privileged mode requires running as root"
-msgstr ""
+msgstr "El modo privilegiado requiere ejecutarse como root"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1065
 #, c++-format
 msgid "Application {} is not installed."
-msgstr ""
+msgstr "La aplicación {} no está instalada."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1075
 #, c++-format
 msgid "{} is not an application."
-msgstr ""
+msgstr "{} no es una aplicación."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1167
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2390
@@ -67,11 +67,13 @@ msgid ""
 "Application already installed, If you want to replace it, try using 'll-cli "
 "install {} --force'"
 msgstr ""
+"Aplicación instalada, si desea reemplazarla intente usar 'll-cli install {} "
+"--force'"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2291
 #, c++-format
 msgid "Application {} is not found in remote repo."
-msgstr ""
+msgstr "La aplicación {} no se encuentra en el repositorio remoto."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2294
 msgid "Cannot specify a version when installing a module."
@@ -83,6 +85,8 @@ msgid ""
 "The latest version has been installed. If you want to replace it, try using "
 "'ll-cli install {} --force'"
 msgstr ""
+"Se ha instalado la última versión. Si desea reemplazarla, pruebe con «ll-cli"
+" install %1/version --force»."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2304
 msgid "Install failed"
@@ -107,6 +111,8 @@ msgid ""
 "Multiple versions of the package are installed. Please specify a single version to uninstall:\n"
 "{}"
 msgstr ""
+"Hay varias versiones del paquete instaladas. Por favor, especifique una sola versión para desinstalar:\n"
+"{}"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2344
 msgid "Base or runtime cannot be uninstalled, please use 'll-cli prune'."
@@ -124,11 +130,11 @@ msgstr "La actualización falló"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2395
 msgid "Package not found"
-msgstr ""
+msgstr "No se encontro el paquete"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2398
 msgid "Operation canceled"
-msgstr ""
+msgstr "Operación cancelada"
 
 #: ../apps/ll-cli/src/main.cpp:146 ../apps/ll-builder/src/main.cpp:44
 msgid "Input parameter is empty, please input valid parameter instead"
@@ -194,15 +200,15 @@ msgstr ""
 
 #: ../apps/ll-cli/src/main.cpp:207
 msgid "Specify extension(s) used by the application to run"
-msgstr ""
+msgstr "Especifique las extensiones que utiliza la aplicación para ejecutarse"
 
 #: ../apps/ll-cli/src/main.cpp:213
 msgid "Run the application in privileged mode"
-msgstr ""
+msgstr "Ejecute la aplicación en modo privilegiado"
 
 #: ../apps/ll-cli/src/main.cpp:215
 msgid "Add capabilities to the application"
-msgstr ""
+msgstr "Añadir capacidades a la aplicación"
 
 #: ../apps/ll-cli/src/main.cpp:219 ../apps/ll-cli/src/main.cpp:250
 msgid "Run commands in a running sandbox"
@@ -327,7 +333,7 @@ msgstr "Desinstalar un módulo especificado"
 
 #: ../apps/ll-cli/src/main.cpp:331
 msgid "Force uninstall base or runtime"
-msgstr ""
+msgstr "Forzar la desinstalación de la base o el tiempo de ejecución"
 
 #. below options are used for compatibility with old ll-cli
 #: ../apps/ll-cli/src/main.cpp:334
@@ -356,7 +362,7 @@ msgstr ""
 
 #: ../apps/ll-cli/src/main.cpp:360
 msgid "Only upgrade dependencies of application"
-msgstr ""
+msgstr "Actualice únicamente las dependencias de la aplicación"
 
 #: ../apps/ll-cli/src/main.cpp:370
 msgid ""
@@ -380,6 +386,19 @@ msgid ""
 "# find all of runtime(s) of remote\n"
 "ll-cli search . --type=runtime"
 msgstr ""
+"Uso: ll-cli search [OPCIONES] PALABRAS CLAVE\n"
+"\n"
+"Ejemplo:\n"
+"# Buscar aplicaciones, bases o entornos de ejecución de forma remota por palabras clave\n"
+"ll-cli search org.deepin.demo\n"
+"# Buscar entornos de ejecución de forma remota por nombre\n"
+"ll-cli search org.deepin.base --type=runtime\n"
+"# Buscar todas las aplicaciones del sistema remoto\n"
+"ll-cli search .\n"
+"# Buscar todas las bases del sistema remoto\n"
+"ll-cli search . --type=base\n"
+"# Buscar todos los entornos de ejecución del sistema remoto\n"
+"ll-cli search . --type=runtime"
 
 #: ../apps/ll-cli/src/main.cpp:385
 msgid "Specify the Keywords"
@@ -587,33 +606,40 @@ msgstr "Uso: ll-cli prune [OPCIONES]"
 
 #: ../apps/ll-cli/src/main.cpp:579
 msgid "Display the inspect information of the installed application"
-msgstr ""
+msgstr "Muestra la información de inspección de la aplicación instalada"
 
 #: ../apps/ll-cli/src/main.cpp:581
 msgid "Usage: ll-cli inspect SUBCOMMAND [OPTIONS]"
-msgstr ""
+msgstr "Uso: ll-cli repo SUBCOMANDO [OPCIONES]"
 
 #: ../apps/ll-cli/src/main.cpp:588
 msgid ""
 "Display the data(bundle) directory of the installed(running) application"
 msgstr ""
+"Muestra el directorio de datos (paquete) de la aplicación instalada (en "
+"ejecución)"
 
 #: ../apps/ll-cli/src/main.cpp:589
 msgid "Usage: ll-cli inspect dir [OPTIONS] APP"
-msgstr ""
+msgstr "Uso: ll-cli inspect [OPCIONES]"
 
 #: ../apps/ll-cli/src/main.cpp:593
 msgid "Specify the application ID, and it can also be reference"
 msgstr ""
+"Especifique el ID de la aplicación, y también puede ser una referencia. "
 
 #: ../apps/ll-cli/src/main.cpp:599
 msgid "Specify the directory type (layer or bundle),the default is layer"
 msgstr ""
+"Especifique el tipo de directorio (capa o paquete), el valor predeterminado "
+"es capa"
 
 #: ../apps/ll-cli/src/main.cpp:606
 msgid ""
 "Specify the module type (binary or develop). Only works when type is layer"
 msgstr ""
+"Especifique el tipo de módulo (binario o de desarrollo). Solo funciona "
+"cuando el tipo es capa."
 
 #: ../apps/ll-cli/src/main.cpp:638
 msgid ""
@@ -667,7 +693,7 @@ msgstr "Mostrar información de depuración (registros detallados)"
 
 #: ../apps/ll-cli/src/main.cpp:676
 msgid "Don't output progress information"
-msgstr ""
+msgstr "No mostrar información de progreso"
 
 #. groups for subcommands
 #: ../apps/ll-cli/src/main.cpp:693
@@ -705,7 +731,7 @@ msgstr "Nombre"
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:73
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:136
 msgid "Version"
-msgstr ""
+msgstr "Versión"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:74
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:137
@@ -787,6 +813,9 @@ msgid ""
 "If you found any problems during use\n"
 "You can report bugs to the linyaps team under this project: https://github.com/OpenAtom-Linyaps/linyaps/issues"
 msgstr ""
+"Si encuentra algún problema durante el uso, puede informar errores al equipo"
+" de Linyaps en este proyecto: https://github.com/OpenAtom-"
+"Linyaps/linyaps/issues"
 
 #: ../apps/ll-builder/src/main.cpp:724
 msgid "Create linyaps build template project"
@@ -886,7 +915,7 @@ msgstr "Ejecutar en modo depuración (habilitar módulo de desarrollo)"
 
 #: ../apps/ll-builder/src/main.cpp:797
 msgid "Specify extension(s) used by the app to run"
-msgstr ""
+msgstr "Especifique las extensiones que utiliza la aplicación para ejecutarse"
 
 #: ../apps/ll-builder/src/main.cpp:803
 msgid "List built linyaps app"
@@ -906,7 +935,7 @@ msgstr "Uso: ll-builder remove [OPCIONES] [APP...]"
 
 #: ../apps/ll-builder/src/main.cpp:809
 msgid "Do not clean objects files before remove apps"
-msgstr ""
+msgstr "No limpie los archivos de objetos antes de eliminar aplicaciones"
 
 #. build export
 #: ../apps/ll-builder/src/main.cpp:813
@@ -1068,40 +1097,44 @@ msgstr "está iniciándose"
 #. Define command line options
 #: ../apps/ll-driver-detect/src/main.cpp:104
 msgid "Force installation even if recently reminded"
-msgstr ""
+msgstr "Forzar la instalación incluso si se le recordó recientemente"
 
 #: ../apps/ll-driver-detect/src/main.cpp:107
 msgid "Check for drivers only without installing or notifying"
-msgstr ""
+msgstr "Comprobar solo los controladores sin instalarlos ni notificarlos"
 
 #: ../apps/ll-driver-detect/src/main.cpp:110
 msgid "Only install drivers without notifications"
-msgstr ""
+msgstr "Solo instalar controladores sin notificaciones"
 
 #: ../apps/ll-driver-detect/src/main.cpp:216
 msgid "Graphics Driver Available"
-msgstr ""
+msgstr "Controlador de gráficos disponible"
 
 #: ../apps/ll-driver-detect/src/main.cpp:217
 msgid ""
 "Graphics driver package is available that can improve performance for some Linyaps applications.\n"
 "Would you like to install it?"
 msgstr ""
+"Hay disponible un paquete de controladores gráficos que puede mejorar el rendimiento de algunas aplicaciones Linyaps. \n"
+"¿Quieres instalarlo?"
 
 #: ../apps/ll-driver-detect/src/main.cpp:221
 msgid "Install Now"
-msgstr ""
+msgstr "Instalar ahora"
 
 #: ../apps/ll-driver-detect/src/main.cpp:221
 msgid "Don't Remind"
-msgstr ""
+msgstr "No recordar"
 
 #: ../apps/ll-driver-detect/src/main.cpp:247
 msgid "Graphics Driver Installation Completed"
-msgstr ""
+msgstr "Instalación del controlador de gráficos completada"
 
 #: ../apps/ll-driver-detect/src/main.cpp:249
 msgid ""
 "Graphics driver package has been installed.\n"
 "Restart the Linyaps app to experience the performance improvement."
 msgstr ""
+"Se ha instalado el paquete del controlador gráfico.\n"
+"Reinicia la aplicación Linyaps para disfrutar de la mejora del rendimiento."

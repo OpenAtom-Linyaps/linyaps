@@ -715,9 +715,18 @@ int Cli::run(const RunOptions &options)
         return -1;
     }
 
+    auto process = ocppi::runtime::config::types::Process{ .args = std::move(commands) };
+    if (!options.workdir.value_or("").empty()) {
+        auto workdir = std::filesystem::path(options.workdir.value());
+        if (!workdir.is_absolute()) {
+            auto msg = fmt::format("Workdir must be an absolute path: {}", workdir);
+            this->printer.printErr(LINGLONG_ERRV(msg));
+            return -1;
+        }
+        process.cwd = workdir;
+    }
     ocppi::runtime::RunOption opt{};
-    auto result =
-      (*container)->run(ocppi::runtime::config::types::Process{ .args = std::move(commands) }, opt);
+    auto result = (*container)->run(process, opt);
     if (!result) {
         this->printer.printErr(result.error());
         return -1;

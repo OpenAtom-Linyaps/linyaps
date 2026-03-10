@@ -54,6 +54,7 @@ struct RunOptions
     std::vector<std::string> commands;
     std::optional<std::string> base;
     std::optional<std::string> runtime;
+    std::optional<std::string> workdir;
     std::vector<std::string> extensions;
     bool privileged{ false };
     std::vector<std::string> capsAdd;

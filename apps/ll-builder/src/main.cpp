@@ -249,7 +249,11 @@ int handleRun(linglong::builder::Builder &builder, const RunCommandOptions &opti
         }
     }
 
-    auto result = builder.run(modules, options.commands, options.debugMode, options.extensions);
+    auto result = builder.run(modules,
+                              options.commands,
+                              options.debugMode,
+                              options.workdir,
+                              options.extensions);
     if (!result) {
         LogE("Run failed: {}", result.error());
         return result.error().code();
@@ -784,6 +788,8 @@ You can report bugs to the linyaps team under this project: https://github.com/O
       ->delimiter(',')
       ->allow_extra_args(false)
       ->type_name("modules");
+    buildRun->add_option("--workdir", runOpts.workdir, _("Working directory inside the app"))
+      ->type_name("PATH");
     buildRun->add_option(
       "COMMAND",
       runOpts.commands,

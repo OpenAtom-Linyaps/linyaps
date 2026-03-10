@@ -97,6 +97,7 @@ public:
     auto run(std::vector<std::string> modules,
              std::vector<std::string> args,
              bool debug = false,
+             const std::string &workdir = "",
              std::vector<std::string> extensions = {}) -> utils::error::Result<void>;
     auto runtimeCheck() -> utils::error::Result<void>;
     auto runFromRepo(const package::Reference &ref, const std::vector<std::string> &args)

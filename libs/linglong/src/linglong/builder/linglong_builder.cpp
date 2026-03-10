@@ -1777,6 +1777,7 @@ utils::error::Result<void> Builder::importLayer(repo::OSTreeRepo &ostree,
 utils::error::Result<void> Builder::run(std::vector<std::string> modules,
                                         std::vector<std::string> args,
                                         bool debug,
+                                        const std::string &workdir,
                                         std::vector<std::string> extensions)
 {
     LINGLONG_TRACE("run application");
@@ -1950,7 +1951,12 @@ utils::error::Result<void> Builder::run(std::vector<std::string> modules,
     }
 
     ocppi::runtime::config::types::Process process;
-
+    if (!workdir.empty()) {
+        if (!std::filesystem::path(workdir).is_absolute()) {
+            return LINGLONG_ERR(fmt::format("Workdir must be an absolute path: {}", workdir));
+        }
+        process.cwd = workdir;
+    }
     if (!args.empty()) {
         process.args = std::move(args);
     } else {

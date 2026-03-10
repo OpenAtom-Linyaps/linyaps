@@ -1592,7 +1592,8 @@ int Cli::info(const InfoOptions &options)
                                           { .forceRemote = false, .fallbackToRemote = false });
         if (!ref) {
             LogD("{}", ref.error());
-            this->printer.printErr(LINGLONG_ERRV("Can not find such application."));
+            this->printer.printErr(LINGLONG_ERRV("Cannot find such application.",
+                                                 utils::error::ErrorCode::AppNotFoundFromLocal));
             return -1;
         }
 

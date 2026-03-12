@@ -788,7 +788,7 @@ You can report bugs to the linyaps team under this project: https://github.com/O
       ->delimiter(',')
       ->allow_extra_args(false)
       ->type_name("modules");
-    buildRun->add_option("--workdir", runOpts.workdir, _("Working directory inside the app"))
+    buildRun->add_option("--workdir", runOpts.workdir, _("Specify the working directory where the application runs"))
       ->type_name("PATH");
     buildRun->add_option(
       "COMMAND",

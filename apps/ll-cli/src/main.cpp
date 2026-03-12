@@ -179,7 +179,10 @@ ll-cli run org.deepin.demo -- bash -x /path/to/bash/script)"));
                    _("Specify the runtime used by the application to run"))
       ->type_name("REF")
       ->check(validatorString);
-    cliRun->add_option("--workdir", runOptions.workdir, _("Working directory inside the app"))
+    cliRun
+      ->add_option("--workdir",
+                   runOptions.workdir,
+                   _("Specify the working directory where the application runs"))
       ->type_name("PATH");
     cliRun
       ->add_option("--extensions",

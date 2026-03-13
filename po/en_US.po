@@ -191,7 +191,7 @@ msgstr "Specify the runtime used by the application to run"
 
 #: ../apps/ll-cli/src/main.cpp:185 ../apps/ll-builder/src/main.cpp:791
 msgid "Specify the working directory where the application runs"
-msgstr ""
+msgstr "Specify the working directory where the application runs"
 
 #: ../apps/ll-cli/src/main.cpp:190
 msgid "Specify extension(s) used by the application to run"
@@ -356,7 +356,7 @@ msgstr "Only upgrade dependencies of application"
 
 #: ../apps/ll-cli/src/main.cpp:344
 msgid "Only upgrade application"
-msgstr ""
+msgstr "Only upgrade application"
 
 #: ../apps/ll-cli/src/main.cpp:355
 msgid ""

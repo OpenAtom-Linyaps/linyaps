@@ -188,7 +188,7 @@ msgstr "指定应用程序运行所需的运行时(runtime)"
 
 #: ../apps/ll-cli/src/main.cpp:185 ../apps/ll-builder/src/main.cpp:791
 msgid "Specify the working directory where the application runs"
-msgstr ""
+msgstr "指定应用程序运行的工作目录"
 
 #: ../apps/ll-cli/src/main.cpp:190
 msgid "Specify extension(s) used by the application to run"
@@ -351,7 +351,7 @@ msgstr "仅升级应用程序的依赖项"
 
 #: ../apps/ll-cli/src/main.cpp:344
 msgid "Only upgrade application"
-msgstr ""
+msgstr "仅升级应用程序"
 
 #: ../apps/ll-cli/src/main.cpp:355
 msgid ""

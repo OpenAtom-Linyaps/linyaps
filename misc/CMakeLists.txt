@@ -36,6 +36,8 @@ configure_files(
   lib/tmpfiles.d/linglong.conf
   script/linglong.sh
   share/bash-completion/completions/ll-builder
+  share/zsh/vendor-completions/_ll-builder
+  share/fish/vendor_completions.d/ll-builder.fish
   share/bash-completion/completions/ll-cli
   share/zsh/vendor-completions/_ll-cli
   share/fish/vendor_completions.d/ll-cli.fish

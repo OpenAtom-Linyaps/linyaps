@@ -193,7 +193,7 @@ msgstr "Määritä sovelluksen käyttämä ajoympäristö"
 
 #: ../apps/ll-cli/src/main.cpp:185 ../apps/ll-builder/src/main.cpp:791
 msgid "Specify the working directory where the application runs"
-msgstr ""
+msgstr "Määritä työhakemisto, jossa sovellus suoritetaan"
 
 #: ../apps/ll-cli/src/main.cpp:190
 msgid "Specify extension(s) used by the application to run"
@@ -359,7 +359,7 @@ msgstr "Päivitä vain sovelluksen riippuvuudet"
 
 #: ../apps/ll-cli/src/main.cpp:344
 msgid "Only upgrade application"
-msgstr ""
+msgstr "Vain sovelluksen päivitys"
 
 #: ../apps/ll-cli/src/main.cpp:355
 msgid ""

@@ -1668,31 +1668,40 @@ int Cli::content(const ContentOptions &options)
         return -1;
     }
 
-    QDir entriesDir((layer->path() / "entries/share").c_str());
+    QDir entriesDir((layer->path() / "entries").c_str());
     if (!entriesDir.exists()) {
         this->printer.printErr(LINGLONG_ERR("no entries found").value());
         return -1;
     }
+
+    const auto preferLibSystemdUser = QFileInfo(entriesDir.filePath("lib/systemd/user")).exists();
 
     QDirIterator it(entriesDir.absolutePath(),
                     QDir::AllEntries | QDir::NoDot | QDir::NoDotDot | QDir::System,
                     QDirIterator::Subdirectories);
     while (it.hasNext()) {
         it.next();
-        contents.append(it.fileInfo().absoluteFilePath());
-    }
-    // replace $LINGLONG_ROOT/layers/appid/verison/arch/module/entries to ${LINGLONG_ROOT}/entires
-    contents.replaceInStrings(entriesDir.absolutePath(), QString(LINGLONG_ROOT) + "/entries/share");
-
-    // only show the contents which are exported
-    for (int pos = 0; pos < contents.size(); ++pos) {
-        QFileInfo info(contents.at(pos));
-        if (!info.exists()) {
-            contents.removeAt(pos);
+        const auto entryPath = it.fileInfo().absoluteFilePath();
+        const auto relativePath =
+          std::filesystem::path(entriesDir.relativeFilePath(entryPath).toStdString());
+        const auto exportPath =
+          this->repository.resolveEntryExportPath(relativePath, preferLibSystemdUser);
+        if (!exportPath.empty()) {
+            contents.append(QString::fromStdString(exportPath.string()));
         }
     }
 
-    this->printer.printContent(contents);
+    // only show the contents which are exported
+    QStringList exportedContents{};
+    for (const auto &content : std::as_const(contents)) {
+        QFileInfo info(content);
+        if (!info.exists() || info.isDir()) {
+            continue;
+        }
+        exportedContents.append(content);
+    }
+
+    this->printer.printContent(exportedContents);
     return 0;
 }
 

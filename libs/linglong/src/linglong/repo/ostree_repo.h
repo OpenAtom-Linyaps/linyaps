@@ -23,6 +23,7 @@
 
 #include <QDir>
 
+#include <filesystem>
 #include <memory>
 #include <optional>
 #include <string>
@@ -190,6 +191,10 @@ public:
                  std::string module = "binary",
                  const std::optional<std::string> &subRef = std::nullopt) const noexcept;
     utils::error::Result<void> fixExportAllEntries() noexcept;
+    [[nodiscard]] std::filesystem::path resolveEntryExportPath(
+      const std::filesystem::path &relativePath, bool preferLibSystemdUser = false) const noexcept;
+    [[nodiscard]] std::filesystem::path
+    resolveDesktopFileExportPath(const std::filesystem::path &relativePath) const noexcept;
 
     virtual std::unique_ptr<ClientAPIWrapper> createClientV2(const std::string &url) const
     {

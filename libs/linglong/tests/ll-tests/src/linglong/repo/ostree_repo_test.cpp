@@ -35,20 +35,60 @@ protected:
     void TearDown() override { }
 };
 
+TEST_F(RepoTest, resolveDesktopFileExportPathUsesOverlayWhenPresent)
+{
+    TempDir tempDir;
+    auto config = api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 };
+    auto ostreeRepo = std::make_unique<MockOstreeRepo>(QDir(tempDir.path().c_str()), config);
+
+    const auto defaultDesktopPath = tempDir.path() / "entries/share/applications/org.test.desktop";
+    const auto overlayDesktopPath =
+      tempDir.path() / "entries/apps/share/applications/org.test.desktop";
+
+    std::filesystem::create_directories(defaultDesktopPath.parent_path());
+    std::filesystem::create_directories(overlayDesktopPath.parent_path());
+    std::ofstream(overlayDesktopPath) << "overlay";
+
+    ostreeRepo->wrapGetOverlayShareDirFunc = [&overlayDesktopPath]() {
+        return QDir(
+          QString::fromStdString(overlayDesktopPath.parent_path().parent_path().string()));
+    };
+
+    EXPECT_EQ(ostreeRepo->resolveDesktopFileExportPath("applications/org.test.desktop"),
+              overlayDesktopPath);
+}
+
+TEST_F(RepoTest, resolveEntryExportPathMapsLegacySystemdUserPath)
+{
+    TempDir tempDir;
+    auto config = api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 };
+    auto ostreeRepo = std::make_unique<MockOstreeRepo>(QDir(tempDir.path().c_str()), config);
+
+    EXPECT_EQ(ostreeRepo->resolveEntryExportPath("share/systemd/user/test.service", false),
+              tempDir.path() / "entries/lib/systemd/user/test.service");
+}
+
+TEST_F(RepoTest, resolveEntryExportPathSkipsLegacySystemdUserWhenLibPathPreferred)
+{
+    TempDir tempDir;
+    auto config = api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 };
+    auto ostreeRepo = std::make_unique<MockOstreeRepo>(QDir(tempDir.path().c_str()), config);
+
+    EXPECT_TRUE(
+      ostreeRepo->resolveEntryExportPath("share/systemd/user/test.service", true).empty());
+}
+
 TEST_F(RepoTest, exportDir)
 {
     // 准备测试环境
-    fs::path tempDir = fs::temp_directory_path() / "repo_test";
+    TempDir tempDir("repo_test_");
+    ASSERT_TRUE(tempDir.isValid()) << "Failed to create temporary directory";
     std::error_code ec;
-    fs::remove_all(tempDir, ec);
-    EXPECT_FALSE(ec) << "Failed to remove directory: " << ec.message();
-
-    bool created = fs::create_directories(tempDir, ec);
-    EXPECT_TRUE(created) << "Failed to create directory";
+    bool created = fs::create_directories(tempDir.path(), ec);
     EXPECT_FALSE(ec) << "Error creating directory: " << ec.message();
-    EXPECT_TRUE(fs::exists(tempDir)) << "Directory not created";
+    EXPECT_TRUE(fs::exists(tempDir.path())) << "Directory not created";
 
-    std::string repoPath = tempDir.string();
+    std::string repoPath = tempDir.path().string();
     std::string ostreeRepoPath = repoPath + "/repo";
     std::string remoteEndpoint = "https://store-llrepo.deepin.com/repos/";
     std::string remoteRepoName = "repo";
@@ -59,7 +99,7 @@ TEST_F(RepoTest, exportDir)
     auto ostreeRepo = std::make_unique<MockOstreeRepo>(repoDir, config);
 
     // 创建测试文件和目录结构，包括XDG标准文件
-    fs::path srcDirPath = tempDir / "src";
+    fs::path srcDirPath = tempDir.path() / "src";
     created = fs::create_directories(srcDirPath, ec);
     EXPECT_TRUE(created) << "Failed to create source directory";
     EXPECT_FALSE(ec) << "Error creating source directory: " << ec.message();
@@ -114,7 +154,7 @@ TEST_F(RepoTest, exportDir)
     systemdServiceFile.close();
 
     // 测试exportDir功能
-    fs::path destDirPath = tempDir / "entries";
+    fs::path destDirPath = tempDir.path() / "entries";
     ostreeRepo->wrapGetOverlayShareDirFunc = [destDirPath]() {
         return QDir(QString((destDirPath / "share").string().c_str()));
     };
@@ -198,12 +238,12 @@ TEST_F(RepoTest, exportDir)
     }
 
     // 测试空目录导出
-    fs::path emptyDirPath = tempDir / "empty";
+    fs::path emptyDirPath = tempDir.path() / "empty";
     created = fs::create_directories(emptyDirPath, ec);
     EXPECT_TRUE(created) << "Failed to create empty directory";
     EXPECT_FALSE(ec) << "Error creating empty directory: " << ec.message();
     EXPECT_TRUE(fs::exists(emptyDirPath)) << "Empty directory not created";
-    fs::path emptyDestPath = tempDir / "empty_dest";
+    fs::path emptyDestPath = tempDir.path() / "empty_dest";
     auto result = ostreeRepo->exportDir("appID", emptyDirPath.string(), emptyDestPath.string(), 10);
     EXPECT_TRUE(result.has_value()) << "exportDir failed: " << result.error().message();
     EXPECT_FALSE(ec) << "Unexpected error code: " << ec.message();

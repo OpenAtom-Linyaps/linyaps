@@ -3054,6 +3054,67 @@ QDir OSTreeRepo::getDefaultSharedDir() const noexcept
     return this->repoDir.absoluteFilePath("entries/share");
 }
 
+std::filesystem::path OSTreeRepo::resolveEntryExportPath(const std::filesystem::path &relativePath,
+                                                         bool preferLibSystemdUser) const noexcept
+{
+    auto relative = relativePath.generic_string();
+    if (relative.empty()) {
+        return {};
+    }
+
+    const auto repoDirPath = std::filesystem::path(this->repoDir.absolutePath().toStdString());
+    const auto entriesDir = repoDirPath / "entries";
+
+    if (common::strings::starts_with(relative, "share/applications/")
+        && common::strings::ends_with(relative, ".desktop")) {
+        return this->resolveDesktopFileExportPath(
+          std::filesystem::path(relative).lexically_relative(std::filesystem::path{ "share" }));
+    }
+
+    // exportEntries() will export systemd user units to entries/lib/systemd/user:
+    // 1. Prefer entries/lib/systemd/user when the app ships it directly.
+    // 2. Fall back to entries/share/systemd/user only for legacy apps, but still map the
+    //    resulting visible path to entries/lib/systemd/user.
+    // Returning an empty path here skips the legacy share path when lib/systemd/user exists,
+    // so `ll-cli content` does not emit the same exported target twice.
+    constexpr std::string_view shareSystemdUser = "share/systemd/user";
+    if (relative == shareSystemdUser
+        || common::strings::starts_with(relative, "share/systemd/user/")) {
+        if (preferLibSystemdUser) {
+            return {};
+        }
+
+        auto suffix = relative.substr(shareSystemdUser.size());
+        return entriesDir / std::filesystem::path("lib/systemd/user" + suffix);
+    }
+
+    constexpr std::string_view libSystemdUser = "lib/systemd/user";
+    if (relative == libSystemdUser || common::strings::starts_with(relative, "lib/systemd/user/")) {
+        return entriesDir / relativePath;
+    }
+
+    return entriesDir / relativePath;
+}
+
+std::filesystem::path
+OSTreeRepo::resolveDesktopFileExportPath(const std::filesystem::path &relativePath) const noexcept
+{
+    const auto defaultDesktopPath =
+      std::filesystem::path(this->getDefaultSharedDir().absolutePath().toStdString())
+      / relativePath;
+    const auto overlayDesktopPath =
+      std::filesystem::path(this->getOverlayShareDir().absolutePath().toStdString()) / relativePath;
+    if (overlayDesktopPath != defaultDesktopPath && std::filesystem::exists(overlayDesktopPath)) {
+        return overlayDesktopPath;
+    }
+
+    if (std::filesystem::exists(defaultDesktopPath)) {
+        return defaultDesktopPath;
+    }
+
+    return overlayDesktopPath;
+}
+
 QDir OSTreeRepo::getOverlayShareDir() const noexcept
 {
     return this->repoDir.absoluteFilePath("entries/" LINGLONG_EXPORT_PATH);

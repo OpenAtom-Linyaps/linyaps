@@ -195,7 +195,7 @@ msgstr ""
 
 #: ../apps/ll-cli/src/main.cpp:185 ../apps/ll-builder/src/main.cpp:791
 msgid "Specify the working directory where the application runs"
-msgstr ""
+msgstr "Wybierz katalog, w którym zostanie uruchomiona aplikacja"
 
 #: ../apps/ll-cli/src/main.cpp:190
 msgid "Specify extension(s) used by the application to run"
@@ -360,7 +360,7 @@ msgstr "Zaktualizuj tylko zależności aplikacji"
 
 #: ../apps/ll-cli/src/main.cpp:344
 msgid "Only upgrade application"
-msgstr ""
+msgstr "Zaktualizuj tylko aplikacje"
 
 #: ../apps/ll-cli/src/main.cpp:355
 msgid ""

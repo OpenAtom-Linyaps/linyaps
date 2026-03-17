@@ -1,15 +1,17 @@
-// SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2025-2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 #include <gtest/gtest.h>
 
+#include "common/tempdir.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/serialize/json.h"
 #include "linglong/utils/serialize/packageinfo_handler.h"
 
 #include <filesystem>
 #include <fstream>
+#include <memory>
 
 using namespace linglong::utils;
 
@@ -18,18 +20,13 @@ class PackageInfoHandlerTest : public ::testing::Test
 protected:
     void SetUp() override
     {
-        char tempPath[] = "/var/tmp/linglong-uab-file-test-XXXXXX";
-        tempDir = mkdtemp(tempPath);
-        ASSERT_FALSE(tempDir.empty()) << "Failed to create temporary directory";
+        tempDir = std::make_unique<TempDir>("linglong-packageinfo-handler-test-");
+        ASSERT_TRUE(tempDir->isValid()) << "Failed to create temporary directory";
     }
 
-    void TearDown() override
-    {
-        // 清理临时目录
-        std::filesystem::remove_all(tempDir);
-    }
+    void TearDown() override { tempDir.reset(); }
 
-    std::filesystem::path tempDir;
+    std::unique_ptr<TempDir> tempDir;
 };
 
 TEST_F(PackageInfoHandlerTest, toPackageInfoV2_BasicConversion)
@@ -129,7 +126,7 @@ TEST_F(PackageInfoHandlerTest, parsePackageInfo_FromFileV2)
         "version": "1.0.0"
     })";
 
-    std::filesystem::path filePath = tempDir / "package_v2.json";
+    std::filesystem::path filePath = tempDir->path() / "package_v2.json";
     std::ofstream file(filePath);
     ASSERT_TRUE(file.is_open());
     file << jsonContent;
@@ -171,7 +168,7 @@ TEST_F(PackageInfoHandlerTest, parsePackageInfo_FromFileV1)
         "version": "1.0.0"
     })";
 
-    std::filesystem::path filePath = tempDir / "package_v1.json";
+    std::filesystem::path filePath = tempDir->path() / "package_v1.json";
     std::ofstream file(filePath);
     ASSERT_TRUE(file.is_open());
     file << jsonContent;
@@ -204,7 +201,7 @@ TEST_F(PackageInfoHandlerTest, parsePackageInfo_FromFileInvalid)
         "invalid": "json content"
     })";
 
-    std::filesystem::path filePath = tempDir / "invalid.json";
+    std::filesystem::path filePath = tempDir->path() / "invalid.json";
     std::ofstream file(filePath);
     ASSERT_TRUE(file.is_open());
     file << jsonContent;

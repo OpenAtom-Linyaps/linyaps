@@ -1,10 +1,11 @@
-// SPDX-FileCopyrightText: 2024 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2024-2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 #include <gtest/gtest.h>
 
 #include "../mocks/layer_packager_mock.h"
+#include "common/tempdir.h"
 #include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/common/strings.h"
 #include "linglong/package/layer_packager.h"
@@ -16,6 +17,7 @@
 
 #include <filesystem>
 #include <fstream>
+#include <memory>
 #include <string>
 
 using namespace linglong;
@@ -27,9 +29,10 @@ class LayerPackagerTest : public ::testing::Test
 public:
     static void SetUpTestCase()
     {
-        char tempPath[] = "/var/tmp/linglong-layer-packager-test-SetUpTestSuite-XXXXXX";
-        std::filesystem::path layerDirPath = mkdtemp(tempPath);
-        ASSERT_FALSE(layerDirPath.empty()) << "Failed to create temporary directory";
+        auto layerTempDir =
+          std::make_unique<TempDir>("linglong-layer-packager-test-SetUpTestSuite-");
+        ASSERT_TRUE(layerTempDir->isValid()) << "Failed to create temporary directory";
+        const auto &layerDirPath = layerTempDir->path();
         // 创建临时文件，用于之后打包测试
         std::filesystem::create_directories(layerDirPath / "files");
         std::string helloFilePath = layerDirPath / "files" / "hello";
@@ -51,10 +54,9 @@ public:
           << layerDirPath << "Failed to create package.json";
 
         // 创建临时目录，用于存放打包后的layer文件
-        char tempPath2[] = "/var/tmp/linglong-test-XXXXXX";
-        layerFileDir = mkdtemp(tempPath2);
-        layerFilePath = layerFileDir / "hello.layer";
-        ASSERT_FALSE(layerFileDir.empty()) << "Failed to create temporary directory";
+        layerFileDir = std::make_unique<TempDir>("linglong-test-");
+        layerFilePath = layerFileDir->path() / "hello.layer";
+        ASSERT_TRUE(layerFileDir->isValid()) << "Failed to create temporary directory";
         package::LayerPackager packager;
         packager.setCompressor("lz4");
         // 生成空文件，测试文件已存在的场景
@@ -64,30 +66,23 @@ public:
         auto ret = packager.pack(layerDir, layerFilePath.string().c_str());
         ASSERT_TRUE(ret.has_value()) << "Failed to pack layer file" << ret.error().message();
         ASSERT_TRUE(std::filesystem::exists(layerFilePath)) << "Failed to pack layer file";
-        // 删除layer目录
-        std::error_code ec;
-        std::filesystem::remove_all(layerDirPath, ec);
-        ASSERT_FALSE(ec) << "Failed to remove layer dir" << ec.message();
     }
 
     static void TearDownTestCase()
     {
         std::cout << "Cleanup shared resource" << std::endl;
-        // 删除layer文件
-        std::error_code ec;
-        std::filesystem::remove_all(layerFileDir, ec);
-        ASSERT_FALSE(ec) << "Failed to remove layer file dir" << ec.message();
+        layerFileDir.reset();
     }
 
     void SetUp() override { }
 
     void TearDown() override { }
 
-    static std::filesystem::path layerFileDir;
+    static std::unique_ptr<TempDir> layerFileDir;
     static std::filesystem::path layerFilePath;
 };
 
-std::filesystem::path LayerPackagerTest::layerFileDir;
+std::unique_ptr<TempDir> LayerPackagerTest::layerFileDir;
 std::filesystem::path LayerPackagerTest::layerFilePath;
 
 TEST_F(LayerPackagerTest, LayerPackagerUnpackFuseOffset)
@@ -169,8 +164,8 @@ TEST_F(LayerPackagerTest, LayerPackagerUnpackFsck)
 
 TEST_F(LayerPackagerTest, InitWorkDir)
 {
-    char tempPath[] = "/var/tmp/linglong-layer-XXXXXX";
-    std::filesystem::path tmpPath = mkdtemp(tempPath);
+    TempDir tmpDir("linglong-layer-");
+    ASSERT_TRUE(tmpDir.isValid()) << "Failed to create temporary directory";
     MockLayerPackager packager;
     // 测试创建workdir失败时, initWorkDir 应该使用临时目录
     packager.wrapMkdirDirFunc = [](const std::string &path) -> utils::error::Result<void> {
@@ -183,12 +178,8 @@ TEST_F(LayerPackagerTest, InitWorkDir)
     // 测试initWorkDir
     auto ret = packager.initWorkDir();
     ASSERT_TRUE(ret.has_value()) << "Failed to init workdir" << ret.error().message();
-    ASSERT_NE(packager.getWorkDir().string(), tmpPath / "not-exists")
+    ASSERT_NE(packager.getWorkDir().string(), tmpDir.path() / "not-exists")
       << "workdir should be temporary directory";
-    // 删除临时目录
-    std::error_code ec;
-    std::filesystem::remove_all(tmpPath, ec);
-    ASSERT_FALSE(ec) << "Failed to remove tmpPath";
 }
 
 } // namespace linglong::package

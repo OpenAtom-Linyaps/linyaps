@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 205-2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -99,9 +99,8 @@ TEST_F(ApplicationSingletonTest, ReleasingLockManuallyWorks)
 TEST_F(ApplicationSingletonTest, CreatesDirectoryForLockFile)
 {
     TempDir temp_dir;
-    auto lockFilePath = temp_dir.path() / "ll_driver_detect_singleton_test.lock";
     using namespace linglong::driver::detect;
-    auto deepLockPath = std::filesystem::temp_directory_path() / "deep_dir_for_test" / "test.lock";
+    auto deepLockPath = temp_dir.path() / "deep_dir_for_test" / "test.lock";
     std::filesystem::remove(deepLockPath);
     std::filesystem::remove(deepLockPath.parent_path());
 

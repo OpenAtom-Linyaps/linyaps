@@ -1,14 +1,16 @@
-// SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2025-2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 #include <gtest/gtest.h>
 
+#include "common/tempdir.h"
 #include "linglong/utils/file.h"
 
 #include <algorithm>
 #include <filesystem>
 #include <fstream>
+#include <memory>
 #include <string>
 
 namespace fs = std::filesystem;
@@ -18,13 +20,13 @@ class FileTest : public ::testing::Test
 protected:
     void SetUp() override
     {
-        char src_template[] = "/tmp/linglong-file-test-src-XXXXXX";
-        src_dir = mkdtemp(src_template);
-        ASSERT_FALSE(src_dir.empty());
+        srcTempDir = std::make_unique<TempDir>("linglong-file-test-src-");
+        ASSERT_TRUE(srcTempDir->isValid());
+        src_dir = srcTempDir->path();
 
-        char dest_template[] = "/tmp/linglong-file-test-dest-XXXXXX";
-        dest_dir = mkdtemp(dest_template);
-        ASSERT_FALSE(dest_dir.empty());
+        destTempDir = std::make_unique<TempDir>("linglong-file-test-dest-");
+        ASSERT_TRUE(destTempDir->isValid());
+        dest_dir = destTempDir->path();
 
         fs::create_directories(src_dir / "subdir1" / "subdir2");
 
@@ -38,12 +40,14 @@ protected:
 
     void TearDown() override
     {
-        fs::remove_all(src_dir);
-        fs::remove_all(dest_dir);
+        srcTempDir.reset();
+        destTempDir.reset();
     }
 
     fs::path src_dir;
     fs::path dest_dir;
+    std::unique_ptr<TempDir> srcTempDir;
+    std::unique_ptr<TempDir> destTempDir;
 };
 
 TEST_F(FileTest, CopyDirectory)

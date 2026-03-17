@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 #include <gtest/gtest.h>
@@ -111,10 +111,12 @@ TEST(LinglongBuilder, mergeOutput)
     const auto &srcPath1 = srcDir1.path();
     std::filesystem::create_directories(srcPath1 / "bin");
     std::filesystem::create_directories(srcPath1 / "lib");
+    std::filesystem::create_directories(srcPath1 / "lib/systemd");
     std::filesystem::create_directories(srcPath1 / "share");
 
     std::ofstream(srcPath1 / "bin/tool1");
     std::ofstream(srcPath1 / "lib/libfoo.so");
+    std::ofstream(srcPath1 / "lib/systemd/dbus.service");
     std::ofstream(srcPath1 / "share/data1");
     std::ofstream(srcPath1 / ".wh.somefile");
 
@@ -130,7 +132,10 @@ TEST(LinglongBuilder, mergeOutput)
     // Define merge targets
     std::vector<std::string> targets = { "bin/", "share/data1" };
 
-    linglong::builder::detail::mergeOutput({ srcPath1, srcPath2 }, destDir.path(), targets);
+    linglong::builder::detail::mergeOutput({ srcPath1, srcPath2 },
+                                           destDir.path(),
+                                           targets,
+                                           { "lib/systemd" });
 
     const auto &destPath = destDir.path();
     // Check files are merged
@@ -143,6 +148,7 @@ TEST(LinglongBuilder, mergeOutput)
     EXPECT_FALSE(std::filesystem::exists(destPath / "lib/libbar.so"));
     EXPECT_FALSE(std::filesystem::exists(destPath / "share/data2"));
     EXPECT_FALSE(std::filesystem::exists(destPath / ".wh.somefile"));
+    EXPECT_FALSE(std::filesystem::exists(destPath / "lib/systemd/dbus.service"));
 }
 
 TEST(LinglongBuilder, UabExportFilename)

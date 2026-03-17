@@ -155,11 +155,12 @@ utils::error::Result<void> pullDependency(const package::Reference &ref,
 namespace detail {
 void mergeOutput(const std::vector<std::filesystem::path> &src,
                  const std::filesystem::path &dest,
-                 const std::vector<std::string> &targets)
+                 const std::vector<std::string> &targets,
+                 const std::vector<std::string> &excludes)
 {
     for (const auto &dir : src) {
         LogD("merge {} to {}", dir, dest);
-        auto matcher = [&dir, &targets](const std::filesystem::path &path) {
+        auto matcher = [&dir, &targets, &excludes](const std::filesystem::path &path) {
             if (common::strings::starts_with(path.filename().string(), ".wh.")) {
                 return false;
             }
@@ -172,6 +173,11 @@ void mergeOutput(const std::vector<std::filesystem::path> &src,
                 return false;
             }
 
+            for (const auto &exclude : excludes) {
+                if (common::strings::starts_with(path.string(), exclude)) {
+                    return false;
+                }
+            }
             for (const auto &target : targets) {
                 if (common::strings::starts_with(path.string(), target)) {
                     return true;
@@ -959,7 +965,10 @@ utils::error::Result<void> Builder::buildStagePreCommit() noexcept
             src.push_back(runtimeOverlay->upperDirPath());
         }
     }
-    detail::mergeOutput(src, buildOutput, { "bin/", "sbin/", "lib/" });
+    detail::mergeOutput(src,
+                        buildOutput,
+                        { "bin/", "sbin/", "lib/" },
+                        { "lib/systemd", "share/systemd" });
 
     return LINGLONG_OK;
 }

@@ -1,10 +1,11 @@
-// SPDX-FileCopyrightText: 2024 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2024-2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 #include <gtest/gtest.h>
 
 #include "../mocks/uab_file_mock.h"
+#include "common/tempdir.h"
 #include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/common/strings.h"
 #include "linglong/package/uab_file.h"
@@ -16,9 +17,11 @@
 
 #include <filesystem>
 #include <fstream>
+#include <memory>
 #include <string>
 
 #include <fcntl.h>
+#include <unistd.h>
 
 using namespace linglong;
 
@@ -29,26 +32,25 @@ class UabFileTest : public ::testing::Test
 protected:
     static void SetUpTestCase()
     {
-        char tempPath[] = "/var/tmp/linglong-uab-file-test-XXXXXX";
-        testDir = mkdtemp(tempPath);
-        ASSERT_FALSE(testDir.empty()) << "Failed to create temporary directory";
-        uabFile = testDir / "test.uab";
+        testDir = std::make_unique<TempDir>("linglong-uab-file-test-");
+        ASSERT_TRUE(testDir->isValid()) << "Failed to create temporary directory";
+        uabFile = (testDir->path() / "test.uab").string();
         std::filesystem::copy_file("/proc/self/exe", uabFile);
         auto uab = ElfHandler::create(uabFile);
         ASSERT_TRUE(uab.has_value()) << "Failed to create uab file";
         // 添加bundle section
-        std::string bundleFile = testDir / "bundle.erofs";
+        std::string bundleFile = (testDir->path() / "bundle.erofs").string();
         {
             std::error_code ec;
-            std::filesystem::create_directories(testDir / "bundle/layers/test/binary", ec);
+            std::filesystem::create_directories(testDir->path() / "bundle/layers/test/binary", ec);
             ASSERT_FALSE(ec) << "Failed to create test directory";
             std::string helloFilePath =
-              testDir / "bundle" / "layers" / "test" / "binary" / "info.json";
+              (testDir->path() / "bundle" / "layers" / "test" / "binary" / "info.json").string();
             std::ofstream tmpFile(helloFilePath);
             tmpFile << "Hello, World!";
             tmpFile.close();
-            auto ret =
-              utils::Cmd("mkfs.erofs").exec({ bundleFile.c_str(), (testDir / "bundle").c_str() });
+            const auto bundleDir = testDir->path() / "bundle";
+            auto ret = utils::Cmd("mkfs.erofs").exec({ bundleFile.c_str(), bundleDir.c_str() });
             ASSERT_TRUE(ret.has_value()) << "Failed to create erofs file" << ret.error().message();
             auto ret2 = (*uab)->addSection("linglong.bundle", bundleFile);
             ASSERT_TRUE(ret2.has_value()) << ret2.error().message();
@@ -79,15 +81,15 @@ protected:
             bundle.close();
             meta.digest = cryptor.result().toHex().toStdString();
 
-            std::ofstream jsonFile(testDir / "info.json");
+            std::ofstream jsonFile(testDir->path() / "info.json");
             jsonFile << nlohmann::json(meta).dump();
             jsonFile.close();
-            auto ret = (*uab)->addSection("linglong.meta", testDir / "info.json");
+            auto ret = (*uab)->addSection("linglong.meta", testDir->path() / "info.json");
             ASSERT_TRUE(ret.has_value()) << "Failed to add meta section";
         }
         // 再添加sign section
         {
-            auto signDir = testDir / "sign";
+            auto signDir = testDir->path() / "sign";
             std::error_code ec;
             std::filesystem::create_directories(signDir, ec);
             ASSERT_FALSE(ec) << "Failed to create sign directory";
@@ -96,30 +98,25 @@ protected:
             tmpFile << "Hello, World!";
             tmpFile.close();
             auto ret = utils::Cmd("tar").exec(
-              { "-cvf", (testDir / "sign.tar").c_str(), "-C", signDir.c_str(), "." });
+              { "-cvf", (testDir->path() / "sign.tar").c_str(), "-C", signDir.c_str(), "." });
             ASSERT_TRUE(ret.has_value()) << "Failed to create tar file";
-            auto ret2 = (*uab)->addSection("linglong.bundle.sign", testDir / "sign.tar");
+            auto ret2 = (*uab)->addSection("linglong.bundle.sign", testDir->path() / "sign.tar");
             ASSERT_TRUE(ret2.has_value()) << "Failed to add sign section" << ret2.error().message();
         }
     }
 
-    static void TearDownTestCase()
-    {
-        std::error_code ec;
-        std::filesystem::remove_all(testDir, ec);
-        ASSERT_FALSE(ec) << "Failed to remove test dir";
-    }
+    static void TearDownTestCase() { testDir.reset(); }
 
     void SetUp() override { }
 
     void TearDown() override { }
 
     static std::string uabFile;
-    static std::filesystem::path testDir;
+    static std::unique_ptr<TempDir> testDir;
 };
 
 std::string UabFileTest::uabFile;
-std::filesystem::path UabFileTest::testDir;
+std::unique_ptr<TempDir> UabFileTest::testDir;
 
 TEST_F(UabFileTest, UnpackFuseOffset)
 {

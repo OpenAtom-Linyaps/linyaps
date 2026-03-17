@@ -16,40 +16,113 @@ The current Linyaps packaging tool supports the following CPU architectures:
 
 - mips64
 
-## Build Limitation Description
+## Specifying the Build Configuration File
 
-Cross-architecture cross-compilation is not supported: currently can only build packages for that architecture on machines of the corresponding architecture
+When running `ll-builder build`, the tool searches for the project configuration file in the following order and uses the first one it finds:
 
-## Multi-Architecture Project Structure Recommendation
+1. If the `-f` parameter is specified, it uses the configuration file specified by `-f`. If the file does not exist, it will report an error and exit.
+2. Based on the machine architecture of the current build environment, it searches the current directory for an architecture-specific configuration file named `linglong.<arch>.yaml` (e.g., `linglong.arm64.yaml`).
+3. It searches for a `linglong.yaml` file in the current directory.
 
-It is recommended to use the following directory structure to manage multi-architecture builds:
+If it still cannot find a project configuration file, it will report an error and exit.
+
+Please note that manually specified project configuration files (i.e., the `linglong.yaml` file specified by `-f`) must be located within the project directory (the current directory where `ll-builder` is executed) or one of its subdirectories.
+
+## Recommendations for Multi-Architecture Project Structure
+
+Depending on the actual needs of your project, you can adopt one of the following directory structures:
 
 ```txt
-project-root/
-├── arm64
-│   └── linglong.yaml # arm64 architecture configuration file
-├── linglong.yaml # x86_64 architecture configuration file
-├── loong64
-│   └── linglong.yaml # loong64 architecture configuration file
+project_root/
+├── linglong.x86_64.yaml # x86_64 architecture config file
+├── linglong.arm64.yaml # arm64 architecture config file
+├── linglong.loong64.yaml # loong64 architecture config file
+├── linglong.yaml # Config file for other architectures
 ├── resources # Shared resource files
 └── src # Shared source code
 ```
 
-Place source code, resource files, etc. in the project root directory. The build for different architectures is determined by the configuration files for the respective architectures.
+Or
+
+```txt
+project_root/
+├── arm64
+│   └── src_arm
+│   └── linglong.yaml # arm64 architecture config file
+├── linglong.yaml # Config file for other architectures
+├── loong64
+│   └── src_loong64
+│   └── linglong.yaml # loong64 architecture config file
+├── resources # Shared resource files
+└── src # Shared source code
+```
+
+Place common source code and shared resource files in the project root directory, while keeping architecture-specific resources and configuration files in their respective subdirectories.
 
 ## Build Command Examples
 
-ll-builder will prioritize finding the project configuration file for the current architecture. Therefore, executing ll-builder on machines of different architectures will automatically use the configuration file corresponding to the current architecture. If the architecture configuration file is not in the default location, you can use the following method to specify the configuration file location:
+`ll-builder` uses project configuration files according to its internal rules.
+
+If a `linglong.<arch>.yaml` or `linglong.yaml` file exists in the current directory, you can simply run `ll-builder build`. `ll-builder` will automatically select the appropriate configuration file based on the build environment's architecture and build the corresponding Linyaps package.
+
+If the default rules do not meet your needs, you can specify the location of the configuration file using the following methods:
 
 ```bash
-# Build arm64 architecture package
-ll-builder -f arm64/linglong.yaml
+# Build an arm64 package
+ll-builder build -f arm64/linglong.yaml
 
-# Build loong64 architecture package
-ll-builder -f loong64/linglong.yaml
+# Build a loong64 package
+ll-builder build -f loong64/linglong.yaml
 ```
 
-Note that the project configuration file (the linglong.yaml file specified by -f) needs to be in the directory or subdirectory of the project directory (the current directory where ll-builder is run).
+## Cross-Building
+
+If you are cross-building (e.g., building an `arm64` Linyaps package on an `x86_64` machine), you can manually specify the project configuration file and fill in the target architecture in the `architecture` field within the `package` block of the configuration file.
+
+Please note that the architecture of the Linyaps build environment remains the architecture of the host machine running `ll-builder`. If you are building from source, you will need to install and configure a cross-compiler. For example:
+
+``` yaml
+# linglong.arm64.yaml
+version: "1"
+
+package:
+  id: org.deepin.example.cross_build
+  name: your name #set your application name
+  version: 0.0.0.1 #set your version
+  kind: app
+  description: |
+    your description #set a brief text to introduce your application.
+  architecture: arm64
+
+command: [program] #the commands that your application need to run.
+
+base: org.deepin.base/25.2.1
+
+build: |
+  cat > program.c << 'EOF'
+  #include <stdio.h>
+  
+  int main() {
+      printf("From ll-builder!\n");
+      return 0;
+  }
+  EOF
+  
+  # cross compile
+  aarch64-linux-gnu-gcc-12 program.c -o program
+
+  rm -f program.c
+
+  mkdir -p $PREFIX/bin
+  cp program $PREFIX/bin/
+
+buildext:
+  apt:
+    build-depends: [gcc-12-aarch64-linux-gnu]
+```
+
+1. Build the target architecture Linyaps package: `ll-builder build -f linglong.arm64.yaml`
+2. Export the target architecture Linyaps package: `ll-builder export --ref main:org.deepin.example.cross_build/0.0.0.1/arm64` or `ll-builder export --layer -f linglong.arm64.yaml`.
 
 ## Loongson
 

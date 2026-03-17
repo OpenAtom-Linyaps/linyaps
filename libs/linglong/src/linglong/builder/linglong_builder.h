@@ -56,7 +56,8 @@ utils::error::Result<void> cmdRemoveApp(repo::OSTreeRepo &repo,
 namespace detail {
 void mergeOutput(const std::vector<std::filesystem::path> &src,
                  const std::filesystem::path &dest,
-                 const std::vector<std::string> &targets);
+                 const std::vector<std::string> &targets,
+                 const std::vector<std::string> &excludes);
 }
 
 class Builder

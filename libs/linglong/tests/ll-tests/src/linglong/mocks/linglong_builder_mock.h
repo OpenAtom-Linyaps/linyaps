@@ -1,10 +1,13 @@
-// SPDX-FileCopyrightText: 2024 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2024-2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 #include <gtest/gtest.h>
 
+#include "common/tempdir.h"
 #include "linglong/builder/linglong_builder.h"
 #include "ocppi/cli/crun/Crun.hpp"
+
+#include <memory>
 
 namespace linglong::builder {
 class BuilderMock : public Builder
@@ -21,9 +24,8 @@ private:
     static linglong::repo::OSTreeRepo &initTempRepo()
     {
         auto tempRepoConfig = api::types::v1::RepoConfigV2{};
-        char tempPath[] = "/tmp/linglong-builder-test-XXXXXX";
-        std::string testDir = mkdtemp(tempPath);
-        static linglong::repo::OSTreeRepo repo(QDir(testDir.c_str()), tempRepoConfig);
+        static auto testDir = std::make_unique<TempDir>("linglong-builder-test-");
+        static linglong::repo::OSTreeRepo repo(QDir(testDir->path().c_str()), tempRepoConfig);
         return repo;
     }
 

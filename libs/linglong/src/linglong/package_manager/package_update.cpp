@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2025-2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -184,7 +184,7 @@ utils::error::Result<void> PackageUpdateAction::updateApp(Task &task,
             return LINGLONG_ERR(fuzzyRef);
         }
 
-        std::optional<package::Reference> local = std::move(localRef).value();
+        std::optional<package::Reference> local{ *localRef };
         auto res = gatherRefsToUpdate(refsToInstall, *fuzzyRef, local);
         if (!res) {
             return LINGLONG_ERR(res);

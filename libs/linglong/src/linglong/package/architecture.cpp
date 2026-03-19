@@ -38,6 +38,8 @@ std::string Architecture::toString() const noexcept
         return "sw64";
     case MIPS64:
         return "mips64";
+    case RISCV64:
+        return "riscv64";
     case UNKNOW:
         [[fallthrough]];
     default:
@@ -62,6 +64,8 @@ std::string Architecture::getTriplet() const noexcept
         return "loongarch64-linux-gnu";
     case MIPS64:
         return "mips64el-linux-gnuabi64";
+    case RISCV64:
+        return "riscv64-linux-gnu";
     }
     return "unknown";
 }
@@ -99,6 +103,10 @@ Architecture::Architecture(const std::string &raw)
 
         if (raw == "mips64") {
             return MIPS64;
+        }
+
+        if (raw == "riscv64") {
+            return RISCV64;
         }
 
         throw std::runtime_error("unknow architecture");

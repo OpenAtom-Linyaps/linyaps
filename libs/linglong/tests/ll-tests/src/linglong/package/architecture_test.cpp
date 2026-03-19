@@ -27,6 +27,7 @@ constexpr ArchitectureTestData ARCHITECTURE_TEST_DATA[] = {
     { Architecture::LOONG64, "loong64", "loongarch64-linux-gnu" },
     { Architecture::SW64, "sw64", "sw_64-linux-gnu" },
     { Architecture::MIPS64, "mips64", "mips64el-linux-gnuabi64" },
+    { Architecture::RISCV64, "riscv64", "riscv64-linux-gnu" },
 };
 
 // 无效架构字符串测试数据

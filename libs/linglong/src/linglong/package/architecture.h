@@ -24,6 +24,7 @@ public:
         LOONGARCH64,
         LOONG64,
         SW64,
+        RISCV64,
         MIPS64,
     };
 

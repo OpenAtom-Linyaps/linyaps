@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.  + *
+/* SPDX-FileCopyrightText: 2025 - 2026 UnionTech Software Technology Co., Ltd.  + *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
@@ -509,23 +509,6 @@ std::vector<api::types::v1::ExtensionDefine> RunContext::matchedExtensionDefines
 
 void RunContext::detectDisplaySystem(generator::ContainerCfgBuilder &builder) noexcept
 {
-    while (true) {
-        auto *xOrgDisplayEnv = ::getenv("DISPLAY");
-        if (xOrgDisplayEnv == nullptr || xOrgDisplayEnv[0] == '\0') {
-            LogD("DISPLAY is not set, ignore it");
-            break;
-        }
-
-        auto xOrgDisplay = common::display::getXOrgDisplay(xOrgDisplayEnv);
-        if (!xOrgDisplay) {
-            LogW("failed to get XOrg display: {}, ignore it", xOrgDisplay.error());
-            break;
-        }
-
-        builder.bindXOrgSocket(xOrgDisplay.value());
-        break;
-    }
-
     while (true) {
         auto *xOrgAuthFileEnv = ::getenv("XAUTHORITY");
         if (xOrgAuthFileEnv == nullptr || xOrgAuthFileEnv[0] == '\0') {

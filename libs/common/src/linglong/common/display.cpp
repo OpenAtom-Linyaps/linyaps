@@ -1,9 +1,10 @@
-// SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2025 - 2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 #include "linglong/common/display.h"
 
+#include "linglong/common/strings.h"
 #include "linglong/common/xdg.h"
 
 namespace linglong::common::display {
@@ -32,47 +33,86 @@ getWaylandDisplay(std::string_view display) noexcept
     return waylandSocketPath;
 }
 
-tl::expected<std::filesystem::path, std::string> getXOrgDisplay(std::string_view display) noexcept
+utils::error::Result<XOrgDisplayConf> getXOrgDisplay(std::string_view display) noexcept
 {
+    LINGLONG_TRACE(fmt::format("parse X DISPLAY {}", display));
+
+    XOrgDisplayConf result{};
+    result.screenNo = 0;
+
     // normalizing display path
     constexpr std::string_view unixPrefix = "unix:";
-    if (display.rfind(unixPrefix, 0) == 0) {
+    if (common::strings::starts_with(display, unixPrefix)) {
         display = display.substr(unixPrefix.size());
     }
 
-    // explicitly local display
-    if (display[0] == '/') {
-        return std::filesystem::path{ display };
-    }
-
-    // implicitly local display
-    if (display[0] == ':') {
-        // just hardcode the prefix of socket path, libxcb also does this
-        // https://gitlab.freedesktop.org/xorg/lib/libxcb/-/blob/e81b999a727d3c8ee9b83adb7c1c822f67378687/src/xcb_util.c#L252
-        const auto *start = display.cbegin() + 1;
-        const auto *end = start;
-        while (end != display.cend() && (std::isdigit(*end) != 0)) {
-            ++end;
-        };
-
-        // ignore screen number if it presents
-        auto socketName = "X" + std::string(start, end);
-        auto socketPath = std::filesystem::path{ "/tmp/.X11-unix" } / socketName;
-
+    // host[.screen]
+    if (!display.empty() && display[0] == '/') {
+        result.protocol = "unix";
         std::error_code ec;
-        if (!std::filesystem::exists(socketPath, ec)) {
-            if (ec) {
-                return tl::unexpected{ "Failed to check socket path " + socketPath.string() + ": "
-                                       + ec.message() };
-            }
-
-            return tl::unexpected{ "X11 socket path not found at " + socketPath.string() };
+        if (std::filesystem::exists(display, ec)) {
+            result.host = display;
+            return result;
         }
 
-        return socketPath;
+        auto dot = display.find_last_of('.');
+        if (dot == std::string_view::npos) {
+            return LINGLONG_ERR(fmt::format("{} doesn't exist", display));
+        }
+
+        auto sub = display.substr(0, dot);
+        if (std::filesystem::exists(sub, ec)) {
+            result.host = sub;
+            try {
+                result.screenNo = std::stoi(std::string(display.substr(dot + 1)));
+                if (result.screenNo < 0) {
+                    return LINGLONG_ERR(fmt::format("invalid screen No: {}", result.screenNo));
+                }
+            } catch (const std::exception &e) {
+                return LINGLONG_ERR(fmt::format("failed to get screen No: {}", e.what()));
+            }
+            return result;
+        }
+
+        return LINGLONG_ERR(fmt::format("{} doesn't exist", sub));
     }
 
-    return std::filesystem::path{};
+    // [protocol/][host]:display[.screen]
+    auto slash = display.find_last_of('/');
+    if (slash != std::string_view::npos) {
+        result.protocol = display.substr(0, slash);
+        display = display.substr(slash + 1);
+    }
+
+    auto colon = display.find_last_of(':');
+    if (colon == std::string_view::npos) {
+        return LINGLONG_ERR("invalid display");
+    }
+
+    auto host = display.substr(0, colon);
+    if (!host.empty()) {
+        result.host = host;
+    }
+
+    display = display.substr(colon + 1);
+    try {
+        size_t s;
+        result.displayNo = std::stoi(std::string(display), &s);
+        if (result.displayNo < 0) {
+            return LINGLONG_ERR(fmt::format("invalid display No: {}", result.displayNo));
+        }
+        display = display.substr(s);
+        if (display.size() > 0 && display[0] == '.') {
+            result.screenNo = std::stoi(std::string(display.substr(1)));
+            if (result.screenNo < 0) {
+                return LINGLONG_ERR(fmt::format("invalid screen No: {}", result.screenNo));
+            }
+        }
+    } catch (const std::exception &e) {
+        return LINGLONG_ERR(fmt::format("failed to get display No. or screen No: {}", e.what()));
+    }
+
+    return result;
 }
 
 tl::expected<std::filesystem::path, std::string> getXOrgAuthFile(std::string_view authFile) noexcept

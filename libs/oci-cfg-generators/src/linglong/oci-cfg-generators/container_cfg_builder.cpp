@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+ * SPDX-FileCopyrightText: 2025 - 2026 UnionTech Software Technology Co., Ltd.
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
@@ -10,6 +10,7 @@
 #include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/api/types/v1/OciConfigurationPatch.hpp"
 #include "linglong/common/dir.h"
+#include "linglong/common/display.h"
 #include "linglong/common/xdg.h"
 #include "ocppi/runtime/config/types/Generators.hpp"
 #include "sha256.h"
@@ -1004,13 +1005,6 @@ bool ContainerCfgBuilder::buildPrivateMapped() noexcept
 }
 
 ContainerCfgBuilder &
-ContainerCfgBuilder::bindXOrgSocket(const std::filesystem::path &socket) noexcept
-{
-    xOrgSocket = socket;
-    return *this;
-}
-
-ContainerCfgBuilder &
 ContainerCfgBuilder::bindXAuthFile(const std::filesystem::path &authFile) noexcept
 {
     xAuthFile = authFile;
@@ -1028,22 +1022,43 @@ bool ContainerCfgBuilder::buildDisplaySystem() noexcept
 {
     displayMount = std::vector<Mount>{};
 
-    if (xOrgSocket) {
-        if (!xOrgSocket->empty()) {
+    if (auto *display = ::getenv("DISPLAY"); display != nullptr) {
+        auto xOrgDisplayConf = common::display::getXOrgDisplay(display);
+        if (xOrgDisplayConf) {
+            std::filesystem::path source;
+            int displayNo = 0;
+            if (xOrgDisplayConf->protocol && xOrgDisplayConf->protocol == "unix"
+                && xOrgDisplayConf->host && !xOrgDisplayConf->host->empty()
+                && xOrgDisplayConf->host->at(0) == '/') {
+                // xcb may use abstract socket, so we use a different display number
+                displayNo = 1000;
+                source = *xOrgDisplayConf->host;
+
+                if (xOrgDisplayConf->screenNo != 0) {
+                    environment["DISPLAY"] =
+                      fmt::format(":{}.{}", displayNo, xOrgDisplayConf->screenNo);
+                } else {
+                    environment["DISPLAY"] = fmt::format(":{}", displayNo);
+                }
+            } else {
+                displayNo = xOrgDisplayConf->displayNo;
+                source = fmt::format("/tmp/.X11-unix/X{}", displayNo);
+                environment["DISPLAY"] = display;
+            }
+
             displayMount->emplace_back(
               Mount{ .destination = "/tmp/.X11-unix",
                      .options = string_list{ "nodev", "nosuid", "mode=700" },
                      .source = "tmpfs",
                      .type = "tmpfs" });
-            displayMount->emplace_back(Mount{ .destination = "/tmp/.X11-unix/X0",
-                                              .options = string_list{ "bind" },
-                                              .source = xOrgSocket.value(),
-                                              .type = "bind" });
-            environment["DISPLAY"] = ":0";
-        } else {
-            // remote display, use env DISPLAY from host
-            if (auto *display = ::getenv("DISPLAY"); display != nullptr) {
-                environment["DISPLAY"] = display;
+
+            std::error_code ec;
+            if (std::filesystem::exists(source, ec)) {
+                displayMount->emplace_back(
+                  Mount{ .destination = fmt::format("/tmp/.X11-unix/X{}", displayNo),
+                         .options = string_list{ "bind" },
+                         .source = source,
+                         .type = "bind" });
             }
         }
     }

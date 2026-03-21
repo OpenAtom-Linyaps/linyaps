@@ -51,3 +51,10 @@ repos:
     hooks:
       - id: shfmt
         args: ['-i', '4', '-ci', '-sr']
+
+  - repo: local
+    hooks:
+      - id: check-License
+        name: Check License
+        entry: python3 ./tools/update-copyright.py
+        language: python

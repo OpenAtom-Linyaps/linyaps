@@ -1,6 +1,6 @@
 /*
 SPDX-FileCopyrightText: 2024 Peter Csajtai <peter.csajtai@outlook.com>
-SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+SPDX-FileCopyrightText: 2025 - 2026 UnionTech Software Technology Co., Ltd.
 
 SPDX-License-Identifier: MIT
 

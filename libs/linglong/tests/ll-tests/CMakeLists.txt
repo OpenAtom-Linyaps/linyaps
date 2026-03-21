@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
+# SPDX-FileCopyrightText: 2023 - 2026 UnionTech Software Technology Co., Ltd.
 #
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -19,6 +19,7 @@ pfl_add_executable(
   src/linglong/cli/cli_test.cpp
   src/linglong/common/gkeyfile_wrapper_test.cpp
   src/linglong/common/strings_test.cpp
+  src/linglong/common/display_test.cpp
   src/linglong/common/socket_test.cpp
   src/linglong/common/xdg_test.cpp
   src/linglong/mocks/layer_packager_mock.h

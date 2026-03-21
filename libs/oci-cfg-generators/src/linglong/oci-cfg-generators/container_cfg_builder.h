@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+ * SPDX-FileCopyrightText: 2025 - 2026 UnionTech Software Technology Co., Ltd.
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
@@ -144,7 +144,6 @@ public:
     ContainerCfgBuilder &bindHostStatics() noexcept;
     ContainerCfgBuilder &bindHome(std::filesystem::path hostHome) noexcept;
 
-    ContainerCfgBuilder &bindXOrgSocket(const std::filesystem::path &socket) noexcept;
     ContainerCfgBuilder &bindXAuthFile(const std::filesystem::path &authFile) noexcept;
     ContainerCfgBuilder &bindWaylandSocket(const std::filesystem::path &socket) noexcept;
 
@@ -336,7 +335,6 @@ private:
 
     // display system
     std::optional<std::filesystem::path> waylandSocket;
-    std::optional<std::filesystem::path> xOrgSocket;
     std::optional<std::filesystem::path> xAuthFile;
 
     std::vector<std::string> maskedPaths;

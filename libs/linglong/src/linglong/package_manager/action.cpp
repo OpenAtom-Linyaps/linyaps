@@ -1,11 +1,10 @@
-// SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2025 - 2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 #include "action.h"
 
 #include "linglong/repo/ostree_repo.h"
-#include "linglong/repo/repo_cache.h"
 
 namespace linglong::service {
 

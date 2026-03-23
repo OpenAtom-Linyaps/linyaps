@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
+ * SPDX-FileCopyrightText: 2022 - 2026 UnionTech Software Technology Co., Ltd.
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
@@ -14,18 +14,17 @@
 
 #include <fmt/format.h>
 
-#include <QStringList>
-
 #include <fstream>
 
 namespace linglong::repo {
 
-utils::error::Result<api::types::v1::RepoConfigV2> loadConfig(const QString &file) noexcept
+utils::error::Result<api::types::v1::RepoConfigV2>
+loadConfig(const std::filesystem::path &file) noexcept
 {
-    LINGLONG_TRACE(fmt::format("load repo config from {}", file.toStdString()));
+    LINGLONG_TRACE(fmt::format("load repo config from {}", file));
 
     try {
-        auto ifs = std::ifstream(file.toLocal8Bit());
+        auto ifs = std::ifstream(file);
         if (!ifs.is_open()) {
             return LINGLONG_ERR("open failed");
         }
@@ -49,18 +48,19 @@ utils::error::Result<api::types::v1::RepoConfigV2> loadConfig(const QString &fil
     }
 }
 
-utils::error::Result<api::types::v1::RepoConfigV2> loadConfig(const QStringList &files) noexcept
+utils::error::Result<api::types::v1::RepoConfigV2>
+loadConfig(const std::vector<std::filesystem::path> &files) noexcept
 {
-    LINGLONG_TRACE(fmt::format("load repo config from {}", files.join(" ").toStdString()));
+    LINGLONG_TRACE("load repo config");
 
     for (const auto &file : files) {
         auto config = loadConfig(file);
         if (!config.has_value()) {
-            LogD("Failed to load repo config from {}: {}", file.toStdString(), config.error());
+            LogD("Failed to load repo config from {}: {}", file, config.error());
             continue;
         }
 
-        LogD("load repo config from {}", file.toStdString());
+        LogD("load repo config from {}", file);
         return config;
     }
 
@@ -68,9 +68,9 @@ utils::error::Result<api::types::v1::RepoConfigV2> loadConfig(const QStringList 
 }
 
 utils::error::Result<void> saveConfig(const api::types::v1::RepoConfigV2 &cfg,
-                                      const QString &path) noexcept
+                                      const std::filesystem::path &path) noexcept
 {
-    LINGLONG_TRACE(fmt::format("save config to {}", path.toStdString()));
+    LINGLONG_TRACE(fmt::format("save config to {}", path));
 
     try {
         auto defaultRepoExists =
@@ -82,7 +82,7 @@ utils::error::Result<void> saveConfig(const api::types::v1::RepoConfigV2 &cfg,
             return LINGLONG_ERR("default repo not found in repos");
         }
 
-        auto ofs = std::ofstream(path.toLocal8Bit());
+        auto ofs = std::ofstream(path);
         if (!ofs.is_open()) {
             return LINGLONG_ERR("open failed");
         }

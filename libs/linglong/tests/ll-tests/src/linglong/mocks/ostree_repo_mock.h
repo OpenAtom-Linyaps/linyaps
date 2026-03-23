@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2024 - 2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -17,7 +17,7 @@ using namespace linglong;
 class MockOstreeRepo : public repo::OSTreeRepo
 {
 public:
-    MockOstreeRepo(const QDir &path, api::types::v1::RepoConfigV2 cfg) noexcept
+    MockOstreeRepo(const std::filesystem::path &path, api::types::v1::RepoConfigV2 cfg) noexcept
         : OSTreeRepo(path, cfg)
     {
     }
@@ -32,10 +32,10 @@ public:
     }
 
     // mock getOverlayShareDir
-    std::function<QDir()> wrapGetOverlayShareDirFunc;
+    std::function<std::filesystem::path()> wrapGetOverlayShareDirFunc;
 
 protected:
-    QDir getOverlayShareDir() const noexcept override
+    std::filesystem::path getOverlayShareDir() const noexcept override
     {
         if (wrapGetOverlayShareDirFunc) {
             return wrapGetOverlayShareDirFunc();

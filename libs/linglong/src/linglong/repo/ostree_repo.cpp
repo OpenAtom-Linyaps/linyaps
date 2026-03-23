@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022-2024 UnionTech Software Technology Co., Ltd.
+ * SPDX-FileCopyrightText: 2022 - 2026 UnionTech Software Technology Co., Ltd.
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
@@ -319,31 +319,30 @@ updateOstreeRepoConfig(OstreeRepo *repo,
 }
 
 utils::error::Result<OstreeRepo *>
-createOstreeRepo(const QDir &location,
+createOstreeRepo(const std::filesystem::path &location,
                  const linglong::api::types::v1::RepoConfigV2 &config,
                  const QString &parent = "") noexcept
 {
-    LINGLONG_TRACE(
-      fmt::format("create linglong repository at {}", location.absolutePath().toStdString()));
-
-    if (!QFileInfo(location.absolutePath()).isWritable()) {
-        return LINGLONG_ERR("permission denied");
-    }
+    LINGLONG_TRACE(fmt::format("create ostree repo at {}", location));
 
     g_autoptr(GError) gErr = nullptr;
     g_autoptr(GFile) repoPath = nullptr;
     g_autoptr(OstreeRepo) ostreeRepo = nullptr;
 
-    repoPath = g_file_new_for_path(location.absolutePath().toUtf8());
+    auto result = utils::ensureDirectory(location);
+    if (!result) {
+        return LINGLONG_ERR(result);
+    }
+
+    repoPath = g_file_new_for_path(location.c_str());
     ostreeRepo = ostree_repo_new(repoPath);
-    Q_ASSERT(ostreeRepo != nullptr);
+    assert(ostreeRepo != nullptr);
 
     if (ostree_repo_create(ostreeRepo, OSTREE_REPO_MODE_BARE_USER_ONLY, nullptr, &gErr) == FALSE) {
         return LINGLONG_ERR(fmt::format("ostree_repo_create {}", ptr_view(gErr)));
     }
 
-    auto result = updateOstreeRepoConfig(ostreeRepo, config, parent);
-
+    result = updateOstreeRepoConfig(ostreeRepo, config, parent);
     if (!result) {
         return LINGLONG_ERR(result);
     }
@@ -351,7 +350,7 @@ createOstreeRepo(const QDir &location,
     return static_cast<OstreeRepo *>(g_steal_pointer(&ostreeRepo));
 }
 
-utils::error::Result<package::Reference> clearReferenceLocal(const linglong::repo::RepoCache &cache,
+utils::error::Result<package::Reference> clearReferenceLocal(const RepoCache &cache,
                                                              package::FuzzyReference fuzzy,
                                                              bool semanticMatching = false) noexcept
 {
@@ -601,8 +600,7 @@ utils::error::Result<QDir> OSTreeRepo::ensureEmptyLayerDir(const std::string &co
 {
     LINGLONG_TRACE(fmt::format("ensure empty layer dir exist {}", commit));
 
-    std::filesystem::path dir =
-      this->repoDir.absoluteFilePath(QString::fromStdString("layers/" + commit)).toStdString();
+    auto dir = this->repoDir / "layers" / commit;
 
     std::error_code ec;
     std::optional<std::filesystem::path> target;
@@ -635,82 +633,140 @@ utils::error::Result<QDir> OSTreeRepo::ensureEmptyLayerDir(const std::string &co
     return QDir{ dir.c_str() };
 }
 
-QDir OSTreeRepo::ostreeRepoDir() const noexcept
+std::filesystem::path OSTreeRepo::ostreeRepoDir() const noexcept
 {
-    Q_ASSERT(!this->repoDir.path().isEmpty());
-    auto repoDir = QDir(this->repoDir.absoluteFilePath("repo"));
-    if (!repoDir.mkpath(".")) {
-        Q_ASSERT(false);
-    }
-    return repoDir;
+    return repoDir / "repo";
 }
 
-OSTreeRepo::OSTreeRepo(const QDir &path, api::types::v1::RepoConfigV2 cfg) noexcept
-    : cfg(std::move(cfg))
+std::filesystem::path OSTreeRepo::cacheFilePath() const noexcept
 {
-    if (!path.exists()) {
-        LogE("repo doesn't exists");
-        std::abort();
+    return repoDir / "states.json";
+}
+
+std::filesystem::path OSTreeRepo::configFilePath() const noexcept
+{
+    return repoDir / "config.yaml";
+}
+
+OSTreeRepo::OSTreeRepo(std::filesystem::path path, api::types::v1::RepoConfigV2 cfg) noexcept
+    : cfg(std::move(cfg))
+    , repoDir(std::move(path))
+{
+}
+
+utils::error::Result<void> OSTreeRepo::init(bool create) noexcept
+{
+    LINGLONG_TRACE("init from existing repo");
+
+    g_autoptr(GError) gErr = nullptr;
+    g_autoptr(GFile) repoPath = nullptr;
+    g_autoptr(OstreeRepo) ostreeRepo = nullptr;
+
+    repoPath = g_file_new_for_path(ostreeRepoDir().c_str());
+    ostreeRepo = ostree_repo_new(repoPath);
+
+    if (ostree_repo_open(ostreeRepo, nullptr, &gErr) == TRUE) {
+        this->ostreeRepo.reset(static_cast<OstreeRepo *>(g_steal_pointer(&ostreeRepo)));
+    } else {
+        if (!create) {
+            return LINGLONG_ERR(fmt::format("open ostree repo failed: {}", ptr_view(gErr)));
+        }
+
+        auto result = createOstreeRepo(ostreeRepoDir(), this->cfg);
+        if (!result) {
+            return LINGLONG_ERR(fmt::format("create ostree repo failed: {}", result.error()));
+        }
+        this->ostreeRepo.reset(*result);
     }
+
+    return initCache(create);
+}
+
+utils::error::Result<void> OSTreeRepo::initCache(bool create) noexcept
+{
+    LINGLONG_TRACE("init repo cache");
+
+    this->cache = std::make_unique<RepoCache>(cacheFilePath());
+    auto res = this->cache->load();
+    if (!res) {
+        if (!create) {
+            return LINGLONG_ERR(res);
+        }
+
+        return this->cache->rebuild(this->cfg, *(this->ostreeRepo));
+    }
+
+    return LINGLONG_OK;
+}
+
+utils::error::Result<std::unique_ptr<OSTreeRepo>>
+OSTreeRepo::loadFromPath(std::filesystem::path repoRoot) noexcept
+{
+    LINGLONG_TRACE(fmt::format("load repo from {}", repoRoot));
 
     // To avoid glib start thread
     // set GIO_USE_VFS to local and GVFS_REMOTE_VOLUME_MONITOR_IGNORE to 1
     utils::EnvironmentVariableGuard gioGuard{ "GIO_USE_VFS", "local" };
     utils::EnvironmentVariableGuard gvfsGuard{ "GVFS_REMOTE_VOLUME_MONITOR_IGNORE", "1" };
 
-    g_autoptr(GError) gErr = nullptr;
-    g_autoptr(GFile) repoPath = nullptr;
-    g_autoptr(OstreeRepo) ostreeRepo = nullptr;
+    std::error_code ec;
+    if (!std::filesystem::exists(repoRoot, ec)) {
+        return LINGLONG_ERR("repo path doesn't exist");
+    }
 
-    this->repoDir = path;
+    auto cfg = linglong::repo::loadConfig(repoRoot / "config.yaml");
+    if (!cfg) {
+        return LINGLONG_ERR("failed to load config", cfg);
+    }
 
-    {
-        LINGLONG_TRACE(fmt::format("use linglong repo at {}", path.absolutePath().toStdString()));
+    auto repo = std::unique_ptr<OSTreeRepo>(new OSTreeRepo(std::move(repoRoot), std::move(*cfg)));
+    auto err = repo->init(false);
+    if (!err) {
+        return LINGLONG_ERR(err);
+    }
 
-        repoPath = g_file_new_for_path(this->ostreeRepoDir().absolutePath().toLocal8Bit());
-        ostreeRepo = ostree_repo_new(repoPath);
-        Q_ASSERT(ostreeRepo != nullptr);
-        if (ostree_repo_open(ostreeRepo, nullptr, &gErr) == TRUE) {
+    return repo;
+}
 
-            this->ostreeRepo.reset(static_cast<OstreeRepo *>(g_steal_pointer(&ostreeRepo)));
+utils::error::Result<std::unique_ptr<OSTreeRepo>>
+OSTreeRepo::create(std::filesystem::path repoRoot, api::types::v1::RepoConfigV2 cfg) noexcept
+{
+    LINGLONG_TRACE(fmt::format("create repo at {}", repoRoot));
 
-            auto ret = linglong::repo::RepoCache::create(
-              this->repoDir.absoluteFilePath("states.json").toStdString(),
-              this->cfg,
-              *(this->ostreeRepo));
-            if (!ret) {
-                LogE("{}", ret.error());
-                std::abort();
-            }
-            this->cache = std::move(ret).value();
+    utils::EnvironmentVariableGuard gioGuard{ "GIO_USE_VFS", "local" };
+    utils::EnvironmentVariableGuard gvfsGuard{ "GVFS_REMOTE_VOLUME_MONITOR_IGNORE", "1" };
 
-            return;
+    std::error_code ec;
+    if (!std::filesystem::exists(repoRoot, ec)) {
+        return LINGLONG_ERR("repo path doesn't exist");
+    }
+
+    auto configPath = repoRoot / "config.yaml";
+    auto configExists = false;
+    if (std::filesystem::exists(configPath, ec)) {
+        configExists = true;
+        auto res = linglong::repo::loadConfig(configPath);
+        if (res) {
+            cfg = std::move(res).value();
+        } else {
+            return LINGLONG_ERR("failed to load config", res);
         }
-
-        g_clear_error(&gErr);
-        g_clear_object(&ostreeRepo);
     }
 
-    LINGLONG_TRACE("init ostree-based linglong repository");
-
-    auto result = createOstreeRepo(this->ostreeRepoDir().absolutePath(), this->cfg);
-    if (!result) {
-        LogE("{}", result.error());
-        std::abort();
+    auto repo = std::unique_ptr<OSTreeRepo>(new OSTreeRepo(std::move(repoRoot), std::move(cfg)));
+    auto err = repo->init(true);
+    if (!err) {
+        return LINGLONG_ERR(err);
     }
 
-    this->ostreeRepo.reset(*result);
-
-    auto ret =
-      linglong::repo::RepoCache::create(this->repoDir.absoluteFilePath("states.json").toStdString(),
-                                        this->cfg,
-                                        *(this->ostreeRepo));
-    if (!ret) {
-        LogE("{}", ret.error());
-        std::abort();
+    if (!configExists) {
+        auto result = saveConfig(repo->cfg, repo->configFilePath());
+        if (!result) {
+            return LINGLONG_ERR(fmt::format("save config failed: {}", result.error()));
+        }
     }
 
-    this->cache = std::move(ret).value();
+    return repo;
 }
 
 const api::types::v1::RepoConfigV2 &OSTreeRepo::getConfig() const noexcept
@@ -757,7 +813,7 @@ OSTreeRepo::updateConfig(const api::types::v1::RepoConfigV2 &newCfg) noexcept
 {
     LINGLONG_TRACE("update underlying config")
 
-    auto result = saveConfig(newCfg, this->repoDir.absoluteFilePath("config.yaml"));
+    auto result = saveConfig(newCfg, configFilePath());
     if (!result) {
         return LINGLONG_ERR(result);
     }
@@ -789,12 +845,12 @@ utils::error::Result<void> OSTreeRepo::setConfig(const api::types::v1::RepoConfi
     utils::Transaction transaction;
 
     LogI("save config to disk");
-    auto result = saveConfig(cfg, this->repoDir.absoluteFilePath("config.yaml"));
+    auto result = saveConfig(cfg, configFilePath());
     if (!result) {
         return LINGLONG_ERR(result);
     }
     transaction.addRollBack([this]() noexcept {
-        auto result = saveConfig(this->cfg, this->repoDir.absoluteFilePath("config.yaml"));
+        auto result = saveConfig(this->cfg, configFilePath());
         if (!result) {
             LogE("{}", result.error());
         }
@@ -811,7 +867,7 @@ utils::error::Result<void> OSTreeRepo::setConfig(const api::types::v1::RepoConfi
         }
     });
     LogI("rebuild repo cache");
-    if (auto ret = this->cache->rebuildCache(cfg, *(this->ostreeRepo)); !ret) {
+    if (auto ret = this->cache->rebuild(cfg, *(this->ostreeRepo)); !ret) {
         return LINGLONG_ERR(ret);
     }
 
@@ -874,7 +930,7 @@ OSTreeRepo::importLayerDir(const package::LayerDir &dir,
     item.info = *info;
     item.repo = "local";
 
-    auto layerDir = this->ensureEmptyLayerDir((*commitID).toStdString());
+    auto layerDir = this->ensureEmptyLayerDir(item.commit);
     if (!layerDir) {
         return LINGLONG_ERR(layerDir);
     }
@@ -1739,7 +1795,7 @@ OSTreeRepo::matchRemoteByPriority(const package::FuzzyReference &fuzzyRef,
 void OSTreeRepo::unexportReference(const std::string &layerDir) noexcept
 {
     QString layerDirStr = layerDir.c_str();
-    QDir entriesDir = this->getEntriesDir();
+    QDir entriesDir(this->getEntriesDir().c_str());
     QDirIterator it(entriesDir.absolutePath(),
                     QDir::AllEntries | QDir::NoDot | QDir::NoDotDot | QDir::System,
                     QDirIterator::Subdirectories);
@@ -1819,7 +1875,7 @@ void OSTreeRepo::unexportReference(const package::Reference &ref) noexcept
 
 void OSTreeRepo::exportReference(const package::Reference &ref) noexcept
 {
-    auto entriesDir = this->getEntriesDir();
+    QDir entriesDir(this->getEntriesDir().c_str());
     if (!entriesDir.exists()) {
         entriesDir.mkpath(".");
     }
@@ -1939,15 +1995,15 @@ utils::error::Result<void> OSTreeRepo::exportDir(const std::string &appID,
                     return LINGLONG_ERR("rename new path", ec);
                 }
             }
-            auto oldAppDir = this->getDefaultSharedDir().filePath("applications").toStdString();
-            auto newAppDir = this->getOverlayShareDir().filePath("applications").toStdString();
+            auto oldAppDir = this->getDefaultSharedDir() / "applications";
+            auto newAppDir = this->getOverlayShareDir() / "applications";
             LogD("oldAppDir: {}, newAppDir: {}, target: {}",
                  oldAppDir,
                  newAppDir,
                  target_path.string());
             // 如果配置了overlay并且是applications中的desktop文件，执行特殊的逻辑
             if (oldAppDir != newAppDir
-                && common::strings::starts_with(target_path.string(), oldAppDir)
+                && common::strings::starts_with(target_path.string(), oldAppDir.string())
                 && common::strings::ends_with(target_path.string(), ".desktop")) {
                 auto desktopExists = false;
                 // 如果要导出的desktop已存在，则覆盖导出（无论是在default还是overlay中），避免桌面和任务栏的快捷方式失效
@@ -1955,7 +2011,7 @@ utils::error::Result<void> OSTreeRepo::exportDir(const std::string &appID,
                 for (const auto &appDir : appDirs) {
                     // 如果目标文件存在，删除再导出
                     std::filesystem::path linkpath =
-                      target_path.string().replace(0, oldAppDir.length(), appDir);
+                      target_path.string().replace(0, oldAppDir.string().length(), appDir);
                     auto status = std::filesystem::symlink_status(linkpath, ec);
                     if (!ec) {
                         desktopExists = true;
@@ -1969,7 +2025,7 @@ utils::error::Result<void> OSTreeRepo::exportDir(const std::string &appID,
                 // 如果desktop在两个目录都不存在，则优先导出到overlay目录
                 if (!desktopExists) {
                     std::filesystem::path linkpath =
-                      target_path.string().replace(0, oldAppDir.length(), newAppDir);
+                      target_path.string().replace(0, oldAppDir.string().length(), newAppDir);
                     LogD("create parent directories for {}", linkpath);
                     auto ret = utils::ensureDirectory(linkpath.parent_path());
                     if (!ret.has_value()) {
@@ -2089,7 +2145,7 @@ OSTreeRepo::exportEntries(const std::filesystem::path &rootEntriesDir,
 
 utils::error::Result<void> OSTreeRepo::fixExportAllEntries() noexcept
 {
-    auto exportVersion = repoDir.absoluteFilePath("entries/.version").toStdString();
+    auto exportVersion = repoDir / "entries/.version";
     auto data = linglong::utils::readFile(exportVersion);
     if (data && data == LINGLONG_EXPORT_VERSION) {
         LogD("skip export entry, already exported: {} {}", exportVersion, *data);
@@ -2116,7 +2172,7 @@ utils::error::Result<void> OSTreeRepo::exportAllEntries() noexcept
     std::error_code ec;
     // 创建一个新的entries目录，使用UUID作为名称
     auto id = QUuid::createUuid().toString(QUuid::Id128);
-    std::filesystem::path entriesDir = this->repoDir.filePath("entries_new_" + id).toStdString();
+    std::filesystem::path entriesDir = repoDir / ("entries_new_" + id).toStdString();
     std::filesystem::create_directory(entriesDir, ec);
     if (ec) {
         return LINGLONG_ERR("create temp share directory", ec);
@@ -2133,7 +2189,7 @@ utils::error::Result<void> OSTreeRepo::exportAllEntries() noexcept
         }
     }
     // 用新的entries目录替换旧的
-    std::filesystem::path workdir = repoDir.absolutePath().toStdString();
+    std::filesystem::path workdir = repoDir;
     auto existsOldEntries = std::filesystem::exists(workdir / "entries", ec);
     if (ec) {
         return LINGLONG_ERR("check entries directory", ec);
@@ -2165,25 +2221,24 @@ utils::error::Result<void> OSTreeRepo::exportAllEntries() noexcept
 
 void OSTreeRepo::updateSharedInfo() noexcept
 {
-    auto defaultApplicationDir = QDir(this->repoDir.absoluteFilePath("entries/share/applications"));
+    auto defaultApplicationDir = this->repoDir / "entries/share/applications";
     // 自定义desktop安装路径
     auto desktopExportPath = std::string{ LINGLONG_EXPORT_PATH } + "/applications";
-    QDir customApplicationDir =
-      QDir(this->repoDir.absoluteFilePath(QString{ "entries/%1" }.arg(desktopExportPath.c_str())));
-    auto mimeDataDir = QDir(this->repoDir.absoluteFilePath("entries/share/mime"));
-    auto glibSchemasDir = QDir(this->repoDir.absoluteFilePath("entries/share/glib-2.0/schemas"));
+    auto customApplicationDir = this->repoDir / "entries" / desktopExportPath;
+    auto mimeDataDir = this->repoDir / "entries/share/mime";
+    auto glibSchemasDir = this->repoDir / "entries/share/glib-2.0/schemas";
 
     std::vector<std::string> desktopDirs;
-    if (defaultApplicationDir.exists()) {
-        desktopDirs.emplace_back(defaultApplicationDir.absolutePath().toStdString());
+    std::error_code ec;
+    if (std::filesystem::exists(defaultApplicationDir, ec)) {
+        desktopDirs.emplace_back(defaultApplicationDir.string());
     }
 
     if (defaultApplicationDir != customApplicationDir) {
-        if (customApplicationDir.exists()) {
-            desktopDirs.emplace_back(customApplicationDir.absolutePath().toStdString());
+        if (std::filesystem::exists(customApplicationDir, ec)) {
+            desktopDirs.emplace_back(customApplicationDir.string());
         } else {
-            LogW("custom application dir {} does not exist, ignoring",
-                 customApplicationDir.absolutePath().toStdString());
+            LogW("custom application dir {} does not exist, ignoring", customApplicationDir);
         }
     }
 
@@ -2197,24 +2252,18 @@ void OSTreeRepo::updateSharedInfo() noexcept
     }
 
     // 更新 mime type database
-    if (mimeDataDir.exists()) {
-        auto ret =
-          utils::Cmd("update-mime-database").exec({ mimeDataDir.absolutePath().toStdString() });
+    if (std::filesystem::exists(mimeDataDir, ec)) {
+        auto ret = utils::Cmd("update-mime-database").exec({ mimeDataDir });
         if (!ret) {
-            LogW("failed to update mime type database in {}: {}",
-                 mimeDataDir.absolutePath().toStdString(),
-                 ret.error());
+            LogW("failed to update mime type database in {}: {}", mimeDataDir, ret.error());
         }
     }
 
     // 更新 glib-2.0/schemas
-    if (glibSchemasDir.exists()) {
-        auto ret =
-          utils::Cmd("glib-compile-schemas").exec({ glibSchemasDir.absolutePath().toStdString() });
+    if (std::filesystem::exists(glibSchemasDir, ec)) {
+        auto ret = utils::Cmd("glib-compile-schemas").exec({ glibSchemasDir });
         if (!ret) {
-            LogW("failed to update schemas in {}: {}",
-                 glibSchemasDir.absolutePath().toStdString(),
-                 ret.error());
+            LogW("failed to update schemas in {}: {}", glibSchemasDir, ret.error());
         }
     }
 }
@@ -2327,11 +2376,13 @@ auto OSTreeRepo::getLayerDir(const api::types::v1::RepositoryCacheLayersItem &la
 {
     LINGLONG_TRACE(fmt::format("get dir from layer {}", layer.commit));
 
-    QDir dir = this->repoDir.absoluteFilePath(QString::fromStdString("layers/" + layer.commit));
-    if (!dir.exists()) {
-        return LINGLONG_ERR(dir.absolutePath().toStdString() + " doesn't exist");
+    auto dir = this->repoDir / "layers" / layer.commit;
+    std::error_code ec;
+    if (!std::filesystem::exists(dir, ec)) {
+        return LINGLONG_ERR(fmt::format("{} doesn't exist", dir));
     }
-    return std::filesystem::path{ dir.absolutePath().toStdString() };
+
+    return dir;
 }
 
 auto OSTreeRepo::getLayerDir(const package::Reference &ref,
@@ -2426,7 +2477,7 @@ utils::error::Result<package::LayerDir> OSTreeRepo::getMergedModuleDir(
   const api::types::v1::RepositoryCacheLayersItem &layer, bool fallbackLayerDir) const noexcept
 {
     LINGLONG_TRACE("get merge dir from layer " + layer.info.id);
-    QDir mergedDir = this->repoDir.absoluteFilePath("merged");
+    auto mergedDir = this->repoDir / "merged";
     auto items = this->cache->queryMergedItems();
     // 如果没有merged记录，尝试使用layer
     if (!items.has_value()) {
@@ -2439,12 +2490,13 @@ utils::error::Result<package::LayerDir> OSTreeRepo::getMergedModuleDir(
     // 如果找到layer对应的merge，就返回merge目录，否则回退到layer目录
     for (const auto &item : items.value()) {
         if (item.binaryCommit == layer.commit) {
-            QDir dir = mergedDir.filePath(item.id.c_str());
-            if (dir.exists()) {
-                return std::filesystem::path{ dir.path().toStdString() };
+            auto dir = mergedDir / item.id;
+            std::error_code ec;
+            if (std::filesystem::exists(dir, ec)) {
+                return dir;
             }
 
-            LogW("not exists merged dir {}", dir.path().toStdString());
+            LogW("not exists merged dir {}", dir);
         }
     }
 
@@ -2461,7 +2513,7 @@ utils::error::Result<package::LayerDir> OSTreeRepo::createTempMergedModuleDir(
   const package::Reference &ref, const std::vector<std::string> &loadModules) const noexcept
 {
     LINGLONG_TRACE("merge modules");
-    const QDir mergedDir = this->repoDir.absoluteFilePath("merged");
+    auto mergedDir = this->repoDir / "merged";
     auto layerItems = this->cache->queryExistingLayerItem();
     QCryptographicHash hash(QCryptographicHash::Sha256);
     std::vector<std::string> commits;
@@ -2493,7 +2545,7 @@ utils::error::Result<package::LayerDir> OSTreeRepo::createTempMergedModuleDir(
     }
     // 合并layer，生成临时merged目录
     const QString mergeID = hash.result().toHex();
-    auto mergeTmp = mergedDir.filePath("tmp_" + mergeID);
+    auto mergeTmp = mergedDir / ("tmp_" + mergeID).toStdString();
     for (const auto &commit : commits) {
         int root = open("/", O_DIRECTORY);
         auto _ = utils::finally::finally([root]() {
@@ -2505,24 +2557,30 @@ utils::error::Result<package::LayerDir> OSTreeRepo::createTempMergedModuleDir(
         if (ostree_repo_checkout_at(this->ostreeRepo.get(),
                                     &opt,
                                     root,
-                                    mergeTmp.mid(1).toUtf8(),
+                                    mergeTmp.relative_path().c_str(),
                                     commit.c_str(),
                                     nullptr,
                                     &gErr)
             == FALSE) {
             return LINGLONG_ERR(
-              fmt::format("ostree_repo_checkout_at {} {}", mergeTmp.toStdString(), ptr_view(gErr)));
+              fmt::format("ostree_repo_checkout_at {} {}", mergeTmp, ptr_view(gErr)));
         }
     }
-    return std::filesystem::path{ mergeTmp.toStdString() };
+
+    return mergeTmp;
 }
 
 utils::error::Result<void> OSTreeRepo::mergeModules() const noexcept
 {
     LINGLONG_TRACE("merge modules");
+
     std::error_code ec;
-    const QDir mergedDir = this->repoDir.absoluteFilePath("merged");
-    mergedDir.mkpath(".");
+    const auto mergedDir = this->repoDir / "merged";
+    auto res = utils::ensureDirectory(mergedDir);
+    if (!res) {
+        return LINGLONG_ERR(res);
+    }
+
     auto layerItems = this->cache->queryExistingLayerItem();
     auto mergedItems = this->cache->queryMergedItems();
     // 对layerItems分组
@@ -2590,12 +2648,12 @@ utils::error::Result<void> OSTreeRepo::mergeModules() const noexcept
             continue;
         }
         // 创建临时目录
-        auto mergeTmp = mergedDir.filePath(QString("tmp_") + mergeID.c_str());
-        std::filesystem::remove_all(mergeTmp.toStdString(), ec);
+        auto mergeTmp = mergedDir / ("tmp_" + mergeID);
+        std::filesystem::remove_all(mergeTmp, ec);
         if (ec) {
             return LINGLONG_ERR("clean merge tmp dir", ec);
         }
-        std::filesystem::create_directories(mergeTmp.toStdString(), ec);
+        std::filesystem::create_directories(mergeTmp, ec);
         if (ec) {
             return LINGLONG_ERR("create merge tmp dir", ec);
         }
@@ -2612,7 +2670,7 @@ utils::error::Result<void> OSTreeRepo::mergeModules() const noexcept
             if (ostree_repo_checkout_at(this->ostreeRepo.get(),
                                         &opt,
                                         root,
-                                        mergeTmp.mid(1).toUtf8(),
+                                        mergeTmp.relative_path().c_str(),
                                         layer.commit.c_str(),
                                         nullptr,
                                         &gErr)
@@ -2622,12 +2680,12 @@ utils::error::Result<void> OSTreeRepo::mergeModules() const noexcept
             }
         }
         // 将临时目录改名到正式目录，以binary模块的commit为文件名
-        auto mergeOutput = mergedDir.filePath(mergeID.c_str());
-        std::filesystem::remove_all(mergeOutput.toStdString(), ec);
+        auto mergeOutput = mergedDir / mergeID;
+        std::filesystem::remove_all(mergeOutput, ec);
         if (ec) {
             return LINGLONG_ERR("clean merge dir", ec);
         }
-        std::filesystem::rename(mergeTmp.toStdString(), mergeOutput.toStdString(), ec);
+        std::filesystem::rename(mergeTmp, mergeOutput, ec);
         if (ec) {
             return LINGLONG_ERR("rename merge dir", ec);
         }
@@ -2645,7 +2703,7 @@ utils::error::Result<void> OSTreeRepo::mergeModules() const noexcept
         return LINGLONG_ERR("update merged items", ret);
     }
     // 清理merged无效目录
-    auto iter = std::filesystem::directory_iterator(mergedDir.path().toStdString(), ec);
+    auto iter = std::filesystem::directory_iterator(mergedDir, ec);
     if (ec) {
         return LINGLONG_ERR("read merge directory", ec);
     }
@@ -3051,14 +3109,14 @@ OSTreeRepo::upgradableApps() const noexcept
     return upgradeList;
 }
 
-QDir OSTreeRepo::getEntriesDir() const noexcept
+std::filesystem::path OSTreeRepo::getEntriesDir() const noexcept
 {
-    return this->repoDir.absoluteFilePath("entries");
+    return this->repoDir / "entries";
 }
 
-QDir OSTreeRepo::getDefaultSharedDir() const noexcept
+std::filesystem::path OSTreeRepo::getDefaultSharedDir() const noexcept
 {
-    return this->repoDir.absoluteFilePath("entries/share");
+    return this->repoDir / "entries/share";
 }
 
 std::filesystem::path OSTreeRepo::resolveEntryExportPath(const std::filesystem::path &relativePath,
@@ -3069,8 +3127,7 @@ std::filesystem::path OSTreeRepo::resolveEntryExportPath(const std::filesystem::
         return {};
     }
 
-    const auto repoDirPath = std::filesystem::path(this->repoDir.absolutePath().toStdString());
-    const auto entriesDir = repoDirPath / "entries";
+    const auto entriesDir = getEntriesDir();
 
     if (common::strings::starts_with(relative, "share/applications/")
         && common::strings::ends_with(relative, ".desktop")) {
@@ -3106,11 +3163,8 @@ std::filesystem::path OSTreeRepo::resolveEntryExportPath(const std::filesystem::
 std::filesystem::path
 OSTreeRepo::resolveDesktopFileExportPath(const std::filesystem::path &relativePath) const noexcept
 {
-    const auto defaultDesktopPath =
-      std::filesystem::path(this->getDefaultSharedDir().absolutePath().toStdString())
-      / relativePath;
-    const auto overlayDesktopPath =
-      std::filesystem::path(this->getOverlayShareDir().absolutePath().toStdString()) / relativePath;
+    const auto defaultDesktopPath = getDefaultSharedDir() / relativePath;
+    const auto overlayDesktopPath = getOverlayShareDir() / relativePath;
     if (overlayDesktopPath != defaultDesktopPath && std::filesystem::exists(overlayDesktopPath)) {
         return overlayDesktopPath;
     }
@@ -3122,9 +3176,9 @@ OSTreeRepo::resolveDesktopFileExportPath(const std::filesystem::path &relativePa
     return overlayDesktopPath;
 }
 
-QDir OSTreeRepo::getOverlayShareDir() const noexcept
+std::filesystem::path OSTreeRepo::getOverlayShareDir() const noexcept
 {
-    return this->repoDir.absoluteFilePath("entries/" LINGLONG_EXPORT_PATH);
+    return this->repoDir / "entries" / LINGLONG_EXPORT_PATH;
 }
 
 OSTreeRepo::~OSTreeRepo() = default;

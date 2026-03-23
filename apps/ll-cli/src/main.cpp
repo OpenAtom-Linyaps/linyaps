@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
+ * SPDX-FileCopyrightText: 2022 - 2026 UnionTech Software Technology Co., Ltd.
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
@@ -594,29 +594,6 @@ void addInspectCommand(CLI::App &commandParser,
 
 } // namespace
 
-// 初始化仓库
-linglong::utils::error::Result<linglong::repo::OSTreeRepo *> initOSTreeRepo()
-{
-    LINGLONG_TRACE("initOSTreeRepo");
-    // load repo config
-    auto repoConfig = linglong::repo::loadConfig(
-      { LINGLONG_ROOT "/config.yaml", LINGLONG_DATA_DIR "/config.yaml" });
-    if (!repoConfig) {
-        return LINGLONG_ERR("load repo config failed", repoConfig);
-    }
-
-    // check repo root
-    auto repoRoot = QDir(LINGLONG_ROOT);
-    if (!repoRoot.exists()) {
-        return LINGLONG_ERR("repo root doesn't exist" + repoRoot.absolutePath().toStdString());
-    }
-
-    // create repo
-    auto repo = new linglong::repo::OSTreeRepo(repoRoot, std::move(*repoConfig));
-    repo->setParent(QCoreApplication::instance());
-    return repo;
-}
-
 int runCliApplication(int argc, char **mainArgv)
 {
     CLI::App commandParser{ _(
@@ -834,9 +811,9 @@ You can report bugs to the linyaps team under this project: https://github.com/O
         LogW("Using DummyNotifier, expected interactions and prompts will not be displayed.");
         notifier = std::make_unique<linglong::cli::DummyNotifier>();
     }
-    auto repo = initOSTreeRepo();
+    auto repo = linglong::repo::OSTreeRepo::loadFromPath(LINGLONG_ROOT);
     if (!repo.has_value()) {
-        LogE("initOSTreeRepo failed: {}", repo.error());
+        LogE("failed to load repo: {}", repo.error());
         return -1;
     }
     // create cli

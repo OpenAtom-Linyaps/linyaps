@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2025 - 2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -25,8 +25,7 @@ class MockRepo : public repo::OSTreeRepo
 public:
     MockRepo(const std::filesystem::path &path)
         : repo::OSTreeRepo(
-            QDir(path.c_str()),
-            api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 })
+            path, api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 })
     {
     }
 

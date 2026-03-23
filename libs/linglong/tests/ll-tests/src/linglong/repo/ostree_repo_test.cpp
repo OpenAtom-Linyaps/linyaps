@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
+ * SPDX-FileCopyrightText: 2023 - 2026 UnionTech Software Technology Co., Ltd.
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
@@ -11,6 +11,7 @@
 #include "../mocks/ostree_repo_mock.h"
 #include "linglong/package/reference.h"
 #include "linglong/repo/client_factory.h"
+#include "linglong/repo/config.h"
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/utils/error/error.h"
 
@@ -27,6 +28,30 @@ namespace fs = std::filesystem;
 
 namespace {
 
+api::types::v1::RepoConfigV2 createRepoConfig()
+{
+    return api::types::v1::RepoConfigV2{
+        .defaultRepo = "stable",
+        .repos = { api::types::v1::Repo{ .name = "stable",
+                                         .priority = 0,
+                                         .url = "https://example.com/repo" } },
+        .version = 2,
+    };
+}
+
+api::types::v1::RepoConfigV2 createRepoConfig(std::string defaultRepo,
+                                              std::string repoName,
+                                              std::string repoUrl)
+{
+    return api::types::v1::RepoConfigV2{
+        .defaultRepo = std::move(defaultRepo),
+        .repos = { api::types::v1::Repo{ .name = std::move(repoName),
+                                         .priority = 0,
+                                         .url = std::move(repoUrl) } },
+        .version = 2,
+    };
+}
+
 class RepoTest : public ::testing::Test
 {
 protected:
@@ -39,7 +64,7 @@ TEST_F(RepoTest, resolveDesktopFileExportPathUsesOverlayWhenPresent)
 {
     TempDir tempDir;
     auto config = api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 };
-    auto ostreeRepo = std::make_unique<MockOstreeRepo>(QDir(tempDir.path().c_str()), config);
+    auto ostreeRepo = std::make_unique<MockOstreeRepo>(tempDir.path(), config);
 
     const auto defaultDesktopPath = tempDir.path() / "entries/share/applications/org.test.desktop";
     const auto overlayDesktopPath =
@@ -50,8 +75,7 @@ TEST_F(RepoTest, resolveDesktopFileExportPathUsesOverlayWhenPresent)
     std::ofstream(overlayDesktopPath) << "overlay";
 
     ostreeRepo->wrapGetOverlayShareDirFunc = [&overlayDesktopPath]() {
-        return QDir(
-          QString::fromStdString(overlayDesktopPath.parent_path().parent_path().string()));
+        return overlayDesktopPath.parent_path().parent_path();
     };
 
     EXPECT_EQ(ostreeRepo->resolveDesktopFileExportPath("applications/org.test.desktop"),
@@ -62,7 +86,7 @@ TEST_F(RepoTest, resolveEntryExportPathMapsLegacySystemdUserPath)
 {
     TempDir tempDir;
     auto config = api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 };
-    auto ostreeRepo = std::make_unique<MockOstreeRepo>(QDir(tempDir.path().c_str()), config);
+    auto ostreeRepo = std::make_unique<MockOstreeRepo>(tempDir.path(), config);
 
     EXPECT_EQ(ostreeRepo->resolveEntryExportPath("share/systemd/user/test.service", false),
               tempDir.path() / "entries/lib/systemd/user/test.service");
@@ -72,10 +96,94 @@ TEST_F(RepoTest, resolveEntryExportPathSkipsLegacySystemdUserWhenLibPathPreferre
 {
     TempDir tempDir;
     auto config = api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 };
-    auto ostreeRepo = std::make_unique<MockOstreeRepo>(QDir(tempDir.path().c_str()), config);
+    auto ostreeRepo = std::make_unique<MockOstreeRepo>(tempDir.path(), config);
 
     EXPECT_TRUE(
       ostreeRepo->resolveEntryExportPath("share/systemd/user/test.service", true).empty());
+}
+
+TEST_F(RepoTest, createPersistsConfigAndBootstrapsRepoArtifacts)
+{
+    TempDir tempDir;
+    ASSERT_TRUE(tempDir.isValid());
+
+    auto repoRoot = tempDir.path() / "repo-root";
+    ASSERT_TRUE(fs::create_directories(repoRoot));
+
+    auto config = createRepoConfig();
+    auto repo = OSTreeRepo::create(repoRoot, config);
+    ASSERT_TRUE(repo.has_value()) << repo.error().message();
+
+    EXPECT_TRUE(fs::exists(repoRoot / "config.yaml"));
+    EXPECT_TRUE(fs::exists(repoRoot / "repo"));
+    EXPECT_TRUE(fs::exists(repoRoot / "states.json"));
+
+    auto loaded = OSTreeRepo::loadFromPath(repoRoot);
+    EXPECT_TRUE(loaded.has_value()) << loaded.error().message();
+}
+
+TEST_F(RepoTest, createPrefersRepoLocalConfigOverFallbackConfig)
+{
+    TempDir tempDir;
+    ASSERT_TRUE(tempDir.isValid());
+
+    auto repoRoot = tempDir.path() / "repo-root";
+    ASSERT_TRUE(fs::create_directories(repoRoot));
+
+    auto repoLocalConfig =
+      createRepoConfig("repo-local", "repo-local", "https://example.com/repo-local");
+    auto fallbackConfig = createRepoConfig("fallback", "fallback", "https://example.com/fallback");
+    auto saved = saveConfig(repoLocalConfig, repoRoot / "config.yaml");
+    ASSERT_TRUE(saved.has_value()) << saved.error().message();
+
+    auto repo = OSTreeRepo::create(repoRoot, fallbackConfig);
+    ASSERT_TRUE(repo.has_value()) << repo.error().message();
+
+    EXPECT_EQ(repo->get()->getConfig().defaultRepo, "repo-local");
+    ASSERT_EQ(repo->get()->getConfig().repos.size(), 1);
+    EXPECT_EQ(repo->get()->getConfig().repos.front().name, "repo-local");
+    EXPECT_EQ(repo->get()->getConfig().repos.front().url, "https://example.com/repo-local");
+}
+
+TEST_F(RepoTest, createFailsWhenRepoLocalConfigIsInvalid)
+{
+    TempDir tempDir;
+    ASSERT_TRUE(tempDir.isValid());
+
+    auto repoRoot = tempDir.path() / "repo-root";
+    ASSERT_TRUE(fs::create_directories(repoRoot));
+
+    std::ofstream(repoRoot / "config.yaml") << "invalid: [yaml";
+
+    auto fallbackConfig = createRepoConfig("fallback", "fallback", "https://example.com/fallback");
+    auto repo = OSTreeRepo::create(repoRoot, fallbackConfig);
+
+    EXPECT_FALSE(repo.has_value());
+}
+
+TEST_F(RepoTest, loadFromPathFailsWhenCacheIsMissingButCreateCanRepairIt)
+{
+    TempDir tempDir;
+    ASSERT_TRUE(tempDir.isValid());
+
+    auto repoRoot = tempDir.path() / "repo-root";
+    ASSERT_TRUE(fs::create_directories(repoRoot));
+
+    auto config = createRepoConfig();
+    auto created = OSTreeRepo::create(repoRoot, config);
+    ASSERT_TRUE(created.has_value()) << created.error().message();
+
+    std::error_code ec;
+    fs::remove(repoRoot / "states.json", ec);
+    ASSERT_FALSE(ec) << ec.message();
+    ASSERT_FALSE(fs::exists(repoRoot / "states.json"));
+
+    auto loaded = OSTreeRepo::loadFromPath(repoRoot);
+    EXPECT_FALSE(loaded.has_value());
+
+    auto repaired = OSTreeRepo::create(repoRoot, config);
+    ASSERT_TRUE(repaired.has_value()) << repaired.error().message();
+    EXPECT_TRUE(fs::exists(repoRoot / "states.json"));
 }
 
 TEST_F(RepoTest, exportDir)
@@ -95,8 +203,7 @@ TEST_F(RepoTest, exportDir)
 
     // 初始化配置和repo对象
     auto config = api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 };
-    QDir repoDir = QString(repoPath.c_str());
-    auto ostreeRepo = std::make_unique<MockOstreeRepo>(repoDir, config);
+    auto ostreeRepo = std::make_unique<MockOstreeRepo>(repoPath, config);
 
     // 创建测试文件和目录结构，包括XDG标准文件
     fs::path srcDirPath = tempDir.path() / "src";
@@ -156,7 +263,7 @@ TEST_F(RepoTest, exportDir)
     // 测试exportDir功能
     fs::path destDirPath = tempDir.path() / "entries";
     ostreeRepo->wrapGetOverlayShareDirFunc = [destDirPath]() {
-        return QDir(QString((destDirPath / "share").string().c_str()));
+        return destDirPath / "share";
     };
     {
         // 测试目标目录已存在同名文件的情况
@@ -197,7 +304,7 @@ TEST_F(RepoTest, exportDir)
         EXPECT_FALSE(ec) << "Unexpected error code: " << ec.message();
     }
     ostreeRepo->wrapGetOverlayShareDirFunc = [destDirPath]() {
-        return QDir(QString((destDirPath / "apps/share").string().c_str()));
+        return destDirPath / "apps/share";
     };
     // 如果defaultShareDir已存在desktop, 则优先导出到defaultShareDir目录
     {
@@ -304,8 +411,7 @@ class OSTreeRepoMock : public repo::OSTreeRepo
 public:
     OSTreeRepoMock(const std::filesystem::path &path)
         : repo::OSTreeRepo(
-            QDir(path.c_str()),
-            api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 })
+            path, api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 })
     {
     }
 
@@ -484,8 +590,7 @@ class OSTreeRepoMock : public repo::OSTreeRepo
 public:
     OSTreeRepoMock(const std::filesystem::path &path)
         : repo::OSTreeRepo(
-            QDir(path.c_str()),
-            api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 })
+            path, api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 })
     {
     }
 

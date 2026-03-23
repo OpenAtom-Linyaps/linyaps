@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
+ * SPDX-FileCopyrightText: 2022 - 2026 UnionTech Software Technology Co., Ltd.
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
@@ -12,6 +12,7 @@
 #include "linglong/repo/config.h"
 #include "linglong/repo/migrate.h"
 #include "linglong/repo/ostree_repo.h"
+#include "linglong/utils/file.h"
 #include "ocppi/cli/CLI.hpp"
 #include "ocppi/cli/crun/Crun.hpp"
 
@@ -23,16 +24,18 @@ namespace {
 void withDBusDaemon(ocppi::cli::CLI &cli)
 {
     auto config = linglong::repo::loadConfig(
-      { LINGLONG_ROOT "/config.yaml", LINGLONG_DATA_DIR "/config.yaml" });
+      std::vector<std::filesystem::path>{ LINGLONG_ROOT "/config.yaml",
+                                          LINGLONG_DATA_DIR "/config.yaml" });
     if (!config.has_value()) {
         LogE("load config failed: {}", config.error());
         QCoreApplication::exit(-1);
         return;
     }
 
-    auto repoRoot = QDir(LINGLONG_ROOT);
-    if (!repoRoot.exists() && !repoRoot.mkpath(".")) {
-        LogE("failed to create repository directory {}", repoRoot.absolutePath().toStdString());
+    std::filesystem::path repoRoot(LINGLONG_ROOT);
+    auto res = linglong::utils::ensureDirectory(repoRoot);
+    if (!res) {
+        LogE("failed to create repository directory {}", res.error());
         std::abort();
     }
 
@@ -41,7 +44,14 @@ void withDBusDaemon(ocppi::cli::CLI &cli)
         LogE("failed to migrate repository");
         QCoreApplication::exit(-1);
     }
-    auto *ostreeRepo = new linglong::repo::OSTreeRepo(repoRoot, *config);
+
+    auto repo = linglong::repo::OSTreeRepo::create(repoRoot, *config);
+    if (!repo) {
+        LogE("failed to create repo: {}", repo.error());
+        QCoreApplication::exit(-1);
+        return;
+    }
+    auto *ostreeRepo = std::move(repo).value().release();
     ostreeRepo->setParent(QCoreApplication::instance());
     auto result = ostreeRepo->fixExportAllEntries();
     if (!result.has_value()) {
@@ -91,20 +101,28 @@ void withoutDBusDaemon(ocppi::cli::CLI &cli)
     LogI("Running linglong package manager without dbus daemon...");
 
     auto config = linglong::repo::loadConfig(
-      { LINGLONG_ROOT "/config.yaml", LINGLONG_DATA_DIR "/config.yaml" });
+      std::vector<std::filesystem::path>{ LINGLONG_ROOT "/config.yaml",
+                                          LINGLONG_DATA_DIR "/config.yaml" });
     if (!config.has_value()) {
         LogE("load config failed: {}", config.error());
         QCoreApplication::exit(-1);
         return;
     }
 
-    auto repoRoot = QDir(LINGLONG_ROOT);
-    if (!repoRoot.exists() && !repoRoot.mkpath(".")) {
-        LogE("failed to create repository directory {}", repoRoot.absolutePath().toStdString());
+    std::filesystem::path repoRoot(LINGLONG_ROOT);
+    auto res = linglong::utils::ensureDirectory(repoRoot);
+    if (!res) {
+        LogE("failed to create repository directory {}", res.error());
         std::abort();
     }
 
-    auto *ostreeRepo = new linglong::repo::OSTreeRepo(repoRoot, *config);
+    auto repo = linglong::repo::OSTreeRepo::create(repoRoot, *config);
+    if (!repo) {
+        LogE("failed to create repo: {}", repo.error());
+        QCoreApplication::exit(-1);
+        return;
+    }
+    auto *ostreeRepo = std::move(repo).value().release();
     ostreeRepo->setParent(QCoreApplication::instance());
     auto result = ostreeRepo->fixExportAllEntries();
     if (!result.has_value()) {

@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+ * SPDX-FileCopyrightText: 2025 - 2026 UnionTech Software Technology Co., Ltd.
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
@@ -30,14 +30,13 @@ class MockRepo : public repo::OSTreeRepo
 public:
     MockRepo(const std::filesystem::path &path)
         : repo::OSTreeRepo(
-            QDir(path.c_str()),
-            api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 })
+            path, api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 })
     {
     }
 
-    QDir defaultSharedDir() const noexcept { return this->getDefaultSharedDir(); }
+    std::filesystem::path defaultSharedDir() const noexcept { return this->getDefaultSharedDir(); }
 
-    QDir overlaySharedDir() const noexcept { return this->getOverlayShareDir(); }
+    std::filesystem::path overlaySharedDir() const noexcept { return this->getOverlayShareDir(); }
 
     MOCK_METHOD(utils::error::Result<std::vector<api::types::v1::PackageInfoV2>>,
                 listLocal,
@@ -267,8 +266,7 @@ TEST_F(CliTest, contentPreferDesktopFromDefaultSharedDir)
     const auto layerEntriesDir =
       tempDir->path() / "layers" / commit / "entries" / "share" / "applications";
     const auto defaultDesktopPath =
-      std::filesystem::path(repo->defaultSharedDir().absolutePath().toStdString()) / "applications"
-      / "org.example.app.desktop";
+      repo->defaultSharedDir() / "applications" / "org.example.app.desktop";
 
     std::filesystem::create_directories(layerEntriesDir);
     std::filesystem::create_directories(defaultDesktopPath.parent_path());
@@ -302,8 +300,7 @@ TEST_F(CliTest, contentFallbackDesktopToOverlaySharedDir)
     const auto layerEntriesDir =
       tempDir->path() / "layers" / commit / "entries" / "share" / "applications";
     const auto overlayDesktopPath =
-      std::filesystem::path(repo->overlaySharedDir().absolutePath().toStdString()) / "applications"
-      / "org.example.app.desktop";
+      repo->overlaySharedDir() / "applications" / "org.example.app.desktop";
 
     std::filesystem::create_directories(layerEntriesDir);
     std::filesystem::create_directories(overlayDesktopPath.parent_path());

@@ -1206,13 +1206,15 @@ OSTreeRepo::getRefStatistics(const RefMetaData &meta) const noexcept
     }
     g_clear_error(&gErr);
 
+    RefStatistics stat = { 0 };
+
+#if OSTREE_CHECK_VERSION(2020, 1)
     g_autoptr(GPtrArray) sizes = NULL;
     if (!ostree_commit_get_object_sizes(commit, &sizes, &gErr)) {
         return LINGLONG_ERR(fmt::format("ostree_commit_get_object_sizes {}", ptr_view(gErr)));
     }
     g_clear_error(&gErr);
 
-    RefStatistics stat = { 0 };
     for (guint i = 0; i < sizes->len; i++) {
         OstreeCommitSizesEntry *entry = (OstreeCommitSizesEntry *)sizes->pdata[i];
         stat.archived += entry->archived;
@@ -1237,6 +1239,11 @@ OSTreeRepo::getRefStatistics(const RefMetaData &meta) const noexcept
             stat.needed_objects++;
         }
     }
+#else
+    // For ostree < 2020.1, ostree_commit_get_object_sizes is not available.
+    // Return empty statistics as fallback.
+    (void)commit; // suppress unused variable warning
+#endif
 
     return stat;
 }

@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
+# SPDX-FileCopyrightText: 2023 - 2026 UnionTech Software Technology Co., Ltd.
 #
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -35,6 +35,8 @@ set(ENABLE_LINGLONG_INSTALLER
 set(ENABLE_TESTING
     ON
     CACHE BOOL "enable testing")
+
+option(ENABLE_CPM "enable CPM module" ON)
 
 set(LINGLONG_USERNAME
     "deepin-linglong"
@@ -90,119 +92,180 @@ endif()
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 include(PFL)
 
-set(ENABLE_CPM YES)
-
 if(CMAKE_VERSION VERSION_LESS "3.14")
   set(ENABLE_CPM NO)
   message(
     STATUS "cmake version ${CMAKE_VERSION} not compatible with CPM.cmake.")
 endif()
 
+# we don't support CPM_LOCAL_PACKAGES_ONLY
 if(CPM_LOCAL_PACKAGES_ONLY)
   set(ENABLE_CPM NO)
 endif()
 
 if(ENABLE_CPM)
   include(CPM)
-  CPMFindPackage(
-    NAME tl-expected
-    VERSION
-      1.2.0 # NOTE: Upstream cmake version doesn't match git tag, we need
-            # https://github.com/TartanLlama/expected/pull/62 in v1.1.0, but
-            # cmake version of v1.1.0 is 1.0.0. upstream fix this issue in
-            # https://github.com/TartanLlama/expected/commit/17d0058a5a5d3e0ea647884f9b29c518dd06f26e
-            # so we require tl-expected >= 1.2.0
-    GITHUB_REPOSITORY TartanLlama/expected
-    GIT_TAG v1.3.1
-    GIT_SHALLOW ON
-    OPTIONS "EXPECTED_BUILD_TESTS OFF"
-    EXCLUDE_FROM_ALL ON)
-  CPMFindPackage(
-    NAME yaml-cpp
-    VERSION 0.6.2
-    GITHUB_REPOSITORY jbeder/yaml-cpp
-    GIT_TAG 0.8.0 # NOTE: When use this project with CPM.cmake(FetchContent), we
-                  # need https://github.com/jbeder/yaml-cpp/pull/583 in v0.8.0
-    EXCLUDE_FROM_ALL ON
-    OPTIONS "YAML_CPP_INSTALL ON" "YAML_CPP_BUILD_TESTS OFF")
-  CPMFindPackage(
-    NAME nlohmann_json
-    VERSION 3.5.0
-    URL "https://github.com/nlohmann/json/archive/refs/tags/v3.5.0.tar.gz"
-    EXCLUDE_FROM_ALL ON
-    OPTIONS "JSON_BuildTests OFF")
-  CPMFindPackage(
-    NAME CLI11
-    VERSION 2.4.1
-    GITHUB_REPOSITORY CLIUtils/CLI11
-    GIT_TAG v2.6.1
-    EXCLUDE_FROM_ALL ON
-    OPTIONS "CLI11_BUILD_TESTS OFF")
+endif()
 
-  if(ENABLE_TESTING)
-    include(CTest)
-    CPMFindPackage(
-      NAME googletest
-      GITHUB_REPOSITORY google/googletest
-      GIT_TAG v1.14.0
-      VERSION 1.12.1
-      OPTIONS "INSTALL_GTEST OFF" "gtest_force_shared_crt"
-      FIND_PACKAGE_ARGUMENTS "NAMES GTest"
-      GIT_SHALLOW ON
-      EXCLUDE_FROM_ALL ON)
+if(BUILD_LINGLONG_BUILDER_UTILS_IN_BOX)
+  set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
+endif()
+
+# Use CPMFindPackage if ENABLE_CPM is enabled.
+# Otherwise, use find_package, find_library or
+# include the header-only version from external directory
+function(gen_library_target name)
+  set(is_static ${BUILD_LINGLONG_BUILDER_UTILS_IN_BOX})
+
+  if("${name}" STREQUAL "tl-expected")
+    set(output "tl::expected")
+    if(ENABLE_CPM)
+      CPMFindPackage(
+        NAME tl-expected
+        VERSION
+          1.2.0 # NOTE: Upstream cmake version doesn't match git tag, we need
+                # https://github.com/TartanLlama/expected/pull/62 in v1.1.0, but
+                # cmake version of v1.1.0 is 1.0.0. upstream fix this issue in
+                # https://github.com/TartanLlama/expected/commit/17d0058a5a5d3e0ea647884f9b29c518dd06f26e
+                # so we require tl-expected >= 1.2.0
+        GITHUB_REPOSITORY TartanLlama/expected
+        GIT_TAG v1.3.1
+        GIT_SHALLOW ON
+        OPTIONS "EXPECTED_BUILD_TESTS OFF"
+        EXCLUDE_FROM_ALL ON)
+    else()
+      find_package(tl-expected 1.2.0 QUIET)
+      if(NOT tl-expected_FOUND)
+        message(STATUS "tl-expected not found, using external tl-expected")
+        add_library(tl-expected INTERFACE)
+        add_library(${output} ALIAS tl-expected)
+        target_include_directories(tl-expected
+                                   INTERFACE ./external/tl-expected/include)
+        # somebody calls find_package with tl-expected later should works
+        list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake.external)
+        set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} PARENT_SCOPE)
+      endif()
+    endif()
+  elseif("${name}" STREQUAL "nlohmann_json")
+    set(output "nlohmann_json::nlohmann_json")
+    if(ENABLE_CPM)
+      CPMFindPackage(
+        NAME nlohmann_json
+        VERSION 3.5.0
+        URL "https://github.com/nlohmann/json/archive/refs/tags/v3.5.0.tar.gz"
+        EXCLUDE_FROM_ALL ON
+        OPTIONS "JSON_BuildTests OFF")
+    else()
+      find_package(nlohmann_json 3.5.0 QUIET)
+      if(NOT nlohmann_json_FOUND)
+        list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake.fix)
+        set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} PARENT_SCOPE)
+        find_package(nlohmann_json 3.5.0 REQUIRED)
+      endif()
+    endif()
+  elseif("${name}" STREQUAL "yaml-cpp")
+    set(output "yaml-cpp::yaml-cpp")
+    if(ENABLE_CPM)
+      CPMFindPackage(
+        NAME yaml-cpp
+        VERSION 0.6.2
+        GITHUB_REPOSITORY jbeder/yaml-cpp
+        GIT_TAG 0.8.0 # NOTE: When use this project with CPM.cmake(FetchContent), we
+                      # need https://github.com/jbeder/yaml-cpp/pull/583 in v0.8.0
+        EXCLUDE_FROM_ALL ON
+        OPTIONS "YAML_CPP_INSTALL ON" "YAML_CPP_BUILD_TESTS OFF")
+    else()
+      if(is_static)
+        message(STATUS "use static yaml-cpp")
+        find_library(yaml-cpp yaml-cpp)
+        add_library(yaml-cpp INTERFACE)
+        target_link_libraries(yaml-cpp INTERFACE ${yaml-cpp})
+      else()
+        find_package(yaml-cpp REQUIRED)
+      endif()
+    endif()
+    if(NOT TARGET ${output})
+      add_library(${output} ALIAS yaml-cpp)
+    endif()
+  elseif("${name}" STREQUAL "CLI11")
+    set(output "CLI11::CLI11")
+    if(ENABLE_CPM)
+      CPMFindPackage(
+        NAME CLI11
+        VERSION 2.4.1
+        GITHUB_REPOSITORY CLIUtils/CLI11
+        GIT_TAG v2.6.1
+        EXCLUDE_FROM_ALL ON
+        OPTIONS "CLI11_BUILD_TESTS OFF")
+    else()
+      find_package(CLI11 2.4.1 QUIET)
+      if(NOT CLI11_FOUND)
+        message(STATUS "CLI11 not found, using external CLI11")
+        add_library(CLI11 INTERFACE)
+        add_library(${output} ALIAS CLI11)
+        target_include_directories(CLI11 INTERFACE ./external/CLI11)
+      endif()
+    endif()
+  elseif("${name}" STREQUAL "gtest" OR "${name}" STREQUAL "gmock")
+    if("${name}" STREQUAL "gtest")
+      set(output "GTest::gtest")
+    elseif("${name}" STREQUAL "gmock")
+      set(output "GTest::gmock")
+    endif()
+    if(ENABLE_CPM)
+      CPMFindPackage(
+        NAME googletest
+        GITHUB_REPOSITORY google/googletest
+        GIT_TAG v1.14.0
+        VERSION 1.12.1
+        OPTIONS "INSTALL_GTEST OFF" "gtest_force_shared_crt"
+        FIND_PACKAGE_ARGUMENTS "NAMES GTest"
+        GIT_SHALLOW ON
+        EXCLUDE_FROM_ALL ON)
+    else()
+      find_package(GTest REQUIRED)
+    endif()
+  elseif("${name}" STREQUAL "fmt")
+    set(output "fmt::fmt-lib")
+    find_package(fmt 5.2.1 QUIET)
+    if(NOT fmt_FOUND)
+      message(STATUS "system fmt not found, using external fmt")
+      add_library(fmt-lib INTERFACE)
+      add_library(${output} ALIAS fmt-lib)
+      target_include_directories(fmt-lib INTERFACE external/fmt/include)
+      target_compile_definitions(fmt-lib INTERFACE FMT_HEADER_ONLY)
+    else()
+      if(is_static)
+        message(STATUS "use fmt header only")
+        add_library(${output} ALIAS fmt::fmt-header-only)
+      else()
+        add_library(${output} ALIAS fmt::fmt)
+      endif()
+    endif()
   endif()
-endif()
 
-set(linglong_EXTERNALS "ytj ytj::ytj")
-
-find_package(fmt 5.2.1 QUIET)
-if(NOT fmt_FOUND)
-  message(STATUS "system fmt not found, using external fmt")
-  add_library(fmt-lib INTERFACE)
-  add_library(fmt::fmt ALIAS fmt-lib)
-  target_include_directories(fmt-lib INTERFACE external/fmt/include)
-  target_compile_definitions(fmt-lib INTERFACE FMT_HEADER_ONLY)
-endif()
-
-# NOTE: UOS v20 do not have tl-expected packaged.
-find_package(tl-expected 1.2.0 QUIET)
-if(NOT tl-expected_FOUND)
-  message(STATUS "tl-expected not found, using external tl-expected")
-  # list(APPEND linglong_EXTERNALS tl-expected) # tl-expected requires 3.14
-  add_library(tl-expected INTERFACE)
-  add_library(tl::expected ALIAS tl-expected)
-  target_include_directories(tl-expected
-                             INTERFACE ./external/tl-expected/include)
-  list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake.external)
-endif()
-
-find_package(nlohmann_json 3.5.0 QUIET)
-if(NOT nlohmann_json_FOUND)
-  list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake.fix)
-  find_package(nlohmann_json 3.5.0 REQUIRED)
-endif()
-
-# NOTE: UOS v20 do not have cli11 packaged.
-find_package(CLI11 2.4.1 QUIET)
-if(NOT CLI11_FOUND)
-  message(STATUS "CLI11 not found, using external CLI11")
-  add_library(CLI11 INTERFACE)
-  add_library(CLI11::CLI11 ALIAS CLI11)
-  target_include_directories(CLI11 INTERFACE ./external/CLI11)
-endif()
+  if(NOT TARGET ${output})
+    message(FATAL_ERROR "library ${name} not found target ${output}")
+  else()
+    message(STATUS "library ${name} found: ${output}")
+  endif()
+endfunction()
 
 find_package(PkgConfig REQUIRED)
 
+gen_library_target(tl-expected)
+gen_library_target(nlohmann_json)
+gen_library_target(yaml-cpp)
+gen_library_target(CLI11)
+gen_library_target(fmt)
 if(ENABLE_TESTING)
+  include(CTest)
   pkg_search_module(CRYPTO REQUIRED IMPORTED_TARGET libcrypto)
-  find_package(GTest REQUIRED)
-
-  # compatible with old gtest
-  if(NOT TARGET GTest::gmock)
-    message(STATUS "GTest::gmock not found, alias GTest::gtest")
-    add_library(GTest::gmock ALIAS GTest::GTest) # available since 3.5
-  endif()
+  gen_library_target(gtest)
+  gen_library_target(gmock)
 endif()
+
+set(linglong_EXTERNALS "ytj ytj::ytj")
 
 if(LINGLONG_ENABLE_WAYLAND_SEC_CTX_SUPPORT)
   message(STATUS "enable linglong wayland security context support")
@@ -230,6 +293,9 @@ include(GNUInstallDirs)
 configure_file(configure.h.in ${CMAKE_CURRENT_BINARY_DIR}/configure.h @ONLY)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
+pkg_search_module(cap REQUIRED IMPORTED_TARGET libcap)
+pkg_search_module(systemd REQUIRED IMPORTED_TARGET libsystemd)
+
 # build ll-build-utils only
 if(BUILD_LINGLONG_BUILDER_UTILS_IN_BOX)
   pfl_init(AUTO)
@@ -237,8 +303,9 @@ if(BUILD_LINGLONG_BUILDER_UTILS_IN_BOX)
     LIBS
     api
     common
-    ocppi
     oci-cfg-generators
+    ocppi
+    utils
     APPS
     ll-builder-utils
     uab)
@@ -303,9 +370,7 @@ message(STATUS "compiling with Qt${QT_VERSION_MAJOR}")
 
 pkg_search_module(glib2 REQUIRED IMPORTED_TARGET glib-2.0)
 pkg_search_module(ostree1 REQUIRED IMPORTED_TARGET ostree-1)
-pkg_search_module(systemd REQUIRED IMPORTED_TARGET libsystemd)
 pkg_search_module(ELF REQUIRED IMPORTED_TARGET libelf)
-pkg_search_module(cap REQUIRED IMPORTED_TARGET libcap)
 pkg_search_module(uuid REQUIRED IMPORTED_TARGET uuid)
 
 set(ytj_ENABLE_TESTING NO)

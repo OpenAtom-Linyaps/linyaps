@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2024 UnionTech Software Technology Co., Ltd.
+# SPDX-FileCopyrightText: 2024 - 2026 UnionTech Software Technology Co., Ltd.
 #
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -54,7 +54,7 @@ pfl_add_library(
   PUBLIC
   PkgConfig::cap
   PkgConfig::systemd
-  fmt::fmt
+  fmt::fmt-lib
   linglong::api
   linglong::common
   linglong::ocppi

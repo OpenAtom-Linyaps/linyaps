@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+# SPDX-FileCopyrightText: 2025 - 2026 UnionTech Software Technology Co., Ltd.
 #
 # SPDX-License-Identifier: LGPL-3.0-or-later
 version: '1'
@@ -50,7 +50,7 @@ build: |
   cmake --install build-static --prefix=$PREFIX
 
   cd /project
-  cmake -B build-linglong -DCPM_LOCAL_PACKAGES_ONLY=true -DENABLE_TESTING=false -DBUILD_LINGLONG_BUILDER_UTILS_IN_BOX=true -DAGGRESSIVE_UAB_SIZE=ON
+  cmake -B build-linglong -DENABLE_CPM=false -DENABLE_TESTING=false -DBUILD_LINGLONG_BUILDER_UTILS_IN_BOX=true -DAGGRESSIVE_UAB_SIZE=ON
   cmake --build build-linglong -j$(nproc)
   cmake --install build-linglong --prefix=$PREFIX
   install /usr/local/bin/mkfs.erofs $PREFIX/bin/
@@ -75,4 +75,7 @@ buildext:
         libcap-dev,
         libcli11-dev,
         libgtest-dev,
+        libsystemd-dev,
+        libfmt-dev,
+        libexpected-dev
       ]

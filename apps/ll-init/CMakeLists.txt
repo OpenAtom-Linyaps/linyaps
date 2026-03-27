@@ -9,5 +9,3 @@ set(LL_INIT_TARGET)
 
 get_real_target_name(LL_INIT_TARGET linglong::ll-init)
 target_link_libraries(${LL_INIT_TARGET} PRIVATE stdc++fs)
-target_link_options(${LL_INIT_TARGET} PRIVATE -static -static-libgcc
-                    -static-libstdc++)

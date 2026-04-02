@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
+ * SPDX-FileCopyrightText: 2023 - 2026 UnionTech Software Technology Co., Ltd.
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
@@ -739,19 +739,17 @@ int Cli::enter(const EnterOptions &options)
 {
     LINGLONG_TRACE("ll-cli exec");
     auto containerIDList = this->getRunningAppContainers(options.instance);
+    if (!containerIDList) {
+        this->printer.printErr(containerIDList.error());
+        return -1;
+    }
 
-    if (containerIDList.empty()) {
+    if (containerIDList->empty()) {
         this->printer.printErr(LINGLONG_ERRV("no container found"));
         return -1;
     }
 
-    if (containerIDList.size() > 1) {
-        this->printer.printErr(
-          LINGLONG_ERRV("multiple running containers found, please specify which one to enter"));
-        return -1;
-    }
-
-    auto containerID = containerIDList.front();
+    auto containerID = containerIDList->front();
     LogI("select container id: {}", containerID);
     auto commands = options.commands;
     if (commands.empty()) {
@@ -859,27 +857,38 @@ int Cli::ps()
     return 0;
 }
 
-std::vector<std::string> Cli::getRunningAppContainers(const std::string &appid)
+utils::error::Result<std::vector<std::string>> Cli::getRunningAppContainers(const std::string &id)
 {
     LINGLONG_TRACE("get app running containers");
 
     std::vector<std::string> containerIDList{};
     auto containers = getCurrentContainers();
     if (!containers) {
-        this->printer.printErr(containers.error());
-        return containerIDList;
+        return LINGLONG_ERR(containers);
     }
 
     for (const auto &container : *containers) {
+        // first check if the id matches container id, then check if the id matches package appid or
+        // fuzzy reference
+        if (common::strings::starts_with(container.id, id)) {
+            containerIDList.emplace_back(container.id);
+            continue;
+        }
+
         auto fuzzyRef = package::FuzzyReference::parse(container.package);
         if (!fuzzyRef) {
             LogW("{}", fuzzyRef.error());
             continue;
         }
 
-        if (fuzzyRef->id == appid || fuzzyRef->toString() == appid) {
+        if (fuzzyRef->id == id || fuzzyRef->toString() == id) {
             containerIDList.emplace_back(container.id);
         }
+    }
+
+    if (containerIDList.size() > 1) {
+        return LINGLONG_ERR("multiple running containers match the specified container ID prefix, "
+                            "please specify a longer container ID");
     }
 
     return containerIDList;
@@ -890,9 +899,18 @@ int Cli::kill(const KillOptions &options)
     LINGLONG_TRACE("command kill");
 
     auto containerIDList = this->getRunningAppContainers(options.appid);
+    if (!containerIDList) {
+        this->printer.printErr(containerIDList.error());
+        return -1;
+    }
+
+    if (containerIDList->empty()) {
+        this->printer.printErr(LINGLONG_ERRV("no container found"));
+        return -1;
+    }
 
     auto ret = 0;
-    for (const auto &containerID : containerIDList) {
+    for (const auto &containerID : *containerIDList) {
         LogI("select container id {}", containerID);
         auto result = this->ociCLI.kill(ocppi::runtime::ContainerID(containerID),
                                         ocppi::runtime::Signal(options.signal));
@@ -2191,7 +2209,7 @@ int Cli::getLayerDir(const InspectOptions &options)
         return -1;
     }
 
-    std::cout << layerDir->path() << std::endl;
+    std::cout << layerDir->path().string() << std::endl;
 
     return 0;
 }
@@ -2201,20 +2219,17 @@ int Cli::getBundleDir(const InspectOptions &options)
     LINGLONG_TRACE("Get Bundle dir");
 
     auto containerIDList = getRunningAppContainers(options.appid);
+    if (!containerIDList) {
+        this->printer.printErr(containerIDList.error());
+        return -1;
+    }
 
-    if (containerIDList.empty()) {
+    if (containerIDList->empty()) {
         this->printer.printErr(LINGLONG_ERRV("Can not find the running application."));
         return -1;
     }
 
-    if (containerIDList.size() > 1) {
-        this->printer.printErr(
-          LINGLONG_ERRV("Found multiple running containers for the application, please specify "
-                        "the container ID to inspect."));
-        return -1;
-    }
-
-    auto bundleDir = linglong::common::dir::getBundleDir(containerIDList.front());
+    auto bundleDir = linglong::common::dir::getBundleDir(containerIDList->front());
 
     std::cout << bundleDir.string() << std::endl;
 

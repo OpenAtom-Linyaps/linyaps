@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
+ * SPDX-FileCopyrightText: 2022 - 2026 UnionTech Software Technology Co., Ltd.
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
@@ -224,7 +224,8 @@ private:
       runtime::RunContext &runContext, const generator::ContainerCfgBuilder &cfgBuilder) noexcept;
     QDBusReply<void> authorization();
     void updateAM() noexcept;
-    std::vector<std::string> getRunningAppContainers(const std::string &appid);
+    utils::error::Result<std::vector<std::string>> getRunningAppContainers(const std::string &id);
+    bool isContainerIDMatch(const std::string &containerID, const std::string &shortID);
     int getLayerDir(const InspectOptions &options);
     int getBundleDir(const InspectOptions &options);
     utils::error::Result<void> initInteraction();

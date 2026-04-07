@@ -56,6 +56,7 @@
 #include "linglong/api/types/v1/RepoConfig.hpp"
 #include "linglong/api/types/v1/RepoConfigV2.hpp"
 #include "linglong/api/types/v1/RepositoryCache.hpp"
+#include "linglong/api/types/v1/RunContextConfig.hpp"
 #include "linglong/api/types/v1/RuntimeConfigure.hpp"
 #include "linglong/api/types/v1/UabMetaInfo.hpp"
 #include "linglong/api/types/v1/UpgradeListResult.hpp"
@@ -130,6 +131,7 @@ std::optional<Repo> repo;
 std::optional<RepoConfig> repoConfig;
 std::optional<RepoConfigV2> repoConfigV2;
 std::optional<RepositoryCache> repositoryCache;
+std::optional<RunContextConfig> runContextConfig;
 std::optional<RuntimeConfigure> runtimeConfigure;
 std::optional<State> state;
 std::optional<UabMetaInfo> uabMetaInfo;

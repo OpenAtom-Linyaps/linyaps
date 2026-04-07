@@ -1450,6 +1450,33 @@
           }
         }
       }
+    },
+    "RunContextConfig": {
+      "title": "RunContextConfig",
+      "type": "object",
+      "properties": {
+        "base": {
+          "type": "string"
+        },
+        "runtime": {
+          "type": "string"
+        },
+        "app": {
+          "type": "string"
+        },
+        "extensions": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "overlayfs": {
+          "type": "string"
+        }
+      }
     }
   },
   "type": "object",
@@ -1594,6 +1621,9 @@
     },
     "RuntimeConfigure": {
       "$ref": "#/$defs/RuntimeConfigure"
+    },
+    "RunContextConfig": {
+      "$ref": "#/$defs/RunContextConfig"
     }
   }
 }

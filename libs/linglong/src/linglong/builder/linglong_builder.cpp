@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
+ * SPDX-FileCopyrightText: 2022 - 2026 UnionTech Software Technology Co., Ltd.
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
@@ -594,11 +594,25 @@ utils::error::Result<void> Builder::buildStagePullDependency() noexcept
 std::unique_ptr<utils::OverlayFS> Builder::makeOverlay(
   const std::filesystem::path &lowerdir, const std::filesystem::path &overlayDir) noexcept
 {
+    const auto upperdir = overlayDir / "upperdir";
+    const auto workdir = overlayDir / "workdir";
+    const auto merged = overlayDir / "merged";
+
+    for (const auto &dir : { upperdir, workdir, merged }) {
+        std::error_code ec;
+        std::filesystem::create_directories(dir, ec);
+        if (ec) {
+            LogE("failed to create overlay directory {}: {}", dir.string(), ec.message());
+            return nullptr;
+        }
+    }
+
     std::unique_ptr<utils::OverlayFS> overlay =
-      std::make_unique<utils::OverlayFS>(lowerdir,
-                                         overlayDir / "upperdir",
-                                         overlayDir / "workdir",
-                                         overlayDir / "merged");
+      std::make_unique<utils::OverlayFS>(std::vector<std::filesystem::path>{ lowerdir },
+                                         upperdir,
+                                         workdir,
+                                         merged,
+                                         utils::OverlayMode::FUSE);
     if (!overlay->mount()) {
         return nullptr;
     }
@@ -959,10 +973,17 @@ utils::error::Result<void> Builder::buildStagePreCommit() noexcept
     // 1. merge base to runtime, Or
     // 2. merge base and runtime to app,
     // base prefix is /usr, and runtime prefix is /runtime
-    std::vector<std::filesystem::path> src = { baseOverlay->upperDirPath() / "usr" };
+    if (!baseOverlay->upperDirPath()) {
+        return LINGLONG_ERR("base overlay missing upperdir");
+    }
+
+    std::vector<std::filesystem::path> src = { *baseOverlay->upperDirPath() / "usr" };
     if (project.package.kind == "app" || project.package.kind == "extension") {
         if (runtimeOverlay) {
-            src.push_back(runtimeOverlay->upperDirPath());
+            if (!runtimeOverlay->upperDirPath()) {
+                return LINGLONG_ERR("runtime overlay missing upperdir");
+            }
+            src.push_back(*runtimeOverlay->upperDirPath());
         }
     }
     detail::mergeOutput(src,

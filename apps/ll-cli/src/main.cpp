@@ -24,12 +24,13 @@
 #include <CLI/CLI.hpp>
 #include <sys/file.h>
 
+#include <QDBusMetaType>
+#include <QDBusObjectPath>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QtGlobal>
 
 #include <algorithm>
-#include <cstddef>
 #include <functional>
 #include <memory>
 #include <string_view>
@@ -891,6 +892,8 @@ You can report bugs to the linyaps team under this project: https://github.com/O
 
 int main(int argc, char **argv)
 {
+    qDBusRegisterMetaType<QDBusObjectPath>();
+
     // bind text domain
     bindtextdomain(PACKAGE_LOCALE_DOMAIN, PACKAGE_LOCALE_DIR);
     // text domain

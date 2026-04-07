@@ -25,6 +25,7 @@
 #include "linglong/api/types/v1/UabLayer.hpp"
 #include "linglong/api/types/v1/State.hpp"
 #include "linglong/api/types/v1/RuntimeConfigure.hpp"
+#include "linglong/api/types/v1/RunContextConfig.hpp"
 #include "linglong/api/types/v1/RepositoryCache.hpp"
 #include "linglong/api/types/v1/RepositoryCacheMergedItem.hpp"
 #include "linglong/api/types/v1/RepositoryCacheLayersItem.hpp"
@@ -234,6 +235,9 @@ void to_json(json & j, const RepositoryCacheMergedItem & x);
 
 void from_json(const json & j, RepositoryCache & x);
 void to_json(json & j, const RepositoryCache & x);
+
+void from_json(const json & j, RunContextConfig & x);
+void to_json(json & j, const RunContextConfig & x);
 
 void from_json(const json & j, RuntimeConfigure & x);
 void to_json(json & j, const RuntimeConfigure & x);
@@ -1199,6 +1203,33 @@ j["merged"] = x.merged;
 j["version"] = x.version;
 }
 
+inline void from_json(const json & j, RunContextConfig& x) {
+x.app = get_stack_optional<std::string>(j, "app");
+x.base = get_stack_optional<std::string>(j, "base");
+x.extensions = get_stack_optional<std::map<std::string, std::vector<std::string>>>(j, "extensions");
+x.overlayfs = get_stack_optional<std::string>(j, "overlayfs");
+x.runtime = get_stack_optional<std::string>(j, "runtime");
+}
+
+inline void to_json(json & j, const RunContextConfig & x) {
+j = json::object();
+if (x.app) {
+j["app"] = x.app;
+}
+if (x.base) {
+j["base"] = x.base;
+}
+if (x.extensions) {
+j["extensions"] = x.extensions;
+}
+if (x.overlayfs) {
+j["overlayfs"] = x.overlayfs;
+}
+if (x.runtime) {
+j["runtime"] = x.runtime;
+}
+}
+
 inline void from_json(const json & j, RuntimeConfigure& x) {
 x.env = get_stack_optional<std::map<std::string, std::string>>(j, "env");
 x.extDefs = get_stack_optional<std::map<std::string, std::vector<ExtensionDefine>>>(j, "ext_defs");
@@ -1315,6 +1346,7 @@ x.repo = get_stack_optional<Repo>(j, "Repo");
 x.repoConfig = get_stack_optional<RepoConfig>(j, "RepoConfig");
 x.repoConfigV2 = get_stack_optional<RepoConfigV2>(j, "RepoConfigV2");
 x.repositoryCache = get_stack_optional<RepositoryCache>(j, "RepositoryCache");
+x.runContextConfig = get_stack_optional<RunContextConfig>(j, "RunContextConfig");
 x.runtimeConfigure = get_stack_optional<RuntimeConfigure>(j, "RuntimeConfigure");
 x.state = get_stack_optional<State>(j, "State");
 x.uabMetaInfo = get_stack_optional<UabMetaInfo>(j, "UABMetaInfo");
@@ -1449,6 +1481,9 @@ j["RepoConfigV2"] = x.repoConfigV2;
 }
 if (x.repositoryCache) {
 j["RepositoryCache"] = x.repositoryCache;
+}
+if (x.runContextConfig) {
+j["RunContextConfig"] = x.runContextConfig;
 }
 if (x.runtimeConfigure) {
 j["RuntimeConfigure"] = x.runtimeConfigure;

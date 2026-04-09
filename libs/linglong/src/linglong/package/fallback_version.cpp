@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.:
+ * SPDX-FileCopyrightText: 2025 - 2026 UnionTech Software Technology Co., Ltd.:
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
@@ -38,7 +38,8 @@ utils::error::Result<FallbackVersion> FallbackVersion::parse(const std::string &
     if (list.empty()) {
         return LINGLONG_ERR("parse fallback version failed");
     }
-    return FallbackVersion(list);
+
+    return FallbackVersion(std::vector<std::string>(list.cbegin(), list.cend()));
 }
 
 bool FallbackVersion::semanticMatch(const std::string &versionStr) const noexcept

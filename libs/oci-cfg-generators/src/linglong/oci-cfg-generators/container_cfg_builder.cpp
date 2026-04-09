@@ -11,6 +11,7 @@
 #include "linglong/api/types/v1/OciConfigurationPatch.hpp"
 #include "linglong/common/dir.h"
 #include "linglong/common/display.h"
+#include "linglong/common/strings.h"
 #include "linglong/common/xdg.h"
 #include "ocppi/runtime/config/types/Generators.hpp"
 #include "sha256.h"
@@ -18,7 +19,6 @@
 #include <fmt/format.h>
 
 #include <algorithm>
-#include <climits>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -69,6 +69,55 @@ bool bindIfExist(std::vector<Mount> &mounts,
 
     return true;
 }
+
+struct DBusAddress
+{
+    std::string transport;
+    std::map<std::string, std::string> options;
+};
+
+std::vector<DBusAddress> parseDBusAddressForMount(std::string_view address) noexcept
+{
+    // ref: https://dbus.freedesktop.org/doc/dbus-specification.html#addresses
+    std::vector<DBusAddress> ret;
+
+    auto addresses = common::strings::split(address, ';', common::strings::splitOption::SkipEmpty);
+    for (auto addr : addresses) {
+        auto colonPos = addr.find(':');
+        if (colonPos == std::string_view::npos) {
+            continue;
+        }
+
+        DBusAddress address;
+        address.transport = addr.substr(0, colonPos);
+
+        auto optionsStr = addr.substr(colonPos + 1);
+        auto options =
+          common::strings::split(optionsStr, ',', common::strings::splitOption::SkipEmpty);
+        for (auto option : options) {
+            auto equalPos = option.find('=');
+            if (equalPos == std::string_view::npos) {
+                address.options.insert_or_assign(std::string(option), "");
+                continue;
+            }
+
+            auto key = option.substr(0, equalPos);
+            auto value = option.substr(equalPos + 1);
+            auto urlDecoded = common::strings::decode_url(value);
+            if (!urlDecoded) {
+                std::cerr << "dbus address option is invalid:" << value << std::endl;
+                continue;
+            }
+
+            address.options.insert_or_assign(std::string(key), std::move(urlDecoded).value());
+        }
+
+        ret.emplace_back(std::move(address));
+    }
+
+    return ret;
+}
+
 } // namespace
 
 ContainerCfgBuilder &ContainerCfgBuilder::setAnnotation(ANNOTATION key, std::string value) noexcept
@@ -1104,118 +1153,105 @@ bool ContainerCfgBuilder::buildMountIPC() noexcept
         return false;
     }
 
-    // TODO 应该参考规范文档实现更完善的地址解析支持
-    // https://dbus.freedesktop.org/doc/dbus-specification.html#addresses
-    [this]() mutable {
-        // default value from
-        // https://dbus.freedesktop.org/doc/dbus-specification.html#message-bus-types-system
-        std::string systemBusEnv = "unix:path=/var/run/dbus/system_bus_socket";
-        if (auto cStr = std::getenv("DBUS_SYSTEM_BUS_ADDRESS"); cStr != nullptr) {
-            systemBusEnv = cStr;
+    auto bindDbusBus = [this](const std::string &envName,
+                              const std::filesystem::path &containerDest,
+                              const std::string_view defaultAddr = "") {
+        auto rawAddr = defaultAddr;
+        if (auto *cStr = ::getenv(envName.c_str()); cStr != nullptr) {
+            rawAddr = cStr;
         }
-        // address 可能是 unix:path=/xxxx,giud=xxx 这种格式
-        // 所以先将options部分提取出来，挂载时不需要关心
-        std::string options;
-        auto optionsPos = systemBusEnv.find(",");
-        if (optionsPos != std::string::npos) {
-            options = systemBusEnv.substr(optionsPos);
-            systemBusEnv.resize(optionsPos);
-        }
-        auto systemBus = std::string_view{ systemBusEnv };
-        auto suffix = std::string_view{ "unix:path=" };
-        if (systemBus.rfind(suffix, 0) != 0U) {
-            std::cerr << "Unexpected DBUS_SYSTEM_BUS_ADDRESS=" << systemBus << std::endl;
+
+        if (rawAddr.empty()) {
             return;
         }
 
-        auto socketPath = std::filesystem::path(systemBus.substr(suffix.size()));
-        std::error_code ec;
-        if (!std::filesystem::exists(socketPath, ec)) {
-            std::cerr << "D-Bus session bus socket not found at " << socketPath << std::endl;
+        auto addresses = parseDBusAddressForMount(rawAddr);
+
+        std::string selectedSource;
+        std::vector<std::pair<std::string, std::string>> otherOptions;
+
+        for (const auto &addr : addresses) {
+            if (addr.transport != "unix") {
+                continue;
+            }
+
+            auto it = addr.options.find("path");
+            if (it != addr.options.cend() && !it->second.empty()) {
+                std::error_code ec;
+                if (std::filesystem::exists(it->second, ec)) {
+                    selectedSource = it->second;
+
+                    for (const auto &[key, val] : addr.options) {
+                        if (key != "path") {
+                            otherOptions.emplace_back(key, val);
+                        }
+                    }
+
+                    break;
+                }
+            }
+        }
+
+        if (selectedSource.empty()) {
+            std::cerr << "No valid unix socket found for " << envName << std::endl;
             return;
         }
 
-        ipcMount->emplace_back(Mount{ .destination = "/run/dbus/system_bus_socket",
-                                      .options = string_list{ "rbind" },
-                                      .source = std::move(socketPath),
+        ipcMount->emplace_back(Mount{ .destination = containerDest.string(),
+                                      .options = std::vector<std::string>{ "rbind" },
+                                      .source = selectedSource,
                                       .type = "bind" });
-        // 将提取的options再拼到容器中的环境变量
-        environment["DBUS_SYSTEM_BUS_ADDRESS"] =
-          std::string("unix:path=/run/dbus/system_bus_socket") + options;
+
+        auto newEnv = fmt::format("unix:path={}", containerDest.string());
+        for (const auto &[key, val] : otherOptions) {
+            fmt::format_to(std::back_inserter(newEnv),
+                           ",{}={}",
+                           key,
+                           common::strings::encode_url(val));
+        }
+
+        environment[envName] = std::move(newEnv);
+    };
+
+    [this, &bindDbusBus]() {
+        // System Bus
+        bindDbusBus("DBUS_SYSTEM_BUS_ADDRESS",
+                    "/run/dbus/system_bus_socket",
+                    "unix:path=/var/run/dbus/system_bus_socket");
+
+        // Session Bus
+        if (!containerXDGRuntimeDir->empty()) {
+            bindDbusBus("DBUS_SESSION_BUS_ADDRESS", *containerXDGRuntimeDir / "bus");
+        } else {
+            std::cerr << "XDG_RUNTIME_DIR not set, skipping session bus mount." << std::endl;
+        }
     }();
 
-    [this]() {
-        auto hostXDGRuntimeDir = common::xdg::getXDGRuntimeDir();
+    auto hostXDGRuntimeDir = common::xdg::getXDGRuntimeDir();
 
-        bindIfExist(*ipcMount,
-                    hostXDGRuntimeDir / "pulse",
-                    (*containerXDGRuntimeDir / "pulse").string(),
-                    false);
-        bindIfExist(*ipcMount,
-                    hostXDGRuntimeDir / "gvfs",
-                    (*containerXDGRuntimeDir / "gvfs").string(),
-                    false);
+    bindIfExist(*ipcMount,
+                hostXDGRuntimeDir / "pulse",
+                (*containerXDGRuntimeDir / "pulse").string(),
+                false);
 
-        // TODO 应该参考规范文档实现更完善的地址解析支持
-        // https://dbus.freedesktop.org/doc/dbus-specification.html#addresses
-        [this]() {
-            std::string sessionBusEnv;
-            if (auto cStr = ::getenv("DBUS_SESSION_BUS_ADDRESS"); cStr != nullptr) {
-                sessionBusEnv = cStr;
-            }
+    bindIfExist(*ipcMount,
+                hostXDGRuntimeDir / "gvfs",
+                (*containerXDGRuntimeDir / "gvfs").string(),
+                false);
 
-            if (sessionBusEnv.empty()) {
-                std::cerr << "Couldn't get DBUS_SESSION_BUS_ADDRESS" << std::endl;
-                return;
-            }
+    [this, &hostXDGRuntimeDir]() {
+        auto dconfPath = std::filesystem::path(hostXDGRuntimeDir) / "dconf";
+        if (!std::filesystem::exists(dconfPath)) {
+            std::cerr << "dconf directory not found at " << dconfPath << "." << std::endl;
+            return;
+        }
 
-            // address 可能是 unix:path=/xxxx,giud=xxx 这种格式
-            // 所以先将options部分提取出来，挂载时不需要关心
-            std::string options;
-            auto optionsPos = sessionBusEnv.find(',');
-            if (optionsPos != std::string::npos) {
-                options = sessionBusEnv.substr(optionsPos);
-                sessionBusEnv.resize(optionsPos);
-            }
-
-            auto sessionBus = std::string_view{ sessionBusEnv };
-            auto suffix = std::string_view{ "unix:path=" };
-            if (sessionBus.rfind(suffix, 0) != 0U) {
-                std::cerr << "Unexpected DBUS_SESSION_BUS_ADDRESS=" << sessionBus << std::endl;
-                return;
-            }
-
-            auto socketPath = std::filesystem::path(sessionBus.substr(suffix.size()));
-            if (!std::filesystem::exists(socketPath)) {
-                std::cerr << "D-Bus session bus socket not found at " << socketPath << std::endl;
-                return;
-            }
-
-            auto containerSessionBusAddress = *containerXDGRuntimeDir / "bus";
-            ipcMount->emplace_back(ocppi::runtime::config::types::Mount{
-              .destination = containerSessionBusAddress.string(),
-              .options = string_list{ "rbind" },
-              .source = socketPath,
-              .type = "bind",
-            });
-            // 将提取的options再拼到容器中的环境变量
-            environment["DBUS_SESSION_BUS_ADDRESS"] =
-              "unix:path=" + containerSessionBusAddress.string() + options;
-        }();
-
-        [this, &hostXDGRuntimeDir]() {
-            auto dconfPath = std::filesystem::path(hostXDGRuntimeDir) / "dconf";
-            if (!std::filesystem::exists(dconfPath)) {
-                std::cerr << "dconf directory not found at " << dconfPath << "." << std::endl;
-                return;
-            }
-            ipcMount->emplace_back(ocppi::runtime::config::types::Mount{
-              .destination = *containerXDGRuntimeDir / "dconf",
-              .options = string_list{ "rbind" },
-              .source = dconfPath.string(),
-              .type = "bind",
-            });
-        }();
+        ipcMount->emplace_back(ocppi::runtime::config::types::Mount{
+          .destination = *containerXDGRuntimeDir / "dconf",
+          .options = string_list{ "rbind" },
+          .source = dconfPath.string(),
+          .type = "bind",
+        });
     }();
 
     return true;

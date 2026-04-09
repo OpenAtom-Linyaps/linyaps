@@ -1,11 +1,12 @@
 /*
- * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+ * SPDX-FileCopyrightText: 2025 - 2026 UnionTech Software Technology Co., Ltd.
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 #pragma once
 
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -31,11 +32,11 @@ inline splitOption operator&(splitOption a, splitOption b)
 
 bool stringEqual(std::string_view str1, std::string_view str2, bool caseSensitive = false) noexcept;
 
-std::string trim(std::string_view str, std::string_view chars = " ") noexcept;
+std::string_view trim(std::string_view str, std::string_view chars = " ") noexcept;
 
-std::vector<std::string> split(const std::string &str,
-                               char delimiter,
-                               splitOption option = splitOption::None) noexcept;
+std::vector<std::string_view> split(std::string_view str,
+                                    char delimiter,
+                                    splitOption option = splitOption::None) noexcept;
 
 std::string join(const std::vector<std::string> &strs, char delimiter = ' ') noexcept;
 
@@ -50,5 +51,9 @@ bool ends_with(std::string_view str, std::string_view suffix) noexcept;
 bool contains(std::string_view str, std::string_view suffix) noexcept;
 
 std::string quoteBashArg(std::string arg) noexcept;
+
+std::optional<std::string> decode_url(std::string_view url) noexcept;
+
+std::string encode_url(std::string_view value) noexcept;
 
 } // namespace linglong::common::strings

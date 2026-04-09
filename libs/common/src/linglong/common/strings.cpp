@@ -1,10 +1,33 @@
 /*
- * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+ * SPDX-FileCopyrightText: 2025 - 2026 UnionTech Software Technology Co., Ltd.
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
 #include "linglong/common/strings.h"
+
+#include <fmt/format.h>
+
+#include <sstream>
+
+namespace {
+int hexToBin(char c) noexcept
+{
+    if (c >= '0' && c <= '9') {
+        return c - '0';
+    }
+
+    if (c >= 'A' && c <= 'F') {
+        return c - 'A' + 10;
+    }
+
+    if (c >= 'a' && c <= 'f') {
+        return c - 'a' + 10;
+    }
+
+    return -1;
+}
+} // namespace
 
 namespace linglong::common::strings {
 
@@ -19,20 +42,22 @@ bool stringEqual(std::string_view str1, std::string_view str2, bool caseSensitiv
     });
 }
 
-std::string trim(std::string_view str, std::string_view chars) noexcept
+std::string_view trim(std::string_view str, std::string_view chars) noexcept
 {
     auto first = str.find_first_not_of(chars);
     if (first == std::string_view::npos) {
-        return "";
+        return {};
     }
 
     auto last = str.find_last_not_of(chars);
-    return std::string(str.substr(first, last - first + 1));
+    return str.substr(first, last - first + 1);
 }
 
-std::vector<std::string> split(const std::string &str, char delimiter, splitOption option) noexcept
+std::vector<std::string_view> split(std::string_view str,
+                                    char delimiter,
+                                    splitOption option) noexcept
 {
-    std::vector<std::string> result;
+    std::vector<std::string_view> result;
     std::size_t start{ 0 };
     std::size_t end{ 0 };
     auto trimWhitespace = (option & splitOption::TrimWhitespace) != splitOption::None;
@@ -45,7 +70,7 @@ std::vector<std::string> split(const std::string &str, char delimiter, splitOpti
         }
 
         if (!skipEmpty || !token.empty()) {
-            result.push_back(std::move(token));
+            result.push_back(token);
         }
 
         start = end + 1;
@@ -57,7 +82,7 @@ std::vector<std::string> split(const std::string &str, char delimiter, splitOpti
     }
 
     if (!skipEmpty || !token.empty()) {
-        result.push_back(std::move(token));
+        result.push_back(token);
     }
 
     return result;
@@ -153,6 +178,55 @@ std::string quoteBashArg(std::string arg) noexcept
         }
     }
     return "'" + arg + "'";
+}
+
+std::optional<std::string> decode_url(std::string_view url) noexcept
+{
+    std::string result;
+    result.reserve(url.size());
+
+    for (std::size_t idx = 0; idx < url.size(); ++idx) {
+        if (auto ch = url.at(idx); ch != '%') {
+            result.push_back(ch);
+            continue;
+        }
+
+        if (idx + 2 >= url.size()) {
+            return std::nullopt;
+        }
+
+        auto h = hexToBin(url.at(idx + 1));
+        auto l = hexToBin(url.at(idx + 2));
+        if (h < 0 || l < 0) {
+            return std::nullopt;
+        }
+
+        auto high{ static_cast<std::byte>(h) };
+        auto low{ static_cast<std::byte>(l) };
+
+        auto ch = (high << 4) | low;
+        result.push_back(static_cast<char>(ch));
+
+        idx += 2;
+    }
+
+    return result;
+}
+
+std::string encode_url(std::string_view value) noexcept
+{
+    std::string escaped;
+    escaped.reserve(value.length());
+
+    for (unsigned char c : value) {
+        if (::isalnum(c) || c == '-' || c == '_' || c == '.' || c == '/') {
+            escaped.push_back(static_cast<char>(c));
+        } else {
+            fmt::format_to(std::back_inserter(escaped), "%{:02X}", c);
+        }
+    }
+
+    return escaped;
 }
 
 } // namespace linglong::common::strings

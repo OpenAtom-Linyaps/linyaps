@@ -4,7 +4,7 @@
 		<message>
 			<location filename="org.deepin.linglong.PackageManager1.checkAuthentication!message" line="0"/>
 			<source>Authentication is required to perform this action</source>
-			<translation>A autenticação é necessária para realizar esta ação</translation>
+			<translation>A autenticação é necessária para executar esta ação</translation>
 		</message>
 		<message>
 			<location filename="org.deepin.linglong.PackageManager1.checkAuthentication!description" line="0"/>

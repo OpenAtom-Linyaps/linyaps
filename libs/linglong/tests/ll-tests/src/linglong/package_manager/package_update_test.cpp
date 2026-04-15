@@ -117,8 +117,10 @@ api::types::v1::PackageInfoV2 extension{
 class MockPackageManager : public service::PackageManager
 {
 public:
-    MockPackageManager(repo::OSTreeRepo &repo, runtime::ContainerBuilder &builder, QObject *parent)
-        : service::PackageManager(repo, builder, parent)
+    MockPackageManager(std::unique_ptr<repo::OSTreeRepo> repo,
+                       std::unique_ptr<runtime::ContainerBuilder> builder,
+                       QObject *parent)
+        : service::PackageManager(std::move(repo), std::move(builder), parent)
     {
     }
 
@@ -185,25 +187,27 @@ protected:
     void SetUp() override
     {
         tempDir = std::make_unique<TempDir>();
-        repo = std::make_unique<MockRepo>(tempDir->path());
+        auto repoOwner = std::make_unique<MockRepo>(tempDir->path());
+        repo = repoOwner.get();
         cli = ocppi::cli::crun::Crun::New(tempDir->path()).value();
-        containerBuilder = std::make_unique<runtime::ContainerBuilder>(*cli);
-        pm = std::make_unique<MockPackageManager>(*repo, *containerBuilder, nullptr);
+        auto containerBuilderOwner = std::make_unique<runtime::ContainerBuilder>(*cli);
+        containerBuilder = containerBuilderOwner.get();
+        pm = std::make_unique<MockPackageManager>(std::move(repoOwner),
+                                                  std::move(containerBuilderOwner),
+                                                  nullptr);
     }
 
     void TearDown() override
     {
         pm.reset();
-        containerBuilder.reset();
         cli.reset();
-        repo.reset();
         tempDir.reset();
     }
 
     std::unique_ptr<TempDir> tempDir;
     std::unique_ptr<ocppi::cli::crun::Crun> cli;
-    std::unique_ptr<runtime::ContainerBuilder> containerBuilder;
-    std::unique_ptr<MockRepo> repo;
+    runtime::ContainerBuilder *containerBuilder{ nullptr };
+    MockRepo *repo{ nullptr };
     std::unique_ptr<MockPackageManager> pm;
 };
 

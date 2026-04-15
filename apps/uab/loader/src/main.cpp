@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2024 - 2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -167,7 +167,7 @@ bool processLDConfig(linglong::generator::ContainerCfgBuilder &builder,
     }
 
     auto content = builder.ldConf(triplet.value());
-    auto ldConf = builder.getBundlePath() / "ld.so.conf";
+    auto ldConf = containerBundle / "ld.so.conf";
     {
         std::ofstream stream{ ldConf };
         if (!stream.is_open()) {
@@ -179,7 +179,7 @@ bool processLDConfig(linglong::generator::ContainerCfgBuilder &builder,
     }
 
     // trigger fixMount
-    auto randomFile = builder.getBundlePath() / genRandomString();
+    auto randomFile = containerBundle / genRandomString();
     {
         std::ofstream stream{ randomFile };
         if (!stream.is_open()) {
@@ -410,7 +410,9 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv) // NOLINT
         }
     }
 
-    builder.setBundlePath(containerBundle)
+    const auto &appID = appInfo->id;
+    builder.setAppId(appID)
+      .setBundlePath(containerBundle)
       .setBasePath("/", false)
       .enableSelfAdjustingMount()
       .forwardEnv()
@@ -429,7 +431,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv) // NOLINT
                                                              .source = "/tmp",
                                                              .type = "bind",
                                                            } })
-      .appendEnv("LINGLONG_APPID", builder.getAppId());
+      .appendEnv("LINGLONG_APPID", appID);
 
     auto extraDir = bundleDir / "extra";
     if (!std::filesystem::exists(extraDir, ec)) {
@@ -487,9 +489,6 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv) // NOLINT
         std::cerr << "couldn't create directory " << rootfs << " :" << ec.message() << std::endl;
         return -1;
     }
-
-    const auto &appID = appInfo->id;
-    builder.setAppId(appID);
 
     std::string runtimeID;
     if (appInfo->runtime) {
@@ -562,8 +561,9 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv) // NOLINT
             return -1;
         }
 
-        if (!builder.build()) {
-            std::cerr << "failed to generate OCI config:" << builder.getError().reason << std::endl;
+        auto res = builder.build();
+        if (!res) {
+            std::cerr << "failed to generate OCI config:" << res.error().message() << std::endl;
             return -1;
         }
 

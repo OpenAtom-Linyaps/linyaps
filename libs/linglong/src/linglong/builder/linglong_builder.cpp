@@ -11,7 +11,7 @@
 #include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/builder/printer.h"
 #include "linglong/common/global/initialize.h"
-#include "linglong/oci-cfg-generators/container_cfg_builder.h"
+#include "linglong/common/strings.h"
 #include "linglong/package/architecture.h"
 #include "linglong/package/fuzzy_reference.h"
 #include "linglong/package/layer_dir.h"
@@ -657,36 +657,25 @@ utils::error::Result<void> Builder::processBuildDepends() noexcept
 
     printMessage("[Processing buildext.apt.buildDepends]");
 
-    linglong::generator::ContainerCfgBuilder cfgBuilder;
-    auto fillRes = buildContext.fillContextCfg(cfgBuilder);
-    if (!fillRes) {
-        return LINGLONG_ERR(fillRes);
-    }
-    cfgBuilder
-      .setAppId(this->project->package.id)
-      // overwrite base overlay directory
-      .setBasePath(baseOverlay->mergedDirPath(), false)
-      .bindDefault()
-      .addExtraMount(ocppi::runtime::config::types::Mount{ .destination = "/project",
-                                                           .options = { { "rbind", "ro" } },
-                                                           .source = this->workingDir,
-                                                           .type = "bind" })
-      .forwardDefaultEnv()
-      .appendEnv("LINYAPS_INIT_SINGLE_MODE", "1")
-      .disableUserNamespace()
-      .setCapabilities(privilegeBuilderCaps);
-
-    // overwrite runtime overlay directory
-    if (cfgBuilder.getRuntimePath() && runtimeOverlay) {
-        cfgBuilder.setRuntimePath(runtimeOverlay->mergedDirPath(), false);
+    runtime::BuilderContainerOptions options{
+        .common =
+          runtime::CommonContainerOptions{
+            .containerCachePath = this->workingDir / "linglong/cache",
+            .extraMounts =
+              std::vector<ocppi::runtime::config::types::Mount>{
+                ocppi::runtime::config::types::Mount{ .destination = "/project",
+                                                      .options = { { "rbind", "ro" } },
+                                                      .source = this->workingDir,
+                                                      .type = "bind" },
+              },
+          },
+        .basePath = baseOverlay->mergedDirPath(),
+    };
+    if (runtimeOverlay) {
+        options.runtimePath = runtimeOverlay->mergedDirPath();
     }
 
-    if (!cfgBuilder.build()) {
-        auto err = cfgBuilder.getError();
-        return LINGLONG_ERR("build cfg error: " + err.reason);
-    }
-
-    auto container = this->containerBuilder.create(cfgBuilder);
+    auto container = this->containerBuilder.createBuildContainer(this->buildContext, options);
     if (!container) {
         return LINGLONG_ERR(container);
     }
@@ -695,7 +684,6 @@ utils::error::Result<void> Builder::processBuildDepends() noexcept
     process.args = { "/bin/bash", "/project/linglong/buildext.sh" };
     process.cwd = "/project";
     process.noNewPrivileges = true;
-    process.terminal = true;
 
     ocppi::runtime::RunOption opt{};
     auto result = (*container)->run(process, opt);
@@ -782,72 +770,37 @@ utils::error::Result<bool> Builder::buildStageBuild(const QStringList &args) noe
         return LINGLONG_ERR("failed to generate entry script", res);
     }
 
-    // initialize the cache dir
-    auto appCache = internalDir / "cache";
-    std::error_code ec;
-    std::filesystem::create_directories(appCache, ec);
-    if (ec) {
-        return LINGLONG_ERR(fmt::format("failed to create cache directory {}", appCache), ec);
+    runtime::BuilderContainerOptions containerOptions{
+        .common =
+          runtime::CommonContainerOptions{
+            .containerCachePath = this->workingDir / "linglong/cache",
+            .extraMounts = std::vector<ocppi::runtime::config::types::Mount>{
+              ocppi::runtime::config::types::Mount{ .destination = "/project",
+                                                    .options = { { "rbind", "rw" } },
+                                                    .source = this->workingDir,
+                                                    .type = "bind" },
+              ocppi::runtime::config::types::Mount{ .destination = LINGLONG_BUILDER_HELPER,
+                                                    .options = { { "rbind", "ro" } },
+                                                    .source = LINGLONG_BUILDER_HELPER,
+                                                    .type = "bind" },
+            },
+          },
+        .basePath = baseOverlay->mergedDirPath(),
+        .isolateNetWork = this->buildOptions.isolateNetWork,
+        .masks = {
+            "/project/linglong/output",
+            "/project/linglong/overlay",
+        },
+        .startContainerHooks = std::vector<ocppi::runtime::config::types::Hook>{
+            ocppi::runtime::config::types::Hook{ .path = "/sbin/ldconfig" },
+        },
+    };
+    if (runtimeOverlay) {
+        containerOptions.runtimePath = runtimeOverlay->mergedDirPath();
     }
 
-    linglong::generator::ContainerCfgBuilder cfgBuilder;
-    res = buildContext.fillContextCfg(cfgBuilder);
-    if (!res) {
-        return LINGLONG_ERR(res);
-    }
-    cfgBuilder.setAppId(this->project->package.id)
-      .setBasePath(baseOverlay->mergedDirPath(), false)
-      .bindDefault()
-      .setStartContainerHooks(
-        std::vector<ocppi::runtime::config::types::Hook>{ ocppi::runtime::config::types::Hook{
-          .path = "/sbin/ldconfig",
-        } })
-      .forwardDefaultEnv()
-      .addMask({
-        "/project/linglong/output",
-        "/project/linglong/overlay",
-      })
-      .appendEnv("LINYAPS_INIT_SINGLE_MODE", "1")
-      .disableUserNamespace()
-      .setCapabilities(privilegeBuilderCaps);
-
-    if (this->buildOptions.isolateNetWork) {
-        cfgBuilder.isolateNetWork();
-    }
-
-    if (cfgBuilder.getRuntimePath() && runtimeOverlay) {
-        cfgBuilder.setRuntimePath(runtimeOverlay->mergedDirPath(), false);
-    }
-
-    // write ld.so.conf
-    auto ldConfPath = appCache / "ld.so.conf";
-    std::string triplet = package::Architecture::currentCPUArchitecture().getTriplet();
-    auto ret = utils::writeFile(ldConfPath, cfgBuilder.ldConf(triplet));
-    if (!ret) {
-        return LINGLONG_ERR(ret);
-    }
-
-    cfgBuilder.addExtraMounts(std::vector<ocppi::runtime::config::types::Mount>{
-      ocppi::runtime::config::types::Mount{ .destination = LINGLONG_BUILDER_HELPER,
-                                            .options = { { "rbind", "ro" } },
-                                            .source = LINGLONG_BUILDER_HELPER,
-                                            .type = "bind" },
-      ocppi::runtime::config::types::Mount{ .destination = "/project",
-                                            .options = { { "rbind", "rw" } },
-                                            .source = this->workingDir,
-                                            .type = "bind" },
-      ocppi::runtime::config::types::Mount{ .destination =
-                                              "/etc/ld.so.conf.d/zz_deepin-linglong-app.conf",
-                                            .options = { { "rbind", "ro" } },
-                                            .source = ldConfPath,
-                                            .type = "bind" } });
-
-    if (!cfgBuilder.build()) {
-        auto err = cfgBuilder.getError();
-        return LINGLONG_ERR("build cfg error: " + err.reason);
-    }
-
-    auto container = this->containerBuilder.create(cfgBuilder);
+    auto container =
+      this->containerBuilder.createBuildContainer(this->buildContext, containerOptions);
     if (!container) {
         return LINGLONG_ERR(container);
     }
@@ -869,10 +822,9 @@ utils::error::Result<bool> Builder::buildStageBuild(const QStringList &args) noe
       //
       // Note: LINGLONG_LD_SO_CACHE is retained here solely for backward compatibility.
       "LINGLONG_LD_SO_CACHE=/etc/ld.so.cache",
-      "TRIPLET=" + triplet,
+      "TRIPLET=" + package::Architecture::currentCPUArchitecture().getTriplet(),
     } };
     process.noNewPrivileges = true;
-    process.terminal = true;
 
     printMessage("[Start Build]");
     ocppi::runtime::RunOption opt{};
@@ -929,33 +881,26 @@ utils::error::Result<void> Builder::buildStagePreCommit() noexcept
         }
     }
 
-    linglong::generator::ContainerCfgBuilder cfgBuilder;
-    auto fillRes = buildContext.fillContextCfg(cfgBuilder);
-    if (!fillRes) {
-        return LINGLONG_ERR(fillRes);
-    }
-    cfgBuilder.setAppId(project.package.id)
-      .setBasePath(baseOverlay->mergedDirPath(), false)
-      .bindDefault()
-      .addExtraMount(ocppi::runtime::config::types::Mount{ .destination = "/project",
-                                                           .options = { { "rbind", "rw" } },
-                                                           .source = this->workingDir,
-                                                           .type = "bind" })
-      .forwardDefaultEnv()
-      .appendEnv("LINYAPS_INIT_SINGLE_MODE", "1")
-      .disableUserNamespace()
-      .setCapabilities(privilegeBuilderCaps);
-
-    if (cfgBuilder.getRuntimePath() && runtimeOverlay) {
-        cfgBuilder.setRuntimePath(runtimeOverlay->mergedDirPath(), false);
+    runtime::BuilderContainerOptions containerOptions{
+        .common =
+          runtime::CommonContainerOptions{
+            .containerCachePath = this->workingDir / "linglong/cache",
+            .extraMounts =
+              std::vector<ocppi::runtime::config::types::Mount>{
+                ocppi::runtime::config::types::Mount{ .destination = "/project",
+                                                      .options = { { "rbind", "rw" } },
+                                                      .source = this->workingDir,
+                                                      .type = "bind" },
+              },
+          },
+        .basePath = baseOverlay->mergedDirPath(),
+    };
+    if (runtimeOverlay) {
+        containerOptions.runtimePath = runtimeOverlay->mergedDirPath();
     }
 
-    if (!cfgBuilder.build()) {
-        auto err = cfgBuilder.getError();
-        return LINGLONG_ERR("build cfg error: " + err.reason);
-    }
-
-    auto container = this->containerBuilder.create(cfgBuilder);
+    auto container =
+      this->containerBuilder.createBuildContainer(this->buildContext, containerOptions);
     if (!container) {
         return LINGLONG_ERR(container);
     }
@@ -1834,12 +1779,38 @@ utils::error::Result<void> Builder::run(std::vector<std::string> modules,
         return LINGLONG_ERR(res);
     }
 
-    auto *homeEnv = ::getenv("HOME");
-    if (homeEnv == nullptr) {
-        return LINGLONG_ERR("Couldn't get HOME env.");
+    std::vector<ocppi::runtime::config::types::Mount> applicationMounts{
+        ocppi::runtime::config::types::Mount{ .destination = "/project",
+                                              .options = { { "rbind", "rw" } },
+                                              .source = this->workingDir,
+                                              .type = "bind" },
+        ocppi::runtime::config::types::Mount{ .destination = LINGLONG_BUILDER_HELPER,
+                                              .options = { { "rbind", "ro" } },
+                                              .source = LINGLONG_BUILDER_HELPER,
+                                              .type = "bind" },
+    };
+
+    auto appCache = internalDir / "cache";
+
+    {
+        // run init container
+        auto container = this->containerBuilder.createInitContainer(
+          runContext,
+          runtime::CommonContainerOptions{ .containerCachePath = appCache,
+                                           .extraMounts = applicationMounts });
+        if (!container) {
+            return LINGLONG_ERR(container);
+        }
+
+        ocppi::runtime::config::types::Process process{ .args = std::vector<std::string>{
+                                                          "/sbin/ldconfig" } };
+        ocppi::runtime::RunOption opt{};
+        auto result = (*container)->run(process, opt);
+        if (!result) {
+            return LINGLONG_ERR("failed to generate ld cache", result);
+        }
     }
 
-    std::vector<ocppi::runtime::config::types::Mount> applicationMounts{};
     if (debug) {
         // 生成 host_gdbinit 可使用 gdb --init-command=linglong/host_gdbinit 从宿主机调试
         {
@@ -1852,6 +1823,11 @@ utils::error::Result<void> Builder::run(std::vector<std::string> modules,
         }
         // 生成 gdbinit 支持在容器中使用gdb $binary调试
         {
+            auto *homeEnv = ::getenv("HOME");
+            if (homeEnv == nullptr) {
+                return LINGLONG_ERR("Couldn't get HOME env.");
+            }
+
             std::string appPrefix = "/opt/apps/" + project.package.id + "/files";
             std::string debugDir = "/usr/lib/debug:/runtime/lib/debug:" + appPrefix + "/lib/debug";
             auto gdbinit = internalDir / "gdbinit";
@@ -1867,115 +1843,13 @@ utils::error::Result<void> Builder::run(std::vector<std::string> modules,
         }
     }
 
-    applicationMounts.push_back(ocppi::runtime::config::types::Mount{
-      .destination = "/project",
-      .options = { { "rbind", "rw" } },
-      .source = this->workingDir,
-      .type = "bind",
-    });
+    runtime::RunContainerOptions runOptions;
+    runOptions.common = runtime::CommonContainerOptions{
+        .containerCachePath = appCache,
+        .extraMounts = applicationMounts,
+    };
 
-    applicationMounts.push_back(ocppi::runtime::config::types::Mount{
-      .destination = LINGLONG_BUILDER_HELPER,
-      .options = { { "rbind", "ro" } },
-      .source = LINGLONG_BUILDER_HELPER,
-      .type = "bind",
-    });
-
-    auto appCache = internalDir / "cache";
-    auto ldConfPath = appCache / "ld.so.conf";
-    applicationMounts.push_back(ocppi::runtime::config::types::Mount{
-      .destination = "/etc/ld.so.conf.d/zz_deepin-linglong-app.conf",
-      .options = { { "rbind", "ro" } },
-      .source = ldConfPath,
-      .type = "bind",
-    });
-
-    uid = getuid();
-    gid = getgid();
-
-    {
-        // Since ldconfig removes and regenerates the cache file, the cache directory must be
-        // writable. Therefore, we must generate the ld cache in a separate running
-        linglong::generator::ContainerCfgBuilder cfgBuilder;
-        res = runContext.fillContextCfg(cfgBuilder);
-        if (!res) {
-            return LINGLONG_ERR(res);
-        }
-        cfgBuilder.setAppId(curRef->id)
-          .setAppCache(appCache, false)
-          .addUIdMapping(uid, uid, 1)
-          .addGIdMapping(gid, gid, 1)
-          .bindDefault()
-          .addExtraMounts(applicationMounts)
-          .enableSelfAdjustingMount()
-          .appendEnv("LINYAPS_INIT_SINGLE_MODE", "1");
-
-        // write ld.so.conf
-        std::string triplet = package::Architecture::currentCPUArchitecture().getTriplet();
-        res = utils::writeFile(ldConfPath, cfgBuilder.ldConf(triplet));
-        if (!res) {
-            return LINGLONG_ERR(res);
-        }
-
-        if (!cfgBuilder.build()) {
-            auto err = cfgBuilder.getError();
-            return LINGLONG_ERR("build cfg error: " + err.reason);
-        }
-
-        auto container = this->containerBuilder.create(cfgBuilder);
-        if (!container) {
-            return LINGLONG_ERR(container);
-        }
-
-        ocppi::runtime::config::types::Process process{ .args = std::vector<std::string>{
-                                                          "/sbin/ldconfig",
-                                                          "-X",
-                                                          "-C",
-                                                          "/run/linglong/cache/ld.so.cache" } };
-        ocppi::runtime::RunOption opt{};
-        auto result = (*container)->run(process, opt);
-        if (!result) {
-            return LINGLONG_ERR("failed to generate ld cache", result);
-        }
-    }
-
-    linglong::generator::ContainerCfgBuilder cfgBuilder;
-
-    cfgBuilder.setAppId(curRef->id)
-      .setAppCache(appCache)
-      .enableLDCache()
-      .addUIdMapping(uid, uid, 1)
-      .addGIdMapping(gid, gid, 1)
-      .bindDefault()
-      .bindDevNode()
-      .bindCgroup()
-      .bindXDGRuntime()
-      .bindUserGroup()
-      .bindRemovableStorageMounts()
-      .bindHostRoot()
-      .bindHostStatics()
-      .bindHome(homeEnv)
-      .enablePrivateDir()
-      .mapPrivate(std::string{ homeEnv } + "/.ssh", true)
-      .mapPrivate(std::string{ homeEnv } + "/.gnupg", true)
-      .bindIPC()
-      .forwardDefaultEnv()
-      .addExtraMounts(applicationMounts)
-      .enableSelfAdjustingMount()
-      .appendEnv("LINYAPS_INIT_SINGLE_MODE", "1");
-
-    res = runContext.fillContextCfg(cfgBuilder);
-    if (!res) {
-        return LINGLONG_ERR(res);
-    }
-
-    if (!cfgBuilder.build()) {
-        auto err = cfgBuilder.getError();
-        return LINGLONG_ERR("build cfg error: " + err.reason);
-    }
-
-    auto container = this->containerBuilder.create(cfgBuilder);
-
+    auto container = this->containerBuilder.createRunContainer(runContext, runOptions);
     if (!container) {
         return LINGLONG_ERR(container);
     }
@@ -2020,46 +1894,11 @@ utils::error::Result<void> Builder::runFromRepo(const package::Reference &ref,
     gid = getgid();
 
     auto appCache = internalDir / "cache" / ref.id;
-    std::error_code ec;
-    if (!std::filesystem::create_directories(appCache, ec) && ec) {
-        return LINGLONG_ERR("failed to create temp cache directory");
-    }
 
     {
-        // generate ld cache
-        std::string ldConfPath = appCache / "ld.so.conf";
-
-        linglong::generator::ContainerCfgBuilder cfgBuilder;
-        res = runContext.fillContextCfg(cfgBuilder);
-        if (!res) {
-            return LINGLONG_ERR(res);
-        }
-        cfgBuilder.setAppId(ref.id)
-          .setAppCache(appCache, false)
-          .addUIdMapping(uid, uid, 1)
-          .addGIdMapping(gid, gid, 1)
-          .bindDefault()
-          .addExtraMount(ocppi::runtime::config::types::Mount{
-            .destination = "/etc/ld.so.conf.d/zz_deepin-linglong-app.conf",
-            .options = { { "rbind", "ro" } },
-            .source = ldConfPath,
-            .type = "bind" })
-          .enableSelfAdjustingMount()
-          .appendEnv("LINYAPS_INIT_SINGLE_MODE", "1");
-
-        // write ld.so.conf
-        std::string triplet = package::Architecture::currentCPUArchitecture().getTriplet();
-        res = utils::writeFile(ldConfPath, cfgBuilder.ldConf(triplet));
-        if (!res) {
-            return LINGLONG_ERR(res);
-        }
-
-        if (!cfgBuilder.build()) {
-            auto err = cfgBuilder.getError();
-            return LINGLONG_ERR("build cfg error: " + err.reason);
-        }
-
-        auto container = this->containerBuilder.create(cfgBuilder);
+        auto container = this->containerBuilder.createInitContainer(
+          runContext,
+          runtime::CommonContainerOptions{ .containerCachePath = appCache });
         if (!container) {
             return LINGLONG_ERR(container);
         }
@@ -2076,30 +1915,21 @@ utils::error::Result<void> Builder::runFromRepo(const package::Reference &ref,
         }
     }
 
-    linglong::generator::ContainerCfgBuilder cfgBuilder;
-    res = runContext.fillContextCfg(cfgBuilder);
-    if (!res) {
-        return LINGLONG_ERR(res);
-    }
-    cfgBuilder.setAppId(ref.id)
-      .setAppCache(appCache)
-      .enableLDCache()
-      .bindDefault()
-      .addUIdMapping(uid, uid, 1)
-      .addGIdMapping(gid, gid, 1)
-      .addExtraMount(ocppi::runtime::config::types::Mount{ .destination = "/project",
-                                                           .options = { { "rbind", "rw" } },
-                                                           .source = this->workingDir,
-                                                           .type = "bind" })
-      .enableSelfAdjustingMount()
-      .appendEnv("LINYAPS_INIT_SINGLE_MODE", "1");
+    runtime::RunContainerOptions runOptions;
+    runOptions.common = runtime::CommonContainerOptions{
+        .containerCachePath = appCache,
+        .extraMounts =
+          std::vector<ocppi::runtime::config::types::Mount>{
+            ocppi::runtime::config::types::Mount{
+              .destination = "/project",
+              .options = { { "rbind", "rw" } },
+              .source = this->workingDir,
+              .type = "bind",
+            },
+          },
+    };
 
-    if (!cfgBuilder.build()) {
-        auto err = cfgBuilder.getError();
-        return LINGLONG_ERR("build cfg error: " + err.reason);
-    }
-
-    auto container = this->containerBuilder.create(cfgBuilder);
+    auto container = this->containerBuilder.createRunContainer(runContext, runOptions);
     if (!container) {
         return LINGLONG_ERR(container);
     }

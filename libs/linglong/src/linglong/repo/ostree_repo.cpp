@@ -392,7 +392,6 @@ utils::error::Result<package::Reference> clearReferenceLocal(const RepoCache &ca
             return LINGLONG_ERR(pkgVer);
         }
 
-        LogD("available layer {} found: {}", fuzzy.toString(), ref.info.version);
         if (version) {
             if (semanticMatching && pkgVer->semanticMatch(version->toString())) {
                 foundRef = ref;
@@ -413,7 +412,13 @@ utils::error::Result<package::Reference> clearReferenceLocal(const RepoCache &ca
         return LINGLONG_ERR(foundRef);
     }
 
-    return package::Reference::fromPackageInfo(foundRef->info);
+    auto ref = package::Reference::fromPackageInfo(foundRef->info);
+    if (!ref) {
+        return LINGLONG_ERR(ref);
+    }
+
+    LogD("clear fuzzy ref {} to {}", fuzzy.toString(), ref->toString());
+    return ref;
 }
 
 utils::error::Result<bool> semanticMatch(const package::FuzzyReference &fuzzy,
@@ -1753,7 +1758,7 @@ OSTreeRepo::searchRemote(const package::FuzzyReference &fuzzyRef,
         pkgInfos.emplace_back(std::move(packageInfo));
     }
 
-    return std::move(pkgInfos);
+    return pkgInfos;
 }
 
 utils::error::Result<repo::RemotePackages>

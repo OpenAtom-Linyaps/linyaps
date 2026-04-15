@@ -80,17 +80,12 @@ protected:
         tempDir = std::make_unique<TempDir>();
         ociCLI = ocppi::cli::crun::Crun::New(tempDir->path()).value();
         containerBuilder = std::make_unique<runtime::ContainerBuilder>(*ociCLI);
-        pkgMan =
-          std::make_unique<api::dbus::v1::PackageManager>("",
-                                                          "/org/deepin/linglong/PackageManager1",
-                                                          QDBusConnection::sessionBus(),
-                                                          nullptr);
         repo = std::make_unique<MockRepo>(tempDir->path());
         auto notifier = std::make_unique<cli::DummyNotifier>();
         cli = std::make_unique<cli::Cli>(*printer,
                                          *ociCLI,
                                          *containerBuilder,
-                                         *pkgMan,
+                                         false,
                                          *repo,
                                          std::move(notifier),
                                          nullptr);
@@ -102,7 +97,6 @@ protected:
         tempDir.reset();
         ociCLI.reset();
         containerBuilder.reset();
-        pkgMan.reset();
         repo.reset();
         cli.reset();
     }
@@ -111,7 +105,6 @@ protected:
     std::unique_ptr<TempDir> tempDir;
     std::unique_ptr<ocppi::cli::crun::Crun> ociCLI;
     std::unique_ptr<runtime::ContainerBuilder> containerBuilder;
-    std::unique_ptr<api::dbus::v1::PackageManager> pkgMan;
     std::unique_ptr<MockRepo> repo;
     std::unique_ptr<cli::Cli> cli;
 };

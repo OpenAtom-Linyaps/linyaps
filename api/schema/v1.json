@@ -1454,7 +1454,13 @@
     "RunContextConfig": {
       "title": "RunContextConfig",
       "type": "object",
+      "required": [
+        "version"
+      ],
       "properties": {
+        "version": {
+          "type": "string"
+        },
         "base": {
           "type": "string"
         },
@@ -1474,6 +1480,9 @@
           }
         },
         "overlayfs": {
+          "type": "string"
+        },
+        "timezone": {
           "type": "string"
         }
       }

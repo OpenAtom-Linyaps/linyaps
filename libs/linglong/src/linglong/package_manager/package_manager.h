@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
+ * SPDX-FileCopyrightText: 2022 - 2026 UnionTech Software Technology Co., Ltd.
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
@@ -24,6 +24,7 @@
 #include <QList>
 #include <QObject>
 
+#include <memory>
 #include <optional>
 
 namespace linglong::service {
@@ -37,8 +38,8 @@ class PackageManager : public QObject, protected QDBusContext
     Q_PROPERTY(QVariantMap Configuration READ getConfiguration WRITE setConfiguration)
 
 public:
-    PackageManager(linglong::repo::OSTreeRepo &repo,
-                   linglong::runtime::ContainerBuilder &containerBuilder,
+    PackageManager(std::unique_ptr<linglong::repo::OSTreeRepo> repo,
+                   std::unique_ptr<linglong::runtime::ContainerBuilder> containerBuilder,
                    QObject *parent);
 
     ~PackageManager() override;
@@ -59,6 +60,12 @@ public
     auto Search(const QVariantMap &parameters) noexcept -> QVariantMap;
     auto Prune() noexcept -> QVariantMap;
     void ReplyInteraction(QDBusObjectPath object_path, const QVariantMap &replies);
+
+    auto InitRunContext(const QString &runContextCfg, const QString &containerID) noexcept
+      -> QVariantMap;
+    utils::error::Result<void> initRunContext(const std::string &runContextCfg,
+                                              const std::string &containerID) noexcept;
+    void initDaemonMode() noexcept;
 
     // Nothing to do here, Permissions() will be rejected in org.deepin.linglong.PackageManager.conf
     void Permissions() { }
@@ -115,6 +122,7 @@ Q_SIGNALS:
                             QVariantMap additionalMessage);
     void SearchFinished(QString jobID, QVariantMap result);
     void PruneFinished(QString jobID, QVariantMap result);
+    void InitRunContextFinished(QString jobID, bool success);
     void ReplyReceived(const QVariantMap &replies);
 
 private:
@@ -137,12 +145,14 @@ private:
 
     QVariantMap runActionOnTaskQueue(std::shared_ptr<Action> action);
 
-    linglong::repo::OSTreeRepo &repo; // NOLINT
+    std::unique_ptr<linglong::repo::OSTreeRepo> repo;
+    std::unique_ptr<linglong::runtime::ContainerBuilder> containerBuilder;
     PackageTaskQueue tasks;
     PackageTaskQueue m_search_queue;
+    PackageTaskQueue m_init_run_context_queue;
 
     int lockFd{ -1 };
-    linglong::runtime::ContainerBuilder &containerBuilder;
+    bool daemonModeInitialized{ false };
 };
 
 } // namespace linglong::service

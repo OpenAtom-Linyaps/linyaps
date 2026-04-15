@@ -70,8 +70,6 @@ bool OverlayFS::mount()
         return false;
     }
 
-    cleanupOldMount();
-
     bool success = false;
     switch (mode_) {
     case OverlayMode::Kernel:
@@ -129,7 +127,7 @@ bool OverlayFS::mountKernelOverlay()
 {
     std::string options;
     if (upperdir_ && workdir_) {
-        options = fmt::format("lowerdir={},upperdir={},workdir={}",
+        options = fmt::format("lowerdir={},upperdir={},workdir={},userxattr",
                               lowerdirOption(),
                               upperdir_->string(),
                               workdir_->string());
@@ -178,18 +176,6 @@ std::string OverlayFS::lowerdirOption()
         lowerdirs += escaped;
     }
     return lowerdirs;
-}
-
-void OverlayFS::cleanupOldMount()
-{
-    if (mode_ == OverlayMode::Kernel) {
-        umount2(merged_.c_str(), MNT_DETACH);
-    } else {
-        auto res = utils::Cmd("fusermount").exec({ "-z", "-u", merged_.string() });
-        if (!res) {
-            LogD("failed to set lazy umount: {}", res.error());
-        }
-    }
 }
 
 } // namespace linglong::utils

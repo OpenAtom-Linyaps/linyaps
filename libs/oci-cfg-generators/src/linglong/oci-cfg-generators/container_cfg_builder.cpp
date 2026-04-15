@@ -19,6 +19,7 @@
 #include <fmt/format.h>
 
 #include <algorithm>
+#include <climits>
 #include <fstream>
 #include <iomanip>
 #include <iostream>

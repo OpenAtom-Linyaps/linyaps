@@ -55,8 +55,6 @@ private:
 
     std::string lowerdirOption();
 
-    void cleanupOldMount();
-
     std::vector<std::filesystem::path> lowerdirs_;
     std::optional<std::filesystem::path> upperdir_;
     std::optional<std::filesystem::path> workdir_;

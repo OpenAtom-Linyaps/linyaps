@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2025 - 2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -8,6 +8,9 @@
 #include "linglong/utils/error/error.h"
 
 namespace linglong::runtime {
+
+class ContainerContext;
+class RunContext;
 
 enum class SecurityContextType {
     WAYLAND,
@@ -45,7 +48,7 @@ public:
     SecurityContextManager &operator=(SecurityContextManager &&other) noexcept = default;
 
     virtual linglong::utils::error::Result<std::unique_ptr<SecurityContext>>
-    createSecurityContext(generator::ContainerCfgBuilder &builder) = 0;
+    createSecurityContext(RunContext &runContext, ContainerContext &containerContext) = 0;
 
 protected:
     SecurityContextManager() = default;

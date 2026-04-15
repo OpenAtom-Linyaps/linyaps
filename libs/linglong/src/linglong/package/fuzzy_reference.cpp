@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.:
+ * SPDX-FileCopyrightText: 2023 - 2026 UnionTech Software Technology Co., Ltd.:
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
@@ -56,7 +56,11 @@ utils::error::Result<FuzzyReference> FuzzyReference::parse(const std::string &ra
         architecture = std::move(tmpArchitecture).value();
     }
 
-    return create(channel, id, version, architecture);
+    auto res = create(channel, id, version, architecture);
+    if (!res) {
+        return LINGLONG_ERR(res);
+    }
+    return res;
 }
 
 utils::error::Result<FuzzyReference>

@@ -984,12 +984,8 @@ You can report bugs to the linyaps team under this project: https://github.com/O
         return 0;
     }
 
-    // build command need run in namespace because:
-    // 1. fuse-overlayfs should run in new user_namespaces and
-    // run with CAP_DAC_OVERRIDE capbilities.
-    // 2. mount needs CAP_SYS_ADMIN capbilities in the
-    // user_namespaces associated with current mount_namespaces,
-    if (buildBuilder->parsed()) {
+    // command which runs container need run in new user namespace and mount namespace
+    if (buildBuilder->parsed() || buildExport->parsed() || buildRun->parsed()) {
         auto res = linglong::utils::needRunInNamespace();
         if (!res) {
             LogE("failed to check need run in namespace {}", res.error());
@@ -1005,6 +1001,8 @@ You can report bugs to the linyaps team under this project: https://github.com/O
             return *res;
         }
     }
+
+    linglong::utils::checkPauseDebugger();
 
     if (buildCreate->parsed()) {
         return handleCreate(createOpts);
@@ -1093,8 +1091,7 @@ You can report bugs to the linyaps team under this project: https://github.com/O
         std::rethrow_exception(ociRuntime.error());
     }
 
-    auto *containerBuilder = new linglong::runtime::ContainerBuilder(**ociRuntime);
-    containerBuilder->setParent(QCoreApplication::instance());
+    auto containerBuilder = std::make_unique<linglong::runtime::ContainerBuilder>(**ociRuntime);
 
     // use the current directory as the project(working) directory
     std::error_code ec;

@@ -1,10 +1,12 @@
-// SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2025 - 2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 #include "linglong/runtime/wayland_security_ctx.h"
 
 #include "linglong/common/dir.h"
+#include "linglong/runtime/container.h"
+#include "linglong/runtime/run_context.h"
 #include "linglong/utils/finally/finally.h"
 #include "linglong/utils/log/log.h"
 #include "wayland-security-context-v1.h"
@@ -91,8 +93,8 @@ WaylandSecurityContextManagerV1::~WaylandSecurityContextManagerV1()
 }
 
 linglong::utils::error::Result<std::unique_ptr<SecurityContext>>
-WaylandSecurityContextManagerV1::createSecurityContext(
-  generator::ContainerCfgBuilder &builder) noexcept
+WaylandSecurityContextManagerV1::createSecurityContext(RunContext &runContext,
+                                                       ContainerContext &containerContext) noexcept
 {
     LINGLONG_TRACE("create security context");
 
@@ -116,7 +118,7 @@ WaylandSecurityContextManagerV1::createSecurityContext(
         }
     });
 
-    auto waylandSocket = builder.getBundlePath() / "wayland-socket";
+    auto waylandSocket = containerContext.getBundleDir() / "wayland-socket";
 
     std::error_code ec;
     std::filesystem::create_directories(waylandSocket.parent_path(), ec);
@@ -164,9 +166,9 @@ WaylandSecurityContextManagerV1::createSecurityContext(
         wp_security_context_v1_destroy(context);
     });
 
-    wp_security_context_v1_set_app_id(context, builder.getAppId().c_str());
+    wp_security_context_v1_set_app_id(context, runContext.getTargetID().c_str());
     wp_security_context_v1_set_sandbox_engine(context, "cn.org.linyaps");
-    wp_security_context_v1_set_instance_id(context, builder.getContainerId().c_str());
+    wp_security_context_v1_set_instance_id(context, containerContext.getContainerID().c_str());
     wp_security_context_v1_commit(context);
     if (wl_display_roundtrip(display) < 0) {
         return LINGLONG_ERR("failed to roundtrip display", errno);

@@ -29,6 +29,8 @@ std::optional<std::string> base;
 std::optional<std::map<std::string, std::vector<std::string>>> extensions;
 std::optional<std::string> overlayfs;
 std::optional<std::string> runtime;
+std::optional<std::string> timezone;
+std::string version;
 };
 }
 }

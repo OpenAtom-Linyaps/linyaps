@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2025 - 2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -48,8 +48,6 @@ try {
 #ifdef WAYLAND_SEC_CTX_SUPPORT
     case SecurityContextType::WAYLAND:
         return std::make_unique<WaylandSecurityContextManagerV1>();
-#else
-        [[fallthrough]];
 #endif
     default:
         return nullptr;

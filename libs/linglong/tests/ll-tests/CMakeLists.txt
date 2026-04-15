@@ -85,6 +85,7 @@ pfl_add_executable(
   GTest::gtest
   GTest::gmock
   linglong::linglong
+  linglong::oci-cfg-generators
   PkgConfig::CRYPTO)
 
 include(GoogleTest)

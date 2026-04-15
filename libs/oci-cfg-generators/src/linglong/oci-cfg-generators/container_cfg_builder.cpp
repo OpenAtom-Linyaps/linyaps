@@ -13,21 +13,26 @@
 #include "linglong/common/display.h"
 #include "linglong/common/strings.h"
 #include "linglong/common/xdg.h"
+#include "linglong/utils/cmd.h"
+#include "linglong/utils/file.h"
+#include "linglong/utils/log/log.h"
+#include "linglong/utils/overlayfs.h"
 #include "ocppi/runtime/config/types/Generators.hpp"
 #include "sha256.h"
 
 #include <fmt/format.h>
+#include <sys/mount.h>
 
 #include <algorithm>
 #include <climits>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <sstream>
 #include <vector>
 
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <sys/wait.h>
 #include <unistd.h>
 
 extern char **environ;
@@ -35,6 +40,14 @@ extern char **environ;
 namespace linglong::generator {
 
 using string_list = std::vector<std::string>;
+
+#define BUILD_STEP(step)      \
+    do {                      \
+        auto result = step(); \
+        if (!result) {        \
+            return result;    \
+        }                     \
+    } while (0)
 
 using ocppi::runtime::config::types::Capabilities;
 using ocppi::runtime::config::types::Config;
@@ -205,7 +218,7 @@ ContainerCfgBuilder &ContainerCfgBuilder::bindProc() noexcept
 {
     procMount = Mount{ .destination = "/proc",
                        .options = string_list{ "nosuid", "noexec", "nodev" },
-                       .source = "/proc",
+                       .source = "proc",
                        .type = "proc" };
 
     return *this;
@@ -294,32 +307,28 @@ ContainerCfgBuilder &ContainerCfgBuilder::bindXDGRuntime() noexcept
     return *this;
 }
 
-bool ContainerCfgBuilder::buildXDGRuntime() noexcept
+utils::error::Result<void> ContainerCfgBuilder::buildXDGRuntime() noexcept
 {
+    LINGLONG_TRACE("build XDG runtime directory");
+
     if (!containerXDGRuntimeDir) {
-        return true;
+        return LINGLONG_OK;
     }
 
     if (!runMount) {
-        error_.reason = "/run is not bind";
-        error_.code = BUILD_XDGRUNTIME_ERROR;
-        return false;
+        return LINGLONG_ERR("/run is not bind");
     }
 
     auto hostXDGRuntimeMountPoint = common::dir::getAppRuntimeDir(appId);
     std::error_code ec;
     std::filesystem::create_directories(hostXDGRuntimeMountPoint, ec);
     if (ec) {
-        error_.reason = "failed to create directories for container XDG_RUNTIME_DIR";
-        error_.code = BUILD_XDGRUNTIME_ERROR;
-        return false;
+        return LINGLONG_ERR("failed to create directories for container XDG_RUNTIME_DIR", ec);
     }
 
     std::filesystem::permissions(hostXDGRuntimeMountPoint, std::filesystem::perms::owner_all, ec);
     if (ec) {
-        error_.reason = "failed to set permissions for container XDG_RUNTIME_DIR";
-        error_.code = BUILD_XDGRUNTIME_ERROR;
-        return false;
+        return LINGLONG_ERR("failed to set permissions for container XDG_RUNTIME_DIR", ec);
     }
 
     runMount->emplace_back(Mount{ .destination = *containerXDGRuntimeDir,
@@ -328,7 +337,7 @@ bool ContainerCfgBuilder::buildXDGRuntime() noexcept
                                   .type = "bind" });
     environment["XDG_RUNTIME_DIR"] = *containerXDGRuntimeDir;
 
-    return true;
+    return LINGLONG_OK;
 }
 
 ContainerCfgBuilder &ContainerCfgBuilder::bindTmp() noexcept
@@ -368,43 +377,11 @@ ContainerCfgBuilder &ContainerCfgBuilder::bindRemovableStorageMounts() noexcept
     // /mnt: 系统管理员临时挂载文件系统的标准挂载点
     std::error_code ec;
 
-    std::vector<std::string> propagationPaths{ "/media", "/mnt" };
+    std::vector<std::string> propagationPaths{ "/media", "/run/media", "/mnt" };
     removableStorageMounts = std::vector<Mount>{};
 
     for (const auto &path : propagationPaths) {
-        auto mountPath = std::filesystem::path(path);
-        auto status = std::filesystem::symlink_status(mountPath, ec);
-        if (ec) {
-            break;
-        }
-
-        if (status.type() == std::filesystem::file_type::symlink) {
-            auto targetDir = std::filesystem::read_symlink(mountPath, ec);
-            if (ec) {
-                break;
-            }
-
-            auto destinationDir = "/" + targetDir.string();
-            if (!std::filesystem::exists(destinationDir, ec)) {
-                break;
-            }
-
-            removableStorageMounts->emplace_back(Mount{ .destination = destinationDir,
-                                                        .options = string_list{ "rbind" },
-                                                        .source = destinationDir,
-                                                        .type = "bind" });
-
-            removableStorageMounts->emplace_back(
-              Mount{ .destination = path,
-                     .options = string_list{ "rbind", "ro", "copy-symlink" },
-                     .source = path,
-                     .type = "bind" });
-        } else {
-            removableStorageMounts->emplace_back(Mount{ .destination = path,
-                                                        .options = string_list{ "rbind" },
-                                                        .source = path,
-                                                        .type = "bind" });
-        }
+        bindIfExist(*removableStorageMounts, path, path, false);
     }
 
     return *this;
@@ -576,6 +553,12 @@ ContainerCfgBuilder &ContainerCfgBuilder::bindIPC() noexcept
     return *this;
 }
 
+ContainerCfgBuilder &ContainerCfgBuilder::enableLDConf() noexcept
+{
+    ldConfMount = std::vector<Mount>{};
+    return *this;
+}
+
 ContainerCfgBuilder &ContainerCfgBuilder::enableLDCache() noexcept
 {
     ldCacheMount = std::vector<Mount>{};
@@ -678,31 +661,36 @@ std::string ContainerCfgBuilder::ldConf(const std::string &triplet) const
     return ldRawConf;
 }
 
-bool ContainerCfgBuilder::checkValid() noexcept
+utils::error::Result<void> ContainerCfgBuilder::checkValid() noexcept
 {
+    LINGLONG_TRACE("check validation");
+
     if (appId.empty()) {
-        error_.reason = "app id is empty";
-        error_.code = BUILD_PARAM_ERROR;
-        return false;
+        return LINGLONG_ERR("app id is empty");
     }
 
     if (basePath.empty()) {
-        error_.reason = "base path is not set";
-        error_.code = BUILD_PARAM_ERROR;
-        return false;
+        return LINGLONG_ERR("base path is not set");
     }
 
     if (bundlePath.empty()) {
-        error_.reason = "bundle path is empty";
-        error_.code = BUILD_PARAM_ERROR;
-        return false;
+        return LINGLONG_ERR("bundle path is empty");
     }
 
-    return true;
+    if (overlayMerged) {
+        if (selfAdjustingMountEnabled) {
+            return LINGLONG_ERR(
+              "overlay and self-adjusting mount cannot be enabled simultaneously");
+        }
+    }
+
+    return LINGLONG_OK;
 }
 
-bool ContainerCfgBuilder::prepare() noexcept
+utils::error::Result<void> ContainerCfgBuilder::prepare() noexcept
 {
+    LINGLONG_TRACE("prepare container configuration");
+
     config.ociVersion = "1.0.1";
     config.hostname = "linglong";
 
@@ -731,17 +719,20 @@ bool ContainerCfgBuilder::prepare() noexcept
     }
     config.process = std::move(process);
 
-    config.root = { .path = basePath, .readonly = basePathRo };
+    config.root = { .path = overlayMerged ? overlayMerged->first : basePath,
+                    .readonly = overlayMerged ? overlayMerged->second : basePathRo };
 
-    return true;
+    return LINGLONG_OK;
 }
 
-bool ContainerCfgBuilder::buildIdMappings() noexcept
+utils::error::Result<void> ContainerCfgBuilder::buildIdMappings() noexcept
 {
+    LINGLONG_TRACE("build ID mappings");
+
     config.linux_->uidMappings = std::move(uidMappings);
     config.linux_->gidMappings = std::move(gidMappings);
 
-    return true;
+    return LINGLONG_OK;
 }
 
 ContainerCfgBuilder &ContainerCfgBuilder::setContainerId(std::string containerId) noexcept
@@ -750,17 +741,17 @@ ContainerCfgBuilder &ContainerCfgBuilder::setContainerId(std::string containerId
     return *this;
 }
 
-bool ContainerCfgBuilder::buildMountRuntime() noexcept
+utils::error::Result<void> ContainerCfgBuilder::buildMountRuntime() noexcept
 {
+    LINGLONG_TRACE("build runtime mount");
+
     if (!runtimePath) {
-        return true;
+        return LINGLONG_OK;
     }
 
     std::error_code ec;
     if (!std::filesystem::exists(*runtimePath, ec)) {
-        error_.reason = "runtime files is not exist";
-        error_.code = BUILD_MOUNT_RUNTIME_ERROR;
-        return false;
+        return LINGLONG_ERR("runtime files is not exist", ec);
     }
 
     runtimeMount = Mount{ .destination = runtimeMountPoint,
@@ -768,20 +759,20 @@ bool ContainerCfgBuilder::buildMountRuntime() noexcept
                           .source = *runtimePath,
                           .type = "bind" };
 
-    return true;
+    return LINGLONG_OK;
 }
 
-bool ContainerCfgBuilder::buildMountApp() noexcept
+utils::error::Result<void> ContainerCfgBuilder::buildMountApp() noexcept
 {
+    LINGLONG_TRACE("build app mount");
+
     if (!appPath) {
-        return true;
+        return LINGLONG_OK;
     }
 
     std::error_code ec;
     if (!std::filesystem::exists(*appPath, ec)) {
-        error_.reason = "app files is not exist";
-        error_.code = BUILD_MOUNT_APP_ERROR;
-        return false;
+        return LINGLONG_ERR("app files is not exist", ec);
     }
 
     appMount = { Mount{ .destination = "/opt",
@@ -793,26 +784,24 @@ bool ContainerCfgBuilder::buildMountApp() noexcept
                         .source = *appPath,
                         .type = "bind" } };
 
-    return true;
+    return LINGLONG_OK;
 }
 
-bool ContainerCfgBuilder::buildMountHome() noexcept
+utils::error::Result<void> ContainerCfgBuilder::buildMountHome() noexcept
 {
+    LINGLONG_TRACE("build home mount");
+
     if (!homePath) {
-        return true;
+        return LINGLONG_OK;
     }
 
     if (homePath->empty()) {
-        error_.reason = "homePath is empty";
-        error_.code = BUILD_MOUNT_HOME_ERROR;
-        return false;
+        return LINGLONG_ERR("homePath is empty");
     }
 
     std::error_code ec;
     if (!std::filesystem::exists(*homePath, ec)) {
-        error_.reason = homePath->string() + " is not exist";
-        error_.code = BUILD_MOUNT_HOME_ERROR;
-        return false;
+        return LINGLONG_ERR(fmt::format("{} is not exist", *homePath), ec);
     }
 
     homeMount->emplace_back(Mount{ .destination = "/home",
@@ -828,7 +817,8 @@ bool ContainerCfgBuilder::buildMountHome() noexcept
                                    .type = "bind" });
     environment["HOME"] = containerHome;
 
-    auto mountDir = [this](const std::filesystem::path &hostDir, const std::string &containerDir) {
+    auto mountDir = [this](const std::filesystem::path &hostDir,
+                           const std::string &containerDir) -> bool {
         std::error_code ec;
         if (!std::filesystem::exists(hostDir, ec)) {
             if (ec) {
@@ -856,9 +846,7 @@ bool ContainerCfgBuilder::buildMountHome() noexcept
     std::string containerDataHome = containerHome + "/.local/share";
     if (XDG_DATA_HOME != containerDataHome) {
         if (!mountDir(XDG_DATA_HOME, containerDataHome)) {
-            error_.reason = XDG_DATA_HOME.string() + " can't be mount";
-            error_.code = BUILD_MOUNT_HOME_ERROR;
-            return false;
+            return LINGLONG_ERR(fmt::format("{} can't be mount", XDG_DATA_HOME));
         }
     }
     environment["XDG_DATA_HOME"] = containerDataHome;
@@ -887,9 +875,7 @@ bool ContainerCfgBuilder::buildMountHome() noexcept
     std::string containerConfigHome = containerHome + "/.config";
     if (XDGConfigHome != containerConfigHome) {
         if (!mountDir(XDGConfigHome, containerConfigHome)) {
-            error_.reason = XDGConfigHome.string() + " can't be mount";
-            error_.code = BUILD_MOUNT_HOME_ERROR;
-            return false;
+            return LINGLONG_ERR(fmt::format("{} can't be mount", XDGConfigHome));
         }
     }
     environment["XDG_CONFIG_HOME"] = containerConfigHome;
@@ -905,9 +891,7 @@ bool ContainerCfgBuilder::buildMountHome() noexcept
     std::string containerCacheHome = containerHome + "/.cache";
     if (XDGCacheHome != containerCacheHome) {
         if (!mountDir(XDGCacheHome, containerCacheHome)) {
-            error_.reason = XDGCacheHome.string() + " can't be mount";
-            error_.code = BUILD_MOUNT_HOME_ERROR;
-            return false;
+            return LINGLONG_ERR(fmt::format("{} can't be mount", XDGCacheHome));
         }
     }
     environment["XDG_CACHE_HOME"] = containerCacheHome;
@@ -922,9 +906,7 @@ bool ContainerCfgBuilder::buildMountHome() noexcept
     std::string containerStateHome = containerHome + "/.local/state";
     if (XDG_STATE_HOME != containerStateHome) {
         if (!mountDir(XDG_STATE_HOME, containerStateHome)) {
-            error_.reason = XDG_STATE_HOME.string() + " can't be mount";
-            error_.code = BUILD_MOUNT_HOME_ERROR;
-            return false;
+            return LINGLONG_ERR(fmt::format("{} can't be mount", XDG_STATE_HOME));
         }
     }
     environment["XDG_STATE_HOME"] = containerStateHome;
@@ -977,54 +959,50 @@ bool ContainerCfgBuilder::buildMountHome() noexcept
                                     .type = "bind" });
     }
 
-    return true;
+    return LINGLONG_OK;
 }
 
-bool ContainerCfgBuilder::buildPrivateDir() noexcept
+utils::error::Result<void> ContainerCfgBuilder::buildPrivateDir() noexcept
 {
+    LINGLONG_TRACE("build private directory");
+
     if (!privateMount) {
-        return true;
+        return LINGLONG_OK;
     }
 
     if (!homePath) {
-        error_.reason = "must bind home first";
-        error_.code = BUILD_PRIVATEDIR_ERROR;
-        return false;
+        return LINGLONG_ERR("must bind home first");
     }
 
     privatePath = *homePath / ".linglong";
     privateAppDir = privatePath / appId;
     std::error_code ec;
     if (!std::filesystem::create_directories(privateAppDir, ec) && ec) {
-        error_.reason = privateAppDir.string() + "can't be created";
-        error_.code = BUILD_PRIVATEDIR_ERROR;
-        return false;
+        return LINGLONG_ERR(fmt::format("{} can't be created", privateAppDir));
     }
 
     // hide private directory
     maskedPaths.emplace_back(privatePath);
 
-    return true;
+    return LINGLONG_OK;
 }
 
-bool ContainerCfgBuilder::buildPrivateMapped() noexcept
+utils::error::Result<void> ContainerCfgBuilder::buildPrivateMapped() noexcept
 {
+    LINGLONG_TRACE("build private mapped");
+
     if (!privateMappings) {
-        return true;
+        return LINGLONG_OK;
     }
 
     if (!privateMount) {
-        error_.reason = "must enable private dir first";
-        error_.code = BUILD_PRIVATEMAP_ERROR;
-        return false;
+        return LINGLONG_ERR("must enable private dir first");
     }
 
     for (const auto &[path, isDir] : *privateMappings) {
         std::filesystem::path containerPath{ path };
         if (!containerPath.is_absolute()) {
-            error_.reason = "must pass absolute path in container";
-            error_.code = BUILD_PRIVATEMAP_ERROR;
-            return false;
+            return LINGLONG_ERR("must pass absolute path in container");
         }
 
         std::filesystem::path hostPath =
@@ -1034,16 +1012,11 @@ bool ContainerCfgBuilder::buildPrivateMapped() noexcept
         if (isDir) {
             // always create directory
             if (!std::filesystem::create_directories(hostPath, ec) && ec) {
-                error_.reason = hostPath.string() + "can't be created";
-                error_.code = BUILD_PRIVATEMAP_ERROR;
-                return false;
+                return LINGLONG_ERR(fmt::format("{} can't be created", hostPath), ec);
             }
         }
         if (!std::filesystem::exists(hostPath, ec)) {
-            error_.reason =
-              std::string("mapped private path ") + hostPath.string() + " is not exist";
-            error_.code = BUILD_PRIVATEMAP_ERROR;
-            return false;
+            return LINGLONG_ERR(fmt::format("mapped private path {} is not exist", hostPath), ec);
         }
 
         privateMount->emplace_back(Mount{ .destination = containerPath,
@@ -1052,7 +1025,7 @@ bool ContainerCfgBuilder::buildPrivateMapped() noexcept
                                           .type = "bind" });
     }
 
-    return true;
+    return LINGLONG_OK;
 }
 
 ContainerCfgBuilder &
@@ -1069,8 +1042,10 @@ ContainerCfgBuilder::bindWaylandSocket(const std::filesystem::path &socket) noex
     return *this;
 }
 
-bool ContainerCfgBuilder::buildDisplaySystem() noexcept
+utils::error::Result<void> ContainerCfgBuilder::buildDisplaySystem() noexcept
 {
+    LINGLONG_TRACE("build display system");
+
     displayMount = std::vector<Mount>{};
 
     if (auto *display = ::getenv("DISPLAY"); display != nullptr) {
@@ -1116,9 +1091,7 @@ bool ContainerCfgBuilder::buildDisplaySystem() noexcept
 
     if (xAuthFile) {
         if (!runMount) {
-            error_.reason = "must enable run mount first";
-            error_.code = BUILD_PARAM_ERROR;
-            return false;
+            return LINGLONG_ERR("must enable run mount first");
         }
 
         auto xAuthPath = "/run/linglong/Xauthority";
@@ -1140,19 +1113,19 @@ bool ContainerCfgBuilder::buildDisplaySystem() noexcept
         environment["WAYLAND_DISPLAY"] = waylandSocketPath;
     }
 
-    return true;
+    return LINGLONG_OK;
 }
 
-bool ContainerCfgBuilder::buildMountIPC() noexcept
+utils::error::Result<void> ContainerCfgBuilder::buildMountIPC() noexcept
 {
+    LINGLONG_TRACE("build IPC mount");
+
     if (!ipcMount) {
-        return true;
+        return LINGLONG_OK;
     }
 
     if (!containerXDGRuntimeDir) {
-        error_.reason = "must enable xdg runtime mount first";
-        error_.code = BUILD_MOUNT_IPC_ERROR;
-        return false;
+        return LINGLONG_ERR("must enable xdg runtime mount first");
     }
 
     auto bindDbusBus = [this](const std::string &envName,
@@ -1256,20 +1229,20 @@ bool ContainerCfgBuilder::buildMountIPC() noexcept
         });
     }();
 
-    return true;
+    return LINGLONG_OK;
 }
 
-bool ContainerCfgBuilder::buildMountCache() noexcept
+utils::error::Result<void> ContainerCfgBuilder::buildMountCache() noexcept
 {
+    LINGLONG_TRACE("build cache mount");
+
     if (!appCache) {
-        return true;
+        return LINGLONG_OK;
     }
 
     std::error_code ec;
     if (!std::filesystem::exists(*appCache, ec)) {
-        error_.reason = "app cache does not exist";
-        error_.code = BUILD_MOUNT_CACHE_ERROR;
-        return false;
+        return LINGLONG_ERR(fmt::format("app cache {} does not exist", *appCache), ec);
     }
 
     cacheMount = { Mount{ .destination = "/run/linglong/cache",
@@ -1277,63 +1250,65 @@ bool ContainerCfgBuilder::buildMountCache() noexcept
                           .source = *appCache,
                           .type = "bind" } };
 
-    return true;
+    return LINGLONG_OK;
 }
 
-bool ContainerCfgBuilder::buildLDCache() noexcept
+utils::error::Result<void> ContainerCfgBuilder::buildLDCache() noexcept
 {
-    if (!ldCacheMount) {
-        return true;
+    LINGLONG_TRACE("build LD cache");
+
+    if (!ldCacheMount && !ldConfMount) {
+        return LINGLONG_OK;
     }
 
     if (!appCache) {
-        error_.reason = "app cache is not set";
-        error_.code = BUILD_LDCACHE_ERROR;
-        return false;
+        return LINGLONG_ERR("app cache is not set");
     }
 
-    ldCacheMount->emplace_back(Mount{ .destination = "/etc/ld.so.cache",
-                                      .options = string_list{ "rbind", "ro" },
-                                      .source = *appCache / "ld.so.cache",
-                                      .type = "bind" });
+    if (ldCacheMount) {
+        ldCacheMount->emplace_back(Mount{ .destination = "/etc/ld.so.cache",
+                                          .options = string_list{ "rbind", "ro" },
+                                          .source = *appCache / "ld.so.cache",
+                                          .type = "bind" });
+    }
 
-    return true;
+    if (ldConfMount) {
+        ldConfMount->emplace_back(
+          Mount{ .destination = "/etc/ld.so.conf.d/zz_deepin-linglong-app.conf",
+                 .options = { { "rbind", "ro" } },
+                 .source = *appCache / "ld.so.conf",
+                 .type = "bind" });
+    }
+
+    return LINGLONG_OK;
 }
 
-bool ContainerCfgBuilder::buildMountLocalTime() noexcept
+utils::error::Result<void> ContainerCfgBuilder::buildMountTimeZone() noexcept
 {
-    // always bind host's localtime
-    // assume /etc/localtime is a symlink to /usr/share/zoneinfo/XXX/NNN
-    localtimeMount = std::vector<Mount>{};
+    LINGLONG_TRACE("build local time mount");
 
-    std::filesystem::path localtime{ "/etc/localtime" };
-    std::error_code ec;
-    if (std::filesystem::exists(localtime, ec)) {
-        bool isSymLink = false;
-        if (std::filesystem::is_symlink(localtime, ec)) {
-            isSymLink = true;
-        }
-        localtimeMount->emplace_back(Mount{ .destination = localtime.string(),
-                                            .options = isSymLink
-                                              ? string_list{ "rbind", "copy-symlink" }
-                                              : string_list{ "rbind", "ro" },
-                                            .source = localtime,
-                                            .type = "bind" });
-    }
+    timeZoneMount = std::vector<Mount>{};
 
     auto *tzdir_env = getenv("TZDIR");
+    std::filesystem::path tzdir{ "/usr/share/zoneinfo" };
     if (tzdir_env != nullptr && tzdir_env[0] != '\0') {
-        bindIfExist(*localtimeMount, tzdir_env);
-    } else {
-        bindIfExist(*localtimeMount, "/usr/share/zoneinfo");
-        bindIfExist(*localtimeMount, "/etc/timezone");
+        tzdir = tzdir_env;
+    }
+    bindIfExist(*timeZoneMount, tzdir, zoneinfoMountPoint);
+    bindIfExist(*timeZoneMount, "/etc/timezone");
+
+    if (timezone && timezone->empty()) {
+        LogW("timezone not set, bind host /etc/localtime");
+        bindIfExist(*timeZoneMount, "/etc/localtime");
     }
 
-    return true;
+    return LINGLONG_OK;
 }
 
-bool ContainerCfgBuilder::buildMountNetworkConf() noexcept
+utils::error::Result<void> ContainerCfgBuilder::buildMountNetworkConf() noexcept
 {
+    LINGLONG_TRACE("build network configuration mount");
+
     networkConfMount = std::vector<Mount>{};
 
     std::filesystem::path resolvConf{ "/etc/resolv.conf" };
@@ -1351,10 +1326,8 @@ bool ContainerCfgBuilder::buildMountNetworkConf() noexcept
                 std::array<char, PATH_MAX + 1> buf{};
                 auto *rpath = realpath(resolvConf.string().c_str(), buf.data());
                 if (rpath == nullptr) {
-                    error_.reason =
-                      "Failed to read symlink " + resolvConf.string() + ": " + strerror(errno);
-                    error_.code = BUILD_NETWORK_CONF_ERROR;
-                    return false;
+                    return LINGLONG_ERR(
+                      fmt::format("Failed to read symlink {}: {}", resolvConf, strerror(errno)));
                 }
                 target = std::filesystem::path{ rpath };
             }
@@ -1363,10 +1336,8 @@ bool ContainerCfgBuilder::buildMountNetworkConf() noexcept
             auto bundleResolvConf = bundlePath / "resolv.conf";
             std::filesystem::create_symlink(target, bundleResolvConf, ec);
             if (ec) {
-                error_.reason =
-                  "Failed to create symlink " + bundleResolvConf.string() + ": " + ec.message();
-                error_.code = BUILD_NETWORK_CONF_ERROR;
-                return false;
+                return LINGLONG_ERR(fmt::format("Failed to create symlink {}", bundleResolvConf),
+                                    ec);
             }
             networkConfMount->emplace_back(Mount{ .destination = resolvConf.string(),
                                                   .options = string_list{ "rbind", "copy-symlink" },
@@ -1382,27 +1353,29 @@ bool ContainerCfgBuilder::buildMountNetworkConf() noexcept
 
     bindIfExist(*networkConfMount, "/etc/resolvconf");
     bindIfExist(*networkConfMount, "/etc/hosts");
-    return true;
+    return LINGLONG_OK;
 }
 
 // TODO
-bool ContainerCfgBuilder::buildQuirkVolatile() noexcept
+utils::error::Result<void> ContainerCfgBuilder::buildQuirkVolatile() noexcept
 {
+    LINGLONG_TRACE("build quirk volatile");
+
     if (!volatileMount) {
-        return true;
+        return LINGLONG_OK;
     }
 
     if (!hostRootMount) {
-        error_.reason = "/run/host/rootfs must mount first";
-        error_.code = BUILD_MOUNT_VOLATILE_ERROR;
-        return false;
+        return LINGLONG_ERR("/run/host/rootfs must mount first");
     }
 
-    return false;
+    return LINGLONG_ERR("TODO: buildQuirkVolatile not implemented");
 }
 
-bool ContainerCfgBuilder::buildEnv() noexcept
+utils::error::Result<void> ContainerCfgBuilder::buildEnv() noexcept
 {
+    LINGLONG_TRACE("build environment");
+
     for (const auto &key : envForward) {
         auto *value = getenv(key.c_str());
         if (value != nullptr) {
@@ -1421,9 +1394,7 @@ bool ContainerCfgBuilder::buildEnv() noexcept
     auto envShFile = bundlePath / "00env.sh";
     std::ofstream ofs(envShFile);
     if (!ofs.is_open()) {
-        error_.reason = envShFile.string() + " can't be created";
-        error_.code = BUILD_ENV_ERROR;
-        return false;
+        return LINGLONG_ERR(fmt::format("{} can't be created", envShFile));
     }
 
     auto env = std::vector<std::string>{};
@@ -1451,7 +1422,7 @@ bool ContainerCfgBuilder::buildEnv() noexcept
                       .source = envShFile,
                       .type = "bind" };
 
-    return true;
+    return LINGLONG_OK;
 }
 
 ContainerCfgBuilder &ContainerCfgBuilder::disableContainerInfo() noexcept
@@ -1460,10 +1431,12 @@ ContainerCfgBuilder &ContainerCfgBuilder::disableContainerInfo() noexcept
     return *this;
 }
 
-bool ContainerCfgBuilder::buildContainerInfo() noexcept
+utils::error::Result<void> ContainerCfgBuilder::buildContainerInfo() noexcept
 {
+    LINGLONG_TRACE("build container info");
+
     if (disableGenerateContainerInfo) {
-        return true;
+        return LINGLONG_OK;
     }
 
     const auto *iniTemplate = R"([General]
@@ -1482,17 +1455,15 @@ Network={}
 
     const auto content = fmt::format(iniTemplate,
                                      LINGLONG_VERSION,
-                                     getAppId(),
-                                     getContainerId(),
+                                     appId,
+                                     containerId,
                                      isolateNetWorkEnabled ? "unshared" : "shared");
     auto containerInfoFile = bundlePath / ".linyaps";
 
     {
         std::ofstream ofs(containerInfoFile);
         if (!ofs.is_open()) {
-            error_.reason = containerInfoFile.string() + " can't be created";
-            error_.code = BUILD_CONTAINER_INFO_ERROR;
-            return false;
+            return LINGLONG_ERR(fmt::format("{} can't be created", containerInfoFile));
         }
 
         ofs << content;
@@ -1502,13 +1473,15 @@ Network={}
                        .options = string_list{ "rbind", "ro" },
                        .source = containerInfoFile,
                        .type = "bind" };
-    return true;
+    return LINGLONG_OK;
 }
 
-bool ContainerCfgBuilder::applyPatch() noexcept
+utils::error::Result<void> ContainerCfgBuilder::applyPatch() noexcept
 {
+    LINGLONG_TRACE("apply patches");
+
     if (!applyPatchEnabled) {
-        return true;
+        return LINGLONG_OK;
     }
 
     std::filesystem::path containerConfigPath{ LINGLONG_INSTALL_PREFIX
@@ -1516,7 +1489,7 @@ bool ContainerCfgBuilder::applyPatch() noexcept
     std::error_code ec;
     if (!std::filesystem::exists(containerConfigPath, ec)) {
         // if no-exists or failed to check exists, ignore it
-        return true;
+        return LINGLONG_OK;
     }
 
     std::vector<std::filesystem::path> globalPatchFiles;
@@ -1527,10 +1500,7 @@ bool ContainerCfgBuilder::applyPatch() noexcept
         ec
     };
     if (ec) {
-        error_.reason =
-          "failed to iterator directory " + containerConfigPath.string() + ": " + ec.message();
-        error_.code = BUILD_PREPARE_ERROR;
-        return false;
+        return LINGLONG_ERR(fmt::format("failed to iterate directory {}", containerConfigPath), ec);
     }
     for (const auto &entry : iter) {
         const auto &path = entry.path();
@@ -1544,8 +1514,7 @@ bool ContainerCfgBuilder::applyPatch() noexcept
                     ec
                 };
                 if (ec) {
-                    error_.reason =
-                      "failed to iterator directory " + path.string() + ": " + ec.message();
+                    return LINGLONG_ERR(fmt::format("failed to iterate directory {}", path), ec);
                 }
                 for (const auto &entryApp : iterApp) {
                     if (!entryApp.is_regular_file(ec)) {
@@ -1559,28 +1528,32 @@ bool ContainerCfgBuilder::applyPatch() noexcept
     std::sort(globalPatchFiles.begin(), globalPatchFiles.end());
     std::sort(appPatchFiles.begin(), appPatchFiles.end());
 
-    auto doPatch = [this](const std::vector<std::filesystem::path> &patchFiles) -> bool {
+    auto doPatch = [this](const std::vector<std::filesystem::path> &patchFiles) {
         for (const auto &patchFile : patchFiles) {
-            applyPatchFile(patchFile);
+            // skip if failed to apply
+            auto result = applyPatchFile(patchFile);
+            if (!result) {
+                std::cerr << "skip applying failed patch " << patchFile << ": "
+                          << result.error().message() << std::endl;
+            }
         }
-        return true;
     };
 
-    if (!doPatch(globalPatchFiles) || !doPatch(appPatchFiles)) {
-        return false;
-    }
+    doPatch(globalPatchFiles);
+    doPatch(appPatchFiles);
 
-    return true;
+    return LINGLONG_OK;
 }
 
-bool ContainerCfgBuilder::applyPatchFile(const std::filesystem::path &patchFile) noexcept
+utils::error::Result<void>
+ContainerCfgBuilder::applyPatchFile(const std::filesystem::path &patchFile) noexcept
 {
+    LINGLONG_TRACE(fmt::format("apply patch file: {}", patchFile));
+
     std::error_code ec;
     auto status = std::filesystem::status(patchFile, ec);
     if (ec) {
-        std::cerr << "Failed to get status of patch file " << patchFile << ": " << ec.message()
-                  << std::endl;
-        return true;
+        return LINGLONG_ERR(fmt::format("Failed to get status of patch file {}", patchFile), ec);
     }
 
     if ((status.permissions() & std::filesystem::perms::owner_exec) != std::filesystem::perms::none
@@ -1588,27 +1561,24 @@ bool ContainerCfgBuilder::applyPatchFile(const std::filesystem::path &patchFile)
           != std::filesystem::perms::none
         || (status.permissions() & std::filesystem::perms::others_exec)
           != std::filesystem::perms::none) {
-        applyExecutablePatch(patchFile);
-        return true;
+        return applyExecutablePatch(patchFile);
     }
 
     if (patchFile.extension() == ".json") {
-        // skip if failed to apply
-        applyJsonPatchFile(patchFile);
-        return true;
+        return applyJsonPatchFile(patchFile);
     }
 
-    std::cerr << "Patch file " << patchFile
-              << " is not an executable or a JSON patch file, skipping." << std::endl;
-    return true;
+    return LINGLONG_ERR("Patch file is not an executable or a JSON patch file");
 }
 
-bool ContainerCfgBuilder::applyJsonPatchFile(const std::filesystem::path &patchFile) noexcept
+utils::error::Result<void>
+ContainerCfgBuilder::applyJsonPatchFile(const std::filesystem::path &patchFile) noexcept
 {
+    LINGLONG_TRACE(fmt::format("apply JSON patch file: {}", patchFile));
+
     std::ifstream file(patchFile);
     if (!file.is_open()) {
-        std::cerr << "Failed to open file " << patchFile << std::endl;
-        return false;
+        return LINGLONG_ERR(fmt::format("Failed to open file {}", patchFile));
     }
 
     try {
@@ -1616,153 +1586,51 @@ bool ContainerCfgBuilder::applyJsonPatchFile(const std::filesystem::path &patchF
         auto patchContent = json.get<linglong::api::types::v1::OciConfigurationPatch>();
 
         if (config.ociVersion != patchContent.ociVersion) {
-            std::cerr << "ociVersion mismatched " << patchFile << std::endl;
-            return false;
+            return LINGLONG_ERR("ociVersion mismatched");
         }
 
         auto raw = nlohmann::json(config);
         auto patchedJson = raw.patch(patchContent.patch);
         config = patchedJson.get<Config>();
     } catch (const std::exception &e) {
-        std::cerr << "Failed to apply JSON patch " << patchFile << ": " << e.what() << std::endl;
-        return false;
+        return LINGLONG_ERR(fmt::format("Failed to apply JSON patch {}", patchFile), e);
     }
 
-    return true;
+    return LINGLONG_OK;
 }
 
-bool ContainerCfgBuilder::applyExecutablePatch(const std::filesystem::path &patchFile) noexcept
+utils::error::Result<void>
+ContainerCfgBuilder::applyExecutablePatch(const std::filesystem::path &patchFile) noexcept
 {
-    std::string command = patchFile.string();
+    LINGLONG_TRACE(fmt::format("apply executable patch: {}", patchFile));
+
     std::string inputJsonStr;
     try {
         inputJsonStr = nlohmann::json(config).dump();
     } catch (const std::exception &e) {
-        error_.reason = std::string("Failed to serialize config: ") + e.what();
-        error_.code = BUILD_PREPARE_ERROR;
-        return false;
+        return LINGLONG_ERR("Failed to serialize config", e);
     }
 
-    int stdinPipe[2];
-    int stdoutPipe[2];
-    if (pipe(stdinPipe) == -1) {
-        error_.reason = std::string("Failed to create stdin pipe: ") + strerror(errno);
-        error_.code = BUILD_PREPARE_ERROR;
-        return false;
-    }
-    if (pipe(stdoutPipe) == -1) {
-        close(stdinPipe[0]);
-        close(stdinPipe[1]);
-        error_.reason = std::string("Failed to create stdout pipe: ") + strerror(errno);
-        error_.code = BUILD_PREPARE_ERROR;
-        return false;
+    auto output = utils::Cmd(patchFile.string()).toStdin(std::move(inputJsonStr)).exec();
+    if (!output) {
+        return LINGLONG_ERR(fmt::format("Failed to execute patch {}", patchFile), output.error());
     }
 
-    pid_t pid = fork();
-    if (pid == -1) {
-        close(stdinPipe[0]);
-        close(stdinPipe[1]);
-        close(stdoutPipe[0]);
-        close(stdoutPipe[1]);
-        error_.reason = "Failed to fork " + command + ": " + strerror(errno);
-        error_.code = BUILD_PREPARE_ERROR;
-        return false;
-    }
-
-    if (pid == 0) { // Child process
-        close(stdinPipe[1]);
-        close(stdoutPipe[0]);
-
-        if (dup2(stdinPipe[0], STDIN_FILENO) == -1) {
-            perror(("dup2 stdin failed for " + command).c_str());
-            _exit(EXIT_FAILURE);
-        }
-        if (dup2(stdoutPipe[1], STDOUT_FILENO) == -1) {
-            perror(("dup2 stdout failed for " + command).c_str());
-            _exit(EXIT_FAILURE);
-        }
-
-        close(stdinPipe[0]);
-        close(stdoutPipe[1]);
-
-        execl(patchFile.c_str(), patchFile.filename().c_str(), (char *)nullptr);
-
-        // If execl returns, it's an error
-        perror(("execl failed for " + command).c_str());
-        _exit(127);
-    }
-
-    // Parent process
-    close(stdinPipe[0]);  // Close read end of stdin pipe
-    close(stdoutPipe[1]); // Close write end of stdout pipe
-
-    size_t bytesWritten = 0;
-    while (bytesWritten < inputJsonStr.size()) {
-        ssize_t n = write(stdinPipe[1],
-                          inputJsonStr.c_str() + bytesWritten,
-                          inputJsonStr.size() - bytesWritten);
-        if (n == -1) {
-            if (errno == EINTR) {
-                continue;
-            }
-            error_.reason = "Failed to write to stdin of " + command + ": " + strerror(errno);
-            error_.code = BUILD_PREPARE_ERROR;
-            close(stdinPipe[1]); // Attempt to close before waiting
-            close(stdoutPipe[0]);
-            waitpid(pid, nullptr, 0); // Clean up child
-            return false;
-        }
-        bytesWritten += n;
-    }
-    close(stdinPipe[1]); // Close write end to signal EOF to child
-
-    std::stringstream outputJson;
-    char buffer[4096];
-    ssize_t bytesRead;
-    while ((bytesRead = read(stdoutPipe[0], buffer, sizeof(buffer))) > 0) {
-        outputJson.write(buffer, bytesRead);
-    }
-    close(stdoutPipe[0]); // Close read end
-
-    if (bytesRead == -1 && errno != EINTR
-        && errno != 0) { // EINTR is ok, 0 means EOF was already hit
-        error_.reason = "Failed to read from stdout of " + command + ": " + strerror(errno);
-        error_.code = BUILD_PREPARE_ERROR;
-        waitpid(pid, nullptr, 0); // Clean up child
-        return false;
-    }
-
-    int status;
-    waitpid(pid, &status, 0);
-
-    if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
-        std::string exitInfo;
-        if (WIFEXITED(status)) {
-            exitInfo = "exited with status " + std::to_string(WEXITSTATUS(status));
-        } else if (WIFSIGNALED(status)) {
-            exitInfo = "killed by signal " + std::to_string(WTERMSIG(status));
-        } else {
-            exitInfo = "terminated abnormally";
-        }
-        error_.reason = "Command " + command + " " + exitInfo + ". Output: " + outputJson.str();
-        error_.code = BUILD_PREPARE_ERROR;
-        return false;
-    }
-
-    std::string outputJsonStr = outputJson.str();
     try {
-        config = nlohmann::json::parse(outputJsonStr).get<Config>();
+        config = nlohmann::json::parse(*output).get<Config>();
     } catch (const std::exception &e) {
-        error_.reason = "Failed to process output from " + command + ": " + e.what()
-          + ". Output: " + outputJsonStr;
-        error_.code = BUILD_PREPARE_ERROR;
-        return false;
+        return LINGLONG_ERR(fmt::format("Failed to process output from {}: {}. Output: {}",
+                                        patchFile.string(),
+                                        e.what(),
+                                        *output));
     }
-    return true;
+    return LINGLONG_OK;
 }
 
-bool ContainerCfgBuilder::mergeMount() noexcept
+utils::error::Result<void> ContainerCfgBuilder::mergeMount() noexcept
 {
+    LINGLONG_TRACE("merge all mounts");
+
     // merge all mounts here, the order of mounts is relevant
     if (runtimeMount) {
         mounts.emplace_back(std::move(runtimeMount).value());
@@ -1773,7 +1641,7 @@ bool ContainerCfgBuilder::mergeMount() noexcept
     }
 
     if (extensionMount) {
-        std::move(extensionMount->begin(), extensionMount->end(), std::back_inserter(mounts));
+        std::copy(extensionMount->begin(), extensionMount->end(), std::back_inserter(mounts));
     }
 
     if (sysMount) {
@@ -1846,8 +1714,12 @@ bool ContainerCfgBuilder::mergeMount() noexcept
         std::move(ldCacheMount->begin(), ldCacheMount->end(), std::back_inserter(mounts));
     }
 
-    if (localtimeMount) {
-        std::move(localtimeMount->begin(), localtimeMount->end(), std::back_inserter(mounts));
+    if (ldConfMount) {
+        std::move(ldConfMount->begin(), ldConfMount->end(), std::back_inserter(mounts));
+    }
+
+    if (timeZoneMount) {
+        std::move(timeZoneMount->begin(), timeZoneMount->end(), std::back_inserter(mounts));
     }
 
     if (networkConfMount) {
@@ -1868,7 +1740,7 @@ bool ContainerCfgBuilder::mergeMount() noexcept
 
     config.mounts = std::move(mounts);
 
-    return true;
+    return LINGLONG_OK;
 }
 
 int ContainerCfgBuilder::findChild(int parent, const std::string &name) noexcept
@@ -2006,7 +1878,7 @@ std::string ContainerCfgBuilder::getRelativePath(int parent, int node) noexcept
     return path.string();
 }
 
-bool ContainerCfgBuilder::adjustNode(int node,
+void ContainerCfgBuilder::adjustNode(int node,
                                      const std::filesystem::path &path,
                                      const std::filesystem::path fixPath) noexcept
 {
@@ -2064,12 +1936,12 @@ bool ContainerCfgBuilder::adjustNode(int node,
             mountpoints[child].mount_idx = static_cast<int>(mounts.size() - 1);
         }
     }
-
-    return true;
 }
 
-bool ContainerCfgBuilder::constructMountpointsTree() noexcept
+utils::error::Result<void> ContainerCfgBuilder::constructMountpointsTree() noexcept
 {
+    LINGLONG_TRACE("construct mountpoints tree");
+
     // root always at 0
     mountpoints.emplace_back(
       MountNode{ .name = "",
@@ -2083,16 +1955,13 @@ bool ContainerCfgBuilder::constructMountpointsTree() noexcept
 
         std::filesystem::path destination = std::filesystem::path{ mount.destination };
         if (destination.empty()) {
-            error_.reason = "empty mount destination is invalid, source is "
-              + mount.source.value_or("[no source]");
-            error_.code = BUILD_MOUNT_ERROR;
-            return false;
+            return LINGLONG_ERR(fmt::format("empty mount destination is invalid, source is {}",
+                                            mount.source.value_or("[no source]")));
         }
 
         if (!destination.is_absolute()) {
-            error_.reason = destination.string() + " as mount destination is invalid";
-            error_.code = BUILD_MOUNT_ERROR;
-            return false;
+            return LINGLONG_ERR(
+              fmt::format("{} as mount destination is invalid", destination.string()));
         }
 
         bool inserted = false;
@@ -2112,7 +1981,7 @@ bool ContainerCfgBuilder::constructMountpointsTree() noexcept
         }
     }
 
-    return true;
+    return LINGLONG_OK;
 }
 
 void ContainerCfgBuilder::tryFixMountpointsTree() noexcept
@@ -2174,10 +2043,12 @@ void ContainerCfgBuilder::generateMounts() noexcept
     mounts = std::move(generated);
 }
 
-bool ContainerCfgBuilder::selfAdjustingMount() noexcept
+utils::error::Result<void> ContainerCfgBuilder::selfAdjustingMount() noexcept
 {
+    LINGLONG_TRACE("self adjusting mount");
+
     if (!selfAdjustingMountEnabled) {
-        return true;
+        return LINGLONG_OK;
     }
 
     mounts = std::move(config.mounts).value();
@@ -2185,20 +2056,14 @@ bool ContainerCfgBuilder::selfAdjustingMount() noexcept
     // Some apps depends on files which doesn't exist in runtime layer or base layer, we have to
     // mount host files to container, or create the file on demand, but the layer is readonly.
     // We make a workaround by mount the suitable target's ancestor directory as tmpfs.
-    if (!constructMountpointsTree()) {
-        return false;
+    auto result = constructMountpointsTree();
+    if (!result) {
+        return result;
     }
 
     // Remounting as tmpfs requires an alternate rootfs context to avoid obscuring underlying
     // files, so adjust root and change root path to bundlePath/rootfs
     adjustNode(0, config.root->path, "");
-    auto rootfs = bundlePath / "rootfs";
-    std::error_code ec;
-    if (!std::filesystem::create_directories(rootfs, ec) && ec) {
-        error_.reason = rootfs.string() + " can't be created";
-        error_.code = BUILD_PREPARE_ERROR;
-        return false;
-    }
     config.root->path = "rootfs";
 
     tryFixMountpointsTree();
@@ -2207,78 +2072,68 @@ bool ContainerCfgBuilder::selfAdjustingMount() noexcept
 
     config.mounts = std::move(mounts);
 
-    return true;
+    return LINGLONG_OK;
 }
 
-bool ContainerCfgBuilder::finalize() noexcept
+utils::error::Result<void> ContainerCfgBuilder::finalize() noexcept
 {
+    LINGLONG_TRACE("finalize container configuration");
+
     config.linux_->maskedPaths = maskedPaths;
-    return true;
+    return LINGLONG_OK;
 }
 
-bool ContainerCfgBuilder::build() noexcept
+utils::error::Result<void> ContainerCfgBuilder::build() noexcept
 {
-    if (!checkValid()) {
-        return false;
+    LINGLONG_TRACE("build container configuration");
+
+    BUILD_STEP(checkValid);
+    BUILD_STEP(prepare);
+    BUILD_STEP(buildIdMappings);
+    BUILD_STEP(buildMountRuntime);
+    BUILD_STEP(buildMountApp);
+    BUILD_STEP(buildXDGRuntime);
+    BUILD_STEP(buildPrivateDir);
+    BUILD_STEP(buildMountHome);
+    BUILD_STEP(buildPrivateMapped);
+    BUILD_STEP(buildMountIPC);
+    BUILD_STEP(buildMountTimeZone);
+    BUILD_STEP(buildMountNetworkConf);
+    BUILD_STEP(buildDisplaySystem);
+    BUILD_STEP(buildContainerInfo);
+    BUILD_STEP(buildMountCache);
+    BUILD_STEP(buildLDCache);
+    BUILD_STEP(buildEnv);
+    BUILD_STEP(mergeMount);
+    BUILD_STEP(finalize);
+    BUILD_STEP(applyPatch);
+    BUILD_STEP(selfAdjustingMount);
+
+    return LINGLONG_OK;
+}
+
+utils::error::Result<void>
+ContainerCfgBuilder::mountBind(const ocppi::runtime::config::types::Mount &mount) noexcept
+{
+    LINGLONG_TRACE(
+      fmt::format("mount bind: {} -> {}", mount.source.value_or("[none]"), mount.destination));
+
+    if (!mount.source) {
+        return LINGLONG_ERR("mount source is not set");
     }
 
-    if (!prepare()) {
-        return false;
+    unsigned long flags = MS_BIND | MS_REC;
+    if (mount.options
+        && std::find(mount.options->begin(), mount.options->end(), "ro") != mount.options->end()) {
+        flags |= MS_RDONLY;
     }
 
-    if (!buildIdMappings()) {
-        return false;
+    if (::mount(mount.source->c_str(), mount.destination.c_str(), "", flags, nullptr) != 0) {
+        return LINGLONG_ERR(
+          fmt::format("failed to mount {}: {}", mount.source.value(), strerror(errno)));
     }
 
-    if (!buildMountRuntime() || !buildMountApp()) {
-        return false;
-    }
-
-    if (!buildXDGRuntime()) {
-        return false;
-    }
-
-    if (!buildPrivateDir() || !buildMountHome() || !buildPrivateMapped()) {
-        return false;
-    }
-
-    if (!buildMountIPC() || !buildMountLocalTime() || !buildMountNetworkConf()) {
-        return false;
-    }
-
-    if (!buildDisplaySystem()) {
-        return false;
-    }
-
-    if (!buildContainerInfo()) {
-        return false;
-    }
-
-    if (!buildMountCache() || !buildLDCache()) {
-        return false;
-    }
-
-    if (!buildEnv()) {
-        return false;
-    }
-
-    if (!mergeMount()) {
-        return false;
-    }
-
-    if (!finalize()) {
-        return false;
-    }
-
-    if (!applyPatch()) {
-        return false;
-    }
-
-    if (!selfAdjustingMount()) {
-        return false;
-    }
-
-    return true;
+    return LINGLONG_OK;
 }
 
 } // namespace linglong::generator

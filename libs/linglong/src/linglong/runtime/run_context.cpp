@@ -5,15 +5,39 @@
 #include "run_context.h"
 
 #include "linglong/common/display.h"
+#include "linglong/common/strings.h"
 #include "linglong/extension/extension.h"
 #include "linglong/runtime/container_builder.h"
+#include "linglong/runtime/overlayfs_driver.h"
+#include "linglong/utils/file.h"
 #include "linglong/utils/log/log.h"
 
 #include <fmt/ranges.h>
 
+#include <cstdlib>
 #include <utility>
 
 namespace linglong::runtime {
+
+namespace {
+
+constexpr const char *runContextConfigVersion = "1";
+
+std::optional<std::string> timezoneFromPath(const std::filesystem::path &path,
+                                            const std::filesystem::path &zoneinfoRoot)
+{
+    auto normalizedPath = path.lexically_normal();
+    auto normalizedRoot = zoneinfoRoot.lexically_normal();
+    auto relative = normalizedPath.lexically_relative(normalizedRoot);
+    if (relative.empty() || relative == "."
+        || linglong::common::strings::starts_with(relative.string(), "..")) {
+        return std::nullopt;
+    }
+
+    return relative.string();
+}
+
+} // namespace
 
 utils::error::Result<RuntimeLayer> RuntimeLayer::create(package::Reference ref, RunContext &context)
 {
@@ -59,6 +83,7 @@ utils::error::Result<void> RuntimeLayer::resolveLayer(const std::vector<std::str
     } else if (modules.size() > 1) {
         layer = repo.createTempMergedModuleDir(reference, modules);
         temporary = true;
+        LogD("create temp merged module dir: {}", layer->path());
     } else {
         return LINGLONG_ERR(
           fmt::format("resolve module {} is not supported", fmt::join(modules, ",")));
@@ -72,17 +97,7 @@ utils::error::Result<void> RuntimeLayer::resolveLayer(const std::vector<std::str
     return LINGLONG_OK;
 }
 
-RunContext::~RunContext()
-{
-    if (!bundle.empty()) {
-        std::error_code ec;
-        if (std::filesystem::exists(bundle, ec)) {
-            if (std::filesystem::remove_all(bundle, ec) == static_cast<std::uintmax_t>(-1)) {
-                LogW("failed to remove bundle directory {}: {}", bundle, ec.message());
-            }
-        }
-    }
-}
+RunContext::~RunContext() { }
 
 utils::error::Result<void> RunContext::resolve(const linglong::package::Reference &runnable,
                                                const ResolveOptions &options)
@@ -94,9 +109,8 @@ utils::error::Result<void> RunContext::resolve(const linglong::package::Referenc
         return LINGLONG_ERR(layer);
     }
 
-    containerID = runtime::genContainerID(runnable);
-
-    const auto &info = layer->getCachedItem().info;
+    auto info = layer->getCachedItem().info;
+    targetId = info.id;
     if (info.kind == "base") {
         baseLayer = std::move(layer).value();
     } else if (info.kind == "app") {
@@ -154,7 +168,7 @@ utils::error::Result<void> RunContext::resolve(const linglong::package::Referenc
     }
 
     // resolve base extension
-    auto ret = resolveExtension(
+    auto ret = resolveLayerExtensions(
       *baseLayer,
       matchedExtensionDefines(baseLayer->getReference(), options.externalExtensionDefs));
     if (!ret) {
@@ -163,7 +177,7 @@ utils::error::Result<void> RunContext::resolve(const linglong::package::Referenc
 
     // resolve runtime extension
     if (runtimeLayer) {
-        auto ret = resolveExtension(
+        auto ret = resolveLayerExtensions(
           *runtimeLayer,
           matchedExtensionDefines(runtimeLayer->getReference(), options.externalExtensionDefs));
         if (!ret) {
@@ -173,7 +187,7 @@ utils::error::Result<void> RunContext::resolve(const linglong::package::Referenc
 
     // resolve app extension
     if (appLayer) {
-        auto ret = resolveExtension(
+        auto ret = resolveLayerExtensions(
           *appLayer,
           matchedExtensionDefines(appLayer->getReference(), options.externalExtensionDefs));
         if (!ret) {
@@ -188,10 +202,29 @@ utils::error::Result<void> RunContext::resolve(const linglong::package::Referenc
             return LINGLONG_ERR(manualExtensionDef);
         }
 
-        auto ret = resolveExtension(*manualExtensionDef);
+        RuntimeLayer *targetLayer = nullptr;
+        if (appLayer) {
+            targetLayer = &*appLayer;
+        } else if (runtimeLayer) {
+            targetLayer = &*runtimeLayer;
+        } else {
+            targetLayer = &*baseLayer;
+        }
+
+        auto ret = resolveExtension(*targetLayer, *manualExtensionDef);
         if (!ret) {
             return LINGLONG_ERR(ret);
         }
+    }
+
+    auto overlayRet = resolveOverlayMode();
+    if (!overlayRet) {
+        return LINGLONG_ERR("failed to resolve overlayfs mode", overlayRet);
+    }
+
+    auto timezoneRet = resolveTimeZone();
+    if (!timezoneRet) {
+        return LINGLONG_ERR("failed to resolve timezone", timezoneRet);
     }
 
     // all reference are cleard , we can get actual layer directory now
@@ -208,7 +241,6 @@ utils::error::Result<void> RunContext::resolve(const api::types::v1::BuilderProj
     if (!targetRef) {
         return LINGLONG_ERR(targetRef);
     }
-    containerID = runtime::genContainerID(*targetRef);
     targetId = target.package.id;
 
     if (target.package.kind == "extension") {
@@ -283,6 +315,155 @@ utils::error::Result<void> RunContext::resolve(const api::types::v1::BuilderProj
         }
     }
 
+    auto timezoneRet = resolveTimeZone();
+    if (!timezoneRet) {
+        return LINGLONG_ERR("failed to resolve timezone", timezoneRet);
+    }
+
+    return resolveLayer(false, {});
+}
+
+utils::error::Result<void> RunContext::resolve(const api::types::v1::RunContextConfig &config)
+{
+    LINGLONG_TRACE("resolve RunContext from config");
+
+    if (config.version != runContextConfigVersion) {
+        return LINGLONG_ERR(fmt::format("run context config version mismatch: config version {}, "
+                                        "expected version {}",
+                                        config.version,
+                                        runContextConfigVersion));
+    }
+
+    auto createLayer = [this](const std::string &refStr) -> utils::error::Result<RuntimeLayer> {
+        LINGLONG_TRACE("create runtime layer");
+        if (refStr.empty()) {
+            return LINGLONG_ERR("reference is empty");
+        }
+
+        auto ref = package::Reference::parse(refStr);
+        if (!ref) {
+            return LINGLONG_ERR(ref);
+        }
+
+        auto layer = RuntimeLayer::create(*ref, *this);
+        if (!layer) {
+            return LINGLONG_ERR(layer);
+        }
+
+        return std::move(layer).value();
+    };
+    auto findTargetLayer = [this, &_linglong_trace_message](const std::string &targetRefStr)
+      -> utils::error::Result<std::reference_wrapper<RuntimeLayer>> {
+        auto fuzzyRef = package::FuzzyReference::parse(targetRefStr);
+        if (!fuzzyRef) {
+            return LINGLONG_ERR("failed to parse target layer reference", fuzzyRef);
+        }
+
+        auto matches = [&fuzzyRef](RuntimeLayer &layer) {
+            const auto &ref = layer.getReference();
+            if (fuzzyRef->id != ref.id) {
+                return false;
+            }
+            if (fuzzyRef->channel && *fuzzyRef->channel != ref.channel) {
+                return false;
+            }
+            if (fuzzyRef->version && !ref.version.semanticMatch(*fuzzyRef->version)) {
+                return false;
+            }
+            if (fuzzyRef->arch && *fuzzyRef->arch != ref.arch) {
+                return false;
+            }
+
+            return true;
+        };
+
+        if (appLayer && matches(*appLayer)) {
+            return std::ref(*appLayer);
+        }
+        if (runtimeLayer && matches(*runtimeLayer)) {
+            return std::ref(*runtimeLayer);
+        }
+        if (baseLayer && matches(*baseLayer)) {
+            return std::ref(*baseLayer);
+        }
+
+        return LINGLONG_ERR(fmt::format("target layer not found: {}", targetRefStr));
+    };
+
+    if (config.base && !config.base->empty()) {
+        auto result = createLayer(*config.base);
+        if (!result) {
+            return LINGLONG_ERR("failed to create base layer", result);
+        }
+
+        baseLayer = std::move(result).value();
+    }
+
+    if (config.runtime && !config.runtime->empty()) {
+        auto result = createLayer(*config.runtime);
+        if (!result) {
+            return LINGLONG_ERR("failed to create runtime layer", result);
+        }
+
+        runtimeLayer = std::move(result).value();
+    }
+
+    if (config.app && !config.app->empty()) {
+        auto result = createLayer(*config.app);
+        if (!result) {
+            return LINGLONG_ERR("failed to create app layer", result);
+        }
+
+        appLayer = std::move(result).value();
+    }
+
+    if (appLayer) {
+        targetId = appLayer->getReference().id;
+    } else if (runtimeLayer) {
+        targetId = runtimeLayer->getReference().id;
+    } else if (baseLayer) {
+        targetId = baseLayer->getReference().id;
+    }
+
+    if (!baseLayer) {
+        return LINGLONG_ERR("base layer is required");
+    }
+
+    if (config.extensions && !config.extensions->empty()) {
+        for (const auto &[targetRefStr, extensionRefs] : *config.extensions) {
+            auto targetLayer = findTargetLayer(targetRefStr);
+            if (!targetLayer) {
+                return LINGLONG_ERR(targetLayer);
+            }
+
+            for (const auto &extensionRefStr : extensionRefs) {
+                auto result = createLayer(extensionRefStr);
+                if (!result) {
+                    return LINGLONG_ERR("failed to create extension layer", result);
+                }
+
+                auto &extLayer = extensionLayers.emplace_back(std::move(result).value());
+                if (extLayer.getCachedItem().info.kind != "extension") {
+                    return LINGLONG_ERR("invalid extension kind in config.extensions");
+                }
+                extLayer.setExtensionInfo(RuntimeLayer::ExtensionRuntimeLayerInfo{
+                  .extensionInfo =
+                    api::types::v1::ExtensionDefine{
+                      .directory = "/opt/extensions/" + extLayer.getReference().id,
+                      .name = extLayer.getReference().id,
+                      .version = extLayer.getReference().version.toString(),
+                    },
+                  .extensionLayer = std::ref(extLayer),
+                  .forRef = targetRefStr,
+                });
+            }
+        }
+    }
+
+    contextCfg.overlayfs = config.overlayfs;
+    contextCfg.timezone = config.timezone;
+    contextCfg.version = runContextConfigVersion;
+
     return resolveLayer(false, {});
 }
 
@@ -328,12 +509,12 @@ utils::error::Result<void> RunContext::resolveLayer(bool depsBinaryOnly,
             continue;
         }
 
-        auto extensionOf = ext.getExtensionInfo();
+        const auto &extensionOf = ext.getExtensionInfo();
         if (!extensionOf) {
             continue;
         }
 
-        const auto &[extensionDefine, layer] = *extensionOf;
+        const auto &extensionDefine = extensionOf->extensionInfo;
         const auto &extInfo = ext.getCachedItem().info;
         if (!extInfo.extImpl) {
             LogW("no ext_impl found for {}", ext.getReference().toString());
@@ -374,17 +555,116 @@ utils::error::Result<void> RunContext::resolveLayer(bool depsBinaryOnly,
         }
     }
 
+    if (baseLayer) {
+        contextCfg.base = baseLayer->getReference().toString();
+    }
+
+    if (runtimeLayer) {
+        contextCfg.runtime = runtimeLayer->getReference().toString();
+    }
+
+    if (appLayer) {
+        contextCfg.app = appLayer->getReference().toString();
+    }
+
+    contextCfg.version = runContextConfigVersion;
+    contextCfg.extensions = std::map<std::string, std::vector<std::string>>{};
+    for (const auto &extension : extensionLayers) {
+        const auto &extInfo = extension.getExtensionInfo();
+        if (extInfo) {
+            auto forRef = extInfo->forRef;
+            auto extRef = extension.getReference().toString();
+
+            if (contextCfg.extensions->find(forRef) == contextCfg.extensions->end()) {
+                (*contextCfg.extensions)[forRef] = std::vector<std::string>{};
+            }
+            (*contextCfg.extensions)[forRef].push_back(extRef);
+        }
+    }
+
+    containerID = runtime::genContainerID(contextCfg);
+
     return LINGLONG_OK;
 }
 
-utils::error::Result<void> RunContext::resolveExtension(
+utils::error::Result<void> RunContext::resolveOverlayMode(std::optional<std::string> requestedMode)
+{
+    LINGLONG_TRACE("resolve overlayfs mode");
+
+    utils::OverlayMode mode = utils::OverlayMode::Auto;
+    if (requestedMode && !requestedMode->empty()) {
+        auto parsedMode = OverlayFSDriver::modeFromString(*requestedMode);
+        if (!parsedMode) {
+            return LINGLONG_ERR(parsedMode);
+        }
+        mode = *parsedMode;
+    }
+
+    auto driver = OverlayFSDriver::create(mode);
+    contextCfg.overlayfs = std::string(OverlayFSDriver::modeToString(driver->mode()));
+
+    return LINGLONG_OK;
+}
+
+utils::error::Result<void> RunContext::resolveTimeZone()
+{
+    LINGLONG_TRACE("resolve timezone");
+
+    auto *tzdirEnv = std::getenv("TZDIR");
+    auto zoneinfoRoot = (tzdirEnv != nullptr && tzdirEnv[0] != '\0')
+      ? std::filesystem::path(tzdirEnv)
+      : std::filesystem::path("/usr/share/zoneinfo");
+
+    auto localtimePath = std::filesystem::path("/etc/localtime");
+    std::error_code ec;
+    auto localtimeStatus = std::filesystem::symlink_status(localtimePath, ec);
+    if (ec) {
+        return LINGLONG_ERR(fmt::format("failed to get status of {}", localtimePath), ec);
+    }
+
+    if (!std::filesystem::exists(localtimeStatus)) {
+        contextCfg.timezone = "UTC";
+        return LINGLONG_OK;
+    }
+
+    if (!std::filesystem::is_symlink(localtimeStatus)) {
+        contextCfg.timezone = "";
+        return LINGLONG_OK;
+    }
+
+    auto targetPath = std::filesystem::read_symlink(localtimePath, ec);
+    if (ec) {
+        return LINGLONG_ERR(fmt::format("failed to read symlink {}", localtimePath), ec);
+    }
+    targetPath = std::filesystem::absolute(localtimePath.parent_path() / targetPath, ec);
+    if (ec) {
+        return LINGLONG_ERR(fmt::format("failed to get absolute path of {}", localtimePath), ec);
+    }
+
+    auto timezone = timezoneFromPath(targetPath, zoneinfoRoot);
+    if (!timezone) {
+        auto canonicalPath = std::filesystem::weakly_canonical(targetPath, ec);
+        if (ec) {
+            return LINGLONG_ERR(fmt::format("failed to canonicalize {}", targetPath), ec);
+        }
+        timezone = timezoneFromPath(canonicalPath, zoneinfoRoot);
+    }
+
+    if (timezone) {
+        contextCfg.timezone = std::move(*timezone);
+    }
+
+    return LINGLONG_OK;
+}
+
+utils::error::Result<void> RunContext::resolveLayerExtensions(
   RuntimeLayer &layer, const std::vector<api::types::v1::ExtensionDefine> &externalExtensionDefs)
 {
     LINGLONG_TRACE("resolve RuntimeLayer extension");
 
     const auto &info = layer.getCachedItem().info;
     if (info.extensions) {
-        auto res = resolveExtension(*info.extensions, info.channel, true);
+        auto res = resolveExtension(layer, *info.extensions, info.channel, true);
         if (!res) {
             return LINGLONG_ERR(res);
         }
@@ -392,14 +672,15 @@ utils::error::Result<void> RunContext::resolveExtension(
 
     // merge external extensions
     if (!externalExtensionDefs.empty()) {
-        return resolveExtension(externalExtensionDefs, info.channel, true);
+        return resolveExtension(layer, externalExtensionDefs, info.channel, true);
     }
 
     return LINGLONG_OK;
 }
 
 utils::error::Result<void>
-RunContext::resolveExtension(const std::vector<api::types::v1::ExtensionDefine> &extDefs,
+RunContext::resolveExtension(RuntimeLayer &targetLayer,
+                             const std::vector<api::types::v1::ExtensionDefine> &extDefs,
                              std::optional<std::string> channel,
                              bool skipOnNotFound)
 {
@@ -446,8 +727,11 @@ RunContext::resolveExtension(const std::vector<api::types::v1::ExtensionDefine> 
         }
 
         auto &extensionLayer = extensionLayers.emplace_back(std::move(layer).value());
-        extensionLayer.setExtensionInfo(
-          std::make_pair(extDef, std::reference_wrapper<RuntimeLayer>(extensionLayer)));
+        extensionLayer.setExtensionInfo(RuntimeLayer::ExtensionRuntimeLayerInfo{
+          .extensionInfo = extDef,
+          .extensionLayer = std::ref(extensionLayer),
+          .forRef = targetLayer.getReference().toString(),
+        });
     }
 
     return LINGLONG_OK;
@@ -545,22 +829,18 @@ void RunContext::detectDisplaySystem(generator::ContainerCfgBuilder &builder) no
 }
 
 utils::error::Result<void> RunContext::fillContextCfg(
-  linglong::generator::ContainerCfgBuilder &builder, const std::string &bundleSuffix)
+  linglong::generator::ContainerCfgBuilder &builder, const std::filesystem::path &bundlePath)
 {
     LINGLONG_TRACE("fill ContainerCfgBuilder with run context");
 
     builder.setContainerId(containerID);
+    if (contextCfg.timezone) {
+        builder.setTimezone(*contextCfg.timezone);
+    }
 
     if (!baseLayer) {
         return LINGLONG_ERR("run context doesn't resolved");
     }
-
-    auto bundleDir = runtime::makeBundleDir(containerID, bundleSuffix);
-    if (!bundleDir) {
-        return LINGLONG_ERR("failed to get bundle dir of " + containerID);
-    }
-    bundle = *bundleDir;
-    builder.setBundlePath(bundle);
 
     builder.setBasePath(baseLayer->getLayerDir()->filesDirPath());
 
@@ -623,7 +903,7 @@ utils::error::Result<void> RunContext::fillContextCfg(
         builder.setExtensionMounts(extensionMounts);
     }
 
-    auto res = fillExtraAppMounts(builder);
+    auto res = fillExtraAppMounts(builder, bundlePath);
     if (!res) {
         return res;
     }
@@ -634,44 +914,16 @@ utils::error::Result<void> RunContext::fillContextCfg(
 
     detectDisplaySystem(builder);
 
-    for (auto ctx = securityContexts.begin(); ctx != securityContexts.end(); ++ctx) {
-        auto manager = getSecurityContextManager(ctx->first);
-        if (!manager) {
-            auto msg = "failed to get security context manager: " + fromType(ctx->first);
-            return LINGLONG_ERR(msg.c_str());
-        }
-
-        auto secCtx = manager->createSecurityContext(builder);
-        if (!secCtx) {
-            auto msg = "failed to create security context: " + fromType(ctx->first);
-            return LINGLONG_ERR(msg.c_str());
-        }
-        ctx->second = std::move(secCtx).value();
-
-        auto res = ctx->second->apply(builder);
-        if (!res) {
-            auto msg = "failed to apply security context: " + fromType(ctx->first);
-            ctx = securityContexts.erase(ctx);
-            return LINGLONG_ERR(msg.c_str(), res);
-        }
-    }
-
     return LINGLONG_OK;
 }
 
-void RunContext::enableSecurityContext(const std::vector<SecurityContextType> &ctxs)
-{
-    for (const auto &type : ctxs) {
-        securityContexts.try_emplace(type, nullptr);
-    }
-}
-
-utils::error::Result<void> RunContext::fillExtraAppMounts(generator::ContainerCfgBuilder &builder)
+utils::error::Result<void> RunContext::fillExtraAppMounts(generator::ContainerCfgBuilder &builder,
+                                                          const std::filesystem::path &bundlePath)
 {
     LINGLONG_TRACE("fill extra app mounts");
 
-    auto fillPermissionsBinds = [&builder,
-                                 this](RuntimeLayer &layer) -> utils::error::Result<void> {
+    auto fillPermissionsBinds =
+      [&builder, &bundlePath, this](RuntimeLayer &layer) -> utils::error::Result<void> {
         LINGLONG_TRACE("fill permissions binds");
 
         const auto &info = layer.getCachedItem().info;
@@ -692,13 +944,15 @@ utils::error::Result<void> RunContext::fillExtraAppMounts(generator::ContainerCf
               };
 
             auto bindInnerMount =
-              [&applicationMounts,
-               this](const api::types::v1::ApplicationConfigurationPermissionsInnerBind &bind) {
+              [&applicationMounts, &bundlePath](
+                const api::types::v1::ApplicationConfigurationPermissionsInnerBind &bind) {
+                  std::filesystem::path source = bind.source;
                   applicationMounts.push_back(ocppi::runtime::config::types::Mount{
                     .destination = bind.destination,
                     .gidMappings = {},
                     .options = { { "rbind" } },
-                    .source = bundle.string() + "/rootfs" + bind.source,
+                    .source = bundlePath / "rootfs"
+                      / (source.is_absolute() ? source.relative_path() : source),
                     .type = "bind",
                     .uidMappings = {},
                   });

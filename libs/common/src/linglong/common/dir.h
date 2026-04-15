@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2025 - 2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -16,6 +16,10 @@ std::filesystem::path getRuntimeDir() noexcept;
 std::filesystem::path getAppRuntimeDir(const std::string &appId) noexcept;
 
 std::filesystem::path getBundleDir(const std::string &containerId) noexcept;
+
+// container cache directory used by both CLI and PM
+std::filesystem::path getContainerCacheDir(const std::string &commit,
+                                           const std::string &containerId) noexcept;
 
 // user cache directory for linglong in the following order:
 // 1. $XDG_CACHE_HOME/linglong

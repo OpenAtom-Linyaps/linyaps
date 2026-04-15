@@ -1209,6 +1209,8 @@ x.base = get_stack_optional<std::string>(j, "base");
 x.extensions = get_stack_optional<std::map<std::string, std::vector<std::string>>>(j, "extensions");
 x.overlayfs = get_stack_optional<std::string>(j, "overlayfs");
 x.runtime = get_stack_optional<std::string>(j, "runtime");
+x.timezone = get_stack_optional<std::string>(j, "timezone");
+x.version = j.at("version").get<std::string>();
 }
 
 inline void to_json(json & j, const RunContextConfig & x) {
@@ -1228,6 +1230,10 @@ j["overlayfs"] = x.overlayfs;
 if (x.runtime) {
 j["runtime"] = x.runtime;
 }
+if (x.timezone) {
+j["timezone"] = x.timezone;
+}
+j["version"] = x.version;
 }
 
 inline void from_json(const json & j, RuntimeConfigure& x) {

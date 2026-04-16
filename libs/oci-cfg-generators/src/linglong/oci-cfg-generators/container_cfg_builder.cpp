@@ -1438,6 +1438,11 @@ utils::error::Result<void> ContainerCfgBuilder::buildEnv() noexcept
         environment["LINGLONG_APPID"] = appId;
     }
 
+    if (!disableGenerateContainerInfo) {
+        environment.try_emplace("GTK_USE_PORTAL", "1");
+        environment.try_emplace("QT_QPA_PLATFORMTHEME", "xdgdesktopportal");
+    }
+
     auto envShFile = bundlePath / "00env.sh";
     std::ofstream ofs(envShFile);
     if (!ofs.is_open()) {

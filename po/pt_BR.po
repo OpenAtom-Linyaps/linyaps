@@ -331,7 +331,7 @@ msgstr "Desinstalar um módulo específico"
 
 #: ../apps/ll-cli/src/main.cpp:314
 msgid "Force uninstall base or runtime"
-msgstr ""
+msgstr "Forçar a desinstalação da base ou do runtime"
 
 #. below options are used for compatibility with old ll-cli
 #: ../apps/ll-cli/src/main.cpp:317
@@ -360,11 +360,11 @@ msgstr ""
 
 #: ../apps/ll-cli/src/main.cpp:343
 msgid "Only upgrade dependencies of application"
-msgstr ""
+msgstr "Atualizar apenas as dependências do aplicativo"
 
 #: ../apps/ll-cli/src/main.cpp:344
 msgid "Only upgrade application"
-msgstr ""
+msgstr "Atualizar apenas o aplicativo"
 
 #: ../apps/ll-cli/src/main.cpp:355
 msgid ""
@@ -388,6 +388,17 @@ msgid ""
 "# find all of runtime(s) of remote\n"
 "ll-cli search . --type=runtime"
 msgstr ""
+"Uso: ll-cli search [OPÇÕES] PALAVRAS-CHAVE\n"
+"\n"
+"Exemplos:\n"
+"# buscar aplicativos, bases ou runtimes no repositório remoto por palavras-chave\n"
+"ll-cli search org.deepin.demo\n"
+"# listar todos os aplicativos do repositório remoto\n"
+"ll-cli search .\n"
+"# listar todas as bases do repositório remoto\n"
+"ll-cli search . --type=base\n"
+"# listar todos os runtimes do repositório remoto\n"
+"ll-cli search . --type=runtime"
 
 #: ../apps/ll-cli/src/main.cpp:370
 msgid "Specify the Keywords"
@@ -594,7 +605,7 @@ msgstr "Uso: ll-cli prune [OPÇÕES]"
 
 #: ../apps/ll-cli/src/main.cpp:564
 msgid "Display the inspect information of the installed application"
-msgstr ""
+msgstr "Exibir as informações de inspeção do aplicativo instalado"
 
 #: ../apps/ll-cli/src/main.cpp:566
 msgid "Usage: ll-cli inspect SUBCOMMAND [OPTIONS]"

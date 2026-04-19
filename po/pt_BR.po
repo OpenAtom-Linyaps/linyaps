@@ -7,7 +7,7 @@
 # Cassiano Molinari <chano2808a@gmail.com>, 2025
 # Wislley Marçal, 2025
 # keven doria, 2025
-# Alex W., 2025
+# Alex W., 2026
 # 
 #, fuzzy
 msgid ""
@@ -16,7 +16,7 @@ msgstr ""
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2026-03-12 21:29+0800\n"
 "PO-Revision-Date: 2025-04-11 01:38+0000\n"
-"Last-Translator: Alex W., 2025\n"
+"Last-Translator: Alex W., 2026\n"
 "Language-Team: Portuguese (Brazil) (https://app.transifex.com/linuxdeepin/teams/3976/pt_BR/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -26,17 +26,17 @@ msgstr ""
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:645
 msgid "privileged mode requires running as root"
-msgstr ""
+msgstr "O modo privilegiado requer execução como root"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1074
 #, c++-format
 msgid "Application {} is not installed."
-msgstr ""
+msgstr "O aplicativo {} não está instalado."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1084
 #, c++-format
 msgid "{} is not an application."
-msgstr ""
+msgstr "{} não é um aplicativo."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1177
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2401
@@ -67,11 +67,13 @@ msgid ""
 "Application already installed, If you want to replace it, try using 'll-cli "
 "install {} --force'"
 msgstr ""
+"O aplicativo já está instalado. Se quiser substituí-lo, use 'll-cli install "
+"{} --force'"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2302
 #, c++-format
 msgid "Application {} is not found in remote repo."
-msgstr ""
+msgstr "O aplicativo {} não foi encontrado no repositório remoto."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2305
 msgid "Cannot specify a version when installing a module."
@@ -83,6 +85,8 @@ msgid ""
 "The latest version has been installed. If you want to replace it, try using "
 "'ll-cli install {} --force'"
 msgstr ""
+"A versão mais recente já está instalada. Se quiser substituí-la, use 'll-cli"
+" install {} --force'"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2315
 msgid "Install failed"
@@ -93,6 +97,8 @@ msgid ""
 "The application is currently running and cannot be uninstalled. Please turn "
 "off the application and try again."
 msgstr ""
+"O aplicativo está em execução e não pode ser desinstalado. Feche o "
+"aplicativo e tente novamente."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2345
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2378
@@ -105,10 +111,12 @@ msgid ""
 "Multiple versions of the package are installed. Please specify a single version to uninstall:\n"
 "{}"
 msgstr ""
+"Há várias versões do pacote instaladas. Especifique uma única versão para desinstalar:\n"
+"{}"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2355
 msgid "Base or runtime cannot be uninstalled, please use 'll-cli prune'."
-msgstr ""
+msgstr "A base ou o runtime não podem ser desinstalados. Use 'll-cli prune'."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2359
 msgid "Uninstall failed"
@@ -120,7 +128,7 @@ msgstr "A atualização falhou"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2406
 msgid "Package not found"
-msgstr ""
+msgstr "O pacote não foi encontrado"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2409
 msgid "Operation canceled"

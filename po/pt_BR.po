@@ -132,7 +132,7 @@ msgstr "O pacote não foi encontrado"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2409
 msgid "Operation canceled"
-msgstr ""
+msgstr "A operação foi cancelada"
 
 #: ../apps/ll-cli/src/main.cpp:124 ../apps/ll-builder/src/main.cpp:44
 msgid "Input parameter is empty, please input valid parameter instead"
@@ -180,35 +180,35 @@ msgstr "Passar url para aplicativos rodando em uma sandbox"
 
 #: ../apps/ll-cli/src/main.cpp:160
 msgid "Set environment variables for the application"
-msgstr ""
+msgstr "Definir variáveis de ambiente para o aplicativo"
 
 #: ../apps/ll-cli/src/main.cpp:167
 msgid "Input parameter is invalid, please input valid parameter instead"
-msgstr ""
+msgstr "Parâmetro de entrada inválido. Insira um parâmetro válido"
 
 #: ../apps/ll-cli/src/main.cpp:173
 msgid "Specify the base used by the application to run"
-msgstr ""
+msgstr "Especifique a base usada pelo aplicativo para execução"
 
 #: ../apps/ll-cli/src/main.cpp:179
 msgid "Specify the runtime used by the application to run"
-msgstr ""
+msgstr "Especifique o runtime usado pelo aplicativo para execução"
 
 #: ../apps/ll-cli/src/main.cpp:185 ../apps/ll-builder/src/main.cpp:791
 msgid "Specify the working directory where the application runs"
-msgstr ""
+msgstr "Especifique o diretório de trabalho onde o aplicativo será executado"
 
 #: ../apps/ll-cli/src/main.cpp:190
 msgid "Specify extension(s) used by the application to run"
-msgstr ""
+msgstr "Especifique as extensões usadas pelo aplicativo para execução"
 
 #: ../apps/ll-cli/src/main.cpp:196
 msgid "Run the application in privileged mode"
-msgstr ""
+msgstr "Executar o aplicativo em modo privilegiado"
 
 #: ../apps/ll-cli/src/main.cpp:198
 msgid "Add capabilities to the application"
-msgstr ""
+msgstr "Adicionar capacidades ao aplicativo"
 
 #: ../apps/ll-cli/src/main.cpp:202 ../apps/ll-cli/src/main.cpp:233
 msgid "Run commands in a running sandbox"

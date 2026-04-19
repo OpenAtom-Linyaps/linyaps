@@ -1116,14 +1116,16 @@ msgstr "Instalar"
 
 #: ../apps/ll-driver-detect/src/main.cpp:221
 msgid "Don't Remind"
-msgstr ""
+msgstr "Não lembrar novamente"
 
 #: ../apps/ll-driver-detect/src/main.cpp:247
 msgid "Graphics Driver Installation Completed"
-msgstr ""
+msgstr "Instalação do driver gráfico concluída"
 
 #: ../apps/ll-driver-detect/src/main.cpp:249
 msgid ""
 "Graphics driver package has been installed.\n"
 "Restart the Linyaps app to experience the performance improvement."
 msgstr ""
+"O pacote de driver gráfico foi instalado.\n"
+"Reinicie o aplicativo Linyaps para aproveitar a melhoria de desempenho."

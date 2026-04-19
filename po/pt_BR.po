@@ -388,7 +388,7 @@ msgid ""
 "# find all of runtime(s) of remote\n"
 "ll-cli search . --type=runtime"
 msgstr ""
-"Uso: ll-cli search [OPÇÕES] PALAVRAS-CHAVE\n"
+"Use: ll-cli search [OPÇÕES] PALAVRAS-CHAVE\n"
 "\n"
 "Exemplos:\n"
 "# buscar aplicativos, bases ou runtimes no repositório remoto por palavras-chave\n"
@@ -609,29 +609,32 @@ msgstr "Exibir as informações de inspeção do aplicativo instalado"
 
 #: ../apps/ll-cli/src/main.cpp:566
 msgid "Usage: ll-cli inspect SUBCOMMAND [OPTIONS]"
-msgstr ""
+msgstr "Use: ll-cli inspect SUBCOMANDO [OPÇÕES]"
 
 #: ../apps/ll-cli/src/main.cpp:573
 msgid ""
 "Display the data(bundle) directory of the installed(running) application"
 msgstr ""
+"Exibir o diretório de dados (bundle) do aplicativo instalado (em execução)."
 
 #: ../apps/ll-cli/src/main.cpp:574
 msgid "Usage: ll-cli inspect dir [OPTIONS] APP"
-msgstr ""
+msgstr "Use: ll-cli inspect dir [OPÇÕES] APP"
 
 #: ../apps/ll-cli/src/main.cpp:578
 msgid "Specify the application ID, and it can also be reference"
-msgstr ""
+msgstr "Especifique o ID do aplicativo, que também pode ser uma referência"
 
 #: ../apps/ll-cli/src/main.cpp:584
 msgid "Specify the directory type (layer or bundle),the default is layer"
-msgstr ""
+msgstr "Especifique o tipo de diretório (layer ou bundle). O padrão é layer"
 
 #: ../apps/ll-cli/src/main.cpp:591
 msgid ""
 "Specify the module type (binary or develop). Only works when type is layer"
 msgstr ""
+"Especifique o tipo de módulo (binary ou develop). Só funciona quando o tipo "
+"é layer"
 
 #: ../apps/ll-cli/src/main.cpp:623
 msgid ""

@@ -421,6 +421,18 @@ public:
                 (override, const));
 };
 
+class OSTreeRepoAccessor : public repo::OSTreeRepo
+{
+public:
+    using repo::OSTreeRepo::buildPullRefCandidates;
+
+    OSTreeRepoAccessor()
+        : repo::OSTreeRepo(
+            "", api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 })
+    {
+    }
+};
+
 class MockClientAPIWrapper : public ClientAPIWrapper
 {
 public:
@@ -464,6 +476,18 @@ TEST(OSTreeRepoTest, searchRemote_Search)
     EXPECT_EQ(result->size(), 1);
     EXPECT_EQ((*result)[0].id, "com.example.cpp");
     EXPECT_EQ((*result)[0].version, "1.0.0");
+}
+
+TEST(OSTreeRepoTest, BuildPullRefCandidatesFallbackToRuntimeForBinary)
+{
+    auto ref = package::Reference::parse("stable:org.deepin.demo/1.0.0/x86_64");
+    ASSERT_TRUE(ref.has_value()) << ref.error().message();
+
+    auto candidates = OSTreeRepoAccessor::buildPullRefCandidates(*ref, "binary");
+
+    ASSERT_EQ(candidates.size(), 2);
+    EXPECT_EQ(candidates[0], "stable/org.deepin.demo/1.0.0/x86_64/binary");
+    EXPECT_EQ(candidates[1], "stable/org.deepin.demo/1.0.0/x86_64/runtime");
 }
 
 TEST(OSTreeRepoTest, searchRemote_MatchVersion)

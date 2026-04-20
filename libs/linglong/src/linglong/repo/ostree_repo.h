@@ -263,6 +263,10 @@ private:
 
 protected:
     OSTreeRepo(std::filesystem::path path, api::types::v1::RepoConfigV2 cfg) noexcept;
+    static std::vector<std::string> buildPullRefCandidates(const package::Reference &ref,
+                                                           const std::string &module) noexcept;
+    static bool shouldFallbackToRuntimeBranch(const std::string &module,
+                                              const GError *gErr) noexcept;
 
     utils::error::Result<void> init(bool create) noexcept;
     utils::error::Result<void> initCache(bool create) noexcept;

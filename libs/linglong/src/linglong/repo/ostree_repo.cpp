@@ -1162,36 +1162,49 @@ OSTreeRepo::fetchRefMetaData(const package::ReferenceWithRepo &refRepo,
                              const std::string &module,
                              bool fetchPackageInfo) noexcept
 {
-    auto refString = ostreeSpecFromReferenceV2(refRepo.reference, std::nullopt, module);
     auto repoName = refRepo.repo.alias.value_or(refRepo.repo.name);
-    LINGLONG_TRACE(fmt::format("fetch info.json from {}:{}", repoName, refString));
 
     g_autoptr(GError) gErr = nullptr;
+    auto refCandidates = buildPullRefCandidates(refRepo.reference, module);
+    auto refString = refCandidates.front();
+    LINGLONG_TRACE(fmt::format("fetch info.json from {}:{}", repoName, refString));
 
-    GVariantBuilder builder = this->initOStreePullOptions(refString);
-    if (fetchPackageInfo) {
-        std::vector<const char *> subdirs{ "/info.json", nullptr };
-        g_variant_builder_add(&builder,
-                              "{s@v}",
-                              "subdirs",
-                              g_variant_new_variant(g_variant_new_strv(subdirs.data(), -1)));
-    } else {
-        g_variant_builder_add(
-          &builder,
-          "{s@v}",
-          "flags",
-          g_variant_new_variant(g_variant_new_int32(OSTREE_REPO_PULL_FLAGS_COMMIT_ONLY)));
-    }
+    for (size_t idx = 0; idx < refCandidates.size(); ++idx) {
+        refString = refCandidates[idx];
 
-    g_autoptr(GVariant) pull_options = g_variant_ref_sink(g_variant_builder_end(&builder));
-    auto status = ostree_repo_pull_with_options(this->ostreeRepo.get(),
-                                                repoName.c_str(),
-                                                pull_options,
-                                                nullptr,
-                                                nullptr,
-                                                &gErr);
-    if (status == FALSE) {
-        return LINGLONG_ERR(fmt::format("ostree_repo_pull_with_options {}", ptr_view(gErr)));
+        GVariantBuilder builder = this->initOStreePullOptions(refString);
+        if (fetchPackageInfo) {
+            std::vector<const char *> subdirs{ "/info.json", nullptr };
+            g_variant_builder_add(&builder,
+                                  "{s@v}",
+                                  "subdirs",
+                                  g_variant_new_variant(g_variant_new_strv(subdirs.data(), -1)));
+        } else {
+            g_variant_builder_add(
+              &builder,
+              "{s@v}",
+              "flags",
+              g_variant_new_variant(g_variant_new_int32(OSTREE_REPO_PULL_FLAGS_COMMIT_ONLY)));
+        }
+
+        g_autoptr(GVariant) pull_options = g_variant_ref_sink(g_variant_builder_end(&builder));
+        auto status = ostree_repo_pull_with_options(this->ostreeRepo.get(),
+                                                    repoName.c_str(),
+                                                    pull_options,
+                                                    nullptr,
+                                                    nullptr,
+                                                    &gErr);
+        if (status != FALSE) {
+            break;
+        }
+
+        if (idx + 1 == refCandidates.size() || !shouldFallbackToRuntimeBranch(module, gErr)) {
+            return LINGLONG_ERR(fmt::format("ostree_repo_pull_with_options {}", ptr_view(gErr)));
+        }
+
+        LogW("ostree_repo_pull_with_options failed with [{}]: {}", gErr->code, gErr->message);
+        LogW("fallback to module runtime, fetch {}", refCandidates[idx + 1]);
+        g_clear_error(&gErr);
     }
     g_clear_error(&gErr);
 
@@ -1327,12 +1340,31 @@ GVariantBuilder OSTreeRepo::initOStreePullOptions(const std::string &ref) noexce
     return builder;
 }
 
+std::vector<std::string> OSTreeRepo::buildPullRefCandidates(const package::Reference &ref,
+                                                            const std::string &module) noexcept
+{
+    std::vector<std::string> candidates;
+    candidates.emplace_back(ostreeSpecFromReferenceV2(ref, std::nullopt, module));
+    if (module == "binary") {
+        candidates.emplace_back(ostreeSpecFromReference(ref, std::nullopt, module));
+    }
+    return candidates;
+}
+
+bool OSTreeRepo::shouldFallbackToRuntimeBranch(const std::string &module,
+                                               const GError *gErr) noexcept
+{
+    return module == "binary" && gErr != nullptr && gErr->message != nullptr
+      && strstr(gErr->message, "No such branch") != nullptr;
+}
+
 utils::error::Result<void> OSTreeRepo::pull(service::Task &taskContext,
                                             const package::ReferenceWithRepo &refRepo,
                                             const std::string &module) noexcept
 {
-    auto refString = ostreeSpecFromReferenceV2(refRepo.reference, std::nullopt, module);
     auto repoName = refRepo.repo.alias.value_or(refRepo.repo.name);
+    auto refCandidates = buildPullRefCandidates(refRepo.reference, module);
+    auto refString = refCandidates.front();
     LINGLONG_TRACE(fmt::format("pull {} from {}", refString, repoName));
 
     auto *cancellable = taskContext.cancellable();
@@ -1346,51 +1378,35 @@ utils::error::Result<void> OSTreeRepo::pull(service::Task &taskContext,
 
     g_autoptr(GError) gErr = nullptr;
 
-    auto builder = this->initOStreePullOptions(refString);
-    g_autoptr(GVariant) pull_options = g_variant_ref_sink(g_variant_builder_end(&builder));
-    // 这里不能使用g_main_context_push_thread_default，因为会阻塞Qt的事件循环
+    for (size_t idx = 0; idx < refCandidates.size(); ++idx) {
+        refString = refCandidates[idx];
 
-    auto status = ostree_repo_pull_with_options(this->ostreeRepo.get(),
-                                                repoName.c_str(),
-                                                pull_options,
-                                                progress,
-                                                cancellable,
-                                                &gErr);
-    ostree_async_progress_finish(progress);
-    auto shouldFallback = false;
-    if (status == FALSE) {
-        // gErr->code is 0, so we compare string here.
-        if (!strstr(gErr->message, "No such branch")) {
+        auto builder = this->initOStreePullOptions(refString);
+        g_autoptr(GVariant) pull_options = g_variant_ref_sink(g_variant_builder_end(&builder));
+        // 这里不能使用g_main_context_push_thread_default，因为会阻塞Qt的事件循环
+
+        auto status = ostree_repo_pull_with_options(this->ostreeRepo.get(),
+                                                    repoName.c_str(),
+                                                    pull_options,
+                                                    progress,
+                                                    cancellable,
+                                                    &gErr);
+        ostree_async_progress_finish(progress);
+        if (status != FALSE) {
+            break;
+        }
+
+        if (idx + 1 == refCandidates.size() || !shouldFallbackToRuntimeBranch(module, gErr)) {
             return LINGLONG_ERR(fmt::format("ostree_repo_pull_with_options {}", ptr_view(gErr)));
         }
-        LogW("ostree_repo_pull_with_options failed with [{}]: {}", gErr->code, gErr->message);
-        shouldFallback = true;
-    }
-    // Note: this fallback is only for binary to runtime
-    if (shouldFallback && (module == "binary" || module == "runtime")) {
-        g_autoptr(OstreeAsyncProgress) progress =
-          ostree_async_progress_new_and_connect(progress_changed, (void *)&data);
-        Q_ASSERT(progress != nullptr);
-        // fallback to old ref
-        refString = ostreeSpecFromReference(refRepo.reference, std::nullopt, module);
-        LogW("fallback to module runtime, pull {}", refString);
 
+        LogW("ostree_repo_pull_with_options failed with [{}]: {}", gErr->code, gErr->message);
+        LogW("fallback to module runtime, pull {}", refCandidates[idx + 1]);
         g_clear_error(&gErr);
 
-        GVariantBuilder builder = this->initOStreePullOptions(refString);
-
-        g_autoptr(GVariant) pull_options = g_variant_ref_sink(g_variant_builder_end(&builder));
-
-        status = ostree_repo_pull_with_options(this->ostreeRepo.get(),
-                                               repoName.c_str(),
-                                               pull_options,
-                                               progress,
-                                               cancellable,
-                                               &gErr);
-        ostree_async_progress_finish(progress);
-        if (status == FALSE) {
-            return LINGLONG_ERR(fmt::format("ostree_repo_pull_with_options {}", ptr_view(gErr)));
-        }
+        g_clear_object(&progress);
+        progress = ostree_async_progress_new_and_connect(progress_changed, (void *)&data);
+        Q_ASSERT(progress != nullptr);
     }
 
     g_autofree char *commit = nullptr;

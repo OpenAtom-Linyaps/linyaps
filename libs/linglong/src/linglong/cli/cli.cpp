@@ -1715,7 +1715,7 @@ int Cli::content(const ContentOptions &options)
 
     QDirIterator it(entriesDir.absolutePath(),
                     QDir::AllEntries | QDir::NoDot | QDir::NoDotDot | QDir::System,
-                    QDirIterator::Subdirectories);
+                    QDirIterator::Subdirectories | QDirIterator::FollowSymlinks);
     while (it.hasNext()) {
         it.next();
         const auto entryPath = it.fileInfo().absoluteFilePath();

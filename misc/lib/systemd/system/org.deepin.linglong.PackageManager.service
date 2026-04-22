@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
+# SPDX-FileCopyrightText: 2023 - 2026 UnionTech Software Technology Co., Ltd.
 #
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -11,6 +11,3 @@ User=@LINGLONG_USERNAME@
 Group=@LINGLONG_USERNAME@
 BusName=org.deepin.linglong.PackageManager1
 ExecStart=@CMAKE_INSTALL_FULL_LIBEXECDIR@/linglong/ll-package-manager
-MemoryMax=8G
-Restart=on-failure
-RestartSec=10

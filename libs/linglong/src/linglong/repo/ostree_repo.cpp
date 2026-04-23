@@ -59,6 +59,7 @@
 #include <string>
 #include <system_error>
 #include <thread>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -76,6 +77,12 @@ struct ostreeUserData
     service::Task *taskContext{ nullptr };
 
     ~ostreeUserData() { g_clear_pointer(&ostree_status, g_free); }
+};
+
+struct OstreeRefEntry
+{
+    std::string refspec;
+    std::string commit;
 };
 
 void progress_changed(OstreeAsyncProgress *progress, gpointer user_data)
@@ -507,13 +514,13 @@ utils::error::Result<api::types::v1::PackageInfoV2> RefMetaData::getPackageInfo(
     return utils::serialize::parsePackageInfo(packageInfoContent);
 }
 
-utils::error::Result<void>
-OSTreeRepo::removeOstreeRef(const api::types::v1::RepositoryCacheLayersItem &layer) noexcept
+utils::error::Result<void> OSTreeRepo::removeOstreeRef(const std::string &remote,
+                                                       const std::string &ref,
+                                                       const std::string &commit) noexcept
 {
     LINGLONG_TRACE("remove ostree refspec from repository");
 
-    std::string refspec = ostreeRefSpecFromLayerItem(layer);
-    std::string ref = ostreeRefFromLayerItem(layer);
+    auto refspec = remote.empty() ? ref : remote + ":" + ref;
 
     g_autoptr(GError) gErr = nullptr;
     g_autofree char *rev{ nullptr };
@@ -524,13 +531,13 @@ OSTreeRepo::removeOstreeRef(const api::types::v1::RepositoryCacheLayersItem &lay
                                     OstreeRepoResolveRevExtFlags::OSTREE_REPO_RESOLVE_REV_EXT_NONE,
                                     &rev,
                                     &gErr)) {
-        if (layer.commit != rev) {
+        if (commit != rev) {
             LogD("skip unset ref on mismatched commit");
             return LINGLONG_OK;
         }
 
         if (ostree_repo_set_ref_immediate(this->ostreeRepo.get(),
-                                          layer.repo.c_str(),
+                                          remote.c_str(),
                                           ref.c_str(),
                                           nullptr,
                                           nullptr,
@@ -541,6 +548,12 @@ OSTreeRepo::removeOstreeRef(const api::types::v1::RepositoryCacheLayersItem &lay
     }
 
     return LINGLONG_OK;
+}
+
+utils::error::Result<void>
+OSTreeRepo::removeOstreeRef(const api::types::v1::RepositoryCacheLayersItem &layer) noexcept
+{
+    return this->removeOstreeRef(layer.repo, ostreeRefFromLayerItem(layer), layer.commit);
 }
 
 utils::error::Result<void> OSTreeRepo::handleRepositoryUpdate(
@@ -1095,13 +1108,11 @@ OSTreeRepo::remove(const api::types::v1::RepositoryCacheLayersItem &item) noexce
     return LINGLONG_OK;
 }
 
-utils::error::Result<void>
-OSTreeRepo::undeployedLayer(const api::types::v1::RepositoryCacheLayersItem &layer) noexcept
+utils::error::Result<void> OSTreeRepo::undeployedLayer(const std::string &commit) noexcept
 {
-    LINGLONG_TRACE(fmt::format("undeployed layer {}", layer.commit));
+    LINGLONG_TRACE(fmt::format("undeployed layer {}", commit));
 
-    // It is crucial to remove the layer directory by commit
-    auto layerDir = getLayerDir(layer);
+    auto layerDir = getLayerDir(commit);
     if (!layerDir) {
         LogW("layer dir not found, skip remove: {}", layerDir.error());
         return LINGLONG_OK;
@@ -1138,6 +1149,67 @@ OSTreeRepo::undeployedLayer(const api::types::v1::RepositoryCacheLayersItem &lay
 
     QFile::remove(layerDir->path().c_str());
     return LINGLONG_OK;
+}
+
+utils::error::Result<void>
+OSTreeRepo::undeployedLayer(const api::types::v1::RepositoryCacheLayersItem &layer) noexcept
+{
+    return this->undeployedLayer(layer.commit);
+}
+
+// clean all checkout files and refs/objects from ostree repo but reserved items
+utils::error::Result<void>
+OSTreeRepo::clean(const std::vector<api::types::v1::RepositoryCacheLayersItem> &reserved) noexcept
+{
+    LINGLONG_TRACE(fmt::format("clean refs: {}", reserved.size()));
+
+    std::unordered_set<std::string> keepCommits;
+    keepCommits.reserve(reserved.size());
+    for (const auto &item : reserved) {
+        keepCommits.insert(item.commit);
+    }
+
+    g_autoptr(GHashTable) refsTable = nullptr;
+    g_autoptr(GError) gErr = nullptr;
+    std::vector<OstreeRefEntry> existingRefs;
+    if (ostree_repo_list_refs(this->ostreeRepo.get(), nullptr, &refsTable, nullptr, &gErr)
+        == FALSE) {
+        return LINGLONG_ERR(fmt::format("ostree_repo_list_refs {}", ptr_view(gErr)));
+    }
+
+    g_hash_table_foreach(
+      refsTable,
+      [](gpointer key, gpointer value, gpointer data) {
+          auto *entries = static_cast<std::vector<OstreeRefEntry> *>(data);
+          entries->push_back(
+            OstreeRefEntry{ static_cast<const char *>(key), static_cast<const char *>(value) });
+      },
+      &existingRefs);
+
+    for (const auto &entry : existingRefs) {
+        if (keepCommits.find(entry.commit) != keepCommits.end()) {
+            continue;
+        }
+
+        auto removedLayer = this->undeployedLayer(entry.commit);
+        if (!removedLayer) {
+            LogW("failed to remove layer dir for {}: {}", entry.commit, removedLayer.error());
+        }
+
+        g_autoptr(GError) parseErr = nullptr;
+        g_autofree char *remote = nullptr;
+        g_autofree char *ref = nullptr;
+        if (ostree_parse_refspec(entry.refspec.c_str(), &remote, &ref, &parseErr) == FALSE) {
+            return LINGLONG_ERR(fmt::format("ostree_parse_refspec {}", ptr_view(parseErr)));
+        }
+
+        auto removedRef = this->removeOstreeRef(remote ? remote : "", ref ? ref : "", entry.commit);
+        if (!removedRef) {
+            return LINGLONG_ERR(removedRef);
+        }
+    }
+
+    return this->prune();
 }
 
 utils::error::Result<void> OSTreeRepo::prune()
@@ -2392,18 +2464,30 @@ OSTreeRepo::getLayerItem(const package::Reference &ref,
     return *item;
 }
 
-auto OSTreeRepo::getLayerDir(const api::types::v1::RepositoryCacheLayersItem &layer) const noexcept
+std::filesystem::path OSTreeRepo::layerPath(const std::string &commit) const noexcept
+{
+    return this->repoDir / "layers" / commit;
+}
+
+auto OSTreeRepo::getLayerDir(const std::string &commit) const noexcept
   -> utils::error::Result<package::LayerDir>
 {
-    LINGLONG_TRACE(fmt::format("get dir from layer {}", layer.commit));
+    LINGLONG_TRACE(fmt::format("get dir from commit {}", commit));
 
-    auto dir = this->repoDir / "layers" / layer.commit;
+    auto dir = this->layerPath(commit);
     std::error_code ec;
     if (!std::filesystem::exists(dir, ec)) {
         return LINGLONG_ERR(fmt::format("{} doesn't exist", dir));
     }
 
     return dir;
+}
+
+auto OSTreeRepo::getLayerDir(const api::types::v1::RepositoryCacheLayersItem &layer) const noexcept
+  -> utils::error::Result<package::LayerDir>
+{
+    LINGLONG_TRACE(fmt::format("get dir from layer {}", layer.commit));
+    return getLayerDir(layer.commit);
 }
 
 auto OSTreeRepo::getLayerDir(const package::Reference &ref,

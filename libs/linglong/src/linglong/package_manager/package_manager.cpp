@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
+ * SPDX-FileCopyrightText: 2022 - 2026 UnionTech Software Technology Co., Ltd.
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
@@ -42,6 +42,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <unordered_map>
 #include <utility>
 
 #include <fcntl.h>
@@ -933,6 +934,11 @@ utils::error::Result<void> PackageManager::Uninstall(PackageTask &taskContext,
         LogE("merge modules failed: {}", mergeRet.error());
     }
 
+    auto pruneRet = this->repo.prune();
+    if (!pruneRet) {
+        return LINGLONG_ERR(pruneRet);
+    }
+
     return LINGLONG_OK;
 }
 
@@ -1389,14 +1395,35 @@ utils::error::Result<void>
 PackageManager::Prune(std::vector<api::types::v1::PackageInfoV2> &removed) noexcept
 {
     LINGLONG_TRACE("prune");
-    auto pkgsInfo = this->repo.listLocal();
-    if (!pkgsInfo) {
-        return LINGLONG_ERR(pkgsInfo);
+    auto layerItems = this->repo.listLocalBy({});
+    if (!layerItems) {
+        return LINGLONG_ERR(layerItems);
     }
 
-    std::unordered_map<package::Reference, int> target;
+    struct PruneTarget
+    {
+        int references{ 0 };
+        std::optional<api::types::v1::RepositoryCacheLayersItem> layerItem;
+    };
 
-    auto scanExtensionsByInfo = [&target, this](const api::types::v1::PackageInfoV2 &info) {
+    std::unordered_map<package::Reference, PruneTarget> target;
+
+    auto touchTarget = [&target](const package::Reference &ref,
+                                 bool increaseReferences = false,
+                                 std::optional<api::types::v1::RepositoryCacheLayersItem> item =
+                                   std::nullopt) {
+        auto [it, inserted] = target.try_emplace(ref);
+        if (item) {
+            it->second.layerItem = std::move(item);
+        }
+        if (increaseReferences) {
+            it->second.references += 1;
+        }
+
+        return it;
+    };
+
+    auto scanExtensionsByInfo = [&touchTarget, this](const api::types::v1::PackageInfoV2 &info) {
         if (info.extensions) {
             for (const auto &extension : *info.extensions) {
                 std::string name = extension.name;
@@ -1413,7 +1440,7 @@ PackageManager::Prune(std::vector<api::types::v1::PackageInfoV2> &removed) noexc
                   *fuzzyRef,
                   { .forceRemote = false, .fallbackToRemote = false, .semanticMatching = true });
                 if (ref) {
-                    target[*ref] += 1;
+                    touchTarget(*ref, true);
                 }
             }
         }
@@ -1427,19 +1454,23 @@ PackageManager::Prune(std::vector<api::types::v1::PackageInfoV2> &removed) noexc
         scanExtensionsByInfo(item->info);
     };
 
-    for (const auto &info : *pkgsInfo) {
+    for (const auto &layerItem : *layerItems) {
+        const auto &info = layerItem.info;
         if (info.packageInfoV2Module != "binary" && info.packageInfoV2Module != "runtime") {
             continue;
         }
 
-        if (info.kind != "app") {
-            auto ref = package::Reference::fromPackageInfo(info);
-            if (!ref) {
-                LogW("{}", ref.error());
-                continue;
-            }
-            // Note: if the ref already exists, it's ok, somebody depends it.
-            target.try_emplace(std::move(*ref), 0);
+        auto ref = package::Reference::fromPackageInfo(info);
+        if (!ref) {
+            LogW("{}", ref.error());
+            continue;
+        }
+
+        // app always needs to be reserved
+        if (info.kind == "app") {
+            touchTarget(*ref, true, layerItem);
+        } else {
+            touchTarget(*ref, false, layerItem);
             continue;
         }
 
@@ -1460,7 +1491,7 @@ PackageManager::Prune(std::vector<api::types::v1::PackageInfoV2> &removed) noexc
                 LogW("{}", runtimeRef.error());
                 continue;
             }
-            target[*runtimeRef] += 1;
+            touchTarget(*runtimeRef, true);
             scanExtensionsByRef(*runtimeRef);
         }
 
@@ -1480,36 +1511,41 @@ PackageManager::Prune(std::vector<api::types::v1::PackageInfoV2> &removed) noexc
             LogW("{}", baseRef.error());
             continue;
         }
-        target[*baseRef] += 1;
+        touchTarget(*baseRef, true);
         scanExtensionsByRef(*baseRef);
         scanExtensionsByInfo(info);
     }
 
-    for (const auto &it : target) {
-        if (it.second != 0) {
-            continue;
+    std::vector<api::types::v1::RepositoryCacheLayersItem> reserved;
+    for (const auto &[ref, pruneTarget] : target) {
+        std::optional<api::types::v1::RepositoryCacheLayersItem> item;
+        if (pruneTarget.layerItem) {
+            item = pruneTarget.layerItem;
+        } else {
+            auto layerItem = this->repo.getLayerItem(ref);
+            if (!layerItem) {
+                LogW("{}", layerItem.error());
+                continue;
+            }
+            item = std::move(layerItem).value();
         }
 
-        // NOTE: if the binary module is removed, other modules should be removed too.
-        for (const auto &module : this->repo.getModuleList(it.first)) {
-            auto layer = this->repo.getLayerDir(it.first, module);
-            if (!layer) {
-                LogW("{}", layer.error());
+        if (pruneTarget.references == 0) {
+            auto res = uninstallRef(ref);
+            if (!res) {
+                LogW("{}", res.error());
                 continue;
             }
-
-            auto info = layer->info();
-
-            if (!info) {
-                LogW("{}", info.error());
-                continue;
-            }
-
-            removed.emplace_back(std::move(*info));
-
-            auto result = this->repo.remove(it.first, module);
-            if (!result) {
-                return LINGLONG_ERR(result);
+            removed.emplace_back(item->info);
+        } else {
+            // all modules should be handled
+            for (const auto &module : this->repo.getModuleList(ref)) {
+                auto layerItem = this->repo.getLayerItem(ref, module);
+                if (!layerItem) {
+                    LogW("{}", layerItem.error());
+                    continue;
+                }
+                reserved.emplace_back(std::move(*layerItem));
             }
         }
     }
@@ -1520,7 +1556,8 @@ PackageManager::Prune(std::vector<api::types::v1::PackageInfoV2> &removed) noexc
             LogE("merge modules failed: {}", mergeRet.error());
         }
     }
-    auto pruneRet = this->repo.prune();
+
+    auto pruneRet = this->repo.clean(reserved);
     if (!pruneRet) {
         return LINGLONG_ERR(pruneRet);
     }

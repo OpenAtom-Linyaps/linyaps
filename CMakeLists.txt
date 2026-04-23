@@ -304,6 +304,7 @@ if(BUILD_LINGLONG_BUILDER_UTILS_IN_BOX)
     api
     common
     oci-cfg-generators
+    cdi
     ocppi
     utils
     APPS
@@ -389,6 +390,7 @@ pfl_add_libraries(
   ocppi
   linglong
   oci-cfg-generators
+  cdi
   APPS
   ll-init
   ll-dialog

@@ -4,8 +4,11 @@
 
 #pragma once
 
-#include "linglong/oci-cfg-generators/container_cfg_builder.h"
 #include "linglong/utils/error/error.h"
+
+namespace linglong::generator {
+class ContainerCfgBuilder;
+}
 
 namespace linglong::runtime {
 

@@ -73,6 +73,7 @@ struct ResolveOptions
     bool depsBinaryOnly{ false };
     std::optional<std::vector<std::string>> appModules;
     std::optional<std::string> baseRef;
+    std::optional<std::vector<api::types::v1::CdiDeviceEntry>> cdiDevices;
     std::optional<std::string> runtimeRef;
     std::optional<std::vector<std::string>> extensionRefs;
     std::optional<std::map<std::string, std::vector<api::types::v1::ExtensionDefine>>>
@@ -101,6 +102,8 @@ public:
 
     utils::error::Result<void> fillContextCfg(generator::ContainerCfgBuilder &builder,
                                               const std::filesystem::path &bundlePath);
+    utils::error::Result<void> setupCDIDevices(generator::ContainerCfgBuilder &builder,
+                                               bool applyHooks = true) const;
     api::types::v1::ContainerProcessStateInfo stateInfo();
 
     repo::OSTreeRepo &getRepo() const { return repo; }

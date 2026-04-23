@@ -9,6 +9,7 @@
 #include "configure.h"
 #include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/api/types/v1/OciConfigurationPatch.hpp"
+#include "linglong/cdi/types/Generators.hpp"
 #include "linglong/common/dir.h"
 #include "linglong/common/display.h"
 #include "linglong/common/strings.h"
@@ -17,8 +18,8 @@
 #include "linglong/utils/file.h"
 #include "linglong/utils/log/log.h"
 #include "linglong/utils/overlayfs.h"
+#include "linglong/utils/sha256.h"
 #include "ocppi/runtime/config/types/Generators.hpp"
-#include "sha256.h"
 
 #include <fmt/format.h>
 #include <sys/mount.h>
@@ -262,6 +263,7 @@ ContainerCfgBuilder::bindDevNode(std::function<bool(const std::string &)> ifBind
         };
     }
 
+    devNodeMount = std::vector<Mount>{};
     for (const auto &entry : std::filesystem::directory_iterator{ "/dev" }) {
         if (ifBind(entry.path().filename())) {
             Mount m{ .destination = entry.path(),
@@ -269,11 +271,7 @@ ContainerCfgBuilder::bindDevNode(std::function<bool(const std::string &)> ifBind
                      .source = entry.path(),
                      .type = "bind" };
 
-            if (devNodeMount) {
-                devNodeMount->emplace_back(std::move(m));
-            } else {
-                devNodeMount = { std::move(m) };
-            }
+            devNodeMount->emplace_back(std::move(m));
         }
     }
 
@@ -597,10 +595,59 @@ ContainerCfgBuilder &ContainerCfgBuilder::addExtraMounts(std::vector<Mount> extr
 
 ContainerCfgBuilder &ContainerCfgBuilder::setStartContainerHooks(std::vector<Hook> hooks) noexcept
 {
-    config.hooks = Hooks{};
-    config.hooks->startContainer = hooks;
+    startContainerHooks = hooks;
+    return *this;
+}
+
+ContainerCfgBuilder &ContainerCfgBuilder::addExtraHook(const std::string &type, Hook hook) noexcept
+{
+    if (!extraHooks) {
+        extraHooks = std::vector<std::pair<std::string, Hook>>{};
+    }
+
+    extraHooks->emplace_back(std::make_pair(type, std::move(hook)));
 
     return *this;
+}
+
+utils::error::Result<void> ContainerCfgBuilder::buildHooks() noexcept
+{
+    if (startContainerHooks || extraHooks) {
+        config.hooks = Hooks{};
+
+        if (startContainerHooks) {
+            config.hooks->startContainer = startContainerHooks;
+        }
+
+        if (extraHooks) {
+            for (auto &[type, hook] : *extraHooks) {
+                std::optional<std::vector<Hook>> *phook = nullptr;
+                if (type == "createContainer") {
+                    phook = &config.hooks->createContainer;
+                } else if (type == "createRuntime") {
+                    phook = &config.hooks->createRuntime;
+                } else if (type == "poststart") {
+                    phook = &config.hooks->poststart;
+                } else if (type == "poststop") {
+                    phook = &config.hooks->poststop;
+                } else if (type == "prestart") {
+                    phook = &config.hooks->prestart;
+                } else if (type == "startContainer") {
+                    phook = &config.hooks->startContainer;
+                } else {
+                    continue;
+                }
+
+                if (!phook->has_value()) {
+                    *phook = std::vector<Hook>{};
+                }
+
+                phook->value().emplace_back(std::move(hook));
+            }
+        }
+    }
+
+    return LINGLONG_OK;
 }
 
 ContainerCfgBuilder &ContainerCfgBuilder::addMask(const std::vector<std::string> &masks) noexcept
@@ -1627,6 +1674,72 @@ ContainerCfgBuilder::applyExecutablePatch(const std::filesystem::path &patchFile
     return LINGLONG_OK;
 }
 
+utils::error::Result<void>
+ContainerCfgBuilder::applyCDIPatch(const linglong::cdi::types::ContainerEdits &edits) noexcept
+{
+    if (edits.env) {
+        for (auto &e : *edits.env) {
+            auto delimiter = e.find('=');
+            if (delimiter != std::string::npos) {
+                appendEnv(e.substr(0, delimiter), e.substr(delimiter + 1));
+            }
+        }
+    }
+
+    if (edits.deviceNodes) {
+        if (!devNodeMount) {
+            devNodeMount = std::vector<Mount>{};
+        }
+        for (auto &d : *edits.deviceNodes) {
+            Mount mount{ .destination = d.path,
+                         .options = string_list{ "bind" },
+                         .source = d.hostPath.has_value() ? *d.hostPath : d.path,
+                         .type = "bind" };
+
+            devNodeMount->emplace_back(std::move(mount));
+        }
+    }
+
+    if (edits.mounts) {
+        auto mountType = [](const cdi::types::Mount &m) -> std::string {
+            if (m.type) {
+                return m.type.value();
+            }
+
+            if (m.options) {
+                auto it =
+                  std::find_if(m.options->begin(), m.options->end(), [](const std::string &option) {
+                      return option == "bind" || option == "rbind";
+                  });
+                if (it != m.options->end()) {
+                    return "bind";
+                }
+            }
+
+            return "none";
+        };
+
+        for (auto &m : *edits.mounts) {
+            Mount mount{ .destination = m.containerPath,
+                         .options = m.options,
+                         .source = m.hostPath,
+                         .type = mountType(m) };
+
+            addExtraMount(std::move(mount));
+        }
+    }
+
+    if (edits.hooks) {
+        for (auto &h : *edits.hooks) {
+            addExtraHook(
+              h.hookName,
+              Hook{ .args = h.args, .env = h.env, .path = h.path, .timeout = h.timeout });
+        }
+    }
+
+    return LINGLONG_OK;
+}
+
 utils::error::Result<void> ContainerCfgBuilder::mergeMount() noexcept
 {
     LINGLONG_TRACE("merge all mounts");
@@ -2104,6 +2217,7 @@ utils::error::Result<void> ContainerCfgBuilder::build() noexcept
     BUILD_STEP(buildMountCache);
     BUILD_STEP(buildLDCache);
     BUILD_STEP(buildEnv);
+    BUILD_STEP(buildHooks);
     BUILD_STEP(mergeMount);
     BUILD_STEP(finalize);
     BUILD_STEP(applyPatch);

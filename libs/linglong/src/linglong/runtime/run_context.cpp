@@ -4,12 +4,13 @@
 
 #include "run_context.h"
 
+#include "linglong/cdi/cdi.h"
 #include "linglong/common/display.h"
 #include "linglong/common/strings.h"
 #include "linglong/extension/extension.h"
+#include "linglong/oci-cfg-generators/container_cfg_builder.h"
 #include "linglong/runtime/container_builder.h"
 #include "linglong/runtime/overlayfs_driver.h"
-#include "linglong/utils/file.h"
 #include "linglong/utils/log/log.h"
 
 #include <fmt/ranges.h>
@@ -225,6 +226,10 @@ utils::error::Result<void> RunContext::resolve(const linglong::package::Referenc
     auto timezoneRet = resolveTimeZone();
     if (!timezoneRet) {
         return LINGLONG_ERR("failed to resolve timezone", timezoneRet);
+    }
+
+    if (options.cdiDevices) {
+        contextCfg.cdiDevices = options.cdiDevices.value();
     }
 
     // all reference are cleard , we can get actual layer directory now
@@ -460,11 +465,46 @@ utils::error::Result<void> RunContext::resolve(const api::types::v1::RunContextC
         }
     }
 
+    if (config.cdiDevices) {
+        contextCfg.cdiDevices = config.cdiDevices.value();
+    }
+
     contextCfg.overlayfs = config.overlayfs;
     contextCfg.timezone = config.timezone;
     contextCfg.version = runContextConfigVersion;
 
     return resolveLayer(false, {});
+}
+
+utils::error::Result<void> RunContext::setupCDIDevices(generator::ContainerCfgBuilder &builder,
+                                                       bool applyHooks) const
+{
+    LINGLONG_TRACE("setup CDI devices");
+
+    if (!contextCfg.cdiDevices) {
+        return LINGLONG_OK;
+    }
+
+    for (const auto &device : *contextCfg.cdiDevices) {
+        auto edits = cdi::getCDIDeviceEdits(device);
+        if (!edits) {
+            return LINGLONG_ERR(
+              fmt::format("failed to resolve CDI device edits {}={}", device.kind, device.name),
+              edits);
+        }
+
+        auto containerEdits = *edits;
+        if (!applyHooks) {
+            containerEdits.hooks = std::nullopt;
+        }
+
+        auto applyRes = builder.applyCDIPatch(containerEdits);
+        if (!applyRes) {
+            return LINGLONG_ERR("apply CDI device edits", applyRes);
+        }
+    }
+
+    return LINGLONG_OK;
 }
 
 utils::error::Result<void> RunContext::resolveLayer(bool depsBinaryOnly,

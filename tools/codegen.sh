@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
+# SPDX-FileCopyrightText: 2023 - 2026 UnionTech Software Technology Co., Ltd.
 #
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -134,3 +134,11 @@ generate \
         "linglong::api::types::v1" \
         "/libs/api/src/" \
         "linglong/api/types/v1"
+
+rm -f "$repoRoot/libs/cdi/src/linglong/cdi/types/*"
+generate \
+        "$repoRoot/libs/cdi/schema.json" \
+        CDI \
+        "linglong::cdi::types" \
+        "/libs/cdi/src/" \
+        "linglong/cdi/types"

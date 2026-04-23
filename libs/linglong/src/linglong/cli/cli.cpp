@@ -24,6 +24,7 @@
 #include "linglong/api/types/v1/PackageManager1UninstallParameters.hpp"
 #include "linglong/api/types/v1/State.hpp"
 #include "linglong/api/types/v1/UpgradeListResult.hpp"
+#include "linglong/cdi/cdi.h"
 #include "linglong/cli/printer.h"
 #include "linglong/common/dir.h"
 #include "linglong/common/error.h"
@@ -621,6 +622,14 @@ int Cli::run(const RunOptions &options)
     }
     if (runtimeConfig && runtimeConfig->extDefs) {
         opts.externalExtensionDefs = std::move(runtimeConfig->extDefs).value();
+    }
+    if (!options.devices.empty()) {
+        auto cdiDevices = cdi::getCDIDevices(options.cdiSpecDir, options.devices);
+        if (!cdiDevices) {
+            handleCommonError(cdiDevices.error());
+            return -1;
+        }
+        opts.cdiDevices = std::move(*cdiDevices);
     }
 
     // 调整日志输出，打印扩展列表（用逗号拼接）

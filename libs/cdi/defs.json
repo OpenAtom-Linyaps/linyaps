@@ -1,0 +1,192 @@
+{
+    "description": "Definitions used throughout the Container Device Interface Specification",
+    "definitions": {
+        "uint32": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4294967295
+        },
+        "int64": {
+            "type": "integer",
+            "minimum": -9223372036854775808,
+            "maximum": 9223372036854775807
+        },
+        "ArrayOfStrings": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "FileName": {
+            "type": "string"
+        },
+        "FilePath": {
+            "type": "string"
+        },
+        "Env": {
+            "$ref": "#/definitions/ArrayOfStrings"
+        },
+        "InterfaceName": {
+            "type": "string"
+        },
+        "mapStringString": {
+            "type": "object",
+            "additionalProperties": {
+                "type": "string"
+            }
+        },
+        "DeviceNode": {
+            "type": "object",
+            "properties": {
+                "path": {
+                    "$ref": "#/definitions/FilePath"
+                },
+                "hostPath": {
+                    "$ref": "#/definitions/FilePath"
+                },
+                "permissions": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "major": {
+                    "$ref": "#/definitions/int64"
+                },
+                "minor": {
+                    "$ref": "#/definitions/int64"
+                },
+                "uid": {
+                    "$ref": "#/definitions/uint32"
+                },
+                "gid": {
+                    "$ref": "#/definitions/uint32"
+                }
+            },
+            "required": [
+                "path"
+            ]
+        },
+        "Mount": {
+            "type": "object",
+            "properties": {
+                "hostPath": {
+                    "$ref": "#/definitions/FilePath"
+                },
+                "containerPath": {
+                    "$ref": "#/definitions/FilePath"
+                },
+                "options": {
+                    "$ref": "#/definitions/ArrayOfStrings"
+                },
+                "type": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "hostPath",
+                "containerPath"
+            ]
+        },
+        "Hook": {
+            "type": "object",
+            "properties": {
+                "hookName": {
+                    "type": "string"
+                },
+                "path": {
+                    "$ref": "#/definitions/FilePath"
+                },
+                "args": {
+                    "$ref": "#/definitions/ArrayOfStrings"
+                },
+                "env": {
+                    "$ref": "#/definitions/ArrayOfStrings"
+                },
+                "timeout": {
+                    "$ref": "#/definitions/uint32"
+                }
+            },
+            "required": [
+                "hookName",
+                "path"
+            ]
+        },
+        "LinuxNetDevice": {
+            "type": "object",
+            "properties": {
+                "hostInterfaceName": {
+                    "$ref": "#/definitions/InterfaceName"
+                },
+                "name": {
+                    "$ref": "#/definitions/InterfaceName"
+                }
+            },
+            "required": [
+                "hostInterfaceName",
+                "name"
+            ]
+        },
+        "containerEdits": {
+            "type": "object",
+            "properties": {
+                "env": {
+                    "$ref": "#/definitions/Env"
+                },
+                "deviceNodes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/DeviceNode"
+                    }
+                },
+                "netDevices": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/LinuxNetDevice"
+                    }
+                },
+                "mounts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Mount"
+                    }
+                },
+                "hooks": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Hook"
+                    }
+                },
+                "intelRdt": {
+                    "type": "object",
+                    "properties": {
+                        "closID": {
+                            "$ref": "#/definitions/FileName"
+                        },
+                        "l3CacheSchema": {
+                            "type": "string"
+                        },
+                        "memBwSchema": {
+                            "type": "string"
+                        },
+                        "schemata": {
+                            "$ref": "#/definitions/ArrayOfStrings"
+                        },
+                        "enableMonitoring": {
+                            "type": "boolean"
+                        }
+                    }
+                },
+                "additionalGids": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/uint32"
+                    }
+                }
+            }
+        },
+        "annotations": {
+            "$ref": "#/definitions/mapStringString"
+        }
+    }
+}

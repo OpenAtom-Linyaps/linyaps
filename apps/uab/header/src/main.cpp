@@ -1,11 +1,11 @@
-// SPDX-FileCopyrightText: 2024 - 2025 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2024 - 2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 #include "light_elf.h"
 #include "linglong/api/types/v1/Generators.hpp" // IWYU pragma: keep
 #include "linglong/api/types/v1/UabMetaInfo.hpp"
-#include "sha256.h"
+#include "linglong/utils/sha256.h"
 
 #include <gelf.h>
 #include <getopt.h>

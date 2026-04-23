@@ -59,6 +59,8 @@ struct RunOptions
     std::vector<std::string> extensions;
     bool privileged{ false };
     std::vector<std::string> capsAdd;
+    std::vector<std::string> cdiSpecDir = { "/etc/cdi", "/var/run/cdi" };
+    std::vector<std::string> devices;
 };
 
 struct EnterOptions

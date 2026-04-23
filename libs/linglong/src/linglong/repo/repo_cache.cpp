@@ -104,7 +104,8 @@ utils::error::Result<void> RepoCache::rebuild(const api::types::v1::RepoConfigV2
         g_clear_error(&gErr);
         g_autofree gchar *content = nullptr;
         if (!g_file_load_contents(infoFile, nullptr, &content, nullptr, nullptr, &gErr)) {
-            return LINGLONG_ERR(fmt::format("g_file_load_contents: {}", ptr_view(gErr)));
+            LogE("skip broken ref {}, failed to load info.json: {}", ref, ptr_view(gErr));
+            continue;
         }
         auto info = utils::serialize::parsePackageInfo(content);
         if (!info) {

@@ -154,6 +154,8 @@ public:
            const std::optional<std::string> &subRef = std::nullopt) noexcept;
     utils::error::Result<void>
     remove(const api::types::v1::RepositoryCacheLayersItem &item) noexcept;
+    utils::error::Result<void>
+    clean(const std::vector<api::types::v1::RepositoryCacheLayersItem> &reserved) noexcept;
 
     utils::error::Result<void> prune();
 
@@ -241,10 +243,17 @@ private:
     ensureEmptyLayerDir(const std::string &commit) const noexcept;
     utils::error::Result<void> handleRepositoryUpdate(
       QDir layerDir, const api::types::v1::RepositoryCacheLayersItem &layer) noexcept;
+    utils::error::Result<void> removeOstreeRef(const std::string &remote,
+                                               const std::string &ref,
+                                               const std::string &commit) noexcept;
     utils::error::Result<void>
     removeOstreeRef(const api::types::v1::RepositoryCacheLayersItem &layer) noexcept;
+    utils::error::Result<void> undeployedLayer(const std::string &commit) noexcept;
     utils::error::Result<void>
     undeployedLayer(const api::types::v1::RepositoryCacheLayersItem &layer) noexcept;
+    [[nodiscard]] std::filesystem::path layerPath(const std::string &commit) const noexcept;
+    [[nodiscard]] utils::error::Result<package::LayerDir>
+    getLayerDir(const std::string &commit) const noexcept;
     [[nodiscard]] utils::error::Result<package::LayerDir>
     getLayerDir(const api::types::v1::RepositoryCacheLayersItem &layer) const noexcept;
 

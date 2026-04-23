@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+ * SPDX-FileCopyrightText: 2025 - 2026 UnionTech Software Technology Co., Ltd.
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
@@ -142,29 +142,14 @@ utils::error::Result<void> InstallHookManager::parseInstallHooks()
     return LINGLONG_OK;
 }
 
-utils::error::Result<void> InstallHookManager::executeInstallHooks(int fd) noexcept
+utils::error::Result<void>
+InstallHookManager::executeInstallHooks(const std::string &uabPath) noexcept
 {
     LINGLONG_TRACE("Executing pre-install hooks.");
 
     if (preInstallCommands.empty()) {
         return LINGLONG_OK;
     }
-
-    // Convert fd into a specific path using /proc/pid/fd/fd_num
-    std::ostringstream oss;
-    oss << "/proc/" << getpid() << "/fd/" << fd;
-
-    std::array<char, PATH_MAX + 1> pathBuf{};
-    auto size = readlink(oss.str().c_str(), pathBuf.data(), PATH_MAX);
-
-    if (size == -1) {
-        return LINGLONG_ERR(fmt::format("Failed to read file link for fd {}: {}",
-                                        fd,
-                                        common::error::errorString(errno)));
-    }
-
-    pathBuf[size] = '\0';
-    std::string uabPath = pathBuf.data();
 
     std::vector<std::pair<std::string, std::string>> envVars = { { "LINGLONG_UAB_PATH", uabPath } };
 

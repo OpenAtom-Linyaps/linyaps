@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+ * SPDX-FileCopyrightText: 2025 - 2026 UnionTech Software Technology Co., Ltd.
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
@@ -24,7 +24,7 @@ public:
     ~InstallHookManager() = default;
 
     utils::error::Result<void> parseInstallHooks();
-    utils::error::Result<void> executeInstallHooks(int fd) noexcept;
+    utils::error::Result<void> executeInstallHooks(const std::string &uabPath) noexcept;
     utils::error::Result<void> executePostInstallHooks(const std::string &appID,
                                                        const std::string &path) noexcept;
     utils::error::Result<void> executePostUninstallHooks(const std::string &appID) noexcept;

@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2025 - 2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -14,6 +14,7 @@
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/utils/transaction.h"
 
+#include <memory>
 #include <optional>
 #include <vector>
 
@@ -22,10 +23,11 @@ namespace linglong::service {
 class UabInstallationAction : public Action
 {
 public:
-    static std::shared_ptr<UabInstallationAction> create(int uabFD,
-                                                         PackageManager &pm,
-                                                         repo::OSTreeRepo &repo,
-                                                         api::types::v1::CommonOptions options);
+    static std::shared_ptr<UabInstallationAction>
+    create(std::shared_ptr<CachedInstallFile> stagedFile,
+           PackageManager &pm,
+           repo::OSTreeRepo &repo,
+           api::types::v1::CommonOptions options);
 
     using CheckedLayers = std::pair<std::vector<linglong::api::types::v1::UabLayer>,
                                     std::vector<linglong::api::types::v1::UabLayer>>;
@@ -37,7 +39,7 @@ public:
       repo::OSTreeRepo &repo, const std::vector<api::types::v1::UabLayer> &layers);
     static bool extraModuleOnly(const std::vector<api::types::v1::UabLayer> &layers);
 
-    virtual ~UabInstallationAction();
+    ~UabInstallationAction() override = default;
 
     virtual utils::error::Result<void> prepare();
     virtual utils::error::Result<void> doAction(PackageTask &task);
@@ -50,7 +52,7 @@ protected:
     virtual utils::error::Result<void> postInstall(PackageTask &task);
 
 private:
-    UabInstallationAction(int uabFD,
+    UabInstallationAction(std::shared_ptr<CachedInstallFile> stagedFile,
                           PackageManager &pm,
                           repo::OSTreeRepo &repo,
                           api::types::v1::CommonOptions options);
@@ -60,7 +62,7 @@ private:
     utils::error::Result<void> installUabLayer(const std::vector<api::types::v1::UabLayer> &layers,
                                                std::optional<std::string> subRef = std::nullopt);
 
-    int fd;
+    std::shared_ptr<CachedInstallFile> stagedFile;
     ActionOperation operation;
     std::string taskName;
     CheckedLayers checkedLayers;

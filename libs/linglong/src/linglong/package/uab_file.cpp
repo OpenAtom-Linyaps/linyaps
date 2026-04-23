@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2024 - 2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -30,9 +30,10 @@
 
 namespace linglong::package {
 
-utils::error::Result<std::unique_ptr<UABFile>> UABFile::loadFromFile(int fd) noexcept
+utils::error::Result<std::unique_ptr<UABFile>>
+UABFile::loadFromFile(const std::string &path) noexcept
 {
-    LINGLONG_TRACE("load uab file from fd")
+    LINGLONG_TRACE("load uab file from path")
 
     struct EnableMaker : public UABFile
     {
@@ -40,9 +41,15 @@ utils::error::Result<std::unique_ptr<UABFile>> UABFile::loadFromFile(int fd) noe
     };
 
     auto file = std::make_unique<EnableMaker>();
+    file->setFileName(QString::fromStdString(path));
 
-    if (!file->open(fd, QIODevice::ReadOnly, FileHandleFlag::AutoCloseHandle)) {
+    if (!file->open(QIODevice::ReadOnly)) {
         return LINGLONG_ERR(fmt::format("open uab failed: {}", file->errorString()));
+    }
+
+    auto fd = file->handle();
+    if (fd < 0) {
+        return LINGLONG_ERR(fmt::format("failed to get valid file descriptor from path: {}", path));
     }
 
     elf_version(EV_CURRENT);
@@ -332,19 +339,14 @@ utils::error::Result<std::filesystem::path> UABFile::extractSignData() noexcept
         seek(0);
     });
 
-    auto selfFd = handle();
     auto totalBytes = signSection->sh_size;
     std::array<unsigned char, 4096> buf{};
     while (totalBytes > 0) {
         auto bytesRead = totalBytes > buf.size() ? buf.size() : totalBytes;
-        auto readBytes = ::read(selfFd, buf.data(), bytesRead);
+        auto readBytes = this->read(reinterpret_cast<char *>(buf.data()), bytesRead);
         if (readBytes == -1) {
-            if (errno == EINTR) {
-                errno = 0;
-                continue;
-            }
             return LINGLONG_ERR(
-              fmt::format("read from sign section error: {}", common::error::errorString(errno)));
+              fmt::format("read from sign section error: {}", this->errorString().toStdString()));
         }
 
         while (true) {

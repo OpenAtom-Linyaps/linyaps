@@ -1,18 +1,26 @@
-// SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2025 - 2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 #include "uab_installation.h"
 
+#include "linglong/common/error.h"
+#include "linglong/utils/finally/finally.h"
 #include "linglong/utils/log/log.h"
+
+#include <fcntl.h>
+#include <unistd.h>
 
 namespace linglong::service {
 
-std::shared_ptr<UabInstallationAction> UabInstallationAction::create(
-  int uabFD, PackageManager &pm, repo::OSTreeRepo &repo, api::types::v1::CommonOptions opts)
+std::shared_ptr<UabInstallationAction>
+UabInstallationAction::create(std::shared_ptr<CachedInstallFile> stagedFile,
+                              PackageManager &pm,
+                              repo::OSTreeRepo &repo,
+                              api::types::v1::CommonOptions opts)
 {
-    auto p = new UabInstallationAction(uabFD, pm, repo, std::move(opts));
-    return std::shared_ptr<UabInstallationAction>(p);
+    return std::shared_ptr<UabInstallationAction>(
+      new UabInstallationAction(std::move(stagedFile), pm, repo, std::move(opts)));
 }
 
 UabInstallationAction::CheckedLayers
@@ -176,18 +184,13 @@ bool UabInstallationAction::extraModuleOnly(const std::vector<api::types::v1::Ua
     return true;
 }
 
-UabInstallationAction::UabInstallationAction(int uabFD,
+UabInstallationAction::UabInstallationAction(std::shared_ptr<CachedInstallFile> stagedFile,
                                              PackageManager &pm,
                                              repo::OSTreeRepo &repo,
                                              api::types::v1::CommonOptions opts)
     : Action(pm, repo, opts)
-    , fd(dup(uabFD))
+    , stagedFile(std::move(stagedFile))
 {
-}
-
-UabInstallationAction::~UabInstallationAction()
-{
-    close(fd);
 }
 
 utils::error::Result<void> UabInstallationAction::prepare()
@@ -198,9 +201,15 @@ utils::error::Result<void> UabInstallationAction::prepare()
         return LINGLONG_OK;
     }
 
-    auto uabFileRet = package::UABFile::loadFromFile(fd);
+    if (!this->stagedFile) {
+        return LINGLONG_ERR("cached uab file missing");
+    }
+
+    auto uabFileRet = package::UABFile::loadFromFile(this->stagedFile->path());
     if (!uabFileRet) {
-        return LINGLONG_ERR(fmt::format("failed to load uab file from fd {}", fd), uabFileRet);
+        return LINGLONG_ERR(
+          fmt::format("failed to load cached uab file from path {}", this->stagedFile->path()),
+          uabFileRet);
     }
     auto uabFile = std::move(uabFileRet).value();
 

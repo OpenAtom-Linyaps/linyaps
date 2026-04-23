@@ -7,6 +7,14 @@
 /.idea/
 /.vscode/
 /.cache/
+.omx/
+.opencode/
+.claude/
+.gemini/
+.cursor/
+.agent/
+.antigravity/
+.codex/
 
 /tools/node_modules
 /tools/package-lock.json

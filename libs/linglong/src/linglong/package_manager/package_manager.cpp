@@ -48,12 +48,16 @@
 #include <QEventLoop>
 #include <QMetaObject>
 #include <QTimer>
+#include <QUuid>
 
 #include <algorithm>
+#include <array>
 #include <cstdint>
+#include <filesystem>
 #include <utility>
 
 #include <fcntl.h>
+#include <unistd.h>
 
 namespace linglong::service {
 
@@ -83,6 +87,114 @@ QVariantMap toDBusReply(utils::error::ErrorCode code,
 }
 
 } // namespace
+
+CachedInstallFile::CachedInstallFile(std::string cachedFilePath) noexcept
+    : cachedFilePath(std::move(cachedFilePath))
+{
+}
+
+CachedInstallFile::~CachedInstallFile()
+{
+    if (this->cachedFilePath.empty()) {
+        return;
+    }
+
+    std::error_code ec;
+    std::filesystem::remove(this->cachedFilePath, ec);
+    if (ec) {
+        LogW("failed to remove cached install file {}: {}", this->cachedFilePath, ec.message());
+    }
+}
+
+auto PackageManager::stageInstallFile(const QDBusUnixFileDescriptor &fd,
+                                      const QString &fileType,
+                                      const std::filesystem::path &cacheDir) noexcept
+  -> utils::error::Result<std::shared_ptr<CachedInstallFile>>
+{
+    LINGLONG_TRACE("stage install file");
+
+    auto ensureRet = utils::ensureDirectory(cacheDir.string());
+    if (!ensureRet) {
+        return LINGLONG_ERR("failed to prepare install cache directory", ensureRet);
+    }
+
+    auto cachedPath = cacheDir
+      / fmt::format("install-from-file-{}.{}",
+                    QUuid::createUuid().toString(QUuid::Id128).toStdString(),
+                    fileType.toStdString());
+
+    auto inputFd = ::dup(fd.fileDescriptor());
+    if (inputFd < 0) {
+        return LINGLONG_ERR(fmt::format("failed to duplicate install file descriptor: {}",
+                                        common::error::errorString(errno)));
+    }
+    auto closeInputFd = utils::finally::finally([&inputFd] {
+        if (inputFd >= 0) {
+            ::close(inputFd);
+        }
+    });
+
+    if (::lseek(inputFd, 0, SEEK_SET) == -1 && errno != ESPIPE) {
+        return LINGLONG_ERR(fmt::format("failed to rewind install file descriptor: {}",
+                                        common::error::errorString(errno)));
+    }
+
+    auto outputFd =
+      ::open(cachedPath.c_str(), O_WRONLY | O_CREAT | O_EXCL | O_TRUNC | O_CLOEXEC, 0600);
+    if (outputFd < 0) {
+        return LINGLONG_ERR(fmt::format("failed to create cached install file {}: {}",
+                                        cachedPath.string(),
+                                        common::error::errorString(errno)));
+    }
+
+    bool keepCachedFile = false;
+    auto closeOutputFd = utils::finally::finally([&outputFd, &keepCachedFile, &cachedPath] {
+        if (outputFd >= 0) {
+            ::close(outputFd);
+        }
+        if (!keepCachedFile) {
+            std::error_code ec;
+            std::filesystem::remove(cachedPath, ec);
+        }
+    });
+
+    std::array<char, 64 * 1024> buffer;
+    while (true) {
+        auto bytesRead = ::read(inputFd, buffer.data(), buffer.size());
+        if (bytesRead == 0) {
+            break;
+        }
+
+        if (bytesRead < 0) {
+            if (errno == EINTR) {
+                continue;
+            }
+
+            return LINGLONG_ERR(fmt::format("failed to read install file descriptor: {}",
+                                            common::error::errorString(errno)));
+        }
+
+        ssize_t bytesWrittenTotal = 0;
+        while (bytesWrittenTotal < bytesRead) {
+            auto bytesWritten =
+              ::write(outputFd, buffer.data() + bytesWrittenTotal, bytesRead - bytesWrittenTotal);
+            if (bytesWritten < 0) {
+                if (errno == EINTR) {
+                    continue;
+                }
+
+                return LINGLONG_ERR(fmt::format("failed to write cached install file {}: {}",
+                                                cachedPath.string(),
+                                                common::error::errorString(errno)));
+            }
+
+            bytesWrittenTotal += bytesWritten;
+        }
+    }
+
+    keepCachedFile = true;
+    return std::make_shared<CachedInstallFile>(cachedPath.string());
+}
 
 PackageManager::PackageManager(
   std::unique_ptr<linglong::repo::OSTreeRepo> repo,
@@ -477,10 +589,10 @@ void PackageManager::setConfiguration(const QVariantMap &parameters) noexcept
     }
 }
 
-QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
+QVariantMap PackageManager::installFromLayer(const std::shared_ptr<CachedInstallFile> &stagedFile,
                                              const api::types::v1::CommonOptions &options) noexcept
 {
-    auto layerFileRet = package::LayerFile::New(fd.fileDescriptor());
+    auto layerFileRet = package::LayerFile::New(QString::fromStdString(stagedFile->path()));
     if (!layerFileRet) {
         return toDBusReply(layerFileRet);
     }
@@ -570,7 +682,7 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
 
     auto installer =
       [this,
-       fdDup = fd, // keep file descriptor don't close by the destructor of QDBusUnixFileDescriptor
+       fileDup = stagedFile, // keep file don't close by the destructor
        packageRef,
        layerFile = *layerFileRet,
        module = packageInfo.packageInfoV2Module,
@@ -701,7 +813,7 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
     });
 }
 
-QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd,
+QVariantMap PackageManager::installFromUAB(const std::shared_ptr<CachedInstallFile> &stagedFile,
                                            const api::types::v1::CommonOptions &options) noexcept
 {
     std::unique_ptr<utils::InstallHookManager> installHookManager =
@@ -712,13 +824,13 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd,
         return toDBusReply(ret);
     }
 
-    ret = installHookManager->executeInstallHooks(fd.fileDescriptor());
+    ret = installHookManager->executeInstallHooks(stagedFile->path());
     if (!ret) {
         return toDBusReply(utils::error::ErrorCode::Failed,
                            "uab package signature verification failed.");
     }
 
-    auto action = UabInstallationAction::create(fd.fileDescriptor(), *this, *repo, options);
+    auto action = UabInstallationAction::create(stagedFile, *this, *repo, options);
     if (!action) {
         return toDBusReply(utils::error::ErrorCode::Failed,
                            "failed to create uab installation action");
@@ -740,19 +852,22 @@ auto PackageManager::InstallFromFile(const QDBusUnixFileDescriptor &fd,
         return toDBusReply(opts);
     }
 
-    const static QHash<QString,
-                       QVariantMap (PackageManager::*)(
-                         const QDBusUnixFileDescriptor &,
-                         const api::types::v1::CommonOptions &) noexcept>
-      installers = { { "layer", &PackageManager::installFromLayer },
-                     { "uab", &PackageManager::installFromUAB } };
-
-    if (!installers.contains(fileType)) {
+    if (fileType != "layer" && fileType != "uab") {
         auto msg = fmt::format("{} is unsupported fileType", fileType.toStdString());
         return toDBusReply(utils::error::ErrorCode::AppInstallUnsupportedFileFormat, msg);
     }
 
-    return std::invoke(installers[fileType], this, fd, *opts);
+    auto stagedFile =
+      stageInstallFile(fd, fileType, std::filesystem::path(LINGLONG_ROOT) / "cache");
+    if (!stagedFile) {
+        return toDBusReply(stagedFile);
+    }
+
+    if (fileType == "layer") {
+        return installFromLayer(*stagedFile, *opts);
+    }
+
+    return installFromUAB(*stagedFile, *opts);
 }
 
 auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariantMap

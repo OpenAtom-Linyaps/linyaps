@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024-2026 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2024 - 2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -120,12 +120,8 @@ std::unique_ptr<TempDir> UabFileTest::testDir;
 
 TEST_F(UabFileTest, UnpackFuseOffset)
 {
-    // 打开UAB文件
-    int fd = open(uabFile.c_str(), O_RDONLY);
-    ASSERT_NE(fd, -1) << "Failed to open uab file" << strerror(errno);
-
     // 初始化UABFile对象
-    auto uab = linglong::package::UABFile::loadFromFile(fd);
+    auto uab = linglong::package::UABFile::loadFromFile(uabFile);
     ASSERT_TRUE(uab.has_value()) << "Failed to load uab file";
     auto unpackRet = (*uab)->unpack();
     ASSERT_TRUE(unpackRet.has_value())

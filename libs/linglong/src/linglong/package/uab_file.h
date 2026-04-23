@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2024 - 2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -24,7 +24,8 @@ class UABFile : public QFile
     friend class MockUabFile;
 
 public:
-    static utils::error::Result<std::unique_ptr<UABFile>> loadFromFile(int fd) noexcept;
+    static utils::error::Result<std::unique_ptr<UABFile>>
+    loadFromFile(const std::string &path) noexcept;
     UABFile(UABFile &&) = delete;
     UABFile &operator=(UABFile &&) = delete;
     ~UABFile() override;

@@ -24,12 +24,29 @@
 #include <QList>
 #include <QObject>
 
+#include <filesystem>
 #include <memory>
 #include <optional>
 
 namespace linglong::service {
 
 class Action;
+
+class CachedInstallFile
+{
+public:
+    explicit CachedInstallFile(std::string cachedFilePath) noexcept;
+    ~CachedInstallFile();
+    CachedInstallFile(const CachedInstallFile &) = delete;
+    CachedInstallFile(CachedInstallFile &&) = delete;
+    auto operator=(const CachedInstallFile &) -> CachedInstallFile & = delete;
+    auto operator=(CachedInstallFile &&) -> CachedInstallFile & = delete;
+
+    [[nodiscard]] const std::string &path() const noexcept { return cachedFilePath; }
+
+private:
+    std::string cachedFilePath;
+};
 
 class PackageManager : public QObject, protected QDBusContext
 {
@@ -69,6 +86,11 @@ public
 
     // Nothing to do here, Permissions() will be rejected in org.deepin.linglong.PackageManager.conf
     void Permissions() { }
+
+    [[nodiscard]] static utils::error::Result<std::shared_ptr<CachedInstallFile>>
+    stageInstallFile(const QDBusUnixFileDescriptor &fd,
+                     const QString &fileType,
+                     const std::filesystem::path &cacheDir) noexcept;
 
     bool waitConfirm(PackageTask &taskRef,
                      api::types::v1::InteractionMessageType msgType,
@@ -126,10 +148,10 @@ Q_SIGNALS:
     void ReplyReceived(const QVariantMap &replies);
 
 private:
-    QVariantMap installFromLayer(const QDBusUnixFileDescriptor &fd,
+    QVariantMap installFromLayer(const std::shared_ptr<CachedInstallFile> &stagedFile,
                                  const api::types::v1::CommonOptions &options) noexcept;
 
-    QVariantMap installFromUAB(const QDBusUnixFileDescriptor &fd,
+    QVariantMap installFromUAB(const std::shared_ptr<CachedInstallFile> &stagedFile,
                                const api::types::v1::CommonOptions &options) noexcept;
 
     [[nodiscard]] utils::error::Result<void> lockRepo() noexcept;

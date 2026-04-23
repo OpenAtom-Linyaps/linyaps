@@ -8,6 +8,8 @@
 #include "linglong/utils/error/error.h"
 #include "wayland-security-context-v1.h"
 
+#include <filesystem>
+
 namespace linglong::runtime {
 
 class WaylandSecurityContextManagerV1;

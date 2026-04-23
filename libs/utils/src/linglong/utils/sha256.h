@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2024 - 2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -22,7 +22,7 @@ constexpr static uint32_t rotate_right(uint32_t x, unsigned n) noexcept
 constexpr static uint32_t to_big_endian(uint32_t val) noexcept
 {
 #if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-    return x;
+    return val;
 #elif __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
     return (((val & 0xff000000) >> 24) | ((val & 0x00ff0000) >> 8) | ((val & 0x0000ff00) << 8)
             | ((val & 0x000000ff) << 24));
@@ -32,7 +32,7 @@ constexpr static uint32_t to_big_endian(uint32_t val) noexcept
 constexpr static uint64_t to_big_endian(uint64_t val) noexcept
 {
 #if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-    return x;
+    return val;
 #elif __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
     return (((val & 0xff00000000000000ull) >> 56) | ((val & 0x00ff000000000000ull) >> 40)
             | ((val & 0x0000ff0000000000ull) >> 24) | ((val & 0x000000ff00000000ull) >> 8)

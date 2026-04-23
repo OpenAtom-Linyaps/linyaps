@@ -8,12 +8,14 @@
 
 #include "linglong/cli/cli.h"
 #include "linglong/common/dir.h"
+#include "linglong/common/strings.h"
+#include "linglong/oci-cfg-generators/container_cfg_builder.h"
 #include "linglong/package/architecture.h"
 #include "linglong/runtime/run_context.h"
-#include "linglong/utils/file.h"
 #include "linglong/utils/log/log.h"
 
 #include <fmt/format.h>
+#include <fmt/ranges.h>
 
 #include <algorithm>
 #include <fstream>
@@ -399,6 +401,11 @@ auto ContainerBuilder::configureInitContainer(PreparedContainer &prepared) noexc
         prepared.cfgBuilder.enableOverlayMode(prepared.context->getBundleDir() / "rootfs", false);
     }
 
+    auto applyRes = runContext.setupCDIDevices(prepared.cfgBuilder);
+    if (!applyRes) {
+        return LINGLONG_ERR(applyRes);
+    }
+
     return LINGLONG_OK;
 }
 
@@ -509,6 +516,11 @@ auto ContainerBuilder::configureRunContainer(PreparedContainer &prepared,
             return LINGLONG_ERR("setup overlayfs", res);
         }
         prepared.cfgBuilder.enableOverlayMode(prepared.context->getBundleDir() / "rootfs", true);
+    }
+
+    auto applyRes = runContext.setupCDIDevices(prepared.cfgBuilder, false);
+    if (!applyRes) {
+        return LINGLONG_ERR(applyRes);
     }
 
     return LINGLONG_OK;

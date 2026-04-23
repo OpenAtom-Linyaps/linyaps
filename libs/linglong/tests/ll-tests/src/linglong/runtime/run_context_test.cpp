@@ -6,9 +6,15 @@
 #include <gtest/gtest.h>
 
 #include "../../common/tempdir.h"
+#include "linglong/oci-cfg-generators/container_cfg_builder.h"
 #include "linglong/package/fuzzy_reference.h"
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/runtime/run_context.h"
+
+#include <QCryptographicHash>
+#include <QFile>
+
+#include <fstream>
 
 using namespace linglong;
 using ::testing::_;
@@ -23,6 +29,17 @@ namespace {
 using RunContext = linglong::runtime::RunContext;
 using RuntimeLayer = linglong::runtime::RuntimeLayer;
 using ResolveOptions = linglong::runtime::ResolveOptions;
+
+std::string specChecksum(const std::filesystem::path &path)
+{
+    QFile file(QString::fromStdString(path.string()));
+    EXPECT_TRUE(file.open(QIODevice::ReadOnly));
+
+    QCryptographicHash hash(QCryptographicHash::Sha256);
+    EXPECT_TRUE(hash.addData(&file));
+
+    return hash.result().toHex().toStdString();
+}
 
 MATCHER_P(FuzzyRefIdEq, id, "")
 {
@@ -615,6 +632,148 @@ TEST_F(RunContextTest, resolveFromConfigBaseOnly)
     EXPECT_TRUE(context.getBaseLayer().has_value());
     EXPECT_FALSE(context.getRuntimeLayer().has_value());
     EXPECT_FALSE(context.getAppLayer().has_value());
+}
+
+TEST_F(RunContextTest, resolveWithCDIDevicesInOptions)
+{
+    LINGLONG_TRACE("resolveWithCDIDevicesInOptions");
+
+    auto baseRef = package::Reference::parse("stable:org.deepin.base/23.0.0/x86_64");
+    ASSERT_TRUE(baseRef.has_value())
+      << "Failed to create base reference: " << baseRef.error().message();
+
+    api::types::v1::RepositoryCacheLayersItem baseItem;
+    baseItem.info.id = "org.deepin.base";
+    baseItem.info.version = "23.0.0";
+    baseItem.info.kind = "base";
+    baseItem.info.channel = "stable";
+    baseItem.info.arch = { std::string{ "x86_64" } };
+
+    EXPECT_CALL(*repo, getLayerItem(*baseRef, _, _)).WillOnce(Return(baseItem));
+
+    package::LayerDir mockLayerDir(tempDir->path() / "merged");
+    EXPECT_CALL(*repo, getMergedModuleDir(*baseRef, _, _))
+      .WillOnce(Return(utils::error::Result<package::LayerDir>(mockLayerDir)));
+
+    const auto specPath = tempDir->path() / "vendor.yaml";
+    std::ofstream spec(specPath);
+    spec << R"(cdiVersion: "0.6.0"
+kind: "vendor.com/device"
+devices:
+  - name: "gpu0"
+    containerEdits:
+      env:
+        - "FOO=BAR"
+)";
+    spec.close();
+
+    RunContext context(*this->repo);
+    auto result = context.resolve(
+      *baseRef,
+      ResolveOptions{
+        .cdiDevices = std::vector<api::types::v1::CdiDeviceEntry>{ api::types::v1::CdiDeviceEntry{
+          .kind = "vendor.com/device",
+          .name = "gpu0",
+          .spec =
+            api::types::v1::CdiSpec{
+              .checksum = specChecksum(specPath),
+              .path = specPath.string(),
+            },
+        } },
+      });
+    ASSERT_TRUE(result.has_value()) << "Failed to resolve config: " << result.error().message();
+
+    const auto &retConfig = context.getConfig();
+    ASSERT_TRUE(retConfig.cdiDevices.has_value());
+    ASSERT_EQ(retConfig.cdiDevices->size(), 1);
+    EXPECT_EQ(retConfig.cdiDevices->at(0).kind, "vendor.com/device");
+    EXPECT_EQ(retConfig.cdiDevices->at(0).name, "gpu0");
+    EXPECT_EQ(retConfig.cdiDevices->at(0).spec.path, specPath.string());
+    EXPECT_FALSE(retConfig.cdiDevices->at(0).spec.checksum.empty());
+
+    EXPECT_CALL(*repo, getLayerItem(*baseRef, _, _)).WillOnce(Return(baseItem));
+    EXPECT_CALL(*repo, getMergedModuleDir(*baseRef, _, _))
+      .WillOnce(Return(utils::error::Result<package::LayerDir>(mockLayerDir)));
+
+    RunContext restored(*this->repo);
+    result = restored.resolve(retConfig);
+    ASSERT_TRUE(result.has_value())
+      << "Failed to resolve config with CDI: " << result.error().message();
+
+    ASSERT_TRUE(restored.getConfig().cdiDevices.has_value());
+    ASSERT_EQ(restored.getConfig().cdiDevices->size(), 1);
+    EXPECT_EQ(restored.getConfig().cdiDevices->at(0).spec.path, specPath.string());
+}
+
+TEST_F(RunContextTest, cdiEnvPreservesEqualsInValue)
+{
+    LINGLONG_TRACE("cdiEnvPreservesEqualsInValue");
+
+    auto baseRef = package::Reference::parse("stable:org.deepin.base/23.0.0/x86_64");
+    ASSERT_TRUE(baseRef.has_value())
+      << "Failed to create base reference: " << baseRef.error().message();
+
+    api::types::v1::RepositoryCacheLayersItem baseItem;
+    baseItem.info.id = "org.deepin.base";
+    baseItem.info.version = "23.0.0";
+    baseItem.info.kind = "base";
+    baseItem.info.channel = "stable";
+    baseItem.info.arch = { std::string{ "x86_64" } };
+
+    EXPECT_CALL(*repo, getLayerItem(*baseRef, _, _)).WillOnce(Return(baseItem));
+
+    package::LayerDir mockLayerDir(tempDir->path() / "merged");
+    EXPECT_CALL(*repo, getMergedModuleDir(*baseRef, _, _))
+      .WillOnce(Return(utils::error::Result<package::LayerDir>(mockLayerDir)));
+
+    const auto specPath = tempDir->path() / "vendor-env.yaml";
+    std::ofstream spec(specPath);
+    spec << R"(cdiVersion: "0.6.0"
+kind: "vendor.com/device"
+devices:
+  - name: "gpu0"
+    containerEdits:
+      env:
+        - "FOO=a=b"
+)";
+    spec.close();
+
+    RunContext context(*this->repo);
+    auto result = context.resolve(
+      *baseRef,
+      ResolveOptions{
+        .cdiDevices = std::vector<api::types::v1::CdiDeviceEntry>{ api::types::v1::CdiDeviceEntry{
+          .kind = "vendor.com/device",
+          .name = "gpu0",
+          .spec =
+            api::types::v1::CdiSpec{
+              .checksum = specChecksum(specPath),
+              .path = specPath.string(),
+            },
+        } },
+      });
+    ASSERT_TRUE(result.has_value()) << "Failed to resolve config: " << result.error().message();
+
+    const auto basePath = tempDir->path() / "base";
+    const auto bundlePath = tempDir->path() / "bundle";
+    std::filesystem::create_directories(basePath);
+    std::filesystem::create_directories(bundlePath);
+
+    generator::ContainerCfgBuilder builder;
+    builder.setAppId("org.deepin.base")
+      .setBasePath(basePath)
+      .setBundlePath(bundlePath)
+      .disablePatch();
+
+    result = context.setupCDIDevices(builder);
+    ASSERT_TRUE(result.has_value()) << "Failed to apply CDI edits: " << result.error().message();
+
+    result = builder.build();
+    ASSERT_TRUE(result.has_value()) << "Failed to build OCI config: " << result.error().message();
+
+    ASSERT_TRUE(builder.getConfig().process.has_value());
+    ASSERT_TRUE(builder.getConfig().process->env.has_value());
+    EXPECT_THAT(*builder.getConfig().process->env, ::testing::Contains("FOO=a=b"));
 }
 
 TEST_F(RunContextTest, resolveFromConfigVersionMismatch)

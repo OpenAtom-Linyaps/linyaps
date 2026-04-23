@@ -22,6 +22,7 @@
 #include "linglong/api/types/v1/ApplicationPermissionsRequest.hpp"
 #include "linglong/api/types/v1/BuilderConfig.hpp"
 #include "linglong/api/types/v1/BuilderProject.hpp"
+#include "linglong/api/types/v1/CdiDeviceEntry.hpp"
 #include "linglong/api/types/v1/CliContainer.hpp"
 #include "linglong/api/types/v1/CommonOptions.hpp"
 #include "linglong/api/types/v1/CommonResult.hpp"
@@ -94,6 +95,7 @@ std::optional<ApplicationConfigurationPermissions> applicationConfigurationPermi
 std::optional<ApplicationPermissionsRequest> applicationPermissionsRequest;
 std::optional<BuilderConfig> builderConfig;
 std::optional<BuilderProject> builderProject;
+std::optional<CdiDeviceEntry> cdiDeviceEntry;
 std::optional<CliContainer> cliContainer;
 std::optional<CommonOptions> commonOptions;
 std::optional<CommonResult> commonResult;

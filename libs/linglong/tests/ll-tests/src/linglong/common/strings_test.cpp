@@ -55,6 +55,8 @@ TEST(StringsTest, Split)
     EXPECT_EQ(split("", ',', splitOption::SkipEmpty), std::vector<std::string_view>({}));
     EXPECT_EQ(split(",,", ',', splitOption::None), std::vector<std::string_view>({ "", "", "" }));
     EXPECT_EQ(split(",,", ',', splitOption::SkipEmpty), std::vector<std::string_view>({}));
+    EXPECT_EQ(split("a=", '=', splitOption::None), std::vector<std::string_view>({ "a", "" }));
+    EXPECT_EQ(split("a", '=', splitOption::None), std::vector<std::string_view>({ "a" }));
 }
 
 TEST(StringsTest, Join)

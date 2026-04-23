@@ -5,6 +5,7 @@
 #include "linglong/runtime/wayland_security_ctx.h"
 
 #include "linglong/common/dir.h"
+#include "linglong/oci-cfg-generators/container_cfg_builder.h"
 #include "linglong/runtime/container.h"
 #include "linglong/runtime/run_context.h"
 #include "linglong/utils/finally/finally.h"

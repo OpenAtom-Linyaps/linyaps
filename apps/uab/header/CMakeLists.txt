@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2024 UnionTech Software Technology Co., Ltd.
+# SPDX-FileCopyrightText: 2024 - 2026 UnionTech Software Technology Co., Ltd.
 #
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -34,7 +34,6 @@ pfl_add_executable(
   DISABLE_INSTALL
   SOURCES
   ./src/main.cpp
-  ./src/sha256.h
   ./src/light_elf.h
   ./src/utils.h
   OUTPUT_NAME
@@ -42,6 +41,7 @@ pfl_add_executable(
   LINK_LIBRARIES
   PRIVATE
   linglong::api
+  linglong::utils
   nlohmann_json::nlohmann_json
   PkgConfig::SELINUX
   PkgConfig::ZSTD

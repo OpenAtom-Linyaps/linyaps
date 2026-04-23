@@ -21,7 +21,8 @@ pfl_add_library(
   linglong::common
   fmt::fmt-lib
   linglong::utils
+  linglong::cdi
   )
 
 get_real_target_name(GEN linglong::oci-cfg-generators)
-target_include_directories(${GEN} PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/src/linglong/oci-cfg-generators ${CMAKE_SOURCE_DIR}/apps/uab/header/src)
+target_include_directories(${GEN} PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/src/linglong/oci-cfg-generators)

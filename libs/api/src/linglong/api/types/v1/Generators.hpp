@@ -64,6 +64,8 @@
 #include "linglong/api/types/v1/CommonResult.hpp"
 #include "linglong/api/types/v1/CommonOptions.hpp"
 #include "linglong/api/types/v1/CliContainer.hpp"
+#include "linglong/api/types/v1/CdiDeviceEntry.hpp"
+#include "linglong/api/types/v1/CdiSpec.hpp"
 #include "linglong/api/types/v1/BuilderProject.hpp"
 #include "linglong/api/types/v1/BuilderProjectSource.hpp"
 #include "linglong/api/types/v1/BuilderProjectPackage.hpp"
@@ -124,6 +126,12 @@ void to_json(json & j, const BuilderProjectSource & x);
 
 void from_json(const json & j, BuilderProject & x);
 void to_json(json & j, const BuilderProject & x);
+
+void from_json(const json & j, CdiSpec & x);
+void to_json(json & j, const CdiSpec & x);
+
+void from_json(const json & j, CdiDeviceEntry & x);
+void to_json(json & j, const CdiDeviceEntry & x);
 
 void from_json(const json & j, CliContainer & x);
 void to_json(json & j, const CliContainer & x);
@@ -538,6 +546,30 @@ if (x.strip) {
 j["strip"] = x.strip;
 }
 j["version"] = x.version;
+}
+
+inline void from_json(const json & j, CdiSpec& x) {
+x.checksum = j.at("checksum").get<std::string>();
+x.path = j.at("path").get<std::string>();
+}
+
+inline void to_json(json & j, const CdiSpec & x) {
+j = json::object();
+j["checksum"] = x.checksum;
+j["path"] = x.path;
+}
+
+inline void from_json(const json & j, CdiDeviceEntry& x) {
+x.kind = j.at("kind").get<std::string>();
+x.name = j.at("name").get<std::string>();
+x.spec = j.at("spec").get<CdiSpec>();
+}
+
+inline void to_json(json & j, const CdiDeviceEntry & x) {
+j = json::object();
+j["kind"] = x.kind;
+j["name"] = x.name;
+j["spec"] = x.spec;
 }
 
 inline void from_json(const json & j, CliContainer& x) {
@@ -1206,6 +1238,7 @@ j["version"] = x.version;
 inline void from_json(const json & j, RunContextConfig& x) {
 x.app = get_stack_optional<std::string>(j, "app");
 x.base = get_stack_optional<std::string>(j, "base");
+x.cdiDevices = get_stack_optional<std::vector<CdiDeviceEntry>>(j, "cdiDevices");
 x.extensions = get_stack_optional<std::map<std::string, std::vector<std::string>>>(j, "extensions");
 x.overlayfs = get_stack_optional<std::string>(j, "overlayfs");
 x.runtime = get_stack_optional<std::string>(j, "runtime");
@@ -1220,6 +1253,9 @@ j["app"] = x.app;
 }
 if (x.base) {
 j["base"] = x.base;
+}
+if (x.cdiDevices) {
+j["cdiDevices"] = x.cdiDevices;
 }
 if (x.extensions) {
 j["extensions"] = x.extensions;
@@ -1315,6 +1351,7 @@ x.applicationConfigurationPermissions = get_stack_optional<ApplicationConfigurat
 x.applicationPermissionsRequest = get_stack_optional<ApplicationPermissionsRequest>(j, "ApplicationPermissionsRequest");
 x.builderConfig = get_stack_optional<BuilderConfig>(j, "BuilderConfig");
 x.builderProject = get_stack_optional<BuilderProject>(j, "BuilderProject");
+x.cdiDeviceEntry = get_stack_optional<CdiDeviceEntry>(j, "CDIDeviceEntry");
 x.cliContainer = get_stack_optional<CliContainer>(j, "CLIContainer");
 x.commonOptions = get_stack_optional<CommonOptions>(j, "CommonOptions");
 x.commonResult = get_stack_optional<CommonResult>(j, "CommonResult");
@@ -1376,6 +1413,9 @@ j["BuilderConfig"] = x.builderConfig;
 }
 if (x.builderProject) {
 j["BuilderProject"] = x.builderProject;
+}
+if (x.cdiDeviceEntry) {
+j["CDIDeviceEntry"] = x.cdiDeviceEntry;
 }
 if (x.cliContainer) {
 j["CLIContainer"] = x.cliContainer;

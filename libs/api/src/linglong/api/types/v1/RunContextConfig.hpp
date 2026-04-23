@@ -17,6 +17,8 @@
 #include <nlohmann/json.hpp>
 #include "linglong/api/types/v1/helper.hpp"
 
+#include "linglong/api/types/v1/CdiDeviceEntry.hpp"
+
 namespace linglong {
 namespace api {
 namespace types {
@@ -26,6 +28,7 @@ using nlohmann::json;
 struct RunContextConfig {
 std::optional<std::string> app;
 std::optional<std::string> base;
+std::optional<std::vector<CdiDeviceEntry>> cdiDevices;
 std::optional<std::map<std::string, std::vector<std::string>>> extensions;
 std::optional<std::string> overlayfs;
 std::optional<std::string> runtime;

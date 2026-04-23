@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "linglong/cdi/types/ContainerEdits.hpp"
 #include "linglong/utils/error/error.h"
 #include "ocppi/runtime/config/types/Config.hpp"
 #include "ocppi/runtime/config/types/IdMapping.hpp"
@@ -142,6 +143,9 @@ public:
     ContainerCfgBuilder &
       setStartContainerHooks(std::vector<ocppi::runtime::config::types::Hook>) noexcept;
 
+    ContainerCfgBuilder &addExtraHook(const std::string &type,
+                                      ocppi::runtime::config::types::Hook hook) noexcept;
+
     ContainerCfgBuilder &enableSelfAdjustingMount() noexcept
     {
         selfAdjustingMountEnabled = true;
@@ -180,6 +184,9 @@ public:
         return *this;
     }
 
+    utils::error::Result<void>
+    applyCDIPatch(const linglong::cdi::types::ContainerEdits &edits) noexcept;
+
     std::string ldConf(const std::string &triplet) const;
 
     utils::error::Result<void> build() noexcept;
@@ -205,6 +212,7 @@ private:
     utils::error::Result<void> buildXDGRuntime() noexcept;
     utils::error::Result<void> buildEnv() noexcept;
     utils::error::Result<void> buildContainerInfo() noexcept;
+    utils::error::Result<void> buildHooks() noexcept;
     utils::error::Result<void> applyPatch() noexcept;
     utils::error::Result<void> applyPatchFile(const std::filesystem::path &patchFile) noexcept;
     utils::error::Result<void> applyJsonPatchFile(const std::filesystem::path &patchFile) noexcept;
@@ -299,6 +307,10 @@ private:
     std::optional<std::vector<ocppi::runtime::config::types::Mount>> extensionMount;
     // extra mounts
     std::optional<std::vector<ocppi::runtime::config::types::Mount>> extraMount;
+
+    std::optional<std::vector<ocppi::runtime::config::types::Hook>> startContainerHooks;
+    std::optional<std::vector<std::pair<std::string, ocppi::runtime::config::types::Hook>>>
+      extraHooks;
 
     // self-adjusting mount
     bool selfAdjustingMountEnabled = false;

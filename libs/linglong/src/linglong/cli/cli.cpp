@@ -23,20 +23,21 @@
 #include "linglong/api/types/v1/PackageManager1SearchResult.hpp"
 #include "linglong/api/types/v1/PackageManager1UninstallParameters.hpp"
 #include "linglong/api/types/v1/State.hpp"
-#include "linglong/api/types/v1/UpgradeListResult.hpp"
 #include "linglong/cdi/cdi.h"
 #include "linglong/cli/printer.h"
 #include "linglong/common/dir.h"
 #include "linglong/common/error.h"
+#include "linglong/common/helper.h"
+#include "linglong/common/socket.h"
 #include "linglong/common/strings.h"
 #include "linglong/package/layer_file.h"
-#include "linglong/package/reference.h"
 #include "linglong/repo/config.h"
 #include "linglong/runtime/container_builder.h"
 #include "linglong/runtime/run_context.h"
 #include "linglong/utils/bash_command_helper.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/file.h"
+#include "linglong/utils/filelock.h"
 #include "linglong/utils/finally/finally.h"
 #include "linglong/utils/gettext.h"
 #include "linglong/utils/namespace.h"
@@ -44,12 +45,14 @@
 #include "linglong/utils/xdp.h"
 #include "ocppi/runtime/ExecOption.hpp"
 #include "ocppi/runtime/RunOption.hpp"
-#include "ocppi/runtime/Signal.hpp"
 #include "ocppi/types/ContainerListItem.hpp"
 
 #include <fmt/ranges.h>
 #include <linux/un.h>
 #include <nlohmann/json.hpp>
+#include <sys/epoll.h>
+#include <sys/ioctl.h>
+#include <sys/signalfd.h>
 
 #include <QEventLoop>
 #include <QFileInfo>
@@ -57,7 +60,6 @@
 
 #include <algorithm>
 #include <cassert>
-#include <cstdint>
 #include <cstdlib>
 #include <filesystem>
 #include <iostream>
@@ -69,6 +71,8 @@
 
 #include <fcntl.h>
 #include <sys/mman.h>
+#include <sys/wait.h>
+#include <termios.h>
 #include <unistd.h>
 
 using namespace linglong::utils::error;
@@ -81,13 +85,13 @@ std::vector<std::string> getAutoModuleList() noexcept
 {
     auto getModuleFromLanguageEnv = [](const std::string &lang) -> std::vector<std::string> {
         if (lang.length() < 2) {
-            return {};
+            return { };
         }
 
         if (!std::all_of(lang.begin(), lang.begin() + 2, [](char c) {
                 return 'a' <= c && c <= 'z';
             })) {
-            return {};
+            return { };
         }
 
         std::vector<std::string> modules;
@@ -106,11 +110,11 @@ std::vector<std::string> getAutoModuleList() noexcept
         }
 
         if (lang[2] != '_') {
-            return {};
+            return { };
         }
 
         if (lang.length() < 5) {
-            return {};
+            return { };
         }
 
         modules.push_back("lang_" + lang.substr(0, 5));
@@ -127,7 +131,7 @@ std::vector<std::string> getAutoModuleList() noexcept
             return modules;
         }
 
-        return {};
+        return { };
     };
 
     auto envs = {
@@ -149,82 +153,6 @@ std::vector<std::string> getAutoModuleList() noexcept
 
     std::sort(result.begin(), result.end());
     return { result.begin(), std::unique(result.begin(), result.end()) };
-}
-
-bool delegateToContainerInit(const std::string &containerID,
-                             std::vector<std::string> commands) noexcept
-{
-    auto containerSocket = ::socket(AF_UNIX, SOCK_SEQPACKET, 0);
-    if (containerSocket == -1) {
-        return false;
-    }
-
-    auto cleanup = linglong::utils::finally::finally([containerSocket] {
-        ::close(containerSocket);
-    });
-
-    struct sockaddr_un addr{};
-    addr.sun_family = AF_UNIX;
-
-    auto bundleDir = linglong::common::dir::getBundleDir(containerID);
-    const std::string socketPath = bundleDir / "init/socket";
-
-    std::copy(socketPath.begin(), socketPath.end(), &addr.sun_path[0]);
-    addr.sun_path[socketPath.size() + 1] = 0;
-
-    auto ret = ::connect(containerSocket,
-                         reinterpret_cast<struct sockaddr *>(&addr),
-                         offsetof(sockaddr_un, sun_path) + socketPath.size());
-    if (ret == -1) {
-        return false;
-    }
-
-    std::string bashContent;
-    for (const auto &command : commands) {
-        bashContent.append(linglong::common::strings::quoteBashArg(command));
-        bashContent.push_back(' ');
-    }
-
-    commands.clear();
-    commands.push_back(bashContent);
-    commands.insert(commands.begin(), "-c");
-    commands.insert(commands.begin(), "--login");
-    commands.insert(commands.begin(), "bash");
-
-    std::string command_data;
-    for (const auto &command : commands) {
-        command_data.append(command);
-        command_data.push_back('\0');
-    }
-    command_data.push_back('\0');
-
-    std::uint64_t rest_len = command_data.size();
-    ret = ::send(containerSocket, &rest_len, sizeof(rest_len), 0);
-    if (ret == -1) {
-        return false;
-    }
-
-    while (rest_len > 0) {
-        auto send_len = ::send(containerSocket, command_data.c_str(), rest_len, 0);
-        if (send_len == -1) {
-            if (errno == EINTR) {
-                continue;
-            }
-
-            break;
-        }
-
-        rest_len -= send_len;
-    }
-
-    if (rest_len != 0) {
-        return false;
-    }
-
-    int result{ -1 };
-    ret = ::recv(containerSocket, &result, sizeof(result), 0);
-    LogD("delegate result: {}", result);
-    return result == 0;
 }
 
 } // namespace
@@ -558,6 +486,755 @@ utils::error::Result<void> Cli::initPkgManSignals()
     return LINGLONG_OK;
 }
 
+utils::error::Result<int> Cli::reuseContainer(const std::string &id,
+                                              const std::vector<std::string> &commands) noexcept
+{
+    LINGLONG_TRACE(fmt::format("reuse container {}", id));
+
+    LogD("attempting to reuse container");
+    if (commands.empty()) {
+        return LINGLONG_ERR("empty command");
+    }
+
+    auto containerLock = common::dir::getBundleDir(id) / ".lock";
+    auto lockRet =
+      utils::filelock::FileLock::create(containerLock, utils::filelock::LockType::Read, false);
+    if (!lockRet) {
+        // maybe the main container is initializing
+        LogD("lock file {} doesn't exist", containerLock);
+        return 0;
+    }
+    auto lock = std::move(lockRet).value();
+
+    auto ret = lock.tryLock(utils::filelock::LockType::Read);
+    if (!ret) {
+        return LINGLONG_ERR(ret);
+    }
+
+    if (!*ret) {
+        LogD("failed to acquire read lock: {}", containerLock);
+        return 0;
+    }
+
+    {
+        std::ifstream in(containerLock);
+        std::string content;
+        in >> content;
+        if (content != "running") {
+            LogD("container status not running, maybe initializing?");
+            return 0;
+        }
+    }
+
+    std::filesystem::path consoleSocket;
+    auto remove = utils::finally::finally([&consoleSocket]() {
+        if (!consoleSocket.empty()) {
+            std::error_code ec;
+            std::filesystem::remove(consoleSocket, ec);
+            if (ec) {
+                LogE("failed to remove console socket {}: {}", consoleSocket, ec.message());
+            }
+        }
+    });
+
+    auto closeFd = [](int &fd) {
+        if (fd != -1) {
+            ::close(fd);
+            fd = -1;
+        }
+    };
+
+    auto setNonBlock = [](int fd) -> utils::error::Result<int> {
+        LINGLONG_TRACE(fmt::format("set fd {} nonblock", fd));
+        int flags = ::fcntl(fd, F_GETFL, 0);
+        if (flags == -1) {
+            return LINGLONG_ERR(common::error::errorString(errno));
+        }
+
+        if (::fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {
+            return LINGLONG_ERR(common::error::errorString(errno));
+        }
+
+        return flags;
+    };
+
+    struct NonTtyPipes
+    {
+        std::array<int, 2> stdinPipe{ -1, -1 };
+        std::array<int, 2> stdoutPipe{ -1, -1 };
+        std::array<int, 2> stderrPipe{ -1, -1 };
+    };
+
+    std::optional<NonTtyPipes> nonTtyPipes;
+    int listenFd{ -1 };
+
+    auto option = ocppi::runtime::ExecOption{ .uid = ::getuid(), .gid = ::getgid() };
+    option.tty = false;
+    if (isatty(STDIN_FILENO) != 0 && isatty(STDOUT_FILENO) != 0) {
+        option.tty = true;
+
+        consoleSocket =
+          common::dir::getRuntimeDir() / ("socket-" + common::strings::generateRandomString(6));
+        auto ret = common::socket::createUnixSocket(consoleSocket.c_str());
+        if (!ret) {
+            return LINGLONG_ERR(fmt::format("failed to create unix socket: {}", ret.error()));
+        }
+
+        listenFd = ret.value();
+        option.extra.emplace_back(fmt::format("--console-socket={}", consoleSocket));
+    } else {
+        nonTtyPipes.emplace();
+        if (::pipe2(nonTtyPipes->stdinPipe.data(), O_CLOEXEC) != 0
+            || ::pipe2(nonTtyPipes->stdoutPipe.data(), O_CLOEXEC) != 0
+            || ::pipe2(nonTtyPipes->stderrPipe.data(), O_CLOEXEC) != 0) {
+            closeFd(nonTtyPipes->stdinPipe[0]);
+            closeFd(nonTtyPipes->stdinPipe[1]);
+            closeFd(nonTtyPipes->stdoutPipe[0]);
+            closeFd(nonTtyPipes->stdoutPipe[1]);
+            closeFd(nonTtyPipes->stderrPipe[0]);
+            closeFd(nonTtyPipes->stderrPipe[1]);
+            return LINGLONG_ERR(
+              fmt::format("failed to create pipe: {}", common::error::errorString(errno)));
+        }
+    }
+
+    auto releaseIoChannel = utils::finally::finally([&]() {
+        closeFd(listenFd);
+        if (nonTtyPipes) {
+            closeFd(nonTtyPipes->stdinPipe[0]);
+            closeFd(nonTtyPipes->stdinPipe[1]);
+            closeFd(nonTtyPipes->stdoutPipe[0]);
+            closeFd(nonTtyPipes->stdoutPipe[1]);
+            closeFd(nonTtyPipes->stderrPipe[0]);
+            closeFd(nonTtyPipes->stderrPipe[1]);
+        }
+    });
+
+    sigset_t mask;
+    sigset_t oldMask;
+    sigemptyset(&mask);
+    sigaddset(&mask, SIGCHLD);
+    sigaddset(&mask, SIGWINCH);
+    if (sigprocmask(SIG_BLOCK, &mask, &oldMask) < 0) {
+        return LINGLONG_ERR(
+          fmt::format("failed to mask signal: {}", common::error::errorString(errno)));
+    }
+
+    auto restoreSigMask = utils::finally::finally([&oldMask]() {
+        ::sigprocmask(SIG_SETMASK, &oldMask, nullptr);
+    });
+
+    auto child = ::fork();
+    if (child == 0) {
+        ::sigprocmask(SIG_SETMASK, &oldMask, nullptr);
+
+        if (option.tty) {
+            closeFd(listenFd);
+        } else {
+            closeFd(nonTtyPipes->stdinPipe[1]);
+            closeFd(nonTtyPipes->stdoutPipe[0]);
+            closeFd(nonTtyPipes->stderrPipe[0]);
+
+            if (::dup2(nonTtyPipes->stdinPipe[0], STDIN_FILENO) == -1
+                || ::dup2(nonTtyPipes->stdoutPipe[1], STDOUT_FILENO) == -1
+                || ::dup2(nonTtyPipes->stderrPipe[1], STDERR_FILENO) == -1) {
+                LogE("failed to dup pipe to stdio: {}", common::error::errorString(errno));
+                _exit(EXIT_FAILURE);
+            }
+
+            closeFd(nonTtyPipes->stdinPipe[0]);
+            closeFd(nonTtyPipes->stdoutPipe[1]);
+            closeFd(nonTtyPipes->stderrPipe[1]);
+        }
+
+        auto reuseCommand = utils::BashCommandHelper::generateBashCommandBase();
+        reuseCommand.push_back(utils::BashCommandHelper::generateEntrypointScript(commands));
+        auto result = ociCLI.exec(id, "/run/linglong/container-init", reuseCommand, option);
+        if (!result) {
+            try {
+                std::rethrow_exception(result.error());
+            } catch (const std::exception &e) {
+                LogE("failed to exec container: {}", LINGLONG_ERRV(result));
+                _exit(EXIT_FAILURE);
+            }
+        }
+
+        _exit(EXIT_SUCCESS);
+    }
+
+    if (child < 0) {
+        return LINGLONG_ERR(fmt::format("failed to fork: {}", common::error::errorString(errno)));
+    }
+
+    auto sfd = signalfd(-1, &mask, SFD_NONBLOCK | SFD_CLOEXEC);
+    if (sfd < 0) {
+        return LINGLONG_ERR(
+          fmt::format("failed to create signalfd: {}", common::error::errorString(errno)));
+    }
+    auto closeSfd = utils::finally::finally([sfd]() {
+        ::close(sfd);
+    });
+
+    bool reused{ false };
+    bool childExited{ false };
+    bool lockUnlocked{ false };
+    int masterIn{ -1 };
+    int masterOut{ -1 };
+    int stdoutIn{ -1 };
+    int stderrIn{ -1 };
+
+    auto reapChild = [&]() {
+        while (!childExited) {
+            LogD("reap child");
+            int status = 0;
+            auto ret = ::waitpid(child, &status, WNOHANG);
+            if (ret == child) {
+                childExited = true;
+                if (WIFEXITED(status)) {
+                    auto exit_status = WEXITSTATUS(status);
+                    LogD("oci runtime child {} exited with status {}", child, exit_status);
+                    if (exit_status == 0) {
+                        reused = true;
+                    }
+                } else if (WIFSIGNALED(status)) {
+                    LogD("oci runtime child {} killed by signal {}", child, WTERMSIG(status));
+                } else {
+                    LogW("oci runtime child {} changed to unexpected status {}", child, status);
+                }
+
+                if (!lockUnlocked) {
+                    auto unlockRet = lock.unlock();
+                    if (!unlockRet) {
+                        LogE("failed to unlock cli lock: {}", unlockRet.error());
+                    }
+                    lockUnlocked = true;
+                }
+
+                break;
+            }
+
+            if (ret == 0) {
+                break;
+            }
+
+            if (ret == -1 && errno == EINTR) {
+                continue;
+            }
+
+            if (ret == -1 && errno == ECHILD) {
+                LogD("oci runtime child {} is not waitable: {}",
+                     child,
+                     common::error::errorString(errno));
+                childExited = true;
+                break;
+            }
+
+            LogW("failed to wait oci runtime child {}: {}",
+                 child,
+                 common::error::errorString(errno));
+            break;
+        }
+    };
+
+    auto drainSignals = [&]() {
+        while (true) {
+            LogD("drain signal");
+            struct signalfd_siginfo info{ };
+            auto n = ::read(sfd, &info, sizeof(info));
+            if (n == sizeof(info)) {
+                LogD("get sig :{}", info.ssi_signo);
+                if (info.ssi_signo == SIGCHLD) {
+                    reapChild();
+                    continue;
+                }
+
+                if (info.ssi_signo == SIGWINCH && option.tty && masterIn != -1) {
+                    struct winsize ws{ };
+                    if (::ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == 0) {
+                        if (::ioctl(masterIn, TIOCSWINSZ, &ws) == 0) {
+                            LogD("propagated terminal size to pty master {}", masterIn);
+                        } else {
+                            LogW("failed to set terminal size to pty master {}: {}",
+                                 masterIn,
+                                 common::error::errorString(errno));
+                        }
+                    } else {
+                        LogW("failed to get terminal size: {}", common::error::errorString(errno));
+                    }
+                }
+
+                continue;
+            }
+
+            if (n == -1 && errno == EINTR) {
+                continue;
+            }
+
+            if (n == -1 && errno != EAGAIN && errno != EWOULDBLOCK) {
+                LogW("failed to read signalfd: {}", common::error::errorString(errno));
+            }
+
+            break;
+        }
+    };
+
+    if (option.tty) {
+        if (auto ret = setNonBlock(listenFd); !ret) {
+            return LINGLONG_ERR(ret);
+        }
+
+        auto acceptEpfd = ::epoll_create1(EPOLL_CLOEXEC);
+        if (acceptEpfd < 0) {
+            return LINGLONG_ERR(common::error::errorString(errno));
+        }
+        auto closeAcceptEpfd = utils::finally::finally([acceptEpfd]() {
+            ::close(acceptEpfd);
+        });
+
+        struct epoll_event ev{ };
+        ev.events = EPOLLIN;
+        ev.data.fd = listenFd;
+        if (::epoll_ctl(acceptEpfd, EPOLL_CTL_ADD, listenFd, &ev) == -1) {
+            return LINGLONG_ERR(fmt::format("failed to add console socket to epoll: {}",
+                                            common::error::errorString(errno)));
+        }
+        ev.events = EPOLLIN;
+        ev.data.fd = sfd;
+        if (::epoll_ctl(acceptEpfd, EPOLL_CTL_ADD, sfd, &ev) == -1) {
+            return LINGLONG_ERR(fmt::format("failed to add signalfd to epoll: {}",
+                                            common::error::errorString(errno)));
+        }
+
+        std::array<struct epoll_event, 2> events{ };
+        while (masterIn == -1 && !childExited) {
+            auto nfds = ::epoll_wait(acceptEpfd, events.data(), events.size(), -1);
+            if (nfds == -1) {
+                if (errno == EINTR) {
+                    continue;
+                }
+
+                return LINGLONG_ERR(
+                  fmt::format("epoll_wait error: {}", common::error::errorString(errno)));
+            }
+
+            for (int i = 0; i < nfds; ++i) {
+                if (events.at(i).data.fd == sfd) {
+                    drainSignals();
+                    continue;
+                }
+
+                struct sockaddr_un clientAddr{ };
+                socklen_t addrLen = sizeof(clientAddr);
+                auto client = ::accept4(listenFd,
+                                        reinterpret_cast<struct sockaddr *>(&clientAddr),
+                                        &addrLen,
+                                        SOCK_CLOEXEC);
+                if (client < 0) {
+                    if (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK) {
+                        continue;
+                    }
+
+                    return LINGLONG_ERR(common::error::errorString(errno));
+                }
+
+                auto closeClient = utils::finally::finally([client]() {
+                    ::close(client);
+                });
+
+                auto data = common::socket::recvFdWithPayload(client);
+                if (!data) {
+                    return LINGLONG_ERR(data.error());
+                }
+
+                masterIn = data->fd;
+
+                struct stat buf{ };
+                fstat(masterIn, &buf);
+                if (!S_ISCHR(buf.st_mode)) {
+                    return LINGLONG_ERR("received fd is not a character device");
+                }
+            }
+        }
+
+        closeFd(listenFd);
+        if (masterIn == -1) {
+            return LINGLONG_ERR("oci runtime exited before sending console fd");
+        }
+
+        masterOut = ::dup(masterIn);
+        if (masterOut < 0) {
+            return LINGLONG_ERR(common::error::errorString(errno));
+        }
+    } else {
+        closeFd(nonTtyPipes->stdinPipe[0]);
+        closeFd(nonTtyPipes->stdoutPipe[1]);
+        closeFd(nonTtyPipes->stderrPipe[1]);
+
+        masterOut = nonTtyPipes->stdinPipe[1];
+        nonTtyPipes->stdinPipe[1] = -1;
+        stdoutIn = nonTtyPipes->stdoutPipe[0];
+        nonTtyPipes->stdoutPipe[0] = -1;
+        stderrIn = nonTtyPipes->stderrPipe[0];
+        nonTtyPipes->stderrPipe[0] = -1;
+    }
+
+    std::optional<struct termios> originalTermios;
+    auto recoveryTermios = utils::finally::finally([&originalTermios]() {
+        if (originalTermios) {
+            auto ret = ::tcsetattr(STDOUT_FILENO, TCSAFLUSH, &originalTermios.value());
+            if (ret != 0) {
+                LogE("failed to set terminal attributes: {}", common::error::errorString(errno));
+            }
+        }
+    });
+
+    if (option.tty) {
+        originalTermios.emplace();
+        auto ret = ::tcgetattr(STDOUT_FILENO, &originalTermios.value());
+        if (ret != 0) {
+            return LINGLONG_ERR(fmt::format("failed to get terminal attributes: {}",
+                                            common::error::errorString(errno)));
+        }
+
+        auto raw = originalTermios.value();
+        cfmakeraw(&raw);
+
+        if (tcsetattr(STDOUT_FILENO, TCSAFLUSH, &raw) < 0) {
+            return LINGLONG_ERR(
+              fmt::format("failed to set terminal to raw mode", common::error::errorString(errno)));
+        }
+
+        struct winsize ws{ };
+        ret = ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws);
+        if (ret != 0) {
+            return LINGLONG_ERR(
+              fmt::format("failed to get terminal size: {}", common::error::errorString(errno)));
+        }
+
+        ret = ioctl(masterIn, TIOCSWINSZ, &ws);
+        if (ret != 0) {
+            return LINGLONG_ERR(fmt::format("failed to set terminal size to {}: {}",
+                                            masterIn,
+                                            common::error::errorString(errno)));
+        }
+    }
+
+    auto closeMasterIn = utils::finally::finally([&masterIn]() {
+        if (masterIn != -1) {
+            ::close(masterIn);
+        }
+    });
+
+    auto closeMasterOut = utils::finally::finally([&masterOut]() {
+        if (masterOut != -1) {
+            ::close(masterOut);
+        }
+    });
+
+    auto closeStdoutIn = utils::finally::finally([&stdoutIn]() {
+        if (stdoutIn != -1) {
+            ::close(stdoutIn);
+        }
+    });
+
+    auto closeStderrIn = utils::finally::finally([&stderrIn]() {
+        if (stderrIn != -1) {
+            ::close(stderrIn);
+        }
+    });
+
+    std::optional<int> originalStdinFlags;
+    auto nbRet = setNonBlock(STDIN_FILENO);
+    if (!nbRet) {
+        return LINGLONG_ERR(nbRet);
+    }
+    originalStdinFlags = *nbRet;
+
+    auto restoreStdinFlags = utils::finally::finally([&originalStdinFlags]() {
+        if (originalStdinFlags) {
+            ::fcntl(STDIN_FILENO, F_SETFL, *originalStdinFlags);
+        }
+    });
+
+    if (auto ret = setNonBlock(masterOut); !ret) {
+        return LINGLONG_ERR(ret);
+    }
+
+    if (option.tty) {
+        if (auto ret = setNonBlock(masterIn); !ret) {
+            return LINGLONG_ERR(ret);
+        }
+    } else {
+        if (auto ret = setNonBlock(stdoutIn); !ret) {
+            return LINGLONG_ERR(ret);
+        }
+        if (auto ret = setNonBlock(stderrIn); !ret) {
+            return LINGLONG_ERR(ret);
+        }
+    }
+
+    auto epfd = ::epoll_create1(EPOLL_CLOEXEC);
+    if (epfd < 0) {
+        return LINGLONG_ERR(common::error::errorString(errno));
+    }
+    auto closeEpfd = utils::finally::finally([epfd]() {
+        ::close(epfd);
+    });
+
+    auto addFd = [epfd](int fd, uint32_t events) -> utils::error::Result<void> {
+        LINGLONG_TRACE(fmt::format("add fd {} to epoll", fd));
+        struct epoll_event ev{ };
+        ev.events = events;
+        ev.data.fd = fd;
+        if (::epoll_ctl(epfd, EPOLL_CTL_ADD, fd, &ev) == -1) {
+            return LINGLONG_ERR(common::error::errorString(errno));
+        }
+
+        return LINGLONG_OK;
+    };
+    auto delFd = [epfd](int fd) {
+        ::epoll_ctl(epfd, EPOLL_CTL_DEL, fd, nullptr);
+    };
+
+    if (option.tty) {
+        if (auto ret = addFd(masterIn, EPOLLIN); !ret) {
+            return LINGLONG_ERR(ret);
+        }
+    } else {
+        if (auto ret = addFd(stdoutIn, EPOLLIN); !ret) {
+            return LINGLONG_ERR(ret);
+        }
+        if (auto ret = addFd(stderrIn, EPOLLIN); !ret) {
+            return LINGLONG_ERR(ret);
+        }
+    }
+
+    if (auto ret = addFd(sfd, EPOLLIN); !ret) {
+        return LINGLONG_ERR(ret);
+    }
+
+    bool stdinWatchable{ true };
+    struct epoll_event stdinEv{ };
+    stdinEv.events = EPOLLIN;
+    stdinEv.data.fd = STDIN_FILENO;
+    if (::epoll_ctl(epfd, EPOLL_CTL_ADD, STDIN_FILENO, &stdinEv) == -1) {
+        if (errno != EPERM) {
+            return LINGLONG_ERR(common::error::errorString(errno));
+        }
+        stdinWatchable = false;
+    }
+
+    std::vector<char> buffer(4096);
+    std::array<struct epoll_event, 6> events{ };
+    bool stdinClosed = false;
+    bool inputWriteWatched = false;
+    bool outputClosed = false;
+    bool stdoutClosed = option.tty;
+    bool stderrClosed = option.tty;
+    std::string inputPending;
+
+    auto writeAll = [](int fd, const char *data, ssize_t size) -> utils::error::Result<void> {
+        LINGLONG_TRACE(fmt::format("write {} bytes to fd {}", size, fd));
+        ssize_t written = 0;
+        while (written < size) {
+            auto w = ::write(fd, data + written, static_cast<size_t>(size - written));
+            if (w == -1) {
+                if (errno == EINTR) {
+                    continue;
+                }
+                return LINGLONG_ERR(common::error::errorString(errno));
+            }
+            if (w == 0) {
+                return LINGLONG_ERR("write returned 0");
+            }
+            written += w;
+        }
+        return LINGLONG_OK;
+    };
+
+    auto flushInput = [&]() -> utils::error::Result<void> {
+        while (!inputPending.empty() && masterOut != -1) {
+            auto w = ::write(masterOut, inputPending.data(), inputPending.size());
+            if (w == -1) {
+                if (errno == EINTR) {
+                    continue;
+                }
+                if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                    if (!inputWriteWatched) {
+                        if (auto ret = addFd(masterOut, EPOLLOUT); !ret) {
+                            return LINGLONG_ERR(ret);
+                        }
+                        inputWriteWatched = true;
+                    }
+                    return LINGLONG_OK;
+                }
+                if (errno != EPIPE) {
+                    LogE("failed to write to container stdin: {}",
+                         common::error::errorString(errno));
+                }
+                delFd(masterOut);
+                closeFd(masterOut);
+                inputPending.clear();
+                return LINGLONG_OK;
+            }
+            if (w == 0) {
+                return LINGLONG_ERR("write to container stdin returned 0");
+            }
+            inputPending.erase(0, static_cast<size_t>(w));
+        }
+
+        if (inputWriteWatched && inputPending.empty()) {
+            delFd(masterOut);
+            inputWriteWatched = false;
+        }
+
+        if (stdinClosed && inputPending.empty()) {
+            closeFd(masterOut);
+        }
+
+        return LINGLONG_OK;
+    };
+
+    auto closeReadFd = [&](int &fd, bool &closed) {
+        if (fd != -1) {
+            delFd(fd);
+            closeFd(fd);
+        }
+
+        closed = true;
+    };
+
+    auto readToOutput = [&](int &from, int to, bool &closed) -> utils::error::Result<void> {
+        while (true) {
+            auto n = ::read(from, buffer.data(), buffer.size());
+            if (n > 0) {
+                if (auto ret = writeAll(to, buffer.data(), n); !ret) {
+                    LogE("failed to write output: {}", ret.error());
+                    return LINGLONG_OK;
+                }
+                continue;
+            }
+
+            if (n == 0 || (n == -1 && option.tty && errno == EIO)) {
+                LogD("output fd {} closed by peer", from);
+                closeReadFd(from, closed);
+            } else if (n == -1) {
+                if (errno == EINTR) {
+                    continue;
+                }
+                if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                    break;
+                }
+                LogE("failed to read container output: {}", common::error::errorString(errno));
+                closeReadFd(from, closed);
+            }
+            break;
+        }
+        return LINGLONG_OK;
+    };
+
+    auto handleStdin = [&]() -> utils::error::Result<void> {
+        while (true) {
+            auto n = ::read(STDIN_FILENO, buffer.data(), buffer.size());
+            if (n > 0) {
+                inputPending.append(buffer.data(), static_cast<size_t>(n));
+                if (auto ret = flushInput(); !ret) {
+                    return LINGLONG_ERR(ret);
+                }
+                if (!inputPending.empty()) {
+                    break;
+                }
+                continue;
+            }
+
+            if (n == 0) {
+                delFd(STDIN_FILENO);
+                stdinClosed = true;
+                return flushInput();
+            }
+            if (errno == EINTR) {
+                continue;
+            }
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                break;
+            }
+
+            LogE("failed to read from stdin: {}", common::error::errorString(errno));
+            delFd(STDIN_FILENO);
+            stdinClosed = true;
+            return flushInput();
+        }
+        return LINGLONG_OK;
+    };
+
+    if (!stdinWatchable) {
+        if (auto ret = handleStdin(); !ret) {
+            return LINGLONG_ERR(ret);
+        }
+    }
+
+    while (!childExited || !(option.tty ? outputClosed : (stdoutClosed && stderrClosed))) {
+        reapChild();
+        auto nfds = ::epoll_wait(epfd, events.data(), events.size(), -1);
+        if (nfds == -1) {
+            if (errno == EINTR) {
+                continue;
+            }
+            return LINGLONG_ERR(
+              fmt::format("epoll_wait error: {}", common::error::errorString(errno)));
+        }
+
+        for (int i = 0; i < nfds; ++i) {
+            auto fd = events[i].data.fd;
+            if (fd == sfd) {
+                drainSignals();
+            } else if (fd == STDIN_FILENO && !stdinClosed) {
+                LogD("received input from stdin");
+                if (auto ret = handleStdin(); !ret) {
+                    return LINGLONG_ERR(ret);
+                }
+            } else if (fd == masterOut) {
+                LogD("received output from container");
+                if (auto ret = flushInput(); !ret) {
+                    return LINGLONG_ERR(ret);
+                }
+                if (!stdinWatchable && !stdinClosed && inputPending.empty()) {
+                    if (auto ret = handleStdin(); !ret) {
+                        return LINGLONG_ERR(ret);
+                    }
+                }
+            } else if (option.tty && fd == masterIn) {
+                LogD("received input from container");
+                if (auto ret = readToOutput(masterIn, STDOUT_FILENO, outputClosed); !ret) {
+                    return LINGLONG_ERR(ret);
+                }
+
+                if (outputClosed) {
+                    LogD("container output closed");
+                }
+            } else if (!option.tty && fd == stdoutIn) {
+                LogD("received output from stdout");
+                if (auto ret = readToOutput(stdoutIn, STDOUT_FILENO, stdoutClosed); !ret) {
+                    return LINGLONG_ERR(ret);
+                }
+                if (stdoutClosed) {
+                    LogD("container stdout closed");
+                }
+            } else if (!option.tty && fd == stderrIn) {
+                LogD("received output from stderr");
+                if (auto ret = readToOutput(stderrIn, STDERR_FILENO, stderrClosed); !ret) {
+                    return LINGLONG_ERR(ret);
+                }
+                if (stderrClosed) {
+                    LogD("container stderr closed");
+                }
+            }
+        }
+    }
+
+    return reused ? 1 : -1;
+}
+
 int Cli::run(const RunOptions &options)
 {
     LINGLONG_TRACE("command run");
@@ -591,24 +1268,6 @@ int Cli::run(const RunOptions &options)
         this->printer.printErr(ret.error());
         return -1;
     }
-
-    auto mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
-    auto pidFile = userContainerDir / std::to_string(getpid());
-    // placeholder file
-    auto fd = ::open(pidFile.c_str(), O_WRONLY | O_CREAT | O_EXCL, mode);
-    if (fd == -1) {
-        LogE("create file {} error: {}", pidFile, common::error::errorString(errno));
-        QCoreApplication::exit(-1);
-        return -1;
-    }
-    ::close(fd);
-
-    QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit, [pidFile] {
-        std::error_code ec;
-        if (!std::filesystem::remove(pidFile, ec) && ec) {
-            LogE("failed to remove file {}: {}", pidFile.c_str(), ec.message());
-        }
-    });
 
     auto fuzzyRef = package::FuzzyReference::parse(options.appid);
     if (!fuzzyRef) {
@@ -687,21 +1346,68 @@ int Cli::run(const RunOptions &options)
     }
     commands = filePathMapping(commands, options);
 
-    // this lambda will dump reference of containerID, app, base and runtime to
-    // /run/linglong/getuid()/getpid() to store these needed infomation
-    auto dumpContainerInfo = [&pidFile, &runContext, this]() -> bool {
-        LINGLONG_TRACE("dump info")
-        std::error_code ec;
-        if (!std::filesystem::exists(pidFile, ec)) {
-            if (ec) {
-                LogE("couldn't get status of {}: {}", pidFile.c_str(), ec.message());
-                return false;
-            }
+    const auto lockName = fmt::format(".cli.{}.lock", containerID);
+    auto cliLockRet = utils::filelock::FileLock::create(userContainerDir / lockName,
+                                                        utils::filelock::LockType::Write);
+    if (!cliLockRet) {
+        this->printer.printErr(cliLockRet.error());
+        return -1;
+    }
+    auto cli_lock = std::move(cliLockRet).value();
 
-            LogE("state file {} doesn't exist", pidFile.string());
+    while (true) {
+        auto lock_ret = cli_lock.tryLock(utils::filelock::LockType::Write);
+        if (!lock_ret) {
+            this->printer.printErr(lock_ret.error());
+            return -1;
+        }
+
+        if (*lock_ret) {
+            break;
+        }
+
+        auto ret = reuseContainer(containerID, commands);
+        if (!ret) {
+            LogW("unexpected reuse error: {}", ret.error());
+            return -1;
+        }
+
+        if (*ret > 0) {
+            LogD("container reuse succeeded");
+            return 0;
+        }
+
+        if (*ret < 0) {
+            LogW("failed to reuse container, try to start a new container", *ret);
+            return -1;
+        }
+
+        // reuse failed, try again
+        std::this_thread::sleep_for(std::chrono::seconds(3));
+    }
+
+    LogD("start a new container");
+    // this lambda will dump reference of containerID, app, base and runtime to
+    // /run/linglong/<uid>/<pid> to store these needed information
+    auto dumpContainerInfo = [&userContainerDir, &runContext, this]() -> bool {
+        LINGLONG_TRACE("dump info")
+        auto repoLock = utils::filelock::FileLock::create(common::dir::repoLockPath,
+                                                          utils::filelock::LockType::Read,
+                                                          false);
+        if (!repoLock) {
+            LogD("failed to create repo lock");
+            this->printer.printErr(repoLock.error());
+            return false;
+        }
+        auto lock = std::move(repoLock).value();
+        auto ret = lock.lock(utils::filelock::LockType::Read);
+        if (!ret) {
+            LogD("failed to lock repo");
+            this->printer.printErr(ret.error());
             return false;
         }
 
+        auto pidFile = userContainerDir / std::to_string(getpid());
         std::ofstream stream{ pidFile };
         if (!stream.is_open()) {
             this->printer.printErr(
@@ -714,32 +1420,13 @@ int Cli::run(const RunOptions &options)
         return true;
     };
 
-    auto containers = getCurrentContainers().value_or(std::vector<api::types::v1::CliContainer>{});
-    for (const auto &container : containers) {
-        LogD("found running container: {}", container.package);
-        if (container.id != containerID || container.package != curAppRef->toString()) {
-            continue;
-        }
-
-        if (!dumpContainerInfo()) {
-            return -1;
-        }
-
-        if (delegateToContainerInit(container.id, commands)) {
-            return 0;
-        }
-
-        // fallback to run
-        break;
+    if (!dumpContainerInfo()) {
+        return -1;
     }
 
     auto cacheRes = this->ensureCache(runContext);
     if (!cacheRes) {
         this->printer.printErr(LINGLONG_ERRV(cacheRes));
-        return -1;
-    }
-
-    if (!dumpContainerInfo()) {
         return -1;
     }
 
@@ -750,6 +1437,7 @@ int Cli::run(const RunOptions &options)
     }
 
     if (*namespaceRes) {
+        LogD("run in new namespace");
         const auto qtArgs = QCoreApplication::arguments();
         auto selfExe = linglong::utils::getSelfExe();
         if (!selfExe) {
@@ -853,6 +1541,7 @@ int Cli::runResolvedContext(runtime::RunContext &runContext,
     runtime::RunContainerOptions runOptions;
     runOptions.enableSecurityContext(runtime::getDefaultSecurityContexts());
     runOptions.common.containerCachePath = appCache;
+    runOptions.lockName = ".lock";
     if (runtimeConfig) {
         auto runtimeConfigRes = runOptions.applyRuntimeConfig(*runtimeConfig);
         if (!runtimeConfigRes) {
@@ -874,9 +1563,43 @@ int Cli::runResolvedContext(runtime::RunContext &runContext,
         runOptions.disableXdp = true;
     }
 
-    auto container = this->containerBuilder.createRunContainer(runContext, runOptions);
-    if (!container) {
-        this->printer.printErr(container.error());
+    auto containerRet = this->containerBuilder.createRunContainer(runContext, runOptions);
+    if (!containerRet) {
+        this->printer.printErr(containerRet.error());
+        return -1;
+    }
+    auto container = std::move(containerRet).value();
+
+    auto containerLock =
+      utils::filelock::FileLock::create(container->bundle() / runOptions.lockName,
+                                        utils::filelock::LockType::Write);
+    if (!containerLock) {
+        this->printer.printErr(containerLock.error());
+        return -1;
+    }
+    auto lock = std::move(containerLock).value();
+    auto lockRet = lock.tryLock(utils::filelock::LockType::Write);
+    if (!lockRet) {
+        this->printer.printErr(lockRet.error());
+        return -1;
+    }
+
+    if (!*lockRet) {
+        this->printer.printErr(LINGLONG_ERRV("failed to acquire container lock"));
+        return -1;
+    }
+
+    auto fd = lock.nativeHandle();
+    const auto &content = "initializing";
+    if (::write(fd, static_cast<const void *>(content), sizeof(content) - 1) == -1) {
+        this->printer.printErr(LINGLONG_ERRV(
+          fmt::format("failed to write to lock file: {}", common::error::errorString(errno))));
+        return -1;
+    }
+
+    auto ret = lock.unlock();
+    if (!ret) {
+        this->printer.printErr(ret.error());
         return -1;
     }
 
@@ -891,8 +1614,7 @@ int Cli::runResolvedContext(runtime::RunContext &runContext,
         process.cwd = workdir;
     }
 
-    ocppi::runtime::RunOption opt{};
-    auto result = (*container)->run(process, opt);
+    auto result = container->run(process, { });
     if (!result) {
         this->printer.printErr(result.error());
         return -1;
@@ -1040,7 +1762,7 @@ utils::error::Result<std::vector<std::string>> Cli::getRunningAppContainers(cons
 {
     LINGLONG_TRACE("get app running containers");
 
-    std::vector<std::string> containerIDList{};
+    std::vector<std::string> containerIDList{ };
     auto containers = getCurrentContainers();
     if (!containers) {
         return LINGLONG_ERR(containers);
@@ -1335,7 +2057,7 @@ int Cli::search(const SearchOptions &options)
 
     auto params = api::types::v1::PackageManager1SearchParameters{
         .id = options.appid,
-        .repos = {},
+        .repos = { },
     };
 
     auto repoConfig = this->repository.getOrderedConfig();
@@ -1412,7 +2134,7 @@ int Cli::search(const SearchOptions &options)
           }
 
           if (!result->packages) {
-              this->printer.printPackages({});
+              this->printer.printPackages({ });
               loop.exit(0);
               return;
           }
@@ -1530,7 +2252,7 @@ int Cli::uninstall(const UninstallOptions &options)
         return -1;
     }
 
-    auto params = api::types::v1::PackageManager1UninstallParameters{};
+    auto params = api::types::v1::PackageManager1UninstallParameters{ };
     params.options = api::types::v1::CommonOptions{
         .force = options.forceOpt,
         .skipInteraction = false,
@@ -1883,7 +2605,7 @@ int Cli::content(const ContentOptions &options)
 {
     LINGLONG_TRACE("command content");
 
-    QStringList contents{};
+    QStringList contents{ };
 
     auto fuzzyRef = package::FuzzyReference::parse(options.appid);
     if (!fuzzyRef) {
@@ -1940,7 +2662,7 @@ int Cli::content(const ContentOptions &options)
     }
 
     // only show the contents which are exported
-    QStringList exportedContents{};
+    QStringList exportedContents{ };
     for (const auto &content : std::as_const(contents)) {
         QFileInfo info(content);
         if (!info.exists() || info.isDir()) {
@@ -1963,7 +2685,7 @@ int Cli::content(const ContentOptions &options)
     }
 
     if (std::filesystem::is_symlink(file, ec)) {
-        std::array<char, PATH_MAX + 1> buf{};
+        std::array<char, PATH_MAX + 1> buf{ };
         auto *real = ::realpath(file.c_str(), buf.data());
 
         if (real != nullptr) {

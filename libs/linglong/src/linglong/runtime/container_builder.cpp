@@ -631,6 +631,16 @@ auto ContainerBuilder::createRunContainer(runtime::RunContext &context,
         return LINGLONG_ERR(prepared);
     }
 
+    if (!options.lockName.empty()) {
+        const auto lockPath = prepared->context->getBundleDir() / options.lockName;
+        prepared->cfgBuilder.addExtraMount({
+          .destination = common::dir::containerLockPath,
+          .options = std::vector<std::string>{ "bind" },
+          .source = lockPath.string(),
+          .type = "bind",
+        });
+    }
+
     auto res = this->configureRunContainer(*prepared, options);
     if (!res) {
         return LINGLONG_ERR(res);

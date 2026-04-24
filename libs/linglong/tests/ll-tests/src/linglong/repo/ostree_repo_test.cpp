@@ -22,6 +22,8 @@
 #include <memory>
 #include <string>
 
+#include <unistd.h>
+
 namespace linglong::repo::test {
 
 namespace fs = std::filesystem;
@@ -50,6 +52,11 @@ api::types::v1::RepoConfigV2 createRepoConfig(std::string defaultRepo,
                                          .url = std::move(repoUrl) } },
         .version = 2,
     };
+}
+
+bool shouldPersistRepoCache() noexcept
+{
+    return getuid() != 0;
 }
 
 class RepoTest : public ::testing::Test
@@ -116,10 +123,14 @@ TEST_F(RepoTest, createPersistsConfigAndBootstrapsRepoArtifacts)
 
     EXPECT_TRUE(fs::exists(repoRoot / "config.yaml"));
     EXPECT_TRUE(fs::exists(repoRoot / "repo"));
-    EXPECT_TRUE(fs::exists(repoRoot / "states.json"));
+    EXPECT_EQ(fs::exists(repoRoot / "states.json"), shouldPersistRepoCache());
 
     auto loaded = OSTreeRepo::loadFromPath(repoRoot);
-    EXPECT_TRUE(loaded.has_value()) << loaded.error().message();
+    if (shouldPersistRepoCache()) {
+        EXPECT_TRUE(loaded.has_value()) << loaded.error().message();
+    } else {
+        EXPECT_FALSE(loaded.has_value());
+    }
 }
 
 TEST_F(RepoTest, createPrefersRepoLocalConfigOverFallbackConfig)
@@ -183,7 +194,7 @@ TEST_F(RepoTest, loadFromPathFailsWhenCacheIsMissingButCreateCanRepairIt)
 
     auto repaired = OSTreeRepo::create(repoRoot, config);
     ASSERT_TRUE(repaired.has_value()) << repaired.error().message();
-    EXPECT_TRUE(fs::exists(repoRoot / "states.json"));
+    EXPECT_EQ(fs::exists(repoRoot / "states.json"), shouldPersistRepoCache());
 }
 
 TEST_F(RepoTest, exportDir)
@@ -411,7 +422,7 @@ class OSTreeRepoMock : public repo::OSTreeRepo
 public:
     OSTreeRepoMock(const std::filesystem::path &path)
         : repo::OSTreeRepo(
-            path, api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 })
+          path, api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 })
     {
     }
 
@@ -428,7 +439,7 @@ public:
 
     OSTreeRepoAccessor()
         : repo::OSTreeRepo(
-            "", api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 })
+          "", api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 })
     {
     }
 };
@@ -614,7 +625,7 @@ class OSTreeRepoMock : public repo::OSTreeRepo
 public:
     OSTreeRepoMock(const std::filesystem::path &path)
         : repo::OSTreeRepo(
-            path, api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 })
+          path, api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 })
     {
     }
 

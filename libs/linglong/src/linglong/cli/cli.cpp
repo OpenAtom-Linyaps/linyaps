@@ -623,8 +623,8 @@ int Cli::run(const RunOptions &options)
     if (runtimeConfig && runtimeConfig->extDefs) {
         opts.externalExtensionDefs = std::move(runtimeConfig->extDefs).value();
     }
-    if (!options.devices.empty()) {
-        auto cdiDevices = cdi::getCDIDevices(options.cdiSpecDir, options.devices);
+    if (!options.cdiDevices.empty()) {
+        auto cdiDevices = cdi::getCDIDevices(options.cdiSpecDir, options.cdiDevices);
         if (!cdiDevices) {
             handleCommonError(cdiDevices.error());
             return -1;

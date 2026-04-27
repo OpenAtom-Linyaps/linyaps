@@ -68,6 +68,15 @@ std::string genContainerID(const api::types::v1::RunContextConfig &config) noexc
 auto RunContainerOptions::applyRuntimeConfig(
   const api::types::v1::RuntimeConfigure &runtimeConfig) noexcept -> utils::error::Result<void>
 {
+    if (runtimeConfig.deviceMode) {
+        for (const auto &option : *runtimeConfig.deviceMode) {
+            if (option == api::types::v1::DeviceOption::Passthru) {
+                this->devicePassthru = true;
+                break;
+            }
+        }
+    }
+
     if (runtimeConfig.env) {
         for (const auto &[key, value] : *runtimeConfig.env) {
             this->env.insert_or_assign(key, value);
@@ -81,6 +90,13 @@ auto RunContainerOptions::applyCliRunOptions(const cli::RunOptions &options) noe
   -> utils::error::Result<void>
 {
     LINGLONG_TRACE("apply cli run options to run config");
+
+    for (const auto &option : options.deviceOptions) {
+        if (option == api::types::v1::DeviceOption::Passthru) {
+            this->devicePassthru = true;
+            break;
+        }
+    }
 
     for (const auto &item : options.envs) {
         auto split = item.find('=');
@@ -123,6 +139,11 @@ auto RunContainerOptions::getSecurityContexts() const noexcept
   -> const std::vector<SecurityContextType> &
 {
     return this->securityContexts;
+}
+
+auto RunContainerOptions::isDevicePassthruEnabled() const noexcept -> bool
+{
+    return this->devicePassthru;
 }
 
 auto RunContainerOptions::isPrivileged() const noexcept -> bool
@@ -441,7 +462,6 @@ auto ContainerBuilder::configureRunContainer(PreparedContainer &prepared,
     std::filesystem::path homePath{ homeEnv };
 
     prepared.cfgBuilder.setAnnotation(generator::ANNOTATION::LAST_PID, std::to_string(::getpid()))
-      .bindDevNode()
       .bindXDGRuntime()
       .bindRemovableStorageMounts()
       .bindHostRoot()
@@ -452,6 +472,12 @@ auto ContainerBuilder::configureRunContainer(PreparedContainer &prepared,
       .mapPrivate((homePath / ".gnupg").string(), true)
       .bindIPC()
       .forwardDefaultEnv();
+
+    if (options.isDevicePassthruEnabled()) {
+        prepared.cfgBuilder.bindDev(true);
+    } else {
+        prepared.cfgBuilder.bindDevNode();
+    }
 
     std::error_code ec;
     auto socketDir = prepared.context->getBundleDir() / "init";

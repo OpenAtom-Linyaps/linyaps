@@ -1448,6 +1448,12 @@
               "$ref": "#/$defs/ExtensionDefine"
             }
           }
+        },
+        "device_mode": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DeviceOption"
+          }
         }
       }
     },
@@ -1530,6 +1536,12 @@
           }
         }
       }
+    },
+    "DeviceOption": {
+      "description": "device option",
+      "enum": [
+        "passthru"
+      ]
     }
   },
   "type": "object",
@@ -1680,6 +1692,9 @@
     },
     "CDIDeviceEntry": {
       "$ref": "#/$defs/CDIDeviceEntry"
+    },
+    "DeviceOption": {
+      "$ref": "#/$defs/DeviceOption"
     }
   }
 }

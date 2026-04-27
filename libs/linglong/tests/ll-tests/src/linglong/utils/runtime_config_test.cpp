@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2025 - 2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -24,6 +24,7 @@ TEST(RuntimeConfigTest, LoadFromPath)
     fs::path config_file = tempDir.path() / "test_config.json";
 
     RuntimeConfigure config;
+    config.deviceMode = std::vector<DeviceOption>{ DeviceOption::Passthru };
     config.env =
       std::map<std::string, std::string>{ { "PATH", "/usr/bin" }, { "HOME", "/home/user" } };
 
@@ -46,6 +47,10 @@ TEST(RuntimeConfigTest, LoadFromPath)
     // Load config from file
     auto loaded_config = linglong::utils::loadRuntimeConfig(config_file);
     ASSERT_TRUE(loaded_config.has_value());
+
+    ASSERT_TRUE(loaded_config->deviceMode);
+    EXPECT_EQ(loaded_config->deviceMode->size(), 1);
+    EXPECT_EQ(loaded_config->deviceMode->at(0), DeviceOption::Passthru);
 
     ASSERT_TRUE(loaded_config->env);
     EXPECT_EQ(loaded_config->env->size(), 2);
@@ -70,6 +75,7 @@ TEST(RuntimeConfigTest, MergeConfigs)
 {
     // Create first config
     RuntimeConfigure config1;
+    config1.deviceMode = std::vector<DeviceOption>{ DeviceOption::Passthru };
     config1.env =
       std::map<std::string, std::string>{ { "PATH", "/usr/bin" }, { "HOME", "/home/user1" } };
 
@@ -81,6 +87,7 @@ TEST(RuntimeConfigTest, MergeConfigs)
 
     // Create second config
     RuntimeConfigure config2;
+    config2.deviceMode = std::vector<DeviceOption>{ DeviceOption::Passthru };
     config2.env =
       std::map<std::string, std::string>{ { "PATH", "/usr/local/bin" }, { "USER", "testuser" } };
 
@@ -96,6 +103,11 @@ TEST(RuntimeConfigTest, MergeConfigs)
     // Merge configs
     std::vector<RuntimeConfigure> configs = { config1, config2 };
     auto merged = linglong::utils::MergeRuntimeConfig(configs);
+
+    ASSERT_TRUE(merged.deviceMode);
+    EXPECT_EQ(merged.deviceMode->size(), 2);
+    EXPECT_EQ(merged.deviceMode->at(0), DeviceOption::Passthru);
+    EXPECT_EQ(merged.deviceMode->at(1), DeviceOption::Passthru);
 
     // Check environment variables
     ASSERT_TRUE(merged.env);
@@ -123,6 +135,7 @@ TEST(RuntimeConfigTest, MergeEmptyConfigs)
     std::vector<RuntimeConfigure> empty_configs;
     auto merged = linglong::utils::MergeRuntimeConfig(empty_configs);
 
+    EXPECT_FALSE(merged.deviceMode);
     EXPECT_FALSE(merged.env);
     EXPECT_FALSE(merged.extDefs);
 }
@@ -131,6 +144,7 @@ TEST(RuntimeConfigTest, MergePartialConfigs)
 {
     // Config with only env
     RuntimeConfigure config1;
+    config1.deviceMode = std::vector<DeviceOption>{ DeviceOption::Passthru };
     config1.env = std::map<std::string, std::string>{ { "PATH", "/usr/bin" } };
 
     // Config empty
@@ -154,6 +168,10 @@ TEST(RuntimeConfigTest, MergePartialConfigs)
     ASSERT_TRUE(merged.env);
     EXPECT_EQ(merged.env->size(), 1);
     EXPECT_EQ(merged.env->at("PATH"), "/usr/bin");
+
+    ASSERT_TRUE(merged.deviceMode);
+    EXPECT_EQ(merged.deviceMode->size(), 1);
+    EXPECT_EQ(merged.deviceMode->at(0), DeviceOption::Passthru);
 
     ASSERT_TRUE(merged.extDefs);
     EXPECT_EQ(merged.extDefs->size(), 1);

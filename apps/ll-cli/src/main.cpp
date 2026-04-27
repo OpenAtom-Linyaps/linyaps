@@ -31,6 +31,7 @@
 
 #include <algorithm>
 #include <functional>
+#include <map>
 #include <memory>
 #include <string_view>
 #include <thread>
@@ -185,8 +186,15 @@ ll-cli run org.deepin.demo -- bash -x /path/to/bash/script)"));
       ->delimiter(',')
       ->capture_default_str()
       ->allow_extra_args(false);
-    cliRun->add_option("--device", runOptions.devices, _("Add CDI devices"))
+    cliRun->add_option("--device", runOptions.cdiDevices, _("Add CDI devices"))
       ->delimiter(',')
+      ->allow_extra_args(false);
+    const std::map<std::string, linglong::api::types::v1::DeviceOption> deviceOptionMap = {
+        { "passthru", linglong::api::types::v1::DeviceOption::Passthru },
+    };
+    cliRun->add_option("--device-mode", runOptions.deviceOptions, _("Add device options"))
+      ->delimiter(',')
+      ->transform(CLI::CheckedTransformer(deviceOptionMap, CLI::ignore_case))
       ->allow_extra_args(false);
     cliRun->add_option("COMMAND", runOptions.commands, _("Run commands in a running sandbox"));
 }

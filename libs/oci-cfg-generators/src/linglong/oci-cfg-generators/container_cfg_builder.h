@@ -94,7 +94,7 @@ public:
     ContainerCfgBuilder &bindDefault() noexcept;
     ContainerCfgBuilder &bindSys() noexcept;
     ContainerCfgBuilder &bindProc() noexcept;
-    ContainerCfgBuilder &bindDev() noexcept;
+    ContainerCfgBuilder &bindDev(bool passthru = false) noexcept;
     ContainerCfgBuilder &
     bindDevNode(std::function<bool(const std::string &)> ifBind = nullptr) noexcept;
     ContainerCfgBuilder &bindCgroup() noexcept;
@@ -328,6 +328,7 @@ private:
     bool disableGenerateContainerInfo{ true };
     bool applyPatchEnabled = true;
     bool isolateTmp{ false };
+    bool devPassthru{ false };
 
     // display system
     std::optional<std::filesystem::path> waylandSocket;

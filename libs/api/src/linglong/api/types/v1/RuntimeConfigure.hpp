@@ -23,9 +23,20 @@ namespace linglong {
 namespace api {
 namespace types {
 namespace v1 {
+enum class DeviceOption : int;
+}
+}
+}
+}
+
+namespace linglong {
+namespace api {
+namespace types {
+namespace v1 {
 using nlohmann::json;
 
 struct RuntimeConfigure {
+std::optional<std::vector<DeviceOption>> deviceMode;
 std::optional<std::map<std::string, std::string>> env;
 /**
 * external extension definitions to extend the component

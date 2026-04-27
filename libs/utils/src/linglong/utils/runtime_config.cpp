@@ -57,6 +57,16 @@ RuntimeConfigure MergeRuntimeConfig(const std::vector<RuntimeConfigure> &configs
     RuntimeConfigure result;
 
     for (const auto &config : configs) {
+        if (config.deviceMode) {
+            if (!result.deviceMode) {
+                result.deviceMode = config.deviceMode;
+            } else {
+                result.deviceMode->insert(result.deviceMode->end(),
+                                          config.deviceMode->begin(),
+                                          config.deviceMode->end());
+            }
+        }
+
         // Merge environment variables
         if (config.env) {
             if (!result.env) {

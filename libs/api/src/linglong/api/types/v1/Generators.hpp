@@ -60,6 +60,7 @@
 #include "linglong/api/types/v1/ExportDirs.hpp"
 #include "linglong/api/types/v1/DialogMessage.hpp"
 #include "linglong/api/types/v1/DialogHandShakePayload.hpp"
+#include "linglong/api/types/v1/DeviceOption.hpp"
 #include "linglong/api/types/v1/ContainerProcessStateInfo.hpp"
 #include "linglong/api/types/v1/CommonResult.hpp"
 #include "linglong/api/types/v1/CommonOptions.hpp"
@@ -264,6 +265,9 @@ void to_json(json & j, const UpgradeListResult & x);
 
 void from_json(const json & j, LinglongAPIV1 & x);
 void to_json(json & j, const LinglongAPIV1 & x);
+
+void from_json(const json & j, DeviceOption & x);
+void to_json(json & j, const DeviceOption & x);
 
 void from_json(const json & j, InteractionMessageType & x);
 void to_json(json & j, const InteractionMessageType & x);
@@ -1273,12 +1277,16 @@ j["version"] = x.version;
 }
 
 inline void from_json(const json & j, RuntimeConfigure& x) {
+x.deviceMode = get_stack_optional<std::vector<DeviceOption>>(j, "device_mode");
 x.env = get_stack_optional<std::map<std::string, std::string>>(j, "env");
 x.extDefs = get_stack_optional<std::map<std::string, std::vector<ExtensionDefine>>>(j, "ext_defs");
 }
 
 inline void to_json(json & j, const RuntimeConfigure & x) {
 j = json::object();
+if (x.deviceMode) {
+j["device_mode"] = x.deviceMode;
+}
 if (x.env) {
 j["env"] = x.env;
 }
@@ -1357,6 +1365,7 @@ x.commonOptions = get_stack_optional<CommonOptions>(j, "CommonOptions");
 x.commonResult = get_stack_optional<CommonResult>(j, "CommonResult");
 x.containerProcessStateInfo = get_stack_optional<ContainerProcessStateInfo>(j, "ContainerProcessStateInfo");
 x.deviceNode = get_stack_optional<DeviceNode>(j, "DeviceNode");
+x.deviceOption = get_stack_optional<DeviceOption>(j, "DeviceOption");
 x.dialogHandShakePayload = get_stack_optional<DialogHandShakePayload>(j, "DialogHandShakePayload");
 x.dialogMessage = get_stack_optional<DialogMessage>(j, "DialogMessage");
 x.exportDirs = get_stack_optional<ExportDirs>(j, "ExportDirs");
@@ -1431,6 +1440,9 @@ j["ContainerProcessStateInfo"] = x.containerProcessStateInfo;
 }
 if (x.deviceNode) {
 j["DeviceNode"] = x.deviceNode;
+}
+if (x.deviceOption) {
+j["DeviceOption"] = x.deviceOption;
 }
 if (x.dialogHandShakePayload) {
 j["DialogHandShakePayload"] = x.dialogHandShakePayload;
@@ -1545,6 +1557,18 @@ j["UpgradeListResult"] = x.upgradeListResult;
 }
 if (x.xdgDirectoryPermissions) {
 j["XDGDirectoryPermissions"] = x.xdgDirectoryPermissions;
+}
+}
+
+inline void from_json(const json & j, DeviceOption & x) {
+if (j == "passthru") x = DeviceOption::Passthru;
+else { throw std::runtime_error("Input JSON does not conform to schema!"); }
+}
+
+inline void to_json(json & j, const DeviceOption & x) {
+switch (x) {
+case DeviceOption::Passthru: j = "passthru"; break;
+default: throw std::runtime_error("Unexpected value in enumeration \"DeviceOption\": " + std::to_string(static_cast<int>(x)));
 }
 }
 

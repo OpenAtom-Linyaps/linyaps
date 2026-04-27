@@ -67,6 +67,7 @@ namespace linglong {
 namespace api {
 namespace types {
 namespace v1 {
+enum class DeviceOption : int;
 enum class InteractionMessageType : int;
 enum class State : int;
 }
@@ -101,6 +102,7 @@ std::optional<CommonOptions> commonOptions;
 std::optional<CommonResult> commonResult;
 std::optional<ContainerProcessStateInfo> containerProcessStateInfo;
 std::optional<DeviceNode> deviceNode;
+std::optional<DeviceOption> deviceOption;
 std::optional<DialogHandShakePayload> dialogHandShakePayload;
 std::optional<DialogMessage> dialogMessage;
 std::optional<ExportDirs> exportDirs;

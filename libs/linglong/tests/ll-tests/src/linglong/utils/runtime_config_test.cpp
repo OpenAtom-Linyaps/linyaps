@@ -24,6 +24,7 @@ TEST(RuntimeConfigTest, LoadFromPath)
     fs::path config_file = tempDir.path() / "test_config.json";
 
     RuntimeConfigure config;
+    config.disableXdp = true;
     config.deviceMode = std::vector<DeviceOption>{ DeviceOption::Passthru };
     config.env =
       std::map<std::string, std::string>{ { "PATH", "/usr/bin" }, { "HOME", "/home/user" } };
@@ -47,6 +48,9 @@ TEST(RuntimeConfigTest, LoadFromPath)
     // Load config from file
     auto loaded_config = linglong::utils::loadRuntimeConfig(config_file);
     ASSERT_TRUE(loaded_config.has_value());
+
+    ASSERT_TRUE(loaded_config->disableXdp.has_value());
+    EXPECT_TRUE(*loaded_config->disableXdp);
 
     ASSERT_TRUE(loaded_config->deviceMode);
     EXPECT_EQ(loaded_config->deviceMode->size(), 1);
@@ -75,6 +79,7 @@ TEST(RuntimeConfigTest, MergeConfigs)
 {
     // Create first config
     RuntimeConfigure config1;
+    config1.disableXdp = false;
     config1.deviceMode = std::vector<DeviceOption>{ DeviceOption::Passthru };
     config1.env =
       std::map<std::string, std::string>{ { "PATH", "/usr/bin" }, { "HOME", "/home/user1" } };
@@ -87,6 +92,7 @@ TEST(RuntimeConfigTest, MergeConfigs)
 
     // Create second config
     RuntimeConfigure config2;
+    config2.disableXdp = true;
     config2.deviceMode = std::vector<DeviceOption>{ DeviceOption::Passthru };
     config2.env =
       std::map<std::string, std::string>{ { "PATH", "/usr/local/bin" }, { "USER", "testuser" } };
@@ -103,6 +109,9 @@ TEST(RuntimeConfigTest, MergeConfigs)
     // Merge configs
     std::vector<RuntimeConfigure> configs = { config1, config2 };
     auto merged = linglong::utils::MergeRuntimeConfig(configs);
+
+    ASSERT_TRUE(merged.disableXdp.has_value());
+    EXPECT_TRUE(*merged.disableXdp);
 
     ASSERT_TRUE(merged.deviceMode);
     EXPECT_EQ(merged.deviceMode->size(), 2);
@@ -135,6 +144,7 @@ TEST(RuntimeConfigTest, MergeEmptyConfigs)
     std::vector<RuntimeConfigure> empty_configs;
     auto merged = linglong::utils::MergeRuntimeConfig(empty_configs);
 
+    EXPECT_FALSE(merged.disableXdp);
     EXPECT_FALSE(merged.deviceMode);
     EXPECT_FALSE(merged.env);
     EXPECT_FALSE(merged.extDefs);
@@ -144,6 +154,7 @@ TEST(RuntimeConfigTest, MergePartialConfigs)
 {
     // Config with only env
     RuntimeConfigure config1;
+    config1.disableXdp = false;
     config1.deviceMode = std::vector<DeviceOption>{ DeviceOption::Passthru };
     config1.env = std::map<std::string, std::string>{ { "PATH", "/usr/bin" } };
 
@@ -164,6 +175,9 @@ TEST(RuntimeConfigTest, MergePartialConfigs)
     nlohmann::json j;
     linglong::api::types::v1::to_json(j, merged);
     LogD("{}", j.dump());
+
+    ASSERT_TRUE(merged.disableXdp.has_value());
+    EXPECT_FALSE(*merged.disableXdp);
 
     ASSERT_TRUE(merged.env);
     EXPECT_EQ(merged.env->size(), 1);

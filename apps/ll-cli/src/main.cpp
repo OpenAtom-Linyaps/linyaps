@@ -173,6 +173,11 @@ ll-cli run org.deepin.demo -- bash -x /path/to/bash/script)"));
       ->delimiter(',')          // 支持以逗号分隔
       ->allow_extra_args(false) // 避免吞掉后面的参数
       ->check(validatorString);
+    cliRun
+      ->add_flag("--enable-xdp{false},!--disable-xdp{true}",
+                 runOptions.disableXdp,
+                 _("Enable or disable xdg-desktop-portal related integration inside the sandbox"))
+      ->take_last();
     cliRun->add_option("--run-context", runOptions.runContext, _("Run context json string"))
       ->group("");
     cliRun

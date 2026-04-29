@@ -17,6 +17,10 @@
 #include <fmt/format.h>
 #include <fmt/ranges.h>
 
+#include <QDBusConnection>
+#include <QDBusInterface>
+#include <QDBusReply>
+
 #include <algorithm>
 #include <fstream>
 
@@ -31,6 +35,47 @@ const std::vector<std::string> buildContainerCaps = {
     "CAP_KILL",    "CAP_NET_BIND_SERVICE", "CAP_SETFCAP",    "CAP_SETGID",
     "CAP_SETPCAP", "CAP_SETUID",           "CAP_SYS_CHROOT",
 };
+
+auto getXDPDocumentsMountPoint() noexcept -> utils::error::Result<std::filesystem::path>
+{
+    LINGLONG_TRACE("get XDP Documents mount point");
+
+    auto bus = QDBusConnection::sessionBus();
+    if (!bus.isConnected()) {
+        return LINGLONG_ERR("session bus is not connected");
+    }
+
+    QDBusInterface documentsPortal("org.freedesktop.portal.Documents",
+                                   "/org/freedesktop/portal/documents",
+                                   "org.freedesktop.portal.Documents",
+                                   bus);
+    if (!documentsPortal.isValid()) {
+        return LINGLONG_ERR("org.freedesktop.portal.Documents is not available");
+    }
+
+    auto reply = documentsPortal.call(QDBus::Block, "GetMountPoint");
+    if (reply.type() == QDBusMessage::ErrorMessage) {
+        return LINGLONG_ERR(reply.errorMessage().toStdString());
+    }
+
+    if (reply.arguments().isEmpty()) {
+        return LINGLONG_ERR("Documents portal mount point reply is empty");
+    }
+
+    const auto &value = reply.arguments().constFirst();
+    if (!value.canConvert<QByteArray>()) {
+        return LINGLONG_ERR(
+          fmt::format("unexpected Documents portal mount point type: {}", value.typeName()));
+    }
+    auto mountPoint = value.toByteArray().toStdString();
+
+    if (mountPoint.empty()) {
+        return LINGLONG_ERR("Documents portal mount point is empty");
+    }
+
+    // c_str is crucial here, without it the path may include trailing null bytes
+    return std::filesystem::path{ mountPoint.c_str() };
+}
 
 } // namespace
 
@@ -68,6 +113,10 @@ std::string genContainerID(const api::types::v1::RunContextConfig &config) noexc
 auto RunContainerOptions::applyRuntimeConfig(
   const api::types::v1::RuntimeConfigure &runtimeConfig) noexcept -> utils::error::Result<void>
 {
+    if (runtimeConfig.disableXdp.has_value()) {
+        this->disableXdp = *runtimeConfig.disableXdp;
+    }
+
     if (runtimeConfig.deviceMode) {
         for (const auto &option : *runtimeConfig.deviceMode) {
             if (option == api::types::v1::DeviceOption::Passthru) {
@@ -107,6 +156,9 @@ auto RunContainerOptions::applyCliRunOptions(const cli::RunOptions &options) noe
         this->env.insert_or_assign(item.substr(0, split), item.substr(split + 1));
     }
 
+    if (options.disableXdp.has_value()) {
+        this->disableXdp = *options.disableXdp;
+    }
     this->privileged = options.privileged;
     this->capabilities.insert(this->capabilities.end(),
                               options.capsAdd.begin(),
@@ -144,6 +196,11 @@ auto RunContainerOptions::getSecurityContexts() const noexcept
 auto RunContainerOptions::isDevicePassthruEnabled() const noexcept -> bool
 {
     return this->devicePassthru;
+}
+
+auto RunContainerOptions::isXdpDisabled() const noexcept -> bool
+{
+    return this->disableXdp;
 }
 
 auto RunContainerOptions::isPrivileged() const noexcept -> bool
@@ -472,6 +529,18 @@ auto ContainerBuilder::configureRunContainer(PreparedContainer &prepared,
       .mapPrivate((homePath / ".gnupg").string(), true)
       .bindIPC()
       .forwardDefaultEnv();
+
+    if (!options.isXdpDisabled()) {
+        auto docMountPoint = getXDPDocumentsMountPoint();
+        if (docMountPoint) {
+            prepared.cfgBuilder.enableXDP(generator::XdpOption{
+              .docMountPoint = std::move(*docMountPoint),
+            });
+        } else {
+            LogW("failed to get XDP Documents mount point: {}, skip XDP integration",
+                 docMountPoint.error());
+        }
+    }
 
     if (options.isDevicePassthruEnabled()) {
         prepared.cfgBuilder.bindDev(true);

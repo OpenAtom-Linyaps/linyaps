@@ -53,10 +53,12 @@ struct RunContainerOptions
     [[nodiscard]] auto getSecurityContexts() const noexcept
       -> const std::vector<SecurityContextType> &;
     [[nodiscard]] auto isDevicePassthruEnabled() const noexcept -> bool;
+    [[nodiscard]] auto isXdpDisabled() const noexcept -> bool;
     [[nodiscard]] auto isPrivileged() const noexcept -> bool;
 
     CommonContainerOptions common;
 
+    bool disableXdp{ false };
     bool privileged{ false };
     bool devicePassthru{ false };
     std::map<std::string, std::string> env;

@@ -18,6 +18,11 @@
 
 namespace linglong::generator {
 
+struct XdpOption
+{
+    std::filesystem::path docMountPoint;
+};
+
 enum class ANNOTATION {
     APPID,
     BASEDIR,
@@ -133,7 +138,7 @@ public:
 
     ContainerCfgBuilder &enableQuirkVolatile() noexcept;
 
-    ContainerCfgBuilder &disableContainerInfo() noexcept;
+    ContainerCfgBuilder &enableXDP(XdpOption option) noexcept;
 
     ContainerCfgBuilder &
       setExtensionMounts(std::vector<ocppi::runtime::config::types::Mount>) noexcept;
@@ -325,7 +330,7 @@ private:
 
     bool isolateNetWorkEnabled = false;
     bool disableUserNamespaceEnabled = false;
-    bool disableGenerateContainerInfo{ false };
+    std::optional<XdpOption> xdpOption;
     bool applyPatchEnabled = true;
     bool isolateTmp{ false };
     bool devPassthru{ false };

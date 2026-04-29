@@ -37,6 +37,7 @@ using nlohmann::json;
 
 struct RuntimeConfigure {
 std::optional<std::vector<DeviceOption>> deviceMode;
+std::optional<bool> disableXdp;
 std::optional<std::map<std::string, std::string>> env;
 /**
 * external extension definitions to extend the component

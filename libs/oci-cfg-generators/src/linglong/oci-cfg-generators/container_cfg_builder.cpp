@@ -347,6 +347,13 @@ utils::error::Result<void> ContainerCfgBuilder::buildXDGRuntime() noexcept
                                   .type = "bind" });
     environment["XDG_RUNTIME_DIR"] = *containerXDGRuntimeDir;
 
+    if (xdpOption) {
+        runMount->emplace_back(Mount{ .destination = *containerXDGRuntimeDir / "doc",
+                                      .options = string_list{ "bind" },
+                                      .source = xdpOption->docMountPoint / "by-app" / appId,
+                                      .type = "bind" });
+    }
+
     return LINGLONG_OK;
 }
 
@@ -1450,7 +1457,7 @@ utils::error::Result<void> ContainerCfgBuilder::buildEnv() noexcept
         environment["LINGLONG_APPID"] = appId;
     }
 
-    if (!disableGenerateContainerInfo) {
+    if (xdpOption) {
         environment.try_emplace("GTK_USE_PORTAL", "1");
         environment.try_emplace("QT_QPA_PLATFORMTHEME", "xdgdesktopportal");
     }
@@ -1489,9 +1496,9 @@ utils::error::Result<void> ContainerCfgBuilder::buildEnv() noexcept
     return LINGLONG_OK;
 }
 
-ContainerCfgBuilder &ContainerCfgBuilder::disableContainerInfo() noexcept
+ContainerCfgBuilder &ContainerCfgBuilder::enableXDP(XdpOption option) noexcept
 {
-    disableGenerateContainerInfo = true;
+    xdpOption = std::move(option);
     return *this;
 }
 
@@ -1499,7 +1506,7 @@ utils::error::Result<void> ContainerCfgBuilder::buildContainerInfo() noexcept
 {
     LINGLONG_TRACE("build container info");
 
-    if (disableGenerateContainerInfo) {
+    if (!xdpOption) {
         return LINGLONG_OK;
     }
 

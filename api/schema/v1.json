@@ -1454,6 +1454,9 @@
           "items": {
             "$ref": "#/$defs/DeviceOption"
           }
+        },
+        "disable_xdp": {
+          "type": "boolean"
         }
       }
     },

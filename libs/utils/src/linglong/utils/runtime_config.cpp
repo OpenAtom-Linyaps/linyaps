@@ -57,6 +57,10 @@ RuntimeConfigure MergeRuntimeConfig(const std::vector<RuntimeConfigure> &configs
     RuntimeConfigure result;
 
     for (const auto &config : configs) {
+        if (config.disableXdp.has_value()) {
+            result.disableXdp = config.disableXdp;
+        }
+
         if (config.deviceMode) {
             if (!result.deviceMode) {
                 result.deviceMode = config.deviceMode;

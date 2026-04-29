@@ -1278,6 +1278,7 @@ j["version"] = x.version;
 
 inline void from_json(const json & j, RuntimeConfigure& x) {
 x.deviceMode = get_stack_optional<std::vector<DeviceOption>>(j, "device_mode");
+x.disableXdp = get_stack_optional<bool>(j, "disable_xdp");
 x.env = get_stack_optional<std::map<std::string, std::string>>(j, "env");
 x.extDefs = get_stack_optional<std::map<std::string, std::vector<ExtensionDefine>>>(j, "ext_defs");
 }
@@ -1286,6 +1287,9 @@ inline void to_json(json & j, const RuntimeConfigure & x) {
 j = json::object();
 if (x.deviceMode) {
 j["device_mode"] = x.deviceMode;
+}
+if (x.disableXdp) {
+j["disable_xdp"] = x.disableXdp;
 }
 if (x.env) {
 j["env"] = x.env;

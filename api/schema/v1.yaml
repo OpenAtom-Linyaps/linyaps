@@ -1101,6 +1101,8 @@ $defs:
         type: array
         items:
           $ref: '#/$defs/DeviceOption'
+      disable_xdp:
+        type: boolean
   RunContextConfig:
     title: RunContextConfig
     type: object

@@ -7,16 +7,15 @@
 # shellcheck shell=sh
 
 # Profile.d script for linglong/linyaps
-# This script sources the XDG_DATA_DIRS generation script and exports
-# the modified XDG_DATA_DIRS environment variable for user sessions.
+# This script sources the host environment generator and prints the
+# modified XDG_DATA_DIRS and PATH variables for user sessions.
 
 source_script="@CMAKE_INSTALL_PREFIX@/lib/linglong/generate-xdg-data-dirs.sh"
 
-# Source the script and export XDG_DATA_DIRS if successful
+# Source the script if available
 [ -r "${source_script}" ] && . "${source_script}"
 
-if  [ -n "${XDG_DATA_DIRS}" ]; then
 # !!!systemd requires environment variables to be printed to standard output!!!
 # https://www.freedesktop.org/software/systemd/man/latest/systemd.environment-generator.html
-echo "XDG_DATA_DIRS=${XDG_DATA_DIRS}"
-fi
+[ -n "${XDG_DATA_DIRS}" ] && echo "XDG_DATA_DIRS=${XDG_DATA_DIRS}"
+[ -n "${PATH}" ] && echo "PATH=${PATH}"

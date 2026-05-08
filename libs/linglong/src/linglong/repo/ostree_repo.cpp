@@ -78,6 +78,76 @@ struct ostreeUserData
     ~ostreeUserData() { g_clear_pointer(&ostree_status, g_free); }
 };
 
+bool isExportedBinaryRelativePath(const std::filesystem::path &rootSource,
+                                  const std::filesystem::path &relativePath) noexcept
+{
+    if (rootSource.filename() == "bin") {
+        return !relativePath.empty();
+    }
+
+    const auto relative = relativePath.generic_string();
+    return relative == "bin" || common::strings::starts_with(relative, "bin/");
+}
+
+utils::error::Result<void> writeExportedBinaryWrapper(const std::string &appID,
+                                                      const std::filesystem::path &rootSource,
+                                                      const std::filesystem::path &relativePath,
+                                                      const std::filesystem::path &targetPath)
+{
+    LINGLONG_TRACE(fmt::format("write exported binary wrapper {}", targetPath.string()));
+
+    auto ensureDir = utils::ensureDirectory(targetPath.parent_path());
+    if (!ensureDir) {
+        return LINGLONG_ERR("create wrapper directory", ensureDir);
+    }
+
+    std::error_code ec;
+    auto currentStatus = std::filesystem::symlink_status(targetPath, ec);
+    if (ec && ec != std::errc::no_such_file_or_directory) {
+        return LINGLONG_ERR(fmt::format("check exported binary {}", targetPath), ec);
+    }
+    ec.clear();
+
+    if (currentStatus.type() != std::filesystem::file_type::not_found) {
+        std::filesystem::remove(targetPath, ec);
+        if (ec) {
+            return LINGLONG_ERR(fmt::format("remove stale exported binary {}", targetPath), ec);
+        }
+    }
+
+    auto commandRelativePath = relativePath;
+    if (rootSource.filename() == "bin" && !relativePath.empty()) {
+        commandRelativePath = std::filesystem::path("bin") / relativePath;
+    }
+
+    const auto commandPath =
+      (std::filesystem::path("/opt/apps") / appID / "files" / commandRelativePath).generic_string();
+    const auto wrapper = fmt::format("#!/usr/bin/env sh\nexec \"{}\" run \"{}\" -- \"{}\" \"$@\"\n",
+                                     LINGLONG_CLIENT_PATH,
+                                     appID,
+                                     commandPath);
+    auto writeResult = utils::writeFile(targetPath, wrapper);
+    if (!writeResult) {
+        return LINGLONG_ERR("write exported binary wrapper", writeResult);
+    }
+
+    std::filesystem::permissions(targetPath,
+                                 std::filesystem::perms::owner_read
+                                   | std::filesystem::perms::owner_write
+                                   | std::filesystem::perms::owner_exec
+                                   | std::filesystem::perms::group_read
+                                   | std::filesystem::perms::group_exec
+                                   | std::filesystem::perms::others_read
+                                   | std::filesystem::perms::others_exec,
+                                 std::filesystem::perm_options::replace,
+                                 ec);
+    if (ec) {
+        return LINGLONG_ERR(fmt::format("set permissions for {}", targetPath), ec);
+    }
+
+    return LINGLONG_OK;
+}
+
 void progress_changed(OstreeAsyncProgress *progress, gpointer user_data)
 {
     auto *data = static_cast<ostreeUserData *>(user_data);
@@ -1916,6 +1986,15 @@ utils::error::Result<void> OSTreeRepo::exportDir(const std::string &appID,
                                                  const std::filesystem::path &destination,
                                                  const int &max_depth)
 {
+    return exportDirInternal(appID, source, destination, source, max_depth);
+}
+
+utils::error::Result<void> OSTreeRepo::exportDirInternal(const std::string &appID,
+                                                         const std::filesystem::path &source,
+                                                         const std::filesystem::path &destination,
+                                                         const std::filesystem::path &rootSource,
+                                                         const int &max_depth)
+{
     LINGLONG_TRACE(fmt::format("export {}", source.string()));
     if (max_depth <= 0) {
         LogW("max depth reached, skipping export for {}", source.c_str());
@@ -1953,6 +2032,16 @@ utils::error::Result<void> OSTreeRepo::exportDir(const std::string &appID,
         const auto &target_path = destination / source_path.filename();
         // 如果是文件，创建符号链接
         if (std::filesystem::is_regular_file(status)) {
+            const auto relativePath = source_path.lexically_relative(rootSource);
+            if (isExportedBinaryRelativePath(rootSource, relativePath)) {
+                auto wrapResult =
+                  writeExportedBinaryWrapper(appID, rootSource, relativePath, target_path);
+                if (!wrapResult) {
+                    return wrapResult;
+                }
+                continue;
+            }
+
             // linyaps.original结尾的文件是重写之前的备份文件，不应该被导出
             if (common::strings::ends_with(source_path.string(), ".linyaps.original")) {
                 continue;
@@ -2070,7 +2159,8 @@ utils::error::Result<void> OSTreeRepo::exportDir(const std::string &appID,
         }
 
         if (std::filesystem::is_directory(status)) {
-            auto ret = this->exportDir(appID, source_path, target_path, max_depth - 1);
+            auto ret =
+              this->exportDirInternal(appID, source_path, target_path, rootSource, max_depth - 1);
             if (!ret.has_value()) {
                 return ret;
             }

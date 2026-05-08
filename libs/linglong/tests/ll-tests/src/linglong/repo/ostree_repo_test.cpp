@@ -14,6 +14,7 @@
 #include "linglong/repo/config.h"
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/utils/error/error.h"
+#include "linglong/utils/file.h"
 
 #include <cstdio>
 #include <cstdlib>
@@ -100,6 +101,74 @@ TEST_F(RepoTest, resolveEntryExportPathSkipsLegacySystemdUserWhenLibPathPreferre
 
     EXPECT_TRUE(
       ostreeRepo->resolveEntryExportPath("share/systemd/user/test.service", true).empty());
+}
+
+TEST_F(RepoTest, exportDirWrapsBinEntriesForHostExecution)
+{
+    TempDir tempDir;
+    auto config = api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 };
+    auto ostreeRepo = std::make_unique<MockOstreeRepo>(tempDir.path(), config);
+
+    const auto srcDir = tempDir.path() / "src";
+    const auto destDir = tempDir.path() / "entries";
+    const auto sourceBinary = srcDir / "bin" / "demo-tool";
+    const auto exportedBinary = destDir / "bin" / "demo-tool";
+
+    std::error_code ec;
+    ASSERT_TRUE(fs::create_directories(sourceBinary.parent_path(), ec));
+    ASSERT_FALSE(ec) << ec.message();
+    std::ofstream(sourceBinary) << "binary payload";
+
+    auto exportResult = ostreeRepo->exportDir("org.example.app", srcDir, destDir, 10);
+    ASSERT_TRUE(exportResult.has_value()) << exportResult.error().message();
+
+    EXPECT_TRUE(fs::exists(exportedBinary));
+    EXPECT_FALSE(fs::is_symlink(exportedBinary));
+
+    auto content = linglong::utils::readFile(exportedBinary);
+    ASSERT_TRUE(content.has_value()) << content.error().message();
+    EXPECT_THAT(*content, ::testing::HasSubstr("#!/usr/bin/env sh"));
+    EXPECT_THAT(*content,
+                ::testing::HasSubstr(
+                  std::string("\"") + LINGLONG_CLIENT_PATH + "\" run \"org.example.app\" -- "
+                  + "\"/opt/apps/org.example.app/files/bin/demo-tool\" \"$@\""));
+
+    const auto status = fs::status(exportedBinary, ec);
+    ASSERT_FALSE(ec) << ec.message();
+    EXPECT_NE((status.permissions() & fs::perms::owner_exec), fs::perms::none);
+}
+
+TEST_F(RepoTest, exportDirInternalWrapsBinEntriesWhenRootSourceIsBinDirectory)
+{
+    TempDir tempDir;
+    auto config = api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 };
+    auto ostreeRepo = std::make_unique<MockOstreeRepo>(tempDir.path(), config);
+
+    const auto appEntriesDir = tempDir.path() / "app-entries";
+    const auto sourceDir = appEntriesDir / "bin";
+    const auto destDir = tempDir.path() / "entries" / "bin";
+    const auto sourceBinary = sourceDir / "demo-tool";
+    const auto exportedBinary = destDir / "demo-tool";
+
+    std::error_code ec;
+    ASSERT_TRUE(fs::create_directories(sourceBinary.parent_path(), ec));
+    ASSERT_FALSE(ec) << ec.message();
+    std::ofstream(sourceBinary) << "binary payload";
+
+    auto exportResult =
+      ostreeRepo->exportDirInternal("org.example.app", sourceDir, destDir, sourceDir, 10);
+    ASSERT_TRUE(exportResult.has_value()) << exportResult.error().message();
+
+    EXPECT_TRUE(fs::exists(exportedBinary));
+    EXPECT_FALSE(fs::is_symlink(exportedBinary));
+
+    auto content = linglong::utils::readFile(exportedBinary);
+    ASSERT_TRUE(content.has_value()) << content.error().message();
+    EXPECT_THAT(*content, ::testing::HasSubstr("#!/usr/bin/env sh"));
+    EXPECT_THAT(*content,
+                ::testing::HasSubstr(
+                  std::string("\"") + LINGLONG_CLIENT_PATH + "\" run \"org.example.app\" -- "
+                  + "\"/opt/apps/org.example.app/files/bin/demo-tool\" \"$@\""));
 }
 
 TEST_F(RepoTest, createPersistsConfigAndBootstrapsRepoArtifacts)

@@ -281,6 +281,11 @@ protected:
                                          const std::filesystem::path &source,
                                          const std::filesystem::path &destination,
                                          const int &max_depth);
+    utils::error::Result<void> exportDirInternal(const std::string &appID,
+                                                 const std::filesystem::path &source,
+                                                 const std::filesystem::path &destination,
+                                                 const std::filesystem::path &rootSource,
+                                                 const int &max_depth);
     utils::error::Result<void> exportEntries(
       const std::filesystem::path &, const api::types::v1::RepositoryCacheLayersItem &) noexcept;
 };

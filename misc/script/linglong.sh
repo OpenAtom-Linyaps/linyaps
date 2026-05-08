@@ -7,10 +7,14 @@
 # shellcheck shell=sh
 
 # Profile.d script for linglong/linyaps
-# This script sources the XDG_DATA_DIRS generation script and exports
-# the modified XDG_DATA_DIRS environment variable for user sessions.
+# This script sources the host environment generator and exports the
+# modified XDG_DATA_DIRS and PATH variables for user sessions.
 
 source_script="@CMAKE_INSTALL_PREFIX@/lib/linglong/generate-xdg-data-dirs.sh"
 
-# Source the script and export XDG_DATA_DIRS if successful
-[ -r "${source_script}" ] && . "${source_script}" && [ -n "${XDG_DATA_DIRS}" ] && export XDG_DATA_DIRS
+# Source the script and export environment variables if successful
+if [ -r "${source_script}" ]; then
+    . "${source_script}"
+    [ -n "${XDG_DATA_DIRS}" ] && export XDG_DATA_DIRS
+    [ -n "${PATH}" ] && export PATH
+fi

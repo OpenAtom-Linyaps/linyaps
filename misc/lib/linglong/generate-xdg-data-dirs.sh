@@ -7,17 +7,15 @@
 # shellcheck shell=sh
 
 # NOTE:
-# Software installed by linglong (or linypas) are generally GUI applications,
-# which should not override any existing files in origin XDG_DATA_DIRS,
-# which are generally managed by system package manager like dpkg,
-# to distribute system-wide service, desktop environment and applications.
-# So we append the path to XDG_DATA_DIRS here like,
-# instead of prepending it like flatpak.
+# Linglong exports desktop integration data and command wrappers from
+# ${LINGLONG_ROOT}/entries. We append those paths so host-managed files keep
+# higher priority while exported apps remain discoverable.
 
 # --- Variable initialization ---
 LINGLONG_ROOT="@LINGLONG_ROOT@"
 LINGLONG_EXPORT_PATH="@LINGLONG_EXPORT_PATH@"
 LINGLONG_DATA_DIR="${LINGLONG_ROOT}/entries/share"
+LINGLONG_BIN_DIR="${LINGLONG_ROOT}/entries/bin"
 
 # --- Helper function: safely add path to XDG_DATA_DIRS ---
 # Parameters: path_to_add [position]
@@ -56,7 +54,30 @@ _init_xdg_data_dir() {
     [ -z "${XDG_DATA_DIRS}" ] && XDG_DATA_DIRS="/usr/local/share:/usr/share"
 }
 
+# --- Helper function: safely add path to PATH ---
+_append_path_to_path() {
+    path_to_add="$1"
+
+    case "${path_to_add}" in
+    */) path_to_add="${path_to_add%/}" ;;
+    esac
+
+    [ -z "${path_to_add}" ] && return 0
+
+    [ -n "${PATH}" ] && case ":${PATH}:" in
+    *":${path_to_add}:"*) return 0 ;;
+    esac
+
+    PATH="${PATH:+${PATH}:}${path_to_add}"
+}
+
+# --- Helper function: initialize PATH if empty ---
+_init_path() {
+    [ -z "${PATH}" ] && PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+}
+
 _init_xdg_data_dir
+_init_path
 
 # Add LINGLONG_DATA_DIR to the end of XDG_DATA_DIRS (if it doesn't exist)
 _append_path_to_xdg_data_dirs "${LINGLONG_DATA_DIR}"
@@ -64,5 +85,8 @@ _append_path_to_xdg_data_dirs "${LINGLONG_DATA_DIR}"
 # If there's a custom LINGLONG_EXPORT_PATH (default is "share"), add custom path to XDG_DATA_DIRS
 [ "${LINGLONG_EXPORT_PATH}" != "share" ] && _append_path_to_xdg_data_dirs "${LINGLONG_ROOT}/entries/${LINGLONG_EXPORT_PATH}" "begin"
 
+# Export command wrappers from ${LINGLONG_ROOT}/entries/bin via PATH.
+_append_path_to_path "${LINGLONG_BIN_DIR}"
+
 # --- Clean up helper functions ---
-unset -f _append_path_to_xdg_data_dirs _init_xdg_data_dir
+unset -f _append_path_to_xdg_data_dirs _init_xdg_data_dir _append_path_to_path _init_path

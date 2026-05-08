@@ -31,6 +31,15 @@ public:
         return this->OSTreeRepo::exportDir(appID, source, destination, max_depth);
     }
 
+    utils::error::Result<void> exportDirInternal(const std::string &appID,
+                                                 const std::filesystem::path &source,
+                                                 const std::filesystem::path &destination,
+                                                 const std::filesystem::path &rootSource,
+                                                 const int &max_depth)
+    {
+        return this->OSTreeRepo::exportDirInternal(appID, source, destination, rootSource, max_depth);
+    }
+
     // mock getOverlayShareDir
     std::function<std::filesystem::path()> wrapGetOverlayShareDirFunc;
 

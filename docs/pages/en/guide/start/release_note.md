@@ -2,6 +2,44 @@
 
 ---
 
+## Version 1.12
+
+### 🚀 **New Features**
+
+* **XDG Desktop Portal Integration:** Enabled xdg-desktop-portal support by default for GTK/Qt applications, ensuring file dialogs in sandboxed environments correctly use the host portal.
+* **RISC-V 64 Architecture Support:** Added complete support for RISC-V 64 architecture, including architecture recognition and toolchain triplet generation.
+* **Working Directory Option:** Added `--workdir` option to `ll-builder run` and `ll-cli run` commands, allowing specification of the application's working directory inside the container.
+* **Shell Completion Support:** Added Zsh and Fish shell auto-completion support for `ll-builder` commands.
+* **XDP Integration Control:** Added `--disable-xdp` flag, allowing users to disable xdg-desktop-portal integration.
+
+### 🐞 **Bug Fixes**
+
+* **Container Management:** Fixed errors when entering containers, improved container ID prefix matching functionality, and provided clearer error messages.
+* **Qt 6 Compatibility:** Resolved Qt 6 D-Bus metatype registration issues, ensuring runtime stability on distributions like Ubuntu 24.04.
+* **Symbolic Link Handling:** Fixed the issue where symbolic links could not be properly resolved when traversing the entries directory, ensuring desktop file discovery works correctly.
+* **X11 Display Handling:** Improved parsing of XOrg display environment variables, handling various edge cases for protocol/hostname/display number/screen number.
+* **D-Bus Address Parsing:** Implemented specification-compliant D-Bus address parsing, added URL encoding/decoding utilities.
+
+---
+
+## Version 1.11
+
+### 🚀 **New Features**
+
+* **GPU Support:** The application runtime now supports graphics processing unit (GPU) capabilities to improve computing performance and rendering efficiency.
+* **Container Process Management:** Containerized runtimes have been enhanced to support waiting for child processes to terminate, ensuring resource management and system stability.
+* **Repository Mirror Control:** Repository configuration now includes the ability to enable and disable mirroring, allowing users to flexibly control and optimize dependency pull speed.
+* **Startup Environment Variables:** The application startup command now supports using the `--env` parameter to set runtime environment variables, facilitating dynamic configuration and debugging.
+* **Build Tool Export:** The build tool now includes a `--ref` option, supporting the export of UAB packages by specific references, optimizing the distribution and deployment process.
+
+### 🐞 **Bug Fixes**
+
+* **Desktop Integration:** Fixed a logical error that could cause application icons to disappear from the taskbar after updating the Linglong component.
+* **File I/O:** Resolved encoding and parsing issues that caused operations to fail when opening file paths containing special characters.
+* **Build File Inclusion:** Fixed an issue where the build tools failed to correctly include and export hidden files when exporting packages.
+
+---
+
 ## Version 1.10
 
 ### 🚀 **New Features**

@@ -53,4 +53,9 @@ std::filesystem::path getUserRuntimeConfigDir() noexcept
     return configDir / "linglong";
 }
 
+std::filesystem::path getSystemRuntimeConfigDir() noexcept
+{
+    return LINGLONG_SYSCONFDIR;
+}
+
 } // namespace linglong::common::dir

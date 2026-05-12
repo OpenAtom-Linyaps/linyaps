@@ -348,10 +348,11 @@ utils::error::Result<void> ContainerCfgBuilder::buildXDGRuntime() noexcept
     environment["XDG_RUNTIME_DIR"] = *containerXDGRuntimeDir;
 
     if (xdpOption) {
-        runMount->emplace_back(Mount{ .destination = *containerXDGRuntimeDir / "doc",
-                                      .options = string_list{ "bind" },
-                                      .source = xdpOption->docMountPoint / "by-app" / appId,
-                                      .type = "bind" });
+        runMount->emplace_back(
+          Mount{ .destination = *containerXDGRuntimeDir / "doc",
+                 .options = string_list{ "bind", "nosuid", "nodev", "relatime" },
+                 .source = xdpOption->docMountPoint / "by-app" / appId,
+                 .type = "bind" });
     }
 
     return LINGLONG_OK;

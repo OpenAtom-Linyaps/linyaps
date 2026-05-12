@@ -29,4 +29,6 @@ std::filesystem::path getUserCacheDir() noexcept;
 
 std::filesystem::path getUserRuntimeConfigDir() noexcept;
 
+std::filesystem::path getSystemRuntimeConfigDir() noexcept;
+
 } // namespace linglong::common::dir

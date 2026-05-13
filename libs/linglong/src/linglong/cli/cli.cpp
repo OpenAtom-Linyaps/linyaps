@@ -563,7 +563,29 @@ int Cli::run(const RunOptions &options)
 {
     LINGLONG_TRACE("command run");
 
-    detectDrivers();
+    bool nvidiaCdiFound =
+      std::any_of(options.cdiDevices.begin(), options.cdiDevices.end(), [](const std::string &d) {
+          return d.find("nvidia.com/gpu") != std::string::npos;
+      });
+    std::optional<std::vector<api::types::v1::CdiDeviceEntry>> autoDetectedCdiDevices;
+
+    if (!nvidiaCdiFound && options.cdiDevices.empty()) {
+        auto allCdiDevices = cdi::getCDIDevices(options.cdiSpecDir, std::nullopt);
+        if (allCdiDevices) {
+            for (const auto &device : *allCdiDevices) {
+                LogD("{}={} detected", device.kind, device.name);
+                if (device.kind == "nvidia.com/gpu" && device.name == "all") {
+                    nvidiaCdiFound = true;
+                    autoDetectedCdiDevices = std::vector<api::types::v1::CdiDeviceEntry>{ device };
+                    break;
+                }
+            }
+        }
+    }
+
+    if (!nvidiaCdiFound) {
+        detectDrivers();
+    }
 
     auto userContainerDir = std::filesystem::path{ "/run/linglong" } / std::to_string(getuid());
     if (auto ret = utils::ensureDirectory(userContainerDir); !ret) {
@@ -630,6 +652,8 @@ int Cli::run(const RunOptions &options)
             return -1;
         }
         opts.cdiDevices = std::move(*cdiDevices);
+    } else if (autoDetectedCdiDevices) {
+        opts.cdiDevices = std::move(*autoDetectedCdiDevices);
     }
 
     // 调整日志输出，打印扩展列表（用逗号拼接）

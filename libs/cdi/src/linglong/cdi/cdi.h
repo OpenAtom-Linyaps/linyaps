@@ -11,13 +11,14 @@
 #include "linglong/utils/error/error.h"
 
 #include <map>
+#include <optional>
 #include <string>
 #include <vector>
 
 namespace linglong::cdi {
 
-utils::error::Result<std::vector<api::types::v1::CdiDeviceEntry>>
-getCDIDevices(const std::vector<std::string> &specDirs, const std::vector<std::string> &devices);
+utils::error::Result<std::vector<api::types::v1::CdiDeviceEntry>> getCDIDevices(
+  const std::vector<std::string> &specDirs, const std::optional<std::vector<std::string>> &devices);
 
 utils::error::Result<types::ContainerEdits>
 getCDIDeviceEdits(const api::types::v1::CdiDeviceEntry &device);

@@ -167,12 +167,17 @@ utils::error::Result<types::ContainerEdits> getCDIDeviceEdits(const types::Cdi &
 
 } // namespace
 
-utils::error::Result<std::vector<api::types::v1::CdiDeviceEntry>>
-getCDIDevices(const std::vector<std::string> &specDirs, const std::vector<std::string> &devices)
+utils::error::Result<std::vector<api::types::v1::CdiDeviceEntry>> getCDIDevices(
+  const std::vector<std::string> &specDirs, const std::optional<std::vector<std::string>> &devices)
 {
-    LINGLONG_TRACE(fmt::format("get CDI devices {} from {}",
-                               fmt::join(devices, ", "),
-                               fmt::join(specDirs, ", ")));
+    std::string devicesStr;
+    if (devices) {
+        devicesStr = fmt::format("{}", fmt::join(*devices, ", "));
+    } else {
+        devicesStr = "(all)";
+    }
+    LINGLONG_TRACE(
+      fmt::format("get CDI devices {} from {}", devicesStr, fmt::join(specDirs, ", ")));
 
     struct ParsedSpec
     {
@@ -212,7 +217,25 @@ getCDIDevices(const std::vector<std::string> &specDirs, const std::vector<std::s
     }
 
     std::vector<api::types::v1::CdiDeviceEntry> result;
-    for (const auto &deviceStr : devices) {
+
+    if (!devices) {
+        for (const auto &spec : specs) {
+            for (const auto &dev : spec.spec.devices) {
+                result.emplace_back(api::types::v1::CdiDeviceEntry{
+                  .kind = spec.spec.kind,
+                  .name = dev.name,
+                  .spec =
+                    api::types::v1::CdiSpec{
+                      .checksum = spec.checksum,
+                      .path = spec.path.string(),
+                    },
+                });
+            }
+        }
+        return result;
+    }
+
+    for (const auto &deviceStr : *devices) {
         auto device = common::strings::split(deviceStr, '=');
         if (device.size() != 2) {
             return LINGLONG_ERR(fmt::format("invalid device format: {}", deviceStr));

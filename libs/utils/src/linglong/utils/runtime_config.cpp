@@ -81,7 +81,6 @@ RuntimeConfigure MergeRuntimeConfig(const std::vector<RuntimeConfigure> &configs
             }
         }
 
-        // Merge environment variables
         if (config.env) {
             if (!result.env) {
                 result.env = config.env;
@@ -92,7 +91,6 @@ RuntimeConfigure MergeRuntimeConfig(const std::vector<RuntimeConfigure> &configs
             }
         }
 
-        // Merge extension definitions
         if (config.extDefs) {
             if (!result.extDefs) {
                 result.extDefs = config.extDefs;
@@ -103,6 +101,34 @@ RuntimeConfigure MergeRuntimeConfig(const std::vector<RuntimeConfigure> &configs
                         result.extDefs->emplace(key, value);
                     } else {
                         it->second.insert(it->second.end(), value.begin(), value.end());
+                    }
+                }
+            }
+        }
+
+        if (config.mounts) {
+            if (!result.mounts) {
+                result.mounts = config.mounts;
+            } else {
+                result.mounts->insert(result.mounts->end(),
+                                      config.mounts->begin(),
+                                      config.mounts->end());
+            }
+        }
+
+        if (config.instances) {
+            if (!result.instances) {
+                result.instances = config.instances;
+            } else {
+                for (const auto &[instanceName, instanceCfg] : *config.instances) {
+                    auto it = result.instances->find(instanceName);
+                    if (it == result.instances->end()) {
+                        result.instances->emplace(instanceName, instanceCfg);
+                    } else {
+                        std::vector<RuntimeConfigure> instanceConfigs;
+                        instanceConfigs.emplace_back(std::move(it->second));
+                        instanceConfigs.emplace_back(instanceCfg);
+                        it->second = MergeRuntimeConfig(instanceConfigs);
                     }
                 }
             }
@@ -125,11 +151,12 @@ loadRuntimeConfig(const std::filesystem::path &path)
     return result;
 }
 
-utils::error::Result<std::optional<RuntimeConfigure>> loadRuntimeConfig(const std::string &appId)
+utils::error::Result<std::optional<RuntimeConfigure>> loadRuntimeConfig(const std::string &appId,
+                                                                        const std::string &instance)
 {
-    LINGLONG_TRACE("load runtime config for app: " + appId);
+    LINGLONG_TRACE("load runtime config for app: " + appId
+                   + ", instance: " + (instance.empty() ? "(default)" : instance));
 
-    // Merge configs in order: system global -> system app -> user global -> user app
     std::vector<RuntimeConfigure> configs;
 
     auto systemGlobal = loadSystemRuntimeConfig("");
@@ -169,6 +196,18 @@ utils::error::Result<std::optional<RuntimeConfigure>> loadRuntimeConfig(const st
     }
 
     auto merged = MergeRuntimeConfig(configs);
+
+    if (!instance.empty() && merged.instances
+        && merged.instances->find(instance) != merged.instances->end()) {
+        auto instanceConfig = std::move((*merged.instances)[instance]);
+        std::vector<RuntimeConfigure> toMerge;
+        toMerge.emplace_back(std::move(merged));
+        toMerge.emplace_back(std::move(instanceConfig));
+        merged = MergeRuntimeConfig(toMerge);
+    }
+
+    merged.instances = std::nullopt;
+
     return merged;
 }
 

@@ -452,6 +452,35 @@ auto ContainerBuilder::normalizeContainerRootfs(
         }
     }
 
+    if (config.mounts) {
+        for (const auto &m : *config.mounts) {
+            if (!m.srcType) {
+                continue;
+            }
+            auto destPath = std::filesystem::path(m.destination);
+            auto dest = rootfs / (destPath.is_absolute() ? destPath.relative_path() : destPath);
+            std::error_code ec;
+            if (std::filesystem::exists(dest, ec)) {
+                continue;
+            }
+            if (*m.srcType == "file") {
+                std::filesystem::create_directories(dest.parent_path(), ec);
+                if (ec) {
+                    LogW("failed to create directories for mount point {}: {}",
+                         dest.parent_path(),
+                         ec.message());
+                    continue;
+                }
+                std::ofstream(dest) << "";
+            } else {
+                std::filesystem::create_directories(dest, ec);
+                if (ec) {
+                    LogW("failed to create mount point {}: {}", dest, ec.message());
+                }
+            }
+        }
+    }
+
     return LINGLONG_OK;
 }
 
@@ -616,6 +645,21 @@ auto ContainerBuilder::configureRunContainer(PreparedContainer &prepared,
     auto applyRes = runContext.setupCDIDevices(prepared.cfgBuilder, false);
     if (!applyRes) {
         return LINGLONG_ERR(applyRes);
+    }
+
+    const auto &mounts = runContext.getConfig().mounts;
+    if (mounts) {
+        for (const auto &m : *mounts) {
+            ocppi::runtime::config::types::Mount ociMount{
+                .destination = m.destination,
+                .gidMappings = {},
+                .options = m.options,
+                .source = m.source,
+                .type = m.type,
+                .uidMappings = {},
+            };
+            prepared.cfgBuilder.addExtraMount(ociMount);
+        }
     }
 
     return LINGLONG_OK;

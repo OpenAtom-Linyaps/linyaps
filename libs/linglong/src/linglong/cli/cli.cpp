@@ -627,7 +627,7 @@ int Cli::run(const RunOptions &options)
         return -1;
     }
 
-    auto loaded = linglong::utils::loadRuntimeConfig(options.appid);
+    auto loaded = linglong::utils::loadRuntimeConfig(options.appid, options.instance.value_or(""));
     if (!loaded) {
         this->printer.printErr(loaded.error());
         return -1;
@@ -636,14 +636,17 @@ int Cli::run(const RunOptions &options)
 
     runtime::RunContext runContext(this->repository);
     linglong::runtime::ResolveOptions opts;
-    opts.baseRef = options.base;
-    opts.runtimeRef = options.runtime;
-    // 处理多个扩展
-    if (!options.extensions.empty()) {
-        opts.extensionRefs = options.extensions;
+    if (runtimeConfig) {
+        auto cfgRes = opts.applyRuntimeConfig(*runtimeConfig);
+        if (!cfgRes) {
+            this->printer.printErr(cfgRes.error());
+            return -1;
+        }
     }
-    if (runtimeConfig && runtimeConfig->extDefs) {
-        opts.externalExtensionDefs = std::move(runtimeConfig->extDefs).value();
+    auto cliRes = opts.applyCliRunOptions(options);
+    if (!cliRes) {
+        this->printer.printErr(cliRes.error());
+        return -1;
     }
     if (!options.cdiDevices.empty()) {
         auto cdiDevices = cdi::getCDIDevices(options.cdiSpecDir, options.cdiDevices);
@@ -805,7 +808,7 @@ int Cli::runWithContext(const RunOptions &options)
         return -1;
     }
 
-    auto loaded = linglong::utils::loadRuntimeConfig(options.appid);
+    auto loaded = linglong::utils::loadRuntimeConfig(options.appid, options.instance.value_or(""));
     if (!loaded) {
         this->printer.printErr(loaded.error());
         return -1;

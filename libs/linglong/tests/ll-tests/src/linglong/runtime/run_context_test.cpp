@@ -6,6 +6,7 @@
 #include <gtest/gtest.h>
 
 #include "../../common/tempdir.h"
+#include "linglong/cli/cli.h"
 #include "linglong/oci-cfg-generators/container_cfg_builder.h"
 #include "linglong/package/fuzzy_reference.h"
 #include "linglong/repo/ostree_repo.h"
@@ -800,6 +801,78 @@ TEST_F(RunContextTest, resolveFromConfigVersionMismatch)
     auto result = context.resolve(config);
     ASSERT_FALSE(result.has_value()) << "Expected resolve to fail for version mismatch";
     EXPECT_THAT(result.error().message(), ::testing::HasSubstr("version mismatch"));
+}
+
+TEST(ResolveOptionsTest, ApplyRuntimeConfigSetsExtDefs)
+{
+    ResolveOptions opts;
+
+    api::types::v1::RuntimeConfigure runtimeConfig;
+    runtimeConfig.extDefs = std::map<std::string, std::vector<api::types::v1::ExtensionDefine>>{
+        { "org.deepin.base",
+          { api::types::v1::ExtensionDefine{
+            .directory = "/opt/extensions/test",
+            .name = "test-extension",
+            .version = "1.0.0",
+          } } }
+    };
+
+    auto result = opts.applyRuntimeConfig(runtimeConfig);
+    ASSERT_TRUE(result);
+    ASSERT_TRUE(opts.externalExtensionDefs.has_value());
+    EXPECT_EQ(opts.externalExtensionDefs->size(), 1);
+}
+
+TEST(ResolveOptionsTest, ApplyRuntimeConfigSetsMounts)
+{
+    ResolveOptions opts;
+
+    api::types::v1::RuntimeConfigure runtimeConfig;
+    runtimeConfig.mounts = std::vector<api::types::v1::Mount>{
+        { .destination = "/tmp/test",
+          .options = std::vector<std::string>{ "rw", "rbind" },
+          .source = "/host/tmp",
+          .type = "bind" },
+    };
+
+    auto result = opts.applyRuntimeConfig(runtimeConfig);
+    ASSERT_TRUE(result);
+    ASSERT_TRUE(opts.mounts.has_value());
+    EXPECT_EQ(opts.mounts->size(), 1);
+    EXPECT_EQ(opts.mounts->at(0).destination, "/tmp/test");
+    EXPECT_EQ(opts.mounts->at(0).source, "/host/tmp");
+}
+
+TEST(ResolveOptionsTest, ApplyCliRunOptionsSetsFields)
+{
+    ResolveOptions opts;
+
+    cli::RunOptions runOptions;
+    runOptions.base = "org.deepin.base/23.0.0";
+    runOptions.runtime = "org.deepin.runtime/23.0.0";
+    runOptions.extensions = { "org.deepin.extension1", "org.deepin.extension2" };
+    runOptions.instance = "test-instance";
+
+    auto result = opts.applyCliRunOptions(runOptions);
+    ASSERT_TRUE(result);
+    EXPECT_EQ(opts.baseRef.value(), "org.deepin.base/23.0.0");
+    EXPECT_EQ(opts.runtimeRef.value(), "org.deepin.runtime/23.0.0");
+    ASSERT_TRUE(opts.extensionRefs.has_value());
+    EXPECT_EQ(opts.extensionRefs->size(), 2);
+    EXPECT_EQ(opts.instance.value(), "test-instance");
+}
+
+TEST(ResolveOptionsTest, ApplyCliRunOptionsSkipsEmptyExtensions)
+{
+    ResolveOptions opts;
+
+    cli::RunOptions runOptions;
+    runOptions.base = "org.deepin.base/23.0.0";
+
+    auto result = opts.applyCliRunOptions(runOptions);
+    ASSERT_TRUE(result);
+    EXPECT_EQ(opts.baseRef.value(), "org.deepin.base/23.0.0");
+    EXPECT_FALSE(opts.extensionRefs.has_value());
 }
 
 } // namespace

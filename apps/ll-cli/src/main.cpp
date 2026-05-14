@@ -201,6 +201,12 @@ ll-cli run org.deepin.demo -- bash -x /path/to/bash/script)"));
       ->delimiter(',')
       ->transform(CLI::CheckedTransformer(deviceOptionMap, CLI::ignore_case))
       ->allow_extra_args(false);
+    cliRun
+      ->add_option("--instance",
+                   runOptions.instance,
+                   _("Specify the container instance name for reuse or identification"))
+      ->type_name("NAME")
+      ->check(validatorString);
     cliRun->add_option("COMMAND", runOptions.commands, _("Run commands in a running sandbox"));
 }
 

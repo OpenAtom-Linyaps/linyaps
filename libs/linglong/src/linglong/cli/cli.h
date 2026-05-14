@@ -62,6 +62,7 @@ struct RunOptions
     std::vector<std::string> cdiSpecDir = { "/etc/cdi", "/var/run/cdi" };
     std::vector<std::string> cdiDevices;
     std::vector<api::types::v1::DeviceOption> deviceOptions;
+    std::optional<std::string> instance;
 };
 
 struct EnterOptions

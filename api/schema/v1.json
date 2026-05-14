@@ -1457,6 +1457,18 @@
         },
         "disable_xdp": {
           "type": "boolean"
+        },
+        "mounts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Mount"
+          }
+        },
+        "instances": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/RuntimeConfigure"
+          }
         }
       }
     },
@@ -1498,6 +1510,15 @@
           "type": "array",
           "items": {
             "$ref": "#/$defs/CDIDeviceEntry"
+          }
+        },
+        "instance": {
+          "type": "string"
+        },
+        "mounts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Mount"
           }
         }
       }
@@ -1545,6 +1566,34 @@
       "enum": [
         "passthru"
       ]
+    },
+    "Mount": {
+      "type": "object",
+      "required": [
+        "destination",
+        "source",
+        "type"
+      ],
+      "properties": {
+        "destination": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "options": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "src_type": {
+          "type": "string"
+        }
+      }
     }
   },
   "type": "object",
@@ -1698,6 +1747,9 @@
     },
     "DeviceOption": {
       "$ref": "#/$defs/DeviceOption"
+    },
+    "Mount": {
+      "$ref": "#/$defs/Mount"
     }
   }
 }

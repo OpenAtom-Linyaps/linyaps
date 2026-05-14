@@ -18,6 +18,7 @@
 #include "linglong/api/types/v1/helper.hpp"
 
 #include "linglong/api/types/v1/ExtensionDefine.hpp"
+#include "linglong/api/types/v1/Mount.hpp"
 
 namespace linglong {
 namespace api {
@@ -43,6 +44,8 @@ std::optional<std::map<std::string, std::string>> env;
 * external extension definitions to extend the component
 */
 std::optional<std::map<std::string, std::vector<ExtensionDefine>>> extDefs;
+std::optional<std::map<std::string, RuntimeConfigure>> instances;
+std::optional<std::vector<Mount>> mounts;
 };
 }
 }

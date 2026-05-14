@@ -5,6 +5,7 @@
 #include "linglong/runtime/run_context.h"
 
 #include "linglong/cdi/cdi.h"
+#include "linglong/cli/cli.h"
 #include "linglong/common/display.h"
 #include "linglong/common/strings.h"
 #include "linglong/extension/extension.h"
@@ -24,6 +25,24 @@ namespace {
 
 constexpr const char *runContextConfigVersion = "1";
 
+void ensureMountSrcType(std::vector<api::types::v1::Mount> &mounts)
+{
+    for (auto &m : mounts) {
+        if (m.srcType && !m.srcType->empty()) {
+            continue;
+        }
+        std::error_code ec;
+        auto srcPath = std::filesystem::path(m.source);
+        if (!std::filesystem::exists(srcPath, ec)) {
+            m.srcType = std::nullopt;
+        } else if (std::filesystem::is_directory(srcPath, ec)) {
+            m.srcType = "dir";
+        } else {
+            m.srcType = "file";
+        }
+    }
+}
+
 std::optional<std::string> timezoneFromPath(const std::filesystem::path &path,
                                             const std::filesystem::path &zoneinfoRoot)
 {
@@ -41,6 +60,30 @@ std::optional<std::string> timezoneFromPath(const std::filesystem::path &path,
 } // namespace
 
 RunContext::~RunContext() = default;
+
+auto ResolveOptions::applyRuntimeConfig(const api::types::v1::RuntimeConfigure &runtimeConfig)
+  -> utils::error::Result<void>
+{
+    if (runtimeConfig.extDefs) {
+        this->externalExtensionDefs = *runtimeConfig.extDefs;
+    }
+    if (runtimeConfig.mounts) {
+        this->mounts = *runtimeConfig.mounts;
+    }
+    return LINGLONG_OK;
+}
+
+auto ResolveOptions::applyCliRunOptions(const cli::RunOptions &options)
+  -> utils::error::Result<void>
+{
+    this->baseRef = options.base;
+    this->runtimeRef = options.runtime;
+    if (!options.extensions.empty()) {
+        this->extensionRefs = options.extensions;
+    }
+    this->instance = options.instance;
+    return LINGLONG_OK;
+}
 
 utils::error::Result<void> RunContext::resolve(const linglong::package::Reference &runnable,
                                                const ResolveOptions &opts)
@@ -172,6 +215,12 @@ utils::error::Result<void> RunContext::resolve(const linglong::package::Referenc
 
     if (opts.cdiDevices) {
         contextCfg.cdiDevices = opts.cdiDevices.value();
+    }
+    contextCfg.instance = opts.instance;
+
+    if (opts.mounts) {
+        contextCfg.mounts = *opts.mounts;
+        ensureMountSrcType(*contextCfg.mounts);
     }
 
     // all reference are cleard , we can get actual layer directory now
@@ -414,6 +463,8 @@ utils::error::Result<void> RunContext::resolve(const api::types::v1::RunContextC
 
     contextCfg.overlayfs = config.overlayfs;
     contextCfg.timezone = config.timezone;
+    contextCfg.instance = config.instance;
+    contextCfg.mounts = config.mounts;
     contextCfg.version = runContextConfigVersion;
 
     return resolveLayer(false, {});

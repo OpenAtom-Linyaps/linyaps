@@ -211,27 +211,37 @@ ContainerCfgBuilder &ContainerCfgBuilder::bindProc() noexcept
     return *this;
 }
 
-ContainerCfgBuilder &ContainerCfgBuilder::bindDev() noexcept
+ContainerCfgBuilder &ContainerCfgBuilder::bindDev(bool passthru) noexcept
 {
-    devMount = {
-        Mount{ .destination = "/dev",
-               .options = string_list{ "nosuid", "strictatime", "mode=0755", "size=65536k" },
-               .source = "tmpfs",
-               .type = "tmpfs" },
-        Mount{ .destination = "/dev/pts",
-               .options =
-                 string_list{ "nosuid", "noexec", "newinstance", "ptmxmode=0666", "mode=0620" },
-               .source = "devpts",
-               .type = "devpts" },
-        Mount{ .destination = "/dev/shm",
-               .options = string_list{ "nosuid", "noexec", "nodev", "mode=1777" },
-               .source = "shm",
-               .type = "tmpfs" },
-        Mount{ .destination = "/dev/mqueue",
-               .options = string_list{ "rbind", "nosuid", "noexec", "nodev" },
-               .source = "/dev/mqueue",
-               .type = "bind" },
-    };
+    devPassthru = passthru;
+    if (devPassthru) {
+        devMount = {
+            Mount{ .destination = "/dev",
+                   .options = string_list{ "rbind" },
+                   .source = "/dev",
+                   .type = "bind" },
+        };
+    } else {
+        devMount = {
+            Mount{ .destination = "/dev",
+                   .options = string_list{ "nosuid", "strictatime", "mode=0755", "size=65536k" },
+                   .source = "tmpfs",
+                   .type = "tmpfs" },
+            Mount{ .destination = "/dev/pts",
+                   .options =
+                     string_list{ "nosuid", "noexec", "newinstance", "ptmxmode=0666", "mode=0620" },
+                   .source = "devpts",
+                   .type = "devpts" },
+            Mount{ .destination = "/dev/shm",
+                   .options = string_list{ "nosuid", "noexec", "nodev", "mode=1777" },
+                   .source = "shm",
+                   .type = "tmpfs" },
+            Mount{ .destination = "/dev/mqueue",
+                   .options = string_list{ "rbind", "nosuid", "noexec", "nodev" },
+                   .source = "/dev/mqueue",
+                   .type = "bind" },
+        };
+    }
 
     return *this;
 }
@@ -283,6 +293,8 @@ ContainerCfgBuilder &ContainerCfgBuilder::bindRun() noexcept
                         .options = string_list{ "nosuid", "nodev", "mode=0755", "size=65536k" },
                         .source = "tmpfs",
                         .type = "tmpfs" } };
+
+    bindIfExist(*runMount, "/run/udev");
 
     return *this;
 }
@@ -1788,7 +1800,7 @@ bool ContainerCfgBuilder::mergeMount() noexcept
         std::move(devMount->begin(), devMount->end(), std::back_inserter(mounts));
     }
 
-    if (devNodeMount) {
+    if (!devPassthru && devNodeMount) {
         std::move(devNodeMount->begin(), devNodeMount->end(), std::back_inserter(mounts));
     }
 

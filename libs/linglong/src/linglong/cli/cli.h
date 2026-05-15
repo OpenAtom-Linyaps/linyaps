@@ -9,6 +9,7 @@
 #include "linglong/api/dbus/v1/package_manager.h"
 #include "linglong/api/dbus/v1/task.h"
 #include "linglong/api/types/v1/CommonOptions.hpp"
+#include "linglong/api/types/v1/DeviceOption.hpp"
 #include "linglong/api/types/v1/PackageInfoDisplay.hpp"
 #include "linglong/api/types/v1/RepositoryCacheLayersItem.hpp"
 #include "linglong/cli/interactive_notifier.h"
@@ -58,6 +59,7 @@ struct RunOptions
     std::vector<std::string> extensions;
     bool privileged{ false };
     std::vector<std::string> capsAdd;
+    std::vector<api::types::v1::DeviceOption> deviceOptions;
 };
 
 struct EnterOptions

@@ -48,6 +48,7 @@ pfl_add_library(
   src/linglong/utils/transaction.h
   src/linglong/utils/xdg/directory.cpp
   src/linglong/utils/xdg/directory.h
+  src/linglong/utils/xdp.h
   COMPILE_FEATURES
   PUBLIC
   cxx_std_17

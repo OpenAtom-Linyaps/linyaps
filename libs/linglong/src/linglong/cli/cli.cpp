@@ -43,6 +43,7 @@
 #include "linglong/utils/namespace.h"
 #include "linglong/utils/runtime_config.h"
 #include "linglong/utils/xdg/directory.h"
+#include "linglong/utils/xdp.h"
 #include "ocppi/runtime/ExecOption.hpp"
 #include "ocppi/runtime/RunOption.hpp"
 #include "ocppi/runtime/Signal.hpp"
@@ -865,6 +866,14 @@ int Cli::runResolvedContext(runtime::RunContext &runContext,
     if (!res) {
         this->printer.printErr(res.error());
         return -1;
+    }
+
+    const auto &appid = runContext.getTargetID();
+    if (!options.disableXdp.has_value() && !utils::isValidXdgDesktopPortalId(appid)) {
+        LogW("appid '{}' doesn't conform to XDP ID specification, disabling XDP integration. "
+             "Use --enable-xdp to override.",
+             appid);
+        runOptions.disableXdp = true;
     }
 
     auto container = this->containerBuilder.createRunContainer(runContext, runOptions);

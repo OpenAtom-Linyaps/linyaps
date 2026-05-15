@@ -8,8 +8,6 @@
 
 #include "linglong/api/types/v1/CommonOptions.hpp"
 #include "linglong/api/types/v1/ContainerProcessStateInfo.hpp"
-#include "linglong/api/types/v1/InteractionMessageType.hpp"
-#include "linglong/api/types/v1/PackageManager1RequestInteractionAdditionalMessage.hpp"
 #include "linglong/api/types/v1/Repo.hpp"
 #include "linglong/api/types/v1/UabLayer.hpp"
 #include "linglong/package/fuzzy_reference.h"
@@ -20,6 +18,7 @@
 #include "package_task.h"
 
 #include <QDBusArgument>
+#include <QDBusConnection>
 #include <QDBusContext>
 #include <QList>
 #include <QObject>
@@ -35,7 +34,7 @@ class PackageManager : public QObject, protected QDBusContext
 {
     Q_OBJECT
     Q_CLASSINFO("D-Bus Interface", "org.deepin.linglong.PackageManager1")
-    Q_PROPERTY(QVariantMap Configuration READ getConfiguration WRITE setConfiguration)
+    Q_PROPERTY(QVariantMap Configuration READ getConfiguration)
 
 public:
     PackageManager(std::unique_ptr<linglong::repo::OSTreeRepo> repo,
@@ -50,7 +49,7 @@ public:
 
 public
     Q_SLOT : [[nodiscard]] auto getConfiguration() const noexcept -> QVariantMap;
-    void setConfiguration(const QVariantMap &parameters) noexcept;
+    void SetConfiguration(const QVariantMap &parameters) noexcept;
     auto Install(const QVariantMap &parameters) noexcept -> QVariantMap;
     auto InstallFromFile(const QDBusUnixFileDescriptor &fd,
                          const QString &fileType,
@@ -59,21 +58,12 @@ public
     auto Update(const QVariantMap &parameters) noexcept -> QVariantMap;
     auto Search(const QVariantMap &parameters) noexcept -> QVariantMap;
     auto Prune() noexcept -> QVariantMap;
-    void ReplyInteraction(QDBusObjectPath object_path, const QVariantMap &replies);
 
     auto InitRunContext(const QString &runContextCfg, const QString &containerID) noexcept
       -> QVariantMap;
     utils::error::Result<void> initRunContext(const std::string &runContextCfg,
                                               const std::string &containerID) noexcept;
-    void initDaemonMode() noexcept;
-
-    // Nothing to do here, Permissions() will be rejected in org.deepin.linglong.PackageManager.conf
-    void Permissions() { }
-
-    bool waitConfirm(PackageTask &taskRef,
-                     api::types::v1::InteractionMessageType msgType,
-                     const api::types::v1::PackageManager1RequestInteractionAdditionalMessage
-                       &additionalMessage) noexcept;
+    void initDaemonMode(bool peerMode = false) noexcept;
 
     virtual utils::error::Result<void> applyApp(const package::Reference &reference) noexcept;
     virtual utils::error::Result<void> unapplyApp(const package::Reference &reference) noexcept;
@@ -117,20 +107,33 @@ public
 Q_SIGNALS:
     void TaskAdded(QDBusObjectPath object_path);
     void TaskRemoved(QDBusObjectPath object_path);
-    void RequestInteraction(QDBusObjectPath object_path,
-                            int messageID,
-                            QVariantMap additionalMessage);
     void SearchFinished(QString jobID, QVariantMap result);
     void PruneFinished(QString jobID, QVariantMap result);
     void InitRunContextFinished(QString jobID, bool success);
-    void ReplyReceived(const QVariantMap &replies);
 
 private:
     QVariantMap installFromLayer(const QDBusUnixFileDescriptor &fd,
-                                 const api::types::v1::CommonOptions &options) noexcept;
+                                 const api::types::v1::CommonOptions &options,
+                                 const CallerContext &ctx) noexcept;
 
     QVariantMap installFromUAB(const QDBusUnixFileDescriptor &fd,
-                               const api::types::v1::CommonOptions &options) noexcept;
+                               const api::types::v1::CommonOptions &options,
+                               const CallerContext &ctx) noexcept;
+
+    QVariantMap installFromFileImpl(const QDBusUnixFileDescriptor &fd,
+                                    const QString &fileType,
+                                    const QVariantMap &options,
+                                    const CallerContext &ctx) noexcept;
+
+    QVariantMap installImpl(const QVariantMap &parameters, const CallerContext &ctx) noexcept;
+
+    QVariantMap uninstallImpl(const QVariantMap &parameters, const CallerContext &ctx) noexcept;
+
+    QVariantMap updateImpl(const QVariantMap &parameters, const CallerContext &ctx) noexcept;
+
+    QVariantMap pruneImpl() noexcept;
+
+    utils::error::Result<void> setConfigurationImpl(const QVariantMap &parameters) noexcept;
 
     [[nodiscard]] utils::error::Result<void> lockRepo() noexcept;
     [[nodiscard]] utils::error::Result<void> unlockRepo() noexcept;
@@ -143,7 +146,7 @@ private:
     Prune(std::vector<api::types::v1::PackageInfoV2> &removedInfo) noexcept;
     utils::error::Result<void> removeCache(const package::Reference &ref) noexcept;
 
-    QVariantMap runActionOnTaskQueue(std::shared_ptr<Action> action);
+    QVariantMap runActionOnTaskQueue(std::shared_ptr<Action> action, const CallerContext &ctx);
 
     std::unique_ptr<linglong::repo::OSTreeRepo> repo;
     std::unique_ptr<linglong::runtime::ContainerBuilder> containerBuilder;
@@ -153,6 +156,7 @@ private:
 
     int lockFd{ -1 };
     bool daemonModeInitialized{ false };
+    bool m_peerMode{ false };
 };
 
 } // namespace linglong::service

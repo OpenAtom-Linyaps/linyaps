@@ -125,7 +125,7 @@ auto runDaemonMode(ocppi::cli::CLI &cli, const CommandLineOptions &options) -> i
 
     auto packageManager =
       createPackageManager(std::move(repo).value(), cli, QCoreApplication::instance());
-    packageManager->initDaemonMode();
+    packageManager->initDaemonMode(options.noDBus);
     auto *packageManagerPtr = packageManager.get();
     new linglong::adaptors::package_manger::PackageManager1(packageManagerPtr);
 

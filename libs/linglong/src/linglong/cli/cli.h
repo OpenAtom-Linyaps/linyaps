@@ -216,21 +216,15 @@ private:
     [[nodiscard]] utils::error::Result<std::vector<api::types::v1::CliContainer>>
     getCurrentContainers() const noexcept;
     int installFromFile(const QFileInfo &fileInfo,
-                        const api::types::v1::CommonOptions &commonOptions,
-                        const std::string &appid);
+                        const api::types::v1::CommonOptions &commonOptions);
     int setRepoConfig(const QVariantMap &config);
-    utils::error::Result<void> ensureAuthorized();
-    utils::error::Result<void> runningAsRoot();
-    utils::error::Result<void> runningAsRoot(const QList<QString> &args);
     utils::error::Result<std::vector<api::types::v1::UpgradeListResult>> listUpgradable();
     utils::error::Result<std::filesystem::path> ensureCache(runtime::RunContext &context) noexcept;
-    QDBusReply<void> authorization();
     void updateAM() noexcept;
     utils::error::Result<std::vector<std::string>> getRunningAppContainers(const std::string &id);
     bool isContainerIDMatch(const std::string &containerID, const std::string &shortID);
     int getLayerDir(const InspectOptions &options);
     int getBundleDir(const InspectOptions &options);
-    utils::error::Result<void> initInteraction();
     void detectDrivers();
     utils::error::Result<api::dbus::v1::PackageManager *> getPkgMan();
     utils::error::Result<void> initPkgManSignals();
@@ -277,9 +271,7 @@ private Q_SLOTS:
     void onTaskPropertiesChanged(const QString &interface,
                                  const QVariantMap &changed_properties,
                                  const QStringList &invalidated_properties);
-    void interaction(const QDBusObjectPath &object_path,
-                     int messageID,
-                     const QVariantMap &additionalMessage);
+    void onTaskRequestInteraction(int messageID, const QVariantMap &additionalMessage);
 
 Q_SIGNALS:
     void taskDone();

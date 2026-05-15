@@ -9,13 +9,19 @@
 #include "linglong/api/types/v1/BuilderProject.hpp"
 #include "linglong/api/types/v1/ContainerProcessStateInfo.hpp"
 #include "linglong/api/types/v1/ExtensionDefine.hpp"
+#include "linglong/api/types/v1/Mount.hpp"
 #include "linglong/api/types/v1/RunContextConfig.hpp"
+#include "linglong/api/types/v1/RuntimeConfigure.hpp"
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/utils/error/error.h"
 #include "ocppi/runtime/config/types/Generators.hpp"
 
 #include <filesystem>
 #include <list>
+
+namespace linglong::cli {
+struct RunOptions;
+}
 
 namespace linglong::generator {
 class ContainerCfgBuilder;
@@ -76,8 +82,14 @@ struct ResolveOptions
     std::optional<std::vector<api::types::v1::CdiDeviceEntry>> cdiDevices;
     std::optional<std::string> runtimeRef;
     std::optional<std::vector<std::string>> extensionRefs;
+    std::optional<std::string> instance;
     std::optional<std::map<std::string, std::vector<api::types::v1::ExtensionDefine>>>
       externalExtensionDefs;
+    std::optional<std::vector<api::types::v1::Mount>> mounts;
+
+    auto applyRuntimeConfig(const api::types::v1::RuntimeConfigure &runtimeConfig)
+      -> utils::error::Result<void>;
+    auto applyCliRunOptions(const cli::RunOptions &options) -> utils::error::Result<void>;
 };
 
 class RunContext

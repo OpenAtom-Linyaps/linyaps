@@ -37,6 +37,7 @@
 #include "linglong/api/types/v1/InteractionReply.hpp"
 #include "linglong/api/types/v1/InteractionRequest.hpp"
 #include "linglong/api/types/v1/LayerInfo.hpp"
+#include "linglong/api/types/v1/Mount.hpp"
 #include "linglong/api/types/v1/OciConfigurationPatch.hpp"
 #include "linglong/api/types/v1/PackageInfo.hpp"
 #include "linglong/api/types/v1/PackageInfoDisplay.hpp"
@@ -113,6 +114,7 @@ std::optional<InteractionMessageType> interactionMessageType;
 std::optional<InteractionReply> interactionReply;
 std::optional<InteractionRequest> interactionRequest;
 std::optional<LayerInfo> layerInfo;
+std::optional<Mount> mount;
 std::optional<OciConfigurationPatch> ociConfigurationPatch;
 std::optional<PackageInfo> packageInfo;
 std::optional<PackageInfoDisplay> packageInfoDisplay;

@@ -50,6 +50,7 @@
 #include "linglong/api/types/v1/PackageInfoDisplay.hpp"
 #include "linglong/api/types/v1/PackageInfo.hpp"
 #include "linglong/api/types/v1/OciConfigurationPatch.hpp"
+#include "linglong/api/types/v1/Mount.hpp"
 #include "linglong/api/types/v1/LayerInfo.hpp"
 #include "linglong/api/types/v1/InteractionRequest.hpp"
 #include "linglong/api/types/v1/InteractionReply.hpp"
@@ -172,6 +173,9 @@ void to_json(json & j, const InteractionRequest & x);
 
 void from_json(const json & j, LayerInfo & x);
 void to_json(json & j, const LayerInfo & x);
+
+void from_json(const json & j, Mount & x);
+void to_json(json & j, const Mount & x);
 
 void from_json(const json & j, OciConfigurationPatch & x);
 void to_json(json & j, const OciConfigurationPatch & x);
@@ -753,6 +757,27 @@ j["info"] = x.info;
 j["version"] = x.version;
 }
 
+inline void from_json(const json & j, Mount& x) {
+x.destination = j.at("destination").get<std::string>();
+x.options = get_stack_optional<std::vector<std::string>>(j, "options");
+x.source = j.at("source").get<std::string>();
+x.srcType = get_stack_optional<std::string>(j, "src_type");
+x.type = j.at("type").get<std::string>();
+}
+
+inline void to_json(json & j, const Mount & x) {
+j = json::object();
+j["destination"] = x.destination;
+if (x.options) {
+j["options"] = x.options;
+}
+j["source"] = x.source;
+if (x.srcType) {
+j["src_type"] = x.srcType;
+}
+j["type"] = x.type;
+}
+
 inline void from_json(const json & j, OciConfigurationPatch& x) {
 x.ociVersion = j.at("ociVersion").get<std::string>();
 x.patch = j.at("patch").get<std::vector<nlohmann::json>>();
@@ -1244,6 +1269,8 @@ x.app = get_stack_optional<std::string>(j, "app");
 x.base = get_stack_optional<std::string>(j, "base");
 x.cdiDevices = get_stack_optional<std::vector<CdiDeviceEntry>>(j, "cdiDevices");
 x.extensions = get_stack_optional<std::map<std::string, std::vector<std::string>>>(j, "extensions");
+x.instance = get_stack_optional<std::string>(j, "instance");
+x.mounts = get_stack_optional<std::vector<Mount>>(j, "mounts");
 x.overlayfs = get_stack_optional<std::string>(j, "overlayfs");
 x.runtime = get_stack_optional<std::string>(j, "runtime");
 x.timezone = get_stack_optional<std::string>(j, "timezone");
@@ -1264,6 +1291,12 @@ j["cdiDevices"] = x.cdiDevices;
 if (x.extensions) {
 j["extensions"] = x.extensions;
 }
+if (x.instance) {
+j["instance"] = x.instance;
+}
+if (x.mounts) {
+j["mounts"] = x.mounts;
+}
 if (x.overlayfs) {
 j["overlayfs"] = x.overlayfs;
 }
@@ -1281,6 +1314,8 @@ x.deviceMode = get_stack_optional<std::vector<DeviceOption>>(j, "device_mode");
 x.disableXdp = get_stack_optional<bool>(j, "disable_xdp");
 x.env = get_stack_optional<std::map<std::string, std::string>>(j, "env");
 x.extDefs = get_stack_optional<std::map<std::string, std::vector<ExtensionDefine>>>(j, "ext_defs");
+x.instances = get_stack_optional<std::map<std::string, RuntimeConfigure>>(j, "instances");
+x.mounts = get_stack_optional<std::vector<Mount>>(j, "mounts");
 }
 
 inline void to_json(json & j, const RuntimeConfigure & x) {
@@ -1296,6 +1331,12 @@ j["env"] = x.env;
 }
 if (x.extDefs) {
 j["ext_defs"] = x.extDefs;
+}
+if (x.instances) {
+j["instances"] = x.instances;
+}
+if (x.mounts) {
+j["mounts"] = x.mounts;
 }
 }
 
@@ -1380,6 +1421,7 @@ x.interactionMessageType = get_stack_optional<InteractionMessageType>(j, "Intera
 x.interactionReply = get_stack_optional<InteractionReply>(j, "InteractionReply");
 x.interactionRequest = get_stack_optional<InteractionRequest>(j, "InteractionRequest");
 x.layerInfo = get_stack_optional<LayerInfo>(j, "LayerInfo");
+x.mount = get_stack_optional<Mount>(j, "Mount");
 x.ociConfigurationPatch = get_stack_optional<OciConfigurationPatch>(j, "OCIConfigurationPatch");
 x.packageInfo = get_stack_optional<PackageInfo>(j, "PackageInfo");
 x.packageInfoDisplay = get_stack_optional<PackageInfoDisplay>(j, "PackageInfoDisplay");
@@ -1477,6 +1519,9 @@ j["InteractionRequest"] = x.interactionRequest;
 }
 if (x.layerInfo) {
 j["LayerInfo"] = x.layerInfo;
+}
+if (x.mount) {
+j["Mount"] = x.mount;
 }
 if (x.ociConfigurationPatch) {
 j["OCIConfigurationPatch"] = x.ociConfigurationPatch;

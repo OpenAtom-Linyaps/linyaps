@@ -18,6 +18,7 @@
 #include "linglong/api/types/v1/helper.hpp"
 
 #include "linglong/api/types/v1/CdiDeviceEntry.hpp"
+#include "linglong/api/types/v1/Mount.hpp"
 
 namespace linglong {
 namespace api {
@@ -30,6 +31,8 @@ std::optional<std::string> app;
 std::optional<std::string> base;
 std::optional<std::vector<CdiDeviceEntry>> cdiDevices;
 std::optional<std::map<std::string, std::vector<std::string>>> extensions;
+std::optional<std::string> instance;
+std::optional<std::vector<Mount>> mounts;
 std::optional<std::string> overlayfs;
 std::optional<std::string> runtime;
 std::optional<std::string> timezone;

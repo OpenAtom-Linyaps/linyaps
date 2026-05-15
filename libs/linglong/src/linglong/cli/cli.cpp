@@ -293,14 +293,9 @@ void Cli::onTaskPropertiesChanged(
     handleTaskState();
 }
 
-void Cli::interaction(const QDBusObjectPath &object_path,
-                      int messageID,
-                      const QVariantMap &additionalMessage)
+void Cli::onTaskRequestInteraction(int messageID, const QVariantMap &additionalMessage)
 {
     LINGLONG_TRACE("interactive with user")
-    if (object_path.path() != taskObjectPath) {
-        return;
-    }
 
     auto messageType = static_cast<api::types::v1::InteractionMessageType>(messageID);
     auto msg = common::serialize::fromQVariantMap<
@@ -351,14 +346,13 @@ void Cli::interaction(const QDBusObjectPath &object_path,
     LogD("action: {}", action);
 
     auto reply = api::types::v1::InteractionReply{ .action = action };
-    auto pkgMan = this->getPkgMan();
-    if (!pkgMan) {
-        this->printer.printErr(pkgMan.error());
+    if (!this->task) {
+        this->printer.printErr(LINGLONG_ERRV("task object is null"));
         return;
     }
 
     QDBusPendingReply<void> dbusReply =
-      (*pkgMan)->ReplyInteraction(object_path, common::serialize::toQVariantMap(reply));
+      this->task->ReplyInteraction(common::serialize::toQVariantMap(reply));
     dbusReply.waitForFinished();
     if (dbusReply.isError()) {
         this->printer.printErr(
@@ -517,6 +511,8 @@ utils::error::Result<api::dbus::v1::PackageManager *> Cli::getPkgMan()
         this->pkgMan.reset();
         return LINGLONG_ERR("failed to initialize package manager signals", ret.error());
     }
+
+    this->pkgMan->setTimeout(INT_MAX);
 
     return this->pkgMan.get();
 }
@@ -1116,43 +1112,10 @@ void Cli::cancelCurrentTask()
 }
 
 int Cli::installFromFile(const QFileInfo &fileInfo,
-                         const api::types::v1::CommonOptions &commonOptions,
-                         const std::string &appid)
+                         const api::types::v1::CommonOptions &commonOptions)
 {
     auto filePath = fileInfo.absoluteFilePath();
     LINGLONG_TRACE(fmt::format("install from file {}", filePath.toStdString()));
-
-    auto authReply = this->authorization();
-    if (!authReply.isValid()) {
-        if (authReply.error().type() == QDBusError::AccessDenied) {
-            auto args = QCoreApplication::instance()->arguments();
-            // pkexec在0.120版本之前没有keep-cwd选项，会将目录切换到/root
-            // 所以将layer或uab文件的相对路径转为绝对路径，再传给pkexec
-            auto path = fileInfo.absoluteFilePath();
-            for (auto i = 0; i < args.length(); i++) {
-                if (args[i] == QString::fromStdString(appid)) {
-                    args[i] = path.toLocal8Bit().constData();
-                }
-            }
-
-            auto ret = this->runningAsRoot(args);
-            if (!ret) {
-                this->printer.printErr(ret.error());
-            }
-            return -1;
-        }
-
-        this->printer.printErr(LINGLONG_ERRV(
-          fmt::format("{} {}", authReply.error().message() + authReply.error().name()),
-          static_cast<int>(authReply.error().type())));
-        return -1;
-    }
-
-    auto res = this->initInteraction();
-    if (!res) {
-        this->printer.printErr(res.error());
-        return -1;
-    }
 
     LogI("install from file {}", filePath.toStdString());
     QFile file{ filePath };
@@ -1173,7 +1136,7 @@ int Cli::installFromFile(const QFileInfo &fileInfo,
     auto pendingReply = (*pkgMan)->InstallFromFile(dbusFileDescriptor,
                                                    fileInfo.suffix(),
                                                    common::serialize::toQVariantMap(commonOptions));
-    res = waitTaskCreated(pendingReply, TaskType::InstallFromFile);
+    auto res = waitTaskCreated(pendingReply, TaskType::InstallFromFile);
     if (!res) {
         this->handleCommonError(res.error());
         return -1;
@@ -1201,19 +1164,7 @@ int Cli::install(const InstallOptions &options)
 
     // 如果检测是文件，则直接安装
     if (info.exists() && info.isFile()) {
-        return installFromFile(QFileInfo{ info.absoluteFilePath() }, params.options, options.appid);
-    }
-
-    auto ret = this->ensureAuthorized();
-    if (!ret) {
-        this->printer.printErr(ret.error());
-        return -1;
-    }
-
-    ret = this->initInteraction();
-    if (!ret) {
-        this->printer.printErr(ret.error());
-        return -1;
+        return installFromFile(QFileInfo{ info.absoluteFilePath() }, params.options);
     }
 
     auto fuzzyRef = package::FuzzyReference::parse(options.appid);
@@ -1261,12 +1212,6 @@ int Cli::install(const InstallOptions &options)
 int Cli::upgrade(const UpgradeOptions &options)
 {
     LINGLONG_TRACE("command upgrade");
-
-    auto ret = this->ensureAuthorized();
-    if (!ret) {
-        this->printer.printErr(ret.error());
-        return -1;
-    }
 
     std::vector<package::Reference> toUpgrade;
     if (!options.appid.empty()) {
@@ -1463,12 +1408,6 @@ int Cli::prune()
 {
     LINGLONG_TRACE("command prune");
 
-    auto ret = this->ensureAuthorized();
-    if (!ret) {
-        this->printer.printErr(ret.error());
-        return -1;
-    }
-
     QEventLoop loop;
     QString jobIDReply = "";
     auto pkgMan = this->getPkgMan();
@@ -1517,12 +1456,6 @@ int Cli::prune()
 int Cli::uninstall(const UninstallOptions &options)
 {
     LINGLONG_TRACE("command uninstall");
-
-    auto ret = this->ensureAuthorized();
-    if (!ret) {
-        this->printer.printErr(ret.error());
-        return -1;
-    }
 
     auto fuzzyRef = package::FuzzyReference::parse(options.appid);
     if (!fuzzyRef) {
@@ -1791,21 +1724,16 @@ int Cli::setRepoConfig(const QVariantMap &config)
 {
     LINGLONG_TRACE("set repo config");
 
-    auto ret = this->ensureAuthorized();
-    if (!ret) {
-        this->printer.printErr(ret.error());
-        return -1;
-    }
-
     auto pkgMan = this->getPkgMan();
     if (!pkgMan) {
         this->printer.printErr(pkgMan.error());
         return -1;
     }
 
-    (*pkgMan)->setConfiguration(config);
-    if ((*pkgMan)->lastError().isValid()) {
-        auto err = LINGLONG_ERRV((*pkgMan)->lastError().message().toStdString());
+    auto reply = (*pkgMan)->SetConfiguration(config);
+    reply.waitForFinished();
+    if (reply.isError()) {
+        auto err = LINGLONG_ERRV(reply.error().message().toStdString());
         this->printer.printErr(err);
         return -1;
     }
@@ -2156,69 +2084,6 @@ void Cli::filterPackageInfosByVersion(
     }
 }
 
-utils::error::Result<void> Cli::ensureAuthorized()
-{
-    LINGLONG_TRACE("ensure authorized");
-
-    auto authReply = this->authorization();
-    if (!authReply.isValid()) {
-        if (authReply.error().type() == QDBusError::AccessDenied) {
-            auto ret = this->runningAsRoot();
-            std::string message = "failed to authorize";
-            if (!ret) {
-                message += ": " + ret.error().message();
-            }
-            return LINGLONG_ERR(message);
-        }
-
-        return LINGLONG_ERR(
-          fmt::format("{} {}", authReply.error().message(), authReply.error().name()),
-          static_cast<int>(authReply.error().type()));
-    }
-
-    return LINGLONG_OK;
-}
-
-utils::error::Result<void> Cli::runningAsRoot()
-{
-    return runningAsRoot(QCoreApplication::instance()->arguments());
-}
-
-utils::error::Result<void> Cli::runningAsRoot(const QList<QString> &args)
-{
-    LINGLONG_TRACE("run with pkexec");
-
-    const char *pkexecBin = "pkexec";
-    QStringList argv{ pkexecBin };
-    argv.append(args);
-    std::vector<char *> targetArgv;
-    for (const auto &arg : argv) {
-        QByteArray byteArray = arg.toUtf8();
-        targetArgv.push_back(strdup(byteArray.constData()));
-    }
-    LogD("run {}", fmt::join(targetArgv, " "));
-    targetArgv.push_back(nullptr);
-
-    auto ret = execvp(pkexecBin, const_cast<char **>(targetArgv.data()));
-    // NOTE: if reached here, exevpe is failed.
-    for (auto arg : targetArgv) {
-        free(arg);
-    }
-    return LINGLONG_ERR("execve error", ret);
-}
-
-QDBusReply<void> Cli::authorization()
-{
-    // Note: we have marked the method Permissions of PM as rejected.
-    // Use this method to determin that this client whether have permission to call PM.
-    auto pkgMan = this->getPkgMan();
-    if (!pkgMan) {
-        return QDBusReply<void>{ QDBusError(QDBusError::Failed, pkgMan.error().message().c_str()) };
-    }
-
-    return (*pkgMan)->Permissions();
-}
-
 utils::error::Result<std::filesystem::path> Cli::ensureCache(runtime::RunContext &context) noexcept
 {
     LINGLONG_TRACE("ensure cache via PM");
@@ -2383,29 +2248,6 @@ int Cli::getBundleDir(const InspectOptions &options)
     return 0;
 }
 
-utils::error::Result<void> Cli::initInteraction()
-{
-    LINGLONG_TRACE("initInteraction");
-
-    auto pkgMan = this->getPkgMan();
-    if (!pkgMan) {
-        return LINGLONG_ERR(pkgMan);
-    }
-
-    auto conn = (*pkgMan)->connection();
-    auto con = conn.connect((*pkgMan)->service(),
-                            (*pkgMan)->path(),
-                            (*pkgMan)->interface(),
-                            "RequestInteraction",
-                            this,
-                            SLOT(interaction(QDBusObjectPath, int, QVariantMap)));
-    if (!con) {
-        return LINGLONG_ERR("Failed to connect signal: RequestInteraction");
-    }
-
-    return LINGLONG_OK;
-}
-
 utils::error::Result<void> Cli::waitTaskCreated(QDBusPendingReply<QVariantMap> &reply,
                                                 TaskType taskType)
 {
@@ -2413,7 +2255,7 @@ utils::error::Result<void> Cli::waitTaskCreated(QDBusPendingReply<QVariantMap> &
 
     auto result = waitDBusReply<api::types::v1::PackageManager1PackageTaskResult>(reply);
     if (!result) {
-        return LINGLONG_ERR(result.error());
+        return LINGLONG_ERR(result);
     }
 
     auto resultCode = static_cast<utils::error::ErrorCode>(result->code);
@@ -2442,6 +2284,16 @@ utils::error::Result<void> Cli::waitTaskCreated(QDBusPendingReply<QVariantMap> &
                       SLOT(onTaskPropertiesChanged(QString, QVariantMap, QStringList)))) {
         Q_ASSERT(false);
         return LINGLONG_ERR(fmt::format("Failed to connect signal PropertiesChanged: {}",
+                                        conn.lastError().message().toStdString()));
+    }
+
+    if (!conn.connect((*pkgMan)->service(),
+                      taskObjectPath,
+                      "org.deepin.linglong.Task1",
+                      "RequestInteraction",
+                      this,
+                      SLOT(onTaskRequestInteraction(int, QVariantMap)))) {
+        return LINGLONG_ERR(fmt::format("Failed to connect signal RequestInteraction: {}",
                                         conn.lastError().message().toStdString()));
     }
 
@@ -2588,6 +2440,9 @@ bool Cli::handleCommonError(const utils::error::Error &error)
         break;
     case utils::error::ErrorCode::Canceled:
         this->printer.printMessage(_("Operation canceled"));
+        break;
+    case utils::error::ErrorCode::PermissionDenied:
+        this->printer.printMessage(_("Permission denied, authentication is required"));
         break;
     default:
         this->printer.printErr(error);

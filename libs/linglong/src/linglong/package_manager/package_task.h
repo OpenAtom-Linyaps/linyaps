@@ -1,16 +1,20 @@
-// SPDX-FileCopyrightText: 2024 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2024 - 2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 #pragma once
 
+#include "linglong/api/types/v1/InteractionMessageType.hpp"
+#include "linglong/api/types/v1/PackageManager1RequestInteractionAdditionalMessage.hpp"
 #include "linglong/api/types/v1/State.hpp"
 #include "linglong/common/dbus/properties_forwarder.h"
 #include "linglong/package_manager/task.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/log/log.h"
 
+#include <QDBusConnection>
 #include <QDBusContext>
+#include <QDBusMessage>
 #include <QDBusObjectPath>
 #include <QEvent>
 #include <QMap>
@@ -18,6 +22,7 @@
 #include <QString>
 #include <QUuid>
 
+#include <chrono>
 #include <functional>
 #include <memory>
 #include <optional>
@@ -26,6 +31,18 @@
 Q_DECLARE_METATYPE(linglong::api::types::v1::State)
 
 namespace linglong::service {
+
+using namespace std::chrono_literals;
+
+struct CallerContext
+{
+    QDBusConnection connection{ QDBusConnection::systemBus() };
+    QDBusMessage message;
+
+    [[nodiscard]] QString callerBusName() const { return message.service(); }
+
+    [[nodiscard]] bool isPeerMode() const { return connection.baseService().isEmpty(); }
+};
 
 class PackageTaskQueue;
 
@@ -72,10 +89,19 @@ public:
 
     virtual GCancellable *cancellable() noexcept override { return m_cancelFlag; }
 
-    utils::error::Result<void> exposeOnDBus(const QDBusConnection &connection) noexcept;
+    utils::error::Result<void> exposeOnDBus() noexcept;
+
+    void setCallerContext(const CallerContext &ctx);
+
+    bool waitConfirm(
+      api::types::v1::InteractionMessageType msgType,
+      const api::types::v1::PackageManager1RequestInteractionAdditionalMessage &additionalMessage,
+      std::chrono::milliseconds timeout = 180000ms) noexcept;
 
 public Q_SLOTS:
     void Cancel() noexcept;
+    void ReplyInteraction(const QVariantMap &replies) noexcept;
+    void onPeerDisconnected() noexcept;
 
 Q_SIGNALS:
     void StateChanged(int newState);
@@ -87,10 +113,15 @@ Q_SIGNALS:
 
     void changePropertiesDone();
 
+    void RequestInteraction(int messageID, QVariantMap additionalMessage);
+    void ReplyReceived(const QVariantMap &replies);
+    void peerDisconnected();
+
 private:
     friend class PackageTaskQueue;
     GCancellable *m_cancelFlag{ nullptr };
     common::dbus::PropertiesForwarder *m_forwarder{ nullptr };
+    CallerContext m_callerContext;
 };
 
 // PackageTaskQueue is used to manage tasks and run them in a separated thread
@@ -105,7 +136,7 @@ public:
 
     template <typename Func>
     utils::error::Result<std::reference_wrapper<PackageTask>>
-    addPackageTask(Func &&job, std::optional<QDBusConnection> conn = std::nullopt) noexcept;
+    addPackageTask(Func &&job, std::optional<CallerContext> ctx = std::nullopt) noexcept;
 
     template <typename Func>
     utils::error::Result<std::reference_wrapper<Task>> addTask(Func &&job) noexcept;
@@ -125,7 +156,7 @@ private:
 
 template <typename Func>
 utils::error::Result<std::reference_wrapper<PackageTask>>
-PackageTaskQueue::addPackageTask(Func &&job, std::optional<QDBusConnection> conn) noexcept
+PackageTaskQueue::addPackageTask(Func &&job, std::optional<CallerContext> ctx) noexcept
 {
     LINGLONG_TRACE("add package task");
     static_assert(std::is_invocable_r_v<void, Func, Task &>, "mismatch function signature");
@@ -133,8 +164,9 @@ PackageTaskQueue::addPackageTask(Func &&job, std::optional<QDBusConnection> conn
     PackageTask &task = dynamic_cast<PackageTask &>(
       enqueueTask(std::make_unique<PackageTask>(std::forward<Func>(job), this)));
 
-    if (conn) {
-        auto ret = task.exposeOnDBus(*conn);
+    if (ctx) {
+        task.setCallerContext(*ctx);
+        auto ret = task.exposeOnDBus();
         if (!ret) {
             return LINGLONG_ERR(ret);
         }

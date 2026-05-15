@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
+ * SPDX-FileCopyrightText: 2023 - 2026 UnionTech Software Technology Co., Ltd.
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
@@ -21,6 +21,7 @@ enum class ErrorCode : int {
     Failed = -1, // 通用失败错误码
     Success = 0, // 成功
     Canceled = 1,
+    PermissionDenied = 2, // 权限被拒绝
 
     Unknown = 1000,               // 未知错误
     AppNotFoundFromRemote = 1001, // 从远程找不到对应应用

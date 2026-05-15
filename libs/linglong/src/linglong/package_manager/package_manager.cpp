@@ -25,6 +25,7 @@
 #include "linglong/package/reference.h"
 #include "linglong/package_manager/package_task.h"
 #include "linglong/package_manager/package_update.h"
+#include "linglong/package_manager/polkit_authority.h"
 #include "linglong/package_manager/ref_installation.h"
 #include "linglong/package_manager/uab_installation.h"
 #include "linglong/repo/ostree_repo.h"
@@ -81,6 +82,23 @@ QVariantMap toDBusReply(utils::error::ErrorCode code,
       api::types::v1::CommonResult{ .code = static_cast<int>(code), // NOLINT
                                     .message = message,             // NOLINT
                                     .type = type });
+}
+
+utils::error::Result<void> checkPolkitAuthorization(const std::string &actionId,
+                                                    const std::string &systemBusName)
+{
+    LINGLONG_TRACE("check polkit authorization");
+
+    auto authResult = PolkitAuthority::checkAuthorization(actionId, systemBusName);
+    if (!authResult) {
+        return LINGLONG_ERR(authResult);
+    }
+
+    if (!(*authResult)) {
+        return LINGLONG_ERR("not authorized", utils::error::ErrorCode::PermissionDenied);
+    }
+
+    return LINGLONG_OK;
 }
 
 } // namespace
@@ -442,9 +460,21 @@ auto PackageManager::getConfiguration() const noexcept -> QVariantMap
     return common::serialize::toQVariantMap(this->repo->getConfig());
 }
 
-void PackageManager::setConfiguration(const QVariantMap &parameters) noexcept
+void PackageManager::SetConfiguration(const QVariantMap &parameters) noexcept
 {
     LogI("set configuration for package manager");
+
+    if (calledFromDBus()) {
+        auto authResult =
+          checkPolkitAuthorization("org.deepin.linglong.PackageManager1.set-configuration",
+                                   message().service().toStdString());
+        if (!authResult) {
+            sendErrorReply(QDBusError::AccessDenied,
+                           QString::fromStdString(authResult.error().message()));
+            return;
+        }
+    }
+
     auto cfg = common::serialize::fromQVariantMap<api::types::v1::RepoConfigV2>(parameters);
     if (!cfg) {
         sendErrorReply(QDBusError::InvalidArgs, QString::fromStdString(cfg.error().message()));
@@ -582,26 +612,9 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
           PackageTask &taskRef = dynamic_cast<PackageTask &>(task);
           if (msgType == api::types::v1::InteractionMessageType::Upgrade
               && !options.skipInteraction) {
-              Q_EMIT RequestInteraction(QDBusObjectPath(taskRef.taskObjectPath().c_str()),
-                                        static_cast<int>(msgType),
-                                        common::serialize::toQVariantMap(additionalMessage));
-              QEventLoop loop;
-              auto conn = connect(
-                this,
-                &PackageManager::ReplyReceived,
-                [&taskRef, &loop](const QVariantMap &reply) {
-                    // handle reply
-                    auto interactionReply =
-                      common::serialize::fromQVariantMap<api::types::v1::InteractionReply>(reply);
-                    if (interactionReply->action != "yes") {
-                        taskRef.updateState(linglong::api::types::v1::State::Canceled, "canceled");
-                    }
-
-                    loop.exit(0);
-                });
-              loop.exec();
-
-              disconnect(conn);
+              if (!taskRef.waitConfirm(msgType, additionalMessage)) {
+                  return;
+              }
           }
           if (taskRef.isTaskDone()) {
               return;
@@ -732,6 +745,16 @@ auto PackageManager::InstallFromFile(const QDBusUnixFileDescriptor &fd,
                                      const QString &fileType,
                                      const QVariantMap &options) noexcept -> QVariantMap
 {
+    // Polkit authorization check
+    if (calledFromDBus()) {
+        auto authResult =
+          checkPolkitAuthorization("org.deepin.linglong.PackageManager1.install-from-file",
+                                   message().service().toStdString());
+        if (!authResult) {
+            return toDBusReply(authResult);
+        }
+    }
+
     if (!fd.isValid()) {
         return toDBusReply(utils::error::ErrorCode::Failed, "invalid file descriptor");
     }
@@ -758,6 +781,15 @@ auto PackageManager::InstallFromFile(const QDBusUnixFileDescriptor &fd,
 
 auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariantMap
 {
+    // Polkit authorization check
+    if (calledFromDBus()) {
+        auto authResult = checkPolkitAuthorization("org.deepin.linglong.PackageManager1.install",
+                                                   message().service().toStdString());
+        if (!authResult) {
+            return toDBusReply(authResult);
+        }
+    }
+
     auto paras =
       common::serialize::fromQVariantMap<api::types::v1::PackageManager1InstallParameters>(
         parameters);
@@ -804,6 +836,15 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
 
 auto PackageManager::Uninstall(const QVariantMap &parameters) noexcept -> QVariantMap
 {
+    // Polkit authorization check
+    if (calledFromDBus()) {
+        auto authResult = checkPolkitAuthorization("org.deepin.linglong.PackageManager1.uninstall",
+                                                   message().service().toStdString());
+        if (!authResult) {
+            return toDBusReply(authResult);
+        }
+    }
+
     auto paras =
       common::serialize::fromQVariantMap<api::types::v1::PackageManager1UninstallParameters>(
         parameters);
@@ -964,6 +1005,15 @@ utils::error::Result<void> PackageManager::Uninstall(PackageTask &taskContext,
 
 auto PackageManager::Update(const QVariantMap &parameters) noexcept -> QVariantMap
 {
+    // Polkit authorization check
+    if (calledFromDBus()) {
+        auto authResult = checkPolkitAuthorization("org.deepin.linglong.PackageManager1.update",
+                                                   message().service().toStdString());
+        if (!authResult) {
+            return toDBusReply(authResult);
+        }
+    }
+
     auto paras =
       common::serialize::fromQVariantMap<api::types::v1::PackageManager1UpdateParameters>(
         parameters);
@@ -1379,6 +1429,15 @@ utils::error::Result<void> PackageManager::installDependsRef(Task &task,
 
 auto PackageManager::Prune() noexcept -> QVariantMap
 {
+    // Polkit authorization check
+    if (calledFromDBus()) {
+        auto authResult = checkPolkitAuthorization("org.deepin.linglong.PackageManager1.prune",
+                                                   message().service().toStdString());
+        if (!authResult) {
+            return toDBusReply(authResult);
+        }
+    }
+
     auto task = tasks.addTask([this](Task &task) {
         std::vector<api::types::v1::PackageInfoV2> pkgs;
         auto ret = Prune(pkgs);
@@ -1656,12 +1715,6 @@ auto PackageManager::InitRunContext(const QString &runContextCfg,
     });
 }
 
-void PackageManager::ReplyInteraction([[maybe_unused]] QDBusObjectPath object_path,
-                                      const QVariantMap &replies)
-{
-    Q_EMIT this->ReplyReceived(replies);
-}
-
 // no-op for now
 utils::error::Result<void> PackageManager::tryGenerateCache(const package::Reference &ref) noexcept
 {
@@ -1794,32 +1847,6 @@ PackageManager::executePostUninstallHooks(const package::Reference &ref) noexcep
     }
 
     return LINGLONG_OK;
-}
-
-bool PackageManager::waitConfirm(
-  PackageTask &taskRef,
-  api::types::v1::InteractionMessageType msgType,
-  const api::types::v1::PackageManager1RequestInteractionAdditionalMessage
-    &additionalMessage) noexcept
-{
-    Q_EMIT RequestInteraction(QDBusObjectPath(taskRef.taskObjectPath().c_str()),
-                              static_cast<int>(msgType),
-                              common::serialize::toQVariantMap(additionalMessage));
-    QEventLoop loop;
-    auto conn =
-      connect(this, &PackageManager::ReplyReceived, [&taskRef, &loop](const QVariantMap &reply) {
-          auto interactionReply =
-            common::serialize::fromQVariantMap<api::types::v1::InteractionReply>(reply);
-          if (interactionReply->action != "yes") {
-              taskRef.updateState(linglong::api::types::v1::State::Canceled, "canceled");
-          }
-          loop.exit(0);
-      });
-    loop.exec();
-
-    disconnect(conn);
-
-    return !taskRef.isTaskDone();
 }
 
 QVariantMap PackageManager::runActionOnTaskQueue(std::shared_ptr<Action> action)

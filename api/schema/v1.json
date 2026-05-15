@@ -1439,6 +1439,12 @@
             "type": "string"
           }
         },
+        "device_mode": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DeviceOption"
+          }
+        },
         "ext_defs": {
           "description": "external extension definitions to extend the component",
           "type": "object",
@@ -1450,6 +1456,12 @@
           }
         }
       }
+    },
+    "DeviceOption": {
+      "description": "device option",
+      "enum": [
+        "passthru"
+      ]
     }
   },
   "type": "object",
@@ -1594,6 +1606,9 @@
     },
     "RuntimeConfigure": {
       "$ref": "#/$defs/RuntimeConfigure"
+    },
+    "DeviceOption": {
+      "$ref": "#/$defs/DeviceOption"
     }
   }
 }

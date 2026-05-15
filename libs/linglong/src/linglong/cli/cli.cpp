@@ -625,7 +625,6 @@ int Cli::run(const RunOptions &options)
       .addUIdMapping(uid, uid, 1)
       .addGIdMapping(gid, gid, 1)
       .bindDefault()
-      .bindDevNode()
       .bindCgroup()
       .bindXDGRuntime()
       .bindUserGroup()
@@ -639,6 +638,28 @@ int Cli::run(const RunOptions &options)
       .bindIPC()
       .forwardDefaultEnv()
       .enableSelfAdjustingMount();
+
+    bool devicePassthru = false;
+    if (runtimeConfig && runtimeConfig->deviceMode) {
+        for (const auto &option : *runtimeConfig->deviceMode) {
+            if (option == api::types::v1::DeviceOption::Passthru) {
+                devicePassthru = true;
+                break;
+            }
+        }
+    }
+    for (const auto &option : options.deviceOptions) {
+        if (option == api::types::v1::DeviceOption::Passthru) {
+            devicePassthru = true;
+            break;
+        }
+    }
+
+    if (devicePassthru) {
+        cfgBuilder.bindDev(true);
+    } else {
+        cfgBuilder.bindDevNode();
+    }
 
     std::vector<std::string> capabilities;
     // privileged mode shares host's user_namespace and add capabilities

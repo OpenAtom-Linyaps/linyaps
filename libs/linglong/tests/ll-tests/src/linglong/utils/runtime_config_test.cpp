@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2025 - 2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -20,10 +20,10 @@ using namespace linglong::utils;
 TEST(RuntimeConfigTest, LoadFromPath)
 {
     TempDir tempDir;
-    // Create a test config file
     fs::path config_file = tempDir.path() / "test_config.json";
 
     RuntimeConfigure config;
+    config.deviceMode = std::vector<DeviceOption>{ DeviceOption::Passthru };
     config.env =
       std::map<std::string, std::string>{ { "PATH", "/usr/bin" }, { "HOME", "/home/user" } };
 
@@ -36,16 +36,18 @@ TEST(RuntimeConfigTest, LoadFromPath)
     config.extDefs =
       std::map<std::string, std::vector<ExtensionDefine>>{ { "test-app", { ext1 } } };
 
-    // Write config to file
     std::ofstream file(config_file);
     nlohmann::json j;
     linglong::api::types::v1::to_json(j, config);
     file << j.dump();
     file.close();
 
-    // Load config from file
     auto loaded_config = linglong::utils::loadRuntimeConfig(config_file);
     ASSERT_TRUE(loaded_config.has_value());
+
+    ASSERT_TRUE(loaded_config->deviceMode);
+    EXPECT_EQ(loaded_config->deviceMode->size(), 1);
+    EXPECT_EQ(loaded_config->deviceMode->at(0), DeviceOption::Passthru);
 
     ASSERT_TRUE(loaded_config->env);
     EXPECT_EQ(loaded_config->env->size(), 2);
@@ -68,8 +70,8 @@ TEST(RuntimeConfigTest, LoadFromPathNotExist)
 
 TEST(RuntimeConfigTest, MergeConfigs)
 {
-    // Create first config
     RuntimeConfigure config1;
+    config1.deviceMode = std::vector<DeviceOption>{ DeviceOption::Passthru };
     config1.env =
       std::map<std::string, std::string>{ { "PATH", "/usr/bin" }, { "HOME", "/home/user1" } };
 
@@ -79,8 +81,8 @@ TEST(RuntimeConfigTest, MergeConfigs)
     ext1.directory = "/opt/ext1";
     config1.extDefs = std::map<std::string, std::vector<ExtensionDefine>>{ { "app1", { ext1 } } };
 
-    // Create second config
     RuntimeConfigure config2;
+    config2.deviceMode = std::vector<DeviceOption>{ DeviceOption::Passthru };
     config2.env =
       std::map<std::string, std::string>{ { "PATH", "/usr/local/bin" }, { "USER", "testuser" } };
 
@@ -88,32 +90,30 @@ TEST(RuntimeConfigTest, MergeConfigs)
     ext2.name = "extension2";
     ext2.version = "2.0.0";
     ext2.directory = "/opt/ext2";
-    config2.extDefs = std::map<std::string, std::vector<ExtensionDefine>>{
-        { "app1", { ext2 } }, // Same app key as config1
-        { "app2", { ext2 } }  // Different app key
-    };
+    config2.extDefs = std::map<std::string, std::vector<ExtensionDefine>>{ { "app1", { ext2 } },
+                                                                           { "app2", { ext2 } } };
 
-    // Merge configs
     std::vector<RuntimeConfigure> configs = { config1, config2 };
     auto merged = linglong::utils::MergeRuntimeConfig(configs);
 
-    // Check environment variables
+    ASSERT_TRUE(merged.deviceMode);
+    EXPECT_EQ(merged.deviceMode->size(), 2);
+    EXPECT_EQ(merged.deviceMode->at(0), DeviceOption::Passthru);
+    EXPECT_EQ(merged.deviceMode->at(1), DeviceOption::Passthru);
+
     ASSERT_TRUE(merged.env);
-    EXPECT_EQ(merged.env->size(), 3);                    // PATH, HOME, USER
-    EXPECT_EQ(merged.env->at("PATH"), "/usr/local/bin"); // config2 overrides config1
+    EXPECT_EQ(merged.env->size(), 3);
+    EXPECT_EQ(merged.env->at("PATH"), "/usr/local/bin");
     EXPECT_EQ(merged.env->at("HOME"), "/home/user1");
     EXPECT_EQ(merged.env->at("USER"), "testuser");
 
-    // Check extension definitions
     ASSERT_TRUE(merged.extDefs);
-    EXPECT_EQ(merged.extDefs->size(), 2); // app1, app2
+    EXPECT_EQ(merged.extDefs->size(), 2);
 
-    // app1 should have both extensions
     EXPECT_EQ(merged.extDefs->at("app1").size(), 2);
     EXPECT_EQ(merged.extDefs->at("app1")[0].name, "extension1");
     EXPECT_EQ(merged.extDefs->at("app1")[1].name, "extension2");
 
-    // app2 should have only extension2
     EXPECT_EQ(merged.extDefs->at("app2").size(), 1);
     EXPECT_EQ(merged.extDefs->at("app2")[0].name, "extension2");
 }
@@ -123,20 +123,19 @@ TEST(RuntimeConfigTest, MergeEmptyConfigs)
     std::vector<RuntimeConfigure> empty_configs;
     auto merged = linglong::utils::MergeRuntimeConfig(empty_configs);
 
+    EXPECT_FALSE(merged.deviceMode);
     EXPECT_FALSE(merged.env);
     EXPECT_FALSE(merged.extDefs);
 }
 
 TEST(RuntimeConfigTest, MergePartialConfigs)
 {
-    // Config with only env
     RuntimeConfigure config1;
+    config1.deviceMode = std::vector<DeviceOption>{ DeviceOption::Passthru };
     config1.env = std::map<std::string, std::string>{ { "PATH", "/usr/bin" } };
 
-    // Config empty
     RuntimeConfigure config2;
 
-    // Config with only extDefs
     RuntimeConfigure config3;
     ExtensionDefine ext;
     ext.name = "test-ext";
@@ -154,6 +153,10 @@ TEST(RuntimeConfigTest, MergePartialConfigs)
     ASSERT_TRUE(merged.env);
     EXPECT_EQ(merged.env->size(), 1);
     EXPECT_EQ(merged.env->at("PATH"), "/usr/bin");
+
+    ASSERT_TRUE(merged.deviceMode);
+    EXPECT_EQ(merged.deviceMode->size(), 1);
+    EXPECT_EQ(merged.deviceMode->at(0), DeviceOption::Passthru);
 
     ASSERT_TRUE(merged.extDefs);
     EXPECT_EQ(merged.extDefs->size(), 1);

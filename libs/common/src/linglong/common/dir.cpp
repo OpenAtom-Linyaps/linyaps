@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2025 - 2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -45,6 +45,11 @@ std::filesystem::path getUserRuntimeConfigDir() noexcept
     }
 
     return configDir / "linglong";
+}
+
+std::filesystem::path getSystemRuntimeConfigDir() noexcept
+{
+    return LINGLONG_SYSCONFDIR;
 }
 
 } // namespace linglong::common::dir

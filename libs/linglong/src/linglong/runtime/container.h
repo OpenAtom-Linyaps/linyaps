@@ -8,6 +8,7 @@
 
 #include "linglong/runtime/security_context.h"
 #include "linglong/utils/error/error.h"
+#include "linglong/utils/filelock.h"
 #include "ocppi/cli/CLI.hpp"
 #include "ocppi/runtime/config/types/Config.hpp"
 #include "ocppi/runtime/config/types/Process.hpp"
@@ -28,6 +29,12 @@ class RunContext;
 
 class ContainerContext
 {
+    struct constract_passkey
+    {
+        explicit constract_passkey() = default;
+        friend class ContainerContext;
+    };
+
 public:
     struct CreateOptions
     {
@@ -37,10 +44,11 @@ public:
 
     static auto create(RunContext &context, CreateOptions options)
       -> utils::error::Result<std::unique_ptr<ContainerContext>>;
-    ~ContainerContext();
-    ContainerContext(std::string containerID,
+    ContainerContext(constract_passkey key,
+                     std::string containerID,
                      std::filesystem::path bundleDir,
                      std::optional<std::filesystem::path> appCache = std::nullopt);
+    ~ContainerContext();
 
     ContainerContext(const ContainerContext &) = delete;
     auto operator=(const ContainerContext &) -> ContainerContext & = delete;
@@ -69,8 +77,15 @@ public:
               std::unique_ptr<ContainerContext> context,
               ocppi::cli::CLI &cli);
 
+    utils::error::Result<int> reuse(const std::vector<std::string> &commands) noexcept;
+
     utils::error::Result<void> run(const ocppi::runtime::config::types::Process &process,
-                                   ocppi::runtime::RunOption &opt) noexcept;
+                                   ocppi::runtime::RunOption opt) noexcept;
+
+    [[nodiscard]] const std::filesystem::path &bundle() const noexcept
+    {
+        return context->getBundleDir();
+    }
 
 private:
     ocppi::runtime::config::types::Config cfg;

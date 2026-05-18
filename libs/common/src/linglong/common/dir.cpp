@@ -19,7 +19,7 @@ std::filesystem::path getAppRuntimeDir(const std::string &appId) noexcept
     return getRuntimeDir() / "apps" / appId;
 }
 
-std::filesystem::path getBundleDir(const std::string &containerId) noexcept
+std::filesystem::path getBundleDir(std::string_view containerId) noexcept
 {
     return getRuntimeDir() / containerId;
 }

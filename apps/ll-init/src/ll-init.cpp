@@ -1,718 +1,855 @@
-// SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2025 - 2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
-
+#include <fmt/format.h>
 #include <sys/epoll.h>
+#include <sys/fcntl.h>
+#include <sys/ioctl.h>
 #include <sys/prctl.h>
 #include <sys/signalfd.h>
-#include <sys/timerfd.h>
 
 #include <array>
 #include <csignal>
 #include <cstddef>
+#include <cstdint>
 #include <cstring>
 #include <filesystem>
-#include <iostream>
 #include <vector>
 
-#include <sys/socket.h>
-#include <sys/un.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
-// no need to block these signals
 constexpr std::array unblock_signals{ SIGABRT, SIGBUS,  SIGFPE,  SIGILL, SIGSEGV,
                                       SIGSYS,  SIGTRAP, SIGXCPU, SIGXFSZ };
 
-// now, we just inherit the control terminal from the outside and put all the processes in the
-// same process group. maybe we need refactor this in the future.
+constexpr auto containerLockPath = "/run/linglong/.lock";
 
 namespace {
 
-struct WaitPidResult
+void print_sys_error(std::string_view msg, int error) noexcept
 {
-    pid_t pid;
-    int status;
-};
+    fmt::println(stderr, "{}: {}", msg, ::strerror(error));
+}
 
 void print_sys_error(std::string_view msg) noexcept
 {
-    std::cerr << msg << ": " << ::strerror(errno) << std::endl;
-}
-
-void print_sys_error(std::string_view msg, const std::error_code &ec) noexcept
-{
-    std::cerr << msg << ": " << ec.message() << std::endl;
+    print_sys_error(msg, errno);
 }
 
 void print_info(std::string_view msg) noexcept
 {
     static const auto is_debug = ::getenv("LINYAPS_INIT_VERBOSE_OUTPUT") != nullptr;
     if (is_debug) {
-        std::cerr << msg << std::endl;
+        fmt::println(stderr, msg);
     }
 }
 
-class sigConf
+[[nodiscard]] int get_child_status(int status, pid_t pid) noexcept
+{
+    if (WIFEXITED(status)) {
+        auto code = WEXITSTATUS(status);
+        print_info(fmt::format("child {} exited with status {}", pid, code));
+
+        return code;
+    }
+
+    if (WIFSIGNALED(status)) {
+        auto sig = WTERMSIG(status);
+        print_info(fmt::format("child {} exited with signal {}", pid, sig));
+
+        return sig + 128;
+    }
+
+    print_info(fmt::format("child {} exited with unknown status {}", pid, status));
+    return -1;
+}
+
+class UniqueFd
 {
 public:
-    sigConf() noexcept = default;
-    sigConf(const sigConf &) = delete;
-    sigConf(sigConf &&) = delete;
-    sigConf &operator=(const sigConf &) = delete;
-    sigConf &operator=(sigConf &&) = delete;
-    ~sigConf() noexcept = default;
-
-    bool block_signals() noexcept
-    {
-        ::sigfillset(&cur_set);
-        for (auto signal : unblock_signals) {
-            ::sigdelset(&cur_set, signal);
-        }
-
-        // ignore the rest of the signals
-        auto ret = ::sigprocmask(SIG_SETMASK, &cur_set, &old_set);
-        if (ret == -1) {
-            print_sys_error("Failed to set signal mask");
-            return false;
-        }
-
-        return true;
-    }
-
-    [[nodiscard]] bool restore_signals() const noexcept
-    {
-        auto ret = ::sigprocmask(SIG_SETMASK, &old_set, nullptr);
-        if (ret == -1) {
-            print_sys_error("Failed to restore signal mask");
-            return false;
-        }
-
-        return true;
-    }
-
-    [[nodiscard]] const sigset_t &current_sigset() const noexcept { return cur_set; }
-
-private:
-    sigset_t cur_set{};
-    sigset_t old_set{};
-};
-
-class file_descriptor_wrapper
-{
-public:
-    explicit file_descriptor_wrapper(int fd) noexcept
-        : fd(fd)
+    explicit UniqueFd(int fd) noexcept
+        : fd_(fd)
     {
     }
 
-    file_descriptor_wrapper() noexcept = default;
+    UniqueFd() noexcept = default;
 
-    file_descriptor_wrapper(const file_descriptor_wrapper &) = delete;
-    file_descriptor_wrapper &operator=(const file_descriptor_wrapper &) = delete;
+    UniqueFd(const UniqueFd &) = delete;
+    UniqueFd &operator=(const UniqueFd &) = delete;
 
-    file_descriptor_wrapper(file_descriptor_wrapper &&other) noexcept
-        : fd(other.fd)
+    UniqueFd(UniqueFd &&other) noexcept
+        : fd_(other.fd_)
     {
-        other.fd = -1;
+        other.fd_ = -1;
     }
 
-    file_descriptor_wrapper &operator=(file_descriptor_wrapper &&other) noexcept
+    UniqueFd &operator=(UniqueFd &&other) noexcept
     {
-        if (this == &other) {
-            return *this;
+        if (this != &other) {
+            reset();
+            fd_ = other.fd_;
+            other.fd_ = -1;
         }
-
-        close();
-        fd = other.fd;
-        other.fd = -1;
-
         return *this;
     }
 
-    ~file_descriptor_wrapper() noexcept { close(); }
+    ~UniqueFd() noexcept { reset(); }
 
-    void close() noexcept
+    void reset() noexcept
     {
-        if (fd != -1) {
-            ::close(fd);
-            fd = -1;
+        if (fd_ != -1) {
+            ::close(fd_);
+            fd_ = -1;
         }
     }
 
-    explicit operator bool() const noexcept { return fd != -1; }
+    [[nodiscard]] int get() const noexcept { return fd_; }
 
-    operator int() const noexcept { return fd; } // NOLINT
+    [[nodiscard]] explicit operator bool() const noexcept { return fd_ != -1; }
 
 private:
-    int fd{ -1 };
+    int fd_{ -1 };
 };
 
-file_descriptor_wrapper create_signalfd(const sigset_t &sigset) noexcept
+class SignalMask
 {
-    auto fd = ::signalfd(-1, &sigset, SFD_NONBLOCK);
-    if (fd == -1) {
-        print_sys_error("Failed to create signalfd");
-    }
-
-    return file_descriptor_wrapper(fd);
-}
-
-file_descriptor_wrapper create_timerfd() noexcept
-{
-    auto fd = ::timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK);
-    if (fd == -1) {
-        print_sys_error("Failed to create timerfd");
-    }
-
-    return file_descriptor_wrapper(fd);
-}
-
-file_descriptor_wrapper create_epoll() noexcept
-{
-    auto fd = ::epoll_create1(0);
-    if (fd == -1) {
-        print_sys_error("Failed to create epoll");
-    }
-
-    return file_descriptor_wrapper(fd);
-}
-
-template <std::size_t N>
-constexpr auto make_array(const char (&str)[N]) noexcept // NOLINT
-{
-    static_assert(N > 0, "N must be greater than 0");
-    std::array<char, N - 1> arr{};
-    for (std::size_t i = 0; i < N - 1; ++i) {
-        arr[i] = str[i];
-    }
-
-    return arr;
-}
-
-std::pair<struct sockaddr_un, socklen_t> get_socket_address() noexcept
-{
-    constexpr auto fs_addr{ make_array("/run/linglong/init/socket") };
-
-    struct sockaddr_un addr{};
-    addr.sun_family = AF_UNIX;
-
-    std::copy(fs_addr.cbegin(), fs_addr.cend(), &addr.sun_path[0]);
-    addr.sun_path[fs_addr.size()] = 0;
-    return std::make_pair(addr, offsetof(sockaddr_un, sun_path) + fs_addr.size());
-}
-
-file_descriptor_wrapper create_fs_uds() noexcept
-{
-    auto fd = ::socket(AF_UNIX, SOCK_NONBLOCK | SOCK_SEQPACKET, 0);
-    file_descriptor_wrapper socket_fd{ fd };
-    if (fd == -1) {
-        print_sys_error("Failed to create unix domain socket");
-        return socket_fd;
-    }
-
-    auto [addr, len] = get_socket_address();
-    if (len == 0) {
-        print_info("Failed to get socket address");
-        return socket_fd;
-    }
-
-    // just in case the socket file exists
-    ::unlink(addr.sun_path);
-
-    auto ret = ::bind(socket_fd, reinterpret_cast<struct sockaddr *>(&addr), len);
-    if (ret == -1) {
-        print_sys_error("Failed to bind unix domain socket");
-        return socket_fd;
-    }
-
-    ret = ::listen(socket_fd, 1);
-    if (ret == -1) {
-        print_sys_error("Failed to listen on unix domain socket");
-        return socket_fd;
-    }
-
-    return socket_fd;
-}
-
-std::vector<const char *> parse_args(int argc, char *argv[]) noexcept
-{
-    std::vector<const char *> args;
-    int idx{ 1 };
-
-    while (idx < argc) {
-        args.emplace_back(argv[idx++]);
-    }
-    args.emplace_back(nullptr);
-
-    return args;
-}
-
-void print_child_status(int status, const std::string &pid) noexcept
-{
-    if (WIFEXITED(status)) {
-        print_info("child " + pid + " exited with status " + std::to_string(WEXITSTATUS(status)));
-    } else if (WIFSIGNALED(status)) {
-        print_info("child " + pid + " exited with signal " + std::to_string(WTERMSIG(status)));
-    } else {
-        print_info("child " + pid + "  exited with unknown status");
-    }
-}
-
-pid_t run(std::vector<const char *> args, const sigConf &conf) noexcept
-{
-    auto pid = ::fork();
-    if (pid == -1) {
-        print_sys_error("Failed to fork");
-        return -1;
-    }
-
-    if (pid == 0) {
-        auto ret = ::setpgid(0, 0);
-        if (ret == -1) {
-            print_sys_error("Failed to set process group");
-            return -1;
+public:
+    explicit SignalMask() noexcept
+    {
+        ::sigfillset(&blocked_);
+        for (auto sig : unblock_signals) {
+            ::sigdelset(&blocked_, sig);
         }
 
-        ret = ::tcsetpgrp(0, ::getpid());
-        if (ret == -1 && errno != ENOTTY) {
-            print_sys_error("Failed to set terminal process group");
-            return -1;
+        if (::sigprocmask(SIG_SETMASK, &blocked_, &original_) == -1) {
+            print_sys_error("failed to set signal mask");
+            return;
         }
 
-        if (!conf.restore_signals()) {
-            return -1;
-        }
-
-        ::execvp(args[0], const_cast<char *const *>(args.data()));
-        print_sys_error("Failed to run process");
-        ::_exit(EXIT_FAILURE);
+        valid_ = true;
     }
 
-    return pid;
-}
+    ~SignalMask() noexcept
+    {
+        if (valid_) {
+            ::sigprocmask(SIG_SETMASK, &original_, nullptr);
+        }
+    }
 
-bool handle_sigevent(const file_descriptor_wrapper &sigfd,
-                     pid_t child,
-                     struct WaitPidResult &waitChild) noexcept
-{
-    while (true) {
-        signalfd_siginfo info{};
-        auto ret = ::read(sigfd, &info, sizeof(info));
-        if (ret == -1) {
-            if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                break;
-            }
+    SignalMask(const SignalMask &) = delete;
+    SignalMask &operator=(const SignalMask &) = delete;
+    SignalMask(SignalMask &&) = delete;
+    SignalMask &operator=(SignalMask &&) = delete;
 
-            print_sys_error("Failed to read from signalfd");
+    [[nodiscard]] bool valid() const noexcept { return valid_; }
+
+    [[nodiscard]] const sigset_t &blocked_set() const noexcept { return blocked_; }
+
+    [[nodiscard]] bool restore() const noexcept
+    {
+        if (::sigprocmask(SIG_SETMASK, &original_, nullptr) == -1) {
+            print_sys_error("failed to restore signal mask");
             return false;
         }
 
-        if (info.ssi_signo != SIGCHLD) {
-            auto ret = ::kill(child, info.ssi_signo);
-            if (ret == -1) {
-                auto msg = std::string("Failed to forward signal ") + ::strsignal(info.ssi_signo);
-                print_sys_error(msg);
+        return true;
+    }
+
+private:
+    sigset_t blocked_{ };
+    sigset_t original_{ };
+    bool valid_{ false };
+};
+
+class Epoll
+{
+public:
+    static Epoll create() noexcept
+    {
+        auto fd = ::epoll_create1(0);
+        if (fd == -1) {
+            print_sys_error("failed to create epoll");
+        }
+        return Epoll(UniqueFd(fd));
+    }
+
+    bool add(int fd, uint32_t events) noexcept
+    {
+        struct epoll_event ev{ .events = events, .data = { .fd = fd } };
+        if (::epoll_ctl(fd_.get(), EPOLL_CTL_ADD, fd, &ev) == -1) {
+            print_sys_error("failed to add event to epoll");
+            return false;
+        }
+        return true;
+    }
+
+    int wait() noexcept
+    {
+        auto n = ::epoll_wait(fd_.get(), events_.data(), static_cast<int>(events_.size()), -1);
+        if (n == -1) {
+            if (errno == EINTR) {
+                return 0;
             }
-            continue;
+            print_sys_error("failed to wait for events");
+            return -1;
+        }
+        n_ready_ = n;
+        return n;
+    }
+
+    [[nodiscard]] const epoll_event *events() const noexcept { return events_.data(); }
+
+    [[nodiscard]] int events_count() const noexcept { return n_ready_; }
+
+    [[nodiscard]] explicit operator bool() const noexcept { return static_cast<bool>(fd_); }
+
+    Epoll(Epoll &&) noexcept = default;
+    Epoll &operator=(Epoll &&) noexcept = default;
+    Epoll(const Epoll &) = delete;
+    Epoll &operator=(const Epoll &) = delete;
+    ~Epoll() noexcept = default;
+
+private:
+    explicit Epoll(UniqueFd fd) noexcept
+        : fd_(std::move(fd))
+    {
+    }
+
+    UniqueFd fd_;
+    std::array<epoll_event, 4> events_{ };
+    int n_ready_{ 0 };
+};
+
+class ChildProcess;
+
+class SignalMonitor
+{
+public:
+    static SignalMonitor create(const sigset_t &mask) noexcept
+    {
+        auto fd = ::signalfd(-1, &mask, SFD_NONBLOCK | SFD_CLOEXEC);
+        if (fd == -1) {
+            print_sys_error("failed to create signalfd");
+        }
+        return SignalMonitor(UniqueFd(fd));
+    }
+
+    bool dispatch(ChildProcess &child) noexcept;
+
+    [[nodiscard]] int fd() const noexcept { return fd_.get(); }
+
+    [[nodiscard]] explicit operator bool() const noexcept { return static_cast<bool>(fd_); }
+
+    SignalMonitor(SignalMonitor &&) noexcept = default;
+    SignalMonitor &operator=(SignalMonitor &&) noexcept = default;
+    SignalMonitor(const SignalMonitor &) = delete;
+    SignalMonitor &operator=(const SignalMonitor &) = delete;
+    ~SignalMonitor() noexcept = default;
+
+private:
+    explicit SignalMonitor(UniqueFd fd) noexcept
+        : fd_(std::move(fd))
+    {
+    }
+
+    UniqueFd fd_;
+};
+
+class ChildProcess
+{
+public:
+    static ChildProcess spawn(const std::vector<const char *> &args,
+                              const SignalMask &mask) noexcept
+    {
+        auto pid = ::fork();
+        if (pid == -1) {
+            print_sys_error("Failed to fork");
+            return ChildProcess{ };
         }
 
+        if (pid == 0) {
+            if (::setpgid(0, 0) == -1) {
+                print_sys_error("failed to set process group");
+                return ChildProcess{ };
+            }
+
+            if (::tcsetpgrp(0, ::getpid()) == -1 && errno != ENOTTY) {
+                print_sys_error("failed to set terminal process group");
+                return ChildProcess{ };
+            }
+
+            if (!mask.restore()) {
+                return ChildProcess{ };
+            }
+
+            ::execvp(args[0], const_cast<char *const *>(args.data()));
+            print_sys_error("failed to run process");
+            ::_exit(EXIT_FAILURE);
+        }
+
+        print_info(fmt::format("run child {}", pid));
+        return ChildProcess{ pid };
+    }
+
+    void forward_signal(int signo) const noexcept
+    {
+        if (pid_ < 0) {
+            return;
+        }
+
+        if (::kill(pid_, signo) == -1) {
+            print_sys_error(fmt::format("failed to forward signal {}", ::strsignal(signo)));
+        }
+    }
+
+    void reap_pending() noexcept
+    {
         while (true) {
-            int status{};
+            int status{ };
             auto ret = ::waitpid(-1, &status, WNOHANG);
             if (ret == 0 || (ret == -1 && errno == ECHILD)) {
                 break;
             }
 
             if (ret == -1) {
-                print_sys_error("Failed to wait for child");
-                return false;
+                print_sys_error("failed to wait for child");
+                break;
             }
 
-            print_child_status(status, std::to_string(ret));
-
-            if (ret == child) {
-                waitChild.pid = child;
-                waitChild.status = status;
+            auto code = get_child_status(status, ret);
+            if (ret == pid_) {
+                pid_ = -1;
+                exit_code_ = code;
             }
         }
     }
 
-    return true;
-}
+    [[nodiscard]] static bool has_zombies() noexcept
+    {
+        while (true) {
+            int status{ };
+            auto ret = ::waitpid(-1, &status, WNOHANG);
+            if (ret == -1) {
+                if (errno == EINTR) {
+                    continue;
+                }
 
-bool shouldWait() noexcept
-{
-    std::error_code ec;
-    auto proc_it = std::filesystem::directory_iterator{
-        "/proc",
-        std::filesystem::directory_options::skip_permission_denied,
-        ec
-    };
+                if (errno == ECHILD) {
+                    return false;
+                }
 
-    if (ec) {
-        print_sys_error("Failed to open /proc", ec);
-        return false;
+                print_sys_error("waitpid failed");
+                return true;
+            }
+
+            if (ret > 0) {
+                std::ignore = get_child_status(status, ret);
+            }
+
+            return true;
+        }
     }
 
-    for (const auto &entry : proc_it) {
-        if (!entry.is_directory(ec)) {
-            continue;
-        }
+    [[nodiscard]] int exit_code() const noexcept { return exit_code_; }
 
-        if (ec) {
-            print_sys_error("Failed to stat " + entry.path().string(), ec);
-            return false;
-        }
+    [[nodiscard]] bool is_alive() const noexcept { return pid_ > 0; }
 
-        pid_t pid{ -1 };
-        try {
-            pid = std::stoi(entry.path().filename());
-        } catch (...) {
-            continue;
-        }
+    [[nodiscard]] bool has_exited() const noexcept { return pid_ == -1; }
 
-        if (pid == 1) { // ignore init process
-            continue;
-        }
+    [[nodiscard]] explicit operator bool() const noexcept { return pid_ != 0; }
 
-        // if we get here, it means some process is still alive
-        return true;
+    ChildProcess(ChildProcess &&other) noexcept
+        : pid_(other.pid_)
+    {
+        other.pid_ = 0;
     }
 
-    return false;
-}
+    ChildProcess &operator=(ChildProcess &&other) noexcept
+    {
+        if (this != &other) {
+            pid_ = other.pid_;
+            other.pid_ = 0;
+        }
 
-int handle_timerfdevent(const file_descriptor_wrapper &timerfd) noexcept
+        return *this;
+    }
+
+    ChildProcess(const ChildProcess &) = delete;
+    ChildProcess &operator=(const ChildProcess &) = delete;
+    ~ChildProcess() noexcept = default;
+
+private:
+    ChildProcess() noexcept = default;
+
+    explicit ChildProcess(pid_t pid) noexcept
+        : pid_(pid)
+    {
+    }
+
+    pid_t pid_{ 0 };
+    int exit_code_{ 0 };
+};
+
+bool SignalMonitor::dispatch(ChildProcess &child) noexcept
 {
-    // we don't care how many times we read from the timerfd
-    // just traversal the /proc directory once
     while (true) {
-        uint64_t expir{};
-        auto ret = ::read(timerfd, &expir, sizeof(expir));
+        signalfd_siginfo info{ };
+        auto ret = ::read(fd_.get(), &info, sizeof(info));
         if (ret == -1) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
                 break;
             }
 
-            print_sys_error("Failed to read from timerfd");
+            print_sys_error("failed to read from signalfd");
+            return false;
+        }
+
+        if (info.ssi_signo != SIGCHLD) {
+            child.forward_signal(static_cast<int>(info.ssi_signo));
+            continue;
+        }
+
+        child.reap_pending();
+    }
+
+    return true;
+}
+
+bool file_lock(int fd, bool blocked, short type = F_WRLCK) noexcept
+{
+    struct flock fl{ };
+    fl.l_type = type;
+    fl.l_whence = SEEK_SET;
+    fl.l_start = 0;
+    fl.l_len = 0;
+    auto cmd = blocked ? F_SETLKW : F_SETLK;
+    return ::fcntl(fd, cmd, &fl) != -1;
+}
+
+bool file_unlock(int fd) noexcept
+{
+    struct flock fl{ };
+    fl.l_type = F_UNLCK;
+    fl.l_whence = SEEK_SET;
+    fl.l_start = 0;
+    fl.l_len = 0;
+    return ::fcntl(fd, F_SETLK, &fl) != -1;
+}
+
+bool overwrite_file(int fd, std::string_view content) noexcept
+{
+    if (::ftruncate(fd, 0) == -1) {
+        print_sys_error("failed to truncate file");
+        return false;
+    }
+
+    if (::lseek(fd, 0, SEEK_SET) == -1) {
+        print_sys_error("failed to seek to beginning of file");
+        return false;
+    }
+
+    while (true) {
+        auto written = ::write(fd, content.data(), content.size());
+        if (written == -1) {
+            if (errno == EINTR) {
+                continue;
+            }
+
+            print_sys_error("failed to write to file");
+            return false;
+        }
+
+        break;
+    }
+
+    return true;
+}
+
+std::string read_file(int fd) noexcept
+{
+    if (fd < 0) {
+        return { };
+    }
+
+    std::string content;
+    std::array<char, 32> buffer{ };
+
+    while (true) {
+        auto bytes = ::read(fd, buffer.data(), buffer.size());
+        if (bytes < 0) {
+            if (errno == EINTR) {
+                continue;
+            }
+
+            print_sys_error(fmt::format("failed to read from fd {}", fd));
+            return { };
+        }
+
+        if (bytes == 0) {
+            break;
+        }
+
+        content.append(buffer.data(), static_cast<std::size_t>(bytes));
+    }
+
+    return content;
+}
+
+class ContainerLock
+{
+public:
+    enum class State : uint8_t {
+        Error,
+        Skipped,
+        Active,
+    };
+
+    static ContainerLock acquire() noexcept
+    {
+        if (should_skip()) {
+            print_info("skipping container lock");
+            return ContainerLock{ State::Skipped };
+        }
+
+        auto lockFd = ::open(containerLockPath, O_RDWR | O_CLOEXEC);
+        if (lockFd == -1) {
+            print_sys_error(fmt::format("failed to open lock file {}", containerLockPath));
+            return ContainerLock{ State::Error };
+        }
+
+        ContainerLock result{ State::Active, UniqueFd(lockFd) };
+        if (!file_lock(result.fd_.get(), true)) {
+            print_sys_error("failed to lock container lock during initializing");
+            return ContainerLock{ State::Error };
+        }
+
+        auto content = read_file(result.fd_.get());
+        if (content.empty()) {
+            return ContainerLock{ State::Error };
+        }
+
+        if (content != "initializing") {
+            print_info(
+              fmt::format("container is not in expected initializing state, current state: {}",
+                          content));
+            return ContainerLock{ State::Error };
+        }
+
+        return result;
+    }
+
+    bool transition_to_running() noexcept
+    {
+        if (state_ != State::Active) {
+            return state_ == State::Skipped;
+        }
+
+        if (!overwrite_file(fd_.get(), "running")) {
+            print_info("failed to update lock state");
+            return false;
+        }
+
+        if (!file_unlock(fd_.get())) {
+            print_sys_error("failed to unlock lock file");
+            return false;
+        }
+
+        return true;
+    }
+
+    bool transition_to_quitting() noexcept
+    {
+        if (state_ != State::Active) {
+            return state_ == State::Skipped;
+        }
+
+        if (!file_lock(fd_.get(), false)) {
+            if (errno != EAGAIN && errno != EACCES) {
+                print_sys_error("failed to lock container lock during exiting");
+            }
+            return false;
+        }
+
+        if (!overwrite_file(fd_.get(), "quitting")) {
+            print_info("failed to update lock state");
+        }
+
+        if (!file_unlock(fd_.get())) {
+            print_sys_error("failed to unlock container lock");
+        }
+
+        return true;
+    }
+
+    [[nodiscard]] bool is_error() const noexcept { return state_ == State::Error; }
+
+    ContainerLock(ContainerLock &&) noexcept = default;
+    ContainerLock &operator=(ContainerLock &&) noexcept = default;
+    ContainerLock(const ContainerLock &) = delete;
+    ContainerLock &operator=(const ContainerLock &) = delete;
+    ~ContainerLock() noexcept = default;
+
+private:
+    explicit ContainerLock(State state) noexcept
+        : state_(state)
+    {
+    }
+
+    ContainerLock(State state, UniqueFd fd) noexcept
+        : fd_(std::move(fd))
+        , state_(state)
+    {
+    }
+
+    static bool should_skip() noexcept
+    {
+        static auto skip = [] {
+            std::error_code ec;
+            auto exist = std::filesystem::exists(containerLockPath, ec);
+            if (ec) {
+                print_sys_error(
+                  "failed to detect lock exists or not, maybe container state has already broken");
+                return true;
+            }
+
+            std::string env;
+            if (auto *str = ::getenv("LINYAPS_INIT_SKIP_LOCK"); str != nullptr) {
+                env.assign(str);
+            } else {
+                env = "NO";
+            }
+
+            return env == "YES" || !exist;
+        }();
+
+        return skip;
+    }
+
+    UniqueFd fd_;
+    State state_{ State::Error };
+};
+
+std::vector<const char *> parse_args(int argc, char *argv[]) noexcept
+{
+    std::vector<const char *> args;
+    args.reserve(static_cast<std::size_t>(argc));
+    for (int i = 1; i < argc; ++i) {
+        args.emplace_back(argv[i]);
+    }
+
+    args.emplace_back(nullptr);
+    return args;
+}
+
+sigset_t block_signals(std::initializer_list<int> signals) noexcept
+{
+    sigset_t block_set{ };
+    ::sigemptyset(&block_set);
+    for (auto sig : signals) {
+        ::sigaddset(&block_set, sig);
+    }
+
+    sigset_t old_mask{ };
+    ::sigprocmask(SIG_BLOCK, &block_set, &old_mask);
+    return old_mask;
+}
+
+void restore_signal_mask(const sigset_t &old_mask) noexcept
+{
+    ::sigprocmask(SIG_SETMASK, &old_mask, nullptr);
+}
+
+int delegate_run(int argc, char **argv) noexcept
+{
+    print_info("delegate run");
+
+    auto stdin_is_tty = ::isatty(STDIN_FILENO) == 1;
+    auto args = parse_args(argc, argv);
+    if (args.empty()) {
+        print_info("no arguments provided for delegate run");
+        return 0;
+    }
+
+    int tty_fd{ -1 };
+    if (stdin_is_tty) {
+        tty_fd = ::fcntl(STDIN_FILENO, F_DUPFD_CLOEXEC, 0);
+        if (tty_fd < 0) {
+            print_sys_error("failed dup tty");
             return -1;
         }
     }
 
-    return shouldWait() ? 1 : 0;
-}
+    auto old_mask = block_signals({ SIGHUP, SIGTTIN, SIGTTOU });
 
-file_descriptor_wrapper start_timer(const file_descriptor_wrapper &epfd) noexcept
-{
-    auto timerfd = create_timerfd();
-    if (!timerfd) {
-        return timerfd;
-    }
+    // Set to SIG_IGN before fork so the child inherits this disposition.
+    // Any signal arriving while blocked becomes pending and is discarded
+    // when unblocked because the handler is SIG_IGN.
+    signal(SIGHUP, SIG_IGN);
+    signal(SIGTTIN, SIG_IGN);
+    signal(SIGTTOU, SIG_IGN);
 
-    struct itimerspec timer_spec{};
-    auto *interval = ::getenv("LINYAPS_INIT_WAIT_INTERVAL");
-    constexpr auto default_interval{ 3 };
-    if (interval != nullptr) {
-        try {
-            auto interval_int = std::stoi(interval);
-            timer_spec.it_interval.tv_sec = interval_int;
-            timer_spec.it_interval.tv_nsec = 0;
-        } catch (...) {
-            print_info("Invalid interval, using default 3 seconds");
-            timer_spec.it_interval.tv_sec = default_interval;
-            timer_spec.it_interval.tv_nsec = 0;
+    int sync_pipe[2];
+    if (::pipe2(sync_pipe, O_CLOEXEC) < 0) {
+        print_sys_error("failed to create sync pipe");
+
+        if (tty_fd >= 0) {
+            ::close(tty_fd);
         }
-    } else {
-        timer_spec.it_interval.tv_sec = default_interval;
-        timer_spec.it_interval.tv_nsec = 0;
-    }
-    timer_spec.it_value.tv_sec = default_interval;
-    timer_spec.it_value.tv_nsec = 0;
 
-    auto ret = ::timerfd_settime(timerfd, 0, &timer_spec, nullptr);
-    if (ret == -1) {
-        print_sys_error("Failed to set timerfd");
-        return {};
+        return -1;
     }
 
-    struct epoll_event timer_ev{ .events = EPOLLIN | EPOLLET, .data = { .fd = timerfd } }; // NOLINT
-    ret = ::epoll_ctl(epfd, EPOLL_CTL_ADD, timerfd, &timer_ev);
-    if (ret == -1) {
-        print_sys_error("Failed to add timerfd to epoll");
-        return {};
-    }
-
-    return timerfd;
-}
-
-unsigned long get_arg_max() noexcept
-{
-    auto arg_max = sysconf(_SC_ARG_MAX);
-    if (arg_max == -1) {
-        return static_cast<unsigned long>(256 * 1024);
-    }
-
-    return arg_max - 4096;
-}
-
-int delegate_run(const std::vector<std::string> &args, const sigConf &conf) noexcept
-{
-    auto child = fork();
+    auto child = ::fork();
     if (child == -1) {
-        print_sys_error("Failed to fork child");
+        print_sys_error("failed to fork for delegate run");
+        ::close(sync_pipe[0]);
+        ::close(sync_pipe[1]);
+
+        if (tty_fd >= 0) {
+            ::close(tty_fd);
+        }
+
         return -1;
     }
 
     if (child == 0) {
-        std::vector<char *> c_args;
-        c_args.reserve(args.size());
-        for (const auto &arg : args) {
-            c_args.emplace_back(const_cast<char *>(arg.c_str()));
-        }
-        c_args.emplace_back(nullptr);
+        ::close(sync_pipe[1]);
+        std::byte dummy{ };
+        while (::read(sync_pipe[0], &dummy, sizeof(dummy)) > 0) { }
+        ::close(sync_pipe[0]);
 
-        if (!conf.restore_signals()) {
-            ::_exit(EXIT_FAILURE);
+        if (::setsid() == -1) {
+            print_sys_error("setsid failed");
+            _exit(EXIT_FAILURE);
         }
 
-        ::execvp(c_args[0], c_args.data());
-        print_sys_error("Failed to exec");
+        // Inherited SIG_IGN from parent; unblock so pending signals are
+        // discarded, then restore to default for the exec'd program.
+        restore_signal_mask(old_mask);
+        signal(SIGHUP, SIG_DFL);
+        signal(SIGTTIN, SIG_DFL);
+        signal(SIGTTOU, SIG_DFL);
+
+        if (stdin_is_tty && tty_fd >= 0) {
+            if (::ioctl(tty_fd, TIOCSCTTY, 0) == -1) {
+                print_sys_error("TIOCSCTTY failed");
+            }
+
+            ::tcsetpgrp(tty_fd, ::getpid());
+
+            ::dup2(tty_fd, STDIN_FILENO);
+            ::dup2(tty_fd, STDOUT_FILENO);
+            ::dup2(tty_fd, STDERR_FILENO);
+            ::close(tty_fd);
+        }
+
+        ::execvp(args[0], const_cast<char *const *>(args.data()));
+        print_sys_error("failed to exec for delegate run");
         ::_exit(EXIT_FAILURE);
     }
 
+    ::close(sync_pipe[0]);
+
+    if (stdin_is_tty) {
+        if (ioctl(STDIN_FILENO, TIOCNOTTY, 0) < 0) {
+            print_sys_error("failed detach terminal");
+            ::close(sync_pipe[1]);
+            return -1;
+        }
+    }
+
+    if (tty_fd >= 0) {
+        ::close(tty_fd);
+    }
+
+    print_info("delegate done");
+    ::close(sync_pipe[1]);
     return 0;
 }
 
-bool handle_client(const file_descriptor_wrapper &unix_socket, const sigConf &conf) noexcept
+int run_init(int argc, char **argv) noexcept
 {
-    static const unsigned long arg_max = get_arg_max();
-
-    const file_descriptor_wrapper client{ ::accept(unix_socket, nullptr, nullptr) };
-    if (!client) {
-        print_sys_error("Failed to accept client");
-        return false;
+    const SignalMask sigmask;
+    if (!sigmask.valid()) {
+        return -1;
     }
 
-    const struct timeval tv{ 3, 0 };
-    if (::setsockopt(client, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) == -1) {
-        print_sys_error("Failed to set recv timeout");
-        return false;
+    auto lock = ContainerLock::acquire();
+    if (lock.is_error()) {
+        return -1;
     }
 
-    std::uint64_t arg_len{ 0 };
-    auto ret = ::recv(client, &arg_len, sizeof(arg_len), 0);
-    if (ret == -1) {
-        print_sys_error("Failed to read from client");
-        return false;
+    if (::prctl(PR_SET_CHILD_SUBREAPER, 1) == -1) {
+        print_sys_error("failed to set child subreaper");
+        return -1;
     }
 
-    if (arg_len > arg_max) {
-        print_info("Command too long");
-        return false;
+    auto args = parse_args(argc, argv);
+    if (args.empty()) {
+        print_info("no arguments provided");
+        return -1;
     }
 
-    std::string command_buffer;
-    command_buffer.reserve(arg_len);
-    std::array<char, 4096> buffer{};
+    auto child = ChildProcess::spawn(args, sigmask);
+    if (!child) {
+        print_info("failed to run child process");
+        return -1;
+    }
+
+    auto epoll = Epoll::create();
+    if (!epoll) {
+        return -1;
+    }
+
+    auto monitor = SignalMonitor::create(sigmask.blocked_set());
+    if (!monitor) {
+        return -1;
+    }
+
+    if (!epoll.add(monitor.fd(), EPOLLIN | EPOLLET)) {
+        return -1;
+    }
+
+    if (!lock.transition_to_running()) {
+        return -1;
+    }
+
     while (true) {
-        auto readBytes = ::recv(client, buffer.data(), buffer.size(), 0);
-        if (readBytes < 0) {
-            print_sys_error("Failed to read from client");
-            return false;
+        auto n = epoll.wait();
+        if (n < 0) {
+            return -1;
         }
 
-        command_buffer.append(buffer.data(), readBytes);
-
-        if (command_buffer.size() >= arg_len) {
-            break;
-        }
-    }
-
-    if (command_buffer.empty()) {
-        print_info("Empty command");
-        return false;
-    }
-
-    if (command_buffer.back() != 0) {
-        command_buffer.push_back(0);
-    }
-
-    std::vector<std::string> commands;
-    auto start = command_buffer.cbegin();
-    while (start != command_buffer.end()) {
-        auto end{ start };
-        while (end != command_buffer.end() && *end != 0) {
-            ++end;
+        if (n == 0) {
+            continue;
         }
 
-        commands.emplace_back(start, end);
-        start = end + 1;
+        for (int i = 0; i < epoll.events_count(); ++i) {
+            const auto &ev = epoll.events()[i];
+            if (ev.data.fd != monitor.fd()) {
+                continue;
+            }
+
+            if (!monitor.dispatch(child)) {
+                return -1;
+            }
+
+            if (child.has_exited() && !ChildProcess::has_zombies()) {
+                if (lock.transition_to_quitting()) {
+                    return child.exit_code();
+                }
+            }
+        }
     }
-
-    if (commands.empty()) {
-        print_info("Command may be invalid");
-        return false;
-    }
-
-    ret = delegate_run(commands, conf);
-    if (ret == -1) {
-        print_sys_error("Failed to delegate command");
-    }
-
-    if (::send(client, &ret, sizeof(ret), 0) == -1) {
-        print_sys_error("Failed to send result to client");
-    }
-
-    return true;
-}
-
-bool register_event(const file_descriptor_wrapper &epfd,
-                    const file_descriptor_wrapper &fd,
-                    epoll_event ev) noexcept
-{
-    auto ret = ::epoll_ctl(epfd, EPOLL_CTL_ADD, fd, &ev);
-    if (ret == -1) {
-        print_sys_error("Failed to add event to epoll");
-        return false;
-    }
-
-    return true;
 }
 
 } // namespace
 
 int main(int argc, char **argv) // NOLINT
 {
-    sigConf conf;
-    if (!conf.block_signals()) {
-        return -1;
+    if (::getpid() != 1) {
+        return delegate_run(argc, argv);
     }
 
-    auto ret = ::prctl(PR_SET_CHILD_SUBREAPER, 1);
-    if (ret == -1) {
-        print_sys_error("Failed to set child subreaper");
-        return -1;
-    }
-
-    auto args = parse_args(argc, argv);
-    if (args.empty()) {
-        print_info("No arguments provided");
-        return -1;
-    }
-
-    auto *singleModeEnv = ::getenv("LINYAPS_INIT_SINGLE_MODE");
-    const bool singleMode = singleModeEnv != nullptr && std::string_view{ singleModeEnv } == "1";
-
-    auto child = run(args, conf);
-    if (child == -1) {
-        print_info("Failed to run child process");
-        return -1;
-    }
-    print_info("run child " + std::to_string(child));
-
-    auto epfd = create_epoll();
-    if (!epfd) {
-        return -1;
-    }
-
-    auto sigfd = create_signalfd(conf.current_sigset());
-    if (!sigfd) {
-        return -1;
-    }
-
-    const struct epoll_event ev{ .events = EPOLLIN | EPOLLET, .data = { .fd = sigfd } };
-    if (!register_event(epfd, sigfd, ev)) {
-        return -1;
-    }
-
-    file_descriptor_wrapper unix_socket;
-    if (!singleMode) {
-        unix_socket = create_fs_uds();
-        if (!unix_socket) {
-            return -1;
-        }
-
-        const struct epoll_event ev{ .events = EPOLLIN | EPOLLET,
-                                     .data = { .fd = unix_socket } }; // NOLINT
-        if (!register_event(epfd, unix_socket, ev)) {
-            return -1;
-        }
-    }
-
-    file_descriptor_wrapper timerfd;
-    bool done{ false };
-    std::array<struct epoll_event, 10> events{};
-    auto waitTarget = child;
-    int childExitCode = 0;
-    while (true) {
-        ret = ::epoll_wait(epfd, events.data(), events.size(), -1);
-        if (ret == -1) {
-            if (errno == EINTR) {
-                continue;
-            }
-
-            print_sys_error("Failed to wait for events");
-            return -1;
-        }
-
-        for (auto i = 0; i < ret; ++i) {
-            const auto event = events.at(i);
-            if (event.data.fd == sigfd) {
-                WaitPidResult waitChild{ .pid = -1 };
-                if (!handle_sigevent(sigfd, waitTarget, waitChild)) {
-                    return -1;
-                }
-
-                if (waitChild.pid == child) {
-                    // Init process will propagate received signals to all child processes (using
-                    // pid -1) after initial child exits
-                    if (WIFEXITED(waitChild.status)) {
-                        waitTarget = -1;
-                        childExitCode = WEXITSTATUS(waitChild.status);
-                    } else if (WIFSIGNALED(waitChild.status)) {
-                        waitTarget = -1;
-                        childExitCode = 128 + WTERMSIG(waitChild.status);
-                    }
-
-                    if (!shouldWait()) {
-                        done = true;
-                    }
-                    timerfd = start_timer(epfd);
-                    if (!timerfd) {
-                        return -1;
-                    }
-                }
-
-                continue;
-            }
-
-            if (event.data.fd == timerfd) {
-                ret = handle_timerfdevent(timerfd);
-                if (ret == -1) {
-                    return -1;
-                }
-
-                if (ret == 0) {
-                    done = true;
-                }
-
-                continue;
-            }
-
-            if (unix_socket && event.data.fd == unix_socket) {
-                if (handle_client(unix_socket, conf)) {
-                    done = false;
-                }
-            }
-        }
-
-        if (done) {
-            unix_socket.close();
-            break;
-        }
-    }
-
-    print_info("init exit with code " + std::to_string(childExitCode));
-    return childExitCode;
+    return run_init(argc, argv);
 }

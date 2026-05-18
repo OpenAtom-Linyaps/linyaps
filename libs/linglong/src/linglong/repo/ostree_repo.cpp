@@ -1352,7 +1352,7 @@ OSTreeRepo::getRefStatistics(const RefMetaData &meta) const noexcept
     }
     g_clear_error(&gErr);
 
-    RefStatistics stat = { 0 };
+    RefStatistics stat{};
 
 #if OSTREE_CHECK_VERSION(2020, 1)
     g_autoptr(GPtrArray) sizes = NULL;
@@ -2100,12 +2100,12 @@ utils::error::Result<void> OSTreeRepo::exportDir(const std::string &appID,
                 && common::strings::ends_with(target_path.string(), ".desktop")) {
                 auto desktopExists = false;
                 // 如果要导出的desktop已存在，则覆盖导出（无论是在default还是overlay中），避免桌面和任务栏的快捷方式失效
-                const std::string appDirs[] = { oldAppDir, newAppDir };
+                const std::array<std::string, 2> appDirs{ oldAppDir, newAppDir };
                 for (const auto &appDir : appDirs) {
                     // 如果目标文件存在，删除再导出
-                    std::filesystem::path linkpath =
+                    const std::filesystem::path linkpath =
                       target_path.string().replace(0, oldAppDir.string().length(), appDir);
-                    auto status = std::filesystem::symlink_status(linkpath, ec);
+                    std::ignore = std::filesystem::symlink_status(linkpath, ec);
                     if (!ec) {
                         desktopExists = true;
                         auto target = source_path.lexically_relative(linkpath.parent_path());

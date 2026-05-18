@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2024 - 2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -14,8 +14,6 @@
 #include <sys/prctl.h>
 
 #include <utility>
-
-const auto TASK_DONE = 100;
 
 namespace linglong::service {
 

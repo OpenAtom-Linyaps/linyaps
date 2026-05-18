@@ -22,6 +22,7 @@
 
 #include <cassert>
 #include <fstream>
+#include <memory>
 #include <utility>
 
 #include <unistd.h>
@@ -143,10 +144,9 @@ auto ContainerContext::create(RunContext &context, CreateOptions options)
         }
     }
 
-    auto containerContext =
-      std::unique_ptr<ContainerContext>{ new ContainerContext(std::move(containerID),
-                                                              std::move(*bundleDir),
-                                                              std::move(options.appCache)) };
+    auto containerContext = std::make_unique<ContainerContext>(containerID,
+                                                               std::move(*bundleDir),
+                                                               std::move(options.appCache));
 
     return containerContext;
 }

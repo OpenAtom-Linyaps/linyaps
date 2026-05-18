@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2024 - 2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -283,7 +283,7 @@ linglong::utils::error::Result<void> relinkFileTo(const std::filesystem::path &l
     auto tmpPath = link.string() + ".linyaps.tmp";
 
     std::error_code ec;
-    std::filesystem::symlink_status(tmpPath, ec);
+    std::ignore = std::filesystem::symlink_status(tmpPath, ec);
     if (!ec) {
         std::filesystem::remove(tmpPath, ec);
     }

@@ -107,6 +107,8 @@ pfl_add_library(
   src/linglong/runtime/container_builder.h
   src/linglong/runtime/container.cpp
   src/linglong/runtime/container.h
+  src/linglong/runtime/layer.cpp
+  src/linglong/runtime/layer.h
   src/linglong/runtime/overlayfs_driver.cpp
   src/linglong/runtime/overlayfs_driver.h
   src/linglong/runtime/run_context.cpp

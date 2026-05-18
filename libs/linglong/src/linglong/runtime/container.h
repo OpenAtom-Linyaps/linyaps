@@ -51,7 +51,7 @@ public:
     [[nodiscard]] auto getBundleDir() const -> const std::filesystem::path &;
     [[nodiscard]] auto getContainerCache() const -> const std::optional<std::filesystem::path> &;
     void addSecurityContext(std::unique_ptr<SecurityContext> securityContext);
-    auto setupOverlayFS(RunContext &context, bool readOnly) -> utils::error::Result<void>;
+    auto setupOverlayFS(RunContext &context, bool persistent) -> utils::error::Result<void>;
     auto genLdConf(const std::string &ldConf, bool overlayEnabled) -> utils::error::Result<void>;
 
 private:

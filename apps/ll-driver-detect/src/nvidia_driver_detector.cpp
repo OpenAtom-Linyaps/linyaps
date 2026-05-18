@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2025 - 2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -82,7 +82,9 @@ NVIDIADriverDetector::getPackageInfoFromRemoteRepo(const std::string &packageNam
 
     LINGLONG_TRACE("Check if NVIDIA driver package exists in repository");
 
-    GraphicsDriverInfo driverInfo{ getDriverIdentify(), packageName };
+    GraphicsDriverInfo driverInfo;
+    driverInfo.identify = getDriverIdentify();
+    driverInfo.packageName = packageName;
     // Execute ll-cli search command to check driver package existence
     auto ret = linglong::utils::Cmd("ll-cli").exec({ "--json", "search", packageName });
     if (!ret) {
@@ -192,7 +194,9 @@ NVIDIADriverDetector::getInstalledGraphicsDriverInfo(const std::string &packageN
 
     LINGLONG_TRACE("Get installed NVIDIA graphics driver info");
 
-    GraphicsDriverInfo driverInfo{ getDriverIdentify(), packageName };
+    GraphicsDriverInfo driverInfo;
+    driverInfo.identify = getDriverIdentify();
+    driverInfo.packageName = packageName;
 
     auto listResult = linglong::utils::Cmd("ll-cli").exec({ "--json", "list", "--type=extension" });
     if (!listResult) {

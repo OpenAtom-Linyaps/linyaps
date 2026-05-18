@@ -11,62 +11,17 @@
 #include "linglong/api/types/v1/ExtensionDefine.hpp"
 #include "linglong/api/types/v1/RunContextConfig.hpp"
 #include "linglong/repo/ostree_repo.h"
+#include "linglong/runtime/layer.h"
 #include "linglong/utils/error/error.h"
 #include "ocppi/runtime/config/types/Generators.hpp"
 
 #include <filesystem>
-#include <list>
 
 namespace linglong::generator {
 class ContainerCfgBuilder;
 }
 
 namespace linglong::runtime {
-
-class RunContext;
-
-class RuntimeLayer
-{
-public:
-    RuntimeLayer(const RuntimeLayer &) = delete;
-    RuntimeLayer &operator=(const RuntimeLayer &) = delete;
-    RuntimeLayer(RuntimeLayer &&) = default;
-    RuntimeLayer &operator=(RuntimeLayer &&) = default;
-
-    static utils::error::Result<RuntimeLayer> create(package::Reference ref, RunContext &context);
-    ~RuntimeLayer();
-
-    struct ExtensionRuntimeLayerInfo
-    {
-        api::types::v1::ExtensionDefine extensionInfo;
-        std::reference_wrapper<RuntimeLayer> extensionLayer;
-        std::string forRef;
-    };
-
-    utils::error::Result<void>
-    resolveLayer(const std::vector<std::string> &modules = {},
-                 const std::optional<std::string> &subRef = std::nullopt);
-
-    const api::types::v1::RepositoryCacheLayersItem &getCachedItem() const { return cachedItem; }
-
-    const package::Reference &getReference() const { return reference; }
-
-    const std::optional<package::LayerDir> &getLayerDir() const { return layerDir; }
-
-    void setExtensionInfo(ExtensionRuntimeLayerInfo info) { extensionOf = info; }
-
-    const std::optional<ExtensionRuntimeLayerInfo> &getExtensionInfo() const { return extensionOf; }
-
-private:
-    RuntimeLayer(package::Reference ref, RunContext &context);
-
-    package::Reference reference;
-    std::reference_wrapper<RunContext> runContext;
-    std::optional<package::LayerDir> layerDir;
-    api::types::v1::RepositoryCacheLayersItem cachedItem;
-    bool temporary;
-    std::optional<ExtensionRuntimeLayerInfo> extensionOf;
-};
 
 struct ResolveOptions
 {
@@ -83,7 +38,7 @@ struct ResolveOptions
 class RunContext
 {
 public:
-    RunContext(repo::OSTreeRepo &r)
+    explicit RunContext(repo::OSTreeRepo &r)
         : repo(r)
     {
     }
@@ -98,7 +53,7 @@ public:
 
     utils::error::Result<void> resolve(const api::types::v1::RunContextConfig &config);
 
-    const api::types::v1::RunContextConfig &getConfig() const { return contextCfg; }
+    [[nodiscard]] const api::types::v1::RunContextConfig &getConfig() const { return contextCfg; }
 
     utils::error::Result<void> fillContextCfg(generator::ContainerCfgBuilder &builder,
                                               const std::filesystem::path &bundlePath);
@@ -106,24 +61,33 @@ public:
                                                bool applyHooks = true) const;
     api::types::v1::ContainerProcessStateInfo stateInfo();
 
-    repo::OSTreeRepo &getRepo() const { return repo; }
+    [[nodiscard]] repo::OSTreeRepo &getRepo() const noexcept { return repo; }
 
-    const std::string &getContainerId() const { return containerID; }
+    [[nodiscard]] const std::string &getContainerId() const noexcept { return containerID; }
 
-    const std::string &getTargetID() const { return targetId; }
+    [[nodiscard]] const std::string &getTargetID() const noexcept { return targetId; }
 
-    const std::optional<RuntimeLayer> &getBaseLayer() const { return baseLayer; }
+    [[nodiscard]] const std::optional<RuntimeLayer> &getBaseLayer() const noexcept
+    {
+        return baseLayer;
+    }
 
-    const std::optional<RuntimeLayer> &getRuntimeLayer() const { return runtimeLayer; }
+    [[nodiscard]] const std::optional<RuntimeLayer> &getRuntimeLayer() const noexcept
+    {
+        return runtimeLayer;
+    }
 
-    const std::optional<RuntimeLayer> &getAppLayer() const { return appLayer; }
+    [[nodiscard]] const std::optional<RuntimeLayer> &getAppLayer() const noexcept
+    {
+        return appLayer;
+    }
 
-    utils::error::Result<std::filesystem::path> getBaseLayerPath() const;
-    utils::error::Result<std::filesystem::path> getRuntimeLayerPath() const;
+    [[nodiscard]] utils::error::Result<std::filesystem::path> getBaseLayerPath() const;
+    [[nodiscard]] utils::error::Result<std::filesystem::path> getRuntimeLayerPath() const;
 
     utils::error::Result<api::types::v1::RepositoryCacheLayersItem> getCachedAppItem();
 
-    bool hasRuntime() const { return !!runtimeLayer; }
+    [[nodiscard]] bool hasRuntime() const noexcept { return !!runtimeLayer; }
 
 private:
     utils::error::Result<void> resolveLayer(bool depsBinaryOnly,

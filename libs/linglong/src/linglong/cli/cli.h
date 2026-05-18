@@ -10,7 +10,6 @@
 #include "linglong/api/dbus/v1/task.h"
 #include "linglong/api/types/v1/CommonOptions.hpp"
 #include "linglong/api/types/v1/PackageInfoDisplay.hpp"
-#include "linglong/api/types/v1/RepositoryCacheLayersItem.hpp"
 #include "linglong/cli/interactive_notifier.h"
 #include "linglong/cli/printer.h"
 #include "linglong/common/serialize/json.h"

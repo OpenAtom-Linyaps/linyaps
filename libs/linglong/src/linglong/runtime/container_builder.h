@@ -95,7 +95,7 @@ public:
       -> utils::error::Result<std::unique_ptr<Container>>;
 
 private:
-    enum class ContainerMode {
+    enum class ContainerMode : uint8_t {
         Init,
         Build,
         Run,
@@ -104,7 +104,7 @@ private:
     struct PreparedContainer
     {
         generator::ContainerCfgBuilder cfgBuilder;
-        std::reference_wrapper<runtime::RunContext> runContext;
+        runtime::RunContext *runContext{ nullptr };
         std::unique_ptr<ContainerContext> context;
         ContainerMode mode{ ContainerMode::Run };
     };

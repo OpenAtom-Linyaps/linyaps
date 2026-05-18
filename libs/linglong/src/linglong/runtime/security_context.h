@@ -15,7 +15,7 @@ namespace linglong::runtime {
 class ContainerContext;
 class RunContext;
 
-enum class SecurityContextType {
+enum class SecurityContextType : uint8_t {
     WAYLAND,
     UNKNOWN,
 };

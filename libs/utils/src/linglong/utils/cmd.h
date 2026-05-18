@@ -21,7 +21,7 @@ class Cmd
 {
 public:
     explicit Cmd(std::string command) noexcept;
-    ~Cmd();
+    virtual ~Cmd();
 
     virtual bool exists() noexcept;
     virtual utils::error::Result<std::string>

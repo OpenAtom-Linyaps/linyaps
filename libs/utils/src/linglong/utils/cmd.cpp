@@ -78,22 +78,28 @@ utils::error::Result<std::string> Cmd::exec(const std::vector<std::string> &args
         return LINGLONG_ERR(fmt::format("command not found: {}", m_command));
     }
 
-    int stdoutPipe[2];
-    if (pipe(stdoutPipe) == -1) {
+    std::array<int, 2> stdoutPipe{ -1, -1 };
+    if (pipe2(stdoutPipe.data(), O_CLOEXEC) == -1) {
         return LINGLONG_ERR(fmt::format("pipe error: {}", common::error::errorString(errno)));
     }
-    auto stdoutPipeCloser = utils::finally::finally([stdoutPipe]() {
-        close(stdoutPipe[0]);
-        close(stdoutPipe[1]);
+    auto stdoutPipeCloser = utils::finally::finally([&stdoutPipe]() {
+        for (auto fd : stdoutPipe) {
+            if (fd >= 0) {
+                close(fd);
+            }
+        }
     });
 
-    int stdinPipe[2];
-    if (pipe(stdinPipe) == -1) {
+    std::array<int, 2> stdinPipe{ -1, -1 };
+    if (pipe2(stdinPipe.data(), O_CLOEXEC) == -1) {
         return LINGLONG_ERR(fmt::format("pipe error: {}", common::error::errorString(errno)));
     }
-    auto stdinPipeCloser = utils::finally::finally([stdinPipe]() {
-        close(stdinPipe[0]);
-        close(stdinPipe[1]);
+    auto stdinPipeCloser = utils::finally::finally([&stdinPipe]() {
+        for (auto fd : stdinPipe) {
+            if (fd >= 0) {
+                close(fd);
+            }
+        }
     });
 
     // Pre-allocate environment variables before fork to avoid memory allocation issues
@@ -101,28 +107,30 @@ utils::error::Result<std::string> Cmd::exec(const std::vector<std::string> &args
     std::vector<char *> envp;
 
     // Copy current environment
-    for (char **env = environ; *env != nullptr; ++env) {
+    for (char *const *env = environ; *env != nullptr; ++env) {
         envStrings.emplace_back(*env);
     }
 
     // Add or override environment variables
-    for (const auto &[name, value] : m_envs) {
+    for (auto it = m_envs.cbegin(); it != m_envs.cend(); ++it) {
+        const auto &name = it->first;
+        const auto &value = it->second;
         if (value.empty()) {
             // Remove the environment variable if value is empty
             envStrings.erase(std::remove_if(envStrings.begin(),
                                             envStrings.end(),
                                             [&name](const std::string &env) {
                                                 return env.size() > name.size()
-                                                  && env.substr(0, name.size()) == name
+                                                  && env.compare(0, name.size(), name) == 0
                                                   && env[name.size()] == '=';
                                             }),
                              envStrings.end());
         } else {
             // Add or update environment variable
-            std::string envVar = name + "=" + value;
+            const auto envVar = (name + "=").append(value);
             bool found = false;
             for (auto &env : envStrings) {
-                if (env.size() > name.size() && env.substr(0, name.size()) == name
+                if (env.size() > name.size() && env.compare(0, name.size(), name) == 0
                     && env[name.size()] == '=') {
                     env = envVar;
                     found = true;
@@ -144,7 +152,7 @@ utils::error::Result<std::string> Cmd::exec(const std::vector<std::string> &args
 
     LogD("execute {} with args [{}]", commandPath, fmt::join(args, ", "));
 
-    pid_t pid = fork();
+    const pid_t pid = fork();
     if (pid == -1) {
         return LINGLONG_ERR(fmt::format("fork error: {}", common::error::errorString(errno)));
     }
@@ -155,7 +163,7 @@ utils::error::Result<std::string> Cmd::exec(const std::vector<std::string> &args
         close(stdoutPipe[0]);
         close(stdinPipe[1]);
         if (dup2(stdoutPipe[1], STDOUT_FILENO) == -1 || dup2(stdinPipe[0], STDIN_FILENO) == -1) {
-            exit(1);
+            _exit(EXIT_FAILURE);
         }
         close(stdoutPipe[1]);
         close(stdinPipe[0]);
@@ -172,12 +180,14 @@ utils::error::Result<std::string> Cmd::exec(const std::vector<std::string> &args
 
         std::cout << "execvpe failed: " << common::error::errorString(errno) << std::endl;
 
-        _exit(1);
+        _exit(EXIT_FAILURE);
     }
 
     // parent process
     close(stdoutPipe[1]);
+    stdoutPipe[1] = -1;
     close(stdinPipe[0]);
+    stdinPipe[0] = -1;
 
     auto setNonBlock = [](int fd) {
         int flags = fcntl(fd, F_GETFL, 0);
@@ -223,6 +233,7 @@ utils::error::Result<std::string> Cmd::exec(const std::vector<std::string> &args
     } else {
         // If no input, close write end immediately to send EOF to child
         close(stdinPipe[1]);
+        stdinPipe[1] = -1;
     }
 
     std::string output;
@@ -299,11 +310,13 @@ utils::error::Result<std::string> Cmd::exec(const std::vector<std::string> &args
         int exitCode = WEXITSTATUS(status);
         if (exitCode == 0) {
             return output;
-        } else {
-            return LINGLONG_ERR(
-              fmt::format("command execute failed with exit code {}: {}", exitCode, output));
         }
-    } else if (WIFSIGNALED(status)) {
+
+        return LINGLONG_ERR(
+          fmt::format("command execute failed with exit code {}: {}", exitCode, output));
+    }
+
+    if (WIFSIGNALED(status)) {
         return LINGLONG_ERR(fmt::format("command killed by signal: {}", WTERMSIG(status)));
     }
 

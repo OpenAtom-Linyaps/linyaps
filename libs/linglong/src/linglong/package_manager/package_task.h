@@ -1,9 +1,11 @@
-// SPDX-FileCopyrightText: 2024 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2024 - 2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 #pragma once
 
+#include "linglong/api/types/v1/InteractionMessageType.hpp"
+#include "linglong/api/types/v1/PackageManager1RequestInteractionAdditionalMessage.hpp"
 #include "linglong/api/types/v1/State.hpp"
 #include "linglong/common/dbus/properties_forwarder.h"
 #include "linglong/package_manager/task.h"
@@ -74,8 +76,13 @@ public:
 
     utils::error::Result<void> exposeOnDBus(const QDBusConnection &connection) noexcept;
 
+    bool waitConfirm(api::types::v1::InteractionMessageType msgType,
+                     const api::types::v1::PackageManager1RequestInteractionAdditionalMessage
+                       &additionalMessage) noexcept;
+
 public Q_SLOTS:
     void Cancel() noexcept;
+    void ReplyInteraction(const QVariantMap &replies);
 
 Q_SIGNALS:
     void StateChanged(int newState);
@@ -86,6 +93,9 @@ Q_SIGNALS:
     void CodeChanged(int newCode);
 
     void changePropertiesDone();
+
+    void RequestInteraction(int messageID, QVariantMap additionalMessage);
+    void ReplyReceived(const QVariantMap &replies);
 
 private:
     friend class PackageTaskQueue;

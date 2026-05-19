@@ -6,6 +6,7 @@
 
 #include "linglong/adaptors/task/task1.h"
 #include "linglong/common/dbus/register.h"
+#include "linglong/common/serialize/json.h"
 #include "linglong/package_manager/package_manager.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/log/formatter.h" // IWYU pragma: keep
@@ -83,6 +84,33 @@ void PackageTask::Cancel() noexcept
     }
 
     g_cancellable_cancel(m_cancelFlag);
+}
+
+void PackageTask::ReplyInteraction(const QVariantMap &replies)
+{
+    Q_EMIT this->ReplyReceived(replies);
+}
+
+bool PackageTask::waitConfirm(
+  api::types::v1::InteractionMessageType msgType,
+  const api::types::v1::PackageManager1RequestInteractionAdditionalMessage
+    &additionalMessage) noexcept
+{
+    Q_EMIT RequestInteraction(static_cast<int>(msgType),
+                              common::serialize::toQVariantMap(additionalMessage));
+    QEventLoop loop;
+    auto conn = connect(this, &PackageTask::ReplyReceived, [this, &loop](const QVariantMap &reply) {
+        auto interactionReply =
+          common::serialize::fromQVariantMap<api::types::v1::InteractionReply>(reply);
+        if (interactionReply->action != "yes") {
+            updateState(linglong::api::types::v1::State::Canceled, "canceled");
+        }
+        loop.exit(0);
+    });
+    loop.exec();
+    disconnect(conn);
+
+    return !isTaskDone();
 }
 
 utils::error::Result<void> PackageTask::exposeOnDBus(const QDBusConnection &connection) noexcept

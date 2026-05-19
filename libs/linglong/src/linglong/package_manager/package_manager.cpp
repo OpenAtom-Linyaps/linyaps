@@ -60,8 +60,6 @@ namespace linglong::service {
 
 namespace {
 
-constexpr auto repoLockPath = "/run/linglong/lock";
-
 template <typename T>
 QVariantMap toDBusReply(const utils::error::Result<T> &x, std::string type = "display") noexcept
 {
@@ -255,18 +253,19 @@ PackageManager::getAllRunningContainers() noexcept
 [[nodiscard]] utils::error::Result<void> PackageManager::lockRepo() noexcept
 {
     LINGLONG_TRACE("lock whole repo")
-    lockFd = ::open(repoLockPath, O_RDWR | O_CREAT, 0644);
+    lockFd = ::open(common::dir::repoLockPath, O_WRONLY);
     if (lockFd == -1) {
         return LINGLONG_ERR(fmt::format("failed to create lock file {}: {}",
-                                        repoLockPath,
+                                        common::dir::repoLockPath,
                                         common::error::errorString(errno)));
     }
 
     struct flock locker{ .l_type = F_WRLCK, .l_whence = SEEK_SET, .l_start = 0, .l_len = 0 };
 
     if (::fcntl(lockFd, F_SETLK, &locker) == -1) {
-        return LINGLONG_ERR(
-          fmt::format("failed to lock {}: {}", repoLockPath, common::error::errorString(errno)));
+        return LINGLONG_ERR(fmt::format("failed to lock {}: {}",
+                                        common::dir::repoLockPath,
+                                        common::error::errorString(errno)));
     }
 
     return LINGLONG_OK;
@@ -283,8 +282,9 @@ PackageManager::getAllRunningContainers() noexcept
     struct flock unlocker{ .l_type = F_UNLCK, .l_whence = SEEK_SET, .l_start = 0, .l_len = 0 };
 
     if (::fcntl(lockFd, F_SETLK, &unlocker)) {
-        return LINGLONG_ERR(
-          fmt::format("failed to unlock {}: {}", repoLockPath, common::error::errorString(errno)));
+        return LINGLONG_ERR(fmt::format("failed to unlock {}: {}",
+                                        common::dir::repoLockPath,
+                                        common::error::errorString(errno)));
     }
 
     ::close(lockFd);
@@ -390,7 +390,7 @@ void PackageManager::deferredUninstall() noexcept
 
         auto [node, isNew] =
           uninstalledLayers.try_emplace(ref->toString(),
-                                        std::vector<api::types::v1::RepositoryCacheLayersItem>{});
+                                        std::vector<api::types::v1::RepositoryCacheLayersItem>{ });
         node->second.push_back(item);
     }
 
@@ -1289,7 +1289,7 @@ PackageManager::needToUpgrade(const package::FuzzyReference &fuzzyRef,
         return LINGLONG_ERR(remoteRef);
     }
 
-    auto installModules = std::vector<std::string>{};
+    auto installModules = std::vector<std::string>{ };
     std::vector<std::string> modules;
     if (!local) {
         modules = { "binary" };
@@ -1731,12 +1731,12 @@ utils::error::Result<void> PackageManager::initRunContext(const std::string &run
         return LINGLONG_ERR(container);
     }
 
-    ocppi::runtime::config::types::Process process{};
+    ocppi::runtime::config::types::Process process{ };
     process.cwd = "/";
     process.noNewPrivileges = true;
     process.args = std::vector<std::string>{ "/sbin/ldconfig" };
 
-    ocppi::runtime::RunOption opt{};
+    ocppi::runtime::RunOption opt{ };
     opt.GlobalOption::root = common::dir::getRuntimeDir() / "ll-box";
     auto result = (*container)->run(process, opt);
     if (!result) {

@@ -215,6 +215,8 @@ private:
       std::map<std::string, std::vector<api::types::v1::PackageInfoV2>> &list) noexcept;
     [[nodiscard]] utils::error::Result<std::vector<api::types::v1::CliContainer>>
     getCurrentContainers() const noexcept;
+    utils::error::Result<int> reuseContainer(const std::string &id,
+                                             const std::vector<std::string> &command) noexcept;
     int installFromFile(const QFileInfo &fileInfo,
                         const api::types::v1::CommonOptions &commonOptions,
                         const std::string &appid);

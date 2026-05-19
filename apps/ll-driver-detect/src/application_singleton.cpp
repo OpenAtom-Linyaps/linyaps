@@ -42,7 +42,10 @@ utils::error::Result<bool> ApplicationSingleton::tryAcquireLock()
     }
 
     // Try to create file lock
-    auto fileLock = linglong::utils::filelock::FileLock::create(lockFilePath_, true);
+    auto fileLock =
+      linglong::utils::filelock::FileLock::create(lockFilePath_,
+                                                  linglong::utils::filelock::LockType::Write,
+                                                  true);
     if (!fileLock) {
         return LINGLONG_ERR(fileLock);
     }

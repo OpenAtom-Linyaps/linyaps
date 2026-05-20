@@ -32,6 +32,8 @@
 #include <sstream>
 #include <vector>
 
+#include <grp.h>
+#include <pwd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -372,20 +374,68 @@ ContainerCfgBuilder &ContainerCfgBuilder::bindTmp() noexcept
     return *this;
 }
 
-ContainerCfgBuilder &ContainerCfgBuilder::bindUserGroup() noexcept
+ContainerCfgBuilder &ContainerCfgBuilder::bindUserGroup(bool minimal) noexcept
 {
-    UGMount = {
-        Mount{ .destination = "/etc/passwd",
-               .options = string_list{ "rbind", "ro" },
-               .source = "/etc/passwd",
-               .type = "bind" },
-        Mount{ .destination = "/etc/group",
-               .options = string_list{ "rbind", "ro" },
-               .source = "/etc/group",
-               .type = "bind" },
-    };
+    UGBind = minimal;
 
     return *this;
+}
+
+utils::error::Result<void> ContainerCfgBuilder::buildUserGroup() noexcept
+{
+    LINGLONG_TRACE("build user group");
+
+    if (!UGBind.has_value()) {
+        return LINGLONG_OK;
+    }
+
+    std::filesystem::path passwdSrc{ "/etc/passwd" };
+    std::filesystem::path groupSrc{ "/etc/group" };
+
+    if (UGBind.value()) {
+        auto uid = ::getuid();
+        auto gid = ::getgid();
+
+        passwdSrc = bundlePath / "passwd";
+        groupSrc = bundlePath / "group";
+
+        {
+            std::ofstream ofs(passwdSrc);
+            if (!ofs.is_open()) {
+                return LINGLONG_ERR(fmt::format("{} can't be created", passwdSrc));
+            }
+
+            if (auto *pw = ::getpwuid(uid); pw != nullptr) {
+                ofs << pw->pw_name << ":x:" << pw->pw_uid << ":" << pw->pw_gid << ":"
+                    << (pw->pw_gecos ? pw->pw_gecos : "") << ":" << (pw->pw_dir ? pw->pw_dir : "")
+                    << ":" << (pw->pw_shell ? pw->pw_shell : "") << "\n";
+            }
+            ofs << "nobody:x:65534:65534:nobody:/:/usr/sbin/nologin\n";
+        }
+
+        {
+            std::ofstream ofs(groupSrc);
+            if (!ofs.is_open()) {
+                return LINGLONG_ERR(fmt::format("{} can't be created", groupSrc));
+            }
+
+            if (auto *gr = ::getgrgid(gid); gr != nullptr) {
+                ofs << gr->gr_name << ":x:" << gr->gr_gid << ":\n";
+            }
+            ofs << "nobody:x:65534:\n";
+        }
+    }
+
+    UGMount = { Mount{ .destination = "/etc/passwd",
+                       .options = string_list{ "rbind", "ro" },
+                       .source = passwdSrc,
+                       .type = "bind" },
+                Mount{ .destination = "/etc/group",
+                       .options = string_list{ "rbind", "ro" },
+                       .source = groupSrc,
+                       .type = "bind" } };
+
+    return LINGLONG_OK;
 }
 
 ContainerCfgBuilder &ContainerCfgBuilder::bindRemovableStorageMounts() noexcept
@@ -2243,6 +2293,7 @@ utils::error::Result<void> ContainerCfgBuilder::build() noexcept
     BUILD_STEP(buildLDCache);
     BUILD_STEP(buildEnv);
     BUILD_STEP(buildHooks);
+    BUILD_STEP(buildUserGroup);
     BUILD_STEP(mergeMount);
     BUILD_STEP(finalize);
     BUILD_STEP(applyPatch);

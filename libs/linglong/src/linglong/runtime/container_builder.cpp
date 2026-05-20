@@ -328,7 +328,6 @@ auto ContainerBuilder::prepareContainer(runtime::RunContext &context,
       .setBundlePath(prepared.context->getBundleDir())
       .addUIdMapping(uid, uid, 1)
       .addGIdMapping(gid, gid, 1)
-      .bindUserGroup()
       .bindDefault()
       .bindCgroup();
 
@@ -385,6 +384,7 @@ auto ContainerBuilder::configureBuildContainer(PreparedContainer &prepared,
     LINGLONG_TRACE("configure build container");
 
     prepared.cfgBuilder.setBasePath(options.basePath, false)
+      .bindUserGroup()
       .forwardDefaultEnv()
       .appendEnv("LINYAPS_INIT_SINGLE_MODE", "1")
       .disableUserNamespace()
@@ -461,7 +461,11 @@ auto ContainerBuilder::configureInitContainer(PreparedContainer &prepared) noexc
 
     auto &runContext = *prepared.runContext;
 
-    prepared.cfgBuilder.bindXDGRuntime().bindHostRoot().bindHostStatics().forwardDefaultEnv();
+    prepared.cfgBuilder.bindUserGroup()
+      .bindXDGRuntime()
+      .bindHostRoot()
+      .bindHostStatics()
+      .forwardDefaultEnv();
 
     if (runContext.getConfig().overlayfs) {
         auto res = prepared.context->setupOverlayFS(runContext, true);
@@ -518,6 +522,7 @@ auto ContainerBuilder::configureRunContainer(PreparedContainer &prepared,
     std::filesystem::path homePath{ homeEnv };
 
     prepared.cfgBuilder.setAnnotation(generator::ANNOTATION::LAST_PID, std::to_string(::getpid()))
+      .bindUserGroup(true)
       .bindXDGRuntime()
       .bindRemovableStorageMounts()
       .bindHostRoot()

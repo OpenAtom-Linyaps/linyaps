@@ -106,7 +106,7 @@ public:
     ContainerCfgBuilder &bindXDGRuntime() noexcept;
     ContainerCfgBuilder &bindRun() noexcept;
     ContainerCfgBuilder &bindTmp() noexcept;
-    ContainerCfgBuilder &bindUserGroup() noexcept;
+    ContainerCfgBuilder &bindUserGroup(bool minimal = false) noexcept;
     ContainerCfgBuilder &bindRemovableStorageMounts() noexcept;
 
     ContainerCfgBuilder &forwardDefaultEnv() noexcept;
@@ -213,6 +213,7 @@ private:
     utils::error::Result<void> buildLDCache() noexcept;
     utils::error::Result<void> buildMountTimeZone() noexcept;
     utils::error::Result<void> buildMountNetworkConf() noexcept;
+    utils::error::Result<void> buildUserGroup() noexcept;
     utils::error::Result<void> buildQuirkVolatile() noexcept;
     utils::error::Result<void> buildXDGRuntime() noexcept;
     utils::error::Result<void> buildEnv() noexcept;
@@ -276,6 +277,7 @@ private:
     std::optional<std::vector<ocppi::runtime::config::types::Mount>> runMount;
     std::optional<ocppi::runtime::config::types::Mount> tmpMount;
     std::optional<std::vector<ocppi::runtime::config::types::Mount>> UGMount;
+    std::optional<bool> UGBind{ std::nullopt };
     std::optional<std::vector<ocppi::runtime::config::types::Mount>> removableStorageMounts;
     std::optional<std::vector<ocppi::runtime::config::types::Mount>> hostRootMount;
     std::optional<std::vector<ocppi::runtime::config::types::Mount>> hostStaticsMount;

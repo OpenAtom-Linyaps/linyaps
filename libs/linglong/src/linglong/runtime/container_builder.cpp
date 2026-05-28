@@ -353,12 +353,12 @@ auto ContainerBuilder::finalizeContainer(PreparedContainer &prepared) noexcept
     bool useOverlayMode = true;
     bool needGenLdConf = false;
     if (prepared.mode == ContainerMode::Init) {
-        const auto &appLayer = prepared.runContext->getAppLayer();
-        if (!appLayer) {
-            return LINGLONG_ERR("app layer not found");
+        auto targetLayer = prepared.runContext->getTargetLayer();
+        if (!targetLayer) {
+            return LINGLONG_ERR("target layer not found", targetLayer);
         }
 
-        triplet = appLayer->getReference().arch.getTriplet();
+        triplet = targetLayer->get().getReference().arch.getTriplet();
         needGenLdConf = true;
     } else if (prepared.mode == ContainerMode::Build) {
         triplet = package::Architecture::currentCPUArchitecture().getTriplet();

@@ -669,13 +669,14 @@ int Cli::run(const RunOptions &options)
     LogD("RunContext Config:\n{}", nlohmann::json(runContextCfg).dump());
 
     auto containerID = runContext.getContainerId();
-    LogD("run app: {} container id: {}", curAppRef->toString(), containerID);
+    LogD("run {} with container id: {}", curAppRef->toString(), containerID);
 
-    const auto &appLayerItem = runContext.getCachedAppItem();
-    if (!appLayerItem) {
+    auto targetItem = runContext.getCachedTargetItem();
+    if (!targetItem) {
+        this->printer.printErr(LINGLONG_ERRV("failed to get cached target item", targetItem));
         return -1;
     }
-    const auto &info = appLayerItem->info;
+    const auto &info = targetItem->info;
 
     auto commands = options.commands;
     if (options.commands.empty()) {
@@ -831,20 +832,20 @@ int Cli::runResolvedContext(runtime::RunContext &runContext,
 {
     LINGLONG_TRACE("run resolved context");
 
-    auto appLayerItem = runContext.getCachedAppItem();
-    if (!appLayerItem) {
-        this->printer.printErr(LINGLONG_ERRV("failed to get cached app item"));
+    auto targetItem = runContext.getCachedTargetItem();
+    if (!targetItem) {
+        this->printer.printErr(LINGLONG_ERRV("failed to get cached target item", targetItem));
         return -1;
     }
 
     auto commands = options.commands;
     if (options.commands.empty()) {
-        commands = appLayerItem->info.command.value_or(std::vector<std::string>{ "bash" });
+        commands = targetItem->info.command.value_or(std::vector<std::string>{ "bash" });
     }
     commands = filePathMapping(commands, options);
 
     auto appCache =
-      common::dir::getContainerCacheDir(appLayerItem->commit, runContext.getContainerId());
+      common::dir::getContainerCacheDir(targetItem->commit, runContext.getContainerId());
 
     runtime::RunContainerOptions runOptions;
     runOptions.enableSecurityContext(runtime::getDefaultSecurityContexts());
@@ -991,7 +992,9 @@ Cli::getCurrentContainers() const noexcept
 
         myContainers.emplace_back(api::types::v1::CliContainer{
           .id = std::move(info->containerID),
-          .package = std::move(info->app),
+          .package = !info->app.empty()
+            ? info->app
+            : (info->runtime && !info->runtime->empty() ? *info->runtime : info->base),
           .pid = container->pid,
         });
     }
@@ -2089,12 +2092,12 @@ utils::error::Result<std::filesystem::path> Cli::ensureCache(runtime::RunContext
     LINGLONG_TRACE("ensure cache via PM");
 
     const auto &containerID = context.getContainerId();
-    auto appLayerItem = context.getCachedAppItem();
-    if (!appLayerItem) {
-        return LINGLONG_ERR("failed to get cached app item");
+    auto targetItem = context.getCachedTargetItem();
+    if (!targetItem) {
+        return LINGLONG_ERR("failed to get cached target item", targetItem);
     }
 
-    auto appCache = common::dir::getContainerCacheDir(appLayerItem->commit, containerID);
+    auto appCache = common::dir::getContainerCacheDir(targetItem->commit, containerID);
     auto runContextConfigFile = appCache / ".config";
     std::error_code ec;
     if (std::filesystem::exists(runContextConfigFile, ec)) {

@@ -16,6 +16,7 @@
 #include "ocppi/runtime/config/types/Generators.hpp"
 
 #include <filesystem>
+#include <functional>
 
 namespace linglong::generator {
 class ContainerCfgBuilder;
@@ -85,7 +86,10 @@ public:
     [[nodiscard]] utils::error::Result<std::filesystem::path> getBaseLayerPath() const;
     [[nodiscard]] utils::error::Result<std::filesystem::path> getRuntimeLayerPath() const;
 
-    utils::error::Result<api::types::v1::RepositoryCacheLayersItem> getCachedAppItem();
+    [[nodiscard]] utils::error::Result<std::reference_wrapper<RuntimeLayer>> getTargetLayer();
+
+    [[nodiscard]] utils::error::Result<api::types::v1::RepositoryCacheLayersItem>
+    getCachedTargetItem();
 
     [[nodiscard]] bool hasRuntime() const noexcept { return !!runtimeLayer; }
 

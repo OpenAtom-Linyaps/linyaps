@@ -1937,12 +1937,12 @@ utils::error::Result<void> PackageManager::initRunContext(const std::string &run
         return LINGLONG_ERR("container id mismatch");
     }
 
-    auto appLayerItem = ctx.getCachedAppItem();
-    if (!appLayerItem) {
-        return LINGLONG_ERR("failed to get cached app item");
+    auto targetItem = ctx.getCachedTargetItem();
+    if (!targetItem) {
+        return LINGLONG_ERR("failed to get cached target item", targetItem);
     }
 
-    auto appCache = common::dir::getContainerCacheDir(appLayerItem->commit, containerID);
+    auto appCache = common::dir::getContainerCacheDir(targetItem->commit, containerID);
     auto runContextConfigFile = appCache / ".config";
     std::error_code ec;
     if (std::filesystem::exists(runContextConfigFile, ec)) {

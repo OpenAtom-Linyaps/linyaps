@@ -298,8 +298,10 @@ utils::error::Result<void> RunContext::resolve(const api::types::v1::RunContextC
 
         return std::move(layer).value();
     };
-    auto findTargetLayer = [this, &_linglong_trace_message](const std::string &targetRefStr)
+    auto findTargetLayer = [this](const std::string &targetRefStr)
       -> utils::error::Result<std::reference_wrapper<RuntimeLayer>> {
+        LINGLONG_TRACE("find target layer");
+
         auto fuzzyRef = package::FuzzyReference::parse(targetRefStr);
         if (!fuzzyRef) {
             return LINGLONG_ERR("failed to parse target layer reference", fuzzyRef);
@@ -1021,15 +1023,38 @@ utils::error::Result<std::filesystem::path> RunContext::getRuntimeLayerPath() co
     return runtimeLayer->getLayerDir()->path();
 }
 
-utils::error::Result<api::types::v1::RepositoryCacheLayersItem> RunContext::getCachedAppItem()
+utils::error::Result<std::reference_wrapper<RuntimeLayer>> RunContext::getTargetLayer()
 {
-    LINGLONG_TRACE("get cached app item");
+    LINGLONG_TRACE("get target layer");
 
-    if (!appLayer) {
-        return LINGLONG_ERR("no app layer exist");
+    if (appLayer) {
+        return std::ref(*appLayer);
+    }
+    if (runtimeLayer) {
+        return std::ref(*runtimeLayer);
+    }
+    if (baseLayer) {
+        return std::ref(*baseLayer);
     }
 
-    return appLayer->getCachedItem();
+    return LINGLONG_ERR("no layer resolved");
+}
+
+utils::error::Result<api::types::v1::RepositoryCacheLayersItem> RunContext::getCachedTargetItem()
+{
+    LINGLONG_TRACE("get cached target item");
+
+    if (appLayer) {
+        return appLayer->getCachedItem();
+    }
+    if (runtimeLayer) {
+        return runtimeLayer->getCachedItem();
+    }
+    if (baseLayer) {
+        return baseLayer->getCachedItem();
+    }
+
+    return LINGLONG_ERR("no layer resolved");
 }
 
 } // namespace linglong::runtime

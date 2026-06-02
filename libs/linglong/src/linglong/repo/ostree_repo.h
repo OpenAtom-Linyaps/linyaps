@@ -107,7 +107,7 @@ public:
                    std::vector<std::filesystem::path> overlays = {},
                    const std::optional<std::string> &subRef = std::nullopt) noexcept;
 
-    [[nodiscard]] utils::error::Result<package::LayerDir>
+    virtual utils::error::Result<package::LayerDir>
     getLayerDir(const package::Reference &ref,
                 const std::string &module = "binary",
                 const std::optional<std::string> &subRef = std::nullopt) const noexcept;
@@ -119,9 +119,9 @@ public:
                  const std::string &url,
                  const package::Reference &reference,
                  const std::string &module = "binary") const noexcept;
-    [[nodiscard]] utils::error::Result<void> pull(service::Task &taskContext,
-                                                  const package::ReferenceWithRepo &refRepo,
-                                                  const std::string &module) noexcept;
+    [[nodiscard]] virtual utils::error::Result<void> pull(service::Task &taskContext,
+                                                          const package::ReferenceWithRepo &refRepo,
+                                                          const std::string &module) noexcept;
 
     [[nodiscard]] virtual utils::error::Result<package::Reference>
     clearReference(const package::FuzzyReference &fuzzy,

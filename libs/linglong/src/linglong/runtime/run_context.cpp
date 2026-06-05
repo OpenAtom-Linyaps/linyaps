@@ -443,13 +443,39 @@ utils::error::Result<void> RunContext::resolve(const api::types::v1::RunContextC
                 if (extLayer.getCachedItem().info.kind != "extension") {
                     return LINGLONG_ERR("invalid extension kind in config.extensions");
                 }
+
+                api::types::v1::ExtensionDefine extDef;
+                const auto &targetInfo = targetLayer->get().getCachedItem().info;
+                const auto *matchedDef = [&]() -> const api::types::v1::ExtensionDefine * {
+                    if (!targetInfo.extensions) {
+                        return nullptr;
+                    }
+                    for (const auto &def : *targetInfo.extensions) {
+                        std::string name = def.name;
+                        auto ext = extension::ExtensionFactory::makeExtension(name);
+                        if (ext->shouldEnable(name) && name == extLayer.getReference().id) {
+                            return &def;
+                        }
+                    }
+                    return nullptr;
+                }();
+
+                if (matchedDef) {
+                    extDef = *matchedDef;
+                } else {
+                    LogW("extension {} not found in target layer {}'s extensions, "
+                         "using manual extension define",
+                         extLayer.getReference().toString(),
+                         targetLayer->get().getReference().toString());
+                    auto manualDefs = makeManualExtensionDefine({ extensionRefStr });
+                    if (!manualDefs) {
+                        return LINGLONG_ERR(manualDefs);
+                    }
+                    extDef = std::move(manualDefs->front());
+                }
+
                 extLayer.setExtensionInfo(RuntimeLayer::ExtensionRuntimeLayerInfo{
-                  .extensionInfo =
-                    api::types::v1::ExtensionDefine{
-                      .directory = "/opt/extensions/" + extLayer.getReference().id,
-                      .name = extLayer.getReference().id,
-                      .version = extLayer.getReference().version.toString(),
-                    },
+                  .extensionInfo = std::move(extDef),
                   .extensionLayer = std::ref(extLayer),
                   .forRef = targetRefStr,
                 });
@@ -545,6 +571,7 @@ utils::error::Result<void> RunContext::resolveLayer(bool depsBinaryOnly,
 
         const auto &extensionOf = ext.getExtensionInfo();
         if (!extensionOf) {
+            LogW("failed getExtensionInfo, skip");
             continue;
         }
 

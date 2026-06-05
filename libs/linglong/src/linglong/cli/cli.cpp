@@ -654,14 +654,6 @@ int Cli::run(const RunOptions &options)
         opts.cdiDevices = std::move(*autoDetectedCdiDevices);
     }
 
-    // 调整日志输出，打印扩展列表（用逗号拼接）
-    std::string extStr =
-      opts.extensionRefs ? linglong::common::strings::join(*opts.extensionRefs, ',') : "null";
-    LogD("start resolve run context with base {}, runtime {}, extensions {}",
-         opts.baseRef.value_or("null"),
-         opts.runtimeRef.value_or("null"),
-         extStr);
-
     auto res = runContext.resolve(*curAppRef, opts);
     if (!res) {
         handleCommonError(res.error());

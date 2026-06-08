@@ -9,6 +9,7 @@
 #include "configure.h"
 #include "linglong/api/types/helper.h"
 #include "linglong/api/types/v1/Generators.hpp" // IWYU pragma: keep
+#include "linglong/api/types/v1/InteractionReply.hpp"
 #include "linglong/api/types/v1/PackageInfoV2.hpp"
 #include "linglong/api/types/v1/PackageManager1JobInfo.hpp"
 #include "linglong/api/types/v1/PackageManager1PruneResult.hpp"
@@ -45,12 +46,14 @@
 
 #include <QDBusInterface>
 #include <QDBusReply>
+#include <QDBusServiceWatcher>
 #include <QDBusUnixFileDescriptor>
 #include <QEventLoop>
 #include <QMetaObject>
 #include <QTimer>
 
 #include <algorithm>
+#include <chrono>
 #include <cstdint>
 #include <functional>
 #include <unordered_map>
@@ -655,7 +658,7 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
           PackageTask &taskRef = dynamic_cast<PackageTask &>(task);
           if (msgType == api::types::v1::InteractionMessageType::Upgrade
               && !options.skipInteraction) {
-              if (!taskRef.waitConfirm(msgType, additionalMessage)) {
+              if (!this->waitConfirm(taskRef, msgType, additionalMessage)) {
                   return;
               }
           }
@@ -1885,6 +1888,117 @@ auto PackageManager::InitRunContext(const QString &runContextCfg,
       .code = 0,
       .message = "InitRunContext queued",
     });
+}
+
+void PackageManager::ReplyInteraction(QDBusObjectPath object_path, const QVariantMap &replies)
+{
+    Q_EMIT this->ReplyReceived(object_path, replies);
+}
+
+void PackageManager::onPeerDisconnected() noexcept
+{
+    LogW("peer caller disconnected");
+    Q_EMIT CallerDisconnected();
+}
+
+bool PackageManager::waitConfirm(
+  PackageTask &taskRef,
+  api::types::v1::InteractionMessageType msgType,
+  const api::types::v1::PackageManager1RequestInteractionAdditionalMessage
+    &additionalMessage) noexcept
+{
+    auto objectPath = QDBusObjectPath(taskRef.taskObjectPath().c_str());
+    QEventLoop loop;
+    QTimer timeoutTimer;
+    timeoutTimer.setSingleShot(true);
+
+    auto callerContext = taskRef.callerContext();
+    std::unique_ptr<QDBusServiceWatcher> watcher;
+
+    QMetaObject::Connection callerDisconnectedConn;
+
+    if (callerContext.isPeerMode()) {
+        callerDisconnectedConn =
+          connect(this, &PackageManager::CallerDisconnected, &loop, [&taskRef, &loop]() {
+              taskRef.updateState(linglong::api::types::v1::State::Canceled, "caller disconnected");
+              loop.exit(1);
+          });
+
+        auto connected = callerContext.connection.connect("",
+                                                          "/org/freedesktop/DBus/Local",
+                                                          "org.freedesktop.DBus.Local",
+                                                          "Disconnected",
+                                                          this,
+                                                          SLOT(onPeerDisconnected()));
+        if (!connected) {
+            LogW("failed to connect to Disconnected signal for peer mode");
+        }
+    } else {
+        auto callerName = callerContext.callerBusName();
+        if (!callerName.isEmpty()) {
+            watcher =
+              std::make_unique<QDBusServiceWatcher>(callerName,
+                                                    callerContext.connection,
+                                                    QDBusServiceWatcher::WatchForUnregistration);
+            connect(watcher.get(),
+                    &QDBusServiceWatcher::serviceUnregistered,
+                    &loop,
+                    [&taskRef, &loop, callerName]() {
+                        LogW("caller {} disconnected", callerName.toStdString());
+                        taskRef.updateState(linglong::api::types::v1::State::Canceled,
+                                            "caller disconnected");
+                        loop.exit(1);
+                    });
+        }
+    }
+
+    auto replyConn =
+      connect(this,
+              &PackageManager::ReplyReceived,
+              &loop,
+              [&taskRef, &loop, objectPath](const QDBusObjectPath &replyObjectPath,
+                                            const QVariantMap &reply) {
+                  if (replyObjectPath.path() != objectPath.path()) {
+                      return;
+                  }
+
+                  auto interactionReply =
+                    common::serialize::fromQVariantMap<api::types::v1::InteractionReply>(reply);
+                  if (!interactionReply || interactionReply->action != "yes") {
+                      taskRef.updateState(linglong::api::types::v1::State::Canceled, "canceled");
+                  }
+                  loop.exit(0);
+              });
+
+    auto timeoutConn = connect(&timeoutTimer, &QTimer::timeout, &loop, [&taskRef, &loop]() {
+        auto msg = fmt::format("task {} confirm timeout", taskRef.taskID());
+        LogW(msg);
+        taskRef.updateState(linglong::api::types::v1::State::Canceled, msg);
+        loop.exit(1);
+    });
+
+    Q_EMIT RequestInteraction(objectPath,
+                              static_cast<int>(msgType),
+                              common::serialize::toQVariantMap(additionalMessage));
+
+    timeoutTimer.start(std::chrono::milliseconds{ 180000 });
+    loop.exec();
+    timeoutTimer.stop();
+
+    disconnect(replyConn);
+    disconnect(timeoutConn);
+    disconnect(callerDisconnectedConn);
+
+    if (callerContext.isPeerMode()) {
+        callerContext.connection.disconnect("",
+                                            "/org/freedesktop/DBus/Local",
+                                            "org.freedesktop.DBus.Local",
+                                            "Disconnected",
+                                            this,
+                                            SLOT(onPeerDisconnected()));
+    }
+
+    return !taskRef.isTaskDone();
 }
 
 // no-op for now

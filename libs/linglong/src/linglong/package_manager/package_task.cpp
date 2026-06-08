@@ -6,16 +6,12 @@
 
 #include "linglong/adaptors/task/task1.h"
 #include "linglong/common/dbus/register.h"
-#include "linglong/common/serialize/json.h"
 #include "linglong/package_manager/package_manager.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/log/formatter.h" // IWYU pragma: keep
 
 #include <fmt/format.h>
 #include <sys/prctl.h>
-
-#include <QDBusServiceWatcher>
-#include <QTimer>
 
 #include <utility>
 
@@ -89,106 +85,9 @@ void PackageTask::Cancel() noexcept
     g_cancellable_cancel(m_cancelFlag);
 }
 
-void PackageTask::ReplyInteraction(const QVariantMap &replies) noexcept
-{
-    Q_EMIT this->ReplyReceived(replies);
-}
-
-void PackageTask::onPeerDisconnected() noexcept
-{
-    LogW("peer caller disconnected");
-    Q_EMIT peerDisconnected();
-}
-
 void PackageTask::setCallerContext(const CallerContext &ctx)
 {
     m_callerContext = ctx;
-}
-
-bool PackageTask::waitConfirm(
-  api::types::v1::InteractionMessageType msgType,
-  const api::types::v1::PackageManager1RequestInteractionAdditionalMessage &additionalMessage,
-  std::chrono::milliseconds timeout) noexcept
-{
-    Q_EMIT RequestInteraction(static_cast<int>(msgType),
-                              common::serialize::toQVariantMap(additionalMessage));
-    QEventLoop loop;
-
-    QTimer timeoutTimer;
-    timeoutTimer.setSingleShot(true);
-
-    std::unique_ptr<QDBusServiceWatcher> watcher;
-
-    auto peerDisconnectedConn =
-      QObject::connect(this, &PackageTask::peerDisconnected, &loop, [&loop, this]() {
-          updateState(linglong::api::types::v1::State::Canceled, "caller disconnected");
-          loop.exit(1);
-      });
-
-    if (m_callerContext.isPeerMode()) {
-        auto connected = m_callerContext.connection.connect("",
-                                                            "/org/freedesktop/DBus/Local",
-                                                            "org.freedesktop.DBus.Local",
-                                                            "Disconnected",
-                                                            this,
-                                                            SLOT(onPeerDisconnected()));
-        if (!connected) {
-            LogW("failed to connect to Disconnected signal for peer mode");
-        }
-    } else {
-        auto callerName = m_callerContext.callerBusName();
-        if (!callerName.isEmpty()) {
-            watcher =
-              std::make_unique<QDBusServiceWatcher>(callerName,
-                                                    m_callerContext.connection,
-                                                    QDBusServiceWatcher::WatchForUnregistration);
-            connect(
-              watcher.get(),
-              &QDBusServiceWatcher::serviceUnregistered,
-              &loop,
-              [&loop, this]() {
-                  LogW("caller {} disconnected", m_callerContext.callerBusName().toStdString());
-                  updateState(linglong::api::types::v1::State::Canceled, "caller disconnected");
-                  loop.exit(1);
-              });
-        }
-    }
-
-    auto replyConn =
-      connect(this, &PackageTask::ReplyReceived, &loop, [this, &loop](const QVariantMap &reply) {
-          auto interactionReply =
-            common::serialize::fromQVariantMap<api::types::v1::InteractionReply>(reply);
-          if (!interactionReply || interactionReply->action != "yes") {
-              updateState(linglong::api::types::v1::State::Canceled, "canceled");
-          }
-          loop.exit(0);
-      });
-
-    auto timeoutConn = connect(&timeoutTimer, &QTimer::timeout, &loop, [this, &loop]() {
-        auto msg = fmt::format("task {} confirm timeout", taskID());
-        LogW(msg);
-        updateState(linglong::api::types::v1::State::Canceled, msg);
-        loop.exit(1);
-    });
-
-    timeoutTimer.start(timeout);
-    loop.exec();
-    timeoutTimer.stop();
-
-    disconnect(replyConn);
-    disconnect(timeoutConn);
-    disconnect(peerDisconnectedConn);
-
-    if (m_callerContext.isPeerMode()) {
-        m_callerContext.connection.disconnect("",
-                                              "/org/freedesktop/DBus/Local",
-                                              "org.freedesktop.DBus.Local",
-                                              "Disconnected",
-                                              this,
-                                              SLOT(onPeerDisconnected()));
-    }
-
-    return !isTaskDone();
 }
 
 utils::error::Result<void> PackageTask::exposeOnDBus() noexcept

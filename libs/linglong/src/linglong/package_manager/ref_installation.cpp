@@ -173,8 +173,9 @@ utils::error::Result<void> RefInstallationAction::preInstall(Task &task)
             .localRef = operation->oldRef->toString(),
             .remoteRef = operation->newRef->reference.toString()
         };
-        if (!mainTask->waitConfirm(api::types::v1::InteractionMessageType::Upgrade,
-                                   additionalMessage)) {
+        if (!pm.waitConfirm(*mainTask,
+                            api::types::v1::InteractionMessageType::Upgrade,
+                            additionalMessage)) {
             return LINGLONG_ERR("action canceled");
         }
     }

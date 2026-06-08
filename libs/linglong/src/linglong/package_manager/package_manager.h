@@ -8,6 +8,8 @@
 
 #include "linglong/api/types/v1/CommonOptions.hpp"
 #include "linglong/api/types/v1/ContainerProcessStateInfo.hpp"
+#include "linglong/api/types/v1/InteractionMessageType.hpp"
+#include "linglong/api/types/v1/PackageManager1RequestInteractionAdditionalMessage.hpp"
 #include "linglong/api/types/v1/Repo.hpp"
 #include "linglong/api/types/v1/UabLayer.hpp"
 #include "linglong/package/fuzzy_reference.h"
@@ -20,6 +22,7 @@
 #include <QDBusArgument>
 #include <QDBusConnection>
 #include <QDBusContext>
+#include <QDBusObjectPath>
 #include <QList>
 #include <QObject>
 
@@ -58,6 +61,7 @@ public
     auto Update(const QVariantMap &parameters) noexcept -> QVariantMap;
     auto Search(const QVariantMap &parameters) noexcept -> QVariantMap;
     auto Prune() noexcept -> QVariantMap;
+    void ReplyInteraction(QDBusObjectPath object_path, const QVariantMap &replies);
 
     auto InitRunContext(const QString &runContextCfg, const QString &containerID) noexcept
       -> QVariantMap;
@@ -73,6 +77,10 @@ public
     virtual utils::error::Result<void> tryGenerateCache(const package::Reference &ref) noexcept;
     utils::error::Result<void> executePostInstallHooks(const package::Reference &ref) noexcept;
     utils::error::Result<void> executePostUninstallHooks(const package::Reference &ref) noexcept;
+    bool waitConfirm(PackageTask &taskRef,
+                     api::types::v1::InteractionMessageType msgType,
+                     const api::types::v1::PackageManager1RequestInteractionAdditionalMessage
+                       &additionalMessage) noexcept;
 
     virtual utils::error::Result<void> installAppDepends(Task &task,
                                                          const api::types::v1::PackageInfoV2 &app);
@@ -107,9 +115,17 @@ public
 Q_SIGNALS:
     void TaskAdded(QDBusObjectPath object_path);
     void TaskRemoved(QDBusObjectPath object_path);
+    void RequestInteraction(QDBusObjectPath object_path,
+                            int messageID,
+                            QVariantMap additionalMessage);
+    void CallerDisconnected();
     void SearchFinished(QString jobID, QVariantMap result);
     void PruneFinished(QString jobID, QVariantMap result);
     void InitRunContextFinished(QString jobID, bool success);
+    void ReplyReceived(QDBusObjectPath object_path, const QVariantMap &replies);
+
+private Q_SLOTS:
+    void onPeerDisconnected() noexcept;
 
 private:
     QVariantMap installFromLayer(const QDBusUnixFileDescriptor &fd,

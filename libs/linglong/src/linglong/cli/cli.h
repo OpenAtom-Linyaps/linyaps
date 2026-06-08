@@ -229,6 +229,7 @@ private:
     void detectDrivers();
     utils::error::Result<api::dbus::v1::PackageManager *> getPkgMan();
     utils::error::Result<void> initPkgManSignals();
+    utils::error::Result<void> syncTaskProperties();
     int runResolvedContext(runtime::RunContext &runContext,
                            const RunOptions &options,
                            std::optional<api::types::v1::RuntimeConfigure> runtimeConfig);
@@ -272,7 +273,9 @@ private Q_SLOTS:
     void onTaskPropertiesChanged(const QString &interface,
                                  const QVariantMap &changed_properties,
                                  const QStringList &invalidated_properties);
-    void onTaskRequestInteraction(int messageID, const QVariantMap &additionalMessage);
+    void interaction(const QDBusObjectPath &object_path,
+                     int messageID,
+                     const QVariantMap &additionalMessage);
 
 Q_SIGNALS:
     void taskDone();

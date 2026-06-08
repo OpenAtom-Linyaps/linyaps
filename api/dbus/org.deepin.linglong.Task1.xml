@@ -7,18 +7,9 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 <node>
     <interface name="org.deepin.linglong.Task1">
         <method name="Cancel" />
-        <method name="ReplyInteraction">
-            <arg direction="in" name="replies" type="a{sv}" />
-            <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="QVariantMap" />
-        </method>
         <property name="State" type="i" access="read" />
         <property name="Percentage" type="d" access="read" />
         <property name="Message" type="s" access="read" />
         <property name="Code" type="i" access="read" />
-        <signal name="RequestInteraction">
-            <arg name="messageID" type="i" />
-            <arg name="additionalMessage" type="a{sv}" />
-            <annotation name="org.qtproject.QtDBus.QtTypeName.Out1" value="QVariantMap" />
-        </signal>
     </interface>
 </node>

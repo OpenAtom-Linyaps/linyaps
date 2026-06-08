@@ -51,6 +51,8 @@
 #include <linux/un.h>
 #include <nlohmann/json.hpp>
 
+#include <QDBusInterface>
+#include <QDBusReply>
 #include <QEventLoop>
 #include <QFileInfo>
 #include <QProcess>
@@ -293,9 +295,14 @@ void Cli::onTaskPropertiesChanged(
     handleTaskState();
 }
 
-void Cli::onTaskRequestInteraction(int messageID, const QVariantMap &additionalMessage)
+void Cli::interaction(const QDBusObjectPath &object_path,
+                      int messageID,
+                      const QVariantMap &additionalMessage)
 {
     LINGLONG_TRACE("interactive with user")
+    if (object_path.path() != taskObjectPath) {
+        return;
+    }
 
     auto messageType = static_cast<api::types::v1::InteractionMessageType>(messageID);
     auto msg = common::serialize::fromQVariantMap<
@@ -346,13 +353,14 @@ void Cli::onTaskRequestInteraction(int messageID, const QVariantMap &additionalM
     LogD("action: {}", action);
 
     auto reply = api::types::v1::InteractionReply{ .action = action };
-    if (!this->task) {
-        this->printer.printErr(LINGLONG_ERRV("task object is null"));
+    auto pkgMan = this->getPkgMan();
+    if (!pkgMan) {
+        this->printer.printErr(pkgMan.error());
         return;
     }
 
     QDBusPendingReply<void> dbusReply =
-      this->task->ReplyInteraction(common::serialize::toQVariantMap(reply));
+      (*pkgMan)->ReplyInteraction(object_path, common::serialize::toQVariantMap(reply));
     dbusReply.waitForFinished();
     if (dbusReply.isError()) {
         this->printer.printErr(
@@ -535,7 +543,7 @@ utils::error::Result<void> Cli::initPkgManSignals()
     if (!conn.connect(pkgMan->service(),
                       pkgMan->path(),
                       pkgMan->interface(),
-                      "TaskAdd",
+                      "TaskAdded",
                       this,
                       SLOT(onTaskAdded(QDBusObjectPath)))) {
         return LINGLONG_ERR("couldn't connect to package manager signal 'TaskAdded'");
@@ -548,6 +556,16 @@ utils::error::Result<void> Cli::initPkgManSignals()
                       this,
                       SLOT(onTaskRemoved(QDBusObjectPath)))) {
         return LINGLONG_ERR("couldn't connect to package manager signal 'TaskRemoved'");
+    }
+
+    if (!conn.connect(pkgMan->service(),
+                      pkgMan->path(),
+                      pkgMan->interface(),
+                      "RequestInteraction",
+                      this,
+                      SLOT(interaction(QDBusObjectPath, int, QVariantMap)))) {
+        return LINGLONG_ERR(fmt::format("Failed to connect signal RequestInteraction: {}",
+                                        conn.lastError().message().toStdString()));
     }
 
     this->pkgManSignalsInitialized = true;
@@ -2246,6 +2264,30 @@ int Cli::getBundleDir(const InspectOptions &options)
     return 0;
 }
 
+utils::error::Result<void> Cli::syncTaskProperties()
+{
+    LINGLONG_TRACE("syncTaskProperties");
+
+    auto pkgMan = this->getPkgMan();
+    if (!pkgMan) {
+        return LINGLONG_ERR(pkgMan);
+    }
+
+    QDBusInterface properties((*pkgMan)->service(),
+                              this->taskObjectPath,
+                              "org.freedesktop.DBus.Properties",
+                              (*pkgMan)->connection());
+    QDBusReply<QVariantMap> reply =
+      properties.call("GetAll", QStringLiteral("org.deepin.linglong.Task1"));
+    if (!reply.isValid()) {
+        return LINGLONG_ERR(
+          fmt::format("failed to get task properties: {}", reply.error().message().toStdString()));
+    }
+
+    this->onTaskPropertiesChanged(QStringLiteral("org.deepin.linglong.Task1"), reply.value(), {});
+    return LINGLONG_OK;
+}
+
 utils::error::Result<void> Cli::waitTaskCreated(QDBusPendingReply<QVariantMap> &reply,
                                                 TaskType taskType)
 {
@@ -2285,21 +2327,17 @@ utils::error::Result<void> Cli::waitTaskCreated(QDBusPendingReply<QVariantMap> &
                                         conn.lastError().message().toStdString()));
     }
 
-    if (!conn.connect((*pkgMan)->service(),
-                      taskObjectPath,
-                      "org.deepin.linglong.Task1",
-                      "RequestInteraction",
-                      this,
-                      SLOT(onTaskRequestInteraction(int, QVariantMap)))) {
-        return LINGLONG_ERR(fmt::format("Failed to connect signal RequestInteraction: {}",
-                                        conn.lastError().message().toStdString()));
-    }
-
-    return LINGLONG_OK;
+    return this->syncTaskProperties();
 }
 
 void Cli::waitTaskDone()
 {
+    if (this->taskState.state == api::types::v1::State::Failed
+        || this->taskState.state == api::types::v1::State::Canceled
+        || this->taskState.state == api::types::v1::State::Succeed) {
+        return;
+    }
+
     QEventLoop loop;
     if (QObject::connect(this, &Cli::taskDone, &loop, &QEventLoop::quit) == nullptr) {
         LogE("connect taskDone failed");

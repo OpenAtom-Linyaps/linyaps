@@ -4,8 +4,6 @@
 
 #pragma once
 
-#include "linglong/api/types/v1/InteractionMessageType.hpp"
-#include "linglong/api/types/v1/PackageManager1RequestInteractionAdditionalMessage.hpp"
 #include "linglong/api/types/v1/State.hpp"
 #include "linglong/common/dbus/properties_forwarder.h"
 #include "linglong/package_manager/task.h"
@@ -22,7 +20,6 @@
 #include <QString>
 #include <QUuid>
 
-#include <chrono>
 #include <functional>
 #include <memory>
 #include <optional>
@@ -31,8 +28,6 @@
 Q_DECLARE_METATYPE(linglong::api::types::v1::State)
 
 namespace linglong::service {
-
-using namespace std::chrono_literals;
 
 struct CallerContext
 {
@@ -93,15 +88,10 @@ public:
 
     void setCallerContext(const CallerContext &ctx);
 
-    bool waitConfirm(
-      api::types::v1::InteractionMessageType msgType,
-      const api::types::v1::PackageManager1RequestInteractionAdditionalMessage &additionalMessage,
-      std::chrono::milliseconds timeout = 180000ms) noexcept;
+    [[nodiscard]] const CallerContext &callerContext() const noexcept { return m_callerContext; }
 
 public Q_SLOTS:
     void Cancel() noexcept;
-    void ReplyInteraction(const QVariantMap &replies) noexcept;
-    void onPeerDisconnected() noexcept;
 
 Q_SIGNALS:
     void StateChanged(int newState);
@@ -112,10 +102,6 @@ Q_SIGNALS:
     void CodeChanged(int newCode);
 
     void changePropertiesDone();
-
-    void RequestInteraction(int messageID, QVariantMap additionalMessage);
-    void ReplyReceived(const QVariantMap &replies);
-    void peerDisconnected();
 
 private:
     friend class PackageTaskQueue;

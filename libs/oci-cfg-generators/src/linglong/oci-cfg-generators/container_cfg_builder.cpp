@@ -1331,6 +1331,16 @@ utils::error::Result<void> ContainerCfgBuilder::buildMountIPC() noexcept
                 (*containerXDGRuntimeDir / "gvfs").string(),
                 false);
 
+    auto pwSocketName = "pipewire-0";
+    auto *pwRemoteEnv = getenv("PIPEWIRE_REMOTE");
+    if (pwRemoteEnv != nullptr && pwRemoteEnv[0] != '\0') {
+        pwSocketName = pwRemoteEnv;
+    }
+    bindIfExist(*ipcMount,
+                hostXDGRuntimeDir / pwSocketName,
+                (*containerXDGRuntimeDir / pwSocketName).string(),
+                false);
+
     [this, &hostXDGRuntimeDir]() {
         auto dconfPath = std::filesystem::path(hostXDGRuntimeDir) / "dconf";
         if (!std::filesystem::exists(dconfPath)) {

@@ -58,6 +58,7 @@ struct RunContainerOptions
 
     CommonContainerOptions common;
 
+    std::string lockName;
     bool disableXdp{ false };
     bool privileged{ false };
     bool devicePassthru{ false };

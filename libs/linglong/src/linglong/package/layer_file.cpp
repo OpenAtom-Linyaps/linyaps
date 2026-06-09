@@ -46,12 +46,11 @@ utils::error::Result<QSharedPointer<LayerFile>> LayerFile::New(int fd) noexcept
 {
     LINGLONG_TRACE("install layer file from file descriptor")
 
-    struct enableMaker : public LayerFile
+    struct helper : public LayerFile
     {
-        using LayerFile::LayerFile;
     };
 
-    auto file = QSharedPointer<enableMaker>::create();
+    auto file = QSharedPointer<helper>::create();
     if (!file) {
         return LINGLONG_ERR("failed to create LayerFile object");
     }

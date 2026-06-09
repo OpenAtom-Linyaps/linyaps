@@ -27,6 +27,11 @@ pfl_add_library(
   src/linglong/utils/gettext.h
   src/linglong/utils/hooks.cpp
   src/linglong/utils/hooks.h
+  src/linglong/utils/io/event_loop.h
+  src/linglong/utils/io/forwarder.cpp
+  src/linglong/utils/io/forwarder.h
+  src/linglong/utils/io/pipe.h
+  src/linglong/utils/io/ring_buffer.h
   src/linglong/utils/log/formatter.cpp
   src/linglong/utils/log/formatter.h
   src/linglong/utils/log/log.cpp
@@ -44,8 +49,11 @@ pfl_add_library(
   src/linglong/utils/serialize/packageinfo_handler.h
   src/linglong/utils/serialize/yaml.cpp
   src/linglong/utils/serialize/yaml.h
+  src/linglong/utils/signal/signal_blocker.h
+  src/linglong/utils/terminal/terminal_guard.h
   src/linglong/utils/transaction.cpp
   src/linglong/utils/transaction.h
+  src/linglong/utils/unique_fd.h
   src/linglong/utils/xdg/directory.cpp
   src/linglong/utils/xdg/directory.h
   src/linglong/utils/xdp.h

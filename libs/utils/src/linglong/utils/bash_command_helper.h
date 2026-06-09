@@ -24,7 +24,7 @@ public:
      *
      * @return 包含 'bash --noprofile --norc -c' 的字符串向量。
      */
-    inline static std::vector<std::string> generateBashCommandBase()
+    static std::vector<std::string> generateBashCommandBase()
     {
         return {
             "/bin/bash",   // 在干净环境中执行的 Shell。
@@ -48,12 +48,12 @@ public:
      * @return 包含完整命令和参数的字符串向量，其概念上等同于
      * 'bash --noprofile --norc -c "source /etc/profile; bash --norc"'。
      */
-    inline static std::vector<std::string> generateDefaultBashCommand()
+    static std::vector<std::string> generateDefaultBashCommand()
     {
         auto cmd = generateBashCommandBase();
-        cmd.push_back("source /etc/profile; bash --norc"); // 手动加载系统级的 profile
-                                                           // 脚本。这确保了在干净的环境中， 像 PATH
-                                                           // 这样关键的系统变量被正确设置。
+        cmd.emplace_back("source /etc/profile; bash --norc"); // 手动加载系统级的 profile
+                                                              // 脚本。这确保了在干净的环境中， 像
+                                                              // PATH 这样关键的系统变量被正确设置。
         return cmd;
     }
 
@@ -70,13 +70,16 @@ public:
      * 概念上，生成的命令序列是：
      * `/run/linglong/container-init /bin/bash --noprofile --norc -c "<entrypoint>"`
      */
-    inline static std::vector<std::string> generateExecCommand(const std::string &entrypoint)
+    static std::vector<std::string> generateInitCommand(const std::string &entrypoint)
     {
         // TODO: maybe we could use a symlink '/usr/bin/ll-init' points to
         // '/run/linglong/container-init' will be better
-        auto cmd = generateBashCommandBase();
-        cmd.insert(cmd.begin(), "/run/linglong/container-init");
-        cmd.push_back(entrypoint);
+        std::vector<std::string> cmd{ "/run/linglong/container-init" };
+
+        auto tmp = generateBashCommandBase();
+        std::move(tmp.begin(), tmp.end(), std::back_inserter(cmd));
+        cmd.emplace_back(entrypoint);
+
         return cmd;
     }
 
@@ -89,10 +92,9 @@ public:
      * @param args 一个代表命令及其参数的字符串向量。
      * @return 包含完整 Bash 脚本的单一字符串。
      */
-    inline static std::string generateEntrypointScript(const std::vector<std::string> &args)
+    static std::string generateEntrypointScript(const std::vector<std::string> &args)
     {
         std::stringstream script;
-        script << "#!/bin/bash\n";
         script << "source /etc/profile\n";
         script << "exec ";
         for (const auto &arg : args) {

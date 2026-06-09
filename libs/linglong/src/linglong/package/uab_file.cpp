@@ -34,12 +34,11 @@ utils::error::Result<std::unique_ptr<UABFile>> UABFile::loadFromFile(int fd) noe
 {
     LINGLONG_TRACE("load uab file from fd")
 
-    struct EnableMaker : public UABFile
+    struct helper : public UABFile
     {
-        using UABFile::UABFile;
     };
 
-    auto file = std::make_unique<EnableMaker>();
+    auto file = std::make_unique<helper>();
 
     if (!file->open(fd, QIODevice::ReadOnly, FileHandleFlag::AutoCloseHandle)) {
         return LINGLONG_ERR(fmt::format("open uab failed: {}", file->errorString()));

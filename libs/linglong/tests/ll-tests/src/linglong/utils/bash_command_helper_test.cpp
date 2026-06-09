@@ -27,7 +27,7 @@ TEST(BashCommandHelper, GenerateDefaultBashCommand)
 
 TEST(BashCommandHelper, GenerateExecCommand)
 {
-    auto cmd = BashCommandHelper::generateExecCommand("test-command");
+    auto cmd = BashCommandHelper::generateInitCommand("test-command");
     EXPECT_EQ(cmd.size(), 6);
     EXPECT_EQ(cmd[0], "/run/linglong/container-init");
     EXPECT_EQ(cmd[4], "-c");
@@ -39,7 +39,6 @@ TEST(BashCommandHelper, GenerateEntrypointScript)
     std::vector<std::string> args = { "arg1", "arg2 with space", "arg3" };
     auto script = BashCommandHelper::generateEntrypointScript(args);
 
-    EXPECT_EQ(script.find("#!/bin/bash\n"), 0);
     EXPECT_NE(script.find("source /etc/profile\n"), std::string::npos);
 
     EXPECT_NE(script.find("arg1"), std::string::npos);

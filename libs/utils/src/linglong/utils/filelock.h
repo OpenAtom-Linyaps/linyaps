@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2025 - 2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -20,15 +20,13 @@
 
 namespace linglong::utils::filelock {
 
-enum class LockType : uint8_t {
-    Read,
-    Write,
-};
+enum class LockType : uint8_t { Read, Write, ReadWrite };
 
 class FileLock
 {
 public:
     static utils::error::Result<FileLock> create(std::filesystem::path path,
+                                                 LockType type = LockType::Read,
                                                  bool create_if_missing = true) noexcept;
 
     ~FileLock() noexcept;
@@ -41,6 +39,8 @@ public:
     utils::error::Result<void> lock(LockType type) noexcept;
 
     utils::error::Result<bool> tryLock(LockType type) noexcept;
+
+    [[nodiscard]] int nativeHandle() const noexcept { return fd; }
 
     template <typename Rep, typename Period>
     utils::error::Result<bool>
@@ -64,8 +64,6 @@ public:
         return false;
     }
 
-    utils::error::Result<void> relock(LockType new_type) noexcept;
-
     utils::error::Result<void> unlock() noexcept;
 
     [[nodiscard]] LockType type() const noexcept { return type_; }
@@ -77,10 +75,23 @@ public:
 private:
     [[nodiscard]] utils::error::Result<void> lockCheck() const noexcept;
 
-    FileLock(int fd, std::filesystem::path path) noexcept;
+    [[nodiscard]] bool compatibleWith(LockType type) const noexcept
+    {
+        if (type_ == LockType::ReadWrite) {
+            return true;
+        }
+
+        if (type_ != type) {
+            return false;
+        }
+
+        return true;
+    }
+
+    FileLock(int fd, std::filesystem::path path, LockType type) noexcept;
 
     pid_t pid_{ ::getpid() };
-    LockType type_{ LockType::Read };
+    LockType type_;
     std::atomic_bool locked{ false };
     int fd{ -1 };
     std::filesystem::path path;

@@ -992,8 +992,14 @@ You can report bugs to the linyaps team under this project: https://github.com/O
             return -1;
         }
 
+        std::optional<uid_t> uid, gid;
+        if (buildRun->parsed()) {
+            uid = geteuid();
+            gid = getegid();
+        }
+
         if (*res) {
-            auto res = linglong::utils::runInNamespace(argc, argv);
+            auto res = linglong::utils::runInNamespace(argc, argv, uid, gid);
             if (!res) {
                 LogE("failed to run in namespace {}", res.error());
                 return -1;

@@ -1,14 +1,14 @@
 /*
- * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+ * SPDX-FileCopyrightText: 2025 - 2026 UnionTech Software Technology Co., Ltd.
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
 #include "hooks.h"
 
+#include "cmd.h"
 #include "configure.h"
 #include "linglong/common/error.h"
-#include "linglong/utils/env.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/log/log.h"
 
@@ -16,7 +16,6 @@
 
 #include <array>
 #include <climits>
-#include <cstdlib>
 #include <cstring>
 #include <filesystem>
 #include <fstream>
@@ -33,58 +32,24 @@ constexpr std::string_view PRE_INSTALL_ACTION_PREFIX = "ll-pre-install=";
 constexpr std::string_view POST_INSTALL_ACTION_PREFIX = "ll-post-install=";
 constexpr std::string_view POST_UNINSTALL_ACTION_PREFIX = "ll-post-uninstall=";
 
-// This function ensures the command string is safely wrapped for 'sh -c'.
-static std::string escapeAndWrapCommandForShell(const std::string &command)
-{
-    std::string escapedCommand = command;
-    size_t pos = 0;
-    // Replace ' with '\'' (close current quote, add literal single quote, open new quote)
-    while ((pos = escapedCommand.find('\'', pos)) != std::string::npos) {
-        escapedCommand.replace(pos, 1, "'\\''");
-        pos += 4;
-    }
-
-    return "sh -c " + escapedCommand;
-}
-
 using CommandList = const std::vector<std::string> &;
 
 utils::error::Result<void> executeHookCommands(
   CommandList commands, const std::vector<std::pair<std::string, std::string>> &envVars) noexcept
 {
-    LINGLONG_TRACE("Executing command");
+    LINGLONG_TRACE("Executing hook commands");
 
-    std::vector<std::unique_ptr<EnvironmentVariableGuard>> envVarGuards;
-    envVarGuards.reserve(envVars.size());
-    for (const auto &pair : envVars) {
-        envVarGuards.emplace_back(
-          std::make_unique<EnvironmentVariableGuard>(pair.first, pair.second));
-    }
+    for (const auto &command : commands) {
+        Cmd cmd("sh");
 
-    for (const auto &command_raw : commands) {
-        std::string fullCommand = escapeAndWrapCommandForShell(command_raw);
-
-        int ret = std::system(fullCommand.c_str());
-
-        if (ret == -1) {
-            return LINGLONG_ERR(fmt::format("Failed to execute command: '{}'. System error: {}.",
-                                            fullCommand,
-                                            common::error::errorString(errno)));
+        for (const auto &[name, value] : envVars) {
+            cmd.setEnv(name, value);
         }
 
-        if (!WIFEXITED(ret)) {
-            int signalNum = WTERMSIG(ret);
-            return LINGLONG_ERR(fmt::format("Command '{}' terminated by signal {} ({}).",
-                                            fullCommand,
-                                            signalNum,
-                                            strsignal(signalNum)));
-        }
-
-        int exitStatus = WEXITSTATUS(ret);
-        if (exitStatus != 0) {
-            return LINGLONG_ERR(fmt::format("Command '{}' exited with non-zero status: {}.",
-                                            fullCommand,
-                                            exitStatus));
+        auto result = cmd.exec({ "-c", command });
+        if (!result.has_value()) {
+            return LINGLONG_ERR(
+              fmt::format("Hook command '{}' failed: {}.", command, result.error()));
         }
     }
     return LINGLONG_OK;

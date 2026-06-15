@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2025 - 2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -7,7 +7,7 @@
 #pragma once
 
 #include "linglong/builder/linglong_builder.h"
-#include "linglong/cli/cli.h"
+#include "linglong/common/cli/repo.h"
 
 #include <string>
 #include <vector>
@@ -54,7 +54,7 @@ struct ExportCommandOptions
 struct PushCommandOptions
 {
     std::vector<std::string> pushModules;
-    linglong::cli::RepoOptions repoOptions;
+    linglong::common::cli::RepoOptions repoOptions;
 };
 
 struct ImportCommandOptions
@@ -75,5 +75,5 @@ struct ExtractCommandOptions
 
 struct RepoSubcommandOptions
 {
-    linglong::cli::RepoOptions repoOptions;
+    linglong::common::cli::RepoOptions repoOptions;
 };

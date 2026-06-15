@@ -31,7 +31,6 @@
 #include "linglong/common/strings.h"
 #include "linglong/package/layer_file.h"
 #include "linglong/package/reference.h"
-#include "linglong/repo/config.h"
 #include "linglong/runtime/container_builder.h"
 #include "linglong/runtime/run_context.h"
 #include "linglong/utils/bash_command_helper.h"
@@ -1574,166 +1573,52 @@ utils::error::Result<std::vector<api::types::v1::UpgradeListResult>> Cli::listUp
     return upgradeList;
 }
 
-int Cli::repo(CLI::App *app, const RepoOptions &options)
+int Cli::repo(CLI::App *app, const common::cli::RepoOptions &options)
 {
-    LINGLONG_TRACE("command repo");
+    common::cli::RepoConfigBackend backend{
+        .getConfig = [this]() -> utils::error::Result<api::types::v1::RepoConfigV2> {
+            LINGLONG_TRACE("get repo config from package manager");
 
-    auto pkgMan = this->getPkgMan();
-    if (!pkgMan) {
-        this->printer.printErr(pkgMan.error());
-        return -1;
-    }
+            auto pkgMan = this->getPkgMan();
+            if (!pkgMan) {
+                return LINGLONG_ERR(pkgMan);
+            }
 
-    auto propCfg = (*pkgMan)->configuration();
-    if ((*pkgMan)->lastError().isValid()) {
-        auto err = LINGLONG_ERRV((*pkgMan)->lastError().message().toStdString());
-        this->printer.printErr(err);
-        return -1;
-    }
+            auto propCfg = (*pkgMan)->configuration();
+            if ((*pkgMan)->lastError().isValid()) {
+                return LINGLONG_ERR((*pkgMan)->lastError().message().toStdString());
+            }
 
-    auto cfg = common::serialize::fromQVariantMap<api::types::v1::RepoConfigV2>(propCfg);
-    if (!cfg) {
-        LogE("fatal error: {}", cfg.error());
-        std::abort();
-    }
+            auto cfg = common::serialize::fromQVariantMap<api::types::v1::RepoConfigV2>(propCfg);
+            if (!cfg) {
+                return LINGLONG_ERR("failed to parse repo config", cfg.error());
+            }
 
-    auto argsParsed = [&app](const std::string &name) -> bool {
-        return app->get_subcommand(name)->parsed();
+            return *cfg;
+        },
+        .setConfig = [this](const api::types::v1::RepoConfigV2 &cfg) -> utils::error::Result<void> {
+            LINGLONG_TRACE("set repo config to package manager");
+
+            auto ret = this->setRepoConfig(common::serialize::toQVariantMap(cfg));
+            if (ret != 0) {
+                return LINGLONG_ERR("failed to set repo config");
+            }
+            return LINGLONG_OK;
+        },
     };
 
-    if (argsParsed("show")) {
-        this->printer.printRepoConfig(*cfg);
-        return 0;
-    }
-
-    if (argsParsed("modify")) {
-        this->printer.printErr(
-          LINGLONG_ERRV("sub-command 'modify' already has been deprecated, please use sub-command "
-                        "'add' to add a remote repository and use it as default."));
-        return EINVAL;
-    }
-
-    std::string url = options.repoUrl;
-
-    if (argsParsed("add") || argsParsed("update")) {
-        if (url.rfind("http", 0) != 0) {
-            this->printer.printErr(LINGLONG_ERRV(fmt::format("url is invalid: {}", url)));
-            return EINVAL;
-        }
-
-        // remove last slash
-        if (url.back() == '/') {
-            url.pop_back();
-        }
-    }
-
-    std::string name = options.repoName;
-    // if alias is not set, use name as alias
-    std::string alias = options.repoAlias.value_or(name);
-    auto &cfgRef = *cfg;
-
-    if (argsParsed("add")) {
-        if (url.empty()) {
-            this->printer.printErr(LINGLONG_ERRV("url is empty."));
-            return EINVAL;
-        }
-
-        bool isExist =
-          std::any_of(cfgRef.repos.begin(), cfgRef.repos.end(), [&alias](const auto &repo) {
-              return repo.alias.value_or(repo.name) == alias;
-          });
-        if (isExist) {
-            this->printer.printErr(LINGLONG_ERRV(fmt::format("repo {} already exist", alias)));
-            return -1;
-        }
-        cfgRef.repos.push_back(api::types::v1::Repo{
-          .alias = options.repoAlias,
-          .name = name,
-          .priority = 0,
-          .url = url,
-        });
-        return this->setRepoConfig(common::serialize::toQVariantMap(cfgRef));
-    }
-
-    auto existingRepo =
-      std::find_if(cfgRef.repos.begin(), cfgRef.repos.end(), [&alias](const auto &repo) {
-          return repo.alias.value_or(repo.name) == alias;
-      });
-
-    if (existingRepo == cfgRef.repos.end()) {
-        this->printer.printErr(
-          LINGLONG_ERRV(fmt::format("the operated repo {} doesn't exist", name)));
+    auto ret = common::cli::handleRepoCommand(app,
+                                              options,
+                                              backend,
+                                              { .showConfig = [this](const auto &cfg) {
+                                                  this->printer.printRepoConfig(cfg);
+                                              } });
+    if (!ret) {
+        this->printer.printErr(ret.error());
         return -1;
     }
 
-    if (argsParsed("remove")) {
-        if (cfgRef.repos.size() == 1) {
-            this->printer.printErr(
-              LINGLONG_ERRV(fmt::format("repo {} is the only repo, please add another repo before "
-                                        "removing it or update it directly.",
-                                        alias)));
-            return -1;
-        }
-        cfgRef.repos.erase(existingRepo);
-
-        if (cfgRef.defaultRepo == alias) {
-            // choose the max priority repo as default repo
-            auto maxPriority = linglong::repo::getRepoMaxPriority(cfgRef);
-            for (auto &repo : cfgRef.repos) {
-                if (repo.priority == maxPriority) {
-                    cfgRef.defaultRepo = repo.alias.value_or(repo.name);
-                    break;
-                }
-            }
-        }
-
-        return this->setRepoConfig(common::serialize::toQVariantMap(cfgRef));
-    }
-
-    if (argsParsed("update")) {
-        if (url.empty()) {
-            this->printer.printErr(LINGLONG_ERRV("url is empty."));
-            return -1;
-        }
-
-        existingRepo->url = url;
-        return this->setRepoConfig(common::serialize::toQVariantMap(cfgRef));
-    }
-
-    if (argsParsed("enable-mirror")) {
-        existingRepo->mirrorEnabled = true;
-        return this->setRepoConfig(common::serialize::toQVariantMap(cfgRef));
-    }
-
-    if (argsParsed("disable-mirror")) {
-        existingRepo->mirrorEnabled = false;
-        return this->setRepoConfig(common::serialize::toQVariantMap(cfgRef));
-    }
-
-    if (argsParsed("set-default")) {
-        if (cfgRef.defaultRepo != alias) {
-            cfgRef.defaultRepo = alias;
-            // set-default is equal to set-priority to the current max priority + 100
-            auto maxPriority = linglong::repo::getRepoMaxPriority(cfgRef);
-            for (auto &repo : cfgRef.repos) {
-                if (repo.alias.value_or(repo.name) == alias) {
-                    repo.priority = maxPriority + 100;
-                    break;
-                }
-            }
-            return this->setRepoConfig(common::serialize::toQVariantMap(cfgRef));
-        }
-
-        return 0;
-    }
-
-    if (argsParsed("set-priority")) {
-        existingRepo->priority = options.repoPriority;
-        return this->setRepoConfig(common::serialize::toQVariantMap(cfgRef));
-    }
-
-    this->printer.printErr(LINGLONG_ERRV("unknown operation"));
-    return -1;
+    return 0;
 }
 
 int Cli::setRepoConfig(const QVariantMap &config)

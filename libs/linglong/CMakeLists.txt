@@ -39,6 +39,8 @@ pfl_add_library(
   src/linglong/common/dbus/properties_forwarder.h
   src/linglong/common/dbus/register.cpp
   src/linglong/common/dbus/register.h
+  src/linglong/common/cli/repo.cpp
+  src/linglong/common/cli/repo.h
   src/linglong/common/formatter.cpp
   src/linglong/common/formatter.h
   src/linglong/common/gkeyfile_wrapper.h

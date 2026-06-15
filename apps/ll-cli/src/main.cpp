@@ -431,95 +431,6 @@ ll-cli list --upgradable
                         "application(s), base(s) or runtime(s)"));
 }
 
-// Function to add the repo subcommand
-void addRepoCommand(CLI::App &commandParser, RepoOptions &repoOptions, const std::string &group)
-{
-    auto *cliRepo =
-      commandParser
-        .add_subcommand("repo",
-                        _("Display or modify information of the repository currently using"))
-        ->group(group);
-    cliRepo->usage(_("Usage: ll-cli repo SUBCOMMAND [OPTIONS]"));
-    cliRepo->require_subcommand(1);
-
-    // add repo sub command add
-    auto *repoAdd = cliRepo->add_subcommand("add", _("Add a new repository"));
-    repoAdd->usage(_("Usage: ll-cli repo add [OPTIONS] NAME URL"));
-    repoAdd->add_option("NAME", repoOptions.repoName, _("Specify the repo name"))
-      ->required()
-      ->check(validatorString);
-    repoAdd->add_option("URL", repoOptions.repoUrl, _("Url of the repository"))
-      ->required()
-      ->check(validatorString);
-    repoAdd->add_option("--alias", repoOptions.repoAlias, _("Alias of the repo name"))
-      ->type_name("ALIAS")
-      ->check(validatorString);
-
-    // add repo sub command modify
-    auto *repoModify = cliRepo->add_subcommand("modify", _("Modify repository URL"))->group("");
-    repoModify->add_option("--name", repoOptions.repoName, _("Specify the repo name"))
-      ->type_name("REPO")
-      ->check(validatorString);
-    repoModify->add_option("URL", repoOptions.repoUrl, _("Url of the repository"))
-      ->required()
-      ->check(validatorString);
-
-    // add repo sub command remove
-    auto *repoRemove = cliRepo->add_subcommand("remove", _("Remove a repository"));
-    repoRemove->usage(_("Usage: ll-cli repo remove [OPTIONS] NAME"));
-    repoRemove->add_option("ALIAS", repoOptions.repoAlias, _("Alias of the repo name"))
-      ->required()
-      ->check(validatorString);
-
-    // add repo sub command update
-    // TODO: add --repo and --url options
-    auto *repoUpdate = cliRepo->add_subcommand("update", _("Update the repository URL"));
-    repoUpdate->usage(_("Usage: ll-cli repo update [OPTIONS] NAME URL"));
-    repoUpdate->add_option("ALIAS", repoOptions.repoAlias, _("Alias of the repo name"))
-      ->required()
-      ->check(validatorString);
-    repoUpdate->add_option("URL", repoOptions.repoUrl, _("Url of the repository"))
-      ->required()
-      ->check(validatorString);
-
-    // add repo sub command set-default
-    auto *repoSetDefault =
-      cliRepo->add_subcommand("set-default", _("Set a default repository name"));
-    repoSetDefault->usage(_("Usage: ll-cli repo set-default [OPTIONS] NAME"));
-    repoSetDefault->add_option("Alias", repoOptions.repoAlias, _("Alias of the repo name"))
-      ->required()
-      ->check(validatorString);
-
-    // add repo sub command show
-    cliRepo->add_subcommand("show", _("Show repository information"))
-      ->usage(_("Usage: ll-cli repo show [OPTIONS]"));
-
-    // add repo sub command set-priority
-    auto *repoSetPriority =
-      cliRepo->add_subcommand("set-priority", _("Set the priority of the repo"));
-    repoSetPriority->usage(_("Usage: ll-cli repo set-priority ALIAS PRIORITY"));
-    repoSetPriority->add_option("ALIAS", repoOptions.repoAlias, _("Alias of the repo name"))
-      ->required()
-      ->check(validatorString);
-    repoSetPriority->add_option("PRIORITY", repoOptions.repoPriority, _("Priority of the repo"))
-      ->required()
-      ->check(validatorString);
-    // add repo sub command enable mirror
-    auto *repoEnableMirror =
-      cliRepo->add_subcommand("enable-mirror", _("Enable mirror for the repo"));
-    repoEnableMirror->usage(_("Usage: ll-cli repo enable-mirror [OPTIONS] ALIAS"));
-    repoEnableMirror->add_option("ALIAS", repoOptions.repoAlias, _("Alias of the repo name"))
-      ->required()
-      ->check(validatorString);
-    // add repo sub command disable mirror
-    auto *repoDisableMirror =
-      cliRepo->add_subcommand("disable-mirror", _("Disable mirror for the repo"));
-    repoDisableMirror->usage(_("Usage: ll-cli repo disable-mirror [OPTIONS] ALIAS"));
-    repoDisableMirror->add_option("ALIAS", repoOptions.repoAlias, _("Alias of the repo name"))
-      ->required()
-      ->check(validatorString);
-}
-
 // Function to add the info subcommand
 void addInfoCommand(CLI::App &commandParser, InfoOptions &infoOptions, const std::string &group)
 {
@@ -656,7 +567,7 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     ListOptions listOptions{};
     InfoOptions infoOptions{};
     ContentOptions contentOptions{};
-    RepoOptions repoOptions{};
+    linglong::common::cli::RepoOptions repoOptions{};
     InspectOptions inspectOptions{};
 
     // groups for subcommands
@@ -675,7 +586,11 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     addUpgradeCommand(commandParser, upgradeOptions, CliBuildInGroup);
     addSearchCommand(commandParser, searchOptions, CliSearchGroup);
     addListCommand(commandParser, listOptions, CliBuildInGroup);
-    addRepoCommand(commandParser, repoOptions, CliRepoGroup);
+    linglong::common::cli::addRepoCommand(commandParser,
+                                          repoOptions,
+                                          CliRepoGroup,
+                                          validatorString,
+                                          "ll-cli");
     addInfoCommand(commandParser, infoOptions, CliBuildInGroup);
     addContentCommand(commandParser, contentOptions, CliBuildInGroup);
     addPruneCommand(commandParser, CliAppManagingGroup);

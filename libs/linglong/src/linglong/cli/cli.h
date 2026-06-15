@@ -12,6 +12,7 @@
 #include "linglong/api/types/v1/PackageInfoDisplay.hpp"
 #include "linglong/cli/interactive_notifier.h"
 #include "linglong/cli/printer.h"
+#include "linglong/common/cli/repo.h"
 #include "linglong/common/serialize/json.h"
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/runtime/container_builder.h"
@@ -126,14 +127,6 @@ struct ContentOptions
     std::string appid;
 };
 
-struct RepoOptions
-{
-    std::string repoName;
-    std::string repoUrl;
-    std::optional<std::string> repoAlias;
-    std::int64_t repoPriority{ 0 };
-};
-
 struct InspectOptions
 {
     std::string appid;
@@ -189,7 +182,7 @@ public:
     int search(const SearchOptions &options);
     int uninstall(const UninstallOptions &options);
     int list(const ListOptions &options);
-    int repo(CLI::App *subcommand, const RepoOptions &options);
+    int repo(CLI::App *subcommand, const common::cli::RepoOptions &options);
     int info(const InfoOptions &options);
     int content(const ContentOptions &options);
     int prune();

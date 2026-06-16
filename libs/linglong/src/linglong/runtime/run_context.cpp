@@ -108,12 +108,7 @@ utils::error::Result<void> RunContext::resolve(const linglong::package::Referenc
                 return LINGLONG_ERR(runtimeFuzzyRef);
             }
 
-            auto ref = repo.clearReference(*runtimeFuzzyRef,
-                                           {
-                                             .forceRemote = false,
-                                             .fallbackToRemote = false,
-                                             .semanticMatching = true,
-                                           });
+            auto ref = repo.clearReferenceLocal(*runtimeFuzzyRef, true);
             if (!ref) {
                 return LINGLONG_ERR("ref doesn't exist " + runtimeFuzzyRef->toString());
             }
@@ -137,12 +132,7 @@ utils::error::Result<void> RunContext::resolve(const linglong::package::Referenc
             return LINGLONG_ERR(baseFuzzyRef);
         }
 
-        auto ref = repo.clearReference(*baseFuzzyRef,
-                                       {
-                                         .forceRemote = false,
-                                         .fallbackToRemote = false,
-                                         .semanticMatching = true,
-                                       });
+        auto ref = repo.clearReferenceLocal(*baseFuzzyRef, true);
         if (!ref) {
             return LINGLONG_ERR(ref);
         }
@@ -253,12 +243,7 @@ utils::error::Result<void> RunContext::resolve(const api::types::v1::BuilderProj
         return LINGLONG_ERR(baseFuzzyRef);
     }
 
-    auto ref = repo.clearReference(*baseFuzzyRef,
-                                   {
-                                     .forceRemote = false,
-                                     .fallbackToRemote = false,
-                                     .semanticMatching = true,
-                                   });
+    auto ref = repo.clearReferenceLocal(*baseFuzzyRef, true);
     if (!ref) {
         return LINGLONG_ERR(ref);
     }
@@ -274,12 +259,7 @@ utils::error::Result<void> RunContext::resolve(const api::types::v1::BuilderProj
             return LINGLONG_ERR(runtimeFuzzyRef);
         }
 
-        ref = repo.clearReference(*runtimeFuzzyRef,
-                                  {
-                                    .forceRemote = false,
-                                    .fallbackToRemote = false,
-                                    .semanticMatching = true,
-                                  });
+        ref = repo.clearReferenceLocal(*runtimeFuzzyRef, true);
         if (!ref) {
             return LINGLONG_ERR("ref doesn't exist " + runtimeFuzzyRef->toString());
         }
@@ -294,12 +274,7 @@ utils::error::Result<void> RunContext::resolve(const api::types::v1::BuilderProj
         if (!fuzzyRef) {
             return LINGLONG_ERR(fuzzyRef);
         }
-        auto ref = repo.clearReference(*fuzzyRef,
-                                       {
-                                         .forceRemote = false,
-                                         .fallbackToRemote = false,
-                                         .semanticMatching = true,
-                                       });
+        auto ref = repo.clearReferenceLocal(*fuzzyRef, true);
         if (!ref || *ref != baseLayer->getReference()) {
             auto msg = fmt::format("Base is not compatible with runtime. \n - Current base: {}\n - "
                                    "Current runtime: {}\n - Base required by runtime: {}",
@@ -768,8 +743,7 @@ RunContext::resolveExtension(RuntimeLayer &targetLayer,
             version = extDef.version;
         }
         auto fuzzyRef = package::FuzzyReference::create(channel, name, version, std::nullopt);
-        auto ref =
-          repo.clearReference(*fuzzyRef, { .fallbackToRemote = false, .semanticMatching = true });
+        auto ref = repo.clearReferenceLocal(*fuzzyRef, true);
         if (!ref) {
             LogD("extension is not installed: {}", fuzzyRef->toString());
             if (skipOnNotFound) {

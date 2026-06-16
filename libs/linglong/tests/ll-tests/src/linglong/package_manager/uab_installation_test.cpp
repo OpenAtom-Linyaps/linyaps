@@ -31,11 +31,8 @@ public:
     }
 
     MOCK_METHOD(utils::error::Result<package::Reference>,
-                clearReference,
-                (const package::FuzzyReference &fuzzyRef,
-                 const repo::clearReferenceOption &option,
-                 const std::string &module,
-                 const std::optional<std::string> &repo),
+                clearReferenceLocal,
+                (const package::FuzzyReference &fuzzyRef, bool semanticMatching),
                 (override, const, noexcept));
 
     MOCK_METHOD(utils::error::Result<package::Reference>,
@@ -67,7 +64,7 @@ TEST(CheckUABLayersConstrain, EmptyLayers)
     TempDir tempDir;
     MockOSTreeRepo mockRepo(tempDir.path());
     repo::OSTreeRepo &repo = mockRepo;
-    EXPECT_CALL(mockRepo, clearReference(_, _, _, _)).Times(0);
+    EXPECT_CALL(mockRepo, clearReferenceLocal(_, _)).Times(0);
     std::vector<api::types::v1::UabLayer> layers;
     auto result = UabInstallationAction::checkUABLayersConstrain(repo, layers);
     EXPECT_TRUE(result.has_value());
@@ -158,7 +155,7 @@ TEST(CheckUABLayersConstrain, ExtraModuleNoBinaryAndNotInstalled)
     layer1.info.packageInfoV2Module = "extra";
     layers.push_back(layer1);
 
-    EXPECT_CALL(mockRepo, clearReference(_, _, _, _)).WillOnce(Return(LINGLONG_ERR("")));
+    EXPECT_CALL(mockRepo, clearReferenceLocal(_, _)).WillOnce(Return(LINGLONG_ERR("")));
 
     auto result = UabInstallationAction::checkUABLayersConstrain(repo, layers);
     EXPECT_FALSE(result.has_value());
@@ -184,7 +181,7 @@ TEST(CheckUABLayersConstrain, ExtraModuleNoBinaryAndWrongVersionInstalled)
     auto localRef = package::Reference::parse("main:id1/2.0.0/" + currentArch);
     EXPECT_TRUE(localRef.has_value());
 
-    EXPECT_CALL(mockRepo, clearReference(_, _, _, _)).WillOnce(Return(*localRef));
+    EXPECT_CALL(mockRepo, clearReferenceLocal(_, _)).WillOnce(Return(*localRef));
 
     auto result = UabInstallationAction::checkUABLayersConstrain(repo, layers);
     EXPECT_FALSE(result.has_value());
@@ -210,7 +207,7 @@ TEST(CheckUABLayersConstrain, ExtraModuleNoBinaryButInstalled)
     auto localRef = package::Reference::parse("main:id1/1.0.0/" + currentArch);
     EXPECT_TRUE(localRef.has_value());
 
-    EXPECT_CALL(mockRepo, clearReference(_, _, _, _)).WillOnce(Return(*localRef));
+    EXPECT_CALL(mockRepo, clearReferenceLocal(_, _)).WillOnce(Return(*localRef));
 
     auto result = UabInstallationAction::checkUABLayersConstrain(repo, layers);
     EXPECT_TRUE(result.has_value());

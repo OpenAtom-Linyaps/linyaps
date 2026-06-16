@@ -110,10 +110,11 @@ fetchSources(const std::vector<api::types::v1::BuilderProjectSource> &sources,
 
 namespace detail {
 
-utils::error::Result<void> pullResolvedRef(const package::Reference &ref,
+utils::error::Result<void> pullResolvedRef(const package::ReferenceWithRepo &refRepo,
                                            repo::OSTreeRepo &repo,
                                            const std::string &module) noexcept
 {
+    const auto &ref = refRepo.reference;
     LINGLONG_TRACE("pull " + ref.toString());
 
     if (repo.getLayerDir(ref, module)) {
@@ -142,10 +143,7 @@ utils::error::Result<void> pullResolvedRef(const package::Reference &ref,
                      [&tmpTask]() {
                          tmpTask.Cancel();
                      });
-    auto res =
-      repo.pull(tmpTask,
-                package::ReferenceWithRepo{ .repo = repo.getDefaultRepo(), .reference = ref },
-                module);
+    auto res = repo.pull(tmpTask, refRepo, module);
     if (!res) {
         return LINGLONG_ERR(res);
     }
@@ -153,12 +151,13 @@ utils::error::Result<void> pullResolvedRef(const package::Reference &ref,
     return LINGLONG_OK;
 }
 
-utils::error::Result<package::Reference> pullDependency(const std::string &fuzzyRefStr,
-                                                        repo::OSTreeRepo &repo,
-                                                        const std::string &module,
-                                                        bool useRemote) noexcept
+utils::error::Result<DependencyReference>
+clearDependency(const std::string &fuzzyRefStr,
+                repo::OSTreeRepo &repo,
+                bool useRemote,
+                std::optional<std::string> module) noexcept
 {
-    LINGLONG_TRACE("pull dependency " + fuzzyRefStr);
+    LINGLONG_TRACE("clear dependency " + fuzzyRefStr);
 
     auto fuzzyRef = package::FuzzyReference::parse(fuzzyRefStr);
     if (!fuzzyRef) {
@@ -166,54 +165,77 @@ utils::error::Result<package::Reference> pullDependency(const std::string &fuzzy
     }
 
     std::optional<package::Reference> localRef;
-    auto localResult = repo.clearReference(
-      *fuzzyRef,
-      { .forceRemote = false, .fallbackToRemote = false, .semanticMatching = true });
+    auto localResult = repo.clearReferenceLocal(*fuzzyRef, true);
     if (localResult) {
         localRef = std::move(localResult).value();
+    }
+    if (localRef && module && !repo.getLayerDir(*localRef, *module)) {
+        localRef.reset();
+    }
+
+    if (localRef && fuzzyRef->version && *fuzzyRef->version == localRef->version.toString()) {
+        return DependencyReference{ std::nullopt, std::move(localRef) };
     }
 
     if (!useRemote) {
         if (localRef) {
-            return std::move(*localRef);
+            return DependencyReference{ std::nullopt, std::move(localRef) };
         }
         return LINGLONG_ERR(fmt::format("failed to get local ref {}", fuzzyRef->toString()),
                             localResult);
     }
 
-    std::optional<package::Reference> remoteRef;
-    auto remoteResult = repo.clearReference(
-      *fuzzyRef,
-      { .forceRemote = true, .fallbackToRemote = true, .semanticMatching = true });
+    std::optional<package::ReferenceWithRepo> remoteRef;
+    auto remoteResult = repo.latestRemoteReference(*fuzzyRef);
     if (remoteResult) {
         remoteRef = std::move(remoteResult).value();
     }
 
-    bool preferRemote = remoteRef && (!localRef || remoteRef->version > localRef->version);
-    auto &bestRef = preferRemote ? remoteRef : localRef;
-
-    if (!bestRef) {
+    bool preferRemote =
+      remoteRef && (!localRef || remoteRef->reference.version > localRef->version);
+    if (!preferRemote && !localRef) {
         return LINGLONG_ERR(fmt::format("ref doesn't exist {}", fuzzyRef->toString()));
     }
 
-    auto pullRes = pullResolvedRef(*bestRef, repo, module);
-    if (pullRes) {
-        return std::move(*bestRef);
+    if (!preferRemote) {
+        remoteRef.reset();
     }
 
-    if (preferRemote && localRef) {
-        LogW("failed to pull remote version {}, falling back to local: {}",
-             bestRef->toString(),
-             pullRes.error().message());
-        auto fallbackRes = pullResolvedRef(*localRef, repo, module);
-        if (fallbackRes) {
+    return DependencyReference{ std::move(remoteRef), std::move(localRef) };
+}
+
+utils::error::Result<package::Reference> pullDependency(const std::string &fuzzyRefStr,
+                                                        repo::OSTreeRepo &repo,
+                                                        const std::string &module) noexcept
+{
+    LINGLONG_TRACE("pull dependency " + fuzzyRefStr);
+
+    auto ref = clearDependency(fuzzyRefStr,
+                               repo,
+                               true,
+                               module == "binary" ? std::nullopt : std::optional{ module });
+    if (!ref) {
+        return LINGLONG_ERR(ref);
+    }
+
+    auto [refRepo, localRef] = std::move(*ref);
+    if (!refRepo) {
+        return std::move(*localRef);
+    }
+
+    auto pullRes = pullResolvedRef(*refRepo, repo, module);
+    if (!pullRes) {
+        if (localRef) {
+            LogW("failed to pull version {}, use local version {}: {}",
+                 refRepo->reference.toString(),
+                 localRef->toString(),
+                 pullRes.error().message());
             return std::move(*localRef);
         }
-        return LINGLONG_ERR("failed to pull local fallback version " + localRef->toString(),
-                            fallbackRes);
+        return LINGLONG_ERR("failed to pull version " + refRepo->reference.toString(), pullRes);
     }
 
-    return LINGLONG_ERR("failed to pull version " + bestRef->toString(), pullRes);
+    return std::move(refRepo->reference);
 }
 
 void mergeOutput(const std::vector<std::filesystem::path> &src,
@@ -495,7 +517,7 @@ Builder::ensureUtils(const std::string &id, const package::Architecture &arch) n
         return LINGLONG_ERR(fuzzyRef);
     }
 
-    auto ref = detail::pullDependency(fuzzyRef->toString(), this->repo, "binary", true);
+    auto ref = detail::pullDependency(fuzzyRef->toString(), this->repo, "binary");
     if (!ref) {
         return LINGLONG_ERR("failed to get utils " + id, ref);
     }
@@ -509,13 +531,13 @@ Builder::ensureUtils(const std::string &id, const package::Architecture &arch) n
     // assumes these dependencies are available for the current architecture,
     // this requires the same version of `build-utils` to be built for both
     // the target and the current architectures.
-    auto baseRef = detail::pullDependency(info.base, this->repo, "binary", true);
+    auto baseRef = detail::pullDependency(info.base, this->repo, "binary");
     if (!baseRef) {
         return LINGLONG_ERR("base not exist: " + info.base, baseRef);
     }
 
     if (info.runtime) {
-        auto runtimeRef = detail::pullDependency(info.runtime.value(), this->repo, "binary", true);
+        auto runtimeRef = detail::pullDependency(info.runtime.value(), this->repo, "binary");
         if (!runtimeRef) {
             return LINGLONG_ERR("runtime not exist: " + info.runtime.value(), runtimeRef);
         }
@@ -537,61 +559,93 @@ utils::error::Result<void> Builder::buildStagePullDependency() noexcept
                    .toStdString(),
                  2);
 
-    auto baseRef = detail::pullDependency(this->project->base,
-                                          this->repo,
-                                          "binary",
-                                          !this->buildOptions.skipPullDepend);
-    if (!baseRef) {
-        return LINGLONG_ERR("base dependency error", baseRef);
-    }
+    auto handleDependency = [this](const std::string &refStr) -> utils::error::Result<void> {
+        LINGLONG_TRACE("handle dependency " + refStr);
 
-    std::optional<package::Reference> runtimeRef;
-    if (this->project->runtime) {
-        auto ref = detail::pullDependency(*this->project->runtime,
-                                          this->repo,
-                                          "binary",
-                                          !this->buildOptions.skipPullDepend);
+        auto printStatus = [](const package::Reference &ref,
+                              std::string_view module,
+                              std::string_view status) {
+            printReplacedText(
+              fmt::format("{:<35}{:<15}{:<15}{}\n", ref.id, ref.version.toString(), module, status),
+              2);
+        };
+
+        auto ref = detail::clearDependency(refStr, this->repo, !this->buildOptions.skipPullDepend);
         if (!ref) {
-            return LINGLONG_ERR("runtime dependency error", ref);
+            return LINGLONG_ERR(ref);
         }
-        runtimeRef = std::move(ref).value();
+
+        const package::Reference *resolvedRef = nullptr;
+        auto &[refRepo, localRef] = *ref;
+        if (!refRepo) {
+            const auto &local = *localRef;
+            resolvedRef = &local;
+            // binary module is install
+            printStatus(local, "binary", "complete");
+
+            // try pull develop module if skipPullDepend is not set
+            if (!this->buildOptions.skipPullDepend) {
+                auto res = detail::pullDependency(localRef->toString(), this->repo, "develop");
+                if (!res) {
+                    LogW("failed to pull develop module of {}: {}", refStr, res.error().message());
+                }
+            }
+        } else {
+            // use remote reference
+            resolvedRef = &refRepo->reference;
+            auto res = detail::pullResolvedRef(*refRepo, this->repo, "binary");
+            if (!res) {
+                if (!localRef) {
+                    return LINGLONG_ERR(res);
+                }
+
+                LogW("failed to pull binary module of {}, use local version {}: {}",
+                     refRepo->reference.toString(),
+                     localRef->toString(),
+                     res.error());
+                printStatus(*localRef, "binary", "complete");
+
+                auto layerDir = this->repo.getLayerDir(*localRef, "develop");
+                if (!layerDir) {
+                    auto developRes =
+                      detail::pullDependency(localRef->toString(), this->repo, "develop");
+                    if (!developRes) {
+                        LogW("failed to pull develop module of {}: {}",
+                             refStr,
+                             developRes.error().message());
+                    }
+                    layerDir = this->repo.getLayerDir(*localRef, "develop");
+                }
+
+                printStatus(*localRef, "develop", layerDir ? "complete" : "missing");
+
+                return LINGLONG_OK;
+            }
+            printStatus(refRepo->reference, "binary", "complete");
+
+            res = detail::pullResolvedRef(*refRepo, this->repo, "develop");
+            if (!res) {
+                LogW("failed to pull develop module of {}: {}",
+                     refRepo->reference.toString(),
+                     res.error().message());
+            }
+        }
+
+        auto layerDir = this->repo.getLayerDir(*resolvedRef, "develop");
+        printStatus(*resolvedRef, "develop", layerDir ? "complete" : "missing");
+
+        return LINGLONG_OK;
+    };
+
+    auto res = handleDependency(this->project->base);
+    if (!res) {
+        return LINGLONG_ERR(res);
     }
 
-    if (!this->buildOptions.skipPullDepend) {
-        printReplacedText(fmt::format("{:<35}{:<15}{:<15}complete\n",
-                                      baseRef->id,
-                                      baseRef->version.toString(),
-                                      "binary"),
-                          2);
-
-        auto res = detail::pullResolvedRef(*baseRef, this->repo, "develop");
+    if (this->project->runtime) {
+        res = handleDependency(*this->project->runtime);
         if (!res) {
-            return LINGLONG_ERR("failed to pull base develop " + baseRef->toString(), res);
-        }
-
-        printReplacedText(fmt::format("{:<35}{:<15}{:<15}complete\n",
-                                      baseRef->id,
-                                      baseRef->version.toString(),
-                                      "develop"),
-                          2);
-
-        if (runtimeRef) {
-            printReplacedText(fmt::format("{:<35}{:<15}{:<15}complete\n",
-                                          runtimeRef->id,
-                                          runtimeRef->version.toString(),
-                                          "binary"),
-                              2);
-            res = detail::pullResolvedRef(*runtimeRef, this->repo, "develop");
-            if (!res) {
-                return LINGLONG_ERR("failed to pull runtime develop " + runtimeRef->toString(),
-                                    res);
-            }
-
-            printReplacedText(fmt::format("{:<35}{:<15}{:<15}complete\n",
-                                          runtimeRef->id,
-                                          runtimeRef->version.toString(),
-                                          "develop"),
-                              2);
+            return LINGLONG_ERR(res);
         }
     }
 
@@ -1391,7 +1445,7 @@ utils::error::Result<void> Builder::exportUAB(const ExportOption &option,
                 return LINGLONG_ERR("fuzzy ref", fuzzyRef);
             }
 
-            auto targetRef = this->repo.clearReference(*fuzzyRef, { .fallbackToRemote = false });
+            auto targetRef = this->repo.clearReferenceLocal(*fuzzyRef);
             if (!targetRef) {
                 return LINGLONG_ERR("clear ref", targetRef);
             }
@@ -1572,12 +1626,13 @@ utils::error::Result<void> Builder::exportUAB(const ExportOption &option,
         }
     }
 
-    auto baseRef = detail::pullDependency(this->project->base, this->repo, "binary", false);
+    auto baseRef = detail::clearDependency(this->project->base, this->repo, false);
     if (!baseRef) {
         return LINGLONG_ERR(baseRef);
     }
+    auto baseReference = std::move(*baseRef).second.value();
 
-    auto baseDir = this->repo.getLayerDir(*baseRef);
+    auto baseDir = this->repo.getLayerDir(baseReference);
     if (!baseDir) {
         return LINGLONG_ERR(baseDir);
     }
@@ -1593,12 +1648,13 @@ utils::error::Result<void> Builder::exportUAB(const ExportOption &option,
 
     if (this->project->runtime) {
         auto runtimeRef =
-          detail::pullDependency(this->project->runtime.value(), this->repo, "binary", false);
+          detail::clearDependency(this->project->runtime.value(), this->repo, false);
         if (!runtimeRef) {
             return LINGLONG_ERR(runtimeRef);
         }
+        auto runtimeReference = std::move(*runtimeRef).second.value();
 
-        auto runtimeDir = this->repo.getLayerDir(*runtimeRef);
+        auto runtimeDir = this->repo.getLayerDir(runtimeReference);
         if (!runtimeDir) {
             return LINGLONG_ERR(runtimeDir);
         }

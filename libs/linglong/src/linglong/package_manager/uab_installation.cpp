@@ -146,12 +146,7 @@ utils::error::Result<void> UabInstallationAction::checkUABLayersConstrain(
             return LINGLONG_ERR(fuzzyRef);
         }
 
-        auto localRef = repo.clearReference(*fuzzyRef,
-                                            {
-                                              .forceRemote = false,
-                                              .fallbackToRemote = false,
-                                              .semanticMatching = false,
-                                            });
+        auto localRef = repo.clearReferenceLocal(*fuzzyRef);
 
         auto version = package::Version::parse(front.version);
         if (!version) {

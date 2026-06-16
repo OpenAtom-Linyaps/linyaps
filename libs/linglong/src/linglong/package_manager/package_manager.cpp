@@ -613,10 +613,7 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
         return toDBusReply(fuzzyRef);
     }
 
-    auto localRef = this->repo->clearReference(*fuzzyRef,
-                                               {
-                                                 .fallbackToRemote = false // NOLINT
-                                               });
+    auto localRef = this->repo->clearReferenceLocal(*fuzzyRef);
     if (localRef) {
         auto layerDir = this->repo->getLayerDir(*localRef, packageInfo.packageInfoV2Module);
         if (layerDir && layerDir->valid()) {
@@ -1431,12 +1428,7 @@ PackageManager::needToInstall(const std::string &refStr, std::optional<std::stri
         fuzzyRef->channel = *channel;
     }
 
-    auto local = this->repo->clearReference(*fuzzyRef,
-                                            {
-                                              .forceRemote = false,
-                                              .fallbackToRemote = false,
-                                              .semanticMatching = true,
-                                            });
+    auto local = this->repo->clearReferenceLocal(*fuzzyRef, true);
     // if the ref is already installed, do nothing
     if (local) {
         return std::nullopt;
@@ -1458,12 +1450,7 @@ PackageManager::needToUpgrade(const package::FuzzyReference &fuzzyRef,
     LINGLONG_TRACE(fmt::format("need to upgrade ref {}", fuzzyRef.toString()));
 
     if (!local) {
-        auto res = this->repo->clearReference(fuzzyRef,
-                                              {
-                                                .forceRemote = false,
-                                                .fallbackToRemote = false,
-                                                .semanticMatching = true,
-                                              });
+        auto res = this->repo->clearReferenceLocal(fuzzyRef, true);
         if (res) {
             local = std::move(res).value();
         }
@@ -1552,12 +1539,7 @@ utils::error::Result<void> PackageManager::installDependsRef(Task &task,
         fuzzyRef->version = version;
     }
 
-    auto local = this->repo->clearReference(*fuzzyRef,
-                                            {
-                                              .forceRemote = false,
-                                              .fallbackToRemote = false,
-                                              .semanticMatching = true,
-                                            });
+    auto local = this->repo->clearReferenceLocal(*fuzzyRef, true);
     // if the ref is already installed, do nothing
     if (local) {
         return LINGLONG_OK;
@@ -1686,9 +1668,7 @@ PackageManager::Prune(std::vector<api::types::v1::PackageInfoV2> &removed) noexc
                                                                 name,
                                                                 extension.version,
                                                                 std::nullopt);
-                auto ref = repo->clearReference(
-                  *fuzzyRef,
-                  { .forceRemote = false, .fallbackToRemote = false, .semanticMatching = true });
+                auto ref = repo->clearReferenceLocal(*fuzzyRef, true);
                 if (ref) {
                     touchTarget(*ref, true);
                 }
@@ -1731,12 +1711,7 @@ PackageManager::Prune(std::vector<api::types::v1::PackageInfoV2> &removed) noexc
                 continue;
             }
 
-            auto runtimeRef = this->repo->clearReference(*runtimeFuzzyRef,
-                                                         {
-                                                           .forceRemote = false,
-                                                           .fallbackToRemote = false,
-                                                           .semanticMatching = true,
-                                                         });
+            auto runtimeRef = this->repo->clearReferenceLocal(*runtimeFuzzyRef, true);
             if (!runtimeRef) {
                 LogW("{}", runtimeRef.error());
                 continue;
@@ -1751,12 +1726,7 @@ PackageManager::Prune(std::vector<api::types::v1::PackageInfoV2> &removed) noexc
             continue;
         }
 
-        auto baseRef = this->repo->clearReference(*baseFuzzyRef,
-                                                  {
-                                                    .forceRemote = false,
-                                                    .fallbackToRemote = false,
-                                                    .semanticMatching = true,
-                                                  });
+        auto baseRef = this->repo->clearReferenceLocal(*baseFuzzyRef, true);
         if (!baseRef) {
             LogW("{}", baseRef.error());
             continue;

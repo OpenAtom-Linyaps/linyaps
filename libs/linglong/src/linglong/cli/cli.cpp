@@ -629,11 +629,7 @@ int Cli::run(const RunOptions &options)
         return -1;
     }
 
-    auto curAppRef = this->repository.clearReference(*fuzzyRef,
-                                                     {
-                                                       .forceRemote = false,
-                                                       .fallbackToRemote = false,
-                                                     });
+    auto curAppRef = this->repository.clearReferenceLocal(*fuzzyRef);
     if (!curAppRef) {
         this->printer.printErr(curAppRef.error());
         return -1;
@@ -1236,11 +1232,7 @@ int Cli::upgrade(const UpgradeOptions &options)
             return -1;
         }
 
-        auto localRef = this->repository.clearReference(*fuzzyRef,
-                                                        {
-                                                          .forceRemote = false,
-                                                          .fallbackToRemote = false,
-                                                        });
+        auto localRef = this->repository.clearReferenceLocal(*fuzzyRef);
         if (!localRef) {
             this->printer.printMessage(
               fmt::format(_("Application {} is not installed."), options.appid));
@@ -1664,9 +1656,7 @@ int Cli::info(const InfoOptions &options)
             return -1;
         }
 
-        auto ref =
-          this->repository.clearReference(*fuzzyRef,
-                                          { .forceRemote = false, .fallbackToRemote = false });
+        auto ref = this->repository.clearReferenceLocal(*fuzzyRef);
         if (!ref) {
             LogD("{}", ref.error());
             this->printer.printErr(LINGLONG_ERRV("Cannot find such application.",
@@ -1720,8 +1710,7 @@ int Cli::content(const ContentOptions &options)
         return -1;
     }
 
-    auto ref = this->repository.clearReference(*fuzzyRef,
-                                               { .forceRemote = false, .fallbackToRemote = false });
+    auto ref = this->repository.clearReferenceLocal(*fuzzyRef);
     if (!ref) {
         LogD("{}", ref.error());
         this->printer.printErr(LINGLONG_ERRV("Can not find such application."));
@@ -2103,8 +2092,7 @@ int Cli::getLayerDir(const InspectOptions &options)
         return -1;
     }
 
-    auto ref = this->repository.clearReference(*fuzzyRef,
-                                               { .forceRemote = false, .fallbackToRemote = false });
+    auto ref = this->repository.clearReferenceLocal(*fuzzyRef);
     if (!ref) {
         LogD("{}", ref.error());
         this->printer.printErr(LINGLONG_ERRV("Can not find such application."));

@@ -15,8 +15,10 @@
 #include "linglong/utils/overlayfs.h"
 
 #include <filesystem>
+#include <optional>
 #include <string>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 namespace linglong::builder {
@@ -59,13 +61,19 @@ void mergeOutput(const std::vector<std::filesystem::path> &src,
                  const std::filesystem::path &dest,
                  const std::vector<std::string> &targets,
                  const std::vector<std::string> &excludes);
-utils::error::Result<void> pullResolvedRef(const package::Reference &ref,
+utils::error::Result<void> pullResolvedRef(const package::ReferenceWithRepo &refRepo,
                                            repo::OSTreeRepo &repo,
                                            const std::string &module) noexcept;
+using DependencyReference =
+  std::pair<std::optional<package::ReferenceWithRepo>, std::optional<package::Reference>>;
+utils::error::Result<DependencyReference>
+clearDependency(const std::string &fuzzyRefStr,
+                repo::OSTreeRepo &repo,
+                bool useRemote,
+                std::optional<std::string> module = std::nullopt) noexcept;
 utils::error::Result<package::Reference> pullDependency(const std::string &fuzzyRefStr,
                                                         repo::OSTreeRepo &repo,
-                                                        const std::string &module,
-                                                        bool useRemote) noexcept;
+                                                        const std::string &module) noexcept;
 } // namespace detail
 
 class Builder

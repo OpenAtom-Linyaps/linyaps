@@ -69,11 +69,8 @@ public:
                 (const package::Reference &ref, const std::vector<std::string> &modules),
                 (override, const, noexcept));
     MOCK_METHOD(utils::error::Result<package::Reference>,
-                clearReference,
-                (const package::FuzzyReference &fuzzy,
-                 const repo::clearReferenceOption &opts,
-                 const std::string &module,
-                 const std::optional<std::string> &repo),
+                clearReferenceLocal,
+                (const package::FuzzyReference &fuzzy, bool semanticMatching),
                 (override, const, noexcept));
 };
 
@@ -290,7 +287,7 @@ TEST_F(RunContextTest, resolveRunnableWithApp)
 
     EXPECT_CALL(*repo, getLayerItem(*runnableRef, testing::_, testing::_))
       .WillOnce(Return(appItem));
-    EXPECT_CALL(*repo, clearReference(testing::_, testing::_, testing::_, testing::_))
+    EXPECT_CALL(*repo, clearReferenceLocal(testing::_, testing::_))
       .WillOnce(Return(*runtimeRef))
       .WillOnce(Return(*baseRef));
 
@@ -346,8 +343,7 @@ TEST_F(RunContextTest, resolveRunnableWithRuntime)
 
     EXPECT_CALL(*repo, getLayerItem(*runnableRef, testing::_, testing::_))
       .WillOnce(Return(runtimeItem));
-    EXPECT_CALL(*repo, clearReference(testing::_, testing::_, testing::_, testing::_))
-      .WillOnce(Return(*baseRef));
+    EXPECT_CALL(*repo, clearReferenceLocal(testing::_, testing::_)).WillOnce(Return(*baseRef));
 
     EXPECT_CALL(*repo, getLayerItem(*baseRef, testing::_, testing::_)).WillOnce(Return(baseItem));
 
@@ -475,7 +471,7 @@ TEST_F(RunContextTest, toConfig)
 
     EXPECT_CALL(*repo, getLayerItem(*runnableRef, testing::_, testing::_))
       .WillOnce(Return(appItem));
-    EXPECT_CALL(*repo, clearReference(testing::_, testing::_, testing::_, testing::_))
+    EXPECT_CALL(*repo, clearReferenceLocal(testing::_, testing::_))
       .Times(AtLeast(2))
       .WillOnce(Return(*runtimeRef))
       .WillOnce(Return(*baseRef))

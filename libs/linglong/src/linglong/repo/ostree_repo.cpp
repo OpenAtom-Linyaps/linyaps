@@ -357,9 +357,40 @@ createOstreeRepo(const std::filesystem::path &location,
     return static_cast<OstreeRepo *>(g_steal_pointer(&ostreeRepo));
 }
 
-utils::error::Result<package::Reference> clearReferenceLocal(const RepoCache &cache,
-                                                             package::FuzzyReference fuzzy,
-                                                             bool semanticMatching = false) noexcept
+utils::error::Result<bool> semanticMatch(const package::FuzzyReference &fuzzy,
+                                         const api::types::v1::PackageInfoV2 &record) noexcept
+{
+    LINGLONG_TRACE("semanticMatch");
+
+    if (fuzzy.id != record.id) {
+        return false;
+    }
+
+    if (fuzzy.channel && fuzzy.channel != record.channel) {
+        return false;
+    }
+
+    if (fuzzy.arch && fuzzy.arch->toString() != record.arch[0]) {
+        return false;
+    }
+
+    if (fuzzy.version) {
+        auto version = package::Version::parse(record.version);
+        if (!version) {
+            return LINGLONG_ERR(version);
+        }
+        if (!version->semanticMatch(*fuzzy.version)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+} // namespace
+
+utils::error::Result<package::Reference> OSTreeRepo::clearReferenceLocal(
+  const package::FuzzyReference &fuzzy, bool semanticMatching) const noexcept
 {
     LINGLONG_TRACE("clear fuzzy reference locally");
 
@@ -370,7 +401,7 @@ utils::error::Result<package::Reference> clearReferenceLocal(const RepoCache &ca
     if (fuzzy.arch) {
         query.architecture = fuzzy.arch->toString();
     }
-    const auto availablePackage = cache.queryLayerItem(query);
+    const auto availablePackage = this->cache->queryLayerItem(query);
     if (availablePackage.empty()) {
         return LINGLONG_ERR("package not found:" + fuzzy.toString(),
                             utils::error::ErrorCode::AppNotFoundFromLocal);
@@ -427,81 +458,6 @@ utils::error::Result<package::Reference> clearReferenceLocal(const RepoCache &ca
     LogD("clear fuzzy ref {} to {}", fuzzy.toString(), ref->toString());
     return ref;
 }
-
-utils::error::Result<bool> semanticMatch(const package::FuzzyReference &fuzzy,
-                                         const api::types::v1::PackageInfoV2 &record) noexcept
-{
-    LINGLONG_TRACE("semanticMatch");
-
-    if (fuzzy.id != record.id) {
-        return false;
-    }
-
-    if (fuzzy.channel && fuzzy.channel != record.channel) {
-        return false;
-    }
-
-    if (fuzzy.arch && fuzzy.arch->toString() != record.arch[0]) {
-        return false;
-    }
-
-    if (fuzzy.version) {
-        auto version = package::Version::parse(record.version);
-        if (!version) {
-            return LINGLONG_ERR(version);
-        }
-        if (!version->semanticMatch(*fuzzy.version)) {
-            return false;
-        }
-    }
-
-    return true;
-}
-
-std::optional<package::Reference> matchReference(const api::types::v1::PackageInfoV2 &record,
-                                                 const package::FuzzyReference &fuzzy,
-                                                 const std::string &module) noexcept
-{
-    auto recordStr = nlohmann::json(record).dump();
-    if (fuzzy.channel && fuzzy.channel != record.channel) {
-        return std::nullopt;
-    }
-    if (fuzzy.id != record.id) {
-        return std::nullopt;
-    }
-    auto version = package::Version::parse(record.version);
-    if (!version) {
-        LogW("Ignore invalid package record {}: {}", recordStr, version.error());
-        return std::nullopt;
-    }
-    if (record.arch.empty()) {
-        LogW("Ignore empty arch package record {}", recordStr);
-        return std::nullopt;
-    }
-    if (module == "binary") {
-        if (record.packageInfoV2Module != "binary" && record.packageInfoV2Module != "runtime") {
-            return std::nullopt;
-        }
-    } else {
-        if (record.packageInfoV2Module != module) {
-            return std::nullopt;
-        }
-    }
-    auto arch = package::Architecture::parse(record.arch[0]);
-    if (!arch) {
-        LogW("Ignore invalid package record {}: {}", recordStr, arch.error());
-        return std::nullopt;
-    }
-
-    auto currentRef = package::Reference::create(record.channel, fuzzy.id, *version, *arch);
-    if (!currentRef) {
-        LogW("Ignore invalid package record {}: {}", recordStr, currentRef.error());
-        return std::nullopt;
-    }
-    return *currentRef;
-}
-
-} // namespace
 
 utils::error::Result<api::types::v1::PackageInfoV2> RefMetaData::getPackageInfo() const noexcept
 {
@@ -1527,97 +1483,6 @@ utils::error::Result<void> OSTreeRepo::pull(service::Task &taskContext,
     }
 
     return LINGLONG_OK;
-}
-
-utils::error::Result<package::Reference>
-OSTreeRepo::clearReference(const package::FuzzyReference &fuzzy,
-                           const clearReferenceOption &opts,
-                           const std::string &module,
-                           const std::optional<std::string> &repo) const noexcept
-{
-    LINGLONG_TRACE(fmt::format("clear fuzzy reference {}", fuzzy.toString()));
-
-    utils::error::Result<package::Reference> reference = LINGLONG_ERR("reference not exists");
-
-    if (!opts.forceRemote) {
-        reference = clearReferenceLocal(*cache, fuzzy, opts.semanticMatching);
-        if (reference) {
-            return reference;
-        }
-
-        if (!opts.fallbackToRemote) {
-            return LINGLONG_ERR(reference);
-        }
-
-        LogD("fallback to remote: {}", reference.error());
-    }
-
-    // TODO
-    // repo should not optional
-    api::types::v1::Repo remoteRepo = getDefaultRepo();
-
-    if (repo) {
-        auto repoRet = this->getRepoByAlias(*repo);
-        if (!repoRet) {
-            return LINGLONG_ERR(repoRet);
-        }
-        remoteRepo = *repoRet;
-    }
-
-    auto listRet = this->searchRemote(fuzzy, remoteRepo);
-    if (!listRet.has_value()) {
-        return LINGLONG_ERR("get ref list from remote " + listRet.error().message(),
-                            listRet.error().code());
-    }
-
-    std::optional<package::Version> fuzzyVersion;
-    auto list = std::move(listRet).value();
-    if (fuzzy.version) {
-        list = package::Version::filterByFuzzyVersion(list, *fuzzy.version);
-
-        auto fuzzyVerRet = linglong::package::Version::parse(*fuzzy.version);
-        if (!fuzzyVerRet) {
-            return LINGLONG_ERR(fuzzyVerRet);
-        }
-        fuzzyVersion = std::move(fuzzyVerRet).value();
-    }
-
-    for (const auto &record : list) {
-        auto currentRefRet = matchReference(record, fuzzy, module);
-        if (!currentRefRet) {
-            continue;
-        }
-
-        if (fuzzyVersion) {
-            // 语义化匹配最新的版本
-            if (opts.semanticMatching) {
-                if (!reference || currentRefRet->version > reference->version) {
-                    reference = *currentRefRet;
-                }
-                continue;
-            }
-
-            // 精确匹配版本
-            if (currentRefRet->version == *fuzzyVersion) {
-                reference = *currentRefRet;
-                break;
-            }
-            continue;
-        }
-
-        // 匹配最新版本
-        if (!reference || currentRefRet->version > reference->version) {
-            reference = *currentRefRet;
-        }
-    }
-
-    if (!reference) {
-        auto msg =
-          fmt::format("not found ref:{} module:{} from remote repo", fuzzy.toString(), module);
-        return LINGLONG_ERR(msg, utils::error::ErrorCode::AppNotFoundFromRemote);
-    }
-
-    return reference;
 }
 
 utils::error::Result<std::vector<api::types::v1::PackageInfoV2>>
@@ -3165,7 +3030,7 @@ OSTreeRepo::latestLocalReference(const package::FuzzyReference &fuzzyRef) const 
 {
     LINGLONG_TRACE("get latest local reference");
 
-    auto ref = clearReferenceLocal(*cache, fuzzyRef, true);
+    auto ref = this->clearReferenceLocal(fuzzyRef, true);
     if (!ref) {
         return LINGLONG_ERR(ref);
     }

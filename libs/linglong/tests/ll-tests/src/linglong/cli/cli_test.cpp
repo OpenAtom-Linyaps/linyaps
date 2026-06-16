@@ -43,11 +43,8 @@ public:
                 (),
                 (override, const, noexcept));
     MOCK_METHOD(utils::error::Result<package::Reference>,
-                clearReference,
-                (const package::FuzzyReference &fuzzyRef,
-                 const repo::clearReferenceOption &opts,
-                 const std::string &module,
-                 const std::optional<std::string> &repo),
+                clearReferenceLocal,
+                (const package::FuzzyReference &fuzzyRef, bool semanticMatching),
                 (override, const, noexcept));
     MOCK_METHOD(utils::error::Result<api::types::v1::RepositoryCacheLayersItem>,
                 getLayerItem,
@@ -270,7 +267,7 @@ TEST_F(CliTest, contentPreferDesktopFromDefaultSharedDir)
     layerItem.commit = commit;
     layerItem.info.kind = "app";
 
-    EXPECT_CALL(*repo, clearReference(_, _, _, _)).WillOnce(Return(*ref));
+    EXPECT_CALL(*repo, clearReferenceLocal(_, _)).WillOnce(Return(*ref));
     EXPECT_CALL(*repo, getLayerItem(_, _, _))
       .WillRepeatedly(
         [layerItem](const package::Reference &, std::string, const std::optional<std::string> &)
@@ -312,7 +309,7 @@ TEST_F(CliTest, contentResolvesDesktopFromSymlinkedEntriesShareDir)
     layerItem.commit = commit;
     layerItem.info.kind = "app";
 
-    EXPECT_CALL(*repo, clearReference(_, _, _, _)).WillOnce(Return(*ref));
+    EXPECT_CALL(*repo, clearReferenceLocal(_, _)).WillOnce(Return(*ref));
     EXPECT_CALL(*repo, getLayerItem(_, _, _))
       .WillRepeatedly(
         [layerItem](const package::Reference &, std::string, const std::optional<std::string> &)
@@ -354,7 +351,7 @@ TEST_F(CliTest, contentResolvesOverlayDesktopFromSymlinkedEntriesShareDir)
     layerItem.commit = commit;
     layerItem.info.kind = "app";
 
-    EXPECT_CALL(*repo, clearReference(_, _, _, _)).WillOnce(Return(*ref));
+    EXPECT_CALL(*repo, clearReferenceLocal(_, _)).WillOnce(Return(*ref));
     EXPECT_CALL(*repo, getLayerItem(_, _, _))
       .WillRepeatedly(
         [layerItem](const package::Reference &, std::string, const std::optional<std::string> &)
@@ -388,7 +385,7 @@ TEST_F(CliTest, contentFallbackDesktopToOverlaySharedDir)
     layerItem.commit = commit;
     layerItem.info.kind = "app";
 
-    EXPECT_CALL(*repo, clearReference(_, _, _, _)).WillOnce(Return(*ref));
+    EXPECT_CALL(*repo, clearReferenceLocal(_, _)).WillOnce(Return(*ref));
     EXPECT_CALL(*repo, getLayerItem(_, _, _))
       .WillRepeatedly(
         [layerItem](const package::Reference &, std::string, const std::optional<std::string> &)
@@ -423,7 +420,7 @@ TEST_F(CliTest, contentMapsLegacySystemdUserPathToExportedLibPath)
     layerItem.commit = commit;
     layerItem.info.kind = "app";
 
-    EXPECT_CALL(*repo, clearReference(_, _, _, _)).WillOnce(Return(*ref));
+    EXPECT_CALL(*repo, clearReferenceLocal(_, _)).WillOnce(Return(*ref));
     EXPECT_CALL(*repo, getLayerItem(_, _, _))
       .WillRepeatedly(
         [layerItem](const package::Reference &, std::string, const std::optional<std::string> &)
@@ -460,7 +457,7 @@ TEST_F(CliTest, contentPrefersLibSystemdUserOverLegacySharePath)
     layerItem.commit = commit;
     layerItem.info.kind = "app";
 
-    EXPECT_CALL(*repo, clearReference(_, _, _, _)).WillOnce(Return(*ref));
+    EXPECT_CALL(*repo, clearReferenceLocal(_, _)).WillOnce(Return(*ref));
     EXPECT_CALL(*repo, getLayerItem(_, _, _))
       .WillRepeatedly(
         [layerItem](const package::Reference &, std::string, const std::optional<std::string> &)

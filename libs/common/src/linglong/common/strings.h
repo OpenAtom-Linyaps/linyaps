@@ -52,6 +52,8 @@ bool contains(std::string_view str, std::string_view suffix) noexcept;
 
 std::string quoteBashArg(std::string arg) noexcept;
 
+std::string generateRandomString(std::size_t length) noexcept;
+
 std::optional<std::string> decode_url(std::string_view url) noexcept;
 
 std::string encode_url(std::string_view value) noexcept;

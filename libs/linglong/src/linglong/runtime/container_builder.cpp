@@ -398,7 +398,7 @@ auto ContainerBuilder::configureBuildContainer(PreparedContainer &prepared,
     prepared.cfgBuilder.setBasePath(options.basePath, false)
       .bindUserGroup()
       .forwardDefaultEnv()
-      .appendEnv("LINYAPS_INIT_SINGLE_MODE", "1")
+      .appendEnv("LINYAPS_INIT_SKIP_LOCK", "YES")
       .disableUserNamespace()
       .setCapabilities(buildContainerCaps)
       .enableLDConf();
@@ -511,7 +511,8 @@ auto ContainerBuilder::configureInitContainer(PreparedContainer &prepared) noexc
       .bindXDGRuntime()
       .bindHostRoot()
       .bindHostStatics()
-      .forwardDefaultEnv();
+      .forwardDefaultEnv()
+      .appendEnv("LINYAPS_INIT_SKIP_LOCK", "YES");
 
     if (runContext.getConfig().overlayfs) {
         auto res = prepared.context->setupOverlayFS(runContext, true);
@@ -695,6 +696,16 @@ auto ContainerBuilder::createRunContainer(runtime::RunContext &context,
     auto prepared = this->prepareContainer(context, ContainerMode::Run, options.common);
     if (!prepared) {
         return LINGLONG_ERR(prepared);
+    }
+
+    if (!options.lockName.empty()) {
+        const auto lockPath = prepared->context->getBundleDir() / options.lockName;
+        prepared->cfgBuilder.addExtraMount({
+          .destination = common::dir::containerLockPath,
+          .options = std::vector<std::string>{ "bind" },
+          .source = lockPath.string(),
+          .type = "bind",
+        });
     }
 
     auto res = this->configureRunContainer(*prepared, options);

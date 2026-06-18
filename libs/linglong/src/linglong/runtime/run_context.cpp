@@ -655,6 +655,10 @@ utils::error::Result<void> RunContext::resolveTimeZone()
     std::error_code ec;
     auto localtimeStatus = std::filesystem::symlink_status(localtimePath, ec);
     if (ec) {
+        if (ec == std::errc::no_such_file_or_directory) {
+            contextCfg.timezone = "UTC";
+            return LINGLONG_OK;
+        }
         return LINGLONG_ERR(fmt::format("failed to get status of {}", localtimePath), ec);
     }
 

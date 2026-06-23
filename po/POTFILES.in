@@ -15,3 +15,6 @@ apps/ll-dialog/src/cache_dialog.cpp
 
 # ll-driver_detection
 apps/ll-driver-detect/src/main.cpp
+
+# ll-cli repo files
+libs/linglong/src/linglong/common/cli/repo.cpp

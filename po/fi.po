@@ -130,7 +130,7 @@ msgstr "Toiminto peruutettu"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2354
 msgid "Permission denied, authentication is required"
-msgstr ""
+msgstr "Käyttöoikeuksien todennus vaaditaan"
 
 #: ../apps/ll-cli/src/main.cpp:105 ../apps/ll-builder/src/main.cpp:46
 msgid "Input parameter is empty, please input valid parameter instead"
@@ -203,6 +203,8 @@ msgstr "Määritä sovelluksen laajennus(et) suoritukseen"
 msgid ""
 "Enable or disable xdg-desktop-portal related integration inside the sandbox"
 msgstr ""
+"Käytä tai poista käytöstä xdg-desktop-portaaliin liittyvä integrointi "
+"hiekkalaatikon sisällä"
 
 #: ../apps/ll-cli/src/main.cpp:181
 msgid "Run context json string"

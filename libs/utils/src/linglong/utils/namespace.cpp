@@ -10,6 +10,7 @@
 #include "linglong/utils/log/log.h"
 
 #include <sys/capability.h>
+#include <sys/mount.h>
 #include <sys/prctl.h>
 
 #include <fstream>
@@ -310,6 +311,11 @@ int runInNamespaceEntry(void *args)
             LogE("setgid failed: {}", common::error::errorString(errno));
             return -1;
         }
+    }
+
+    if (mount("", "/", "", MS_SHARED | MS_REC, NULL) == -1) {
+        LogW("failed to change propagation type of / to shared: {}",
+             common::error::errorString(errno));
     }
 
     LogD("run command {}", runInNamespaceArgs->argv[0]);

@@ -49,17 +49,17 @@
 		<message>
 			<location filename="org.deepin.linglong.PackageManager1.prune!description" line="0"/>
 			<source>Prune package cache</source>
-			<translation type="unfinished"/>
+			<translation>Leikkaa pakettien välimuistia</translation>
 		</message>
 		<message>
 			<location filename="org.deepin.linglong.PackageManager1.set-configuration!message" line="0"/>
 			<source>Authentication is required to modify package manager configuration</source>
-			<translation type="unfinished"/>
+			<translation>Pakettien kokoonpanon hallinta edellyttää todennusta</translation>
 		</message>
 		<message>
 			<location filename="org.deepin.linglong.PackageManager1.set-configuration!description" line="0"/>
 			<source>Modify package manager configuration</source>
-			<translation type="unfinished"/>
+			<translation>Muuta pakettienhallinnan asetuksia</translation>
 		</message>
 	</context>
 </TS>

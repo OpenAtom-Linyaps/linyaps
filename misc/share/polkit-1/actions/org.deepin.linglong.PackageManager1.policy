@@ -2,72 +2,126 @@
 <!DOCTYPE policyconfig PUBLIC "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
 "http://www.freedesktop.org/standards/PolicyKit/1.0/policyconfig.dtd">
 <policyconfig>
-  <vendor>UnionTech</vendor>
-  <vendor_url>https://www.uniontech.com</vendor_url>
-
-  <action id="org.deepin.linglong.PackageManager1.install">
-    <description>Install packages</description>
-    <message>Authentication is required to install packages</message>
-    <defaults>
-      <allow_any>auth_admin</allow_any>
-      <allow_inactive>auth_admin</allow_inactive>
-      <allow_active>auth_admin_keep</allow_active>
-    </defaults>
-    <annotate key="org.freedesktop.policykit.owner">unix-user:@LINGLONG_USERNAME@</annotate>
-  </action>
-
-  <action id="org.deepin.linglong.PackageManager1.update">
-    <description>Update packages</description>
-    <message>Authentication is required to update packages</message>
-    <defaults>
-      <allow_any>auth_admin</allow_any>
-      <allow_inactive>auth_admin</allow_inactive>
-      <allow_active>auth_admin_keep</allow_active>
-    </defaults>
-    <annotate key="org.freedesktop.policykit.owner">unix-user:@LINGLONG_USERNAME@</annotate>
-  </action>
-
-  <action id="org.deepin.linglong.PackageManager1.uninstall">
-    <description>Uninstall packages</description>
-    <message>Authentication is required to uninstall packages</message>
-    <defaults>
-      <allow_any>auth_admin</allow_any>
-      <allow_inactive>auth_admin</allow_inactive>
-      <allow_active>auth_admin_keep</allow_active>
-    </defaults>
-    <annotate key="org.freedesktop.policykit.owner">unix-user:@LINGLONG_USERNAME@</annotate>
-  </action>
-
-  <action id="org.deepin.linglong.PackageManager1.install-from-file">
-    <description>Install packages from local files</description>
-    <message>Authentication is required to install packages from local files</message>
-    <defaults>
-      <allow_any>auth_admin</allow_any>
-      <allow_inactive>auth_admin</allow_inactive>
-      <allow_active>auth_admin_keep</allow_active>
-    </defaults>
-    <annotate key="org.freedesktop.policykit.owner">unix-user:@LINGLONG_USERNAME@</annotate>
-  </action>
-
-  <action id="org.deepin.linglong.PackageManager1.prune">
-    <description>Prune package cache</description>
-    <message>Authentication is required to prune package cache</message>
-    <defaults>
-      <allow_any>auth_admin</allow_any>
-      <allow_inactive>auth_admin</allow_inactive>
-      <allow_active>auth_admin</allow_active>
-    </defaults>
-    <annotate key="org.freedesktop.policykit.owner">unix-user:@LINGLONG_USERNAME@</annotate>
-  </action>
-
-  <action id="org.deepin.linglong.PackageManager1.set-configuration">
-    <description>Modify package manager configuration</description>
-    <message>Authentication is required to modify package manager configuration</message>
-    <defaults>
-      <allow_any>auth_admin</allow_any>
-      <allow_inactive>auth_admin</allow_inactive>
-      <allow_active>auth_admin</allow_active>
-    </defaults>
-    <annotate key="org.freedesktop.policykit.owner">unix-user:@LINGLONG_USERNAME@</annotate>
-  </action>
+	<vendor>UnionTech</vendor>
+	<vendor_url>https://www.uniontech.com</vendor_url>
+	<action id="org.deepin.linglong.PackageManager1.install">
+		<description>Install packages</description>
+		<message>Authentication is required to install packages</message>
+		<defaults>
+			<allow_any>auth_admin</allow_any>
+			<allow_inactive>auth_admin</allow_inactive>
+			<allow_active>auth_admin_keep</allow_active>
+		</defaults>
+		<annotate key="org.freedesktop.policykit.owner">unix-user:@LINGLONG_USERNAME@</annotate>
+		<description xml:lang="en_US">Install packages</description>
+		<message xml:lang="en_US">Authentication is required to install packages</message>
+		<description xml:lang="pt_BR">Instalar pacotes</description>
+		<message xml:lang="pt_BR">É necessário autenticar-se para instalar pacotes</message>
+		<description xml:lang="zh_CN">安装软件包</description>
+		<message xml:lang="zh_CN">安装软件包需要认证</message>
+		<description xml:lang="zh_HK">安裝套件</description>
+		<message xml:lang="zh_HK">安裝套件需要進行身份驗證</message>
+		<description xml:lang="zh_TW">安裝套件</description>
+		<message xml:lang="zh_TW">安裝套件需要進行身分驗證</message>
+	</action>
+	<action id="org.deepin.linglong.PackageManager1.update">
+		<description>Update packages</description>
+		<message>Authentication is required to update packages</message>
+		<defaults>
+			<allow_any>auth_admin</allow_any>
+			<allow_inactive>auth_admin</allow_inactive>
+			<allow_active>auth_admin_keep</allow_active>
+		</defaults>
+		<annotate key="org.freedesktop.policykit.owner">unix-user:@LINGLONG_USERNAME@</annotate>
+		<description xml:lang="en_US">Update packages</description>
+		<message xml:lang="en_US">Authentication is required to update packages</message>
+		<description xml:lang="pt_BR">Atualizar pacotes</description>
+		<message xml:lang="pt_BR">É necessário autenticar-se para atualizar pacotes</message>
+		<description xml:lang="zh_CN">更新软件包</description>
+		<message xml:lang="zh_CN">更新软件包需要认证</message>
+		<description xml:lang="zh_HK">更新套件</description>
+		<message xml:lang="zh_HK">更新套件需要進行身份驗證</message>
+		<description xml:lang="zh_TW">更新套件</description>
+		<message xml:lang="zh_TW">更新套件需要進行身分驗證</message>
+	</action>
+	<action id="org.deepin.linglong.PackageManager1.uninstall">
+		<description>Uninstall packages</description>
+		<message>Authentication is required to uninstall packages</message>
+		<defaults>
+			<allow_any>auth_admin</allow_any>
+			<allow_inactive>auth_admin</allow_inactive>
+			<allow_active>auth_admin_keep</allow_active>
+		</defaults>
+		<annotate key="org.freedesktop.policykit.owner">unix-user:@LINGLONG_USERNAME@</annotate>
+		<description xml:lang="en_US">Uninstall packages</description>
+		<message xml:lang="en_US">Authentication is required to uninstall packages</message>
+		<description xml:lang="pt_BR">Desinstalar pacotes</description>
+		<message xml:lang="pt_BR">É necessário autenticar-se para desinstalar pacotes</message>
+		<description xml:lang="zh_CN">卸载软件包</description>
+		<message xml:lang="zh_CN">卸载软件包需要认证</message>
+		<description xml:lang="zh_HK">解除安裝套件</description>
+		<message xml:lang="zh_HK">解除安裝套件需要進行身份驗證</message>
+		<description xml:lang="zh_TW">解除安裝套件</description>
+		<message xml:lang="zh_TW">解除安裝套件需要進行身分驗證</message>
+	</action>
+	<action id="org.deepin.linglong.PackageManager1.install-from-file">
+		<description>Install packages from local files</description>
+		<message>Authentication is required to install packages from local files</message>
+		<defaults>
+			<allow_any>auth_admin</allow_any>
+			<allow_inactive>auth_admin</allow_inactive>
+			<allow_active>auth_admin_keep</allow_active>
+		</defaults>
+		<annotate key="org.freedesktop.policykit.owner">unix-user:@LINGLONG_USERNAME@</annotate>
+		<description xml:lang="en_US">Install packages from local files</description>
+		<message xml:lang="en_US">Authentication is required to install packages from local files</message>
+		<description xml:lang="pt_BR">Instalar pacotes a partir de arquivos locais</description>
+		<message xml:lang="pt_BR">É necessário autenticar-se para instalar pacotes a partir de arquivos locais</message>
+		<description xml:lang="zh_CN">从本地文件安装软件包</description>
+		<message xml:lang="zh_CN">从本地文件安装软件包需要进行身份验证</message>
+		<description xml:lang="zh_HK">從本機檔案安裝套件</description>
+		<message xml:lang="zh_HK">從本機檔案安裝套件需要進行身份驗證</message>
+		<description xml:lang="zh_TW">從本機檔案安裝套件</description>
+		<message xml:lang="zh_TW">從本機檔案安裝套件需要進行身分驗證</message>
+	</action>
+	<action id="org.deepin.linglong.PackageManager1.prune">
+		<description>Prune package cache</description>
+		<message>Authentication is required to prune package cache</message>
+		<defaults>
+			<allow_any>auth_admin</allow_any>
+			<allow_inactive>auth_admin</allow_inactive>
+			<allow_active>auth_admin</allow_active>
+		</defaults>
+		<annotate key="org.freedesktop.policykit.owner">unix-user:@LINGLONG_USERNAME@</annotate>
+		<description xml:lang="en_US">Prune package cache</description>
+		<message xml:lang="en_US">Authentication is required to prune package cache</message>
+		<description xml:lang="pt_BR">Limpar cache de pacotes</description>
+		<message xml:lang="pt_BR">É necessário autenticar-se para limpar o cache de pacotes</message>
+		<description xml:lang="zh_CN">清理软件包缓存</description>
+		<message xml:lang="zh_CN">清理软件包缓存需要认证</message>
+		<description xml:lang="zh_HK">清理套件快取</description>
+		<message xml:lang="zh_HK">清理套件快取需要進行身份驗證</message>
+		<description xml:lang="zh_TW">清理套件快取</description>
+		<message xml:lang="zh_TW">清理套件快取需要進行身分驗證</message>
+	</action>
+	<action id="org.deepin.linglong.PackageManager1.set-configuration">
+		<description>Modify package manager configuration</description>
+		<message>Authentication is required to modify package manager configuration</message>
+		<defaults>
+			<allow_any>auth_admin</allow_any>
+			<allow_inactive>auth_admin</allow_inactive>
+			<allow_active>auth_admin</allow_active>
+		</defaults>
+		<annotate key="org.freedesktop.policykit.owner">unix-user:@LINGLONG_USERNAME@</annotate>
+		<description xml:lang="en_US">Modify package manager configuration</description>
+		<message xml:lang="en_US">Authentication is required to modify package manager configuration</message>
+		<description xml:lang="pt_BR">Alterar configuração do gerenciador de pacotes</description>
+		<message xml:lang="pt_BR">É necessário autenticar-se para modificar a configuração do gerenciador de pacotes</message>
+		<description xml:lang="zh_CN">修改软件包管理器配置</description>
+		<message xml:lang="zh_CN">修改软件包管理器配置需要认证</message>
+		<description xml:lang="zh_HK">修改套件管理員設定</description>
+		<message xml:lang="zh_HK">修改套件管理員設定需要進行身份驗證</message>
+		<description xml:lang="zh_TW">修改套件管理員設定</description>
+		<message xml:lang="zh_TW">修改套件管理員設定需要進行身分驗證</message>
+	</action>
 </policyconfig>

@@ -206,8 +206,7 @@ msgstr "Especifique as extensões usadas pelo aplicativo para execução"
 msgid ""
 "Enable or disable xdg-desktop-portal related integration inside the sandbox"
 msgstr ""
-"Ativar ou desativar a integração relacionada ao xdg-desktop-portal dentro da"
-" sandbox"
+"Ativar ou desativar a integração do xdg-desktop-portal dentro do sandbox"
 
 #: ../apps/ll-cli/src/main.cpp:181
 msgid "Run context json string"

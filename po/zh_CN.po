@@ -125,7 +125,7 @@ msgstr "操作已取消"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2354
 msgid "Permission denied, authentication is required"
-msgstr ""
+msgstr "权限被拒绝，需要进行身份验证"
 
 #: ../apps/ll-cli/src/main.cpp:105 ../apps/ll-builder/src/main.cpp:46
 msgid "Input parameter is empty, please input valid parameter instead"
@@ -197,11 +197,11 @@ msgstr "指定应用程序运行所需的扩展"
 #: ../apps/ll-cli/src/main.cpp:179
 msgid ""
 "Enable or disable xdg-desktop-portal related integration inside the sandbox"
-msgstr ""
+msgstr "在沙盒内启用或禁用 xdg-desktop-portal"
 
 #: ../apps/ll-cli/src/main.cpp:181
 msgid "Run context json string"
-msgstr ""
+msgstr "运行上下文 json 字符串"
 
 #: ../apps/ll-cli/src/main.cpp:184
 msgid "Run the application in privileged mode"
@@ -213,19 +213,19 @@ msgstr "为应用程序添加特权能力"
 
 #: ../apps/ll-cli/src/main.cpp:190
 msgid "CDI spec directory"
-msgstr ""
+msgstr "CDI 规范目录"
 
 #: ../apps/ll-cli/src/main.cpp:194
 msgid "Add CDI devices"
-msgstr ""
+msgstr "添加 CDI 设备"
 
 #: ../apps/ll-cli/src/main.cpp:200
 msgid "Add device options"
-msgstr ""
+msgstr "添加设备选项"
 
 #: ../apps/ll-cli/src/main.cpp:207
 msgid "Specify the container instance name for reuse or identification"
-msgstr ""
+msgstr "指定容器实例名称，用于复用或标识"
 
 #: ../apps/ll-cli/src/main.cpp:210 ../apps/ll-cli/src/main.cpp:241
 msgid "Run commands in a running sandbox"
@@ -403,7 +403,7 @@ msgstr ""
 "示例:\n"
 "# 按照名称搜索远程的 application(s), base(s) 或 runtime(s)\n"
 "ll-cli search org.deepin.demo\n"
-"# 按名称搜索远程 runtime\n"
+"#按名称搜索远程 runtime\n"
 "ll-cli search org.deepin.base --type=runtime\n"
 "#  搜索远程所有软件包\n"
 "ll-cli search .\n"
@@ -983,7 +983,7 @@ msgstr ""
 
 #: ../libs/linglong/src/linglong/common/cli/repo.cpp:36
 msgid "Usage: "
-msgstr ""
+msgstr "用法: "
 
 #: ../libs/linglong/src/linglong/common/cli/repo.cpp:50
 msgid "Display or modify information of the repository currently using"

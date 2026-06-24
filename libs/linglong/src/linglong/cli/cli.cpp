@@ -464,21 +464,8 @@ utils::error::Result<api::dbus::v1::PackageManager *> Cli::getPkgMan()
     }
 
     if (this->peerMode) {
-        if (getuid() != 0) {
-            return LINGLONG_ERR("--no-dbus should only be used by root user.");
-        }
-
         LogW("some subcommands will failed in --no-dbus mode.");
         const auto pkgManAddress = QString("unix:path=/tmp/linglong-package-manager.socket");
-        QProcess::startDetached("sudo",
-                                { "--user",
-                                  LINGLONG_USERNAME,
-                                  "--preserve-env=QT_FORCE_STDERR_LOGGING",
-                                  "--preserve-env=QDBUS_DEBUG",
-                                  LINGLONG_LIBEXEC_DIR "/ll-package-manager",
-                                  "--no-dbus" });
-        using namespace std::chrono_literals;
-        std::this_thread::sleep_for(1s);
 
         const auto &pkgManConn =
           QDBusConnection::connectToPeer(pkgManAddress, "ll-package-manager");

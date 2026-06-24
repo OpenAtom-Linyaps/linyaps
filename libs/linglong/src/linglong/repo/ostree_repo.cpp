@@ -1852,6 +1852,25 @@ void OSTreeRepo::exportReference(const package::Reference &ref) noexcept
     this->updateSharedInfo();
 }
 
+void OSTreeRepo::exportReferencePaths(const package::Reference &ref,
+                                      const std::vector<std::string> &paths) noexcept
+{
+    QDir entriesDir(this->getEntriesDir().c_str());
+    if (!entriesDir.exists()) {
+        entriesDir.mkpath(".");
+    }
+    auto item = this->getLayerItem(ref);
+    if (!item.has_value()) {
+        LogE("Failed to export paths for {}: {}", ref.toString(), item.error().message());
+        return;
+    }
+    auto ret = exportEntries(entriesDir.absolutePath().toStdString(), *item, paths);
+    if (!ret.has_value()) {
+        LogE("Failed to export paths for {}: {}", ref.toString(), ret.error().message());
+        return;
+    }
+}
+
 // 递归源目录所有文件，并在目标目录创建软链接，max_depth 控制递归深度以避免环形链接导致的无限递归
 utils::error::Result<void> OSTreeRepo::exportDir(const std::string &appID,
                                                  const std::filesystem::path &source,
@@ -2026,7 +2045,8 @@ utils::error::Result<void> OSTreeRepo::exportDir(const std::string &appID,
 
 utils::error::Result<void>
 OSTreeRepo::exportEntries(const std::filesystem::path &rootEntriesDir,
-                          const api::types::v1::RepositoryCacheLayersItem &item) noexcept
+                          const api::types::v1::RepositoryCacheLayersItem &item,
+                          const std::optional<std::vector<std::string>> &exportPathsFilter) noexcept
 {
     LINGLONG_TRACE(fmt::format("export {}", item.info.id));
     auto layerDir = getLayerDir(item);
@@ -2042,6 +2062,38 @@ OSTreeRepo::exportEntries(const std::filesystem::path &rootEntriesDir,
     }
     if (!exists) {
         LogE("Failed to export {}: {} not exists", item.info.id, appEntriesDir.string());
+        return LINGLONG_OK;
+    }
+
+    // 如果指定了导出路径过滤器，仅导出指定的路径
+    if (exportPathsFilter.has_value()) {
+        for (const auto &path : *exportPathsFilter) {
+            auto normalizedPath = std::filesystem::path(path).lexically_normal();
+            if (normalizedPath.is_absolute()) {
+                return LINGLONG_ERR(fmt::format(
+                  "Failed to export {}: absolute path is not allowed in export filter: {}",
+                  path));
+            }
+
+            auto source = appEntriesDir / normalizedPath;
+            auto destination = rootEntriesDir / normalizedPath;
+
+            if (normalizedPath == "share/deepin-elf-verify") {
+                destination = rootEntriesDir / "share/deepin-elf-verify" / item.commit;
+            }
+
+            exists = std::filesystem::exists(source, ec);
+            if (ec) {
+                return LINGLONG_ERR(fmt::format("Failed to check file existence: {}", source), ec);
+            }
+            if (!exists) {
+                continue;
+            }
+            auto ret = this->exportDir(item.info.id, source, destination, 10);
+            if (!ret.has_value()) {
+                return ret;
+            }
+        }
         return LINGLONG_OK;
     }
 
@@ -2138,12 +2190,19 @@ utils::error::Result<void> OSTreeRepo::exportAllEntries() noexcept
     // 导出所有layer到新entries目录
     auto items = this->cache->queryExistingLayerItem();
     for (const auto &item : items) {
-        if (item.info.kind != "app") {
-            continue;
-        }
-        auto ret = exportEntries(entriesDir, item);
-        if (!ret.has_value()) {
-            return ret;
+        if (item.info.kind == "app") {
+            auto ret = exportEntries(entriesDir, item);
+            if (!ret.has_value()) {
+                return ret;
+            }
+        } else if (item.info.kind == "base" || item.info.kind == "runtime") {
+            // base和runtime仅导出deepin-elf-verify目录
+            auto ret = exportEntries(entriesDir,
+                                     item,
+                                     std::vector<std::string>{ "share/deepin-elf-verify" });
+            if (!ret.has_value()) {
+                return ret;
+            }
         }
     }
     // 用新的entries目录替换旧的

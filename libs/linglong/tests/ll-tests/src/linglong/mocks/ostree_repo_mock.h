@@ -2,10 +2,7 @@
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
-#include "linglong/api/types/v1/PackageInfoV2.hpp"
-#include "linglong/api/types/v1/Repo.hpp"
 #include "linglong/api/types/v1/RepoConfigV2.hpp"
-#include "linglong/repo/client_factory.h"
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/utils/error/error.h"
 
@@ -29,6 +26,14 @@ public:
                                          const int &max_depth)
     {
         return this->OSTreeRepo::exportDir(appID, source, destination, max_depth);
+    }
+
+    utils::error::Result<void> exportEntries(
+      const std::filesystem::path &rootEntriesDir,
+      const api::types::v1::RepositoryCacheLayersItem &item,
+      const std::optional<std::vector<std::string>> &exportPathsFilter = std::nullopt) noexcept
+    {
+        return this->OSTreeRepo::exportEntries(rootEntriesDir, item, exportPathsFilter);
     }
 
     // mock getOverlayShareDir

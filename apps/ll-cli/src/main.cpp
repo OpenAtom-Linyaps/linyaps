@@ -27,6 +27,7 @@
 #include <QDBusObjectPath>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QProcess>
 #include <QtGlobal>
 
 #include <algorithm>
@@ -685,6 +686,23 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     }
 
     const bool peerMode = noDBusFlag->count() > 0;
+    if (peerMode) {
+        if (getuid() != 0) {
+            LogE("--no-dbus should only be used by root user.");
+            return -1;
+        }
+
+        // Start ll-package-manager --no-dbus first to initialize the repository
+        QProcess::startDetached("sudo",
+                                { "--user",
+                                  LINGLONG_USERNAME,
+                                  "--preserve-env=QT_FORCE_STDERR_LOGGING",
+                                  "--preserve-env=QDBUS_DEBUG",
+                                  LINGLONG_LIBEXEC_DIR "/ll-package-manager",
+                                  "--no-dbus" });
+        using namespace std::chrono_literals;
+        std::this_thread::sleep_for(1s);
+    }
     auto repo = linglong::repo::OSTreeRepo::loadFromPath(LINGLONG_ROOT);
     if (!repo.has_value()) {
         LogE("failed to load repo: {}", repo.error());

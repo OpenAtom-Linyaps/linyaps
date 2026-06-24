@@ -9,6 +9,7 @@
 #include "cmd.h"
 #include "configure.h"
 #include "linglong/common/error.h"
+#include "linglong/common/strings.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/log/log.h"
 
@@ -46,7 +47,8 @@ utils::error::Result<void> executeHookCommands(
             cmd.setEnv(name, value);
         }
 
-        auto result = cmd.exec({ "-c", command });
+        cmd.toStdin(command);
+        auto result = cmd.exec({});
         if (!result.has_value()) {
             return LINGLONG_ERR(
               fmt::format("Hook command '{}' failed: {}.", command, result.error()));
@@ -58,6 +60,17 @@ utils::error::Result<void> executeHookCommands(
 utils::error::Result<void> InstallHookManager::parseInstallHooks()
 {
     LINGLONG_TRACE("Parsing install hooks");
+
+    auto extractValue = [](const std::string &line, std::size_t prefixLen) -> std::string {
+        auto trimmed = linglong::common::strings::trim(std::string_view(line).substr(prefixLen));
+        if (trimmed.size() >= 2
+            && ((trimmed.front() == '"' && trimmed.back() == '"')
+                || (trimmed.front() == '\'' && trimmed.back() == '\''))) {
+            trimmed.remove_prefix(1);
+            trimmed.remove_suffix(1);
+        }
+        return std::string(trimmed);
+    };
 
     std::error_code ec;
     for (const auto &entry : std::filesystem::directory_iterator(LINGLONG_INSTALL_HOOKS_DIR, ec)) {
@@ -84,21 +97,21 @@ utils::error::Result<void> InstallHookManager::parseInstallHooks()
             std::size_t pos = line.find(PRE_INSTALL_ACTION_PREFIX);
             if (pos != std::string::npos) {
                 preInstallCommands.emplace_back(
-                  line.substr(pos + PRE_INSTALL_ACTION_PREFIX.length()));
+                  extractValue(line, pos + PRE_INSTALL_ACTION_PREFIX.length()));
                 break;
             }
 
             pos = line.find(POST_INSTALL_ACTION_PREFIX);
             if (pos != std::string::npos) {
                 postInstallCommands.emplace_back(
-                  line.substr(pos + POST_INSTALL_ACTION_PREFIX.length()));
+                  extractValue(line, pos + POST_INSTALL_ACTION_PREFIX.length()));
                 break;
             }
 
             pos = line.find(POST_UNINSTALL_ACTION_PREFIX);
             if (pos != std::string::npos) {
                 postUninstallCommands.emplace_back(
-                  line.substr(pos + POST_UNINSTALL_ACTION_PREFIX.length()));
+                  extractValue(line, pos + POST_UNINSTALL_ACTION_PREFIX.length()));
                 break;
             }
         }

@@ -208,7 +208,7 @@ msgstr ""
 
 #: ../apps/ll-cli/src/main.cpp:181
 msgid "Run context json string"
-msgstr ""
+msgstr "Ajoympäristön JSON-merkkijono"
 
 #: ../apps/ll-cli/src/main.cpp:184
 msgid "Run the application in privileged mode"
@@ -220,11 +220,11 @@ msgstr "Lisää ominaisuuksia sovellukselle"
 
 #: ../apps/ll-cli/src/main.cpp:190
 msgid "CDI spec directory"
-msgstr ""
+msgstr "CDI-määritysten hakemisto"
 
 #: ../apps/ll-cli/src/main.cpp:194
 msgid "Add CDI devices"
-msgstr ""
+msgstr "Lisää CDI-laitteita"
 
 #: ../apps/ll-cli/src/main.cpp:200
 msgid "Add device options"

@@ -6,3 +6,9 @@ file_filter = po/<lang>.po
 source_file = po/en_US.po
 source_lang = en_US
 type = PO
+
+[o:linuxdeepin:p:linyaps:r:304ad8396f170f4f174265e91d850f4e]
+file_filter = misc/share/polkit-1/translations/policy_<lang>.ts
+source_file = misc/share/polkit-1/translations/policy.ts
+source_lang = en_US
+type = QT

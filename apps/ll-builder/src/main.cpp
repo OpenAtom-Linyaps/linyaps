@@ -74,7 +74,7 @@ parseProjectConfig(const std::filesystem::path &filename)
     }
     if (project->package.kind == "app" && !project->command.has_value()) {
         return LINGLONG_ERR(
-          "'command' field is missing, app should hava command as the default startup command");
+          "'command' field is missing, app should have command as the default startup command");
     }
 
     // 校验bese和runtime版本是否合法

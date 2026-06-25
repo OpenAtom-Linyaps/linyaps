@@ -72,7 +72,7 @@
         {
             "name": "debug",
             "displayName": "Debug test",
-            "description": "Test linglong for developing and debuging.",
+            "description": "Test linglong for developing and debugging.",
             "configurePreset": "debug",
             "execution": {
                 "stopOnFailure": true
@@ -105,7 +105,7 @@
         {
             "name": "debug",
             "displayName": "Workflow for developers",
-            "description": "Configure, build then test for developing and debuging linglong.",
+            "description": "Configure, build then test for developing and debugging linglong.",
             "steps": [
                 {
                     "type": "configure",

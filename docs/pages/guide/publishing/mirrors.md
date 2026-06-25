@@ -62,7 +62,7 @@ ostree会从url获取summary文件，如果获取不到summary文件，或者sum
 
 ### delta-indexes文件获取
 
-ostree会在每个可用的mirror中获取delta-indexes，如果mirror服务器返回4xx或5xx，则在下一个mirror中获取delta-indexes，如果最后的mirror返回5xx，则pull失败，如果最后的mirror返回4xx，则跳过dalta步骤直接拉取files。
+ostree会在每个可用的mirror中获取delta-indexes，如果mirror服务器返回4xx或5xx，则在下一个mirror中获取delta-indexes，如果最后的mirror返回5xx，则pull失败，如果最后的mirror返回4xx，则跳过delta步骤直接拉取files。
 
 ### files文件获取
 

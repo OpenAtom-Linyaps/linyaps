@@ -9,7 +9,7 @@ Files in [config.d] that is executable for linglong runtime program
 are treated as OCI configuration generators for linglong.
 
 They will be executed by linglong runtime program
-with the constructing OCI configuration writed into their stdin.
+with the constructed OCI configuration written to their stdin.
 They should print **FULL** content of
 that modified OCI configuration to their **stdout**,
 and print error message or warning to their **stderr**.

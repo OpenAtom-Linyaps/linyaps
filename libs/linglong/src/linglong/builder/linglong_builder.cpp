@@ -1356,7 +1356,7 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
     }
 
     if (!(res = buildStageFetchSource())) {
-        return LINGLONG_ERR("stage fetch srouce error", res);
+        return LINGLONG_ERR("stage fetch source error", res);
     }
 
     if (!(res = buildStagePullDependency())) {

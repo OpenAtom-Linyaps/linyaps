@@ -17,7 +17,7 @@ then
     exit 1;
 fi
 
-# Clean up old directorie and create parent directory
+# Clean up old directory and create parent directory
 mkdir -p "$outputdir"
 rm -r "$outputdir"
 # Check cache

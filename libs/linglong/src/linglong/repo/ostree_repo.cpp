@@ -121,7 +121,7 @@ void progress_changed(OstreeAsyncProgress *progress, gpointer user_data)
     data->taskContext->reportDataArrived(bytes_transferred - data->last_bytes_transferred);
     data->last_bytes_transferred = bytes_transferred;
 
-    // report actual fetched and requestd data
+    // report actual fetched and requested data
     data->taskContext->reportDataHandled(fetched, requested);
 }
 

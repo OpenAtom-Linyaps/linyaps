@@ -9,6 +9,7 @@
 #include "cmd.h"
 #include "configure.h"
 #include "linglong/common/error.h"
+#include "linglong/common/strings.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/log/log.h"
 
@@ -19,7 +20,10 @@
 #include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <optional>
 #include <sstream>
+#include <string_view>
+#include <utility>
 #include <vector>
 
 #include <sys/wait.h>
@@ -33,6 +37,43 @@ constexpr std::string_view POST_INSTALL_ACTION_PREFIX = "ll-post-install=";
 constexpr std::string_view POST_UNINSTALL_ACTION_PREFIX = "ll-post-uninstall=";
 
 using CommandList = const std::vector<std::string> &;
+
+namespace {
+
+constexpr std::string_view WHITESPACE_CHARS = " \t\n\r\f\v";
+
+} // namespace
+
+utils::error::Result<std::optional<std::string>>
+details::parseInstallHookCommandLine(std::string_view line, std::string_view prefix)
+{
+    LINGLONG_TRACE("Parsing install hook command line");
+
+    line = common::strings::trim_left(line, WHITESPACE_CHARS);
+    if (!common::strings::starts_with(line, prefix)) {
+        return std::optional<std::string>{};
+    }
+
+    auto command = common::strings::trim_left(line.substr(prefix.size()), WHITESPACE_CHARS);
+    if (command.empty()) {
+        return std::optional<std::string>{ std::string{} };
+    }
+
+    const auto quote = command.front();
+    if (quote != '"' && quote != '\'') {
+        return std::optional<std::string>{ std::string(command) };
+    }
+
+    command.remove_prefix(1);
+
+    auto suffix = common::strings::trim_right(command, WHITESPACE_CHARS);
+    if (suffix.empty() || suffix.back() != quote) {
+        return LINGLONG_ERR("Invalid install hook command: unterminated quoted command");
+    }
+
+    suffix.remove_suffix(1);
+    return std::optional<std::string>{ std::string(suffix) };
+}
 
 utils::error::Result<void> executeHookCommands(
   CommandList commands, const std::vector<std::pair<std::string, std::string>> &envVars) noexcept
@@ -79,26 +120,31 @@ utils::error::Result<void> InstallHookManager::parseInstallHooks()
             return LINGLONG_ERR(fmt::format("Couldn't open file: {}", entry.path()));
         }
 
+        const std::array<std::pair<std::string_view, std::vector<std::string> *>, 3> hookRules = {
+            { { PRE_INSTALL_ACTION_PREFIX, &preInstallCommands },
+              { POST_INSTALL_ACTION_PREFIX, &postInstallCommands },
+              { POST_UNINSTALL_ACTION_PREFIX, &postUninstallCommands } }
+        };
+
         std::string line;
+        std::size_t lineNumber = 0;
         while (std::getline(file, line)) {
-            std::size_t pos = line.find(PRE_INSTALL_ACTION_PREFIX);
-            if (pos != std::string::npos) {
-                preInstallCommands.emplace_back(
-                  line.substr(pos + PRE_INSTALL_ACTION_PREFIX.length()));
-                break;
-            }
+            ++lineNumber;
 
-            pos = line.find(POST_INSTALL_ACTION_PREFIX);
-            if (pos != std::string::npos) {
-                postInstallCommands.emplace_back(
-                  line.substr(pos + POST_INSTALL_ACTION_PREFIX.length()));
-                break;
-            }
+            for (auto [prefix, commands] : hookRules) {
+                auto command = details::parseInstallHookCommandLine(line, prefix);
+                if (!command.has_value()) {
+                    return LINGLONG_ERR(fmt::format("Invalid install hook command in {}:{}",
+                                                    entry.path().string(),
+                                                    lineNumber),
+                                        command);
+                }
 
-            pos = line.find(POST_UNINSTALL_ACTION_PREFIX);
-            if (pos != std::string::npos) {
-                postUninstallCommands.emplace_back(
-                  line.substr(pos + POST_UNINSTALL_ACTION_PREFIX.length()));
+                if (!command->has_value()) {
+                    continue;
+                }
+
+                commands->emplace_back(std::move(**command));
                 break;
             }
         }

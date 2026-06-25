@@ -2,7 +2,7 @@
 
 Application run conf is the file how linglong runtime module load the app,
 
-and the conf is machine related, the user can set mount path, permisson control file to the app.
+and the conf is machine related, the user can set mount path, permission control file to the app.
 
 ## File Format
 

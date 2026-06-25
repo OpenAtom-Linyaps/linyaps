@@ -66,7 +66,7 @@ processExecBin() {
                                 if [[ ${rawStr} == "statically linked" ]]; then
                                         continue
                                 fi
-                                logWarn "unexpected conditions, unkonwn line: ${line}"
+                                logWarn "unexpected conditions, unknown line: ${line}"
                         fi
                 elif [[ ${elementSize} -eq 4 ]]; then
                         rawStr="${elements[2]} ${elements[3]}"
@@ -77,7 +77,7 @@ processExecBin() {
                          # clean path
                         dependLibs+=("${elements[2]}")
                 else
-                        logWarn "unexpected conditions, unkonwn line: ${line}"
+                        logWarn "unexpected conditions, unknown line: ${line}"
                 fi
         done
 }

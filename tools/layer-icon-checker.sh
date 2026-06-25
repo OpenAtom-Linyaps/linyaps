@@ -127,7 +127,7 @@ main() {
 		return 255
 	fi
 
-	# check desktop file, quit normaly if no Icon set
+	# check desktop file, quit normally if no Icon set
 	icons=$(getDesktopIcons ${dest})
 	if [ "${icons}" == "" ]; then
 		echo "No icon set in desktop file, nothing need to check ..."

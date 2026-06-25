@@ -174,7 +174,7 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/share/applications/linyaps.desktop
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/share/icons/linyaps.svg
         DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps)
 
-# set linglong XDG_DATA_DIRS environtment
+# set linglong XDG_DATA_DIRS environment
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/script/linglong.sh
         DESTINATION ${CMAKE_INSTALL_FULL_SYSCONFDIR}/profile.d)
 

@@ -27,7 +27,7 @@ ExecReplace() {
 }
 
 IconsReplace() {
-        #Not impelement yet
+        #Not implemented yet
         echo "replace Icons"
 }
 

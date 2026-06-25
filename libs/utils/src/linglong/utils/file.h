@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2024 - 2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -37,6 +37,9 @@ linglong::utils::error::Result<std::vector<std::filesystem::path>>
 getFiles(const std::filesystem::path &dir);
 
 linglong::utils::error::Result<void> ensureDirectory(const std::filesystem::path &dir);
+
+linglong::utils::error::Result<void>
+makeDirectoryTreeRemovable(const std::filesystem::path &root) noexcept;
 
 linglong::utils::error::Result<void> relinkFileTo(const std::filesystem::path &link,
                                                   const std::filesystem::path &target) noexcept;

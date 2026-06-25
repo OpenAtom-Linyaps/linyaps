@@ -18,6 +18,30 @@
 
 namespace linglong::utils {
 
+namespace {
+
+linglong::utils::error::Result<void>
+ensureOwnerPermissionsIfNeeded(const std::filesystem::path &path,
+                               std::filesystem::perms currentPerms,
+                               std::filesystem::perms requiredPerms) noexcept
+{
+    LINGLONG_TRACE("ensure owner permissions if needed");
+
+    if ((currentPerms & requiredPerms) == requiredPerms) {
+        return LINGLONG_OK;
+    }
+
+    std::error_code ec;
+    std::filesystem::permissions(path, requiredPerms, std::filesystem::perm_options::add, ec);
+    if (ec) {
+        return LINGLONG_ERR(fmt::format("failed to change permissions: {}", path), ec);
+    }
+
+    return LINGLONG_OK;
+}
+
+} // namespace
+
 linglong::utils::error::Result<std::string> readFile(const std::filesystem::path &filepath)
 {
     LINGLONG_TRACE(fmt::format("read file {}", filepath));
@@ -270,6 +294,45 @@ linglong::utils::error::Result<void> ensureDirectory(const std::filesystem::path
 
     if (!std::filesystem::create_directories(dir, ec) && ec) {
         return LINGLONG_ERR("failed to create directory", ec);
+    }
+
+    return LINGLONG_OK;
+}
+
+linglong::utils::error::Result<void>
+makeDirectoryTreeRemovable(const std::filesystem::path &root) noexcept
+{
+    LINGLONG_TRACE("make directory tree removable");
+
+    namespace fs = std::filesystem;
+
+    std::error_code ec;
+    fs::recursive_directory_iterator iter{ root,
+                                           fs::directory_options::skip_permission_denied,
+                                           ec };
+    if (ec) {
+        return LINGLONG_ERR(fmt::format("failed to iterate directory: {}", root), ec);
+    }
+
+    const fs::recursive_directory_iterator end;
+    for (; iter != end; iter.increment(ec)) {
+        if (ec) {
+            return LINGLONG_ERR(fmt::format("failed to iterate directory: {}", root), ec);
+        }
+
+        auto status = iter->symlink_status(ec);
+        if (ec) {
+            return LINGLONG_ERR(fmt::format("failed to get entry status: {}", iter->path()), ec);
+        }
+
+        if (status.type() == fs::file_type::directory) {
+            auto ret = ensureOwnerPermissionsIfNeeded(iter->path(),
+                                                      status.permissions(),
+                                                      fs::perms::owner_all);
+            if (!ret) {
+                return ret;
+            }
+        }
     }
 
     return LINGLONG_OK;

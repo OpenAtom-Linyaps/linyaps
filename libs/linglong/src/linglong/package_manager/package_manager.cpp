@@ -1992,7 +1992,19 @@ utils::error::Result<void> PackageManager::removeCache(const package::Reference 
     std::error_code ec;
     std::filesystem::remove_all(appCache, ec);
     if (ec) {
-        return LINGLONG_ERR("failed to remove cache directory", ec);
+        LogD("failed to remove cache directory {}, retry after fixing permissions: {}",
+             appCache,
+             ec.message());
+
+        auto ret = utils::makeDirectoryTreeRemovable(appCache);
+        if (!ret) {
+            return LINGLONG_ERR("failed to make cache directory removable", ret);
+        }
+
+        std::filesystem::remove_all(appCache, ec);
+        if (ec) {
+            return LINGLONG_ERR("failed to remove cache directory", ec);
+        }
     }
 
     return LINGLONG_OK;

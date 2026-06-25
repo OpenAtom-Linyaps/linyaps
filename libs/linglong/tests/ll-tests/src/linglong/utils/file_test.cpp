@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025-2026 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2025 - 2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -12,6 +12,8 @@
 #include <fstream>
 #include <memory>
 #include <string>
+
+#include <unistd.h>
 
 namespace fs = std::filesystem;
 
@@ -275,6 +277,54 @@ TEST_F(FileTest, EnsureDirectory)
     result = linglong::utils::ensureDirectory(multiple_dir);
     ASSERT_TRUE(result.has_value());
     EXPECT_TRUE(fs::is_directory(multiple_dir));
+}
+
+TEST_F(FileTest, MakeDirectoryTreeRemovable)
+{
+    const fs::perms ownerAll =
+      fs::perms::owner_read | fs::perms::owner_write | fs::perms::owner_exec;
+
+    fs::path root = dest_dir / "removable";
+    fs::path blockedDir = root / "blocked-dir";
+    fs::path nestedFile = blockedDir / "nested.txt";
+    fs::path blockedFile = root / "blocked-file.txt";
+    fs::path writeOnlyFile = root / "write-only.txt";
+
+    fs::create_directories(blockedDir);
+    std::ofstream(nestedFile) << "nested";
+    std::ofstream(blockedFile) << "blocked";
+    std::ofstream(writeOnlyFile) << "write";
+
+    fs::permissions(root, ownerAll, fs::perm_options::replace);
+    fs::permissions(blockedDir, fs::perms::none, fs::perm_options::replace);
+    fs::permissions(blockedFile, fs::perms::none, fs::perm_options::replace);
+    fs::permissions(writeOnlyFile, fs::perms::owner_write, fs::perm_options::replace);
+
+    if (geteuid() == 0) {
+        GTEST_SKIP() << "root can remove files regardless of the owner permission bits";
+    }
+
+    auto rootPermsBefore = fs::symlink_status(root).permissions();
+
+    std::error_code removeBeforeEc;
+    fs::remove_all(root, removeBeforeEc);
+    ASSERT_TRUE(removeBeforeEc)
+      << "directory tree should not be removable before permissions are fixed";
+    ASSERT_TRUE(fs::exists(root));
+
+    auto result = linglong::utils::makeDirectoryTreeRemovable(root);
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+
+    auto rootPermsAfter = fs::symlink_status(root).permissions();
+    EXPECT_EQ(rootPermsAfter & ownerAll, rootPermsBefore & ownerAll);
+
+    auto blockedDirPerms = fs::symlink_status(blockedDir).permissions();
+    EXPECT_EQ(blockedDirPerms & ownerAll, ownerAll);
+
+    std::error_code ec;
+    fs::remove_all(root, ec);
+    EXPECT_FALSE(ec) << ec.message();
+    EXPECT_FALSE(fs::exists(root));
 }
 
 TEST_F(FileTest, RelinkFile)

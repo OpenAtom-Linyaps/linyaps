@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+ * SPDX-FileCopyrightText: 2025 - 2026 UnionTech Software Technology Co., Ltd.
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
@@ -8,10 +8,19 @@
 
 #include "linglong/utils/error/error.h"
 
+#include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace linglong::utils {
+
+namespace details {
+
+utils::error::Result<std::optional<std::string>>
+parseInstallHookCommandLine(std::string_view line, std::string_view prefix);
+
+} // namespace details
 
 class InstallHookManager final
 {

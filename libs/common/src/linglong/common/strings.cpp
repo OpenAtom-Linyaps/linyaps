@@ -42,15 +42,29 @@ bool stringEqual(std::string_view str1, std::string_view str2, bool caseSensitiv
     });
 }
 
-std::string_view trim(std::string_view str, std::string_view chars) noexcept
+std::string_view trim_left(std::string_view str, std::string_view chars) noexcept
 {
     auto first = str.find_first_not_of(chars);
     if (first == std::string_view::npos) {
         return {};
     }
 
+    return str.substr(first);
+}
+
+std::string_view trim_right(std::string_view str, std::string_view chars) noexcept
+{
     auto last = str.find_last_not_of(chars);
-    return str.substr(first, last - first + 1);
+    if (last == std::string_view::npos) {
+        return {};
+    }
+
+    return str.substr(0, last + 1);
+}
+
+std::string_view trim(std::string_view str, std::string_view chars) noexcept
+{
+    return trim_right(trim_left(str, chars), chars);
 }
 
 std::vector<std::string_view> split(std::string_view str,

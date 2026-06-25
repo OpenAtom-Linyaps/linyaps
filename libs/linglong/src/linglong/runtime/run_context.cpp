@@ -636,8 +636,12 @@ utils::error::Result<void> RunContext::resolveOverlayMode(std::optional<std::str
         mode = *parsedMode;
     }
 
-    auto driver = OverlayFSDriver::create(mode);
-    contextCfg.overlayfs = std::string(OverlayFSDriver::modeToString(driver->mode()));
+    auto resolvedMode = OverlayFSDriver::resolveOverlayMode(mode);
+    if (!resolvedMode) {
+        return LINGLONG_ERR("resolve overlayfs mode", resolvedMode);
+    }
+
+    contextCfg.overlayfs = std::string(OverlayFSDriver::modeToString(*resolvedMode));
 
     return LINGLONG_OK;
 }

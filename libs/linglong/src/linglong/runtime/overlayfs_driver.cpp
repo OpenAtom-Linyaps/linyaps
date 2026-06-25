@@ -6,12 +6,101 @@
 
 #include "linglong/runtime/overlayfs_driver.h"
 
+#include "linglong/utils/cmd.h"
 #include "linglong/utils/file.h"
 
+#include <array>
 #include <fstream>
-#include <regex>
+
+#include <sys/utsname.h>
 
 namespace linglong::runtime {
+namespace {
+
+auto filesystemHasOverlay() noexcept -> bool
+{
+    std::ifstream filesystems("/proc/filesystems");
+    if (!filesystems.is_open()) {
+        return false;
+    }
+
+    std::string line;
+    while (std::getline(filesystems, line)) {
+        if (line.find("overlay") != std::string::npos) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+auto modinfoHasOverlay() noexcept -> bool
+{
+    auto modinfo = utils::Cmd("modinfo");
+    if (!modinfo.exists()) {
+        return false;
+    }
+
+    return modinfo.exec({ "overlay" }).has_value();
+}
+
+auto overlayModuleExists() noexcept -> bool
+{
+    struct utsname uts{};
+    if (uname(&uts) != 0) {
+        return false;
+    }
+
+    const auto modulesRoot = std::filesystem::path("/lib/modules") / uts.release;
+    const auto overlayModuleDir = modulesRoot / "kernel" / "fs" / "overlayfs";
+    constexpr std::array<std::string_view, 4> overlayModules{
+        "overlay.ko",
+        "overlay.ko.gz",
+        "overlay.ko.xz",
+        "overlay.ko.zst",
+    };
+
+    std::error_code ec;
+    for (const auto module : overlayModules) {
+        if (std::filesystem::exists(overlayModuleDir / module, ec)) {
+            return true;
+        }
+    }
+
+    for (const auto &index : { "modules.dep", "modules.builtin" }) {
+        std::ifstream modulesIndex(modulesRoot / index);
+        if (!modulesIndex.is_open()) {
+            continue;
+        }
+
+        std::string line;
+        while (std::getline(modulesIndex, line)) {
+            if (line.find("kernel/fs/overlayfs/overlay.ko") != std::string::npos) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+auto kernelVersionSupportsUserNamespaceOverlay() noexcept -> bool
+{
+    struct utsname uts{};
+    if (uname(&uts) != 0) {
+        return false;
+    }
+
+    int major = 0;
+    int minor = 0;
+    if (std::sscanf(uts.release, "%d.%d", &major, &minor) == 2) {
+        return major > 5 || (major == 5 && minor >= 11);
+    }
+
+    return false;
+}
+
+} // namespace
 
 auto OverlayFSDriver::create(utils::OverlayMode mode) noexcept -> std::unique_ptr<OverlayFSDriver>
 {
@@ -34,31 +123,9 @@ auto OverlayFSDriver::detectKernelOverlaySupport() noexcept -> OverlaySupport
 {
     OverlaySupport support{ false, false, false };
 
-    std::ifstream filesystems("/proc/filesystems");
-    if (filesystems.is_open()) {
-        std::string line;
-        while (std::getline(filesystems, line)) {
-            if (line.find("overlay") != std::string::npos) {
-                support.kernelAvailable = true;
-                break;
-            }
-        }
-    }
-
-    std::ifstream version("/proc/version");
-    if (version.is_open()) {
-        std::string line;
-        std::getline(version, line);
-        std::regex versionRegex("Linux version (\\d+)\\.(\\d+)");
-        std::smatch match;
-        if (std::regex_search(line, match, versionRegex) && match.size() > 2) {
-            int major = std::stoi(match[1]);
-            int minor = std::stoi(match[2]);
-            if (major > 5 || (major == 5 && minor >= 11)) {
-                support.kernelVersionOK = true;
-            }
-        }
-    }
+    support.kernelAvailable =
+      filesystemHasOverlay() || modinfoHasOverlay() || overlayModuleExists();
+    support.kernelVersionOK = kernelVersionSupportsUserNamespaceOverlay();
 
     support.canUseInUserNS = support.kernelAvailable && support.kernelVersionOK;
     return support;
@@ -67,6 +134,40 @@ auto OverlayFSDriver::detectKernelOverlaySupport() noexcept -> OverlaySupport
 auto OverlayFSDriver::canUseKernelOverlay() noexcept -> bool
 {
     return detectKernelOverlaySupport().canUseInUserNS;
+}
+
+auto OverlayFSDriver::canUseFUSEOverlay() noexcept -> bool
+{
+    return utils::Cmd("fuse-overlayfs").exists();
+}
+
+auto OverlayFSDriver::resolveOverlayMode(utils::OverlayMode mode) noexcept
+  -> utils::error::Result<utils::OverlayMode>
+{
+    LINGLONG_TRACE("resolve overlayfs mode");
+
+    switch (mode) {
+    case utils::OverlayMode::Kernel:
+        if (canUseKernelOverlay()) {
+            return utils::OverlayMode::Kernel;
+        }
+        return LINGLONG_ERR("kernel overlayfs is unavailable");
+    case utils::OverlayMode::FUSE:
+        if (canUseFUSEOverlay()) {
+            return utils::OverlayMode::FUSE;
+        }
+        return LINGLONG_ERR("fuse-overlayfs command is unavailable");
+    case utils::OverlayMode::Auto:
+        if (canUseKernelOverlay()) {
+            return utils::OverlayMode::Kernel;
+        }
+        if (canUseFUSEOverlay()) {
+            return utils::OverlayMode::FUSE;
+        }
+        return LINGLONG_ERR("no available overlayfs implementation");
+    }
+
+    return LINGLONG_ERR("unknown overlayfs mode");
 }
 
 auto OverlayFSDriver::modeToString(utils::OverlayMode mode) noexcept -> std::string_view

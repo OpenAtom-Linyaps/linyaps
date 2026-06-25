@@ -37,6 +37,9 @@ public:
     static auto create(utils::OverlayMode mode) noexcept -> std::unique_ptr<OverlayFSDriver>;
     static auto detectKernelOverlaySupport() noexcept -> OverlaySupport;
     static auto canUseKernelOverlay() noexcept -> bool;
+    static auto canUseFUSEOverlay() noexcept -> bool;
+    static auto resolveOverlayMode(utils::OverlayMode mode) noexcept
+      -> utils::error::Result<utils::OverlayMode>;
     static auto modeToString(utils::OverlayMode mode) noexcept -> std::string_view;
     static auto modeFromString(std::string_view mode) noexcept
       -> utils::error::Result<utils::OverlayMode>;

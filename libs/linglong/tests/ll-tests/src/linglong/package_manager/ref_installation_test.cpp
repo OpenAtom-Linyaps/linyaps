@@ -83,6 +83,11 @@ public:
                  const std::optional<std::string> &subRef),
                 (override, const, noexcept));
 
+    MOCK_METHOD(std::vector<std::string>,
+                getModuleList,
+                (const package::Reference &ref),
+                (override, const, noexcept));
+
     MOCK_METHOD(utils::error::Result<repo::RemotePackages>,
                 matchRemoteByPriority,
                 (const package::FuzzyReference &fuzzyRef,
@@ -370,6 +375,7 @@ TEST_F(RefInstallationTest, InstallDowngrade)
 
     auto localRef = package::Reference::parse("main:id/2.0.0/x86_64").value();
     EXPECT_CALL(*repo, latestLocalReference(_)).WillOnce(Return(localRef));
+    EXPECT_CALL(*repo, getModuleList(localRef)).WillOnce(Return(std::vector<std::string>{}));
 
     api::types::v1::PackageInfoV2 info{
         .arch = { "x86_64" },
@@ -427,6 +433,178 @@ TEST_F(RefInstallationTest, InstallDowngrade)
     ASSERT_TRUE(action->prepare());
     auto res = action->doAction(task);
     ASSERT_TRUE(res);
+}
+
+TEST_F(RefInstallationTest, InstallDowngradeKeepsInstalledModules)
+{
+    LINGLONG_TRACE("InstallDowngradeKeepsInstalledModules");
+
+    auto fuzzy = package::FuzzyReference::parse("main:id/1.0.0/x86_64").value();
+    std::vector<std::string> modules{ "binary" };
+    api::types::v1::CommonOptions opts{ .force = true, .skipInteraction = true };
+    auto action =
+      service::RefInstallationAction::create(fuzzy, modules, *pm, *repo, opts, std::nullopt);
+
+    auto localRef = package::Reference::parse("main:id/2.0.0/x86_64").value();
+    EXPECT_CALL(*repo, latestLocalReference(_)).WillOnce(Return(localRef));
+    EXPECT_CALL(*repo, getModuleList(localRef))
+      .WillOnce(Return(std::vector<std::string>{ "binary", "develop" }));
+
+    api::types::v1::PackageInfoV2 infoBinary{
+        .arch = { "x86_64" },
+        .base = "base",
+        .channel = "main",
+        .id = "id",
+        .kind = "app",
+        .packageInfoV2Module = "binary",
+        .runtime = "runtime",
+        .version = "1.0.0",
+    };
+
+    api::types::v1::PackageInfoV2 infoDevelop{
+        .arch = { "x86_64" },
+        .base = "base",
+        .channel = "main",
+        .id = "id",
+        .kind = "app",
+        .packageInfoV2Module = "develop",
+        .runtime = "runtime",
+        .version = "1.0.0",
+    };
+
+    repo::RemotePackages remote;
+    remote.addPackages(api::types::v1::Repo{ .name = "repo" },
+                       std::vector<api::types::v1::PackageInfoV2>{ infoBinary, infoDevelop });
+
+    EXPECT_CALL(*repo, matchRemoteByPriority(_, _)).WillOnce(Return(std::move(remote)));
+
+    EXPECT_CALL(*repo, listLocalBy(_))
+      .WillOnce(Return(std::vector<api::types::v1::RepositoryCacheLayersItem>{
+        api::types::v1::RepositoryCacheLayersItem{
+          .info = {
+            .arch = { "x86_64" },
+            .base = "base",
+            .channel = "main",
+            .id = "id",
+            .kind = "app",
+            .packageInfoV2Module = "binary",
+            .runtime = "runtime",
+            .version = "2.0.0",
+          },
+        },
+        api::types::v1::RepositoryCacheLayersItem{
+          .info = {
+            .arch = { "x86_64" },
+            .base = "base",
+            .channel = "main",
+            .id = "id",
+            .kind = "app",
+            .packageInfoV2Module = "develop",
+            .runtime = "runtime",
+            .version = "2.0.0",
+          },
+        } }));
+
+    EXPECT_CALL(*repo, fetchRefMetaData(_, "binary", true))
+      .WillOnce(Return(repo::RefMetaData{ "rev123", nlohmann::json(infoBinary).dump() }));
+
+    EXPECT_CALL(*repo, fetchRefMetaData(_, "develop", false))
+      .WillOnce(Return(repo::RefMetaData{ "rev124", nlohmann::json(infoDevelop).dump() }));
+
+    EXPECT_CALL(*repo, getRefStatistics(_)).WillRepeatedly([](const repo::RefMetaData &) {
+        return utils::error::Result<repo::RefStatistics>{
+            repo::RefStatistics{ .archived = 1000, .needed_archived = 500 }
+        };
+    });
+
+    EXPECT_CALL(*pm, installRefModule(_, _, "binary"))
+      .WillOnce(Return(utils::error::Result<void>{}));
+    EXPECT_CALL(*pm, installRefModule(_, _, "develop"))
+      .WillOnce(Return(utils::error::Result<void>{}));
+
+    EXPECT_CALL(*pm, needToInstall("base", _)).WillOnce(Return(std::nullopt));
+    EXPECT_CALL(*pm, needToInstall("runtime", _)).WillOnce(Return(std::nullopt));
+
+    EXPECT_CALL(*pm, switchAppVersion(_, _, true)).WillOnce(Return(utils::error::Result<void>{}));
+    EXPECT_CALL(*repo, mergeModules()).WillOnce([]() {
+        return utils::error::Result<void>{};
+    });
+
+    service::PackageTask task({});
+    ASSERT_TRUE(action->prepare());
+    ASSERT_TRUE(action->doAction(task));
+}
+
+TEST_F(RefInstallationTest, InstallDowngradeDeduplicatesRuntimeFallback)
+{
+    LINGLONG_TRACE("InstallDowngradeDeduplicatesRuntimeFallback");
+
+    auto fuzzy = package::FuzzyReference::parse("main:id/1.0.0/x86_64").value();
+    std::vector<std::string> modules{ "binary" };
+    api::types::v1::CommonOptions opts{ .force = true, .skipInteraction = true };
+    auto action =
+      service::RefInstallationAction::create(fuzzy, modules, *pm, *repo, opts, std::nullopt);
+
+    auto localRef = package::Reference::parse("main:id/2.0.0/x86_64").value();
+    EXPECT_CALL(*repo, latestLocalReference(_)).WillOnce(Return(localRef));
+    EXPECT_CALL(*repo, getModuleList(localRef))
+      .WillOnce(Return(std::vector<std::string>{ "runtime" }));
+
+    api::types::v1::PackageInfoV2 infoRuntime{
+        .arch = { "x86_64" },
+        .base = "base",
+        .channel = "main",
+        .id = "id",
+        .kind = "app",
+        .packageInfoV2Module = "runtime",
+        .runtime = "runtime",
+        .version = "1.0.0",
+    };
+
+    repo::RemotePackages remote;
+    remote.addPackages(api::types::v1::Repo{ .name = "repo" },
+                       std::vector<api::types::v1::PackageInfoV2>{ infoRuntime });
+
+    EXPECT_CALL(*repo, matchRemoteByPriority(_, _)).WillOnce(Return(std::move(remote)));
+
+    EXPECT_CALL(*repo, listLocalBy(_))
+      .WillOnce(Return(std::vector<api::types::v1::RepositoryCacheLayersItem>{
+        api::types::v1::RepositoryCacheLayersItem{
+          .info = {
+            .arch = { "x86_64" },
+            .base = "base",
+            .channel = "main",
+            .id = "id",
+            .kind = "app",
+            .packageInfoV2Module = "runtime",
+            .runtime = "runtime",
+            .version = "2.0.0",
+          },
+        } }));
+
+    EXPECT_CALL(*repo, fetchRefMetaData(_, "runtime", true))
+      .WillOnce(Return(repo::RefMetaData{ "rev123", nlohmann::json(infoRuntime).dump() }));
+
+    EXPECT_CALL(*repo, getRefStatistics(_)).WillOnce([](const repo::RefMetaData &) {
+        return utils::error::Result<repo::RefStatistics>{
+            repo::RefStatistics{ .archived = 1000, .needed_archived = 500 }
+        };
+    });
+
+    EXPECT_CALL(*pm, installRefModule(_, _, "runtime"))
+      .WillOnce(Return(utils::error::Result<void>{}));
+
+    EXPECT_CALL(*pm, needToInstall("base", _)).WillOnce(Return(std::nullopt));
+    EXPECT_CALL(*pm, needToInstall("runtime", _)).WillOnce(Return(std::nullopt));
+
+    EXPECT_CALL(*pm, switchAppVersion(_, _, true)).WillOnce(Return(utils::error::Result<void>{}));
+    EXPECT_CALL(*repo, mergeModules()).WillOnce([]() {
+        return utils::error::Result<void>{};
+    });
+
+    service::PackageTask task({});
+    ASSERT_TRUE(action->prepare());
+    ASSERT_TRUE(action->doAction(task));
 }
 
 } // namespace

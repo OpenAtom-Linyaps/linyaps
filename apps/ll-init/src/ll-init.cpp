@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2025-2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -243,7 +243,6 @@ std::vector<const char *> parse_args(int argc, char *argv[]) noexcept
     while (idx < argc) {
         args.emplace_back(argv[idx++]);
     }
-    args.emplace_back(nullptr);
 
     return args;
 }
@@ -259,8 +258,15 @@ void print_child_status(int status, const std::string &pid) noexcept
     }
 }
 
-pid_t run(std::vector<const char *> args, const sigConf &conf) noexcept
+pid_t run(const std::vector<const char *> &args, const sigConf &conf) noexcept
 {
+    if (args.empty()) {
+        return -1;
+    }
+
+    std::vector<const char *> c_args = args;
+    c_args.push_back(nullptr);
+
     auto pid = ::fork();
     if (pid == -1) {
         print_sys_error("Failed to fork");
@@ -284,7 +290,7 @@ pid_t run(std::vector<const char *> args, const sigConf &conf) noexcept
             return -1;
         }
 
-        ::execvp(args[0], const_cast<char *const *>(args.data()));
+        ::execvp(c_args[0], const_cast<char *const *>(c_args.data()));
         print_sys_error("Failed to run process");
         ::_exit(EXIT_FAILURE);
     }

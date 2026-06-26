@@ -10,12 +10,12 @@
 
 using namespace linglong::package;
 
-TEST(Packge, Version)
+TEST(Package, Version)
 {
     // 1.0.0.0 > 1.0.0+security.1 > 1.0.0 > 1.0.0-alpha
     EXPECT_GT(Version::parse("1.0.0.0").value(), Version::parse("1.0.0+security.1").value());
     EXPECT_GT(Version::parse("1.0.0.0").value(), Version::parse("1.0.0").value());
-    EXPECT_GT(Version::parse("1.0.0.0").value(), Version::parse("1.0.0-aplha").value());
+    EXPECT_GT(Version::parse("1.0.0.0").value(), Version::parse("1.0.0-alpha").value());
     EXPECT_GT(Version::parse("1.0.0+security.1").value(), Version::parse("1.0.0").value());
     EXPECT_GT(Version::parse("1.0.0+security.1").value(), Version::parse("1.0.0-alpha").value());
     // 1.0.0-alpha < 1.0.0-beta < 1.0.0 = 1.0.0+zbuild < 1.0.0+security.1 < 1.0.0+security.2

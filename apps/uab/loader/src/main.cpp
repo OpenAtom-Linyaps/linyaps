@@ -627,6 +627,6 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv) // NOLINT
         return WTERMSIG(wstatus) + 128;
     }
 
-    std::cerr << "unknow exit status" << std::endl;
+    std::cerr << "unknown exit status" << std::endl;
     return -1;
 }

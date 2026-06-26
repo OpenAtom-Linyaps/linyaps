@@ -272,7 +272,7 @@ TEST_F(FileTest, EnsureDirectory)
     EXPECT_TRUE(result.has_value());
     EXPECT_TRUE(fs::is_directory(file_path));
 
-    // Test with mutiple layer directory
+    // Test with multiple layer directory
     fs::path multiple_dir = dest_dir / "multiple_dir" / "sub_dir";
     result = linglong::utils::ensureDirectory(multiple_dir);
     ASSERT_TRUE(result.has_value());

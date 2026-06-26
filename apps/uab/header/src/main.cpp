@@ -473,7 +473,7 @@ int runAppLoader(const std::vector<std::string_view> &loaderArgs) noexcept
             return -1;
         }
 
-        std::cout << "This UAB is not support for runnning" << std::endl;
+        std::cout << "This UAB is not support for running" << std::endl;
         return 0;
     }
 
@@ -525,7 +525,7 @@ int runAppLoader(const std::vector<std::string_view> &loaderArgs) noexcept
     }
 
     if (WIFSIGNALED(status)) {
-        // maybe we runnning under a shell
+        // maybe we running under a shell
         return 128 + WTERMSIG(status);
     }
 
@@ -696,7 +696,7 @@ int main(int argc, char **argv)
     const bool onlyApp = metaInfo.onlyApp.value_or(false);
 
     if (!onlyApp) {
-        std::cout << "This UAB is not support for runnning" << std::endl;
+        std::cout << "This UAB is not support for running" << std::endl;
         return 0;
     }
 

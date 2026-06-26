@@ -40,7 +40,7 @@ std::string Architecture::toString() const noexcept
         return "mips64";
     case RISCV64:
         return "riscv64";
-    case UNKNOW:
+    case UNKNOWN:
         [[fallthrough]];
     default:
         return "unknown";
@@ -50,7 +50,7 @@ std::string Architecture::toString() const noexcept
 std::string Architecture::getTriplet() const noexcept
 {
     switch (this->v) {
-    case UNKNOW:
+    case UNKNOWN:
         return "unknown";
     case X86_64:
         return "x86_64-linux-gnu";
@@ -109,7 +109,7 @@ Architecture::Architecture(const std::string &raw)
             return RISCV64;
         }
 
-        throw std::runtime_error("unknow architecture");
+        throw std::runtime_error("unknown architecture");
     }())
 {
 }

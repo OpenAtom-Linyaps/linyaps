@@ -680,7 +680,7 @@ int Cli::run(const RunOptions &options)
     commands = filePathMapping(commands, options);
 
     // this lambda will dump reference of containerID, app, base and runtime to
-    // /run/linglong/getuid()/getpid() to store these needed infomation
+    // /run/linglong/getuid()/getpid() to store these needed information
     auto dumpContainerInfo = [&pidFile, &runContext, this]() -> bool {
         LINGLONG_TRACE("dump info")
         std::error_code ec;
@@ -1782,7 +1782,7 @@ int Cli::content(const ContentOptions &options)
         LogE("failed to check symlink {}: {}", file.c_str(), ec.message());
     }
 
-    // Dont't mapping the file under /home
+    // Don't mapping the file under /home
     if (auto tmp = target.string(); tmp.rfind("/home/", 0) == 0) {
         return target;
     }
@@ -1812,7 +1812,7 @@ int Cli::content(const ContentOptions &options)
 std::vector<std::string> Cli::filePathMapping(const std::vector<std::string> &command,
                                               const RunOptions &options) const noexcept
 {
-    // FIXME: couldn't handel command like 'll-cli run org.xxx.yyy --file f1 f2 f3 org.xxx.yyy %%F'
+    // FIXME: couldn't handle command like 'll-cli run org.xxx.yyy --file f1 f2 f3 org.xxx.yyy %%F'
     // can't distinguish the boundary of command , need validate the command arguments in the future
 
     std::vector<std::string> execArgs;
@@ -1858,7 +1858,7 @@ std::vector<std::string> Cli::filePathMapping(const std::vector<std::string> &co
             continue;
         }
 
-        LogW("unkown command argument {}", arg);
+        LogW("unknown command argument {}", arg);
     }
 
     return execArgs;

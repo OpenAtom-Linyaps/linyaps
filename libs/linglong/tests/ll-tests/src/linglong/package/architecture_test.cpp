@@ -37,7 +37,7 @@ constexpr const char *INVALID_ARCHITECTURE_STRINGS[] = {
 };
 
 // 错误消息常量
-constexpr auto ERROR_UNKNOWN_ARCHITECTURE = "unknow architecture";
+constexpr auto ERROR_UNKNOWN_ARCHITECTURE = "unknown architecture";
 
 TEST(Package, ArchitectureToString)
 {
@@ -135,8 +135,8 @@ TEST(Package, ArchitectureDefaultConstruction)
 {
     // 测试默认构造
     Architecture defaultArch;
-    EXPECT_EQ(defaultArch.toString(), "unknown");   // UNKNOW
-    EXPECT_EQ(defaultArch.getTriplet(), "unknown"); // unknow
+    EXPECT_EQ(defaultArch.toString(), "unknown");   // UNKNOWN
+    EXPECT_EQ(defaultArch.getTriplet(), "unknown"); // UNKNOWN
 }
 
 TEST(Package, ArchitectureCurrentCPUArchitecture)

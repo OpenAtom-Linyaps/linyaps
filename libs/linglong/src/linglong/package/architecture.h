@@ -18,7 +18,7 @@ class Architecture
 {
 public:
     enum Value : uint8_t {
-        UNKNOW,
+        UNKNOWN,
         X86_64,
         ARM64,
         LOONGARCH64,
@@ -28,7 +28,7 @@ public:
         MIPS64,
     };
 
-    explicit Architecture(Value value = UNKNOW);
+    explicit Architecture(Value value = UNKNOWN);
     explicit Architecture(const std::string &raw);
 
     /**

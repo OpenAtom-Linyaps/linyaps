@@ -260,7 +260,7 @@ PackageManager::getAllRunningContainers() noexcept
                     return LINGLONG_ERR(fmt::format("failed to get state of {}", procDir), ec);
                 }
 
-                LogI("ignore {} because corrsponding process is not found",
+                LogI("ignore {} because corresponding process is not found",
                      process_entry.path().c_str());
                 continue;
             }

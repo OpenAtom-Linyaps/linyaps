@@ -15,7 +15,8 @@ exclude: |
     tools/openapi-c-libcurl-client/|
     .obs/|
     misc/share/linglong/builder/templates/|
-    apps/ll-builder-utils/patch/
+    apps/ll-builder-utils/patch/|
+    misc/share/polkit-1/translations/
   )
 
 ci:

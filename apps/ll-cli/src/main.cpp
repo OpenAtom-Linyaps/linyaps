@@ -23,6 +23,7 @@
 #include <CLI/CLI.hpp>
 #include <sys/file.h>
 
+#include <QDBusConnection>
 #include <QDBusMetaType>
 #include <QDBusObjectPath>
 #include <QJsonDocument>
@@ -38,6 +39,7 @@
 #include <thread>
 
 #include <fcntl.h>
+#include <signal.h>
 #include <unistd.h>
 #include <wordexp.h>
 
@@ -46,6 +48,26 @@ using namespace linglong::package;
 using namespace linglong::cli;
 
 namespace {
+
+void startProcess(const QString &program, const QStringList &args = {})
+{
+    QProcess process;
+    auto envs = process.environment();
+    envs.push_back("QT_FORCE_STDERR_LOGGING=1");
+    process.setEnvironment(envs);
+    process.setProgram(program);
+    process.setArguments(args);
+
+    qint64 pid = 0;
+    process.startDetached(&pid);
+
+    LogD("start {} {} as {}", program.toStdString(), args.join(" ").toStdString(), pid);
+
+    QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit, [pid]() {
+        LogD("kill {}", pid);
+        kill(pid, SIGTERM);
+    });
+}
 
 std::vector<std::string> transformOldExec(int argc, char **argv) noexcept
 {
@@ -692,16 +714,24 @@ You can report bugs to the linyaps team under this project: https://github.com/O
             return -1;
         }
 
-        // Start ll-package-manager --no-dbus first to initialize the repository
-        QProcess::startDetached("sudo",
-                                { "--user",
-                                  LINGLONG_USERNAME,
-                                  "--preserve-env=QT_FORCE_STDERR_LOGGING",
-                                  "--preserve-env=QDBUS_DEBUG",
-                                  LINGLONG_LIBEXEC_DIR "/ll-package-manager",
-                                  "--no-dbus" });
-        using namespace std::chrono_literals;
-        std::this_thread::sleep_for(1s);
+        const auto pkgManAddress = QString("unix:path=/tmp/linglong-package-manager.socket");
+
+        // Check if ll-package-manager is already running
+        auto pkgManConn = QDBusConnection::connectToPeer(pkgManAddress, "ll-package-manager");
+        if (!pkgManConn.isConnected()) {
+            // Only start a new process if no existing one is listening
+            startProcess("sudo",
+                         { "--user",
+                           LINGLONG_USERNAME,
+                           "--preserve-env=QT_FORCE_STDERR_LOGGING",
+                           "--preserve-env=QDBUS_DEBUG",
+                           LINGLONG_LIBEXEC_DIR "/ll-package-manager",
+                           "--no-dbus" });
+            using namespace std::chrono_literals;
+            std::this_thread::sleep_for(1s);
+        } else {
+            LogD("ll-package-manager is already running, reuse existing process");
+        }
     }
     auto repo = linglong::repo::OSTreeRepo::loadFromPath(LINGLONG_ROOT);
     if (!repo.has_value()) {

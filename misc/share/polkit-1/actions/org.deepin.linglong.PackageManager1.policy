@@ -13,8 +13,18 @@
 			<allow_active>auth_admin_keep</allow_active>
 		</defaults>
 		<annotate key="org.freedesktop.policykit.owner">unix-user:@LINGLONG_USERNAME@</annotate>
+		<description xml:lang="ca">Instal·lació de paquets</description>
+		<message xml:lang="ca">Cal autenticació per instal·lar paquets.</message>
 		<description xml:lang="en_US">Install packages</description>
 		<message xml:lang="en_US">Authentication is required to install packages</message>
+		<description xml:lang="es">Instalar paquetes</description>
+		<message xml:lang="es">Se requiere autenticación para instalar paquetes.</message>
+		<description xml:lang="fi">Asenna paketit</description>
+		<message xml:lang="fi">Pakettien asentaminen edellyttää todennusta</message>
+		<description xml:lang="it">Installa pacchetti</description>
+		<message xml:lang="it">È richiesta l'autenticazione per installare i pacchetti</message>
+		<description xml:lang="pl">Zainstaluj pakiety</description>
+		<message xml:lang="pl">Wymagane jest uwierzytelnienie, aby instalować pakiety</message>
 		<description xml:lang="pt_BR">Instalar pacotes</description>
 		<message xml:lang="pt_BR">É necessário autenticar-se para instalar pacotes</message>
 		<description xml:lang="zh_CN">安装软件包</description>
@@ -33,8 +43,18 @@
 			<allow_active>auth_admin_keep</allow_active>
 		</defaults>
 		<annotate key="org.freedesktop.policykit.owner">unix-user:@LINGLONG_USERNAME@</annotate>
+		<description xml:lang="ca">Actualització de paquets</description>
+		<message xml:lang="ca">Cal autenticació per actualitzar els paquets.</message>
 		<description xml:lang="en_US">Update packages</description>
 		<message xml:lang="en_US">Authentication is required to update packages</message>
+		<description xml:lang="es">Actualizar paquetes</description>
+		<message xml:lang="es">Se requiere autenticación para actualizar los paquetes.</message>
+		<description xml:lang="fi">Päivitä paketit</description>
+		<message xml:lang="fi">Pakettien päivittäminen edellyttää todennusta</message>
+		<description xml:lang="it">Aggiorna pacchetti</description>
+		<message xml:lang="it">È richiesta l'autenticazione per aggiornare i pacchetti</message>
+		<description xml:lang="pl">Zaktualizuj pakiety</description>
+		<message xml:lang="pl">Wymagane jest uwierzytelnienie, aby aktualizować pakiety</message>
 		<description xml:lang="pt_BR">Atualizar pacotes</description>
 		<message xml:lang="pt_BR">É necessário autenticar-se para atualizar pacotes</message>
 		<description xml:lang="zh_CN">更新软件包</description>
@@ -53,8 +73,18 @@
 			<allow_active>auth_admin_keep</allow_active>
 		</defaults>
 		<annotate key="org.freedesktop.policykit.owner">unix-user:@LINGLONG_USERNAME@</annotate>
+		<description xml:lang="ca">Desinstal·lació de paquets</description>
+		<message xml:lang="ca">Cal autenticació per desinstal·lar paquets.</message>
 		<description xml:lang="en_US">Uninstall packages</description>
 		<message xml:lang="en_US">Authentication is required to uninstall packages</message>
+		<description xml:lang="es">Desinstalar paquetes</description>
+		<message xml:lang="es">Se requiere autenticación para desinstalar paquetes.</message>
+		<description xml:lang="fi">Poista pakettien asennus</description>
+		<message xml:lang="fi">Pakettien asennuksen poistaminen edellyttää todennusta</message>
+		<description xml:lang="it">Disinstalla pacchetti</description>
+		<message xml:lang="it">È richiesta l'autenticazione per disinstallare i pacchetti</message>
+		<description xml:lang="pl">Odinstaluj pakiety</description>
+		<message xml:lang="pl">Wymagane jest uwierzytelnienie, aby odinstalować pakiety</message>
 		<description xml:lang="pt_BR">Desinstalar pacotes</description>
 		<message xml:lang="pt_BR">É necessário autenticar-se para desinstalar pacotes</message>
 		<description xml:lang="zh_CN">卸载软件包</description>
@@ -73,8 +103,18 @@
 			<allow_active>auth_admin_keep</allow_active>
 		</defaults>
 		<annotate key="org.freedesktop.policykit.owner">unix-user:@LINGLONG_USERNAME@</annotate>
+		<description xml:lang="ca">Instal·lació de paquets des de fitxers locals</description>
+		<message xml:lang="ca">Cal autenticació per instal·lar paquets des de fitxers locals.</message>
 		<description xml:lang="en_US">Install packages from local files</description>
 		<message xml:lang="en_US">Authentication is required to install packages from local files</message>
+		<description xml:lang="es">Instalar paquetes desde archivos locales</description>
+		<message xml:lang="es">Se requiere autenticación para instalar paquetes desde archivos locales.</message>
+		<description xml:lang="fi">Asenna paketit tiedostosta</description>
+		<message xml:lang="fi">Pakettien asentaminen tiedostosta edellyttää todennuksen</message>
+		<description xml:lang="it">Installa pacchetti da file locali</description>
+		<message xml:lang="it">È richiesta l'autenticazione per installare pacchetti da file locali</message>
+		<description xml:lang="pl">Zainstaluj pakiety z plików lokalnych</description>
+		<message xml:lang="pl">Wymagane jest uwierzytelnienie, aby instalować pakiety z plików lokalnych</message>
 		<description xml:lang="pt_BR">Instalar pacotes a partir de arquivos locais</description>
 		<message xml:lang="pt_BR">É necessário autenticar-se para instalar pacotes a partir de arquivos locais</message>
 		<description xml:lang="zh_CN">从本地文件安装软件包</description>
@@ -93,8 +133,18 @@
 			<allow_active>auth_admin</allow_active>
 		</defaults>
 		<annotate key="org.freedesktop.policykit.owner">unix-user:@LINGLONG_USERNAME@</annotate>
+		<description xml:lang="ca">Supressió de la memòria cau del paquet</description>
+		<message xml:lang="ca">Cal autenticació per suprimir la memòria cau del paquet.</message>
 		<description xml:lang="en_US">Prune package cache</description>
 		<message xml:lang="en_US">Authentication is required to prune package cache</message>
+		<description xml:lang="es">Eliminar la caché de paquetes</description>
+		<message xml:lang="es">Se requiere autenticación para vaciar la caché de paquetes.</message>
+		<description xml:lang="fi">Leikkaa pakettien välimuistia</description>
+		<message xml:lang="fi">Pakettien välimuistin leikkaaminen edellyttää todennusta</message>
+		<description xml:lang="it">Pulisci la cache dei pacchetti</description>
+		<message xml:lang="it">È richiesta l'autenticazione per pulire la cache dei pacchetti</message>
+		<description xml:lang="pl">Wyczyść pamięć podręczną pakietów</description>
+		<message xml:lang="pl">Wymagane jest uwierzytelnienie, aby wyczyścić pamięć podręczną pakietów</message>
 		<description xml:lang="pt_BR">Limpar cache de pacotes</description>
 		<message xml:lang="pt_BR">É necessário autenticar-se para limpar o cache de pacotes</message>
 		<description xml:lang="zh_CN">清理软件包缓存</description>
@@ -113,8 +163,18 @@
 			<allow_active>auth_admin</allow_active>
 		</defaults>
 		<annotate key="org.freedesktop.policykit.owner">unix-user:@LINGLONG_USERNAME@</annotate>
+		<description xml:lang="ca">Modificació de la configuració del gestor de paquets</description>
+		<message xml:lang="ca">Cal autenticació per modificar la configuració del gestor de paquets.</message>
 		<description xml:lang="en_US">Modify package manager configuration</description>
 		<message xml:lang="en_US">Authentication is required to modify package manager configuration</message>
+		<description xml:lang="es">Modificar la configuración del gestor de paquetes</description>
+		<message xml:lang="es">Se requiere autenticación para modificar la configuración del gestor de paquetes.</message>
+		<description xml:lang="fi">Muuta pakettienhallinnan asetuksia</description>
+		<message xml:lang="fi">Pakettien kokoonpanon hallinta edellyttää todennusta</message>
+		<description xml:lang="it">Modifica la configurazione del gestore pacchetti</description>
+		<message xml:lang="it">È richiesta l'autenticazione per modificare la configurazione del gestore pacchetti</message>
+		<description xml:lang="pl">Zmień konfigurację menedżera pakietów</description>
+		<message xml:lang="pl">Wymagane jest uwierzytelnienie, aby zmienić konfigurację menedżera pakietów</message>
 		<description xml:lang="pt_BR">Alterar configuração do gerenciador de pacotes</description>
 		<message xml:lang="pt_BR">É necessário autenticar-se para modificar a configuração do gerenciador de pacotes</message>
 		<description xml:lang="zh_CN">修改软件包管理器配置</description>

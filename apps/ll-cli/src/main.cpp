@@ -714,24 +714,15 @@ You can report bugs to the linyaps team under this project: https://github.com/O
             return -1;
         }
 
-        const auto pkgManAddress = QString("unix:path=/tmp/linglong-package-manager.socket");
-
-        // Check if ll-package-manager is already running
-        auto pkgManConn = QDBusConnection::connectToPeer(pkgManAddress, "ll-package-manager");
-        if (!pkgManConn.isConnected()) {
-            // Only start a new process if no existing one is listening
-            startProcess("sudo",
-                         { "--user",
-                           LINGLONG_USERNAME,
-                           "--preserve-env=QT_FORCE_STDERR_LOGGING",
-                           "--preserve-env=QDBUS_DEBUG",
-                           LINGLONG_LIBEXEC_DIR "/ll-package-manager",
-                           "--no-dbus" });
-            using namespace std::chrono_literals;
-            std::this_thread::sleep_for(1s);
-        } else {
-            LogD("ll-package-manager is already running, reuse existing process");
-        }
+        startProcess("sudo",
+                     { "--user",
+                       LINGLONG_USERNAME,
+                       "--preserve-env=QT_FORCE_STDERR_LOGGING",
+                       "--preserve-env=QDBUS_DEBUG",
+                       LINGLONG_LIBEXEC_DIR "/ll-package-manager",
+                       "--no-dbus" });
+        using namespace std::chrono_literals;
+        std::this_thread::sleep_for(1s);
     }
     auto repo = linglong::repo::OSTreeRepo::loadFromPath(LINGLONG_ROOT);
     if (!repo.has_value()) {

@@ -30,6 +30,7 @@
 #include "linglong/common/strings.h"
 #include "linglong/package/layer_file.h"
 #include "linglong/package/reference.h"
+#include "linglong/package/version.h"
 #include "linglong/runtime/container_builder.h"
 #include "linglong/runtime/run_context.h"
 #include "linglong/utils/bash_command_helper.h"
@@ -68,12 +69,15 @@
 #include <string>
 #include <system_error>
 #include <thread>
+#include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
 #include <fcntl.h>
 #include <pwd.h>
 #include <sys/mman.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 using namespace linglong::utils::error;
@@ -281,6 +285,229 @@ bool delegateToContainerInit(const std::string &containerID,
     ret = ::recv(containerSocket, &result, sizeof(result), 0);
     LogD("delegate result: {}", result);
     return result == 0;
+}
+
+struct ModuleSize
+{
+    std::uint64_t exclusiveSize{ 0 };
+    std::uint64_t sharedSize{ 0 };
+    std::uint64_t logicalSize{ 0 };
+    std::uint64_t actualSize{ 0 };
+};
+
+struct InodeKey
+{
+    dev_t device{ 0 };
+    ino_t inode{ 0 };
+
+    bool operator==(const InodeKey &that) const noexcept
+    {
+        return this->device == that.device && this->inode == that.inode;
+    }
+};
+
+struct InodeKeyHash
+{
+    std::size_t operator()(const InodeKey &key) const noexcept
+    {
+        const auto deviceHash = std::hash<dev_t>{}(key.device);
+        const auto inodeHash = std::hash<ino_t>{}(key.inode);
+        return deviceHash ^ (inodeHash + 0x9e3779b9 + (deviceHash << 6) + (deviceHash >> 2));
+    }
+};
+
+struct InodeUsage
+{
+    std::uint64_t diskUsage{ 0 };
+    std::unordered_set<std::size_t> modules;
+};
+
+struct ModuleSizeCalculation
+{
+    std::vector<ModuleSize> moduleSizes;
+    std::uint64_t actualTotalSize{ 0 };
+};
+
+bool versionLess(const std::string &lhs, const std::string &rhs) noexcept
+{
+    auto lhsVersion = linglong::package::Version::parse(lhs);
+    auto rhsVersion = linglong::package::Version::parse(rhs);
+    if (lhsVersion && rhsVersion) {
+        if (*lhsVersion != *rhsVersion) {
+            return *lhsVersion < *rhsVersion;
+        }
+    }
+
+    return lhs < rhs;
+}
+
+bool moduleNameLess(const linglong::cli::Printer::ModuleSizeInfo &lhs,
+                    const linglong::cli::Printer::ModuleSizeInfo &rhs) noexcept
+{
+    if (lhs.id != rhs.id) {
+        return lhs.id < rhs.id;
+    }
+    if (lhs.channel != rhs.channel) {
+        return lhs.channel < rhs.channel;
+    }
+    if (lhs.module != rhs.module) {
+        return lhs.module < rhs.module;
+    }
+
+    return versionLess(lhs.version, rhs.version);
+}
+
+Result<ModuleSizeCalculation>
+calculateModuleSizes(const std::vector<std::filesystem::path> &moduleDirs) noexcept
+{
+    LINGLONG_TRACE("calculate module sizes");
+
+    ModuleSizeCalculation calculation;
+    calculation.moduleSizes.resize(moduleDirs.size());
+    std::unordered_map<InodeKey, InodeUsage, InodeKeyHash> inodeUsages;
+    std::error_code ec;
+
+    auto addEntry = [&](const std::filesystem::path &path,
+                        std::size_t moduleIndex) -> Result<void> {
+        struct stat64 st{};
+        if (::lstat64(path.c_str(), &st) == -1) {
+            const auto err = errno;
+            return LINGLONG_ERR(fmt::format("failed to stat {}: {}",
+                                            path,
+                                            linglong::common::error::errorString(err)));
+        }
+
+        const auto diskUsage = static_cast<std::uint64_t>(st.st_blocks) * 512;
+        if (st.st_nlink == 1) {
+            auto &moduleSize = calculation.moduleSizes[moduleIndex];
+            moduleSize.exclusiveSize += diskUsage;
+            moduleSize.logicalSize += diskUsage;
+            moduleSize.actualSize += diskUsage;
+            calculation.actualTotalSize += diskUsage;
+            return LINGLONG_OK;
+        }
+
+        const auto inodeKey = InodeKey{ st.st_dev, st.st_ino };
+        auto &usage = inodeUsages[inodeKey];
+        usage.diskUsage = diskUsage;
+        usage.modules.insert(moduleIndex);
+
+        return LINGLONG_OK;
+    };
+
+    for (std::size_t moduleIndex = 0; moduleIndex < moduleDirs.size(); ++moduleIndex) {
+        const auto &dir = moduleDirs[moduleIndex];
+        auto addRoot = addEntry(dir, moduleIndex);
+        if (!addRoot) {
+            return LINGLONG_ERR(addRoot);
+        }
+
+        auto iterator = std::filesystem::recursive_directory_iterator{
+            dir,
+            std::filesystem::directory_options::skip_permission_denied,
+            ec
+        };
+        if (ec) {
+            return LINGLONG_ERR(fmt::format("failed to open module directory {}", dir), ec);
+        }
+
+        const auto end = std::filesystem::recursive_directory_iterator{};
+        while (iterator != end) {
+            const auto &entry = *iterator;
+            auto addResult = addEntry(entry.path(), moduleIndex);
+            if (!addResult) {
+                return LINGLONG_ERR(addResult);
+            }
+
+            iterator.increment(ec);
+            if (ec) {
+                return LINGLONG_ERR(fmt::format("failed to iterate module directory {}", dir), ec);
+            }
+        }
+    }
+
+    for (const auto &[_, usage] : inodeUsages) {
+        const auto moduleCount = usage.modules.size();
+        if (moduleCount == 0) {
+            continue;
+        }
+
+        calculation.actualTotalSize += usage.diskUsage;
+        const auto actualSize = usage.diskUsage / moduleCount;
+        for (auto moduleIndex : usage.modules) {
+            auto &moduleSize = calculation.moduleSizes[moduleIndex];
+            moduleSize.logicalSize += usage.diskUsage;
+            if (moduleCount == 1) {
+                moduleSize.exclusiveSize += usage.diskUsage;
+                moduleSize.actualSize += usage.diskUsage;
+            } else {
+                moduleSize.sharedSize += usage.diskUsage;
+                moduleSize.actualSize += actualSize;
+            }
+        }
+    }
+
+    return calculation;
+}
+
+Result<std::uint64_t> calculateRealDiskUsage(const std::filesystem::path &dir) noexcept
+{
+    LINGLONG_TRACE("calculate real disk usage");
+
+    std::uint64_t size{ 0 };
+    std::unordered_set<InodeKey, InodeKeyHash> visitedInodes;
+
+    auto addPath = [&](const std::filesystem::path &path) -> Result<void> {
+        struct stat64 st{};
+
+        if (::lstat64(path.c_str(), &st) == -1) {
+            const auto err = errno;
+            return LINGLONG_ERR(fmt::format("failed to stat {}: {}",
+                                            path,
+                                            linglong::common::error::errorString(err)));
+        }
+
+        if (st.st_nlink > 1) {
+            const auto inodeKey = InodeKey{ st.st_dev, st.st_ino };
+            if (!visitedInodes.insert(inodeKey).second) {
+                return LINGLONG_OK;
+            }
+        }
+
+        size += static_cast<std::uint64_t>(st.st_blocks) * 512;
+        return LINGLONG_OK;
+    };
+
+    auto rootResult = addPath(dir);
+    if (!rootResult) {
+        return LINGLONG_ERR(rootResult);
+    }
+
+    std::error_code ec;
+    auto iterator = std::filesystem::recursive_directory_iterator{
+        dir,
+        std::filesystem::directory_options::skip_permission_denied,
+        ec
+    };
+    if (ec) {
+        return LINGLONG_ERR(fmt::format("failed to open repository directory {}", dir), ec);
+    }
+
+    const auto end = std::filesystem::recursive_directory_iterator{};
+    while (iterator != end) {
+        const auto &entry = *iterator;
+        auto result = addPath(entry.path());
+        if (!result) {
+            return LINGLONG_ERR(result);
+        }
+
+        iterator.increment(ec);
+        if (ec) {
+            return LINGLONG_ERR(fmt::format("failed to iterate repository directory {}", dir), ec);
+        }
+    }
+
+    return size;
 }
 
 } // namespace
@@ -1676,6 +1903,100 @@ int Cli::list(const ListOptions &options)
         return lhs.id < rhs.id;
     });
     this->printer.printPackages(list);
+    return 0;
+}
+
+int Cli::size(const SizeOptions &options)
+{
+    auto repo = this->getRepo();
+    if (!repo) {
+        this->printer.printErr(repo.error());
+        return -1;
+    }
+
+    auto items = (*repo)->listLayerItem();
+    if (!items) {
+        this->printer.printErr(items.error());
+        return -1;
+    }
+
+    std::vector<Printer::ModuleSizeInfo> moduleSizes;
+    moduleSizes.reserve(items->size());
+    std::vector<std::filesystem::path> modulePaths;
+    modulePaths.reserve(items->size());
+
+    for (const auto &item : *items) {
+        if (item.deleted.value_or(false)) {
+            continue;
+        }
+
+        auto ref = package::Reference::fromPackageInfo(item.info);
+        if (!ref) {
+            this->printer.printErr(ref.error());
+            return -1;
+        }
+
+        auto layerDir = (*repo)->getLayerDir(*ref, item.info.packageInfoV2Module);
+        if (!layerDir) {
+            this->printer.printErr(layerDir.error());
+            return -1;
+        }
+
+        moduleSizes.push_back(Printer::ModuleSizeInfo{
+          .id = item.info.id,
+          .name = item.info.name,
+          .version = item.info.version,
+          .channel = item.info.channel,
+          .module = item.info.packageInfoV2Module,
+        });
+        modulePaths.push_back(layerDir->path());
+    }
+
+    auto calculatedSizes = calculateModuleSizes(modulePaths);
+    if (!calculatedSizes) {
+        this->printer.printErr(calculatedSizes.error());
+        return -1;
+    }
+
+    for (std::size_t index = 0; index < moduleSizes.size(); ++index) {
+        moduleSizes[index].exclusiveSize = calculatedSizes->moduleSizes.at(index).exclusiveSize;
+        moduleSizes[index].sharedSize = calculatedSizes->moduleSizes.at(index).sharedSize;
+        moduleSizes[index].logicalSize = calculatedSizes->moduleSizes.at(index).logicalSize;
+        moduleSizes[index].actualSize = calculatedSizes->moduleSizes.at(index).actualSize;
+    }
+
+    std::sort(moduleSizes.begin(), moduleSizes.end(), [&options](const auto &lhs, const auto &rhs) {
+        auto compareSize = [&options, &lhs, &rhs](std::uint64_t lhsSize, std::uint64_t rhsSize) {
+            if (lhsSize == rhsSize) {
+                return moduleNameLess(lhs, rhs);
+            }
+
+            return options.ascending ? lhsSize < rhsSize : lhsSize > rhsSize;
+        };
+
+        if (options.sortBy == "id") {
+            return options.ascending ? moduleNameLess(lhs, rhs) : moduleNameLess(rhs, lhs);
+        }
+        if (options.sortBy == "logical") {
+            return compareSize(lhs.logicalSize, rhs.logicalSize);
+        }
+        if (options.sortBy == "exclusive") {
+            return compareSize(lhs.exclusiveSize, rhs.exclusiveSize);
+        }
+        if (options.sortBy == "shared") {
+            return compareSize(lhs.sharedSize, rhs.sharedSize);
+        }
+
+        return compareSize(lhs.actualSize, rhs.actualSize);
+    });
+
+    auto repoSize = calculateRealDiskUsage((*repo)->getRepoDir());
+    if (!repoSize) {
+        this->printer.printErr(repoSize.error());
+        return -1;
+    }
+
+    this->printer.printModuleSizes(moduleSizes, calculatedSizes->actualTotalSize, *repoSize);
     return 0;
 }
 

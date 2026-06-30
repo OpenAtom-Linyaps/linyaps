@@ -117,6 +117,12 @@ struct ListOptions
     bool showUpgradeList{ false };
 };
 
+struct SizeOptions
+{
+    std::string sortBy{ "actual" };
+    bool ascending{ false };
+};
+
 struct InfoOptions
 {
     std::string appid;
@@ -181,6 +187,7 @@ public:
     int search(const SearchOptions &options);
     int uninstall(const UninstallOptions &options);
     int list(const ListOptions &options);
+    int size(const SizeOptions &options);
     int repo(CLI::App *subcommand, const common::cli::RepoOptions &options);
     int info(const InfoOptions &options);
     int content(const ContentOptions &options);

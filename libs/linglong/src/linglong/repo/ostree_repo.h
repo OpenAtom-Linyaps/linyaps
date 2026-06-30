@@ -208,6 +208,8 @@ public:
         return linglong::repo::getDefaultRepo(cfg);
     }
 
+    [[nodiscard]] const std::filesystem::path &getRepoDir() const noexcept { return repoDir; }
+
     virtual utils::error::Result<std::vector<api::types::v1::PackageInfoV2>>
     listLocalApps() const noexcept;
     utils::error::Result<std::vector<std::pair<package::Reference, package::ReferenceWithRepo>>>

@@ -168,7 +168,6 @@ public:
         ocppi::cli::CLI &ociCLI,
         runtime::ContainerBuilder &containerBuilder,
         bool peerMode,
-        repo::OSTreeRepo &repo,
         std::unique_ptr<InteractiveNotifier> &&notifier,
         QObject *parent = nullptr);
 
@@ -191,6 +190,17 @@ public:
     void cancelCurrentTask();
 
     void setGlobalOptions(const GlobalOptions &options) noexcept { this->globalOptions = options; }
+
+protected:
+    virtual utils::error::Result<repo::OSTreeRepo *> getRepo() noexcept;
+    virtual utils::error::Result<std::unique_ptr<repo::OSTreeRepo>>
+    loadRepoFromPath(const std::filesystem::path &repoRoot) noexcept;
+    virtual utils::error::Result<void> initializeRepo() noexcept;
+    virtual utils::error::Result<api::dbus::v1::PackageManager *> getPkgMan();
+    virtual utils::error::Result<std::unique_ptr<api::dbus::v1::PackageManager>>
+    initializePeerModePackageManager();
+    virtual utils::error::Result<std::unique_ptr<api::dbus::v1::PackageManager>>
+    initializeDBusPackageManager();
 
 private:
     [[nodiscard]] static utils::error::Result<void>
@@ -220,8 +230,6 @@ private:
     int getLayerDir(const InspectOptions &options);
     int getBundleDir(const InspectOptions &options);
     void detectDrivers();
-    utils::error::Result<api::dbus::v1::PackageManager *> getPkgMan();
-    utils::error::Result<void> initPkgManSignals();
     utils::error::Result<void> syncTaskProperties();
     int runResolvedContext(runtime::RunContext &runContext,
                            const RunOptions &options,
@@ -277,11 +285,10 @@ private:
     Printer &printer;
     ocppi::cli::CLI &ociCLI;
     runtime::ContainerBuilder &containerBuilder;
-    repo::OSTreeRepo &repository;
+    std::unique_ptr<repo::OSTreeRepo> repository;
     std::unique_ptr<InteractiveNotifier> notifier;
     bool peerMode{ false };
     std::unique_ptr<api::dbus::v1::PackageManager> pkgMan;
-    bool pkgManSignalsInitialized{ false };
     QString taskObjectPath;
     api::dbus::v1::Task1 *task{ nullptr };
     PMTaskState taskState;

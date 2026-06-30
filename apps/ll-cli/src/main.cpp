@@ -12,8 +12,6 @@
 #include "linglong/cli/terminal_notifier.h"
 #include "linglong/common/error.h"
 #include "linglong/common/global/initialize.h"
-#include "linglong/repo/config.h"
-#include "linglong/repo/ostree_repo.h"
 #include "linglong/runtime/container_builder.h"
 #include "linglong/utils/finally/finally.h"
 #include "linglong/utils/gettext.h"
@@ -48,26 +46,6 @@ using namespace linglong::package;
 using namespace linglong::cli;
 
 namespace {
-
-void startProcess(const QString &program, const QStringList &args = {})
-{
-    QProcess process;
-    auto envs = process.environment();
-    envs.push_back("QT_FORCE_STDERR_LOGGING=1");
-    process.setEnvironment(envs);
-    process.setProgram(program);
-    process.setArguments(args);
-
-    qint64 pid = 0;
-    process.startDetached(&pid);
-
-    LogD("start {} {} as {}", program.toStdString(), args.join(" ").toStdString(), pid);
-
-    QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit, [pid]() {
-        LogD("kill {}", pid);
-        kill(pid, SIGTERM);
-    });
-}
 
 std::vector<std::string> transformOldExec(int argc, char **argv) noexcept
 {
@@ -708,33 +686,11 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     }
 
     const bool peerMode = noDBusFlag->count() > 0;
-    if (peerMode) {
-        if (getuid() != 0) {
-            LogE("--no-dbus should only be used by root user.");
-            return -1;
-        }
-
-        startProcess("sudo",
-                     { "--user",
-                       LINGLONG_USERNAME,
-                       "--preserve-env=QT_FORCE_STDERR_LOGGING",
-                       "--preserve-env=QDBUS_DEBUG",
-                       LINGLONG_LIBEXEC_DIR "/ll-package-manager",
-                       "--no-dbus" });
-        using namespace std::chrono_literals;
-        std::this_thread::sleep_for(1s);
-    }
-    auto repo = linglong::repo::OSTreeRepo::loadFromPath(LINGLONG_ROOT);
-    if (!repo.has_value()) {
-        LogE("failed to load repo: {}", repo.error());
-        return -1;
-    }
     // create cli
     auto *cli = new linglong::cli::Cli(*printer,
                                        **ociRuntime,
                                        *containerBuilder,
                                        peerMode,
-                                       **repo,
                                        std::move(notifier),
                                        QCoreApplication::instance());
     cli->setGlobalOptions(std::move(globalOptions));

@@ -20,6 +20,8 @@
 using namespace linglong;
 using ::testing::_;
 using ::testing::ElementsAre;
+using ::testing::InSequence;
+using ::testing::Invoke;
 using ::testing::IsEmpty;
 using ::testing::Return;
 
@@ -68,6 +70,75 @@ public:
     MOCK_METHOD(void, printContent, (const QStringList &filePaths), (override));
 };
 
+class MockCli : public cli::Cli
+{
+public:
+    using cli::Cli::Cli;
+
+    MOCK_METHOD(utils::error::Result<repo::OSTreeRepo *>, getRepo, (), (override, noexcept));
+};
+
+class RepoAndPackageManagerCli : public cli::Cli
+{
+public:
+    using cli::Cli::Cli;
+
+    utils::error::Result<repo::OSTreeRepo *> callGetRepo() noexcept { return cli::Cli::getRepo(); }
+
+    utils::error::Result<void> callInitializeRepo() noexcept { return cli::Cli::initializeRepo(); }
+
+    utils::error::Result<api::dbus::v1::PackageManager *> callGetPkgMan()
+    {
+        return cli::Cli::getPkgMan();
+    }
+
+    MOCK_METHOD(utils::error::Result<std::unique_ptr<repo::OSTreeRepo>>,
+                loadRepoFromPath,
+                (const std::filesystem::path &repoRoot),
+                (override, noexcept));
+    MOCK_METHOD(utils::error::Result<void>, initializeRepo, (), (override, noexcept));
+    MOCK_METHOD(utils::error::Result<api::dbus::v1::PackageManager *>, getPkgMan, (), (override));
+    MOCK_METHOD(utils::error::Result<std::unique_ptr<api::dbus::v1::PackageManager>>,
+                initializePeerModePackageManager,
+                (),
+                (override));
+    MOCK_METHOD(utils::error::Result<std::unique_ptr<api::dbus::v1::PackageManager>>,
+                initializeDBusPackageManager,
+                (),
+                (override));
+};
+
+utils::error::Result<std::unique_ptr<repo::OSTreeRepo>>
+makeLoadRepoError(const std::string &message)
+{
+    LINGLONG_TRACE("make load repo error");
+
+    return LINGLONG_ERR(message);
+}
+
+utils::error::Result<void> makeVoidError(const std::string &message)
+{
+    LINGLONG_TRACE("make void error");
+
+    return LINGLONG_ERR(message);
+}
+
+utils::error::Result<api::dbus::v1::PackageManager *>
+makePackageManagerError(const std::string &message)
+{
+    LINGLONG_TRACE("make package manager error");
+
+    return LINGLONG_ERR(message);
+}
+
+utils::error::Result<std::unique_ptr<api::dbus::v1::PackageManager>>
+makePackageManagerInitializationError(const std::string &message)
+{
+    LINGLONG_TRACE("make package manager initialization error");
+
+    return LINGLONG_ERR(message);
+}
+
 class CliTest : public ::testing::Test
 {
 protected:
@@ -79,23 +150,26 @@ protected:
         containerBuilder = std::make_unique<runtime::ContainerBuilder>(*ociCLI);
         repo = std::make_unique<MockRepo>(tempDir->path());
         auto notifier = std::make_unique<cli::DummyNotifier>();
-        cli = std::make_unique<cli::Cli>(*printer,
-                                         *ociCLI,
-                                         *containerBuilder,
-                                         false,
-                                         *repo,
-                                         std::move(notifier),
-                                         nullptr);
+        cli = std::make_unique<::testing::NiceMock<MockCli>>(*printer,
+                                                             *ociCLI,
+                                                             *containerBuilder,
+                                                             false,
+                                                             std::move(notifier),
+                                                             nullptr);
+        ON_CALL(*cli, getRepo())
+          .WillByDefault(Invoke([this]() -> utils::error::Result<repo::OSTreeRepo *> {
+              return repo.get();
+          }));
     }
 
     void TearDown() override
     {
+        cli.reset();
         printer.reset();
-        tempDir.reset();
         ociCLI.reset();
         containerBuilder.reset();
         repo.reset();
-        cli.reset();
+        tempDir.reset();
     }
 
     std::unique_ptr<MockPrinter> printer;
@@ -103,8 +177,176 @@ protected:
     std::unique_ptr<ocppi::cli::crun::Crun> ociCLI;
     std::unique_ptr<runtime::ContainerBuilder> containerBuilder;
     std::unique_ptr<MockRepo> repo;
-    std::unique_ptr<cli::Cli> cli;
+    std::unique_ptr<::testing::NiceMock<MockCli>> cli;
 };
+
+class CliRepoAndPackageManagerTest : public ::testing::Test
+{
+protected:
+    void SetUp() override
+    {
+        printer = std::make_unique<MockPrinter>();
+        tempDir = std::make_unique<TempDir>();
+        ociCLI = ocppi::cli::crun::Crun::New(tempDir->path()).value();
+        containerBuilder = std::make_unique<runtime::ContainerBuilder>(*ociCLI);
+        cli = makeCli(false);
+    }
+
+    std::unique_ptr<repo::OSTreeRepo> makeRepo(const std::filesystem::path &path)
+    {
+        return std::make_unique<MockRepo>(path);
+    }
+
+    std::unique_ptr<RepoAndPackageManagerCli> makeCli(bool peerMode)
+    {
+        auto notifier = std::make_unique<cli::DummyNotifier>();
+        return std::make_unique<RepoAndPackageManagerCli>(*printer,
+                                                          *ociCLI,
+                                                          *containerBuilder,
+                                                          peerMode,
+                                                          std::move(notifier),
+                                                          nullptr);
+    }
+
+    std::unique_ptr<MockPrinter> printer;
+    std::unique_ptr<TempDir> tempDir;
+    std::unique_ptr<ocppi::cli::crun::Crun> ociCLI;
+    std::unique_ptr<runtime::ContainerBuilder> containerBuilder;
+    std::unique_ptr<RepoAndPackageManagerCli> cli;
+};
+
+TEST_F(CliRepoAndPackageManagerTest, getRepoCachesLoadedRepository)
+{
+    repo::OSTreeRepo *loadedRepo = nullptr;
+
+    EXPECT_CALL(*cli, loadRepoFromPath(_))
+      .WillOnce(Invoke([&](const std::filesystem::path &path)
+                         -> utils::error::Result<std::unique_ptr<repo::OSTreeRepo>> {
+          auto repo = makeRepo(path);
+          loadedRepo = repo.get();
+          return repo;
+      }));
+    EXPECT_CALL(*cli, initializeRepo()).Times(0);
+
+    auto first = cli->callGetRepo();
+    ASSERT_TRUE(first.has_value());
+    EXPECT_EQ(*first, loadedRepo);
+
+    auto second = cli->callGetRepo();
+    ASSERT_TRUE(second.has_value());
+    EXPECT_EQ(*second, loadedRepo);
+}
+
+TEST_F(CliRepoAndPackageManagerTest, getRepoInitializesAndReloadsWhenInitialLoadFails)
+{
+    repo::OSTreeRepo *loadedRepo = nullptr;
+    InSequence seq;
+
+    EXPECT_CALL(*cli, loadRepoFromPath(_))
+      .WillOnce(Invoke([](const std::filesystem::path &)
+                         -> utils::error::Result<std::unique_ptr<repo::OSTreeRepo>> {
+          return makeLoadRepoError("load failed");
+      }));
+    EXPECT_CALL(*cli, initializeRepo()).WillOnce(Return(utils::error::Result<void>{}));
+    EXPECT_CALL(*cli, loadRepoFromPath(_))
+      .WillOnce(Invoke([&](const std::filesystem::path &path)
+                         -> utils::error::Result<std::unique_ptr<repo::OSTreeRepo>> {
+          auto repo = makeRepo(path);
+          loadedRepo = repo.get();
+          return repo;
+      }));
+
+    auto result = cli->callGetRepo();
+
+    ASSERT_TRUE(result.has_value());
+    EXPECT_EQ(*result, loadedRepo);
+}
+
+TEST_F(CliRepoAndPackageManagerTest, getRepoReturnsInitializationErrorWhenInitializationFails)
+{
+    EXPECT_CALL(*cli, loadRepoFromPath(_))
+      .WillOnce(Invoke([](const std::filesystem::path &)
+                         -> utils::error::Result<std::unique_ptr<repo::OSTreeRepo>> {
+          return makeLoadRepoError("load failed");
+      }));
+    EXPECT_CALL(*cli, initializeRepo()).WillOnce(Invoke([]() -> utils::error::Result<void> {
+        return makeVoidError("init failed");
+    }));
+
+    auto result = cli->callGetRepo();
+
+    EXPECT_FALSE(result.has_value());
+}
+
+TEST_F(CliRepoAndPackageManagerTest, getRepoReturnsReloadErrorAfterInitialization)
+{
+    InSequence seq;
+
+    EXPECT_CALL(*cli, loadRepoFromPath(_))
+      .WillOnce(Invoke([](const std::filesystem::path &)
+                         -> utils::error::Result<std::unique_ptr<repo::OSTreeRepo>> {
+          return makeLoadRepoError("load failed");
+      }));
+    EXPECT_CALL(*cli, initializeRepo()).WillOnce(Return(utils::error::Result<void>{}));
+    EXPECT_CALL(*cli, loadRepoFromPath(_))
+      .WillOnce(Invoke([](const std::filesystem::path &)
+                         -> utils::error::Result<std::unique_ptr<repo::OSTreeRepo>> {
+          return makeLoadRepoError("reload failed");
+      }));
+
+    auto result = cli->callGetRepo();
+
+    EXPECT_FALSE(result.has_value());
+}
+
+TEST_F(CliRepoAndPackageManagerTest, initializeRepoSucceedsWhenPackageManagerIsAvailable)
+{
+    EXPECT_CALL(*cli, getPkgMan())
+      .WillOnce(Return(utils::error::Result<api::dbus::v1::PackageManager *>{ nullptr }));
+
+    auto result = cli->callInitializeRepo();
+
+    EXPECT_TRUE(result.has_value());
+}
+
+TEST_F(CliRepoAndPackageManagerTest, initializeRepoReturnsErrorWhenPackageManagerCannotStart)
+{
+    EXPECT_CALL(*cli, getPkgMan()).WillOnce(Invoke([]() {
+        return makePackageManagerError("start package manager failed");
+    }));
+
+    auto result = cli->callInitializeRepo();
+
+    EXPECT_FALSE(result.has_value());
+}
+
+TEST_F(CliRepoAndPackageManagerTest, getPkgManUsesDBusPackageManagerWhenPeerModeIsDisabled)
+{
+    auto cli = makeCli(false);
+
+    EXPECT_CALL(*cli, initializePeerModePackageManager()).Times(0);
+    EXPECT_CALL(*cli, initializeDBusPackageManager()).WillOnce(Invoke([]() {
+        return makePackageManagerInitializationError("dbus package manager failed");
+    }));
+
+    auto result = cli->callGetPkgMan();
+
+    EXPECT_FALSE(result.has_value());
+}
+
+TEST_F(CliRepoAndPackageManagerTest, getPkgManUsesPeerModePackageManagerWhenPeerModeIsEnabled)
+{
+    auto cli = makeCli(true);
+
+    EXPECT_CALL(*cli, initializeDBusPackageManager()).Times(0);
+    EXPECT_CALL(*cli, initializePeerModePackageManager()).WillOnce(Invoke([]() {
+        return makePackageManagerInitializationError("peer package manager failed");
+    }));
+
+    auto result = cli->callGetPkgMan();
+
+    EXPECT_FALSE(result.has_value());
+}
 
 TEST_F(CliTest, listUpgradableOnlyApp)
 {

@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
+ * SPDX-FileCopyrightText: 2023 - 2026 UnionTech Software Technology Co., Ltd.
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
@@ -14,8 +14,10 @@
 
 #include <QJsonArray>
 
+#include <array>
 #include <iomanip>
 #include <iostream>
+#include <sstream>
 
 namespace linglong::cli {
 
@@ -325,6 +327,66 @@ void CLIPrinter::printInspect(const api::types::v1::InspectResult &result)
 {
     std::cout << "appID:\t" << (result.appID.has_value() ? result.appID.value() : "none")
               << std::endl;
+}
+
+namespace {
+
+std::string formatSize(std::uint64_t size)
+{
+    constexpr std::array<const char *, 6> units{ "B", "KiB", "MiB", "GiB", "TiB", "PiB" };
+    double value = static_cast<double>(size);
+    std::size_t unitIndex = 0;
+    while (value >= 1024.0 && unitIndex + 1 < units.size()) {
+        value /= 1024.0;
+        ++unitIndex;
+    }
+
+    std::ostringstream out;
+    if (unitIndex == 0) {
+        out << size << ' ' << units[unitIndex];
+    } else {
+        out << std::fixed << std::setprecision(1) << value << ' ' << units[unitIndex];
+    }
+
+    return out.str();
+}
+
+} // namespace
+
+void CLIPrinter::printModuleSizes(const std::vector<ModuleSizeInfo> &list,
+                                  std::uint64_t actualTotalSize,
+                                  std::uint64_t repoSize)
+{
+    std::uint64_t totalExclusiveSize{ 0 };
+    std::uint64_t totalSharedSize{ 0 };
+    std::uint64_t totalLogicalSize{ 0 };
+
+    std::cout << "\033[38;5;214m" << std::left << adjustDisplayWidth(qUtf8Printable(_("ID")), 43)
+              << adjustDisplayWidth(qUtf8Printable(_("Version")), 16)
+              << adjustDisplayWidth(qUtf8Printable(_("Channel")), 16)
+              << adjustDisplayWidth(qUtf8Printable(_("Module")), 14)
+              << adjustDisplayWidth(qUtf8Printable(_("Exclusive")), 14)
+              << adjustDisplayWidth(qUtf8Printable(_("Shared")), 14)
+              << adjustDisplayWidth(qUtf8Printable(_("Logical")), 14) << qUtf8Printable(_("Actual"))
+              << "\033[0m" << std::endl;
+
+    for (const auto &info : list) {
+        totalExclusiveSize += info.exclusiveSize;
+        totalSharedSize += info.sharedSize;
+        totalLogicalSize += info.logicalSize;
+        std::cout << std::setw(43) << info.id + " " << std::setw(16) << info.version + " "
+                  << std::setw(16) << info.channel + " " << std::setw(14) << info.module + " "
+                  << std::setw(14) << formatSize(info.exclusiveSize) + " " << std::setw(14)
+                  << formatSize(info.sharedSize) + " " << std::setw(14)
+                  << formatSize(info.logicalSize) + " " << formatSize(info.actualSize) << std::endl;
+    }
+
+    std::cout << std::endl
+              << _("Calculated logical total size: ") << formatSize(totalLogicalSize) << " ("
+              << _("Exclusive: ") << formatSize(totalExclusiveSize) << ", " << _("Shared: ")
+              << formatSize(totalSharedSize) << ")" << std::endl
+              << _("Calculated actual total size: ") << formatSize(actualTotalSize) << std::endl
+              << _("Repository real size: ") << formatSize(repoSize) << std::endl;
 }
 
 void CLIPrinter::printMessage(const std::string &message)

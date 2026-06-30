@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
+ * SPDX-FileCopyrightText: 2023 - 2026 UnionTech Software Technology Co., Ltd.
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
@@ -110,6 +110,44 @@ void JSONPrinter::printUpgradeList(std::vector<api::types::v1::UpgradeListResult
 void JSONPrinter::printInspect(const api::types::v1::InspectResult &result)
 {
     std::cout << nlohmann::json(result).dump(4) << std::endl;
+}
+
+void JSONPrinter::printModuleSizes(const std::vector<ModuleSizeInfo> &list,
+                                   std::uint64_t actualTotalSize,
+                                   std::uint64_t repoSize)
+{
+    std::uint64_t totalExclusiveSize{ 0 };
+    std::uint64_t totalSharedSize{ 0 };
+    std::uint64_t totalLogicalSize{ 0 };
+    nlohmann::json modules = nlohmann::json::array();
+
+    for (const auto &info : list) {
+        totalExclusiveSize += info.exclusiveSize;
+        totalSharedSize += info.sharedSize;
+        totalLogicalSize += info.logicalSize;
+        modules.push_back({
+          { "id", info.id },
+          { "name", info.name },
+          { "version", info.version },
+          { "channel", info.channel },
+          { "module", info.module },
+          { "exclusiveSize", info.exclusiveSize },
+          { "sharedSize", info.sharedSize },
+          { "logicalSize", info.logicalSize },
+          { "actualSize", info.actualSize },
+        });
+    }
+
+    std::cout << nlohmann::json{
+      { "modules", modules },
+      { "calculatedLogicalSize",
+        { { "exclusiveSize", totalExclusiveSize },
+          { "sharedSize", totalSharedSize },
+          { "logicalSize", totalLogicalSize } } },
+      { "calculatedActualSize", actualTotalSize },
+      { "repositoryRealSize", repoSize },
+    }.dump(4)
+              << std::endl;
 }
 
 void JSONPrinter::printMessage(const std::string &message)

@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
+ * SPDX-FileCopyrightText: 2022 - 2026 UnionTech Software Technology Co., Ltd.
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
@@ -17,6 +17,11 @@
 #include "linglong/api/types/v1/UpgradeListResult.hpp"
 #include "linglong/cli/cli.h"
 #include "linglong/utils/error/error.h"
+
+#include <cstdint>
+#include <map>
+#include <string>
+#include <vector>
 
 namespace linglong::cli {
 
@@ -43,6 +48,19 @@ inline std::string toString(linglong::api::types::v1::State state) noexcept
 class Printer
 {
 public:
+    struct ModuleSizeInfo
+    {
+        std::string id;
+        std::string name;
+        std::string version;
+        std::string channel;
+        std::string module;
+        std::uint64_t exclusiveSize{ 0 };
+        std::uint64_t sharedSize{ 0 };
+        std::uint64_t logicalSize{ 0 };
+        std::uint64_t actualSize{ 0 };
+    };
+
     Printer() = default;
     Printer(const Printer &) = delete;
     Printer(Printer &&) = delete;
@@ -63,6 +81,9 @@ public:
     virtual void printContent(const QStringList &filePaths) = 0;
     virtual void printUpgradeList(std::vector<api::types::v1::UpgradeListResult> &) = 0;
     virtual void printInspect(const api::types::v1::InspectResult &) = 0;
+    virtual void printModuleSizes(const std::vector<ModuleSizeInfo> &list,
+                                  std::uint64_t actualTotalSize,
+                                  std::uint64_t repoSize) = 0;
     virtual void printMessage(const std::string &message) = 0;
 
     virtual void clearLine() { }

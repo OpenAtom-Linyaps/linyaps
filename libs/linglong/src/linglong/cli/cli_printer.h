@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
+ * SPDX-FileCopyrightText: 2022 - 2026 UnionTech Software Technology Co., Ltd.
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
@@ -46,6 +46,9 @@ public:
     void printContent(const QStringList &filePaths) override;
     virtual void printUpgradeList(std::vector<api::types::v1::UpgradeListResult> &) override;
     void printInspect(const api::types::v1::InspectResult &result) override;
+    void printModuleSizes(const std::vector<ModuleSizeInfo> &list,
+                          std::uint64_t actualTotalSize,
+                          std::uint64_t repoSize) override;
     void printMessage(const std::string &message) override;
     void clearLine() override;
 };

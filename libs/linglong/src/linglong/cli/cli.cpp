@@ -52,23 +52,27 @@
 #include <QDBusInterface>
 #include <QDBusReply>
 #include <QDBusUnixFileDescriptor>
+#include <QDir>
 #include <QEventLoop>
 #include <QFileInfo>
 #include <QProcess>
 
 #include <algorithm>
 #include <cassert>
+#include <chrono>
 #include <cstdint>
 #include <cstdlib>
 #include <filesystem>
 #include <iostream>
 #include <optional>
+#include <string>
 #include <system_error>
 #include <thread>
 #include <utility>
 #include <vector>
 
 #include <fcntl.h>
+#include <pwd.h>
 #include <sys/mman.h>
 #include <unistd.h>
 
@@ -77,6 +81,57 @@ using namespace linglong::utils::error;
 namespace {
 
 constexpr std::size_t ContainerIDDisplayLength = 12;
+
+Result<std::filesystem::path> preparePeerSocketDir() noexcept
+{
+    LINGLONG_TRACE("prepare peer socket directory");
+
+    auto peerSocketDirPattern = std::string{ "/tmp/linglong-package-manager-XXXXXX" };
+    auto *path = ::mkdtemp(peerSocketDirPattern.data());
+    if (path == nullptr) {
+        return LINGLONG_ERR("failed to create peer socket directory", errno);
+    }
+
+    auto peerSocketDir = std::filesystem::path{ path };
+    auto removePeerSocketDir = [&peerSocketDir] {
+        std::error_code ec;
+        std::filesystem::remove_all(peerSocketDir, ec);
+        if (ec) {
+            LogW("failed to remove peer socket directory {}: {}",
+                 peerSocketDir.string(),
+                 ec.message());
+        }
+    };
+
+    auto *pw = ::getpwnam(LINGLONG_USERNAME);
+    if (pw == nullptr) {
+        removePeerSocketDir();
+        return LINGLONG_ERR(fmt::format("failed to get user info for {}", LINGLONG_USERNAME));
+    }
+
+    if (::chown(peerSocketDir.c_str(), pw->pw_uid, pw->pw_gid) != 0) {
+        removePeerSocketDir();
+        return LINGLONG_ERR("failed to change peer socket directory owner", errno);
+    }
+
+    return peerSocketDir;
+}
+
+Result<void> waitForDBusPeerReady(const QString &service,
+                                  const QString &path,
+                                  const QDBusConnection &connection) noexcept
+{
+    LINGLONG_TRACE("wait for dbus peer ready");
+
+    auto peer = linglong::api::dbus::v1::DBusPeer(service, path, connection);
+    auto reply = peer.Ping();
+    reply.waitForFinished();
+    if (!reply.isValid()) {
+        return LINGLONG_ERR(reply.error().message().toStdString());
+    }
+
+    return LINGLONG_OK;
+}
 
 std::vector<std::string> getAutoModuleList() noexcept
 {
@@ -442,17 +497,62 @@ Cli::Cli(Printer &printer,
          ocppi::cli::CLI &ociCLI,
          runtime::ContainerBuilder &containerBuilder,
          bool peerMode,
-         repo::OSTreeRepo &repo,
          std::unique_ptr<InteractiveNotifier> &&notifier,
          QObject *parent)
     : QObject(parent)
     , printer(printer)
     , ociCLI(ociCLI)
     , containerBuilder(containerBuilder)
-    , repository(repo)
     , notifier(std::move(notifier))
     , peerMode(peerMode)
 {
+}
+
+utils::error::Result<repo::OSTreeRepo *> Cli::getRepo() noexcept
+{
+    LINGLONG_TRACE("get local repo");
+
+    if (this->repository) {
+        return this->repository.get();
+    }
+
+    auto repo = this->loadRepoFromPath(LINGLONG_ROOT);
+    if (!repo) {
+        LogD("failed to load repo, try to initialize repo via package manager: {}", repo.error());
+
+        auto initRepo = this->initializeRepo();
+        if (!initRepo) {
+            return LINGLONG_ERR(initRepo);
+        }
+
+        repo = this->loadRepoFromPath(LINGLONG_ROOT);
+        if (!repo) {
+            return LINGLONG_ERR(repo);
+        }
+    }
+
+    this->repository = std::move(repo).value();
+    return this->repository.get();
+}
+
+utils::error::Result<std::unique_ptr<repo::OSTreeRepo>>
+Cli::loadRepoFromPath(const std::filesystem::path &repoRoot) noexcept
+{
+    LINGLONG_TRACE("load repo from path");
+
+    return repo::OSTreeRepo::loadFromPath(repoRoot);
+}
+
+utils::error::Result<void> Cli::initializeRepo() noexcept
+{
+    LINGLONG_TRACE("initialize repo");
+
+    auto pkgMan = this->getPkgMan();
+    if (!pkgMan) {
+        return LINGLONG_ERR("failed to initialize repo via package manager", pkgMan);
+    }
+
+    return LINGLONG_OK;
 }
 
 utils::error::Result<api::dbus::v1::PackageManager *> Cli::getPkgMan()
@@ -463,88 +563,35 @@ utils::error::Result<api::dbus::v1::PackageManager *> Cli::getPkgMan()
         return this->pkgMan.get();
     }
 
-    QString service;
-    QDBusConnection pkgManConn{ "ll-package-manager" };
-
-    if (this->peerMode) {
-        LogW("some subcommands will failed in --no-dbus mode.");
-        const auto pkgManAddress = QString("unix:path=/tmp/linglong-package-manager.socket");
-
-        pkgManConn = QDBusConnection::connectToPeer(pkgManAddress, "ll-package-manager");
-        if (!pkgManConn.isConnected()) {
-            return LINGLONG_ERR(fmt::format("Failed to connect to ll-package-manager: {}",
-                                            pkgManConn.lastError().message().toStdString()));
-        }
-    } else {
-        service = "org.deepin.linglong.PackageManager1";
-        pkgManConn = QDBusConnection::systemBus();
+    auto pkgMan = this->peerMode ? this->initializePeerModePackageManager()
+                                 : this->initializeDBusPackageManager();
+    if (!pkgMan) {
+        return LINGLONG_ERR(pkgMan);
     }
+    auto pkgManProxy = std::move(*pkgMan);
 
-    auto peer = linglong::api::dbus::v1::DBusPeer(service,
-                                                  "/org/deepin/linglong/PackageManager1",
-                                                  pkgManConn);
-    auto reply = peer.Ping();
-    reply.waitForFinished();
-    if (!reply.isValid()) {
-        const auto message = this->peerMode
-          ? "Failed to initialize peer connection: {}"
-          : "Failed to activate org.deepin.linglong.PackageManager1: {}";
-        return LINGLONG_ERR(fmt::format(message, reply.error().message().toStdString()));
-    }
-
-    this->pkgMan =
-      std::make_unique<api::dbus::v1::PackageManager>(service,
-                                                      "/org/deepin/linglong/PackageManager1",
-                                                      pkgManConn,
-                                                      QCoreApplication::instance());
-
-    auto ret = this->initPkgManSignals();
-    if (!ret) {
-        this->pkgMan.reset();
-        return LINGLONG_ERR("failed to initialize package manager signals", ret.error());
-    }
-
-    this->pkgMan->setTimeout(INT_MAX);
-
-    return this->pkgMan.get();
-}
-
-utils::error::Result<void> Cli::initPkgManSignals()
-{
-    LINGLONG_TRACE("init package manager signals");
-
-    if (this->pkgManSignalsInitialized) {
-        return LINGLONG_OK;
-    }
-
-    auto pkgManRet = this->getPkgMan();
-    if (!pkgManRet) {
-        return LINGLONG_ERR(pkgManRet);
-    }
-    auto *pkgMan = *pkgManRet;
-
-    auto conn = pkgMan->connection();
-    if (!conn.connect(pkgMan->service(),
-                      pkgMan->path(),
-                      pkgMan->interface(),
+    auto conn = pkgManProxy->connection();
+    if (!conn.connect(pkgManProxy->service(),
+                      pkgManProxy->path(),
+                      pkgManProxy->interface(),
                       "TaskAdded",
                       this,
                       SLOT(onTaskAdded(QDBusObjectPath)))) {
         return LINGLONG_ERR("couldn't connect to package manager signal 'TaskAdded'");
     }
 
-    if (!conn.connect(pkgMan->service(),
-                      pkgMan->path(),
-                      pkgMan->interface(),
+    if (!conn.connect(pkgManProxy->service(),
+                      pkgManProxy->path(),
+                      pkgManProxy->interface(),
                       "TaskRemoved",
                       this,
                       SLOT(onTaskRemoved(QDBusObjectPath)))) {
         return LINGLONG_ERR("couldn't connect to package manager signal 'TaskRemoved'");
     }
 
-    if (!conn.connect(pkgMan->service(),
-                      pkgMan->path(),
-                      pkgMan->interface(),
+    if (!conn.connect(pkgManProxy->service(),
+                      pkgManProxy->path(),
+                      pkgManProxy->interface(),
                       "RequestInteraction",
                       this,
                       SLOT(interaction(QDBusObjectPath, int, QVariantMap)))) {
@@ -552,8 +599,102 @@ utils::error::Result<void> Cli::initPkgManSignals()
                                         conn.lastError().message().toStdString()));
     }
 
-    this->pkgManSignalsInitialized = true;
-    return LINGLONG_OK;
+    pkgManProxy->setTimeout(INT_MAX);
+
+    this->pkgMan = std::move(pkgManProxy);
+    return this->pkgMan.get();
+}
+
+utils::error::Result<std::unique_ptr<api::dbus::v1::PackageManager>>
+Cli::initializePeerModePackageManager()
+{
+    LINGLONG_TRACE("initialize peer mode package manager");
+
+    if (getuid() != 0) {
+        return LINGLONG_ERR("--no-dbus should only be used by root user.");
+    }
+
+    auto socketDirRet = preparePeerSocketDir();
+    if (!socketDirRet) {
+        return LINGLONG_ERR("failed to prepare peer socket directory", std::move(socketDirRet));
+    }
+
+    const auto socketDir = std::move(socketDirRet).value();
+    auto removePeerSocketDir = linglong::utils::finally::finally([&socketDir] {
+        std::error_code ec;
+        std::filesystem::remove_all(socketDir, ec);
+        if (ec) {
+            LogW("failed to remove peer socket directory {}: {}", socketDir.string(), ec.message());
+        }
+    });
+
+    const auto socketPath = socketDir / "package-manager.socket";
+    const auto socketPathString = socketPath.string();
+    const auto pkgManAddressString = "unix:path=" + socketPathString;
+    auto started = QProcess::startDetached("sudo",
+                                           { "--user",
+                                             LINGLONG_USERNAME,
+                                             "--preserve-env=QT_FORCE_STDERR_LOGGING",
+                                             "--preserve-env=QDBUS_DEBUG",
+                                             LINGLONG_LIBEXEC_DIR "/ll-package-manager",
+                                             "--no-dbus",
+                                             "--peer-socket",
+                                             QString::fromStdString(socketPathString) });
+    if (!started) {
+        return LINGLONG_ERR("Failed to start ll-package-manager");
+    }
+
+    QDBusConnection pkgManConn("ll-package-manager");
+    using namespace std::chrono_literals;
+    for (int retry = 0; retry < 50 && !pkgManConn.isConnected(); ++retry) {
+        QDBusConnection::disconnectFromPeer("ll-package-manager");
+        std::this_thread::sleep_for(200ms);
+        pkgManConn = QDBusConnection::connectToPeer(QString::fromStdString(pkgManAddressString),
+                                                    "ll-package-manager");
+    }
+
+    if (!pkgManConn.isConnected()) {
+        return LINGLONG_ERR(fmt::format("Failed to connect to ll-package-manager: {}",
+                                        pkgManConn.lastError().message().toStdString()));
+    }
+
+    auto peerReady = waitForDBusPeerReady("", "/org/deepin/linglong/PackageManager1", pkgManConn);
+    if (!peerReady) {
+        return LINGLONG_ERR("Failed to initialize peer connection", peerReady);
+    }
+
+    std::error_code ec;
+    std::filesystem::remove(socketPath, ec);
+    if (ec) {
+        LogW("failed to remove peer package manager socket {}: {}",
+             socketPath.string(),
+             ec.message());
+    }
+
+    return std::make_unique<api::dbus::v1::PackageManager>("",
+                                                           "/org/deepin/linglong/PackageManager1",
+                                                           pkgManConn,
+                                                           QCoreApplication::instance());
+}
+
+utils::error::Result<std::unique_ptr<api::dbus::v1::PackageManager>>
+Cli::initializeDBusPackageManager()
+{
+    LINGLONG_TRACE("initialize dbus package manager");
+
+    const auto &pkgManConn = QDBusConnection::systemBus();
+
+    auto peerReady = waitForDBusPeerReady("org.deepin.linglong.PackageManager1",
+                                          "/org/deepin/linglong/PackageManager1",
+                                          pkgManConn);
+    if (!peerReady) {
+        return LINGLONG_ERR("Failed to activate org.deepin.linglong.PackageManager1", peerReady);
+    }
+
+    return std::make_unique<api::dbus::v1::PackageManager>("org.deepin.linglong.PackageManager1",
+                                                           "/org/deepin/linglong/PackageManager1",
+                                                           pkgManConn,
+                                                           QCoreApplication::instance());
 }
 
 int Cli::run(const RunOptions &options)
@@ -590,7 +731,13 @@ int Cli::run(const RunOptions &options)
         return -1;
     }
 
-    auto curAppRef = this->repository.clearReferenceLocal(*fuzzyRef);
+    auto repo = this->getRepo();
+    if (!repo) {
+        this->printer.printErr(repo.error());
+        return -1;
+    }
+
+    auto curAppRef = (*repo)->clearReferenceLocal(*fuzzyRef);
     if (!curAppRef) {
         this->printer.printErr(curAppRef.error());
         return -1;
@@ -603,7 +750,7 @@ int Cli::run(const RunOptions &options)
     }
     auto runtimeConfig = std::move(loaded).value();
 
-    runtime::RunContext runContext(this->repository);
+    runtime::RunContext runContext(**repo);
     linglong::runtime::ResolveOptions opts;
     auto resolveOptionsRes = opts.applyOptions(runtimeConfig, options);
     if (!resolveOptionsRes) {
@@ -773,7 +920,13 @@ int Cli::runWithContext(const RunOptions &options)
     }
     auto runtimeConfig = std::move(loaded).value();
 
-    runtime::RunContext runContext(this->repository);
+    auto repo = this->getRepo();
+    if (!repo) {
+        this->printer.printErr(repo.error());
+        return -1;
+    }
+
+    runtime::RunContext runContext(**repo);
     try {
         auto cfg =
           nlohmann::json::parse(*options.runContext).get<api::types::v1::RunContextConfig>();
@@ -1195,14 +1348,20 @@ int Cli::upgrade(const UpgradeOptions &options)
             return -1;
         }
 
-        auto localRef = this->repository.clearReferenceLocal(*fuzzyRef);
+        auto repo = this->getRepo();
+        if (!repo) {
+            this->printer.printErr(repo.error());
+            return -1;
+        }
+
+        auto localRef = (*repo)->clearReferenceLocal(*fuzzyRef);
         if (!localRef) {
             this->printer.printMessage(
               fmt::format(_("Application {} is not installed."), options.appid));
             return -1;
         }
 
-        auto layerItemRet = this->repository.getLayerItem(*localRef);
+        auto layerItemRet = (*repo)->getLayerItem(*localRef);
         if (!layerItemRet) {
             this->printer.printErr(layerItemRet.error());
             return -1;
@@ -1253,7 +1412,13 @@ int Cli::search(const SearchOptions &options)
         .repos = {},
     };
 
-    auto repoConfig = this->repository.getOrderedConfig();
+    auto repo = this->getRepo();
+    if (!repo) {
+        this->printer.printErr(repo.error());
+        return -1;
+    }
+
+    auto repoConfig = (*repo)->getOrderedConfig();
     if (repoConfig.repos.empty()) {
         this->printer.printErr(LINGLONG_ERRV("no repo found"));
         return -1;
@@ -1482,7 +1647,13 @@ int Cli::list(const ListOptions &options)
         this->printer.printUpgradeList(*upgradeList);
         return 0;
     }
-    auto items = this->repository.listLayerItem();
+    auto repo = this->getRepo();
+    if (!repo) {
+        this->printer.printErr(repo.error());
+        return -1;
+    }
+
+    auto items = (*repo)->listLayerItem();
     if (!items) {
         this->printer.printErr(items.error());
         return -1;
@@ -1491,7 +1662,7 @@ int Cli::list(const ListOptions &options)
     for (const auto &item : *items) {
         nlohmann::json json = item.info;
         auto m = json.get<api::types::v1::PackageInfoDisplay>();
-        auto t = this->repository.getLayerCreateTime(item);
+        auto t = (*repo)->getLayerCreateTime(item);
         if (t.has_value()) {
             m.installTime = *t;
         }
@@ -1513,7 +1684,12 @@ utils::error::Result<std::vector<api::types::v1::UpgradeListResult>> Cli::listUp
     LINGLONG_TRACE("list upgradable");
 
     // only applications can be upgraded
-    auto upgradablePkgs = this->repository.upgradableApps();
+    auto repo = this->getRepo();
+    if (!repo) {
+        return LINGLONG_ERR(repo);
+    }
+
+    auto upgradablePkgs = (*repo)->upgradableApps();
     if (!upgradablePkgs) {
         return LINGLONG_ERR(upgradablePkgs);
     }
@@ -1619,7 +1795,13 @@ int Cli::info(const InfoOptions &options)
             return -1;
         }
 
-        auto ref = this->repository.clearReferenceLocal(*fuzzyRef);
+        auto repo = this->getRepo();
+        if (!repo) {
+            this->printer.printErr(repo.error());
+            return -1;
+        }
+
+        auto ref = (*repo)->clearReferenceLocal(*fuzzyRef);
         if (!ref) {
             LogD("{}", ref.error());
             this->printer.printErr(LINGLONG_ERRV("Cannot find such application.",
@@ -1627,7 +1809,7 @@ int Cli::info(const InfoOptions &options)
             return -1;
         }
 
-        auto layer = this->repository.getLayerDir(*ref, "binary");
+        auto layer = (*repo)->getLayerDir(*ref, "binary");
         if (!layer) {
             this->printer.printErr(layer.error());
             return -1;
@@ -1673,14 +1855,20 @@ int Cli::content(const ContentOptions &options)
         return -1;
     }
 
-    auto ref = this->repository.clearReferenceLocal(*fuzzyRef);
+    auto repo = this->getRepo();
+    if (!repo) {
+        this->printer.printErr(repo.error());
+        return -1;
+    }
+
+    auto ref = (*repo)->clearReferenceLocal(*fuzzyRef);
     if (!ref) {
         LogD("{}", ref.error());
         this->printer.printErr(LINGLONG_ERRV("Can not find such application."));
         return -1;
     }
 
-    auto layerItem = this->repository.getLayerItem(*ref);
+    auto layerItem = (*repo)->getLayerItem(*ref);
     if (!layerItem) {
         this->printer.printErr(layerItem.error());
         return -1;
@@ -1691,7 +1879,7 @@ int Cli::content(const ContentOptions &options)
         return -1;
     }
 
-    auto layer = this->repository.getLayerDir(*ref, "binary");
+    auto layer = (*repo)->getLayerDir(*ref, "binary");
     if (!layer) {
         this->printer.printErr(layer.error());
         return -1;
@@ -1713,8 +1901,7 @@ int Cli::content(const ContentOptions &options)
         const auto entryPath = it.fileInfo().absoluteFilePath();
         const auto relativePath =
           std::filesystem::path(entriesDir.relativeFilePath(entryPath).toStdString());
-        const auto exportPath =
-          this->repository.resolveEntryExportPath(relativePath, preferLibSystemdUser);
+        const auto exportPath = (*repo)->resolveEntryExportPath(relativePath, preferLibSystemdUser);
         if (!exportPath.empty()) {
             contents.append(QString::fromStdString(exportPath.string()));
         }
@@ -2065,7 +2252,13 @@ int Cli::getLayerDir(const InspectOptions &options)
         return -1;
     }
 
-    auto ref = this->repository.clearReferenceLocal(*fuzzyRef);
+    auto repo = this->getRepo();
+    if (!repo) {
+        this->printer.printErr(repo.error());
+        return -1;
+    }
+
+    auto ref = (*repo)->clearReferenceLocal(*fuzzyRef);
     if (!ref) {
         LogD("{}", ref.error());
         this->printer.printErr(LINGLONG_ERRV("Can not find such application."));
@@ -2077,7 +2270,7 @@ int Cli::getLayerDir(const InspectOptions &options)
         module = options.module;
     }
 
-    auto layerDir = this->repository.getLayerDir(*ref, module);
+    auto layerDir = (*repo)->getLayerDir(*ref, module);
     if (!layerDir) {
         this->printer.printErr(layerDir.error());
         return -1;

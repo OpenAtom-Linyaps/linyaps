@@ -61,6 +61,13 @@ public:
         std::uint64_t actualSize{ 0 };
     };
 
+    struct DependsNode
+    {
+        std::string ref;
+        std::string kind;
+        std::vector<DependsNode> children;
+    };
+
     Printer() = default;
     Printer(const Printer &) = delete;
     Printer(Printer &&) = delete;
@@ -84,6 +91,7 @@ public:
     virtual void printModuleSizes(const std::vector<ModuleSizeInfo> &list,
                                   std::uint64_t actualTotalSize,
                                   std::uint64_t repoSize) = 0;
+    virtual void printDepends(const std::vector<DependsNode> &trees) = 0;
     virtual void printMessage(const std::string &message) = 0;
 
     virtual void clearLine() { }

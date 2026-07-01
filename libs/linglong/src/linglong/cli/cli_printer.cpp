@@ -389,6 +389,30 @@ void CLIPrinter::printModuleSizes(const std::vector<ModuleSizeInfo> &list,
               << _("Repository real size: ") << formatSize(repoSize) << std::endl;
 }
 
+void CLIPrinter::printDepends(const std::vector<DependsNode> &trees)
+{
+    auto printNode = [](const DependsNode &node, const std::string &prefix, auto &self) -> void {
+        std::cout << node.ref;
+        if (!node.kind.empty()) {
+            std::cout << " (" << node.kind << ")";
+        }
+        std::cout << std::endl;
+
+        for (std::size_t i = 0; i < node.children.size(); ++i) {
+            const auto last = i + 1 == node.children.size();
+            std::cout << prefix << (last ? "└── " : "├── ");
+            self(node.children[i], prefix + (last ? "    " : "│   "), self);
+        }
+    };
+
+    for (std::size_t i = 0; i < trees.size(); ++i) {
+        printNode(trees[i], "", printNode);
+        if (i + 1 != trees.size()) {
+            std::cout << std::endl;
+        }
+    }
+}
+
 void CLIPrinter::printMessage(const std::string &message)
 {
     std::cout << message << std::endl;

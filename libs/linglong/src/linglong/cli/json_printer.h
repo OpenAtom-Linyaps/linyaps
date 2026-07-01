@@ -34,6 +34,7 @@ public:
     void printModuleSizes(const std::vector<ModuleSizeInfo> &list,
                           std::uint64_t actualTotalSize,
                           std::uint64_t repoSize) override;
+    void printDepends(const std::vector<DependsNode> &trees) override;
     void printMessage(const std::string &message) override;
 };
 

@@ -150,6 +150,29 @@ void JSONPrinter::printModuleSizes(const std::vector<ModuleSizeInfo> &list,
               << std::endl;
 }
 
+void JSONPrinter::printDepends(const std::vector<DependsNode> &trees)
+{
+    auto toJson = [](const DependsNode &node, const auto &self) -> nlohmann::json {
+        auto children = nlohmann::json::array();
+        for (const auto &child : node.children) {
+            children.push_back(self(child, self));
+        }
+
+        return {
+            { "ref", node.ref },
+            { "kind", node.kind },
+            { "children", children },
+        };
+    };
+
+    auto result = nlohmann::json::array();
+    for (const auto &tree : trees) {
+        result.push_back(toJson(tree, toJson));
+    }
+
+    std::cout << result.dump(4) << std::endl;
+}
+
 void JSONPrinter::printMessage(const std::string &message)
 {
     std::cout << nlohmann::json{ { "message", message } }.dump() << std::endl;

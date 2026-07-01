@@ -98,6 +98,11 @@ public:
         return appLayer;
     }
 
+    [[nodiscard]] const std::list<RuntimeLayer> &getExtensionLayers() const noexcept
+    {
+        return extensionLayers;
+    }
+
     [[nodiscard]] utils::error::Result<std::filesystem::path> getBaseLayerPath() const;
     [[nodiscard]] utils::error::Result<std::filesystem::path> getRuntimeLayerPath() const;
 

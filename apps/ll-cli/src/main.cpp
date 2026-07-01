@@ -456,7 +456,10 @@ ll-cli analyze size
 }
 
 // Function to add the analyze subcommands
-void addAnalyzeCommand(CLI::App &commandParser, SizeOptions &sizeOptions, const std::string &group)
+void addAnalyzeCommand(CLI::App &commandParser,
+                       SizeOptions &sizeOptions,
+                       DependsOptions &dependsOptions,
+                       const std::string &group)
 {
     auto *cliAnalyze = commandParser.add_subcommand("analyze", _("Analyze installed applications"))
                          ->group(group)
@@ -464,6 +467,20 @@ void addAnalyzeCommand(CLI::App &commandParser, SizeOptions &sizeOptions, const 
     cliAnalyze->require_subcommand(1);
 
     addAnalyzeSizeCommand(*cliAnalyze, sizeOptions);
+
+    auto *cliDepends =
+      cliAnalyze->add_subcommand("depends", _("Display installed application dependency tree"))
+        ->fallthrough();
+    cliDepends->usage(_(R"(Usage: ll-cli analyze depends [APP]
+
+Example:
+# show dependency tree for all installed application(s)
+ll-cli analyze depends
+# show dependency tree for an installed application
+ll-cli analyze depends org.deepin.demo
+)"));
+    cliDepends->add_option("APP", dependsOptions.appid, _("Specify the installed application ID"))
+      ->check(validatorString);
 }
 
 // Function to add the info subcommand
@@ -601,6 +618,7 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     UninstallOptions uninstallOptions{};
     ListOptions listOptions{};
     SizeOptions sizeOptions{};
+    DependsOptions dependsOptions{};
     InfoOptions infoOptions{};
     ContentOptions contentOptions{};
     linglong::common::cli::RepoOptions repoOptions{};
@@ -622,7 +640,7 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     addUpgradeCommand(commandParser, upgradeOptions, CliBuildInGroup);
     addSearchCommand(commandParser, searchOptions, CliSearchGroup);
     addListCommand(commandParser, listOptions, CliBuildInGroup);
-    addAnalyzeCommand(commandParser, sizeOptions, CliBuildInGroup);
+    addAnalyzeCommand(commandParser, sizeOptions, dependsOptions, CliBuildInGroup);
     linglong::common::cli::addRepoCommand(commandParser,
                                           repoOptions,
                                           CliRepoGroup,
@@ -784,8 +802,13 @@ You can report bugs to the linyaps team under this project: https://github.com/O
         auto subcommand = std::find_if(subcommands.begin(), subcommands.end(), [](CLI::App *app) {
             return app->parsed();
         });
-        if (subcommand != subcommands.end() && (*subcommand)->get_name() == "size") {
-            result = cli->size(sizeOptions);
+        if (subcommand != subcommands.end()) {
+            const auto &subcommandName = (*subcommand)->get_name();
+            if (subcommandName == "size") {
+                result = cli->size(sizeOptions);
+            } else if (subcommandName == "depends") {
+                result = cli->depends(dependsOptions);
+            }
         }
     } else if (name == "info") {
         result = cli->info(infoOptions);

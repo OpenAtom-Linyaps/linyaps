@@ -510,6 +510,58 @@ Result<std::uint64_t> calculateRealDiskUsage(const std::filesystem::path &dir) n
     return size;
 }
 
+using DependsNode = linglong::cli::Printer::DependsNode;
+
+DependsNode &appendDependsNode(std::vector<DependsNode> &nodes,
+                               const std::string &ref,
+                               const std::string &kind)
+{
+    auto iter = std::find_if(nodes.begin(), nodes.end(), [&ref](const DependsNode &node) {
+        return node.ref == ref;
+    });
+    if (iter != nodes.end()) {
+        if (iter->kind.empty()) {
+            iter->kind = kind;
+        }
+        return *iter;
+    }
+
+    nodes.push_back(DependsNode{ .ref = ref, .kind = kind });
+    return nodes.back();
+}
+
+void sortDependsTree(std::vector<DependsNode> &nodes)
+{
+    std::sort(nodes.begin(), nodes.end(), [](const DependsNode &lhs, const DependsNode &rhs) {
+        auto kindRank = [](const std::string &kind) {
+            if (kind == "base") {
+                return 0;
+            }
+            if (kind == "runtime") {
+                return 1;
+            }
+            if (kind == "app") {
+                return 2;
+            }
+            if (kind == "extension") {
+                return 3;
+            }
+            return 4;
+        };
+
+        auto lhsRank = kindRank(lhs.kind);
+        auto rhsRank = kindRank(rhs.kind);
+        if (lhsRank != rhsRank) {
+            return lhsRank < rhsRank;
+        }
+        return lhs.ref < rhs.ref;
+    });
+
+    for (auto &node : nodes) {
+        sortDependsTree(node.children);
+    }
+}
+
 } // namespace
 
 namespace linglong::cli {
@@ -1997,6 +2049,134 @@ int Cli::size(const SizeOptions &options)
     }
 
     this->printer.printModuleSizes(moduleSizes, calculatedSizes->actualTotalSize, *repoSize);
+    return 0;
+}
+
+int Cli::depends(const DependsOptions &options)
+{
+    LINGLONG_TRACE("command depends");
+
+    auto repo = this->getRepo();
+    if (!repo) {
+        this->printer.printErr(repo.error());
+        return -1;
+    }
+
+    std::vector<package::Reference> appRefs;
+    if (options.appid.empty()) {
+        auto items = (*repo)->listLayerItem();
+        if (!items) {
+            this->printer.printErr(items.error());
+            return -1;
+        }
+
+        std::unordered_set<std::string> seen;
+        for (const auto &item : *items) {
+            if (item.deleted.value_or(false) || item.info.kind != "app"
+                || item.info.packageInfoV2Module != "binary") {
+                continue;
+            }
+
+            auto ref = package::Reference::fromPackageInfo(item.info);
+            if (!ref) {
+                this->printer.printErr(ref.error());
+                return -1;
+            }
+
+            if (seen.insert(ref->toString()).second) {
+                appRefs.push_back(std::move(ref).value());
+            }
+        }
+    } else {
+        auto fuzzyRef = package::FuzzyReference::parse(options.appid);
+        if (!fuzzyRef) {
+            this->printer.printErr(fuzzyRef.error());
+            return -1;
+        }
+
+        auto appRef = (*repo)->clearReferenceLocal(*fuzzyRef);
+        if (!appRef) {
+            this->printer.printErr(appRef.error());
+            return -1;
+        }
+
+        auto item = (*repo)->getLayerItem(*appRef);
+        if (!item) {
+            this->printer.printErr(item.error());
+            return -1;
+        }
+        if (item->info.kind != "app") {
+            this->printer.printErr(
+              LINGLONG_ERRV(fmt::format("{} is not an app", appRef->toString())));
+            return -1;
+        }
+
+        appRefs.push_back(std::move(appRef).value());
+    }
+
+    std::sort(appRefs.begin(), appRefs.end(), [](const auto &lhs, const auto &rhs) {
+        return lhs.toString() < rhs.toString();
+    });
+
+    std::vector<DependsNode> trees;
+    for (const auto &appRef : appRefs) {
+        runtime::RunContext runContext(**repo);
+        auto resolveResult = runContext.resolve(appRef);
+        if (!resolveResult) {
+            this->printer.printErr(resolveResult.error());
+            return -1;
+        }
+
+        const auto &baseLayer = runContext.getBaseLayer();
+        if (!baseLayer) {
+            this->printer.printErr(
+              LINGLONG_ERRV(fmt::format("failed to resolve base for {}", appRef.toString())));
+            return -1;
+        }
+
+        auto addExtensions = [&runContext](DependsNode &targetNode, const std::string &targetRef) {
+            for (const auto &extension : runContext.getExtensionLayers()) {
+                const auto &extensionInfo = extension.getExtensionInfo();
+                if (!extensionInfo || extensionInfo->forRef != targetRef) {
+                    continue;
+                }
+
+                appendDependsNode(targetNode.children,
+                                  extension.getReference().toString(),
+                                  extension.getCachedItem().info.kind);
+            }
+        };
+
+        const auto baseRef = baseLayer->getReference().toString();
+        auto &baseNode = appendDependsNode(trees, baseRef, baseLayer->getCachedItem().info.kind);
+        addExtensions(baseNode, baseRef);
+
+        DependsNode *appParent = &baseNode;
+        const auto &runtimeLayer = runContext.getRuntimeLayer();
+        if (runtimeLayer) {
+            const auto runtimeRef = runtimeLayer->getReference().toString();
+            auto &runtimeNode = appendDependsNode(baseNode.children,
+                                                  runtimeRef,
+                                                  runtimeLayer->getCachedItem().info.kind);
+            addExtensions(runtimeNode, runtimeRef);
+            appParent = &runtimeNode;
+        }
+
+        const auto &appLayer = runContext.getAppLayer();
+        if (!appLayer) {
+            this->printer.printErr(
+              LINGLONG_ERRV(fmt::format("failed to resolve app {}", appRef.toString())));
+            return -1;
+        }
+
+        const auto appRefStr = appLayer->getReference().toString();
+        auto &appNode =
+          appendDependsNode(appParent->children, appRefStr, appLayer->getCachedItem().info.kind);
+        addExtensions(appNode, appRefStr);
+    }
+
+    sortDependsTree(trees);
+    this->printer.printDepends(trees);
     return 0;
 }
 

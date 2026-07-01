@@ -10,6 +10,7 @@
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/serialize/json.h"
 
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 
@@ -17,22 +18,61 @@ using RuntimeConfigure = linglong::api::types::v1::RuntimeConfigure;
 
 namespace {
 
+bool isRuntimeConfigDropIn(const std::filesystem::path &path)
+{
+    return path.extension() == ".json";
+}
+
 linglong::utils::error::Result<std::optional<RuntimeConfigure>>
 loadRuntimeConfigFromDir(const std::filesystem::path &configDir, const std::string &appId)
 {
-    std::filesystem::path configPath;
+    LINGLONG_TRACE("load runtime config from dir " + configDir.string());
+
+    std::filesystem::path configBaseDir;
     if (appId.empty()) {
-        configPath = configDir / "config.json";
+        configBaseDir = configDir;
     } else {
-        configPath = configDir / "apps" / appId / "config.json";
+        configBaseDir = configDir / "apps" / appId;
     }
 
+    std::vector<RuntimeConfigure> configs;
+    auto configPath = configBaseDir / "config.json";
     std::error_code ec;
-    if (!std::filesystem::exists(configPath, ec)) {
+    if (std::filesystem::exists(configPath, ec)) {
+        auto config = linglong::utils::loadRuntimeConfig(configPath);
+        if (!config) {
+            return LINGLONG_ERR(config);
+        }
+        configs.emplace_back(std::move(*config));
+    }
+
+    auto configDPath = configBaseDir / "config.d";
+    if (std::filesystem::is_directory(configDPath, ec)) {
+        std::vector<std::filesystem::path> paths;
+        for (const auto &entry : std::filesystem::directory_iterator(
+               configDPath,
+               std::filesystem::directory_options::skip_permission_denied,
+               ec)) {
+            if (entry.is_regular_file(ec) && isRuntimeConfigDropIn(entry.path())) {
+                paths.emplace_back(entry.path());
+            }
+        }
+
+        std::sort(paths.begin(), paths.end());
+        for (const auto &path : paths) {
+            auto config = linglong::utils::loadRuntimeConfig(path);
+            if (!config) {
+                return LINGLONG_ERR(config);
+            }
+            configs.emplace_back(std::move(*config));
+        }
+    }
+
+    if (configs.empty()) {
         return std::nullopt;
     }
 
-    return linglong::utils::loadRuntimeConfig(configPath);
+    return linglong::utils::MergeRuntimeConfig(configs);
 }
 
 linglong::utils::error::Result<std::optional<RuntimeConfigure>>
@@ -78,6 +118,16 @@ RuntimeConfigure MergeRuntimeConfig(const std::vector<RuntimeConfigure> &configs
                 result.deviceMode->insert(result.deviceMode->end(),
                                           config.deviceMode->begin(),
                                           config.deviceMode->end());
+            }
+        }
+
+        if (config.devices) {
+            if (!result.devices) {
+                result.devices = config.devices;
+            } else {
+                result.devices->insert(result.devices->end(),
+                                       config.devices->begin(),
+                                       config.devices->end());
             }
         }
 

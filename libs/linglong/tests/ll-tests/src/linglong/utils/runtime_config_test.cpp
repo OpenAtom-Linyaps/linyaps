@@ -84,6 +84,7 @@ TEST(RuntimeConfigTest, MergeConfigs)
     RuntimeConfigure config1;
     config1.disableXdp = false;
     config1.deviceMode = std::vector<DeviceOption>{ DeviceOption::Passthru };
+    config1.devices = std::vector<std::string>{ "vendor.com/device=gpu0" };
     config1.env =
       std::map<std::string, std::string>{ { "PATH", "/usr/bin" }, { "HOME", "/home/user1" } };
 
@@ -97,6 +98,7 @@ TEST(RuntimeConfigTest, MergeConfigs)
     RuntimeConfigure config2;
     config2.disableXdp = true;
     config2.deviceMode = std::vector<DeviceOption>{ DeviceOption::Passthru };
+    config2.devices = std::vector<std::string>{ "vendor.com/device=gpu1" };
     config2.env =
       std::map<std::string, std::string>{ { "PATH", "/usr/local/bin" }, { "USER", "testuser" } };
 
@@ -120,6 +122,11 @@ TEST(RuntimeConfigTest, MergeConfigs)
     EXPECT_EQ(merged.deviceMode->size(), 2);
     EXPECT_EQ(merged.deviceMode->at(0), DeviceOption::Passthru);
     EXPECT_EQ(merged.deviceMode->at(1), DeviceOption::Passthru);
+
+    ASSERT_TRUE(merged.devices);
+    EXPECT_EQ(merged.devices->size(), 2);
+    EXPECT_EQ(merged.devices->at(0), "vendor.com/device=gpu0");
+    EXPECT_EQ(merged.devices->at(1), "vendor.com/device=gpu1");
 
     // Check environment variables
     ASSERT_TRUE(merged.env);
@@ -358,4 +365,64 @@ TEST(RuntimeConfigTest, LoadRuntimeConfigWithInstanceMounts)
     ASSERT_TRUE(devConfig.env.has_value());
     EXPECT_EQ(devConfig.env->at("DEBUG"), "1");
     EXPECT_FALSE(devConfig.instances.has_value());
+}
+
+TEST(RuntimeConfigTest, LoadRuntimeConfigWithConfigD)
+{
+    TempDir tempDir;
+
+    RuntimeConfigure config;
+    config.env = std::map<std::string, std::string>{ { "ORDER", "base" } };
+    config.devices = std::vector<std::string>{ "vendor.com/device=base" };
+
+    RuntimeConfigure config10;
+    config10.env = std::map<std::string, std::string>{ { "ORDER", "10" } };
+    config10.devices = std::vector<std::string>{ "vendor.com/device=10" };
+
+    RuntimeConfigure config20;
+    config20.env = std::map<std::string, std::string>{ { "ORDER", "20" }, { "EXTRA", "enabled" } };
+    config20.devices = std::vector<std::string>{ "vendor.com/device=20" };
+
+    fs::path configDir = tempDir.path() / "linglong" / "apps" / "test-config-d";
+    fs::create_directories(configDir / "config.d");
+
+    {
+        std::ofstream file(configDir / "config.json");
+        nlohmann::json j;
+        linglong::api::types::v1::to_json(j, config);
+        file << j.dump();
+    }
+    {
+        std::ofstream file(configDir / "config.d" / "20-runtime.json");
+        nlohmann::json j;
+        linglong::api::types::v1::to_json(j, config20);
+        file << j.dump();
+    }
+    {
+        std::ofstream file(configDir / "config.d" / "10-runtime.json");
+        nlohmann::json j;
+        linglong::api::types::v1::to_json(j, config10);
+        file << j.dump();
+    }
+    {
+        std::ofstream file(configDir / "config.d" / "README");
+        file << "runtime config drop-ins must use the .json suffix";
+    }
+
+    EnvironmentVariableGuard xdgGuard("XDG_CONFIG_HOME", tempDir.path().string());
+
+    auto loaded = linglong::utils::loadRuntimeConfig("test-config-d", "");
+    ASSERT_TRUE(loaded.has_value());
+    ASSERT_TRUE(loaded->has_value());
+
+    auto &loadedConfig = **loaded;
+    ASSERT_TRUE(loadedConfig.env.has_value());
+    EXPECT_EQ(loadedConfig.env->at("ORDER"), "20");
+    EXPECT_EQ(loadedConfig.env->at("EXTRA"), "enabled");
+
+    ASSERT_TRUE(loadedConfig.devices.has_value());
+    ASSERT_EQ(loadedConfig.devices->size(), 3);
+    EXPECT_EQ(loadedConfig.devices->at(0), "vendor.com/device=base");
+    EXPECT_EQ(loadedConfig.devices->at(1), "vendor.com/device=10");
+    EXPECT_EQ(loadedConfig.devices->at(2), "vendor.com/device=20");
 }

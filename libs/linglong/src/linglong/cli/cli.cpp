@@ -24,7 +24,6 @@
 #include "linglong/api/types/v1/PackageManager1UninstallParameters.hpp"
 #include "linglong/api/types/v1/State.hpp"
 #include "linglong/api/types/v1/UpgradeListResult.hpp"
-#include "linglong/cdi/cdi.h"
 #include "linglong/cli/printer.h"
 #include "linglong/common/dir.h"
 #include "linglong/common/error.h"
@@ -561,30 +560,6 @@ int Cli::run(const RunOptions &options)
 {
     LINGLONG_TRACE("command run");
 
-    bool nvidiaCdiFound =
-      std::any_of(options.cdiDevices.begin(), options.cdiDevices.end(), [](const std::string &d) {
-          return d.find("nvidia.com/gpu") != std::string::npos;
-      });
-    std::optional<std::vector<api::types::v1::CdiDeviceEntry>> autoDetectedCdiDevices;
-
-    if (!nvidiaCdiFound && options.cdiDevices.empty()) {
-        auto allCdiDevices = cdi::getCDIDevices(options.cdiSpecDir, std::nullopt);
-        if (allCdiDevices) {
-            for (const auto &device : *allCdiDevices) {
-                LogD("{}={} detected", device.kind, device.name);
-                if (device.kind == "nvidia.com/gpu" && device.name == "all") {
-                    nvidiaCdiFound = true;
-                    autoDetectedCdiDevices = std::vector<api::types::v1::CdiDeviceEntry>{ device };
-                    break;
-                }
-            }
-        }
-    }
-
-    if (!nvidiaCdiFound) {
-        detectDrivers();
-    }
-
     auto userContainerDir = std::filesystem::path{ "/run/linglong" } / std::to_string(getuid());
     if (auto ret = utils::ensureDirectory(userContainerDir); !ret) {
         this->printer.printErr(ret.error());
@@ -630,27 +605,23 @@ int Cli::run(const RunOptions &options)
 
     runtime::RunContext runContext(this->repository);
     linglong::runtime::ResolveOptions opts;
-    if (runtimeConfig) {
-        auto cfgRes = opts.applyRuntimeConfig(*runtimeConfig);
-        if (!cfgRes) {
-            this->printer.printErr(cfgRes.error());
-            return -1;
-        }
-    }
-    auto cliRes = opts.applyCliRunOptions(options);
-    if (!cliRes) {
-        this->printer.printErr(cliRes.error());
+    auto resolveOptionsRes = opts.applyOptions(runtimeConfig, options);
+    if (!resolveOptionsRes) {
+        this->printer.printErr(resolveOptionsRes.error());
         return -1;
     }
-    if (!options.cdiDevices.empty()) {
-        auto cdiDevices = cdi::getCDIDevices(options.cdiSpecDir, options.cdiDevices);
-        if (!cdiDevices) {
-            handleCommonError(cdiDevices.error());
-            return -1;
-        }
-        opts.cdiDevices = std::move(*cdiDevices);
-    } else if (autoDetectedCdiDevices) {
-        opts.cdiDevices = std::move(*autoDetectedCdiDevices);
+
+    bool nvidiaCdiFound = false;
+    if (opts.cdiDevices) {
+        nvidiaCdiFound = std::any_of(opts.cdiDevices->begin(),
+                                     opts.cdiDevices->end(),
+                                     [](const api::types::v1::CdiDeviceEntry &device) {
+                                         return device.kind == "nvidia.com/gpu";
+                                     });
+    }
+
+    if (!nvidiaCdiFound) {
+        detectDrivers();
     }
 
     auto res = runContext.resolve(*curAppRef, opts);

@@ -1111,6 +1111,10 @@ $defs:
         type: object
         additionalProperties:
           $ref: '#/$defs/RuntimeConfigure'
+      devices:
+        type: array
+        items:
+          type: string
   RunContextConfig:
     title: RunContextConfig
     type: object

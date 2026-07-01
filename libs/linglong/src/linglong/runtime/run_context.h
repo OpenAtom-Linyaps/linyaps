@@ -36,6 +36,7 @@ struct ResolveOptions
     std::optional<std::vector<std::string>> appModules;
     std::optional<std::string> baseRef;
     std::optional<std::vector<api::types::v1::CdiDeviceEntry>> cdiDevices;
+    std::vector<std::string> cdiSpecDirs{ "/etc/cdi", "/var/run/cdi" };
     std::optional<std::string> runtimeRef;
     std::optional<std::vector<std::string>> extensionRefs;
     std::optional<std::string> instance;
@@ -46,6 +47,8 @@ struct ResolveOptions
     auto applyRuntimeConfig(const api::types::v1::RuntimeConfigure &runtimeConfig)
       -> utils::error::Result<void>;
     auto applyCliRunOptions(const cli::RunOptions &options) -> utils::error::Result<void>;
+    auto applyOptions(const std::optional<api::types::v1::RuntimeConfigure> &runtimeConfig,
+                      const cli::RunOptions &options) -> utils::error::Result<void>;
 };
 
 class RunContext

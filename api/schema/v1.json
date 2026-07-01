@@ -1469,6 +1469,12 @@
           "additionalProperties": {
             "$ref": "#/$defs/RuntimeConfigure"
           }
+        },
+        "devices": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },

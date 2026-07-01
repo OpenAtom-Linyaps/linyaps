@@ -52,6 +52,7 @@
 
 #include <QDBusInterface>
 #include <QDBusReply>
+#include <QDBusUnixFileDescriptor>
 #include <QEventLoop>
 #include <QFileInfo>
 #include <QProcess>
@@ -463,42 +464,40 @@ utils::error::Result<api::dbus::v1::PackageManager *> Cli::getPkgMan()
         return this->pkgMan.get();
     }
 
+    QString service;
+    QDBusConnection pkgManConn{ "ll-package-manager" };
+
     if (this->peerMode) {
         LogW("some subcommands will failed in --no-dbus mode.");
         const auto pkgManAddress = QString("unix:path=/tmp/linglong-package-manager.socket");
 
-        const auto &pkgManConn =
-          QDBusConnection::connectToPeer(pkgManAddress, "ll-package-manager");
+        pkgManConn = QDBusConnection::connectToPeer(pkgManAddress, "ll-package-manager");
         if (!pkgManConn.isConnected()) {
             return LINGLONG_ERR(fmt::format("Failed to connect to ll-package-manager: {}",
                                             pkgManConn.lastError().message().toStdString()));
         }
-
-        this->pkgMan =
-          std::make_unique<api::dbus::v1::PackageManager>("",
-                                                          "/org/deepin/linglong/PackageManager1",
-                                                          pkgManConn,
-                                                          QCoreApplication::instance());
     } else {
-        const auto &pkgManConn = QDBusConnection::systemBus();
-
-        auto peer = linglong::api::dbus::v1::DBusPeer("org.deepin.linglong.PackageManager1",
-                                                      "/org/deepin/linglong/PackageManager1",
-                                                      pkgManConn);
-        auto reply = peer.Ping();
-        reply.waitForFinished();
-        if (!reply.isValid()) {
-            return LINGLONG_ERR(
-              fmt::format("Failed to activate org.deepin.linglong.PackageManager1: {}",
-                          reply.error().message().toStdString()));
-        }
-
-        this->pkgMan =
-          std::make_unique<api::dbus::v1::PackageManager>("org.deepin.linglong.PackageManager1",
-                                                          "/org/deepin/linglong/PackageManager1",
-                                                          pkgManConn,
-                                                          QCoreApplication::instance());
+        service = "org.deepin.linglong.PackageManager1";
+        pkgManConn = QDBusConnection::systemBus();
     }
+
+    auto peer = linglong::api::dbus::v1::DBusPeer(service,
+                                                  "/org/deepin/linglong/PackageManager1",
+                                                  pkgManConn);
+    auto reply = peer.Ping();
+    reply.waitForFinished();
+    if (!reply.isValid()) {
+        const auto message = this->peerMode
+          ? "Failed to initialize peer connection: {}"
+          : "Failed to activate org.deepin.linglong.PackageManager1: {}";
+        return LINGLONG_ERR(fmt::format(message, reply.error().message().toStdString()));
+    }
+
+    this->pkgMan =
+      std::make_unique<api::dbus::v1::PackageManager>(service,
+                                                      "/org/deepin/linglong/PackageManager1",
+                                                      pkgManConn,
+                                                      QCoreApplication::instance());
 
     auto ret = this->initPkgManSignals();
     if (!ret) {
@@ -1128,6 +1127,12 @@ int Cli::installFromFile(const QFileInfo &fileInfo,
     auto pkgMan = this->getPkgMan();
     if (!pkgMan) {
         this->printer.printErr(pkgMan.error());
+        return -1;
+    }
+
+    auto caps = (*pkgMan)->connection().connectionCapabilities();
+    if (!(caps & QDBusConnection::UnixFileDescriptorPassing)) {
+        this->printer.printErr(LINGLONG_ERRV("peer connection does not support Unix FD passing"));
         return -1;
     }
 

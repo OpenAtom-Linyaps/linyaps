@@ -1787,8 +1787,18 @@ int Cli::content(const ContentOptions &options)
         LogE("failed to check symlink {}: {}", file.c_str(), ec.message());
     }
 
-    // Dont't mapping the file under /home
-    if (auto tmp = target.string(); tmp.rfind("/home/", 0) == 0) {
+    auto *homePath = ::getenv("HOME");
+    if (homePath == nullptr || homePath[0] == '\0') {
+        LogE("failed to get HOME env");
+        return target;
+    }
+
+    // Don't map files under the user's home directory
+    auto homeStr = std::string(homePath);
+    if (homeStr.back() != '/') {
+        homeStr.push_back('/');
+    }
+    if (auto tmp = target.string(); tmp.rfind(homeStr, 0) == 0) {
         return target;
     }
 

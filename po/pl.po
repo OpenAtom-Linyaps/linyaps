@@ -252,15 +252,15 @@ msgstr "Wejdź do przestrzeni nazw, w której jest uruchomiona aplikacja"
 
 #: ../apps/ll-cli/src/main.cpp:234
 msgid "Specify the application running instance(you can get it by ps command)"
-msgstr "Podaj instancję aplikacji (znajdziesz ją za pomocą komendy ps)"
+msgstr "Wprowadź instancję aplikacji (znajdziesz ją za pomocą komendy ps)"
 
 #: ../apps/ll-cli/src/main.cpp:238
 msgid "Specify working directory"
-msgstr "Podaj katalog roboczy"
+msgstr "Wprowadź katalog roboczy"
 
 #: ../apps/ll-cli/src/main.cpp:247
 msgid "Stop running applications"
-msgstr "Zatrzymaj uruchomione aplikacje"
+msgstr "Zatrzymaj uruchomioną aplikację"
 
 #: ../apps/ll-cli/src/main.cpp:250
 msgid "Usage: ll-cli kill [OPTIONS] APP"
@@ -268,11 +268,11 @@ msgstr "Polecenie: ll-cli kill [OPCJE] APLIKACJA"
 
 #: ../apps/ll-cli/src/main.cpp:254
 msgid "Specify the signal to send to the application"
-msgstr "Podaj sygnał jaki wysłać aplikacji"
+msgstr "Wprowadź sygnał jaki wysłać aplikacji"
 
 #: ../apps/ll-cli/src/main.cpp:256
 msgid "Specify the running application"
-msgstr "Podaj nazwę uruchomionej aplikacji"
+msgstr "Wprowadź nazwę uruchomionej aplikacji"
 
 #: ../apps/ll-cli/src/main.cpp:267
 msgid "Installing an application or runtime"
@@ -316,7 +316,7 @@ msgstr ""
 
 #: ../apps/ll-cli/src/main.cpp:289
 msgid "Specify the application ID, and it can also be a .uab or .layer file"
-msgstr "Podaj ID aplikacji, może być to również plik .uab lub .layer"
+msgstr "Wprowadź ID aplikacji, może być to również plik .uab lub .layer"
 
 #: ../apps/ll-cli/src/main.cpp:292
 msgid "Install a specify module"
@@ -344,7 +344,7 @@ msgstr "Polecenie: ll-cli uninstall [OPCJE] APLIKACJA"
 
 #: ../apps/ll-cli/src/main.cpp:314
 msgid "Specify the applications ID"
-msgstr "Podaj ID aplikacji"
+msgstr "Wprowadź ID aplikacji"
 
 #: ../apps/ll-cli/src/main.cpp:317
 msgid "Uninstall a specify module"
@@ -376,7 +376,7 @@ msgid ""
 "Specify the application ID. If it not be specified, all applications will be"
 " upgraded"
 msgstr ""
-"Podaj ID aplikacji. Jeśli nie podasz, wszystkie aplikacje zostaną "
+"Wprowadź ID aplikacji. Jeśli nie podasz, wszystkie aplikacje zostaną "
 "zaktualizowane."
 
 #: ../apps/ll-cli/src/main.cpp:351
@@ -423,7 +423,7 @@ msgstr ""
 
 #: ../apps/ll-cli/src/main.cpp:378
 msgid "Specify the Keywords"
-msgstr "Podaj słowa kluczowe"
+msgstr "Wprowadź słowa kluczowe"
 
 #: ../apps/ll-cli/src/main.cpp:385 ../apps/ll-cli/src/main.cpp:424
 msgid "Filter result with specify type. One of \"runtime\", \"base\", \"app\" or \"all\""
@@ -431,7 +431,7 @@ msgstr "Filtruj wyniki wybranego typu. Na przykład \"runtime\", \"base\", \"app
 
 #: ../apps/ll-cli/src/main.cpp:389
 msgid "Specify the repo"
-msgstr "Podaj repozytorium"
+msgstr "Wprowadź repozytorium"
 
 #: ../apps/ll-cli/src/main.cpp:394
 msgid "Include develop application in result"
@@ -491,7 +491,7 @@ msgstr "Polecenie: ll-cli info [OPCJE] APLIKACJA"
 
 #: ../apps/ll-cli/src/main.cpp:446
 msgid "Specify the application ID, and it can also be a .layer file"
-msgstr "Podaj ID aplikacji, może być to również plik .layer"
+msgstr "Wprowadź ID aplikacji, może być to również plik .layer"
 
 #: ../apps/ll-cli/src/main.cpp:458
 msgid "Display the exported files of installed application"
@@ -503,7 +503,7 @@ msgstr "Polecenie: ll-cli content [OPCJE] APLIKACJA"
 
 #: ../apps/ll-cli/src/main.cpp:462
 msgid "Specify the installed application ID"
-msgstr "Podaj ID zainstalowanej aplikacji"
+msgstr "Wprowadź ID zainstalowanej aplikacji"
 
 #: ../apps/ll-cli/src/main.cpp:470
 msgid "Remove the unused base or runtime"
@@ -532,7 +532,7 @@ msgstr "Polecenie: ll-cli inspect dir [OPCJE] APLIKACJA"
 
 #: ../apps/ll-cli/src/main.cpp:497
 msgid "Specify the application ID, and it can also be reference"
-msgstr "Podaj ID aplikacji"
+msgstr "Wprowadź ID aplikacji"
 
 #: ../apps/ll-cli/src/main.cpp:503
 msgid "Specify the directory type (layer or bundle),the default is layer"
@@ -588,7 +588,7 @@ msgstr ""
 #. json flag
 #: ../apps/ll-cli/src/main.cpp:547
 msgid "Use json format to output result"
-msgstr "Użyj formatu JSON do wyświetlenia wyniku."
+msgstr "Wyświetl wynik w formacie JSON"
 
 #: ../apps/ll-cli/src/main.cpp:554
 msgid "Show debug info (verbose logs)"
@@ -1017,7 +1017,7 @@ msgstr "Dodaj nowe repozytorium"
 #: ../libs/linglong/src/linglong/common/cli/repo.cpp:57
 #: ../libs/linglong/src/linglong/common/cli/repo.cpp:68
 msgid "Specify the repo name"
-msgstr "Podaj nazwę repozytorium"
+msgstr "Wprowadź nazwę repozytorium"
 
 #: ../libs/linglong/src/linglong/common/cli/repo.cpp:60
 #: ../libs/linglong/src/linglong/common/cli/repo.cpp:71

@@ -248,7 +248,7 @@ msgstr "Polecenie: ll-cli ps [OPCJE]"
 
 #: ../apps/ll-cli/src/main.cpp:228
 msgid "Enter the namespace where the application is running"
-msgstr "Wprowadź namespace, w której jest uruchomiona aplikacja"
+msgstr "Wejdź do przestrzeni nazw, w której jest uruchomiona aplikacja"
 
 #: ../apps/ll-cli/src/main.cpp:234
 msgid "Specify the application running instance(you can get it by ps command)"
@@ -568,8 +568,8 @@ msgid ""
 "If you found any problems during use,\n"
 "You can report bugs to the linyaps team under this project: https://github.com/OpenAtom-Linyaps/linyaps/issues"
 msgstr ""
-"Jeśli znajdziesz jakieś problemy, \n"
-"możesz zgłosić błąd do zespołu linyaps pod tym adresem: \n"
+"Jeśli znajdziesz jakiś błąd,\n"
+"otwórz zgłoszenie w projekcie linyaps pod poniższym adresem: \n"
 "https://github.com/OpenAtom-Linyaps/linyaps/issues"
 
 #. version flag

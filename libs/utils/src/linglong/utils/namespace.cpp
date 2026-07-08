@@ -5,6 +5,7 @@
 #include "namespace.h"
 
 #include "linglong/common/error.h"
+#include "linglong/common/xdg.h"
 #include "linglong/utils/cmd.h"
 #include "linglong/utils/finally/finally.h"
 #include "linglong/utils/log/log.h"
@@ -12,6 +13,7 @@
 #include <sys/capability.h>
 #include <sys/prctl.h>
 
+#include <cstdlib>
 #include <fstream>
 #include <sstream>
 
@@ -374,6 +376,15 @@ utils::error::Result<int>
 runInNamespace(int argc, char **argv, std::optional<uid_t> uid, std::optional<gid_t> gid)
 {
     LINGLONG_TRACE("run in namespace");
+
+    auto *xdgRuntimeDir = std::getenv("XDG_RUNTIME_DIR");
+    if (xdgRuntimeDir == nullptr || xdgRuntimeDir[0] == '\0') {
+        const auto runtimeDir = common::xdg::getXDGRuntimeDir();
+        if (::setenv("XDG_RUNTIME_DIR", runtimeDir.c_str(), 1) == -1) {
+            return LINGLONG_ERR(
+              fmt::format("failed to set XDG_RUNTIME_DIR: {}", common::error::errorString(errno)));
+        }
+    }
 
     std::array<int, 2> pair{ -1, -1 };
     if (socketpair(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0, pair.data()) == -1) {

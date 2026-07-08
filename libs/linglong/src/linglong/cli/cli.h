@@ -79,6 +79,11 @@ struct KillOptions
     std::string signal{ "SIGTERM" };
 };
 
+struct PsOptions
+{
+    bool noTruncate{ false };
+};
+
 struct InstallOptions
 {
     std::string appid;
@@ -185,7 +190,7 @@ public:
     int run(const RunOptions &options);
     int runWithContext(const RunOptions &options);
     int enter(const EnterOptions &options);
-    int ps();
+    int ps(const PsOptions &options);
     int kill(const KillOptions &options);
     int install(const InstallOptions &options);
     int upgrade(const UpgradeOptions &options);

@@ -80,7 +80,7 @@ bool bindIfExist(std::vector<Mount> &mounts,
     }
 
     mounts.emplace_back(Mount{ .destination = destination,
-                               .options = string_list{ "rbind", ro ? "ro" : "rw" },
+                               .options = string_list{ "rbind", ro ? "ro" : "rw", "rslave" },
                                .source = source,
                                .type = "bind" });
 
@@ -210,7 +210,7 @@ ContainerCfgBuilder &ContainerCfgBuilder::bindDefault() noexcept
 ContainerCfgBuilder &ContainerCfgBuilder::bindSys() noexcept
 {
     sysMount = Mount{ .destination = "/sys",
-                      .options = string_list{ "rbind", "nosuid", "noexec", "nodev" },
+                      .options = string_list{ "rbind", "nosuid", "noexec", "nodev", "rslave" },
                       .source = "/sys",
                       .type = "bind" };
 
@@ -233,7 +233,7 @@ ContainerCfgBuilder &ContainerCfgBuilder::bindDev(bool passthru) noexcept
     if (devPassthru) {
         devMount = {
             Mount{ .destination = "/dev",
-                   .options = string_list{ "rbind" },
+                   .options = string_list{ "rbind", "rslave" },
                    .source = "/dev",
                    .type = "bind" },
         };
@@ -253,7 +253,7 @@ ContainerCfgBuilder &ContainerCfgBuilder::bindDev(bool passthru) noexcept
                    .source = "shm",
                    .type = "tmpfs" },
             Mount{ .destination = "/dev/mqueue",
-                   .options = string_list{ "rbind", "nosuid", "noexec", "nodev" },
+                   .options = string_list{ "rbind", "nosuid", "noexec", "nodev", "rslave" },
                    .source = "/dev/mqueue",
                    .type = "bind" },
         };
@@ -279,7 +279,7 @@ ContainerCfgBuilder::bindDevNode(std::function<bool(const std::string &)> ifBind
     for (const auto &entry : std::filesystem::directory_iterator{ "/dev" }) {
         if (ifBind(entry.path().filename())) {
             Mount m{ .destination = entry.path(),
-                     .options = string_list{ "rbind" },
+                     .options = string_list{ "rbind", "rslave" },
                      .source = entry.path(),
                      .type = "bind" };
 
@@ -344,7 +344,7 @@ utils::error::Result<void> ContainerCfgBuilder::buildXDGRuntime() noexcept
     }
 
     runMount->emplace_back(Mount{ .destination = *containerXDGRuntimeDir,
-                                  .options = string_list{ "bind" },
+                                  .options = string_list{ "bind", "rslave" },
                                   .source = hostXDGRuntimeMountPoint,
                                   .type = "bind" });
     environment["XDG_RUNTIME_DIR"] = *containerXDGRuntimeDir;
@@ -352,7 +352,7 @@ utils::error::Result<void> ContainerCfgBuilder::buildXDGRuntime() noexcept
     if (xdpOption) {
         runMount->emplace_back(
           Mount{ .destination = *containerXDGRuntimeDir / "doc",
-                 .options = string_list{ "bind", "nosuid", "nodev", "relatime" },
+                 .options = string_list{ "bind", "nosuid", "nodev", "relatime", "rslave" },
                  .source = xdpOption->docMountPoint / "by-app" / appId,
                  .type = "bind" });
     }
@@ -364,7 +364,7 @@ ContainerCfgBuilder &ContainerCfgBuilder::bindTmp() noexcept
 {
     tmpMount = Mount{
         .destination = "/tmp",
-        .options = string_list{ "rbind" },
+        .options = string_list{ "rbind", "rslave" },
         .source = "/tmp",
         .type = "bind",
     };
@@ -427,11 +427,11 @@ utils::error::Result<void> ContainerCfgBuilder::buildUserGroup() noexcept
     }
 
     UGMount = { Mount{ .destination = "/etc/passwd",
-                       .options = string_list{ "rbind", "ro" },
+                       .options = string_list{ "bind", "ro" },
                        .source = passwdSrc,
                        .type = "bind" },
                 Mount{ .destination = "/etc/group",
-                       .options = string_list{ "rbind", "ro" },
+                       .options = string_list{ "bind", "ro" },
                        .source = groupSrc,
                        .type = "bind" } };
 
@@ -560,7 +560,7 @@ ContainerCfgBuilder &ContainerCfgBuilder::bindHostRoot() noexcept
         },
         Mount{
           .destination = "/run/host/rootfs",
-          .options = string_list{ "rbind" },
+          .options = string_list{ "rbind", "ro", "rslave" },
           .source = "/",
           .type = "bind",
         },
@@ -872,7 +872,7 @@ utils::error::Result<void> ContainerCfgBuilder::buildMountRuntime() noexcept
     }
 
     runtimeMount = Mount{ .destination = runtimeMountPoint,
-                          .options = string_list{ "rbind", runtimePathRo ? "ro" : "rw" },
+                          .options = string_list{ "rbind", runtimePathRo ? "ro" : "rw", "rslave" },
                           .source = *runtimePath,
                           .type = "bind" };
 
@@ -897,7 +897,7 @@ utils::error::Result<void> ContainerCfgBuilder::buildMountApp() noexcept
                         .source = "tmpfs",
                         .type = "tmpfs" },
                  Mount{ .destination = std::filesystem::path{ "/opt/apps" } / appId / "files",
-                        .options = string_list{ "rbind", appPathRo ? "ro" : "rw" },
+                        .options = string_list{ "rbind", appPathRo ? "ro" : "rw", "rslave" },
                         .source = *appPath,
                         .type = "bind" } };
 
@@ -929,7 +929,7 @@ utils::error::Result<void> ContainerCfgBuilder::buildMountHome() noexcept
     auto containerHome = homePath->string();
 
     homeMount->emplace_back(Mount{ .destination = containerHome,
-                                   .options = string_list{ "rbind" },
+                                   .options = string_list{ "rbind", "rslave" },
                                    .source = *homePath,
                                    .type = "bind" });
     environment["HOME"] = containerHome;
@@ -949,7 +949,7 @@ utils::error::Result<void> ContainerCfgBuilder::buildMountHome() noexcept
 
         homeMount->emplace_back(Mount{
           .destination = containerDir,
-          .options = string_list{ "rbind" },
+          .options = string_list{ "rbind", "rslave" },
           .source = hostDir,
           .type = "bind",
         });
@@ -1033,7 +1033,7 @@ utils::error::Result<void> ContainerCfgBuilder::buildMountHome() noexcept
     if ((XDG_CONFIG_HOME != containerConfigHome)
         && std::filesystem::exists(hostSystemdUserDir, ec)) {
         homeMount->emplace_back(Mount{ .destination = containerConfigHome + "/systemd/user",
-                                       .options = string_list{ "rbind" },
+                                       .options = string_list{ "rbind", "rslave" },
                                        .source = hostSystemdUserDir,
                                        .type = "bind" });
     }
@@ -1045,7 +1045,7 @@ utils::error::Result<void> ContainerCfgBuilder::buildMountHome() noexcept
     if ((XDG_CONFIG_HOME != containerConfigHome)
         && std::filesystem::exists(hostUserDconfPath, ec)) {
         homeMount->emplace_back(Mount{ .destination = containerConfigHome + "/dconf",
-                                       .options = string_list{ "rbind" },
+                                       .options = string_list{ "rbind", "rslave" },
                                        .source = hostUserDconfPath,
                                        .type = "bind" });
     }
@@ -1054,7 +1054,7 @@ utils::error::Result<void> ContainerCfgBuilder::buildMountHome() noexcept
     auto hostDDEApiPath = XDG_CACHE_HOME / "deepin" / "dde-api";
     if ((XDG_CACHE_HOME != containerCacheHome) && std::filesystem::exists(hostDDEApiPath, ec)) {
         homeMount->emplace_back(Mount{ .destination = containerCacheHome + "/deepin/dde-api",
-                                       .options = string_list{ "rbind" },
+                                       .options = string_list{ "rbind", "rslave" },
                                        .source = hostDDEApiPath,
                                        .type = "bind" });
     }
@@ -1063,7 +1063,7 @@ utils::error::Result<void> ContainerCfgBuilder::buildMountHome() noexcept
     auto XDGUserDirs = XDG_CONFIG_HOME / "user-dirs.dirs";
     if ((XDG_CONFIG_HOME != containerConfigHome) && std::filesystem::exists(XDGUserDirs, ec)) {
         homeMount->push_back(Mount{ .destination = containerConfigHome + "/user-dirs.dirs",
-                                    .options = string_list{ "rbind" },
+                                    .options = string_list{ "bind" },
                                     .source = XDGUserDirs,
                                     .type = "bind" });
     }
@@ -1071,7 +1071,7 @@ utils::error::Result<void> ContainerCfgBuilder::buildMountHome() noexcept
     auto XDGUserLocale = XDG_CONFIG_HOME / "user-dirs.locale";
     if ((XDG_CONFIG_HOME != containerConfigHome) && std::filesystem::exists(XDGUserLocale, ec)) {
         homeMount->push_back(Mount{ .destination = containerConfigHome + "/user-dirs.locale",
-                                    .options = string_list{ "rbind" },
+                                    .options = string_list{ "bind" },
                                     .source = XDGUserLocale,
                                     .type = "bind" });
     }
@@ -1137,7 +1137,7 @@ utils::error::Result<void> ContainerCfgBuilder::buildPrivateMapped() noexcept
         }
 
         privateMount->emplace_back(Mount{ .destination = containerPath,
-                                          .options = string_list{ "rbind" },
+                                          .options = string_list{ "rbind", "rslave" },
                                           .source = hostPath,
                                           .type = "bind" });
     }
@@ -1290,7 +1290,7 @@ utils::error::Result<void> ContainerCfgBuilder::buildMountIPC() noexcept
         }
 
         ipcMount->emplace_back(Mount{ .destination = containerDest.string(),
-                                      .options = std::vector<std::string>{ "rbind" },
+                                      .options = std::vector<std::string>{ "bind" },
                                       .source = selectedSource,
                                       .type = "bind" });
 
@@ -1340,7 +1340,7 @@ utils::error::Result<void> ContainerCfgBuilder::buildMountIPC() noexcept
 
         ipcMount->emplace_back(ocppi::runtime::config::types::Mount{
           .destination = *containerXDGRuntimeDir / "dconf",
-          .options = string_list{ "rbind" },
+          .options = string_list{ "rbind", "rslave" },
           .source = dconfPath.string(),
           .type = "bind",
         });
@@ -1363,7 +1363,7 @@ utils::error::Result<void> ContainerCfgBuilder::buildMountCache() noexcept
     }
 
     cacheMount = { Mount{ .destination = "/run/linglong/cache",
-                          .options = string_list{ "rbind", appCacheRo ? "ro" : "rw" },
+                          .options = string_list{ "rbind", appCacheRo ? "ro" : "rw", "rslave" },
                           .source = *appCache,
                           .type = "bind" } };
 
@@ -1384,7 +1384,7 @@ utils::error::Result<void> ContainerCfgBuilder::buildLDCache() noexcept
 
     if (ldCacheMount) {
         ldCacheMount->emplace_back(Mount{ .destination = "/etc/ld.so.cache",
-                                          .options = string_list{ "rbind", "ro" },
+                                          .options = string_list{ "bind", "ro" },
                                           .source = *appCache / "ld.so.cache",
                                           .type = "bind" });
     }
@@ -1392,7 +1392,7 @@ utils::error::Result<void> ContainerCfgBuilder::buildLDCache() noexcept
     if (ldConfMount) {
         ldConfMount->emplace_back(
           Mount{ .destination = "/etc/ld.so.conf.d/zz_deepin-linglong-app.conf",
-                 .options = { { "rbind", "ro" } },
+                 .options = { { "bind", "ro" } },
                  .source = *appCache / "ld.so.conf",
                  .type = "bind" });
     }
@@ -1457,12 +1457,12 @@ utils::error::Result<void> ContainerCfgBuilder::buildMountNetworkConf() noexcept
                                     ec);
             }
             networkConfMount->emplace_back(Mount{ .destination = resolvConf.string(),
-                                                  .options = string_list{ "rbind", "copy-symlink" },
+                                                  .options = string_list{ "bind", "copy-symlink" },
                                                   .source = bundleResolvConf,
                                                   .type = "bind" });
         } else {
             networkConfMount->emplace_back(Mount{ .destination = resolvConf.string(),
-                                                  .options = string_list{ "rbind", "ro" },
+                                                  .options = string_list{ "bind", "ro" },
                                                   .source = resolvConf,
                                                   .type = "bind" });
         }
@@ -1540,7 +1540,7 @@ utils::error::Result<void> ContainerCfgBuilder::buildEnv() noexcept
     config.process->env = std::move(env);
 
     envMount = Mount{ .destination = "/etc/profile.d/00env.sh",
-                      .options = string_list{ "rbind", "ro" },
+                      .options = string_list{ "bind", "ro" },
                       .source = envShFile,
                       .type = "bind" };
 
@@ -1592,7 +1592,7 @@ Network={}
     }
 
     infoMount = Mount{ .destination = "/.linyaps",
-                       .options = string_list{ "rbind", "ro" },
+                       .options = string_list{ "bind", "ro" },
                        .source = containerInfoFile,
                        .type = "bind" };
     return LINGLONG_OK;

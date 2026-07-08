@@ -1399,7 +1399,7 @@ Cli::getCurrentContainers() const noexcept
     return myContainers;
 }
 
-int Cli::ps()
+int Cli::ps(const PsOptions &options)
 {
     auto myContainers = getCurrentContainers();
     if (!myContainers) {
@@ -1407,12 +1407,13 @@ int Cli::ps()
         return -1;
     }
 
-    // TODO: add option --no-truncated
-    std::for_each(myContainers->begin(),
-                  myContainers->end(),
-                  [](api::types::v1::CliContainer &container) {
-                      container.id = container.id.substr(0, ContainerIDDisplayLength);
-                  });
+    if (!options.noTruncate) {
+        std::for_each(myContainers->begin(),
+                      myContainers->end(),
+                      [](api::types::v1::CliContainer &container) {
+                          container.id = container.id.substr(0, ContainerIDDisplayLength);
+                      });
+    }
 
     this->printer.printContainers(*myContainers);
 

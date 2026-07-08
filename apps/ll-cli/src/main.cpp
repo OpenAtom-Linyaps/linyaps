@@ -212,12 +212,13 @@ ll-cli run org.deepin.demo -- bash -x /path/to/bash/script)"));
 }
 
 // Function to add the ps subcommand
-void addPsCommand(CLI::App &commandParser, const std::string &group)
+void addPsCommand(CLI::App &commandParser, PsOptions &psOptions, const std::string &group)
 {
-    commandParser.add_subcommand("ps", _("List running applications"))
-      ->fallthrough()
-      ->group(group)
-      ->usage(_("Usage: ll-cli ps [OPTIONS]"));
+    auto *cliPs = commandParser.add_subcommand("ps", _("List running applications"))
+                    ->fallthrough()
+                    ->group(group);
+    cliPs->add_flag("--no-truncated", psOptions.noTruncate, _("Do not truncate container IDs"));
+    cliPs->usage(_("Usage: ll-cli ps [OPTIONS]"));
 }
 
 // Function to add the exec subcommand
@@ -612,6 +613,7 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     RunOptions runOptions{};
     EnterOptions enterOptions{};
     KillOptions killOptions{};
+    PsOptions psOptions{};
     InstallOptions installOptions{};
     UpgradeOptions upgradeOptions{};
     SearchOptions searchOptions{};
@@ -632,7 +634,7 @@ You can report bugs to the linyaps team under this project: https://github.com/O
 
     // add all subcommands using the new functions
     addRunCommand(commandParser, runOptions, CliAppManagingGroup);
-    addPsCommand(commandParser, CliAppManagingGroup);
+    addPsCommand(commandParser, psOptions, CliAppManagingGroup);
     addEnterCommand(commandParser, enterOptions, CliAppManagingGroup);
     addKillCommand(commandParser, killOptions, CliAppManagingGroup);
     addInstallCommand(commandParser, installOptions, CliBuildInGroup);
@@ -784,7 +786,7 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     } else if (name == "enter") {
         result = cli->enter(enterOptions);
     } else if (name == "ps") {
-        result = cli->ps();
+        result = cli->ps(psOptions);
     } else if (name == "kill") {
         result = cli->kill(killOptions);
     } else if (name == "install") {

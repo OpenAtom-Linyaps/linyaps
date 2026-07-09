@@ -727,6 +727,16 @@ ContainerCfgBuilder &ContainerCfgBuilder::addMask(const std::vector<std::string>
     return *this;
 }
 
+std::filesystem::path ContainerCfgBuilder::appMountPoint(const std::string &id) noexcept
+{
+    return std::filesystem::path{ "/opt/apps" } / id / "files";
+}
+
+std::filesystem::path ContainerCfgBuilder::extensionMountPoint(const std::string &id) noexcept
+{
+    return std::filesystem::path{ "/opt/extensions" } / id;
+}
+
 std::string ContainerCfgBuilder::ldConf(const std::string &triplet) const
 {
     std::vector<std::string> factors;
@@ -743,7 +753,7 @@ std::string ContainerCfgBuilder::ldConf(const std::string &triplet) const
     }
 
     if (appPath) {
-        appendLdConf(std::filesystem::path{ "/opt/apps" } / appId / "files");
+        appendLdConf(appMountPoint(appId));
         factors.push_back(appPath->string());
     }
 
@@ -896,7 +906,7 @@ utils::error::Result<void> ContainerCfgBuilder::buildMountApp() noexcept
                         .options = string_list{ "nodev", "nosuid", "mode=700" },
                         .source = "tmpfs",
                         .type = "tmpfs" },
-                 Mount{ .destination = std::filesystem::path{ "/opt/apps" } / appId / "files",
+                 Mount{ .destination = appMountPoint(appId),
                         .options = string_list{ "rbind", appPathRo ? "ro" : "rw", "rslave" },
                         .source = *appPath,
                         .type = "bind" } };

@@ -38,7 +38,8 @@ public:
     };
 
     utils::error::Result<void>
-    resolveLayer(const std::vector<std::string> &modules = {},
+    resolveLayer(const std::optional<std::vector<std::string>> &includeModules = std::nullopt,
+                 const std::optional<std::vector<std::string>> &excludeModules = std::nullopt,
                  const std::optional<std::string> &subRef = std::nullopt);
 
     [[nodiscard]] const api::types::v1::RepositoryCacheLayersItem &getCachedItem() const noexcept

@@ -1838,7 +1838,7 @@ utils::error::Result<void> Builder::run(std::vector<std::string> modules,
 
     runtime::RunContext runContext(this->repo);
     linglong::runtime::ResolveOptions opts;
-    opts.depsBinaryOnly = !debug;
+    opts.depsExcludeDev = !debug;
     opts.appModules = std::move(modules);
     if (!extensions.empty()) {
         opts.extensionRefs = extensions;

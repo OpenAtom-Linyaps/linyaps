@@ -208,6 +208,30 @@ ll-cli run org.deepin.demo -- bash -x /path/to/bash/script)"));
                    _("Specify the container instance name for reuse or identification"))
       ->type_name("NAME")
       ->check(validatorString);
+    auto *debugOpt =
+      cliRun->add_flag("--debug", runOptions.debug, _("Run the application under gdbserver"));
+    cliRun
+      ->add_option("--debug-listen",
+                   runOptions.debugListen,
+                   _("Specify the gdbserver listen address"))
+      ->type_name("ADDR")
+      ->check(validatorString)
+      ->capture_default_str()
+      ->needs(debugOpt);
+    cliRun
+      ->add_option("--debug-debuginfod",
+                   runOptions.debugDebuginfod,
+                   _("Specify debuginfod urls for debugging"))
+      ->type_name("URLS")
+      ->check(validatorString)
+      ->needs(debugOpt);
+    cliRun
+      ->add_option("--debug-symbol-dir",
+                   runOptions.debugSymbolDir,
+                   _("Specify the directory used by gdb to load debug symbols"))
+      ->type_name("DIR")
+      ->check(validatorString)
+      ->needs(debugOpt);
     cliRun->add_option("COMMAND", runOptions.commands, _("Run commands in a running sandbox"));
 }
 

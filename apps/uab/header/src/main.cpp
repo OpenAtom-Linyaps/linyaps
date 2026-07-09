@@ -15,6 +15,7 @@
 #include <array>
 #include <atomic>
 #include <climits>
+#include <csignal>
 #include <cstring>
 #include <filesystem>
 #include <iomanip>
@@ -34,6 +35,7 @@ namespace {
 
 std::atomic_bool mountFlag{ false };  // NOLINT
 std::atomic_bool createFlag{ false }; // NOLINT
+volatile sig_atomic_t signalReceived{ 0 }; // NOLINT - set by signal handler, checked by main loop
 std::filesystem::path mountPoint;     // NOLINT
 constexpr std::size_t default_page_size = 4096;
 
@@ -371,9 +373,10 @@ void handleSig() noexcept
 
     struct sigaction sa{};
 
+    // Only set a flag in the signal handler - this is async-signal-safe.
+    // The main loop will check this flag and perform cleanup safely.
     sa.sa_handler = [](int sig) -> void {
-        // TODO: maybe not async safe, find a better way to handle signal
-        cleanAndExit(128 + sig);
+        signalReceived = sig;
     };
     sa.sa_mask = blocking_mask;
     sa.sa_flags = 0;
@@ -684,9 +687,11 @@ int main(int argc, char **argv)
 
     bool mountOnly = !opts.mountPath.empty();
     if (mountOnly) {
-        while (true) {
+        while (signalReceived == 0) {
             pause();
         }
+        // Signal received - perform cleanup in a safe context (not from signal handler)
+        cleanAndExit(128 + signalReceived);
     }
 
     if (!opts.extractPath.empty()) {

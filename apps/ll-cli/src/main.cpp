@@ -134,11 +134,11 @@ ll-cli run org.deepin.demo -- bash -x /path/to/bash/script)"));
                    runOptions.filePaths,
                    _("Pass file to applications running in a sandbox"))
       ->type_name("FILE")
-      ->expected(0, -1);
+      ->expected(1);
     cliRun
       ->add_option("--url", runOptions.fileUrls, _("Pass url to applications running in a sandbox"))
       ->type_name("URL")
-      ->expected(0, -1);
+      ->expected(1);
     cliRun->add_option("--env", runOptions.envs, _("Set environment variables for the application"))
       ->type_name("ENV")
       // vector parameter allow extra args by default, but we don't want it
@@ -601,13 +601,16 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     auto *jsonFlag = commandParser.add_flag("--json", jsonDescription);
 
     // verbose flag
-    GlobalOptions globalOptions{ .verbose = false, .noProgress = false };
+    GlobalOptions globalOptions{ .verbose = false, .noProgress = false, .yesOpt = false };
     commandParser.add_flag("-v,--verbose",
                            globalOptions.verbose,
                            _("Show debug info (verbose logs)"));
     commandParser.add_flag("--no-progress",
                            globalOptions.noProgress,
                            _("Don't output progress information"));
+    commandParser.add_flag("-y,--yes",
+                           globalOptions.yesOpt,
+                           _("Automatically answer yes to all prompts (useful for non-interactive mode)"));
 
     // subcommand options
     RunOptions runOptions{};

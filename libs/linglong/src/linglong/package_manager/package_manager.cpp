@@ -604,8 +604,25 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
       api::types::v1::InteractionMessageType::Install;
 
     additionalMessage.remoteRef = packageRef.toString();
-    // TODO: when install extra module, we should check the same version of main(binary/runtime)
-    // module has been installed or not
+    // When installing an extra module (non-binary, non-runtime), verify that the
+    // corresponding binary module of the same version is already installed.
+    if (packageInfo.packageInfoV2Module != "binary"
+        && packageInfo.packageInfoV2Module != "runtime") {
+        auto mainModuleLayerDir = this->repo->getLayerDir(packageRef, "binary");
+        if (!mainModuleLayerDir) {
+            // binary module not found, try runtime
+            mainModuleLayerDir = this->repo->getLayerDir(packageRef, "runtime");
+        }
+        if (!mainModuleLayerDir) {
+            return toDBusReply(
+              utils::error::ErrorCode::AppInstallModuleRequireAppFirst,
+              fmt::format("cannot install module '{}' of {} version {}: "
+                          "the corresponding binary/runtime module is not installed",
+                          packageInfo.packageInfoV2Module,
+                          packageRef.id,
+                          packageRef.version.toString()));
+        }
+    }
 
     // Note: same as InstallRef, we should fuzzy the id instead of version
     auto fuzzyRef = package::FuzzyReference::parse(packageRef.id);

@@ -12,6 +12,7 @@
 #include <nlohmann/json.hpp>
 
 #include <cstdint>
+#include <csignal>
 #include <cstdlib>
 #include <exception>
 #include <filesystem>
@@ -30,6 +31,8 @@
 namespace {
 
 std::filesystem::path containerBundle;
+
+volatile sig_atomic_t signalReceived{ 0 };
 
 std::string genRandomString() noexcept
 {
@@ -86,7 +89,7 @@ void handleSig() noexcept
     struct sigaction sa{};
 
     sa.sa_handler = [](int sig) -> void {
-        cleanAndExit(128 + sig);
+        signalReceived = sig;
     };
     sa.sa_mask = blocking_mask;
     sa.sa_flags = 0;
@@ -115,14 +118,19 @@ loadPackageInfoFromJson(const std::filesystem::path &json) noexcept
     std::cout << "fallback to PackageInfoV1" << std::endl;
     stream.seekg(0);
 
-    try { // TODO: use public fallback method on later
+    try {
         auto content = nlohmann::json::parse(stream);
         auto oldInfo = content.get<linglong::api::types::v1::PackageInfo>();
+        // Note: This manual conversion mirrors
+        // linglong::utils::serialize::toPackageInfoV2(). The public method is
+        // not used here because the UAB loader is statically linked and cannot
+        // depend on linglong::utils (which pulls in libcap, libsystemd, etc.).
         return linglong::api::types::v1::PackageInfoV2{
             .arch = oldInfo.arch,
             .base = oldInfo.base,
             .channel = oldInfo.channel.value_or("main"),
             .command = oldInfo.command,
+            .compatibleVersion = std::nullopt,
             .description = oldInfo.description,
             .id = oldInfo.appid,
             .kind = oldInfo.kind,
@@ -132,6 +140,7 @@ loadPackageInfoFromJson(const std::filesystem::path &json) noexcept
             .runtime = oldInfo.runtime,
             .schemaVersion = "1.0",
             .size = oldInfo.size,
+            .uuid = std::nullopt,
             .version = oldInfo.version,
         };
     } catch (const nlohmann::json::parse_error &err) {
@@ -593,6 +602,10 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv) // NOLINT
         std::cout << json.dump(4) << std::endl;
     }
 
+    if (signalReceived != 0) {
+        cleanAndExit(128 + signalReceived);
+    }
+
     auto bundleArg = "--bundle=" + containerBundle.string();
     auto pid = fork();
     if (pid < 0) {
@@ -613,6 +626,9 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv) // NOLINT
 
     int wstatus{ 0 };
     if (auto ret = ::waitpid(pid, &wstatus, 0); ret == -1) {
+        if (signalReceived != 0) {
+            cleanAndExit(128 + signalReceived);
+        }
         std::cerr << "waitpid() err:" << ::strerror(errno) << std::endl;
         return -1;
     }

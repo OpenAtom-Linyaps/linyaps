@@ -674,11 +674,15 @@ void Cli::interaction(const QDBusObjectPath &object_path,
         action = notifyReply->action.value();
     }
 
-    // FIXME: if the notifier is a DummyNotifier, treat the action as yes.(for deepin-app-store)
-    // But this behavior is no correct. We should treat it as no and tell people to add additional
-    // option '-y'.
-    if (action == "Y" || action == "y" || action == "Yes" || action == "yes" || action == "dummy") {
+    // When DummyNotifier is used (no terminal/DBus available), treat "dummy" action
+    // as "yes" only if -y/--yes was explicitly set; otherwise treat as "no" (safe default).
+    if (action == "Y" || action == "y" || action == "Yes" || action == "yes") {
         action = "yes";
+    } else if (action == "dummy") {
+        action = this->globalOptions.yesOpt ? "yes" : "no";
+        if (action == "no") {
+            LogW("Interaction requested but no terminal/DBus available. Use -y/--yes to auto-confirm.");
+        }
     } else {
         action = "no";
     }
@@ -2487,9 +2491,10 @@ int Cli::content(const ContentOptions &options)
 std::vector<std::string> Cli::filePathMapping(const std::vector<std::string> &command,
                                               const RunOptions &options) const noexcept
 {
-    // FIXME: couldn't handle command like 'll-cli run org.xxx.yyy --file f1 f2 f3 org.xxx.yyy %%F'
-    // can't distinguish the boundary of command , need validate the command arguments in the future
-
+    // NOTE: The --file and --url options now accept a single value per use
+    // (e.g., `--file f1 --file f2`), so the boundary between file arguments
+    // and command arguments is unambiguous. The COMMAND positional argument
+    // is no longer consumed by --file/--url.
     std::vector<std::string> execArgs;
     // if the --file or --url option is specified, need to map the file path to the linglong
     // path(/run/host).
@@ -2533,7 +2538,9 @@ std::vector<std::string> Cli::filePathMapping(const std::vector<std::string> &co
             continue;
         }
 
-        LogW("unknown command argument {}", arg);
+        LogW("unsupported Exec variable '{}' in command, only %%f, %%F, %%u, %%U are supported", arg);
+        // Keep the argument as-is to avoid silently dropping it
+        execArgs.emplace_back(arg);
     }
 
     return execArgs;

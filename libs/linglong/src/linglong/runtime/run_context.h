@@ -32,7 +32,7 @@ namespace linglong::runtime {
 
 struct ResolveOptions
 {
-    bool depsBinaryOnly{ false };
+    bool depsExcludeDev{ false };
     std::optional<std::vector<std::string>> appModules;
     std::optional<std::string> baseRef;
     std::optional<std::vector<api::types::v1::CdiDeviceEntry>> cdiDevices;
@@ -114,7 +114,7 @@ public:
     [[nodiscard]] bool hasRuntime() const noexcept { return !!runtimeLayer; }
 
 private:
-    utils::error::Result<void> resolveLayer(bool depsBinaryOnly,
+    utils::error::Result<void> resolveLayer(bool depsExcludeDev,
                                             const std::vector<std::string> &appModules);
     utils::error::Result<void> resolveLayerExtensions(
       RuntimeLayer &layer,

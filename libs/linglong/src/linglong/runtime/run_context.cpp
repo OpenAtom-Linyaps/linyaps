@@ -307,7 +307,7 @@ utils::error::Result<void> RunContext::resolve(const linglong::package::Referenc
     }
 
     // all reference are cleard , we can get actual layer directory now
-    return resolveLayer(opts.depsBinaryOnly, opts.appModules.value_or(std::vector<std::string>{}));
+    return resolveLayer(opts.depsExcludeDev, opts.appModules.value_or(std::vector<std::string>{}));
 }
 
 utils::error::Result<void> RunContext::resolve(const api::types::v1::BuilderProject &target,
@@ -595,7 +595,7 @@ utils::error::Result<void> RunContext::setupCDIDevices(generator::ContainerCfgBu
     return LINGLONG_OK;
 }
 
-utils::error::Result<void> RunContext::resolveLayer(bool depsBinaryOnly,
+utils::error::Result<void> RunContext::resolveLayer(bool depsExcludeDev,
                                                     const std::vector<std::string> &appModules)
 {
     LINGLONG_TRACE("resolve layers");
@@ -608,24 +608,28 @@ utils::error::Result<void> RunContext::resolveLayer(bool depsBinaryOnly,
         }
     }
 
-    std::vector<std::string> depsModules;
-    if (depsBinaryOnly) {
-        depsModules.emplace_back("binary");
+    std::optional<std::vector<std::string>> depsExcludeModules;
+    if (depsExcludeDev) {
+        depsExcludeModules = std::vector<std::string>{ "develop" };
     }
-    auto ref = baseLayer->resolveLayer(depsModules, subRef);
+    auto ref = baseLayer->resolveLayer(std::nullopt, depsExcludeModules, subRef);
     if (!ref.has_value()) {
         return LINGLONG_ERR("failed to resolve base layer", ref);
     }
 
     if (appLayer) {
-        auto ref = appLayer->resolveLayer(appModules);
+        std::optional<std::vector<std::string>> appIncludeModules;
+        if (!appModules.empty()) {
+            appIncludeModules = appModules;
+        }
+        auto ref = appLayer->resolveLayer(appIncludeModules);
         if (!ref.has_value()) {
             return LINGLONG_ERR("failed to resolve app layer", ref);
         }
     }
 
     if (runtimeLayer) {
-        auto ref = runtimeLayer->resolveLayer(depsModules, subRef);
+        auto ref = runtimeLayer->resolveLayer(std::nullopt, depsExcludeModules, subRef);
         if (!ref.has_value()) {
             return LINGLONG_ERR("failed to resolve runtime layer", ref);
         }
@@ -666,10 +670,10 @@ utils::error::Result<void> RunContext::resolveLayer(bool depsBinaryOnly,
                 defaultValue = allowed->second;
             }
 
-            std::string res =
-              common::strings::replaceSubstring(env.second,
-                                                "$PREFIX",
-                                                "/opt/extensions/" + ext.getReference().id);
+            std::string res = common::strings::replaceSubstring(
+              env.second,
+              "$PREFIX",
+              generator::ContainerCfgBuilder::extensionMountPoint(ext.getReference().id).string());
             auto &value = environment[env.first];
             if (value.empty()) {
                 value = defaultValue;
@@ -887,7 +891,7 @@ RunContext::makeManualExtensionDefine(const std::vector<std::string> &refs)
         }
 
         extDefs.emplace_back(api::types::v1::ExtensionDefine{
-          .directory = "/opt/extensions/" + fuzzyRef->id,
+          .directory = generator::ContainerCfgBuilder::extensionMountPoint(fuzzyRef->id).string(),
           .name = fuzzyRef->id,
           .version = fuzzyRef->version.value_or(""),
         });
@@ -999,7 +1003,7 @@ utils::error::Result<void> RunContext::fillContextCfg(
     std::vector<ocppi::runtime::config::types::Mount> extensionMounts{};
     if (extensionOutput) {
         extensionMounts.push_back(ocppi::runtime::config::types::Mount{
-          .destination = "/opt/extensions/" + targetId,
+          .destination = generator::ContainerCfgBuilder::extensionMountPoint(targetId),
           .gidMappings = {},
           .options = { { "rbind" } },
           .source = extensionOutput,
@@ -1027,7 +1031,7 @@ utils::error::Result<void> RunContext::fillContextCfg(
             continue;
         }
         extensionMounts.push_back(ocppi::runtime::config::types::Mount{
-          .destination = "/opt/extensions/" + name,
+          .destination = generator::ContainerCfgBuilder::extensionMountPoint(name),
           .gidMappings = {},
           .options = { { "rbind", "ro" } },
           .source = ext.getLayerDir()->filesDirPath(),

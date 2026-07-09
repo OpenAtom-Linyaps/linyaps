@@ -9,6 +9,8 @@
 
 #include <fmt/ranges.h>
 
+#include <algorithm>
+
 namespace linglong::runtime {
 utils::error::Result<RuntimeLayer> RuntimeLayer::create(package::Reference ref,
                                                         const RunContext &context)
@@ -47,8 +49,10 @@ RuntimeLayer::~RuntimeLayer() noexcept
     }
 }
 
-utils::error::Result<void> RuntimeLayer::resolveLayer(const std::vector<std::string> &modules,
-                                                      const std::optional<std::string> &subRef)
+utils::error::Result<void>
+RuntimeLayer::resolveLayer(const std::optional<std::vector<std::string>> &includeModules,
+                           const std::optional<std::vector<std::string>> &excludeModules,
+                           const std::optional<std::string> &subRef)
 {
     LINGLONG_TRACE("resolve layer");
 
@@ -58,15 +62,40 @@ utils::error::Result<void> RuntimeLayer::resolveLayer(const std::vector<std::str
 
     auto &repo = runContext->getRepo();
     utils::error::Result<package::LayerDir> layer(LINGLONG_ERR("null"));
-    if (modules.empty() || (modules.size() == 1 && modules.at(0) == "binary")) {
+    if (!includeModules && !excludeModules) {
         layer = repo.getMergedModuleDir(reference, true, subRef);
-    } else if (modules.size() > 1) {
-        layer = repo.createTempMergedModuleDir(reference, modules);
-        temporary = true;
-        LogD("create temp merged module dir: {}", layer->path());
     } else {
-        return LINGLONG_ERR(
-          fmt::format("resolve module {} is not supported", fmt::join(modules, ",")));
+        auto normalizeModules = [](std::vector<std::string> modules) {
+            std::sort(modules.begin(), modules.end());
+            modules.erase(std::unique(modules.begin(), modules.end()), modules.end());
+            return modules;
+        };
+
+        const auto installedModules = normalizeModules(repo.getModuleList(reference));
+        auto modules = includeModules ? normalizeModules(*includeModules) : installedModules;
+        if (excludeModules) {
+            const auto &excluded = *excludeModules;
+            auto it = std::remove_if(modules.begin(), modules.end(), [&excluded](const auto &m) {
+                return std::find(excluded.begin(), excluded.end(), m) != excluded.end();
+            });
+            modules.erase(it, modules.end());
+        }
+        if (modules.empty()) {
+            return LINGLONG_ERR("no modules selected to resolve");
+        }
+
+        if (modules == installedModules) {
+            layer = repo.getMergedModuleDir(reference, true, subRef);
+        } else if (modules.size() == 1) {
+            layer = repo.getLayerDir(reference, modules.front(), subRef);
+        } else {
+            layer = repo.createTempMergedModuleDir(reference, modules);
+            if (!layer) {
+                return LINGLONG_ERR(layer);
+            }
+            temporary = true;
+            LogD("create temp merged module dir: {}", layer->path());
+        }
     }
 
     if (!layer) {

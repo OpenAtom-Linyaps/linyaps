@@ -28,6 +28,7 @@
 #include "linglong/common/dir.h"
 #include "linglong/common/error.h"
 #include "linglong/common/strings.h"
+#include "linglong/oci-cfg-generators/container_cfg_builder.h"
 #include "linglong/package/layer_file.h"
 #include "linglong/package/reference.h"
 #include "linglong/package/version.h"
@@ -49,6 +50,7 @@
 #include <fmt/ranges.h>
 #include <linux/un.h>
 #include <nlohmann/json.hpp>
+#include <uuid.h>
 
 #include <QDBusInterface>
 #include <QDBusReply>
@@ -59,13 +61,17 @@
 #include <QProcess>
 
 #include <algorithm>
+#include <array>
 #include <cassert>
 #include <chrono>
 #include <cstdint>
+#include <cstdio>
 #include <cstdlib>
 #include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <optional>
+#include <sstream>
 #include <string>
 #include <system_error>
 #include <thread>
@@ -85,6 +91,203 @@ using namespace linglong::utils::error;
 namespace {
 
 constexpr std::size_t ContainerIDDisplayLength = 12;
+constexpr const char *DebugDevelopModule = "develop";
+const std::filesystem::path BaseDebugFileDirectory{ "/usr/lib/debug" };
+
+std::string makeDebugInstanceID()
+{
+    uuid_t uuid;
+    uuid_generate_random(uuid);
+
+    std::array<char, 37> uuidString{};
+    uuid_unparse_lower(uuid, uuidString.data());
+    return "debug-" + std::string{ uuidString.data() };
+}
+
+std::string gdbRemoteTarget(const std::string &listen) noexcept
+{
+    if (!listen.empty() && listen.front() == ':') {
+        return "localhost" + listen;
+    }
+
+    return listen;
+}
+
+std::string shellQuote(const std::string &value)
+{
+    std::string quoted{ "'" };
+    for (auto ch : value) {
+        if (ch == '\'') {
+            quoted += "'\\''";
+            continue;
+        }
+        quoted += ch;
+    }
+    quoted += "'";
+
+    return quoted;
+}
+
+std::vector<std::string> makeDebugCommand(const linglong::cli::RunOptions &options,
+                                          std::vector<std::string> commands)
+{
+    commands.insert(commands.begin(), options.debugListen);
+    commands.insert(commands.begin(), "--once");
+    commands.insert(commands.begin(), "gdbserver");
+    return commands;
+}
+
+std::string makeDebugSymbolDir(const linglong::runtime::RunContext &runContext)
+{
+    std::vector<std::filesystem::path> dirs{
+        BaseDebugFileDirectory,
+    };
+
+    if (runContext.getRuntimeLayer()) {
+        dirs.emplace_back(linglong::generator::ContainerCfgBuilder::runtimeMountPoint
+                          / "lib/debug");
+    }
+
+    if (runContext.getAppLayer()) {
+        dirs.emplace_back(
+          linglong::generator::ContainerCfgBuilder::appMountPoint(runContext.getTargetID())
+          / "lib/debug");
+    }
+
+    for (const auto &extension : runContext.getExtensionLayers()) {
+        dirs.emplace_back(
+          linglong::generator::ContainerCfgBuilder::extensionMountPoint(extension.getReference().id)
+          / "lib/debug");
+    }
+
+    std::ostringstream stream;
+    for (const auto &dir : dirs) {
+        if (stream.tellp() > 0) {
+            stream << ':';
+        }
+        stream << dir.string();
+    }
+
+    return stream.str();
+}
+
+std::string mergeDebugSymbolDir(const std::optional<std::string> &debugSymbolDir,
+                                const std::string &defaultDebugSymbolDir)
+{
+    if (!debugSymbolDir || debugSymbolDir->empty()) {
+        return defaultDebugSymbolDir;
+    }
+
+    if (defaultDebugSymbolDir.empty()) {
+        return *debugSymbolDir;
+    }
+
+    return *debugSymbolDir + ":" + defaultDebugSymbolDir;
+}
+
+std::string makeDebugAttachScriptContent(const linglong::cli::RunOptions &options)
+{
+    std::ostringstream script;
+    script << "#!/bin/sh\n";
+
+    script << "set -- -ex " << shellQuote("target remote " + gdbRemoteTarget(options.debugListen))
+           << " \"$@\"\n";
+    if (options.debugSymbolDir && !options.debugSymbolDir->empty()) {
+        script << "set -- -ex " << shellQuote("set debug-file-directory " + *options.debugSymbolDir)
+               << " \"$@\"\n";
+    }
+    if (options.debugDebuginfod && !options.debugDebuginfod->empty()) {
+        script << "DEBUGINFOD_URLS=" << shellQuote(*options.debugDebuginfod) << "\n";
+        script << "export DEBUGINFOD_URLS\n";
+        script << "if gdb -nx -batch -ex " << shellQuote("show debuginfod enabled")
+               << " 2>&1 | grep -q " << shellQuote("^Debuginfod ") << "; then\n";
+        script << "    set -- -ex " << shellQuote("set debuginfod urls " + *options.debugDebuginfod)
+               << " \"$@\"\n";
+        script << "    set -- -ex " << shellQuote("set debuginfod enabled on") << " \"$@\"\n";
+        script << "fi\n";
+    }
+    script << "exec gdb \"$@\"\n";
+
+    return script.str();
+}
+
+Result<std::filesystem::path> createDebugAttachScript(const linglong::cli::RunOptions &options)
+{
+    LINGLONG_TRACE("create debug attach script");
+
+    std::error_code ec;
+    auto tempDir = std::filesystem::temp_directory_path(ec);
+    if (ec) {
+        return LINGLONG_ERR("failed to get temporary directory", ec);
+    }
+
+    uuid_t uuid;
+    uuid_generate_random(uuid);
+    std::array<char, 37> uuidString{};
+    uuid_unparse_lower(uuid, uuidString.data());
+
+    auto scriptPath = tempDir / ("linglong-gdb-" + std::string{ uuidString.data() } + ".sh");
+    std::ofstream script{ scriptPath };
+    if (!script) {
+        return LINGLONG_ERR(fmt::format("failed to create {}", scriptPath.string()));
+    }
+
+    script << makeDebugAttachScriptContent(options);
+    script.close();
+    if (!script) {
+        return LINGLONG_ERR(fmt::format("failed to write {}", scriptPath.string()));
+    }
+
+    std::filesystem::permissions(scriptPath,
+                                 std::filesystem::perms::owner_read
+                                   | std::filesystem::perms::owner_write
+                                   | std::filesystem::perms::owner_exec,
+                                 std::filesystem::perm_options::replace,
+                                 ec);
+    if (ec) {
+        return LINGLONG_ERR(fmt::format("failed to set {} executable", scriptPath.string()), ec);
+    }
+
+    return scriptPath;
+}
+
+void printDebugAttachHint(const linglong::cli::RunOptions &options)
+{
+    if (::isatty(::fileno(stdout)) == 0) {
+        return;
+    }
+
+    auto script = createDebugAttachScript(options);
+    if (!script) {
+        std::cout << _("Debug mode is enabled. Attach from another terminal with gdb:")
+                  << std::endl;
+        if (options.debugDebuginfod && !options.debugDebuginfod->empty()) {
+            std::cout << "  (shell) export DEBUGINFOD_URLS=" << shellQuote(*options.debugDebuginfod)
+                      << std::endl;
+            std::cout << "  (shell) gdb" << std::endl;
+            std::cout << "  (gdb) # For newer gdb, you may also enable debuginfod explicitly."
+                      << std::endl;
+        }
+        if (options.debugSymbolDir && !options.debugSymbolDir->empty()) {
+            std::cout << "  (gdb) set debug-file-directory " << *options.debugSymbolDir
+                      << std::endl;
+        }
+        std::cout << "  (gdb) target remote " << gdbRemoteTarget(options.debugListen) << std::endl;
+        LogW("failed to create gdb attach script: {}", script.error().message());
+        return;
+    }
+
+    auto scriptContent = makeDebugAttachScriptContent(options);
+    std::cout << "============================================================" << std::endl;
+    std::cout << _("Debug mode is enabled. Attach from another terminal with:") << std::endl;
+    std::cout << "  " << script->string() << std::endl;
+    std::cout << std::endl;
+    std::cout << _("Generated gdb attach script:") << std::endl;
+    std::cout << "------------------------------------------------------------" << std::endl;
+    std::cout << scriptContent;
+    std::cout << "------------------------------------------------------------" << std::endl;
+    std::cout << "============================================================" << std::endl;
+}
 
 Result<std::filesystem::path> preparePeerSocketDir() noexcept
 {
@@ -787,11 +990,11 @@ Cli::Cli(Printer &printer,
 {
 }
 
-utils::error::Result<repo::OSTreeRepo *> Cli::getRepo() noexcept
+utils::error::Result<repo::OSTreeRepo *> Cli::getRepo(bool forceReload) noexcept
 {
     LINGLONG_TRACE("get local repo");
 
-    if (this->repository) {
+    if (this->repository && !forceReload) {
         return this->repository.get();
     }
 
@@ -1029,12 +1232,14 @@ int Cli::run(const RunOptions &options)
     }
     auto runtimeConfig = std::move(loaded).value();
 
-    runtime::RunContext runContext(**repo);
     linglong::runtime::ResolveOptions opts;
     auto resolveOptionsRes = opts.applyOptions(runtimeConfig, options);
     if (!resolveOptionsRes) {
         this->printer.printErr(resolveOptionsRes.error());
         return -1;
+    }
+    if (options.debug) {
+        opts.instance = makeDebugInstanceID();
     }
 
     bool nvidiaCdiFound = false;
@@ -1050,19 +1255,41 @@ int Cli::run(const RunOptions &options)
         detectDrivers();
     }
 
-    auto res = runContext.resolve(*curAppRef, opts);
+    auto runContext = std::make_unique<runtime::RunContext>(**repo);
+    auto res = runContext->resolve(*curAppRef, opts);
     if (!res) {
         handleCommonError(res.error());
         return -1;
     }
 
-    auto runContextCfg = runContext.getConfig();
+    if (options.debug) {
+        auto installRes = ensureBaseDevelopModule(*runContext);
+        if (!installRes) {
+            this->printer.printErr(installRes.error());
+            return -1;
+        }
+
+        repo = this->getRepo(true);
+        if (!repo) {
+            this->printer.printErr(repo.error());
+            return -1;
+        }
+
+        runContext = std::make_unique<runtime::RunContext>(**repo);
+        res = runContext->resolve(*curAppRef, opts);
+        if (!res) {
+            handleCommonError(res.error());
+            return -1;
+        }
+    }
+
+    auto runContextCfg = runContext->getConfig();
     LogD("RunContext Config:\n{}", nlohmann::json(runContextCfg).dump());
 
-    auto containerID = runContext.getContainerId();
+    auto containerID = runContext->getContainerId();
     LogD("run {} with container id: {}", curAppRef->toString(), containerID);
 
-    auto targetItem = runContext.getCachedTargetItem();
+    auto targetItem = runContext->getCachedTargetItem();
     if (!targetItem) {
         this->printer.printErr(LINGLONG_ERRV("failed to get cached target item", targetItem));
         return -1;
@@ -1096,7 +1323,7 @@ int Cli::run(const RunOptions &options)
               LINGLONG_ERRV(fmt::format("failed to open {}", pidFile.c_str())));
             return false;
         }
-        stream << nlohmann::json(runContext.stateInfo());
+        stream << nlohmann::json(runContext->stateInfo());
         stream.close();
 
         return true;
@@ -1121,7 +1348,7 @@ int Cli::run(const RunOptions &options)
         break;
     }
 
-    auto cacheRes = this->ensureCache(runContext);
+    auto cacheRes = this->ensureCache(*runContext);
     if (!cacheRes) {
         this->printer.printErr(LINGLONG_ERRV(cacheRes));
         return -1;
@@ -1158,7 +1385,7 @@ int Cli::run(const RunOptions &options)
             return -1;
         }
 
-        auto contextJson = nlohmann::json(runContext.getConfig()).dump();
+        auto contextJson = nlohmann::json(runContext->getConfig()).dump();
         args.insert(insertPos + 1, { "--run-context", contextJson });
 
         std::vector<char *> argPointers;
@@ -1180,7 +1407,7 @@ int Cli::run(const RunOptions &options)
         return *runRes;
     }
 
-    return this->runResolvedContext(runContext, options, std::move(runtimeConfig));
+    return this->runResolvedContext(*runContext, options, std::move(runtimeConfig));
 }
 
 int Cli::runWithContext(const RunOptions &options)
@@ -1223,6 +1450,37 @@ int Cli::runWithContext(const RunOptions &options)
     return this->runResolvedContext(runContext, options, std::move(runtimeConfig));
 }
 
+utils::error::Result<void> Cli::ensureBaseDevelopModule(runtime::RunContext &runContext)
+{
+    LINGLONG_TRACE("ensure base develop module");
+
+    const auto &baseLayer = runContext.getBaseLayer();
+    if (!baseLayer) {
+        return LINGLONG_ERR("run context has no base layer");
+    }
+
+    const auto &baseRef = baseLayer->getReference();
+    auto modules = runContext.getRepo().getModuleList(baseRef);
+    if (std::find(modules.begin(), modules.end(), DebugDevelopModule) != modules.end()) {
+        return LINGLONG_OK;
+    }
+
+    this->printer.printMessage(
+      fmt::format(_("Base {} has no develop module installed, installing it now."),
+                  baseRef.toString()));
+
+    auto installResult = this->install(InstallOptions{
+      .appid = baseRef.toString(),
+      .module = DebugDevelopModule,
+    });
+    if (installResult != 0) {
+        return LINGLONG_ERR(
+          fmt::format("failed to install develop module for base {}", baseRef.toString()));
+    }
+
+    return LINGLONG_OK;
+}
+
 int Cli::runResolvedContext(runtime::RunContext &runContext,
                             const RunOptions &options,
                             std::optional<api::types::v1::RuntimeConfigure> runtimeConfig)
@@ -1235,11 +1493,20 @@ int Cli::runResolvedContext(runtime::RunContext &runContext,
         return -1;
     }
 
-    auto commands = options.commands;
+    auto debugOptions = options;
+    if (debugOptions.debug) {
+        debugOptions.debugSymbolDir =
+          mergeDebugSymbolDir(debugOptions.debugSymbolDir, makeDebugSymbolDir(runContext));
+    }
+
+    auto commands = debugOptions.commands;
     if (options.commands.empty()) {
         commands = targetItem->info.command.value_or(std::vector<std::string>{ "bash" });
     }
-    commands = filePathMapping(commands, options);
+    commands = filePathMapping(commands, debugOptions);
+    if (debugOptions.debug) {
+        commands = makeDebugCommand(debugOptions, std::move(commands));
+    }
 
     auto appCache =
       common::dir::getContainerCacheDir(targetItem->commit, runContext.getContainerId());
@@ -1254,7 +1521,7 @@ int Cli::runResolvedContext(runtime::RunContext &runContext,
             return -1;
         }
     }
-    auto res = runOptions.applyCliRunOptions(options);
+    auto res = runOptions.applyCliRunOptions(debugOptions);
     if (!res) {
         this->printer.printErr(res.error());
         return -1;
@@ -1275,8 +1542,11 @@ int Cli::runResolvedContext(runtime::RunContext &runContext,
     }
 
     auto process = ocppi::runtime::config::types::Process{ .args = std::move(commands) };
-    if (!options.workdir.value_or("").empty()) {
-        auto workdir = std::filesystem::path(options.workdir.value());
+    if (debugOptions.debug) {
+        printDebugAttachHint(debugOptions);
+    }
+    if (!debugOptions.workdir.value_or("").empty()) {
+        auto workdir = std::filesystem::path(debugOptions.workdir.value());
         if (!workdir.is_absolute()) {
             auto msg = fmt::format("Workdir must be an absolute path: {}", workdir);
             this->printer.printErr(LINGLONG_ERRV(msg));

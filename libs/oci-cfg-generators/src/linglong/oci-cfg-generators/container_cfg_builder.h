@@ -194,6 +194,9 @@ public:
 
     std::string ldConf(const std::string &triplet) const;
 
+    static std::filesystem::path appMountPoint(const std::string &id) noexcept;
+    static std::filesystem::path extensionMountPoint(const std::string &id) noexcept;
+
     utils::error::Result<void> build() noexcept;
 
     const ocppi::runtime::config::types::Config &getConfig() const { return config; }

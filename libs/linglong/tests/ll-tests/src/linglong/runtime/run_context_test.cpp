@@ -65,8 +65,18 @@ public:
                  const std::optional<std::string> &subRef),
                 (override, const, noexcept));
     MOCK_METHOD(utils::error::Result<package::LayerDir>,
+                getLayerDir,
+                (const package::Reference &ref,
+                 const std::string &module,
+                 const std::optional<std::string> &subRef),
+                (override, const, noexcept));
+    MOCK_METHOD(utils::error::Result<package::LayerDir>,
                 createTempMergedModuleDir,
                 (const package::Reference &ref, const std::vector<std::string> &modules),
+                (override, const, noexcept));
+    MOCK_METHOD(std::vector<std::string>,
+                getModuleList,
+                (const package::Reference &ref),
                 (override, const, noexcept));
     MOCK_METHOD(utils::error::Result<package::Reference>,
                 clearReferenceLocal,
@@ -150,10 +160,12 @@ TEST_F(RunContextTest, resolveBinaryModule)
     mockItem.info.arch = { std::string{ "x86_64" } };
 
     EXPECT_CALL(*repo, getLayerItem(testing::_, testing::_, testing::_)).WillOnce(Return(mockItem));
+    EXPECT_CALL(*repo, getModuleList(*ref))
+      .WillOnce(Return(std::vector<std::string>{ "binary", "develop" }));
 
     // Mock successful layer directory retrieval for binary module
-    package::LayerDir mockLayerDir(tempDir->path() / "merged");
-    EXPECT_CALL(*repo, getMergedModuleDir(testing::_, true, testing::_))
+    package::LayerDir mockLayerDir(tempDir->path() / "binary");
+    EXPECT_CALL(*repo, getLayerDir(testing::_, "binary", testing::_))
       .WillOnce(Return(mockLayerDir));
 
     // Create runtime layer
@@ -162,7 +174,7 @@ TEST_F(RunContextTest, resolveBinaryModule)
     ASSERT_TRUE(layer.has_value()) << "Failed to create runtime layer: " << layer.error().message();
 
     // Test resolving binary module
-    auto result = layer->resolveLayer({ "binary" });
+    auto result = layer->resolveLayer(std::vector<std::string>{ "binary" });
     ASSERT_TRUE(result.has_value())
       << "Failed to resolve binary module: " << result.error().message();
 
@@ -185,6 +197,8 @@ TEST_F(RunContextTest, resolveMultiModules)
     mockItem.info.arch = { std::string{ "x86_64" } };
 
     EXPECT_CALL(*repo, getLayerItem(testing::_, testing::_, testing::_)).WillOnce(Return(mockItem));
+    EXPECT_CALL(*repo, getModuleList(*ref))
+      .WillOnce(Return(std::vector<std::string>{ "binary", "debug", "develop" }));
 
     // Mock successful merged module directory retrieval for multiple modules
     package::LayerDir mockLayerDir(tempDir->path() / "merged");
@@ -199,11 +213,142 @@ TEST_F(RunContextTest, resolveMultiModules)
     ASSERT_TRUE(layer.has_value()) << "Failed to create runtime layer: " << layer.error().message();
 
     // Test resolving multiple modules
-    auto result = layer->resolveLayer({ "binary", "debug" });
+    auto result = layer->resolveLayer(std::vector<std::string>{ "binary", "debug" });
     ASSERT_TRUE(result.has_value())
       << "Failed to resolve multiple modules: " << result.error().message();
 
     // Verify layer directory is set
+    EXPECT_TRUE(layer->getLayerDir().has_value());
+}
+
+TEST_F(RunContextTest, resolveExcludeModules)
+{
+    auto ref = package::Reference::parse("stable:org.example.exclude/1.0.0/x86_64");
+    ASSERT_TRUE(ref.has_value()) << "Failed to create reference: " << ref.error().message();
+
+    api::types::v1::RepositoryCacheLayersItem mockItem;
+    mockItem.info.id = "org.example.exclude";
+    mockItem.info.version = "1.0.0";
+    mockItem.info.kind = "base";
+    mockItem.info.channel = "stable";
+    mockItem.info.arch = { std::string{ "x86_64" } };
+
+    EXPECT_CALL(*repo, getLayerItem(testing::_, testing::_, testing::_)).WillOnce(Return(mockItem));
+    EXPECT_CALL(*repo, getModuleList(*ref))
+      .WillOnce(Return(std::vector<std::string>{ "binary", "develop", "lang_zh" }));
+
+    package::LayerDir mockLayerDir(tempDir->path() / "exclude-develop");
+    EXPECT_CALL(
+      *repo,
+      createTempMergedModuleDir(testing::_, std::vector<std::string>{ "binary", "lang_zh" }))
+      .WillOnce(Return(mockLayerDir));
+
+    RunContext context(*this->repo);
+    auto layer = RuntimeLayer::create(*ref, context);
+    ASSERT_TRUE(layer.has_value()) << "Failed to create runtime layer: " << layer.error().message();
+
+    auto result = layer->resolveLayer(std::nullopt, std::vector<std::string>{ "develop" });
+    ASSERT_TRUE(result.has_value())
+      << "Failed to resolve excluding modules: " << result.error().message();
+
+    EXPECT_TRUE(layer->getLayerDir().has_value());
+}
+
+TEST_F(RunContextTest, resolveExcludeModulesReturnsTempMergeError)
+{
+    LINGLONG_TRACE("resolveExcludeModulesReturnsTempMergeError");
+
+    auto ref = package::Reference::parse("stable:org.example.exclude-error/1.0.0/x86_64");
+    ASSERT_TRUE(ref.has_value()) << "Failed to create reference: " << ref.error().message();
+
+    api::types::v1::RepositoryCacheLayersItem mockItem;
+    mockItem.info.id = "org.example.exclude-error";
+    mockItem.info.version = "1.0.0";
+    mockItem.info.kind = "base";
+    mockItem.info.channel = "stable";
+    mockItem.info.arch = { std::string{ "x86_64" } };
+
+    EXPECT_CALL(*repo, getLayerItem(testing::_, testing::_, testing::_)).WillOnce(Return(mockItem));
+    EXPECT_CALL(*repo, getModuleList(*ref))
+      .WillOnce(Return(std::vector<std::string>{ "binary", "develop", "lang_zh" }));
+    EXPECT_CALL(
+      *repo,
+      createTempMergedModuleDir(testing::_, std::vector<std::string>{ "binary", "lang_zh" }))
+      .WillOnce(Return(LINGLONG_ERR("merge failed")));
+
+    RunContext context(*this->repo);
+    auto layer = RuntimeLayer::create(*ref, context);
+    ASSERT_TRUE(layer.has_value()) << "Failed to create runtime layer: " << layer.error().message();
+
+    auto result = layer->resolveLayer(std::nullopt, std::vector<std::string>{ "develop" });
+    EXPECT_FALSE(result.has_value());
+    EXPECT_TRUE(result.error().message().find("merge failed") != std::string::npos);
+    EXPECT_FALSE(layer->getLayerDir().has_value());
+}
+
+TEST_F(RunContextTest, resolveExcludeModulesSameAsInstalledUsesMergedDir)
+{
+    auto ref = package::Reference::parse("stable:org.example.same/1.0.0/x86_64");
+    ASSERT_TRUE(ref.has_value()) << "Failed to create reference: " << ref.error().message();
+
+    api::types::v1::RepositoryCacheLayersItem mockItem;
+    mockItem.info.id = "org.example.same";
+    mockItem.info.version = "1.0.0";
+    mockItem.info.kind = "base";
+    mockItem.info.channel = "stable";
+    mockItem.info.arch = { std::string{ "x86_64" } };
+
+    EXPECT_CALL(*repo, getLayerItem(testing::_, testing::_, testing::_)).WillOnce(Return(mockItem));
+    EXPECT_CALL(*repo, getModuleList(*ref))
+      .WillOnce(Return(std::vector<std::string>{ "binary", "lang_zh" }));
+
+    package::LayerDir mockLayerDir(tempDir->path() / "merged");
+    EXPECT_CALL(*repo, getMergedModuleDir(testing::_, true, testing::_))
+      .WillOnce(Return(mockLayerDir));
+    EXPECT_CALL(*repo, createTempMergedModuleDir(testing::_, testing::_)).Times(0);
+    EXPECT_CALL(*repo, getLayerDir(testing::_, testing::_, testing::_)).Times(0);
+
+    RunContext context(*this->repo);
+    auto layer = RuntimeLayer::create(*ref, context);
+    ASSERT_TRUE(layer.has_value()) << "Failed to create runtime layer: " << layer.error().message();
+
+    auto result = layer->resolveLayer(std::nullopt, std::vector<std::string>{ "develop" });
+    ASSERT_TRUE(result.has_value())
+      << "Failed to resolve excluding modules: " << result.error().message();
+
+    EXPECT_TRUE(layer->getLayerDir().has_value());
+}
+
+TEST_F(RunContextTest, resolveIncludeModulesSameAsInstalledUsesMergedDir)
+{
+    auto ref = package::Reference::parse("stable:org.example.include/1.0.0/x86_64");
+    ASSERT_TRUE(ref.has_value()) << "Failed to create reference: " << ref.error().message();
+
+    api::types::v1::RepositoryCacheLayersItem mockItem;
+    mockItem.info.id = "org.example.include";
+    mockItem.info.version = "1.0.0";
+    mockItem.info.kind = "base";
+    mockItem.info.channel = "stable";
+    mockItem.info.arch = { std::string{ "x86_64" } };
+
+    EXPECT_CALL(*repo, getLayerItem(testing::_, testing::_, testing::_)).WillOnce(Return(mockItem));
+    EXPECT_CALL(*repo, getModuleList(*ref))
+      .WillOnce(Return(std::vector<std::string>{ "binary", "lang_zh" }));
+
+    package::LayerDir mockLayerDir(tempDir->path() / "merged");
+    EXPECT_CALL(*repo, getMergedModuleDir(testing::_, true, testing::_))
+      .WillOnce(Return(mockLayerDir));
+    EXPECT_CALL(*repo, createTempMergedModuleDir(testing::_, testing::_)).Times(0);
+    EXPECT_CALL(*repo, getLayerDir(testing::_, testing::_, testing::_)).Times(0);
+
+    RunContext context(*this->repo);
+    auto layer = RuntimeLayer::create(*ref, context);
+    ASSERT_TRUE(layer.has_value()) << "Failed to create runtime layer: " << layer.error().message();
+
+    auto result = layer->resolveLayer(std::vector<std::string>{ "lang_zh", "binary" });
+    ASSERT_TRUE(result.has_value())
+      << "Failed to resolve including modules: " << result.error().message();
+
     EXPECT_TRUE(layer->getLayerDir().has_value());
 }
 
@@ -226,9 +371,8 @@ TEST_F(RunContextTest, resolveSubRef)
 
     // Mock successful layer directory retrieval with sub-reference
     package::LayerDir mockLayerDir(tempDir->path() / "merged");
-    EXPECT_CALL(
-      *repo,
-      getMergedModuleDir(testing::_, "binary", std::optional<std::string>("test-uuid-12345")))
+    EXPECT_CALL(*repo,
+                getMergedModuleDir(testing::_, true, std::optional<std::string>("test-uuid-12345")))
       .WillOnce(Return(mockLayerDir));
 
     // Create runtime layer
@@ -237,7 +381,7 @@ TEST_F(RunContextTest, resolveSubRef)
     ASSERT_TRUE(layer.has_value()) << "Failed to create runtime layer: " << layer.error().message();
 
     // Test resolving with sub-reference
-    auto result = layer->resolveLayer({}, "test-uuid-12345");
+    auto result = layer->resolveLayer(std::nullopt, std::nullopt, "test-uuid-12345");
     ASSERT_TRUE(result.has_value())
       << "Failed to resolve layer with sub-ref: " << result.error().message();
 

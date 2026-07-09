@@ -75,7 +75,7 @@ class MockCli : public cli::Cli
 public:
     using cli::Cli::Cli;
 
-    MOCK_METHOD(utils::error::Result<repo::OSTreeRepo *>, getRepo, (), (override, noexcept));
+    MOCK_METHOD(utils::error::Result<repo::OSTreeRepo *>, getRepo, (bool), (override, noexcept));
 };
 
 class RepoAndPackageManagerCli : public cli::Cli
@@ -83,7 +83,10 @@ class RepoAndPackageManagerCli : public cli::Cli
 public:
     using cli::Cli::Cli;
 
-    utils::error::Result<repo::OSTreeRepo *> callGetRepo() noexcept { return cli::Cli::getRepo(); }
+    utils::error::Result<repo::OSTreeRepo *> callGetRepo(bool forceReload = false) noexcept
+    {
+        return cli::Cli::getRepo(forceReload);
+    }
 
     utils::error::Result<void> callInitializeRepo() noexcept { return cli::Cli::initializeRepo(); }
 
@@ -156,8 +159,8 @@ protected:
                                                              false,
                                                              std::move(notifier),
                                                              nullptr);
-        ON_CALL(*cli, getRepo())
-          .WillByDefault(Invoke([this]() -> utils::error::Result<repo::OSTreeRepo *> {
+        ON_CALL(*cli, getRepo(testing::_))
+          .WillByDefault(Invoke([this](bool) -> utils::error::Result<repo::OSTreeRepo *> {
               return repo.get();
           }));
     }
@@ -235,6 +238,35 @@ TEST_F(CliRepoAndPackageManagerTest, getRepoCachesLoadedRepository)
     auto second = cli->callGetRepo();
     ASSERT_TRUE(second.has_value());
     EXPECT_EQ(*second, loadedRepo);
+}
+
+TEST_F(CliRepoAndPackageManagerTest, getRepoForceReloadReloadsRepository)
+{
+    repo::OSTreeRepo *firstRepo = nullptr;
+    repo::OSTreeRepo *secondRepo = nullptr;
+
+    EXPECT_CALL(*cli, loadRepoFromPath(_))
+      .WillOnce(Invoke([&](const std::filesystem::path &path)
+                         -> utils::error::Result<std::unique_ptr<repo::OSTreeRepo>> {
+          auto repo = makeRepo(path);
+          firstRepo = repo.get();
+          return repo;
+      }))
+      .WillOnce(Invoke([&](const std::filesystem::path &path)
+                         -> utils::error::Result<std::unique_ptr<repo::OSTreeRepo>> {
+          auto repo = makeRepo(path);
+          secondRepo = repo.get();
+          return repo;
+      }));
+    EXPECT_CALL(*cli, initializeRepo()).Times(0);
+
+    auto first = cli->callGetRepo();
+    ASSERT_TRUE(first.has_value());
+    EXPECT_EQ(*first, firstRepo);
+
+    auto second = cli->callGetRepo(true);
+    ASSERT_TRUE(second.has_value());
+    EXPECT_EQ(*second, secondRepo);
 }
 
 TEST_F(CliRepoAndPackageManagerTest, getRepoInitializesAndReloadsWhenInitialLoadFails)

@@ -64,6 +64,10 @@ struct RunOptions
     std::vector<std::string> cdiDevices;
     std::vector<api::types::v1::DeviceOption> deviceOptions;
     std::optional<std::string> instance;
+    bool debug{ false };
+    std::string debugListen{ ":2345" };
+    std::optional<std::string> debugDebuginfod;
+    std::optional<std::string> debugSymbolDir;
 };
 
 struct EnterOptions
@@ -210,7 +214,7 @@ public:
     void setGlobalOptions(const GlobalOptions &options) noexcept { this->globalOptions = options; }
 
 protected:
-    virtual utils::error::Result<repo::OSTreeRepo *> getRepo() noexcept;
+    virtual utils::error::Result<repo::OSTreeRepo *> getRepo(bool forceReload = false) noexcept;
     virtual utils::error::Result<std::unique_ptr<repo::OSTreeRepo>>
     loadRepoFromPath(const std::filesystem::path &repoRoot) noexcept;
     virtual utils::error::Result<void> initializeRepo() noexcept;
@@ -245,6 +249,7 @@ private:
     void updateAM() noexcept;
     utils::error::Result<std::vector<std::string>> getRunningAppContainers(const std::string &id);
     bool isContainerIDMatch(const std::string &containerID, const std::string &shortID);
+    utils::error::Result<void> ensureBaseDevelopModule(runtime::RunContext &runContext);
     int getLayerDir(const InspectOptions &options);
     int getBundleDir(const InspectOptions &options);
     void detectDrivers();

@@ -607,8 +607,35 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
       api::types::v1::InteractionMessageType::Install;
 
     additionalMessage.remoteRef = packageRef.toString();
-    // TODO: when install extra module, we should check the same version of main(binary/runtime)
-    // module has been installed or not
+    // When installing an extra module (anything other than the main binary/runtime
+    // module), make sure the main module of the same version is already installed;
+    // an extra module is unusable on its own.
+    if (packageInfo.packageInfoV2Module != "binary"
+        && packageInfo.packageInfoV2Module != "runtime") {
+        linglong::repo::repoCacheQuery mainQuery{ .id = packageRef.id,
+                                                  .channel = packageRef.channel,
+                                                  .version = packageRef.version.toString() };
+        auto installed = this->repo->listLocalBy(mainQuery);
+        if (installed) {
+            bool hasMainModule = false;
+            for (const auto &item : *installed) {
+                if (item.info.packageInfoV2Module == "binary"
+                    || item.info.packageInfoV2Module == "runtime") {
+                    hasMainModule = true;
+                    break;
+                }
+            }
+            if (!hasMainModule) {
+                return toDBusReply(utils::error::ErrorCode::Failed,
+                                   fmt::format("can't install module '{}' of {}: the main module "
+                                               "(binary/runtime) of version {} is not installed, "
+                                               "please install it first",
+                                               packageInfo.packageInfoV2Module,
+                                               packageRef.id,
+                                               packageRef.version.toString()));
+            }
+        }
+    }
 
     // Note: same as InstallRef, we should fuzzy the id instead of version
     auto fuzzyRef = package::FuzzyReference::parse(packageRef.id);

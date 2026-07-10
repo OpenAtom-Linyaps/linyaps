@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2024-2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -431,10 +431,15 @@ UABPackager::prepareExecutableBundle(const std::filesystem::path &bundleDir) noe
 
                 std::filesystem::create_hard_link(realSource, realDestination, ec);
                 if (ec) {
-                    return LINGLONG_ERR(fmt::format("couldn't link from {} to {} {}",
-                                                    source,
-                                                    realDestination,
-                                                    ec.message()));
+                    // fallback to copy if hard link fails, e.g. source and
+                    // destination are on different filesystems (EXDEV).
+                    std::filesystem::copy(realSource, realDestination, ec);
+                    if (ec) {
+                        return LINGLONG_ERR(fmt::format("couldn't link or copy from {} to {} {}",
+                                                        source,
+                                                        realDestination,
+                                                        ec.message()));
+                    }
                 }
             }
         }

@@ -232,11 +232,6 @@ moveFiles(const std::filesystem::path &src,
             LogD("failed to get symlink status of {}: {}", fromPath, ec.message());
             continue;
         }
-        if (!std::filesystem::exists(status)) {
-            LogD("{} does not exist, skip it", fromPath);
-            continue;
-        }
-
         std::filesystem::create_directories(toPath.parent_path(), ec);
         if (ec) {
             LogW("failed to create directory {}: {}", toPath, ec.message());

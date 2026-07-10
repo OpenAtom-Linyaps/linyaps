@@ -97,6 +97,11 @@ void handleSig() noexcept
     for (auto sig : quitSignals) {
         sigaction(sig, &sa, nullptr);
     }
+
+    // Block the signals so they are not delivered until we explicitly check.
+    // This prevents race conditions where a signal arrives between checking
+    // signalReceived and a blocking call.
+    sigprocmask(SIG_BLOCK, &blocking_mask, nullptr);
 }
 
 std::optional<linglong::api::types::v1::PackageInfoV2>
@@ -609,7 +614,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv) // NOLINT
     auto bundleArg = "--bundle=" + containerBundle.string();
     auto pid = fork();
     if (pid < 0) {
-        std::cerr << "fork() err: " << ::strerror(errno) << std::endl;
+        std::cerr << "fork() err: " << std::generic_category().message(errno) << std::endl;
         return -1;
     }
 
@@ -629,7 +634,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv) // NOLINT
         if (signalReceived != 0) {
             cleanAndExit(128 + signalReceived);
         }
-        std::cerr << "waitpid() err:" << ::strerror(errno) << std::endl;
+        std::cerr << "waitpid() err:" << std::generic_category().message(errno) << std::endl;
         return -1;
     }
 

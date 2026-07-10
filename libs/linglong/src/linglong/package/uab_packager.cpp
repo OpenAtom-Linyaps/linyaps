@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2024-2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -362,13 +362,13 @@ UABPackager::prepareExecutableBundle(const std::filesystem::path &bundleDir) noe
             if (statvfs(moduleFilesDir.c_str(), &moduleFilesDirStat) == -1) {
                 return LINGLONG_ERR(fmt::format("couldn't stat module files directory {}: {}",
                                                 moduleFilesDir.string(),
-                                                strerror(errno)));
+                                                std::generic_category().message(errno)));
             }
 
             if (statvfs((*files.begin()).c_str(), &filesStat) == -1) {
                 return LINGLONG_ERR(fmt::format("couldn't stat files directory {}: {}",
                                                 layer.filesDirPath().string(),
-                                                strerror(errno)));
+                                                std::generic_category().message(errno)));
             }
 
             const bool shouldCopy = moduleFilesDirStat.f_fsid != filesStat.f_fsid;
@@ -643,7 +643,7 @@ UABPackager::prepareDistributedBundle(const std::filesystem::path &bundleDir) no
     if (statvfs(layersDir.c_str(), &layersDirStat) == -1) {
         return LINGLONG_ERR(fmt::format("couldn't stat layers directory {}: {}",
                                         layersDir.string(),
-                                        strerror(errno)));
+                                        std::generic_category().message(errno)));
     }
 
     for (const auto &layer : std::as_const(this->layers)) {
@@ -665,7 +665,7 @@ UABPackager::prepareDistributedBundle(const std::filesystem::path &bundleDir) no
         if (statvfs(layerPath.c_str(), &layerStat) == -1) {
             return LINGLONG_ERR(fmt::format("couldn't stat layer directory {}: {}",
                                             layerPath.string(),
-                                            strerror(errno)));
+                                            std::generic_category().message(errno)));
         }
 
         const bool shouldCopy = layerStat.f_fsid != layersDirStat.f_fsid;
@@ -855,11 +855,6 @@ UABPackager::filteringFiles(const LayerDir &layer) const noexcept
             auto status = std::filesystem::symlink_status(entry, ec);
             if (ec) {
                 return LINGLONG_ERR(ec.message());
-            }
-
-            if (!std::filesystem::exists(status)) {
-                // symlink_status succeeded but the target doesn't exist (broken symlink or removed file)
-                continue;
             }
 
             if (status.type() == std::filesystem::file_type::regular) {

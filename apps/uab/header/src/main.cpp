@@ -384,6 +384,12 @@ void handleSig() noexcept
     for (auto sig : quitSignals) {
         sigaction(sig, &sa, nullptr);
     }
+
+    // Block the signals so they are not delivered until we call sigsuspend.
+    // This prevents the race condition between checking signalReceived and
+    // calling pause(), where a signal arriving between the check and pause()
+    // would cause pause() to block indefinitely.
+    sigprocmask(SIG_BLOCK, &blocking_mask, nullptr);
 }
 
 int createMountPoint(std::string_view uuid) noexcept
@@ -687,8 +693,14 @@ int main(int argc, char **argv)
 
     bool mountOnly = !opts.mountPath.empty();
     if (mountOnly) {
+        // Use sigsuspend instead of pause() to avoid a race condition.
+        // Signals are already blocked by handleSig() via sigprocmask(SIG_BLOCK).
+        // sigsuspend atomically unblocks the signals and waits, so no signal
+        // can be missed between checking signalReceived and waiting.
+        sigset_t empty_mask;
+        sigemptyset(&empty_mask);
         while (signalReceived == 0) {
-            pause();
+            sigsuspend(&empty_mask);
         }
         // Signal received - perform cleanup in a safe context (not from signal handler)
         cleanAndExit(128 + signalReceived);

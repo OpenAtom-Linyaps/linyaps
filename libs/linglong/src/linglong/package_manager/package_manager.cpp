@@ -609,11 +609,11 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
     if (packageInfo.packageInfoV2Module != "binary"
         && packageInfo.packageInfoV2Module != "runtime") {
         auto mainModuleLayerDir = this->repo->getLayerDir(packageRef, "binary");
-        if (!mainModuleLayerDir) {
+        if (!mainModuleLayerDir || !mainModuleLayerDir->valid()) {
             // binary module not found, try runtime
             mainModuleLayerDir = this->repo->getLayerDir(packageRef, "runtime");
         }
-        if (!mainModuleLayerDir) {
+        if (!mainModuleLayerDir || !mainModuleLayerDir->valid()) {
             return toDBusReply(
               utils::error::ErrorCode::AppInstallModuleRequireAppFirst,
               fmt::format("cannot install module '{}' of {} version {}: "

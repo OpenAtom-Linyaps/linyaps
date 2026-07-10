@@ -23,6 +23,7 @@
 #include <QStandardPaths>
 #include <QUuid>
 
+#include <cerrno>
 #include <cstring>
 #include <filesystem>
 #include <fstream>
@@ -30,7 +31,6 @@
 #include <unordered_set>
 #include <utility>
 
-#include <cerrno>
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <sys/statvfs.h>

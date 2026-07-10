@@ -1443,8 +1443,9 @@ utils::error::Result<void> ContainerCfgBuilder::buildMountNetworkConf() noexcept
                 std::array<char, PATH_MAX + 1> buf{};
                 auto *rpath = realpath(resolvConf.string().c_str(), buf.data());
                 if (rpath == nullptr) {
-                    return LINGLONG_ERR(
-                      fmt::format("Failed to read symlink {}: {}", resolvConf, std::generic_category().message(errno)));
+                    return LINGLONG_ERR(fmt::format("Failed to read symlink {}: {}",
+                                                    resolvConf,
+                                                    std::generic_category().message(errno)));
                 }
                 target = std::filesystem::path{ rpath };
             }
@@ -2319,8 +2320,9 @@ ContainerCfgBuilder::mountBind(const ocppi::runtime::config::types::Mount &mount
     }
 
     if (::mount(mount.source->c_str(), mount.destination.c_str(), "", flags, nullptr) != 0) {
-        return LINGLONG_ERR(
-          fmt::format("failed to mount {}: {}", mount.source.value(), std::generic_category().message(errno)));
+        return LINGLONG_ERR(fmt::format("failed to mount {}: {}",
+                                        mount.source.value(),
+                                        std::generic_category().message(errno)));
     }
 
     return LINGLONG_OK;

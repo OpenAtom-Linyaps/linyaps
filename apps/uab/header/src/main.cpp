@@ -33,10 +33,10 @@ extern "C" int erofsfuse_main(int argc, char **argv);
 
 namespace {
 
-std::atomic_bool mountFlag{ false };  // NOLINT
-std::atomic_bool createFlag{ false }; // NOLINT
+std::atomic_bool mountFlag{ false };       // NOLINT
+std::atomic_bool createFlag{ false };      // NOLINT
 volatile sig_atomic_t signalReceived{ 0 }; // NOLINT - set by signal handler, checked by main loop
-std::filesystem::path mountPoint;     // NOLINT
+std::filesystem::path mountPoint;          // NOLINT
 constexpr std::size_t default_page_size = 4096;
 
 constexpr auto usage = u8R"(Linglong Universal Application Bundle

@@ -45,14 +45,14 @@ inline void unregisterDBusObject(QDBusConnection conn, const QString &path)
     }
 
     if (conn.lastError().isValid()) {
-        return LINGLONG_ERR(
-          fmt::format("failed to register D-Bus service '{}': {}", serviceName, conn.lastError().message()),
-          utils::error::ErrorCode::Failed);
+        return LINGLONG_ERR(fmt::format("failed to register D-Bus service '{}': {}",
+                                        serviceName,
+                                        conn.lastError().message()),
+                            utils::error::ErrorCode::Failed);
     }
 
-    return LINGLONG_ERR(
-      fmt::format("D-Bus service name '{}' already registered", serviceName),
-      utils::error::ErrorCode::Failed);
+    return LINGLONG_ERR(fmt::format("D-Bus service name '{}' already registered", serviceName),
+                        utils::error::ErrorCode::Failed);
 }
 
 [[nodiscard]] inline auto unregisterDBusService(QDBusConnection conn, const QString &serviceName)
@@ -66,14 +66,14 @@ inline void unregisterDBusObject(QDBusConnection conn, const QString &path)
     }
 
     if (conn.lastError().isValid()) {
-        return LINGLONG_ERR(
-          fmt::format("failed to unregister D-Bus service '{}': {}", serviceName, conn.lastError().message()),
-          utils::error::ErrorCode::Failed);
+        return LINGLONG_ERR(fmt::format("failed to unregister D-Bus service '{}': {}",
+                                        serviceName,
+                                        conn.lastError().message()),
+                            utils::error::ErrorCode::Failed);
     }
 
-    return LINGLONG_ERR(
-      fmt::format("D-Bus service name '{}' not found", serviceName),
-      utils::error::ErrorCode::Failed);
+    return LINGLONG_ERR(fmt::format("D-Bus service name '{}' not found", serviceName),
+                        utils::error::ErrorCode::Failed);
 }
 
 } // namespace linglong::common::dbus

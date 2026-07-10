@@ -681,7 +681,8 @@ void Cli::interaction(const QDBusObjectPath &object_path,
     } else if (action == "dummy") {
         action = this->globalOptions.yesOpt ? "yes" : "no";
         if (action == "no") {
-            LogW("Interaction requested but no terminal/DBus available. Use -y/--yes to auto-confirm.");
+            LogW("Interaction requested but no terminal/DBus available. Use -y/--yes to "
+                 "auto-confirm.");
         }
     } else {
         action = "no";
@@ -2538,7 +2539,8 @@ std::vector<std::string> Cli::filePathMapping(const std::vector<std::string> &co
             continue;
         }
 
-        LogW("unsupported Exec variable '{}' in command, only %%f, %%F, %%u, %%U are supported", arg);
+        LogW("unsupported Exec variable '{}' in command, only %%f, %%F, %%u, %%U are supported",
+             arg);
         // Keep the argument as-is to avoid silently dropping it
         execArgs.emplace_back(arg);
     }

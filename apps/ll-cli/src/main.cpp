@@ -608,9 +608,10 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     commandParser.add_flag("--no-progress",
                            globalOptions.noProgress,
                            _("Don't output progress information"));
-    commandParser.add_flag("-y,--yes",
-                           globalOptions.yesOpt,
-                           _("Automatically answer yes to all prompts (useful for non-interactive mode)"));
+    commandParser.add_flag(
+      "-y,--yes",
+      globalOptions.yesOpt,
+      _("Automatically answer yes to all prompts (useful for non-interactive mode)"));
 
     // subcommand options
     RunOptions runOptions{};

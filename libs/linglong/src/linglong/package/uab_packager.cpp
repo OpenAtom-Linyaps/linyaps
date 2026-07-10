@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2024-2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -431,10 +431,17 @@ UABPackager::prepareExecutableBundle(const std::filesystem::path &bundleDir) noe
 
                 std::filesystem::create_hard_link(realSource, realDestination, ec);
                 if (ec) {
-                    return LINGLONG_ERR(fmt::format("couldn't link from {} to {} {}",
-                                                    source,
-                                                    realDestination,
-                                                    ec.message()));
+                    // Hard links can't span filesystems (EXDEV); fall back to
+                    // copying so export still works when the project dir and
+                    // the builder cache live on different mounts (see #1605).
+                    ec.clear();
+                    std::filesystem::copy_file(realSource, realDestination, ec);
+                    if (ec) {
+                        return LINGLONG_ERR(fmt::format("couldn't link or copy from {} to {} {}",
+                                                        source,
+                                                        realDestination,
+                                                        ec.message()));
+                    }
                 }
             }
         }

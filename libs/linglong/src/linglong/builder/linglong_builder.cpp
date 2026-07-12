@@ -2064,10 +2064,11 @@ set -e
     }
     scriptContent.append(project.build);
     scriptContent.push_back('\n');
+    scriptContent.append("# POST BUILD PROCESS\n");
     if (!this->buildOptions.skipStripSymbols) {
-        scriptContent.append("# POST BUILD PROCESS\n");
         scriptContent.append(LINGLONG_BUILDER_HELPER "/symbols-strip.sh\n");
     }
+    scriptContent.append(LINGLONG_BUILDER_HELPER "/compile-schemas.sh\n");
 
     auto res = utils::writeFile(entry, scriptContent);
     if (!res) {

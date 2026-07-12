@@ -51,28 +51,20 @@ yay -Syu linyaps-web-store-installer
 sudo pacman -Syu linyaps-web-store-installer
 ```
 
-### deepin 25
+### Deepin 25
 
 ```sh
 echo "deb [trusted=yes] https://ci.deepin.com/repo/obs/linglong:/CI:/release/Deepin_25/ ./" | sudo tee /etc/apt/sources.list.d/linglong.list
 sudo apt update
-sudo apt install linglong-bin linglong-installer
+sudo apt install linglong-bin
 ```
 
-### deepin 23
+### Deepin 23
 
 ```sh
 echo "deb [trusted=yes] https://ci.deepin.com/repo/obs/linglong:/CI:/release/Deepin_23/ ./" | sudo tee /etc/apt/sources.list.d/linglong.list
 sudo apt update
-sudo apt install linglong-bin linglong-installer
-```
-
-### Fedora 41
-
-```sh
-sudo dnf config-manager addrepo --from-repofile "https://ci.deepin.com/repo/obs/linglong:/CI:/release/Fedora_41/linglong%3ACI%3Arelease.repo"
-sudo dnf update
-sudo dnf install linglong-bin linyaps-web-store-installer
+sudo apt install linglong-bin
 ```
 
 ### Fedora 42
@@ -80,7 +72,31 @@ sudo dnf install linglong-bin linyaps-web-store-installer
 ```sh
 sudo dnf config-manager addrepo --from-repofile "https://ci.deepin.com/repo/obs/linglong:/CI:/release/Fedora_42/linglong%3ACI%3Arelease.repo"
 sudo dnf update
-sudo dnf install linglong-bin linyaps-web-store-installer
+sudo dnf install linglong-bin
+```
+
+### Fedora 43
+
+```sh
+sudo dnf config-manager addrepo --from-repofile "https://ci.deepin.com/repo/obs/linglong:/CI:/release/Fedora_43/linglong%3ACI%3Arelease.repo"
+sudo dnf update
+sudo dnf install linglong-bin
+```
+
+### Ubuntu 25.10
+
+```sh
+echo "deb [trusted=yes] https://ci.deepin.com/repo/obs/linglong:/CI:/release/Ubuntu_25.10/ ./" | sudo tee /etc/apt/sources.list.d/linglong.list
+sudo apt update
+sudo apt install linglong-bin
+```
+
+### Ubuntu 25.04
+
+```sh
+echo "deb [trusted=yes] https://ci.deepin.com/repo/obs/linglong:/CI:/release/Ubuntu_25.04/ ./" | sudo tee /etc/apt/sources.list.d/linglong.list
+sudo apt update
+sudo apt install linglong-bin
 ```
 
 ### Ubuntu 24.04
@@ -88,15 +104,7 @@ sudo dnf install linglong-bin linyaps-web-store-installer
 ```sh
 echo "deb [trusted=yes] https://ci.deepin.com/repo/obs/linglong:/CI:/release/xUbuntu_24.04/ ./" | sudo tee /etc/apt/sources.list.d/linglong.list
 sudo apt update
-sudo apt install linglong-bin linglong-installer
-```
-
-### Debian 12
-
-```sh
-echo "deb [trusted=yes] https://ci.deepin.com/repo/obs/linglong:/CI:/release/Debian_12/ ./" | sudo tee /etc/apt/sources.list.d/linglong.list
-sudo apt update
-sudo apt install linglong-bin linglong-installer
+sudo apt install linglong-bin
 ```
 
 ### Debian 13
@@ -104,41 +112,57 @@ sudo apt install linglong-bin linglong-installer
 ```sh
 echo "deb [trusted=yes] https://ci.deepin.com/repo/obs/linglong:/CI:/release/Debian_13/ ./" | sudo tee /etc/apt/sources.list.d/linglong.list
 sudo apt update
-sudo apt install linglong-bin linglong-installer
+sudo apt install linglong-bin
 ```
 
-### openEuler 23.09
+### Debian 12
 
 ```sh
-sudo dnf config-manager --add-repo "https://ci.deepin.com/repo/obs/linglong:/CI:/release/openEuler_23.09/linglong%3ACI%3Arelease.repo"
-sudo sh -c "echo gpgcheck=0 >> /etc/yum.repos.d/linglong%3ACI%3Arelease.repo"
-sudo dnf update
-sudo dnf install linglong-bin linyaps-web-store-installer
+echo "deb [trusted=yes] https://ci.deepin.com/repo/obs/linglong:/CI:/release/Debian_12/ ./" | sudo tee /etc/apt/sources.list.d/linglong.list
+sudo apt update
+sudo apt install linglong-bin
 ```
 
-### openEuler 24.03
+### openEuler 25.03
+
+```sh
+sudo dnf config-manager --add-repo "https://ci.deepin.com/repo/obs/linglong:/CI:/release/openEuler_25.03/linglong%3ACI%3Arelease.repo"
+sudo sh -c "echo gpgcheck=0 >> /etc/yum.repos.d/linglong%3ACI%3Arelease.repo"
+sudo dnf update
+sudo dnf install linglong-bin
+```
+
+### openEuler 24.03 SP2
 
 ```sh
 sudo dnf config-manager --add-repo "https://ci.deepin.com/repo/obs/linglong:/CI:/release/openEuler_24.03/linglong%3ACI%3Arelease.repo"
 sudo sh -c "echo gpgcheck=0 >> /etc/yum.repos.d/linglong%3ACI%3Arelease.repo"
 sudo dnf update
-sudo dnf install linglong-bin linyaps-web-store-installer
+sudo dnf install linglong-bin
 ```
 
-### UOS 1070
+### uos 1070
 
 ```sh
 echo "deb [trusted=yes] https://ci.deepin.com/repo/obs/linglong:/CI:/release/uos_1070/ ./" | sudo tee /etc/apt/sources.list.d/linglong.list
 sudo apt update
-sudo apt install linglong-bin linglong-installer
+sudo apt install linglong-bin
 ```
 
-### AnolisOS 8
+### AnolisOS 23.4
 
 ```sh
-sudo dnf config-manager addrepo --from-repofile "https://ci.deepin.com/repo/obs/linglong:/CI:/release/AnolisOS_8/linglong%3ACI%3Arelease.repo"
+sudo dnf config-manager addrepo --from-repofile "https://ci.deepin.com/repo/obs/linglong:/CI:/release/AnolisOS_23.4/linglong%3ACI%3Arelease.repo"
 sudo dnf update
-sudo dnf install linglong-bin linyaps-web-store-installer
+sudo dnf install linglong-bin
+```
+
+### AnolisOS 23.3
+
+```sh
+sudo dnf config-manager addrepo --from-repofile "https://ci.deepin.com/repo/obs/linglong:/CI:/release/AnolisOS_23.3/linglong%3ACI%3Arelease.repo"
+sudo dnf update
+sudo dnf install linglong-bin
 ```
 
 ### openkylin 2.0
@@ -146,7 +170,7 @@ sudo dnf install linglong-bin linyaps-web-store-installer
 ```sh
 echo "deb [trusted=yes] https://ci.deepin.com/repo/obs/linglong:/CI:/release/openkylin_2.0/ ./" | sudo tee /etc/apt/sources.list.d/linglong.list
 sudo apt update
-sudo apt install linglong-bin linglong-installer
+sudo apt install linglong-bin
 ```
 
 ### NixOS

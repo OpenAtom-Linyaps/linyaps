@@ -330,14 +330,29 @@ Result<void> waitForDBusPeerReady(const QString &service,
 {
     LINGLONG_TRACE("wait for dbus peer ready");
 
-    auto peer = linglong::api::dbus::v1::DBusPeer(service, path, connection);
-    auto reply = peer.Ping();
-    reply.waitForFinished();
-    if (!reply.isValid()) {
-        return LINGLONG_ERR(reply.error().message().toStdString());
-    }
+    using namespace std::chrono_literals;
 
-    return LINGLONG_OK;
+    constexpr auto perCallTimeout = 5s;
+    constexpr auto retryInterval = 1s;
+    constexpr auto totalDeadline = 90s;
+
+    const auto startedAt = std::chrono::steady_clock::now();
+    while (true) {
+        auto peer = linglong::api::dbus::v1::DBusPeer(service, path, connection);
+        peer.setTimeout(static_cast<int>(std::chrono::milliseconds(perCallTimeout).count()));
+
+        auto reply = peer.Ping();
+        reply.waitForFinished();
+        if (reply.isValid()) {
+            return LINGLONG_OK;
+        }
+
+        if (std::chrono::steady_clock::now() - startedAt >= totalDeadline) {
+            return LINGLONG_ERR(reply.error().message().toStdString());
+        }
+
+        std::this_thread::sleep_for(retryInterval);
+    }
 }
 
 std::vector<std::string> getAutoModuleList() noexcept
@@ -1201,7 +1216,10 @@ Cli::initializeDBusPackageManager()
                                           "/org/deepin/linglong/PackageManager1",
                                           pkgManConn);
     if (!peerReady) {
-        return LINGLONG_ERR("Failed to activate org.deepin.linglong.PackageManager1", peerReady);
+        return LINGLONG_ERR("Failed to activate org.deepin.linglong.PackageManager1; check the "
+                            "daemon with 'systemctl status org.deepin.linglong.PackageManager' and "
+                            "'journalctl -u org.deepin.linglong.PackageManager -e'",
+                            peerReady);
     }
 
     return std::make_unique<api::dbus::v1::PackageManager>("org.deepin.linglong.PackageManager1",

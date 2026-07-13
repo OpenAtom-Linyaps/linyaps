@@ -1,5 +1,5 @@
 
-// SPDX-FileCopyrightText: 2024 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2024-2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -62,4 +62,12 @@ TEST(NamespaceTest, ParseSubuidRanges)
     EXPECT_EQ((*ranges6)[0].count, "65536");
     EXPECT_EQ((*ranges6)[1].subuid, "200000");
     EXPECT_EQ((*ranges6)[1].count, "65536");
+}
+
+TEST(NamespaceTest, GetUserNameWithUnknownUid)
+{
+    auto userName = linglong::utils::detail::getUserName(static_cast<uid_t>(-1));
+
+    EXPECT_FALSE(userName.has_value());
+    EXPECT_NE(userName.error().message().find("entry not found"), std::string::npos);
 }

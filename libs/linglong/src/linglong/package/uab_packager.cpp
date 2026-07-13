@@ -31,7 +31,7 @@
 
 #include <fcntl.h>
 #include <sys/mman.h>
-#include <sys/statvfs.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 namespace linglong::package {
@@ -354,20 +354,20 @@ UABPackager::prepareExecutableBundle(const std::filesystem::path &bundleDir) noe
         }
 
         if (!files.empty()) {
-            struct statvfs moduleFilesDirStat{};
-            struct statvfs filesStat{};
+            struct stat moduleFilesDirStat{};
+            struct stat filesStat{};
 
-            if (statvfs(moduleFilesDir.c_str(), &moduleFilesDirStat) == -1) {
+            if (stat(moduleFilesDir.c_str(), &moduleFilesDirStat) == -1) {
                 return LINGLONG_ERR("couldn't stat module files directory: "
                                     + moduleFilesDir.string());
             }
 
-            if (statvfs((*files.begin()).c_str(), &filesStat) == -1) {
+            if (stat((*files.begin()).c_str(), &filesStat) == -1) {
                 return LINGLONG_ERR("couldn't stat files directory: "
                                     + layer.filesDirPath().string());
             }
 
-            const bool shouldCopy = moduleFilesDirStat.f_fsid != filesStat.f_fsid;
+            const bool shouldCopy = moduleFilesDirStat.st_dev != filesStat.st_dev;
             for (const std::filesystem::path source : files) {
                 auto sourceFile = source.lexically_relative(basePath);
                 auto ret = prepareSymlink(basePath, moduleFilesDir, sourceFile, symlinkCount);
@@ -640,8 +640,8 @@ UABPackager::prepareDistributedBundle(const std::filesystem::path &bundleDir) no
     }
 
     // check if we can use hard links for optimization (only need to check once)
-    struct statvfs layersDirStat{};
-    if (statvfs(layersDir.c_str(), &layersDirStat) == -1) {
+    struct stat layersDirStat{};
+    if (stat(layersDir.c_str(), &layersDirStat) == -1) {
         return LINGLONG_ERR("couldn't stat layers directory: " + layersDir.string());
     }
 
@@ -660,12 +660,12 @@ UABPackager::prepareDistributedBundle(const std::filesystem::path &bundleDir) no
         }
 
         // check if layer and target are on the same filesystem
-        struct statvfs layerStat{};
-        if (statvfs(layerPath.c_str(), &layerStat) == -1) {
+        struct stat layerStat{};
+        if (stat(layerPath.c_str(), &layerStat) == -1) {
             return LINGLONG_ERR("couldn't stat layer directory: " + layerPath.string());
         }
 
-        const bool shouldCopy = layerStat.f_fsid != layersDirStat.f_fsid;
+        const bool shouldCopy = layerStat.st_dev != layersDirStat.st_dev;
 
         if (shouldCopy) {
             // different filesystem, need to copy files

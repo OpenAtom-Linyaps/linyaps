@@ -131,7 +131,7 @@ msgstr "Операция отменена"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2354
 msgid "Permission denied, authentication is required"
-msgstr ""
+msgstr "В разрешении отказано, требуется аутентификация"
 
 #: ../apps/ll-cli/src/main.cpp:105 ../apps/ll-builder/src/main.cpp:46
 msgid "Input parameter is empty, please input valid parameter instead"
@@ -204,10 +204,12 @@ msgstr "Укажите расширение(я), используемое(ые) 
 msgid ""
 "Enable or disable xdg-desktop-portal related integration inside the sandbox"
 msgstr ""
+"Включить или отключить интеграцию, связанную с xdg-desktop-portal, в "
+"изолированной среде"
 
 #: ../apps/ll-cli/src/main.cpp:181
 msgid "Run context json string"
-msgstr ""
+msgstr "Запустить контекстную строку json"
 
 #: ../apps/ll-cli/src/main.cpp:184
 msgid "Run the application in privileged mode"
@@ -219,19 +221,21 @@ msgstr "Добавить возможности приложению"
 
 #: ../apps/ll-cli/src/main.cpp:190
 msgid "CDI spec directory"
-msgstr ""
+msgstr "Каталог спецификаций CDI"
 
 #: ../apps/ll-cli/src/main.cpp:194
 msgid "Add CDI devices"
-msgstr ""
+msgstr "Добавить устройства CDI"
 
 #: ../apps/ll-cli/src/main.cpp:200
 msgid "Add device options"
-msgstr ""
+msgstr "Добавить параметры устройства"
 
 #: ../apps/ll-cli/src/main.cpp:207
 msgid "Specify the container instance name for reuse or identification"
 msgstr ""
+"Укажите имя экземпляра контейнера для повторного использования или "
+"идентификации"
 
 #: ../apps/ll-cli/src/main.cpp:210 ../apps/ll-cli/src/main.cpp:241
 msgid "Run commands in a running sandbox"
@@ -1004,7 +1008,7 @@ msgstr ""
 
 #: ../libs/linglong/src/linglong/common/cli/repo.cpp:36
 msgid "Usage: "
-msgstr ""
+msgstr "Использование: "
 
 #: ../libs/linglong/src/linglong/common/cli/repo.cpp:50
 msgid "Display or modify information of the repository currently using"

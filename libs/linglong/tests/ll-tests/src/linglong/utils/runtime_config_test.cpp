@@ -343,9 +343,9 @@ TEST(RuntimeConfigTest, LoadRuntimeConfigWithInstanceMounts)
     file << j.dump();
     file.close();
 
-    EnvironmentVariableGuard xdgGuard("XDG_CONFIG_HOME", tempDir.path().string());
+    std::vector<std::filesystem::path> configDirs = { tempDir.path() / "linglong" };
 
-    auto loadedDefault = linglong::utils::loadRuntimeConfig("test-app", "");
+    auto loadedDefault = linglong::utils::loadRuntimeConfig(configDirs, "test-app", "");
     ASSERT_TRUE(loadedDefault.has_value());
     EXPECT_TRUE(loadedDefault->has_value());
     auto &defaultConfig = **loadedDefault;
@@ -355,7 +355,7 @@ TEST(RuntimeConfigTest, LoadRuntimeConfigWithInstanceMounts)
     EXPECT_EQ(defaultConfig.mounts->at(0).destination, "/tmp/base");
     EXPECT_FALSE(defaultConfig.instances.has_value());
 
-    auto loadedDev = linglong::utils::loadRuntimeConfig("test-app", "dev");
+    auto loadedDev = linglong::utils::loadRuntimeConfig(configDirs, "test-app", "dev");
     ASSERT_TRUE(loadedDev.has_value());
     EXPECT_TRUE(loadedDev->has_value());
     auto &devConfig = **loadedDev;
@@ -409,9 +409,8 @@ TEST(RuntimeConfigTest, LoadRuntimeConfigWithConfigD)
         file << "runtime config drop-ins must use the .json suffix";
     }
 
-    EnvironmentVariableGuard xdgGuard("XDG_CONFIG_HOME", tempDir.path().string());
-
-    auto loaded = linglong::utils::loadRuntimeConfig("test-config-d", "");
+    std::vector<std::filesystem::path> configDirs = { tempDir.path() / "linglong" };
+    auto loaded = linglong::utils::loadRuntimeConfig(configDirs, "test-config-d", "");
     ASSERT_TRUE(loaded.has_value());
     ASSERT_TRUE(loaded->has_value());
 

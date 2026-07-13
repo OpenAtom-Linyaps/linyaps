@@ -75,29 +75,6 @@ loadRuntimeConfigFromDir(const std::filesystem::path &configDir, const std::stri
     return linglong::utils::MergeRuntimeConfig(configs);
 }
 
-linglong::utils::error::Result<std::optional<RuntimeConfigure>>
-loadUserRuntimeConfig(const std::string &appId)
-{
-    LINGLONG_TRACE(
-      fmt::format("load user runtime config for {}", appId.empty() ? "global" : appId));
-
-    auto configDir = linglong::common::dir::getUserRuntimeConfigDir();
-    if (configDir.empty()) {
-        return std::nullopt;
-    }
-
-    return loadRuntimeConfigFromDir(configDir, appId);
-}
-
-linglong::utils::error::Result<std::optional<RuntimeConfigure>>
-loadSystemRuntimeConfig(const std::string &appId)
-{
-    LINGLONG_TRACE(
-      fmt::format("load system runtime config for {}", appId.empty() ? "global" : appId));
-
-    return loadRuntimeConfigFromDir(linglong::common::dir::getSystemRuntimeConfigDir(), appId);
-}
-
 } // namespace
 
 namespace linglong::utils {
@@ -207,38 +184,50 @@ utils::error::Result<std::optional<RuntimeConfigure>> loadRuntimeConfig(const st
     LINGLONG_TRACE("load runtime config for app: " + appId
                    + ", instance: " + (instance.empty() ? "(default)" : instance));
 
+    std::vector<std::filesystem::path> configDirs;
+    auto systemConfigDir = linglong::common::dir::getSystemRuntimeConfigDir();
+    if (!systemConfigDir.empty()) {
+        configDirs.emplace_back(std::move(systemConfigDir));
+    }
+    auto userConfigDir = linglong::common::dir::getUserRuntimeConfigDir();
+    if (!userConfigDir.empty()) {
+        configDirs.emplace_back(std::move(userConfigDir));
+    }
+    return loadRuntimeConfig(configDirs, appId, instance);
+}
+
+utils::error::Result<std::optional<RuntimeConfigure>>
+loadRuntimeConfig(const std::vector<std::filesystem::path> &configDirs,
+                  const std::string &appId,
+                  const std::string &instance)
+{
+    LINGLONG_TRACE("load runtime config for app: " + appId
+                   + ", instance: " + (instance.empty() ? "(default)" : instance));
+
     std::vector<RuntimeConfigure> configs;
 
-    auto systemGlobal = loadSystemRuntimeConfig("");
-    if (!systemGlobal) {
-        return LINGLONG_ERR(systemGlobal);
-    }
-    if (systemGlobal->has_value()) {
-        configs.emplace_back(std::move(systemGlobal->value()));
-    }
+    for (const auto &configDir : configDirs) {
+        if (configDir.empty()) {
+            continue;
+        }
 
-    auto systemApp = loadSystemRuntimeConfig(appId);
-    if (!systemApp) {
-        return LINGLONG_ERR(systemApp);
-    }
-    if (systemApp->has_value()) {
-        configs.emplace_back(std::move(systemApp->value()));
-    }
+        auto global = loadRuntimeConfigFromDir(configDir, "");
+        if (!global) {
+            return LINGLONG_ERR(global);
+        }
+        if (global->has_value()) {
+            configs.emplace_back(std::move(global->value()));
+        }
 
-    auto userGlobal = loadUserRuntimeConfig("");
-    if (!userGlobal) {
-        return LINGLONG_ERR(userGlobal);
-    }
-    if (userGlobal->has_value()) {
-        configs.emplace_back(std::move(userGlobal->value()));
-    }
-
-    auto userApp = loadUserRuntimeConfig(appId);
-    if (!userApp) {
-        return LINGLONG_ERR(userApp);
-    }
-    if (userApp->has_value()) {
-        configs.emplace_back(std::move(userApp->value()));
+        if (!appId.empty()) {
+            auto app = loadRuntimeConfigFromDir(configDir, appId);
+            if (!app) {
+                return LINGLONG_ERR(app);
+            }
+            if (app->has_value()) {
+                configs.emplace_back(std::move(app->value()));
+            }
+        }
     }
 
     if (configs.empty()) {

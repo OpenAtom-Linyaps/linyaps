@@ -9,6 +9,7 @@
 #include "linglong/utils/error/error.h"
 
 #include <filesystem>
+#include <vector>
 
 namespace linglong::utils {
 
@@ -18,5 +19,10 @@ utils::error::Result<linglong::api::types::v1::RuntimeConfigure>
 loadRuntimeConfig(const std::filesystem::path &path);
 utils::error::Result<std::optional<linglong::api::types::v1::RuntimeConfigure>>
 loadRuntimeConfig(const std::string &appId, const std::string &instance = "");
+
+utils::error::Result<std::optional<linglong::api::types::v1::RuntimeConfigure>>
+loadRuntimeConfig(const std::vector<std::filesystem::path> &configDirs,
+                  const std::string &appId,
+                  const std::string &instance = "");
 
 } // namespace linglong::utils

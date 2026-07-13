@@ -80,3 +80,51 @@ TEST(RunContainerOptionsTest, ApplyCliRunOptionsOverridesRuntimeConfigXdpSetting
     ASSERT_TRUE(cliResult);
     EXPECT_TRUE(options.isXdpDisabled());
 }
+
+TEST(RunContainerOptionsTest, ApplyRuntimeConfigEnablesPipewireSocketMount)
+{
+    runtime::RunContainerOptions options;
+
+    api::types::v1::RuntimeConfigure runtimeConfig;
+    runtimeConfig.enablePipewireSocketMount = true;
+
+    auto result = options.applyRuntimeConfig(runtimeConfig);
+    ASSERT_TRUE(result);
+    EXPECT_TRUE(options.isPipewireSocketMountEnabled());
+}
+
+TEST(RunContainerOptionsTest, ApplyCliRunOptionsPreservesRuntimeConfigPipewireSettingByDefault)
+{
+    runtime::RunContainerOptions options;
+
+    api::types::v1::RuntimeConfigure runtimeConfig;
+    runtimeConfig.enablePipewireSocketMount = true;
+
+    auto runtimeResult = options.applyRuntimeConfig(runtimeConfig);
+    ASSERT_TRUE(runtimeResult);
+    ASSERT_TRUE(options.isPipewireSocketMountEnabled());
+
+    cli::RunOptions runOptions;
+    auto cliResult = options.applyCliRunOptions(runOptions);
+    ASSERT_TRUE(cliResult);
+    EXPECT_TRUE(options.isPipewireSocketMountEnabled());
+}
+
+TEST(RunContainerOptionsTest, ApplyCliRunOptionsOverridesRuntimeConfigPipewireSettingWhenSpecified)
+{
+    runtime::RunContainerOptions options;
+
+    api::types::v1::RuntimeConfigure runtimeConfig;
+    runtimeConfig.enablePipewireSocketMount = false;
+
+    auto runtimeResult = options.applyRuntimeConfig(runtimeConfig);
+    ASSERT_TRUE(runtimeResult);
+    ASSERT_FALSE(options.isPipewireSocketMountEnabled());
+
+    cli::RunOptions runOptions;
+    runOptions.enablePipewireSocketMount = true;
+
+    auto cliResult = options.applyCliRunOptions(runOptions);
+    ASSERT_TRUE(cliResult);
+    EXPECT_TRUE(options.isPipewireSocketMountEnabled());
+}

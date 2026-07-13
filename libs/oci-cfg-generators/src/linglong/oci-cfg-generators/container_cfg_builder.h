@@ -23,6 +23,11 @@ struct XdpOption
     std::filesystem::path docMountPoint;
 };
 
+struct PipewireMountOption
+{
+    std::filesystem::path hostSocketPath;
+};
+
 enum class ANNOTATION {
     APPID,
     BASEDIR,
@@ -139,6 +144,7 @@ public:
     ContainerCfgBuilder &enableQuirkVolatile() noexcept;
 
     ContainerCfgBuilder &enableXDP(XdpOption option) noexcept;
+    ContainerCfgBuilder &enablePipewireSocketMount(PipewireMountOption option) noexcept;
 
     ContainerCfgBuilder &
       setExtensionMounts(std::vector<ocppi::runtime::config::types::Mount>) noexcept;
@@ -327,6 +333,7 @@ private:
     std::vector<MountNode> mountpoints;
     // this 'mounts' is used internally, distinct from config.mounts
     std::vector<ocppi::runtime::config::types::Mount> mounts;
+    std::optional<PipewireMountOption> pipewireMountOption;
 
     std::optional<std::pair<std::filesystem::path, bool>> overlayMerged;
 

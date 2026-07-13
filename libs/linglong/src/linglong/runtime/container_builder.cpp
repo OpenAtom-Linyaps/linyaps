@@ -396,7 +396,6 @@ auto ContainerBuilder::configureBuildContainer(PreparedContainer &prepared,
     LINGLONG_TRACE("configure build container");
 
     prepared.cfgBuilder.setBasePath(options.basePath, false)
-      .bindUserGroup()
       .forwardDefaultEnv()
       .appendEnv("LINYAPS_INIT_SINGLE_MODE", "1")
       .disableUserNamespace()

@@ -179,6 +179,11 @@ ll-cli run org.deepin.demo -- bash -x /path/to/bash/script)"));
                  runOptions.disableXdp,
                  _("Enable or disable xdg-desktop-portal related integration inside the sandbox"))
       ->take_last();
+    cliRun
+      ->add_flag("--enable-pipewire",
+                 runOptions.enablePipewireSocketMount,
+                 _("Enable PipeWire socket mount inside the sandbox"))
+      ->take_last();
     cliRun->add_option("--run-context", runOptions.runContext, _("Run context json string"))
       ->group("");
     cliRun

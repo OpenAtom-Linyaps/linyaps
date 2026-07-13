@@ -9,6 +9,7 @@
 #include "linglong/cli/cli.h"
 #include "linglong/common/dir.h"
 #include "linglong/common/strings.h"
+#include "linglong/common/xdg.h"
 #include "linglong/oci-cfg-generators/container_cfg_builder.h"
 #include "linglong/package/architecture.h"
 #include "linglong/runtime/run_context.h"
@@ -130,6 +131,10 @@ auto RunContainerOptions::applyRuntimeConfig(
         this->disableXdp = *runtimeConfig.disableXdp;
     }
 
+    if (runtimeConfig.enablePipewireSocketMount.has_value()) {
+        this->enablePipewireSocketMount = *runtimeConfig.enablePipewireSocketMount;
+    }
+
     if (runtimeConfig.deviceMode) {
         for (const auto &option : *runtimeConfig.deviceMode) {
             if (option == api::types::v1::DeviceOption::Passthru) {
@@ -172,6 +177,10 @@ auto RunContainerOptions::applyCliRunOptions(const cli::RunOptions &options) noe
     if (options.disableXdp.has_value()) {
         this->disableXdp = *options.disableXdp;
     }
+
+    if (options.enablePipewireSocketMount.has_value()) {
+        this->enablePipewireSocketMount = *options.enablePipewireSocketMount;
+    }
     this->privileged = options.privileged;
     this->capabilities.insert(this->capabilities.end(),
                               options.capsAdd.begin(),
@@ -209,6 +218,11 @@ auto RunContainerOptions::getSecurityContexts() const noexcept
 auto RunContainerOptions::isDevicePassthruEnabled() const noexcept -> bool
 {
     return this->devicePassthru;
+}
+
+auto RunContainerOptions::isPipewireSocketMountEnabled() const noexcept -> bool
+{
+    return this->enablePipewireSocketMount;
 }
 
 auto RunContainerOptions::isXdpDisabled() const noexcept -> bool
@@ -589,6 +603,11 @@ auto ContainerBuilder::configureRunContainer(PreparedContainer &prepared,
             LogW("failed to get XDP Documents mount point: {}, skip XDP integration",
                  docMountPoint.error());
         }
+    }
+    if (options.isPipewireSocketMountEnabled()) {
+        auto pwSocketPath = common::xdg::getXDGRuntimeDir() / "pipewire-0";
+        prepared.cfgBuilder.enablePipewireSocketMount(
+          generator::PipewireMountOption{ .hostSocketPath = std::move(pwSocketPath) });
     }
 
     if (options.isDevicePassthruEnabled()) {

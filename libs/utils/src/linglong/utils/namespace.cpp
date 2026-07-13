@@ -42,7 +42,11 @@ utils::error::Result<std::string> getUserName(uid_t uid)
     struct passwd *result{ nullptr };
     auto res = getpwuid_r(uid, &pw, buf.data(), buf.size(), &result);
     if (res != 0) {
-        return LINGLONG_ERR(fmt::format("failed to get user name {}", res).c_str());
+        return LINGLONG_ERR(
+          fmt::format("failed to get user name: {}", common::error::errorString(res)).c_str());
+    }
+    if (result == nullptr) {
+        return LINGLONG_ERR("failed to get user name: entry not found");
     }
 
     return result->pw_name;

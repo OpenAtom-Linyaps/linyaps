@@ -1458,6 +1458,9 @@
         "disable_xdp": {
           "type": "boolean"
         },
+        "enable_pipewire": {
+          "type": "boolean"
+        },
         "mounts": {
           "type": "array",
           "items": {

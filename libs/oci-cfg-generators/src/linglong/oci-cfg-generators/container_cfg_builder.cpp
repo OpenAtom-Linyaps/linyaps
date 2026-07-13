@@ -356,6 +356,12 @@ utils::error::Result<void> ContainerCfgBuilder::buildXDGRuntime() noexcept
                  .source = xdpOption->docMountPoint / "by-app" / appId,
                  .type = "bind" });
     }
+    if (pipewireMountOption) {
+        bindIfExist(*runMount,
+                    pipewireMountOption->hostSocketPath,
+                    *containerXDGRuntimeDir / "pipewire-0",
+                    false);
+    }
 
     return LINGLONG_OK;
 }
@@ -1560,6 +1566,13 @@ utils::error::Result<void> ContainerCfgBuilder::buildEnv() noexcept
 ContainerCfgBuilder &ContainerCfgBuilder::enableXDP(XdpOption option) noexcept
 {
     xdpOption = std::move(option);
+    return *this;
+}
+
+ContainerCfgBuilder &
+ContainerCfgBuilder::enablePipewireSocketMount(PipewireMountOption option) noexcept
+{
+    pipewireMountOption = std::move(option);
     return *this;
 }
 

@@ -158,6 +158,9 @@ public:
 
     // exportReference should be called when LayerDir of ref is existed in local repo
     void exportReference(const package::Reference &ref) noexcept;
+    // exportReferencePaths exports only the specified paths for a given reference
+    virtual void exportReferencePaths(const package::Reference &ref,
+                                      const std::vector<std::string> &paths) noexcept;
     // unexportReference should be called when LayerDir of ref is existed in local repo
     void unexportReference(const package::Reference &ref) noexcept;
     void unexportReference(const std::string &layerDir) noexcept;
@@ -283,7 +286,9 @@ protected:
                                          const std::filesystem::path &destination,
                                          const int &max_depth);
     utils::error::Result<void> exportEntries(
-      const std::filesystem::path &, const api::types::v1::RepositoryCacheLayersItem &) noexcept;
+      const std::filesystem::path &,
+      const api::types::v1::RepositoryCacheLayersItem &,
+      const std::optional<std::vector<std::string>> &exportPathsFilter = std::nullopt) noexcept;
 };
 
 } // namespace linglong::repo

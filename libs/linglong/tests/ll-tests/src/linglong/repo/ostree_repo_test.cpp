@@ -845,6 +845,192 @@ TEST(OSTreeRepoTest, matchRemoteByPriority_UseHighestPriority)
     EXPECT_EQ(repoPackages.back().second[0].version, "3.0.0");
 }
 
+static void createLayerEntries(const fs::path &layersDir,
+                               const std::string &commit,
+                               const std::vector<fs::path> &entryPaths)
+{
+    auto layerDir = layersDir / commit / "entries";
+    fs::create_directories(layerDir);
+    for (const auto &relPath : entryPaths) {
+        auto fullPath = layerDir / relPath;
+        fs::create_directories(fullPath.parent_path());
+        std::ofstream(fullPath) << "test-content";
+    }
+}
+
+static api::types::v1::RepositoryCacheLayersItem makeLayerItem(const std::string &commit,
+                                                               const std::string &id,
+                                                               const std::string &kind)
+{
+    return api::types::v1::RepositoryCacheLayersItem{
+        .commit = commit,
+        .info =
+          api::types::v1::PackageInfoV2{
+            .id = id,
+            .kind = kind,
+            .name = id,
+            .version = "1.0.0",
+          },
+    };
+}
+
+TEST_F(RepoTest, ExportEntriesWithFilterExportsOnlyFilteredPaths)
+{
+    TempDir tempDir("export_entries_test_");
+    ASSERT_TRUE(tempDir.isValid());
+    std::error_code ec;
+
+    auto config = api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 };
+    auto ostreeRepo = std::make_unique<MockOstreeRepo>(tempDir.path(), config);
+
+    std::string commit = "abc123commit";
+    createLayerEntries(tempDir.path() / "layers",
+                       commit,
+                       { "share/deepin-elf-verify/.elfsign/sign.tar",
+                         "share/applications/test.desktop",
+                         "share/icons/hicolor/test.png" });
+
+    auto item = makeLayerItem(commit, "org.test.app", "app");
+    auto entriesDir = tempDir.path() / "entries";
+    fs::create_directories(entriesDir, ec);
+    ASSERT_FALSE(ec) << ec.message();
+
+    auto ret = ostreeRepo->exportEntries(entriesDir,
+                                         item,
+                                         std::vector<std::string>{ "share/deepin-elf-verify" });
+    ASSERT_TRUE(ret.has_value()) << ret.error().message();
+
+    EXPECT_TRUE(fs::exists(entriesDir / "share/deepin-elf-verify" / commit / ".elfsign/sign.tar"));
+
+    EXPECT_FALSE(fs::exists(entriesDir / "share/applications"));
+    EXPECT_FALSE(fs::exists(entriesDir / "share/icons"));
+}
+
+TEST_F(RepoTest, ExportEntriesWithFilterSkipsNonExistentPath)
+{
+    TempDir tempDir("export_entries_test_");
+    ASSERT_TRUE(tempDir.isValid());
+    std::error_code ec;
+
+    auto config = api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 };
+    auto ostreeRepo = std::make_unique<MockOstreeRepo>(tempDir.path(), config);
+
+    std::string commit = "noelfcommit";
+    createLayerEntries(tempDir.path() / "layers", commit, { "share/applications/test.desktop" });
+
+    auto item = makeLayerItem(commit, "org.test.base", "base");
+    auto entriesDir = tempDir.path() / "entries";
+    fs::create_directories(entriesDir, ec);
+    ASSERT_FALSE(ec) << ec.message();
+
+    auto ret = ostreeRepo->exportEntries(entriesDir,
+                                         item,
+                                         std::vector<std::string>{ "share/deepin-elf-verify" });
+    ASSERT_TRUE(ret.has_value()) << ret.error().message();
+
+    EXPECT_FALSE(fs::exists(entriesDir / "share/deepin-elf-verify"));
+}
+
+TEST_F(RepoTest, ExportEntriesWithFilterDeepinElfVerifyCommitNamespacing)
+{
+    TempDir tempDir("export_entries_test_");
+    ASSERT_TRUE(tempDir.isValid());
+    std::error_code ec;
+
+    auto config = api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 };
+    auto ostreeRepo = std::make_unique<MockOstreeRepo>(tempDir.path(), config);
+
+    std::string commit1 = "commit_v1";
+    std::string commit2 = "commit_v2";
+    createLayerEntries(tempDir.path() / "layers",
+                       commit1,
+                       { "share/deepin-elf-verify/.elfsign/sign_v1.tar" });
+    createLayerEntries(tempDir.path() / "layers",
+                       commit2,
+                       { "share/deepin-elf-verify/.elfsign/sign_v2.tar" });
+
+    auto item1 = makeLayerItem(commit1, "org.test.base", "base");
+    auto item2 = makeLayerItem(commit2, "org.test.base", "base");
+
+    auto entriesDir = tempDir.path() / "entries";
+    fs::create_directories(entriesDir, ec);
+    ASSERT_FALSE(ec) << ec.message();
+
+    auto ret1 = ostreeRepo->exportEntries(entriesDir,
+                                          item1,
+                                          std::vector<std::string>{ "share/deepin-elf-verify" });
+    ASSERT_TRUE(ret1.has_value()) << ret1.error().message();
+
+    auto ret2 = ostreeRepo->exportEntries(entriesDir,
+                                          item2,
+                                          std::vector<std::string>{ "share/deepin-elf-verify" });
+    ASSERT_TRUE(ret2.has_value()) << ret2.error().message();
+
+    EXPECT_TRUE(
+      fs::exists(entriesDir / "share/deepin-elf-verify" / commit1 / ".elfsign/sign_v1.tar"));
+    EXPECT_TRUE(
+      fs::exists(entriesDir / "share/deepin-elf-verify" / commit2 / ".elfsign/sign_v2.tar"));
+}
+
+TEST_F(RepoTest, ExportEntriesWithFilterMultiplePaths)
+{
+    TempDir tempDir("export_entries_test_");
+    ASSERT_TRUE(tempDir.isValid());
+    std::error_code ec;
+
+    auto config = api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 };
+    auto ostreeRepo = std::make_unique<MockOstreeRepo>(tempDir.path(), config);
+
+    std::string commit = "multipath";
+    createLayerEntries(tempDir.path() / "layers",
+                       commit,
+                       { "share/deepin-elf-verify/.elfsign/sign.tar",
+                         "share/applications/test.desktop",
+                         "share/icons/hicolor/test.png" });
+
+    auto item = makeLayerItem(commit, "org.test.app", "app");
+    auto entriesDir = tempDir.path() / "entries";
+    fs::create_directories(entriesDir, ec);
+    ASSERT_FALSE(ec) << ec.message();
+
+    auto ret = ostreeRepo->exportEntries(
+      entriesDir,
+      item,
+      std::vector<std::string>{ "share/deepin-elf-verify", "share/applications" });
+    ASSERT_TRUE(ret.has_value()) << ret.error().message();
+
+    EXPECT_TRUE(fs::exists(entriesDir / "share/deepin-elf-verify" / commit / ".elfsign/sign.tar"));
+
+    const auto desktopExportPath =
+      ostreeRepo->resolveDesktopFileExportPath("applications/test.desktop");
+    EXPECT_TRUE(fs::exists(desktopExportPath));
+
+    EXPECT_FALSE(fs::exists(entriesDir / "share/icons"));
+}
+
+TEST_F(RepoTest, ExportEntriesWithFilterNoLayerEntriesDir)
+{
+    TempDir tempDir("export_entries_test_");
+    ASSERT_TRUE(tempDir.isValid());
+    std::error_code ec;
+
+    auto config = api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 };
+    auto ostreeRepo = std::make_unique<MockOstreeRepo>(tempDir.path(), config);
+
+    std::string commit = "noentries";
+    fs::create_directories(tempDir.path() / "layers" / commit, ec);
+    ASSERT_FALSE(ec) << ec.message();
+
+    auto item = makeLayerItem(commit, "org.test.app", "app");
+
+    auto entriesDir = tempDir.path() / "entries";
+
+    auto ret = ostreeRepo->exportEntries(entriesDir,
+                                         item,
+                                         std::vector<std::string>{ "share/deepin-elf-verify" });
+    ASSERT_TRUE(ret.has_value());
+}
+
 } // namespace
 
 } // namespace

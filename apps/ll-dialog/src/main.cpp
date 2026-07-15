@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2024 - 2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -187,7 +187,7 @@ int main(int argc, char *argv[])
     QApplication app{ argc, argv };
     Q_INIT_RESOURCE(cache_dialog_resource);
     QApplication::setApplicationName("ll-dialog");
-    QApplication::setApplicationVersion(LINGLONG_VERSION);
+    QApplication::setApplicationVersion(LINGLONG_VERSION_FULL);
 
     QCommandLineParser parser;
     parser.setApplicationDescription("dialog for interaction");

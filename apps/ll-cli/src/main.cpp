@@ -630,9 +630,9 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     // print version if --version flag is set
     if (*versionFlag) {
         if (*jsonFlag) {
-            std::cout << nlohmann::json{ { "version", LINGLONG_VERSION } } << std::endl;
+            std::cout << nlohmann::json{ { "version", LINGLONG_VERSION_FULL } } << std::endl;
         } else {
-            std::cout << _("linyaps CLI version ") << LINGLONG_VERSION << std::endl;
+            std::cout << _("linyaps CLI version ") << LINGLONG_VERSION_FULL << std::endl;
         }
         return 0;
     }

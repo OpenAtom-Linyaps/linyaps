@@ -1356,7 +1356,7 @@ GVariantBuilder OSTreeRepo::initOStreePullOptions(const std::string &ref) noexce
     std::array<const char *, 2> refs{ ref.c_str(), nullptr };
     GVariantBuilder builder;
     g_variant_builder_init(&builder, G_VARIANT_TYPE("a{sv}"));
-    std::string userAgent = "linglong/" LINGLONG_VERSION;
+    std::string userAgent = "linglong/" LINGLONG_VERSION_FULL;
     g_variant_builder_add(&builder,
                           "{s@v}",
                           "append-user-agent",

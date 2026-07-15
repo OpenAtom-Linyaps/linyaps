@@ -666,7 +666,7 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     CLI11_PARSE(commandParser, argc, argv);
 
     if (versionFlag) {
-        std::cout << _("linyaps build tool version ") << LINGLONG_VERSION << std::endl;
+        std::cout << _("linyaps build tool version ") << LINGLONG_VERSION_FULL << std::endl;
         return 0;
     }
 

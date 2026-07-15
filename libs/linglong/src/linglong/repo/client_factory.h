@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
+ * SPDX-FileCopyrightText: 2022 - 2026 UnionTech Software Technology Co., Ltd.
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
@@ -87,7 +87,7 @@ public:
 
 private:
     apiClient_t *client;
-    std::string m_user_agent = "linglong/" LINGLONG_VERSION;
+    std::string m_user_agent = "linglong/" LINGLONG_VERSION_FULL;
 };
 
 class ClientFactory

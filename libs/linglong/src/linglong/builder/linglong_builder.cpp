@@ -2190,7 +2190,7 @@ void Builder::takeTerminalForeground()
 void Builder::printBasicInfo()
 {
     printMessage("[Builder info]");
-    printMessage(std::string("Linglong Builder Version: ") + LINGLONG_VERSION, 2);
+    printMessage(std::string("Linglong Builder Version: ") + LINGLONG_VERSION_FULL, 2);
     printMessage("[Build Target]");
     const auto &project = *this->project;
     printMessage(project.package.id, 2);

@@ -89,8 +89,10 @@ LayerPackager::~LayerPackager()
                  (this->workDir / "unpack").string());
         }
     }
-    if (!std::filesystem::remove_all(this->workDir)) {
-        LogE("failed to remove {}", this->workDir);
+    std::error_code ec;
+    std::filesystem::remove_all(this->workDir, ec);
+    if (ec) {
+        LogE("failed to remove {}: {}", this->workDir, ec.message());
     }
 }
 

@@ -358,13 +358,15 @@ UABPackager::prepareExecutableBundle(const std::filesystem::path &bundleDir) noe
             struct statvfs filesStat{};
 
             if (statvfs(moduleFilesDir.c_str(), &moduleFilesDirStat) == -1) {
-                return LINGLONG_ERR("couldn't stat module files directory: "
-                                    + moduleFilesDir.string());
+                return LINGLONG_ERR(fmt::format("couldn't stat module files directory {}: {}",
+                                                moduleFilesDir.string(),
+                                                std::generic_category().message(errno)));
             }
 
             if (statvfs((*files.begin()).c_str(), &filesStat) == -1) {
-                return LINGLONG_ERR("couldn't stat files directory: "
-                                    + layer.filesDirPath().string());
+                return LINGLONG_ERR(fmt::format("couldn't stat files directory {}: {}",
+                                                layer.filesDirPath().string(),
+                                                std::generic_category().message(errno)));
             }
 
             const bool shouldCopy = moduleFilesDirStat.f_fsid != filesStat.f_fsid;
@@ -637,7 +639,9 @@ UABPackager::prepareDistributedBundle(const std::filesystem::path &bundleDir) no
     // check if we can use hard links for optimization (only need to check once)
     struct statvfs layersDirStat{};
     if (statvfs(layersDir.c_str(), &layersDirStat) == -1) {
-        return LINGLONG_ERR("couldn't stat layers directory: " + layersDir.string());
+        return LINGLONG_ERR(fmt::format("couldn't stat layers directory {}: {}",
+                                        layersDir.string(),
+                                        std::generic_category().message(errno)));
     }
 
     for (const auto &layer : std::as_const(this->layers)) {
@@ -657,7 +661,9 @@ UABPackager::prepareDistributedBundle(const std::filesystem::path &bundleDir) no
         // check if layer and target are on the same filesystem
         struct statvfs layerStat{};
         if (statvfs(layerPath.c_str(), &layerStat) == -1) {
-            return LINGLONG_ERR("couldn't stat layer directory: " + layerPath.string());
+            return LINGLONG_ERR(fmt::format("couldn't stat layer directory {}: {}",
+                                            layerPath.string(),
+                                            std::generic_category().message(errno)));
         }
 
         const bool shouldCopy = layerStat.f_fsid != layersDirStat.f_fsid;

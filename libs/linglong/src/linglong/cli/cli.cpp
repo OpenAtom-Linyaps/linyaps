@@ -2487,8 +2487,10 @@ int Cli::content(const ContentOptions &options)
 std::vector<std::string> Cli::filePathMapping(const std::vector<std::string> &command,
                                               const RunOptions &options) const noexcept
 {
-    // FIXME: couldn't handle command like 'll-cli run org.xxx.yyy --file f1 f2 f3 org.xxx.yyy %%F'
-    // can't distinguish the boundary of command , need validate the command arguments in the future
+    // NOTE: The --file and --url options now accept a single value per use
+    // (e.g., `--file f1 --file f2`), so the boundary between file arguments
+    // and command arguments is unambiguous. The COMMAND positional argument
+    // is no longer consumed by --file/--url.
 
     std::vector<std::string> execArgs;
     // if the --file or --url option is specified, need to map the file path to the linglong
@@ -2533,7 +2535,9 @@ std::vector<std::string> Cli::filePathMapping(const std::vector<std::string> &co
             continue;
         }
 
-        LogW("unknown command argument {}", arg);
+        LogW("unsupported Exec variable '{}' in command, only %%f, %%F, %%u, %%U are supported", arg);
+        // Keep the argument as-is to avoid silently dropping it
+        execArgs.emplace_back(arg);
     }
 
     return execArgs;

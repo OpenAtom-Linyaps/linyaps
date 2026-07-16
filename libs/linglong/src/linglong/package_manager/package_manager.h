@@ -114,7 +114,7 @@ public
 
 Q_SIGNALS:
     void TaskAdded(QDBusObjectPath object_path);
-    void TaskRemoved(QDBusObjectPath object_path);
+    void TaskRemoved(QDBusObjectPath object_path, int state, int code, QString message);
     void RequestInteraction(QDBusObjectPath object_path,
                             int messageID,
                             QVariantMap additionalMessage);

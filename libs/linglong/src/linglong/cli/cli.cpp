@@ -242,6 +242,7 @@ void Cli::onTaskPropertiesChanged(
         return;
     }
 
+    const auto previousState = taskState.state;
     for (auto entry = changed_properties.cbegin(); entry != changed_properties.cend(); ++entry) {
         const auto &key = entry.key();
         const auto &value = entry.value();
@@ -292,7 +293,7 @@ void Cli::onTaskPropertiesChanged(
         }
     }
 
-    handleTaskState();
+    handleTaskState(previousState);
 }
 
 void Cli::interaction(const QDBusObjectPath &object_path,
@@ -373,11 +374,34 @@ void Cli::onTaskAdded(const QDBusObjectPath &object_path)
     LogD("task added: {}", object_path.path().toStdString());
 }
 
-void Cli::onTaskRemoved(const QDBusObjectPath &object_path)
+void Cli::onTaskRemoved(const QDBusObjectPath &object_path,
+                        int state,
+                        int code,
+                        const QString &message)
 {
     LogD("task removed: {}", object_path.path().toStdString());
     if (object_path.path() != taskObjectPath) {
         return;
+    }
+
+    if (task) {
+        if (auto pkgMan = this->getPkgMan()) {
+            (*pkgMan)->connection().disconnect(
+              (*pkgMan)->service(),
+              taskObjectPath,
+              "org.freedesktop.DBus.Properties",
+              "PropertiesChanged",
+              this,
+              SLOT(onTaskPropertiesChanged(QString, QVariantMap, QStringList)));
+        }
+
+        onTaskPropertiesChanged(task->interface(),
+                                {
+                                  { "State", state },
+                                  { "Code", code },
+                                  { "Message", message },
+                                },
+                                {});
     }
 
     delete task;
@@ -385,7 +409,7 @@ void Cli::onTaskRemoved(const QDBusObjectPath &object_path)
     Q_EMIT taskDone();
 }
 
-void Cli::handleTaskState() noexcept
+void Cli::handleTaskState(api::types::v1::State previousState) noexcept
 {
     if (taskState.state == api::types::v1::State::Unknown) {
         LogW("task state is unknown");
@@ -394,14 +418,18 @@ void Cli::handleTaskState() noexcept
 
     if (taskState.state == api::types::v1::State::Failed
         || taskState.state == api::types::v1::State::Canceled) {
-        this->printer.clearLine();
-        this->printOnTaskFailed();
+        if (taskState.state != previousState) {
+            this->printer.clearLine();
+            this->printOnTaskFailed();
+        }
         return;
     }
 
     if (taskState.state == api::types::v1::State::Succeed) {
-        this->printer.clearLine();
-        this->printOnTaskSuccess();
+        if (taskState.state != previousState) {
+            this->printer.clearLine();
+            this->printOnTaskSuccess();
+        }
         return;
     }
 
@@ -421,6 +449,9 @@ void Cli::printOnTaskFailed()
         handleInstallError(
           error,
           std::get<api::types::v1::PackageManager1InstallParameters>(taskState.params));
+        break;
+    case TaskType::InstallFromFile:
+        handleInstallFromFileError(error);
         break;
     case TaskType::Uninstall:
         handleUninstallError(error);
@@ -539,7 +570,7 @@ utils::error::Result<void> Cli::initPkgManSignals()
                       pkgMan->interface(),
                       "TaskRemoved",
                       this,
-                      SLOT(onTaskRemoved(QDBusObjectPath)))) {
+                      SLOT(onTaskRemoved(QDBusObjectPath, int, int, QString)))) {
         return LINGLONG_ERR("couldn't connect to package manager signal 'TaskRemoved'");
     }
 
@@ -1141,7 +1172,7 @@ int Cli::installFromFile(const QFileInfo &fileInfo,
                                                    common::serialize::toQVariantMap(commonOptions));
     auto res = waitTaskCreated(pendingReply, TaskType::InstallFromFile);
     if (!res) {
-        this->handleCommonError(res.error());
+        this->handleInstallFromFileError(res.error());
         return -1;
     }
 
@@ -2155,11 +2186,15 @@ utils::error::Result<void> Cli::syncTaskProperties()
     QDBusReply<QVariantMap> reply =
       properties.call("GetAll", QStringLiteral("org.deepin.linglong.Task1"));
     if (!reply.isValid()) {
-        return LINGLONG_ERR(
-          fmt::format("failed to get task properties: {}", reply.error().message().toStdString()));
+        if (reply.error().type() == QDBusError::UnknownObject) {
+            return LINGLONG_OK;
+        }
+
+        return LINGLONG_ERR(reply.error().message().toStdString());
     }
 
     this->onTaskPropertiesChanged(QStringLiteral("org.deepin.linglong.Task1"), reply.value(), {});
+
     return LINGLONG_OK;
 }
 
@@ -2236,10 +2271,7 @@ void Cli::handleInstallError(const utils::error::Error &error,
         this->printer.printMessage(_("The module could not be found remotely."));
         break;
     case utils::error::ErrorCode::AppInstallAlreadyInstalled:
-        this->printer.printMessage(
-          fmt::format(_("Application already installed, If you want to replace it, try using "
-                        "'ll-cli install {} --force'"),
-                      params.package.id));
+        this->printer.printMessage(_("Application already installed"));
         break;
     case utils::error::ErrorCode::AppInstallNotFoundFromRemote:
         this->printer.printMessage(
@@ -2257,6 +2289,25 @@ void Cli::handleInstallError(const utils::error::Error &error,
     case utils::error::ErrorCode::Unknown:
     case utils::error::ErrorCode::AppInstallFailed:
         this->printer.printMessage(_("Install failed"));
+        break;
+    default:
+        if (!handleCommonError(error)) {
+            return;
+        }
+        break;
+    }
+
+    if (this->globalOptions.verbose) {
+        this->printer.printErr(error);
+    }
+}
+
+void Cli::handleInstallFromFileError(const utils::error::Error &error)
+{
+    auto errorCode = static_cast<utils::error::ErrorCode>(error.code());
+    switch (errorCode) {
+    case utils::error::ErrorCode::AppInstallAlreadyInstalled:
+        this->printer.printMessage(_("Application already installed"));
         break;
     default:
         if (!handleCommonError(error)) {

@@ -282,9 +282,10 @@ private:
                                                TaskType type);
     void waitTaskDone();
 
-    void handleTaskState() noexcept;
+    void handleTaskState(api::types::v1::State previousState) noexcept;
     void handleInstallError(const utils::error::Error &error,
                             const api::types::v1::PackageManager1InstallParameters &params);
+    void handleInstallFromFileError(const utils::error::Error &error);
     void handleUninstallError(const utils::error::Error &error);
     void handleUpgradeError(const utils::error::Error &error);
     bool handleCommonError(const utils::error::Error &error);
@@ -294,7 +295,8 @@ private:
 private Q_SLOTS:
     // maybe use in the future
     void onTaskAdded(const QDBusObjectPath &object_path);
-    void onTaskRemoved(const QDBusObjectPath &object_path);
+    void
+    onTaskRemoved(const QDBusObjectPath &object_path, int state, int code, const QString &message);
     void onTaskPropertiesChanged(const QString &interface,
                                  const QVariantMap &changed_properties,
                                  const QStringList &invalidated_properties);

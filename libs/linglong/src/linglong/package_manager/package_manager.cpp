@@ -143,7 +143,10 @@ void PackageManager::initDaemonMode(bool peerMode) noexcept
         }
 
         if (PackageTask *task = dynamic_cast<PackageTask *>(&(*ret).get()); task != nullptr) {
-            Q_EMIT TaskRemoved(QDBusObjectPath{ task->taskObjectPath().c_str() });
+            Q_EMIT TaskRemoved(QDBusObjectPath{ task->taskObjectPath().c_str() },
+                               task->getPropertyState(),
+                               task->getPropertyCode(),
+                               task->getPropertyMessage());
         }
     });
 

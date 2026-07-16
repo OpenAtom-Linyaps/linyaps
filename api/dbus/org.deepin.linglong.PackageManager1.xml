@@ -80,6 +80,9 @@ SPDX-License-Identifier: LGPL-3.0-or-later
     </signal>
     <signal name="TaskRemoved">
       <arg name="task" type="o" />
+      <arg name="state" type="i" />
+      <arg name="code" type="i" />
+      <arg name="message" type="s" />
     </signal>
     <signal name="RequestInteraction">
       <arg name="task" type="o" />

@@ -32,8 +32,8 @@ extern "C" int erofsfuse_main(int argc, char **argv);
 
 namespace {
 
-std::atomic_bool mountFlag{ false };       // NOLINT
-std::atomic_bool createFlag{ false };      // NOLINT
+std::atomic_bool mountFlag{ false };  // NOLINT
+std::atomic_bool createFlag{ false }; // NOLINT
 std::filesystem::path mountPoint;     // NOLINT
 constexpr std::size_t default_page_size = 4096;
 

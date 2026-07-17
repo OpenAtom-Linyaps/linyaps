@@ -32,9 +32,10 @@ extern "C" int erofsfuse_main(int argc, char **argv);
 
 namespace {
 
-std::atomic_bool mountFlag{ false };  // NOLINT
-std::atomic_bool createFlag{ false }; // NOLINT
-std::filesystem::path mountPoint;     // NOLINT
+std::atomic_bool mountFlag{ false };       // NOLINT
+std::atomic_bool createFlag{ false };      // NOLINT
+volatile sig_atomic_t signalReceived{ 0 }; // NOLINT
+std::filesystem::path mountPoint;          // NOLINT
 constexpr std::size_t default_page_size = 4096;
 
 constexpr auto usage = u8R"(Linglong Universal Application Bundle
@@ -89,7 +90,9 @@ std::size_t getChunkSize(std::size_t bundleSize) noexcept
     }
 
     std::size_t block_size{ 0 };
+
     struct statvfs fs_info{};
+
     if (statvfs(".", &fs_info) > 0) {
         block_size = fs_info.f_bsize;
     }
@@ -319,7 +322,8 @@ void cleanResource() noexcept
 
     auto pid = fork();
     if (pid < 0) {
-        std::cerr << "fork() error" << ": " << ::strerror(errno) << std::endl;
+        std::cerr << "fork() error"
+                  << ": " << ::strerror(errno) << std::endl;
         return;
     }
 
@@ -372,8 +376,7 @@ void handleSig() noexcept
     struct sigaction sa{};
 
     sa.sa_handler = [](int sig) -> void {
-        // TODO: maybe not async safe, find a better way to handle signal
-        cleanAndExit(128 + sig);
+        signalReceived = sig;
     };
     sa.sa_mask = blocking_mask;
     sa.sa_flags = 0;
@@ -381,6 +384,12 @@ void handleSig() noexcept
     for (auto sig : quitSignals) {
         sigaction(sig, &sa, nullptr);
     }
+
+    // Block the signals so they are not delivered until we call sigsuspend.
+    // This prevents the race condition between checking signalReceived and
+    // calling pause(), where a signal arriving between the check and pause()
+    // would cause pause() to block indefinitely.
+    sigprocmask(SIG_BLOCK, &blocking_mask, nullptr);
 }
 
 int createMountPoint(std::string_view uuid) noexcept
@@ -496,7 +505,8 @@ int runAppLoader(const std::vector<std::string_view> &loaderArgs) noexcept
 
     auto loaderPid = fork();
     if (loaderPid < 0) {
-        std::cerr << "fork() error" << ": " << ::strerror(errno) << std::endl;
+        std::cerr << "fork() error"
+                  << ": " << ::strerror(errno) << std::endl;
         return errno;
     }
 
@@ -684,9 +694,17 @@ int main(int argc, char **argv)
 
     bool mountOnly = !opts.mountPath.empty();
     if (mountOnly) {
-        while (true) {
-            pause();
+        // Use sigsuspend instead of pause() to avoid a race condition.
+        // Signals are already blocked by handleSig() via sigprocmask(SIG_BLOCK).
+        // sigsuspend atomically unblocks the signals and waits, so no signal
+        // can be missed between checking signalReceived and waiting.
+        sigset_t empty_mask;
+        sigemptyset(&empty_mask);
+        while (signalReceived == 0) {
+            sigsuspend(&empty_mask);
         }
+        // Signal received - perform cleanup in a safe context (not from signal handler)
+        cleanAndExit(128 + signalReceived);
     }
 
     if (!opts.extractPath.empty()) {

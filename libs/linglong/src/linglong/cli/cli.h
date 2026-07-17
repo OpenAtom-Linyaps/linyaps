@@ -42,6 +42,7 @@ struct GlobalOptions
 {
     bool verbose{ false };
     bool noProgress{ false };
+    bool yesOpt{ false }; // 自动确认所有交互提示（-y/--yes）
 };
 
 // 各subcommand的独立选项结构体

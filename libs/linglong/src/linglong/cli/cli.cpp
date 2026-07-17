@@ -224,6 +224,7 @@ bool delegateToContainerInit(const std::string &containerID,
     });
 
     struct sockaddr_un addr{};
+
     addr.sun_family = AF_UNIX;
 
     auto bundleDir = linglong::common::dir::getBundleDir(containerID);
@@ -2535,7 +2536,8 @@ std::vector<std::string> Cli::filePathMapping(const std::vector<std::string> &co
             continue;
         }
 
-        LogW("unsupported Exec variable '{}' in command, only %%f, %%F, %%u, %%U are supported", arg);
+        LogW("unsupported Exec variable '{}' in command, only %%f, %%F, %%u, %%U are supported",
+             arg);
         // Keep the argument as-is to avoid silently dropping it
         execArgs.emplace_back(arg);
     }

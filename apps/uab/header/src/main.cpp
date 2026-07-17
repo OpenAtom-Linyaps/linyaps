@@ -32,10 +32,10 @@ extern "C" int erofsfuse_main(int argc, char **argv);
 
 namespace {
 
-std::atomic_bool mountFlag{ false };  // NOLINT
-std::atomic_bool createFlag{ false }; // NOLINT
+std::atomic_bool mountFlag{ false };       // NOLINT
+std::atomic_bool createFlag{ false };      // NOLINT
 volatile sig_atomic_t signalReceived{ 0 }; // NOLINT
-std::filesystem::path mountPoint;     // NOLINT
+std::filesystem::path mountPoint;          // NOLINT
 constexpr std::size_t default_page_size = 4096;
 
 constexpr auto usage = u8R"(Linglong Universal Application Bundle
@@ -90,7 +90,9 @@ std::size_t getChunkSize(std::size_t bundleSize) noexcept
     }
 
     std::size_t block_size{ 0 };
+
     struct statvfs fs_info{};
+
     if (statvfs(".", &fs_info) > 0) {
         block_size = fs_info.f_bsize;
     }
@@ -320,7 +322,8 @@ void cleanResource() noexcept
 
     auto pid = fork();
     if (pid < 0) {
-        std::cerr << "fork() error" << ": " << ::strerror(errno) << std::endl;
+        std::cerr << "fork() error"
+                  << ": " << ::strerror(errno) << std::endl;
         return;
     }
 
@@ -502,7 +505,8 @@ int runAppLoader(const std::vector<std::string_view> &loaderArgs) noexcept
 
     auto loaderPid = fork();
     if (loaderPid < 0) {
-        std::cerr << "fork() error" << ": " << ::strerror(errno) << std::endl;
+        std::cerr << "fork() error"
+                  << ": " << ::strerror(errno) << std::endl;
         return errno;
     }
 

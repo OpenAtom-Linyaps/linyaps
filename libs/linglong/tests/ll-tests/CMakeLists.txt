@@ -83,6 +83,10 @@ pfl_add_executable(
   src/apps/ll-driver-detect/application_singleton_test.cpp
   src/apps/ll-driver-detect/driver_detection_manager_test.cpp
   src/apps/ll-driver-detect/dbus_notifier_test.cpp
+
+  # ll-cli tests
+  ${PROJECT_SOURCE_DIR}/apps/ll-cli/src/transform_old_exec.cpp
+  src/apps/ll-cli/transform_old_exec_test.cpp
   COMPILE_FEATURES
   PUBLIC
   cxx_std_17
@@ -103,3 +107,5 @@ target_include_directories(${tests}
                            PUBLIC ${PROJECT_SOURCE_DIR}/apps/uab/header/src)
 target_include_directories(${tests}
                            PUBLIC ${PROJECT_SOURCE_DIR}/apps/ll-driver-detect/src)
+target_include_directories(${tests}
+                           PUBLIC ${PROJECT_SOURCE_DIR}/apps/ll-cli/src)

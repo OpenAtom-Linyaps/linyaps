@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 #include "configure.h"
+#include "transform_old_exec.h"
 #include "linglong/cli/cli.h"
 #include "linglong/cli/cli_printer.h"
 #include "linglong/cli/dbus_notifier.h"
@@ -33,7 +34,6 @@
 #include <functional>
 #include <map>
 #include <memory>
-#include <string_view>
 #include <thread>
 
 #include <fcntl.h>
@@ -46,21 +46,6 @@ using namespace linglong::package;
 using namespace linglong::cli;
 
 namespace {
-
-std::vector<std::string> transformOldExec(int argc, char **argv) noexcept
-{
-    std::vector<std::string> res;
-
-    for (int i = argc - 1; i > 0; --i) {
-        if (std::string_view(argv[i]) == "--exec") {
-            res.emplace_back("--");
-        } else {
-            res.emplace_back(argv[i]);
-        }
-    }
-
-    return res;
-}
 
 int lockCheck() noexcept
 {

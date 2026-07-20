@@ -67,7 +67,11 @@ int lockCheck() noexcept
 
     struct flock lock_info
     {
-        .l_type = F_RDLCK, .l_whence = SEEK_SET, .l_start = 0, .l_len = 0, .l_pid = 0
+        .l_type = F_RDLCK,
+        .l_whence = SEEK_SET,
+        .l_start = 0,
+        .l_len = 0,
+        .l_pid = 0
     };
 
     if (::fcntl(fd, F_GETLK, &lock_info) == -1) {

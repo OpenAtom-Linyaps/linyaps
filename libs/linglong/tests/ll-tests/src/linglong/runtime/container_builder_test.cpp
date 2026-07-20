@@ -86,7 +86,7 @@ TEST(RunContainerOptionsTest, ApplyRuntimeConfigEnablesPipewireSocketMount)
     runtime::RunContainerOptions options;
 
     api::types::v1::RuntimeConfigure runtimeConfig;
-    runtimeConfig.enablePipewireSocketMount = true;
+    runtimeConfig.enablePipewire = true;
 
     auto result = options.applyRuntimeConfig(runtimeConfig);
     ASSERT_TRUE(result);
@@ -98,7 +98,7 @@ TEST(RunContainerOptionsTest, ApplyCliRunOptionsPreservesRuntimeConfigPipewireSe
     runtime::RunContainerOptions options;
 
     api::types::v1::RuntimeConfigure runtimeConfig;
-    runtimeConfig.enablePipewireSocketMount = true;
+    runtimeConfig.enablePipewire = true;
 
     auto runtimeResult = options.applyRuntimeConfig(runtimeConfig);
     ASSERT_TRUE(runtimeResult);
@@ -115,7 +115,7 @@ TEST(RunContainerOptionsTest, ApplyCliRunOptionsOverridesRuntimeConfigPipewireSe
     runtime::RunContainerOptions options;
 
     api::types::v1::RuntimeConfigure runtimeConfig;
-    runtimeConfig.enablePipewireSocketMount = false;
+    runtimeConfig.enablePipewire = false;
 
     auto runtimeResult = options.applyRuntimeConfig(runtimeConfig);
     ASSERT_TRUE(runtimeResult);

@@ -1529,6 +1529,41 @@ utils::error::Result<void> ContainerCfgBuilder::buildEnv() noexcept
         environment.try_emplace("QT_QPA_PLATFORMTHEME", "xdgdesktopportal");
     }
 
+    // Ensure the conventional system data directories stay reachable through
+    // XDG_DATA_DIRS. The host environment (for example a host XDG_DATA_DIRS that
+    // only points at Linyaps specific paths) may be forwarded into the container,
+    // overriding the default search path relied on by XDG-data consumers. When
+    // that happens the Vulkan ICD loader no longer scans /usr/share/vulkan/icd.d
+    // and fails to discover system provided driver manifests such as the Mesa
+    // Turnip (freedreno) driver, while OpenGL keeps working because Mesa locates
+    // DRI drivers through the compiled-in library path. Always keep the standard
+    // system data directories in XDG_DATA_DIRS so those consumers keep working.
+    {
+        const std::vector<std::string> systemDataDirs{ "/usr/local/share", "/usr/share" };
+        auto xdgIt = environment.find("XDG_DATA_DIRS");
+        std::string currentValue = (xdgIt != environment.end()) ? xdgIt->second : std::string{};
+        auto entries =
+          common::strings::split(currentValue, ':', common::strings::splitOption::SkipEmpty);
+
+        std::vector<std::string> dirs;
+        dirs.reserve(entries.size() + systemDataDirs.size());
+        for (auto entry : entries) {
+            dirs.emplace_back(entry);
+        }
+
+        bool changed = (xdgIt == environment.end());
+        for (const auto &dir : systemDataDirs) {
+            if (std::find(dirs.begin(), dirs.end(), dir) == dirs.end()) {
+                dirs.push_back(dir);
+                changed = true;
+            }
+        }
+
+        if (changed) {
+            environment["XDG_DATA_DIRS"] = common::strings::join(dirs, ':');
+        }
+    }
+
     auto envShFile = bundlePath / "00env.sh";
     std::ofstream ofs(envShFile);
     if (!ofs.is_open()) {

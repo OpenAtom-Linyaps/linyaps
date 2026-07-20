@@ -66,7 +66,7 @@ int lockCheck() noexcept
 {
     std::error_code ec;
     constexpr auto lock = "/run/linglong/lock";
-    auto fd = ::open(lock, O_RDONLY);
+    auto fd = ::open(lock, O_RDONLY | O_CLOEXEC);
     if (fd == -1) {
         if (errno == ENOENT) {
             return 0;

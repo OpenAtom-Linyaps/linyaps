@@ -710,7 +710,7 @@ You can report bugs to the linyaps team under this project: https://github.com/O
         if (lockOwner > 0) {
             std::cerr << "\r\33[K"
                       << "\033[?25l"
-                      << "repository is being operated by another process, waiting for" << lockOwner
+                      << "repository is being operated by another process, waiting for " << lockOwner
                       << "\033[?25h" << std::endl;
             using namespace std::chrono_literals;
             std::this_thread::sleep_for(1s);

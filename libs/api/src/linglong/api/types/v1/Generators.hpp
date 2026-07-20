@@ -1313,7 +1313,7 @@ inline void from_json(const json & j, RuntimeConfigure& x) {
 x.deviceMode = get_stack_optional<std::vector<DeviceOption>>(j, "device_mode");
 x.devices = get_stack_optional<std::vector<std::string>>(j, "devices");
 x.disableXdp = get_stack_optional<bool>(j, "disable_xdp");
-x.enablePipewireSocketMount = get_stack_optional<bool>(j, "enable_pipewire");
+x.enablePipewire = get_stack_optional<bool>(j, "enable_pipewire");
 x.env = get_stack_optional<std::map<std::string, std::string>>(j, "env");
 x.extDefs = get_stack_optional<std::map<std::string, std::vector<ExtensionDefine>>>(j, "ext_defs");
 x.instances = get_stack_optional<std::map<std::string, RuntimeConfigure>>(j, "instances");
@@ -1331,8 +1331,8 @@ j["devices"] = x.devices;
 if (x.disableXdp) {
 j["disable_xdp"] = x.disableXdp;
 }
-if (x.enablePipewireSocketMount) {
-j["enable_pipewire"] = x.enablePipewireSocketMount;
+if (x.enablePipewire) {
+j["enable_pipewire"] = x.enablePipewire;
 }
 if (x.env) {
 j["env"] = x.env;
@@ -1619,7 +1619,7 @@ j["XDGDirectoryPermissions"] = x.xdgDirectoryPermissions;
 
 inline void from_json(const json & j, DeviceOption & x) {
 if (j == "passthru") x = DeviceOption::Passthru;
-else { throw std::runtime_error("Input JSON does not conform to schema!"); }
+else { throw std::runtime_error("Cannot deserialize to enumeration \"DeviceOption\""); }
 }
 
 inline void to_json(json & j, const DeviceOption & x) {
@@ -1635,7 +1635,7 @@ else if (j == "Install") x = InteractionMessageType::Install;
 else if (j == "Uninstall") x = InteractionMessageType::Uninstall;
 else if (j == "Unknown") x = InteractionMessageType::Unknown;
 else if (j == "Upgrade") x = InteractionMessageType::Upgrade;
-else { throw std::runtime_error("Input JSON does not conform to schema!"); }
+else { throw std::runtime_error("Cannot deserialize to enumeration \"InteractionMessageType\""); }
 }
 
 inline void to_json(json & j, const InteractionMessageType & x) {
@@ -1657,7 +1657,7 @@ else if (j == "Processing") x = State::Processing;
 else if (j == "Queued") x = State::Queued;
 else if (j == "Succeed") x = State::Succeed;
 else if (j == "Unknown") x = State::Unknown;
-else { throw std::runtime_error("Input JSON does not conform to schema!"); }
+else { throw std::runtime_error("Cannot deserialize to enumeration \"State\""); }
 }
 
 inline void to_json(json & j, const State & x) {
@@ -1675,7 +1675,7 @@ default: throw std::runtime_error("Unexpected value in enumeration \"State\": " 
 
 inline void from_json(const json & j, Version & x) {
 if (j == "1") x = Version::The1;
-else { throw std::runtime_error("Input JSON does not conform to schema!"); }
+else { throw std::runtime_error("Cannot deserialize to enumeration \"Version\""); }
 }
 
 inline void to_json(json & j, const Version & x) {

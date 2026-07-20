@@ -88,8 +88,8 @@ RuntimeConfigure MergeRuntimeConfig(const std::vector<RuntimeConfigure> &configs
             result.disableXdp = config.disableXdp;
         }
 
-        if (config.enablePipewireSocketMount.has_value()) {
-            result.enablePipewireSocketMount = config.enablePipewireSocketMount;
+        if (config.enablePipewire.has_value()) {
+            result.enablePipewire = config.enablePipewire;
         }
 
         if (config.deviceMode) {

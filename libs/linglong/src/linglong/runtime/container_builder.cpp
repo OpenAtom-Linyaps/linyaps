@@ -131,8 +131,8 @@ auto RunContainerOptions::applyRuntimeConfig(
         this->disableXdp = *runtimeConfig.disableXdp;
     }
 
-    if (runtimeConfig.enablePipewireSocketMount.has_value()) {
-        this->enablePipewireSocketMount = *runtimeConfig.enablePipewireSocketMount;
+    if (runtimeConfig.enablePipewire.has_value()) {
+        this->enablePipewireSocketMount = *runtimeConfig.enablePipewire;
     }
 
     if (runtimeConfig.deviceMode) {

@@ -28,7 +28,7 @@ TEST(RuntimeConfigTest, LoadFromPath)
 
     RuntimeConfigure config;
     config.disableXdp = true;
-    config.enablePipewireSocketMount = true;
+    config.enablePipewire = true;
     config.deviceMode = std::vector<DeviceOption>{ DeviceOption::Passthru };
     config.env =
       std::map<std::string, std::string>{ { "PATH", "/usr/bin" }, { "HOME", "/home/user" } };
@@ -85,7 +85,7 @@ TEST(RuntimeConfigTest, MergeConfigs)
     RuntimeConfigure config1;
     config1.disableXdp = false;
     config1.deviceMode = std::vector<DeviceOption>{ DeviceOption::Passthru };
-    config1.enablePipewireSocketMount = false;
+    config1.enablePipewire = false;
     config1.devices = std::vector<std::string>{ "vendor.com/device=gpu0" };
     config1.env =
       std::map<std::string, std::string>{ { "PATH", "/usr/bin" }, { "HOME", "/home/user1" } };
@@ -100,7 +100,7 @@ TEST(RuntimeConfigTest, MergeConfigs)
     RuntimeConfigure config2;
     config2.disableXdp = true;
     config2.deviceMode = std::vector<DeviceOption>{ DeviceOption::Passthru };
-    config2.enablePipewireSocketMount = true;
+    config2.enablePipewire = true;
     config2.devices = std::vector<std::string>{ "vendor.com/device=gpu1" };
     config2.env =
       std::map<std::string, std::string>{ { "PATH", "/usr/local/bin" }, { "USER", "testuser" } };
@@ -118,8 +118,8 @@ TEST(RuntimeConfigTest, MergeConfigs)
     std::vector<RuntimeConfigure> configs = { config1, config2 };
     auto merged = linglong::utils::MergeRuntimeConfig(configs);
 
-    ASSERT_TRUE(merged.enablePipewireSocketMount.has_value());
-    EXPECT_TRUE(*merged.enablePipewireSocketMount);
+    ASSERT_TRUE(merged.enablePipewire.has_value());
+    EXPECT_TRUE(*merged.enablePipewire);
     ASSERT_TRUE(merged.disableXdp.has_value());
     EXPECT_TRUE(*merged.disableXdp);
 
@@ -159,7 +159,7 @@ TEST(RuntimeConfigTest, MergeEmptyConfigs)
     std::vector<RuntimeConfigure> empty_configs;
     auto merged = linglong::utils::MergeRuntimeConfig(empty_configs);
 
-    EXPECT_FALSE(merged.enablePipewireSocketMount);
+    EXPECT_FALSE(merged.enablePipewire);
     EXPECT_FALSE(merged.disableXdp);
     EXPECT_FALSE(merged.deviceMode);
     EXPECT_FALSE(merged.env);
@@ -171,7 +171,7 @@ TEST(RuntimeConfigTest, MergePartialConfigs)
     // Config with only env
     RuntimeConfigure config1;
     config1.disableXdp = false;
-    config1.enablePipewireSocketMount = false;
+    config1.enablePipewire = false;
     config1.deviceMode = std::vector<DeviceOption>{ DeviceOption::Passthru };
     config1.env = std::map<std::string, std::string>{ { "PATH", "/usr/bin" } };
 
@@ -192,8 +192,8 @@ TEST(RuntimeConfigTest, MergePartialConfigs)
     nlohmann::json j;
     linglong::api::types::v1::to_json(j, merged);
     LogD("{}", j.dump());
-    ASSERT_TRUE(merged.enablePipewireSocketMount.has_value());
-    EXPECT_FALSE(*merged.enablePipewireSocketMount);
+    ASSERT_TRUE(merged.enablePipewire.has_value());
+    EXPECT_FALSE(*merged.enablePipewire);
 
     ASSERT_TRUE(merged.disableXdp.has_value());
     EXPECT_FALSE(*merged.disableXdp);

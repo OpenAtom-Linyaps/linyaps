@@ -596,7 +596,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv) // NOLINT
     auto bundleArg = "--bundle=" + containerBundle.string();
     auto pid = fork();
     if (pid < 0) {
-        std::cerr << "fork() err: " << ::strerror(errno) << std::endl;
+        std::cerr << "fork() err: " << std::generic_category().message(errno) << std::endl;
         return -1;
     }
 
@@ -613,7 +613,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv) // NOLINT
 
     int wstatus{ 0 };
     if (auto ret = ::waitpid(pid, &wstatus, 0); ret == -1) {
-        std::cerr << "waitpid() err:" << ::strerror(errno) << std::endl;
+        std::cerr << "waitpid() err:" << std::generic_category().message(errno) << std::endl;
         return -1;
     }
 

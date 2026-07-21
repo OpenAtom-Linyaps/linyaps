@@ -14,6 +14,7 @@ configure_files(
   # find -regex '\.\/\(script\|share\|lib\|libexec\)\/.*' -type f -printf '%P\n'
   # | sort
   libexec/linglong/app-conf-generator
+  libexec/linglong/builder/helper/compile-schemas.sh
   libexec/linglong/builder/helper/config-check.sh
   libexec/linglong/builder/helper/ldd-check.sh
   libexec/linglong/builder/helper/main-check.sh
@@ -100,6 +101,7 @@ install(
 set(LIBEXEC_LINGLONG_BUILDER_DIR ${LIBEXEC_LINGLONG_DIR}/builder)
 install(
   PROGRAMS
+    ${CMAKE_CURRENT_BINARY_DIR}/libexec/linglong/builder/helper/compile-schemas.sh
     ${CMAKE_CURRENT_BINARY_DIR}/libexec/linglong/builder/helper/config-check.sh
     ${CMAKE_CURRENT_BINARY_DIR}/libexec/linglong/builder/helper/ldd-check.sh
     ${CMAKE_CURRENT_BINARY_DIR}/libexec/linglong/builder/helper/main-check.sh

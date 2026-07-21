@@ -168,12 +168,16 @@ utils::error::Result<bool> UABFile::verify() noexcept
         seek(0);
     });
 
-    auto bundleLength = bundleSh->sh_size;
-    auto readBytes = buf.size();
+    auto bundleLength = static_cast<qint64>(bundleSh->sh_size);
     int bytesRead{ 0 };
-    while ((bytesRead = read(buf.data(), readBytes)) != 0) {
+    while (bundleLength > 0) {
+        auto readBytes = std::min(static_cast<qint64>(buf.size()), bundleLength);
+        bytesRead = read(buf.data(), readBytes);
         if (bytesRead == -1) {
             return LINGLONG_ERR(fmt::format("read error: {}", errorString()));
+        }
+        if (bytesRead == 0) {
+            return LINGLONG_ERR("unexpected end of bundle section data");
         }
         cryptor.addData(
 #if QT_VERSION >= QT_VERSION_CHECK(6, 4, 0)
@@ -184,12 +188,9 @@ utils::error::Result<bool> UABFile::verify() noexcept
 #endif
         );
         bundleLength -= bytesRead;
-        if (bundleLength <= 0) {
-            digest = cryptor.result().toHex().toStdString();
-            break;
-        }
     }
 
+    digest = cryptor.result().toHex().toStdString();
     return (expectedDigest == digest);
 }
 

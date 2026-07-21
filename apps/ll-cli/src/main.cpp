@@ -17,6 +17,7 @@
 #include "linglong/utils/gettext.h"
 #include "linglong/utils/log/log.h"
 #include "ocppi/cli/crun/Crun.hpp"
+#include "transform_old_exec.h"
 
 #include <CLI/CLI.hpp>
 #include <sys/file.h>
@@ -33,7 +34,6 @@
 #include <functional>
 #include <map>
 #include <memory>
-#include <string_view>
 #include <thread>
 
 #include <fcntl.h>
@@ -47,26 +47,11 @@ using namespace linglong::cli;
 
 namespace {
 
-std::vector<std::string> transformOldExec(int argc, char **argv) noexcept
-{
-    std::vector<std::string> res;
-
-    for (int i = argc - 1; i > 0; --i) {
-        if (std::string_view(argv[i]) == "--exec") {
-            res.emplace_back("--");
-        } else {
-            res.emplace_back(argv[i]);
-        }
-    }
-
-    return res;
-}
-
 int lockCheck() noexcept
 {
     std::error_code ec;
     constexpr auto lock = "/run/linglong/lock";
-    auto fd = ::open(lock, O_RDONLY);
+    auto fd = ::open(lock, O_RDONLY | O_CLOEXEC);
     if (fd == -1) {
         if (errno == ENOENT) {
             return 0;
@@ -80,11 +65,14 @@ int lockCheck() noexcept
         ::close(fd);
     });
 
-    struct flock lock_info{ .l_type = F_RDLCK,
-                            .l_whence = SEEK_SET,
-                            .l_start = 0,
-                            .l_len = 0,
-                            .l_pid = 0 };
+    struct flock lock_info
+    {
+        .l_type = F_RDLCK,
+        .l_whence = SEEK_SET,
+        .l_start = 0,
+        .l_len = 0,
+        .l_pid = 0
+    };
 
     if (::fcntl(fd, F_GETLK, &lock_info) == -1) {
         LogE("failed to get lock {}", lock);
@@ -710,8 +698,8 @@ You can report bugs to the linyaps team under this project: https://github.com/O
         if (lockOwner > 0) {
             std::cerr << "\r\33[K"
                       << "\033[?25l"
-                      << "repository is being operated by another process, waiting for" << lockOwner
-                      << "\033[?25h" << std::endl;
+                      << "repository is being operated by another process, waiting for "
+                      << lockOwner << "\033[?25h" << std::endl;
             using namespace std::chrono_literals;
             std::this_thread::sleep_for(1s);
             continue;

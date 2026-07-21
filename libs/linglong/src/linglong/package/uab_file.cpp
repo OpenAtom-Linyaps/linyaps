@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2024-2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -168,12 +168,21 @@ utils::error::Result<bool> UABFile::verify() noexcept
         seek(0);
     });
 
+    // bundleLength is the size of the bundle section (uint64_t). Only read up
+    // to the remaining section length each iteration; otherwise the final read
+    // would cross the section boundary (corrupting the digest) and underflow
+    // bundleLength below (bundleLength -= bytesRead wraps to a huge value).
     auto bundleLength = bundleSh->sh_size;
-    auto readBytes = buf.size();
-    int bytesRead{ 0 };
-    while ((bytesRead = read(buf.data(), readBytes)) != 0) {
+    while (bundleLength > 0) {
+        const auto readBytes =
+          bundleLength < buf.size() ? static_cast<int>(bundleLength) : static_cast<int>(buf.size());
+        const int bytesRead = read(buf.data(), readBytes);
         if (bytesRead == -1) {
             return LINGLONG_ERR(fmt::format("read error: {}", errorString()));
+        }
+        if (bytesRead == 0) {
+            // unexpected EOF: the bundle section is shorter than declared
+            break;
         }
         cryptor.addData(
 #if QT_VERSION >= QT_VERSION_CHECK(6, 4, 0)
@@ -183,13 +192,10 @@ utils::error::Result<bool> UABFile::verify() noexcept
           bytesRead
 #endif
         );
-        bundleLength -= bytesRead;
-        if (bundleLength <= 0) {
-            digest = cryptor.result().toHex().toStdString();
-            break;
-        }
+        bundleLength -= static_cast<std::size_t>(bytesRead);
     }
 
+    digest = cryptor.result().toHex().toStdString();
     return (expectedDigest == digest);
 }
 

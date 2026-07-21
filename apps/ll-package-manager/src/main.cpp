@@ -306,7 +306,10 @@ auto main(int argc, char *argv[]) -> int
           }
       },
       Qt::QueuedConnection);
-    Q_ASSERT(ret);
+    if (!ret) {
+        LogE("failed to invoke runDaemonMode via event loop, abort");
+        return -1;
+    }
 
     return QCoreApplication::exec();
 }

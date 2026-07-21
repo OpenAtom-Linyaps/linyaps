@@ -881,8 +881,10 @@ int main(int argc, char **argv)
           QCoreApplication::exit(runCliApplication(argc, argv));
       },
       Qt::QueuedConnection);
-    // assert
-    Q_ASSERT(ret);
+    if (!ret) {
+        LogE("failed to invoke runCliApplication via event loop, abort");
+        return -1;
+    }
 
     // exec
     return QCoreApplication::exec();

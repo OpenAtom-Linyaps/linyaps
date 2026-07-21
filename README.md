@@ -26,16 +26,28 @@
 
 ### :flags: Progress
 
-- **Supported Distributions**: deepin, UOS, openEuler, Ubuntu, Debian, openKylin, Anolis OS. More distributions are under adaptation. Contributions are welcome.
+- **Supported Distributions**: deepin, UOS, openEuler, Ubuntu, Debian, openKylin, Anolis OS, Fedora, Arch. More distributions are under adaptation. Contributions are welcome.
 - **CPU Architectures**: X86, ARM64, LoongArch. Future support for RISC-V and others.
 
 ## :gear: Installation
 
-Installation instructions for supported distributions:
+Installation instructions for supported distributions. The following steps use the release repository. To install the preview version built from the master branch, change `release` to `latest` in the repository URL. For detailed instructions, see the [Installation Guide](./docs/pages/en/guide/start/install.md).
 
-### deepin 23
+### Arch / Manjaro / Parabola Linux
 
-Install:
+```sh
+sudo pacman -Syu linyaps
+```
+
+### Deepin 25
+
+```sh
+echo "deb [trusted=yes] https://ci.deepin.com/repo/obs/linglong:/CI:/release/Deepin_25/ ./" | sudo tee /etc/apt/sources.list.d/linglong.list
+sudo apt update
+sudo apt install linglong-bin
+```
+
+### Deepin 23
 
 ```sh
 echo "deb [trusted=yes] https://ci.deepin.com/repo/obs/linglong:/CI:/release/Deepin_23/ ./" | sudo tee /etc/apt/sources.list.d/linglong.list
@@ -43,18 +55,50 @@ sudo apt update
 sudo apt install linglong-bin
 ```
 
-### Fedora 41
+### Fedora 42
 
 ```sh
-sudo dnf config-manager addrepo --from-repofile "https://ci.deepin.com/repo/obs/linglong:/CI:/release/Fedora_41/linglong%3ACI%3Arelease.repo"
+sudo dnf config-manager addrepo --from-repofile "https://ci.deepin.com/repo/obs/linglong:/CI:/release/Fedora_42/linglong%3ACI%3Arelease.repo"
 sudo dnf update
 sudo dnf install linglong-bin
+```
+
+### Fedora 43
+
+```sh
+sudo dnf config-manager addrepo --from-repofile "https://ci.deepin.com/repo/obs/linglong:/CI:/release/Fedora_43/linglong%3ACI%3Arelease.repo"
+sudo dnf update
+sudo dnf install linglong-bin
+```
+
+### Ubuntu 25.10
+
+```sh
+echo "deb [trusted=yes] https://ci.deepin.com/repo/obs/linglong:/CI:/release/Ubuntu_25.10/ ./" | sudo tee /etc/apt/sources.list.d/linglong.list
+sudo apt update
+sudo apt install linglong-bin
+```
+
+### Ubuntu 25.04
+
+```sh
+echo "deb [trusted=yes] https://ci.deepin.com/repo/obs/linglong:/CI:/release/Ubuntu_25.04/ ./" | sudo tee /etc/apt/sources.list.d/linglong.list
+sudo apt update
+sudo apt install linglong-bin
 ```
 
 ### Ubuntu 24.04
 
 ```sh
 echo "deb [trusted=yes] https://ci.deepin.com/repo/obs/linglong:/CI:/release/xUbuntu_24.04/ ./" | sudo tee /etc/apt/sources.list.d/linglong.list
+sudo apt update
+sudo apt install linglong-bin
+```
+
+### Debian 13
+
+```sh
+echo "deb [trusted=yes] https://ci.deepin.com/repo/obs/linglong:/CI:/release/Debian_13/ ./" | sudo tee /etc/apt/sources.list.d/linglong.list
 sudo apt update
 sudo apt install linglong-bin
 ```
@@ -67,10 +111,19 @@ sudo apt update
 sudo apt install linglong-bin
 ```
 
-### openEuler 23.09
+### openEuler 25.03
 
 ```sh
-sudo dnf config-manager --add-repo "https://ci.deepin.com/repo/obs/linglong:/CI:/release/openEuler_23.09/linglong%3ACI%3Arelease.repo"
+sudo dnf config-manager --add-repo "https://ci.deepin.com/repo/obs/linglong:/CI:/release/openEuler_25.03/linglong%3ACI%3Arelease.repo"
+sudo sh -c "echo gpgcheck=0 >> /etc/yum.repos.d/linglong%3ACI%3Arelease.repo"
+sudo dnf update
+sudo dnf install linglong-bin
+```
+
+### openEuler 24.03 SP2
+
+```sh
+sudo dnf config-manager --add-repo "https://ci.deepin.com/repo/obs/linglong:/CI:/release/openEuler_24.03/linglong%3ACI%3Arelease.repo"
 sudo sh -c "echo gpgcheck=0 >> /etc/yum.repos.d/linglong%3ACI%3Arelease.repo"
 sudo dnf update
 sudo dnf install linglong-bin
@@ -84,10 +137,18 @@ sudo apt update
 sudo apt install linglong-bin
 ```
 
-### AnolisOS 8
+### AnolisOS 23.4
 
 ```sh
-sudo dnf config-manager addrepo --from-repofile "https://ci.deepin.com/repo/obs/linglong:/CI:/release/AnolisOS_8/linglong%3ACI%3Arelease.repo"
+sudo dnf config-manager addrepo --from-repofile "https://ci.deepin.com/repo/obs/linglong:/CI:/release/AnolisOS_23.4/linglong%3ACI%3Arelease.repo"
+sudo dnf update
+sudo dnf install linglong-bin
+```
+
+### AnolisOS 23.3
+
+```sh
+sudo dnf config-manager addrepo --from-repofile "https://ci.deepin.com/repo/obs/linglong:/CI:/release/AnolisOS_23.3/linglong%3ACI%3Arelease.repo"
 sudo dnf update
 sudo dnf install linglong-bin
 ```

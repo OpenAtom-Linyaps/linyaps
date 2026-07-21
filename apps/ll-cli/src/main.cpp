@@ -171,8 +171,8 @@ ll-cli run org.deepin.demo -- bash -x /path/to/bash/script)"));
                    runOptions.extensions,
                    _("Specify extension(s) used by the application to run"))
       ->type_name("REF")
-      ->delimiter(',')          // 支持以逗号分隔
-      ->allow_extra_args(false) // 避免吞掉后面的参数
+      ->delimiter(',')          // supports comma-separated values
+      ->allow_extra_args(false) // prevent swallowing subsequent arguments
       ->check(validatorString);
     cliRun
       ->add_flag("--enable-xdp{false},!--disable-xdp{true}",
@@ -568,7 +568,7 @@ void addInspectCommand(CLI::App &commandParser,
 
     cliInspect->require_subcommand(1);
 
-    // 创建 inspect dir 子命令
+    // create inspect dir subcommand
     auto *cliInspectDir = cliInspect->add_subcommand(
       "dir",
       _("Display the data(bundle) directory of the installed(running) application"));

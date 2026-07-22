@@ -106,6 +106,100 @@ TEST(PackageTask, emitsTypedEventsAndFinishesOnce)
     EXPECT_EQ(results[0].value(QStringLiteral("message")).toString(), QStringLiteral("succeeded"));
 }
 
+TEST(PackageTask, acceptsOnlyTheActiveInteractionReply)
+{
+    PackageTask task({});
+    task.setState(linglong::api::types::v1::State::Processing);
+    QString requestId;
+    QObject::connect(
+      &task,
+      &PackageTask::RequestInteraction,
+      [&](const QString &interactionId, int, const QVariantMap &) {
+          requestId = interactionId;
+          task.ReplyInteraction(QStringLiteral("stale-interaction"),
+                                linglong::common::serialize::toQVariantMap(
+                                  linglong::api::types::v1::InteractionReply{ .action = "yes" }));
+          task.ReplyInteraction(interactionId,
+                                linglong::common::serialize::toQVariantMap(
+                                  linglong::api::types::v1::InteractionReply{ .action = "yes" }));
+      });
+
+    EXPECT_TRUE(task.requestInteraction(
+      linglong::api::types::v1::InteractionMessageType::Upgrade,
+      linglong::api::types::v1::PackageManager1RequestInteractionAdditionalMessage{}));
+    EXPECT_FALSE(requestId.isEmpty());
+    EXPECT_EQ(task.state(), linglong::api::types::v1::State::Processing);
+}
+
+TEST(PackageTask, rejectsInteractionWithoutChangingTaskState)
+{
+    PackageTask task({});
+    task.setState(linglong::api::types::v1::State::Processing);
+    QObject::connect(&task,
+                     &PackageTask::RequestInteraction,
+                     [&](const QString &interactionId, int, const QVariantMap &) {
+                         task.ReplyInteraction(
+                           interactionId,
+                           linglong::common::serialize::toQVariantMap(
+                             linglong::api::types::v1::InteractionReply{ .action = "no" }));
+                     });
+
+    EXPECT_FALSE(task.requestInteraction(
+      linglong::api::types::v1::InteractionMessageType::Upgrade,
+      linglong::api::types::v1::PackageManager1RequestInteractionAdditionalMessage{}));
+    EXPECT_EQ(task.state(), linglong::api::types::v1::State::Processing);
+}
+
+TEST(PackageTask, cancelReleasesPendingInteraction)
+{
+    PackageTask task({});
+    task.setState(linglong::api::types::v1::State::Processing);
+    std::promise<void> requested;
+    QObject::connect(&task,
+                     &PackageTask::RequestInteraction,
+                     [&](const QString &, int, const QVariantMap &) {
+                         requested.set_value();
+                     });
+
+    auto interaction = std::async(std::launch::async, [&task]() {
+        return task.requestInteraction(
+          linglong::api::types::v1::InteractionMessageType::Upgrade,
+          linglong::api::types::v1::PackageManager1RequestInteractionAdditionalMessage{});
+    });
+    EXPECT_EQ(requested.get_future().wait_for(std::chrono::seconds(1)), std::future_status::ready);
+
+    task.Cancel();
+
+    EXPECT_EQ(interaction.wait_for(std::chrono::seconds(1)), std::future_status::ready);
+    EXPECT_FALSE(interaction.get());
+    EXPECT_EQ(task.state(), linglong::api::types::v1::State::Canceled);
+}
+
+TEST(PackageTask, callerDisconnectReleasesPendingInteraction)
+{
+    PackageTask task({});
+    task.setState(linglong::api::types::v1::State::Processing);
+    std::promise<void> requested;
+    QObject::connect(&task,
+                     &PackageTask::RequestInteraction,
+                     [&](const QString &, int, const QVariantMap &) {
+                         requested.set_value();
+                     });
+
+    auto interaction = std::async(std::launch::async, [&task]() {
+        return task.requestInteraction(
+          linglong::api::types::v1::InteractionMessageType::Upgrade,
+          linglong::api::types::v1::PackageManager1RequestInteractionAdditionalMessage{});
+    });
+    EXPECT_EQ(requested.get_future().wait_for(std::chrono::seconds(1)), std::future_status::ready);
+
+    ASSERT_TRUE(QMetaObject::invokeMethod(&task, "onCallerDisconnected", Qt::DirectConnection));
+
+    EXPECT_EQ(interaction.wait_for(std::chrono::seconds(1)), std::future_status::ready);
+    EXPECT_FALSE(interaction.get());
+    EXPECT_EQ(task.state(), linglong::api::types::v1::State::Processing);
+}
+
 TEST(PackageTask, startIsIdempotent)
 {
     PackageTask task({});

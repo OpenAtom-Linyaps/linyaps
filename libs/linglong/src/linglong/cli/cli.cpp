@@ -814,15 +814,11 @@ void Cli::onTaskFinished(const QVariantMap &result)
     Q_EMIT taskDone();
 }
 
-void Cli::interaction(const QDBusObjectPath &object_path,
+void Cli::interaction(const QString &interactionId,
                       int messageID,
                       const QVariantMap &additionalMessage)
 {
     LINGLONG_TRACE("interactive with user")
-    if (object_path.path() != taskObjectPath) {
-        return;
-    }
-
     auto messageType = static_cast<api::types::v1::InteractionMessageType>(messageID);
     auto msg = common::serialize::fromQVariantMap<
       api::types::v1::PackageManager1RequestInteractionAdditionalMessage>(additionalMessage);
@@ -833,22 +829,27 @@ void Cli::interaction(const QDBusObjectPath &object_path,
     req.actions = actions;
     req.summary = "Package Manager needs to confirm request.";
 
-    switch (messageType) {
-    case api::types::v1::InteractionMessageType::Upgrade: {
-        auto tips =
-          QString("The lower version %1 is currently installed. Do you "
-                  "want to continue installing the latest version %2?")
-            .arg(QString::fromStdString(msg->localRef), QString::fromStdString(msg->remoteRef));
-        req.body = tips.toStdString();
-    } break;
-    case api::types::v1::InteractionMessageType::Downgrade:
-    case api::types::v1::InteractionMessageType::Install:
-    case api::types::v1::InteractionMessageType::Uninstall:
-        [[fallthrough]];
-    case api::types::v1::InteractionMessageType::Unknown:
-        // reserve for future use
-        req.body = "unknown interaction type";
-        break;
+    if (!msg) {
+        LogE("invalid interaction request: {}", msg.error());
+        req.body = "invalid interaction request";
+    } else {
+        switch (messageType) {
+        case api::types::v1::InteractionMessageType::Upgrade: {
+            auto tips =
+              QString("The lower version %1 is currently installed. Do you "
+                      "want to continue installing the latest version %2?")
+                .arg(QString::fromStdString(msg->localRef), QString::fromStdString(msg->remoteRef));
+            req.body = tips.toStdString();
+        } break;
+        case api::types::v1::InteractionMessageType::Downgrade:
+        case api::types::v1::InteractionMessageType::Install:
+        case api::types::v1::InteractionMessageType::Uninstall:
+            [[fallthrough]];
+        case api::types::v1::InteractionMessageType::Unknown:
+            // reserve for future use
+            req.body = "unknown interaction type";
+            break;
+        }
     }
 
     std::string action;
@@ -872,14 +873,13 @@ void Cli::interaction(const QDBusObjectPath &object_path,
     LogD("action: {}", action);
 
     auto reply = api::types::v1::InteractionReply{ .action = action };
-    auto pkgMan = this->getPkgMan();
-    if (!pkgMan) {
-        this->printer.printErr(pkgMan.error());
+    if (!task) {
+        LogE("task disappeared before interaction reply");
         return;
     }
 
     QDBusPendingReply<void> dbusReply =
-      (*pkgMan)->ReplyInteraction(object_path, common::serialize::toQVariantMap(reply));
+      task->ReplyInteraction(interactionId, common::serialize::toQVariantMap(reply));
     dbusReply.waitForFinished();
     if (dbusReply.isError()) {
         this->printer.printErr(
@@ -1023,17 +1023,6 @@ utils::error::Result<api::dbus::v1::PackageManager *> Cli::getPkgMan()
         return LINGLONG_ERR(pkgMan);
     }
     auto pkgManProxy = std::move(*pkgMan);
-
-    auto conn = pkgManProxy->connection();
-    if (!conn.connect(pkgManProxy->service(),
-                      pkgManProxy->path(),
-                      pkgManProxy->interface(),
-                      "RequestInteraction",
-                      this,
-                      SLOT(interaction(QDBusObjectPath, int, QVariantMap)))) {
-        return LINGLONG_ERR(fmt::format("Failed to connect signal RequestInteraction: {}",
-                                        conn.lastError().message().toStdString()));
-    }
 
     pkgManProxy->setTimeout(INT_MAX);
 
@@ -3074,6 +3063,14 @@ utils::error::Result<void> Cli::waitTaskCreated(QDBusPendingReply<QVariantMap> &
         return LINGLONG_ERR("failed to connect task finished signal");
     }
 
+    if (!QObject::connect(newTask.get(),
+                          &api::dbus::v1::Task1::RequestInteraction,
+                          this,
+                          &Cli::interaction)) {
+        newTask->Cancel().waitForFinished();
+        return LINGLONG_ERR("failed to connect task interaction signal");
+    }
+
     auto startReply = newTask->Start();
     startReply.waitForFinished();
     if (startReply.isError()) {
@@ -3088,16 +3085,17 @@ utils::error::Result<void> Cli::waitTaskCreated(QDBusPendingReply<QVariantMap> &
 
 void Cli::waitTaskDone()
 {
-    if (this->taskFinished) {
-        return;
+    if (!this->taskFinished) {
+        QEventLoop loop;
+        if (QObject::connect(this, &Cli::taskDone, &loop, &QEventLoop::quit) == nullptr) {
+            LogE("connect taskDone failed");
+            task.reset();
+            return;
+        }
+        loop.exec();
     }
 
-    QEventLoop loop;
-    if (QObject::connect(this, &Cli::taskDone, &loop, &QEventLoop::quit) == nullptr) {
-        LogE("connect taskDone failed");
-        return;
-    }
-    loop.exec();
+    task.reset();
 }
 
 void Cli::handleInstallError(const utils::error::Error &error,

@@ -8,6 +8,11 @@ SPDX-License-Identifier: LGPL-3.0-or-later
     <interface name="org.deepin.linglong.Task1">
         <method name="Start" />
         <method name="Cancel" />
+        <method name="ReplyInteraction">
+            <arg direction="in" name="interactionId" type="s" />
+            <arg direction="in" name="replies" type="a{sv}" />
+            <annotation name="org.qtproject.QtDBus.QtTypeName.In1" value="QVariantMap" />
+        </method>
         <signal name="TaskEvent">
             <arg name="event" type="s" />
             <arg name="data" type="a{sv}" />
@@ -16,6 +21,12 @@ SPDX-License-Identifier: LGPL-3.0-or-later
         <signal name="TaskFinished">
             <arg name="result" type="a{sv}" />
             <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QVariantMap" />
+        </signal>
+        <signal name="RequestInteraction">
+            <arg name="interactionId" type="s" />
+            <arg name="messageID" type="i" />
+            <arg name="additionalMessage" type="a{sv}" />
+            <annotation name="org.qtproject.QtDBus.QtTypeName.Out2" value="QVariantMap" />
         </signal>
     </interface>
 </node>

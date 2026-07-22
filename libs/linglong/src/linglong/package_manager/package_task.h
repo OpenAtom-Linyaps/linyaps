@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include "linglong/api/types/v1/InteractionMessageType.hpp"
+#include "linglong/api/types/v1/PackageManager1RequestInteractionAdditionalMessage.hpp"
 #include "linglong/api/types/v1/State.hpp"
 #include "linglong/package_manager/task.h"
 #include "linglong/utils/error/error.h"
@@ -22,8 +24,10 @@
 #include <QVariantMap>
 
 #include <atomic>
+#include <condition_variable>
 #include <functional>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <thread>
 
@@ -77,7 +81,9 @@ public:
 
     void setCallerContext(const CallerContext &ctx);
 
-    [[nodiscard]] const CallerContext &callerContext() const noexcept { return m_callerContext; }
+    bool requestInteraction(api::types::v1::InteractionMessageType msgType,
+                            const api::types::v1::PackageManager1RequestInteractionAdditionalMessage
+                              &additionalMessage) noexcept;
 
     // The result must contain a "type" field identifying its concrete API type.
     void setResult(QVariantMap result) noexcept { m_result = std::move(result); }
@@ -85,12 +91,14 @@ public:
 public Q_SLOTS:
     void Start() noexcept;
     void Cancel() noexcept;
+    void ReplyInteraction(const QString &interactionId, const QVariantMap &replies) noexcept;
 
 Q_SIGNALS:
     void TaskEvent(QString event, QVariantMap data);
     void TaskFinished(QVariantMap result);
     void DataArrived(uint arrived);
     void PartChanged(uint fetched, uint request);
+    void RequestInteraction(QString interactionId, int messageID, QVariantMap additionalMessage);
     void startRequested();
     void terminalStateReached();
 
@@ -102,11 +110,19 @@ private:
 
     void emitStateEvent(const StateSnapshot &snapshot) noexcept;
     void finish() noexcept;
+    void completeInteraction(bool accepted) noexcept;
+    [[nodiscard]] bool authorizeCaller() noexcept;
 
     GCancellable *m_cancelFlag{ nullptr };
     CallerContext m_callerContext;
     std::unique_ptr<QDBusServiceWatcher> m_callerWatcher;
     std::atomic_bool m_finishedEmitted{ false };
+    std::atomic_bool m_callerDisconnected{ false };
+    std::mutex m_interactionMutex;
+    std::condition_variable m_interactionChanged;
+    QString m_interactionId;
+    std::optional<bool> m_interactionResult;
+    bool m_interactionActive{ false };
     bool m_exposed{ false };
     std::optional<QVariantMap> m_result;
 };

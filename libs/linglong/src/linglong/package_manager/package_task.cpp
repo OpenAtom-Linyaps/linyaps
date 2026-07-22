@@ -6,6 +6,7 @@
 
 #include "linglong/adaptors/task/task1.h"
 #include "linglong/api/types/v1/Generators.hpp"
+#include "linglong/api/types/v1/InteractionReply.hpp"
 #include "linglong/common/dbus/register.h"
 #include "linglong/common/serialize/json.h"
 #include "linglong/package_manager/package_manager.h"
@@ -15,6 +16,10 @@
 #include <fmt/format.h>
 #include <sys/prctl.h>
 
+#include <QDBusConnectionInterface>
+#include <QDBusError>
+
+#include <chrono>
 #include <utility>
 
 namespace linglong::service {
@@ -122,6 +127,10 @@ void PackageTask::finish() noexcept
 
 void PackageTask::Start() noexcept
 {
+    if (!authorizeCaller()) {
+        return;
+    }
+
     if (state() != api::types::v1::State::Pending) {
         return;
     }
@@ -132,6 +141,10 @@ void PackageTask::Start() noexcept
 
 void PackageTask::Cancel() noexcept
 {
+    if (!authorizeCaller()) {
+        return;
+    }
+
     if (isTaskDone()) {
         return;
     }
@@ -139,12 +152,42 @@ void PackageTask::Cancel() noexcept
     LogI("user attempts to cancel task {}", taskID());
     auto msg = fmt::format("task {} has been canceled by user", taskID());
     updateState(linglong::api::types::v1::State::Canceled, msg);
+    completeInteraction(false);
 
     if (m_cancelFlag == nullptr || g_cancellable_is_cancelled(m_cancelFlag) == TRUE) {
         return;
     }
 
     g_cancellable_cancel(m_cancelFlag);
+}
+
+void PackageTask::ReplyInteraction(const QString &interactionId,
+                                   const QVariantMap &replies) noexcept
+{
+    if (!authorizeCaller()) {
+        return;
+    }
+
+    auto reply = common::serialize::fromQVariantMap<api::types::v1::InteractionReply>(replies);
+    if (!reply || (reply->action != "yes" && reply->action != "no")) {
+        if (calledFromDBus()) {
+            sendErrorReply(QDBusError::InvalidArgs, QStringLiteral("invalid interaction reply"));
+        }
+        return;
+    }
+
+    {
+        std::lock_guard lock(m_interactionMutex);
+        if (!m_interactionActive || interactionId != m_interactionId) {
+            if (calledFromDBus()) {
+                sendErrorReply(QDBusError::InvalidArgs,
+                               QStringLiteral("interaction is not active"));
+            }
+            return;
+        }
+    }
+
+    completeInteraction(reply->action == "yes");
 }
 
 void PackageTask::setCallerContext(const CallerContext &ctx)
@@ -178,16 +221,105 @@ void PackageTask::setCallerContext(const CallerContext &ctx)
                      &QDBusServiceWatcher::serviceUnregistered,
                      this,
                      &PackageTask::onCallerDisconnected);
+
+    auto *busInterface = ctx.connection.interface();
+    if (busInterface == nullptr) {
+        LogW("failed to query caller {} for task {}", callerName, taskID());
+        return;
+    }
+
+    const auto registered = busInterface->isServiceRegistered(callerName);
+    if (!registered.isValid()) {
+        LogW("failed to query caller {} for task {}: {}",
+             callerName,
+             taskID(),
+             registered.error().message());
+        return;
+    }
+
+    if (!registered.value()) {
+        QMetaObject::invokeMethod(this, &PackageTask::onCallerDisconnected, Qt::QueuedConnection);
+    }
 }
 
 void PackageTask::onCallerDisconnected() noexcept
 {
-    if (state() != api::types::v1::State::Pending) {
+    if (m_callerDisconnected.exchange(true)) {
         return;
     }
 
-    LogW("caller disconnected before task {} was started", taskID());
-    updateState(api::types::v1::State::Canceled, "caller disconnected");
+    if (state() == api::types::v1::State::Pending) {
+        LogW("caller disconnected before task {} was started", taskID());
+        updateState(api::types::v1::State::Canceled, "caller disconnected");
+    }
+    completeInteraction(false);
+}
+
+bool PackageTask::requestInteraction(
+  api::types::v1::InteractionMessageType msgType,
+  const api::types::v1::PackageManager1RequestInteractionAdditionalMessage
+    &additionalMessage) noexcept
+{
+    if (isTaskDone()) {
+        return false;
+    }
+
+    const auto interactionId = QUuid::createUuid().toString(QUuid::WithoutBraces);
+    {
+        std::lock_guard lock(m_interactionMutex);
+        if (m_callerDisconnected.load() || m_interactionActive) {
+            return false;
+        }
+        m_interactionActive = true;
+        m_interactionId = interactionId;
+        m_interactionResult.reset();
+    }
+
+    Q_EMIT RequestInteraction(interactionId,
+                              static_cast<int>(msgType),
+                              common::serialize::toQVariantMap(additionalMessage));
+
+    std::unique_lock lock(m_interactionMutex);
+    const bool replied = m_interactionChanged.wait_for(lock, std::chrono::seconds(180), [this] {
+        return m_interactionResult.has_value();
+    });
+    if (!replied) {
+        m_interactionActive = false;
+        m_interactionId.clear();
+        return false;
+    }
+
+    const bool accepted = *m_interactionResult;
+    m_interactionResult.reset();
+    return accepted;
+}
+
+void PackageTask::completeInteraction(bool accepted) noexcept
+{
+    {
+        std::lock_guard lock(m_interactionMutex);
+        if (!m_interactionActive) {
+            return;
+        }
+        m_interactionActive = false;
+        m_interactionId.clear();
+        m_interactionResult = accepted;
+    }
+    m_interactionChanged.notify_all();
+}
+
+bool PackageTask::authorizeCaller() noexcept
+{
+    if (!calledFromDBus() || m_callerContext.isPeerMode()) {
+        return true;
+    }
+
+    if (QDBusContext::message().service() == m_callerContext.callerBusName()) {
+        return true;
+    }
+
+    sendErrorReply(QDBusError::AccessDenied, QStringLiteral("not the task owner"));
+    return false;
 }
 
 utils::error::Result<void> PackageTask::exposeOnDBus() noexcept
@@ -222,6 +354,9 @@ PackageTaskQueue::PackageTaskQueue(QObject *parent)
 
 PackageTaskQueue::~PackageTaskQueue()
 {
+    if (auto *packageTask = dynamic_cast<PackageTask *>(m_runningTask); packageTask != nullptr) {
+        packageTask->completeInteraction(false);
+    }
     if (m_taskThread.joinable()) {
         m_taskThread.join();
     }

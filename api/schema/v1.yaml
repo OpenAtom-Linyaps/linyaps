@@ -737,6 +737,22 @@ $defs:
         'Failed',
         'Canceled',
       ]
+  TaskState:
+    description: complete state information of a task
+    type: object
+    required:
+      - state
+      - progress
+      - message
+    properties:
+      state:
+        $ref: '#/$defs/State'
+      progress:
+        type: number
+        minimum: 0
+        maximum: 100
+      message:
+        type: string
   PackageManager1InstallLayerFDResult:
     $ref: '#/$defs/CommonResult'
   PackageManager1InstallParameters:

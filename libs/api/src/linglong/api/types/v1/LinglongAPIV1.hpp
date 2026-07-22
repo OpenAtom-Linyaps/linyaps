@@ -60,6 +60,7 @@
 #include "linglong/api/types/v1/RepositoryCache.hpp"
 #include "linglong/api/types/v1/RunContextConfig.hpp"
 #include "linglong/api/types/v1/RuntimeConfigure.hpp"
+#include "linglong/api/types/v1/TaskState.hpp"
 #include "linglong/api/types/v1/UabMetaInfo.hpp"
 #include "linglong/api/types/v1/UpgradeListResult.hpp"
 #include "linglong/api/types/v1/XdgDirectoryPermission.hpp"
@@ -140,6 +141,7 @@ std::optional<RepositoryCache> repositoryCache;
 std::optional<RunContextConfig> runContextConfig;
 std::optional<RuntimeConfigure> runtimeConfigure;
 std::optional<State> state;
+std::optional<TaskState> taskState;
 std::optional<UabMetaInfo> uabMetaInfo;
 std::optional<UpgradeListResult> upgradeListResult;
 std::optional<std::vector<XdgDirectoryPermission>> xdgDirectoryPermissions;

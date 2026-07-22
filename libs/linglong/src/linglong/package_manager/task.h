@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2024 - 2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -9,6 +9,8 @@
 
 #include <gio/gio.h>
 
+#include <mutex>
+
 namespace linglong::service {
 
 class TaskReporter
@@ -17,9 +19,10 @@ public:
     virtual ~TaskReporter() = default;
     virtual void onProgress() noexcept = 0;
     virtual void onStateChanged() noexcept = 0;
+    virtual void onStateMessageChanged() noexcept = 0;
     virtual void onDataArrived(uint arrived) noexcept = 0;
     virtual void onHandled(uint handled, uint total) noexcept = 0;
-    virtual void onMessage() noexcept = 0;
+    virtual void onMessage(const std::string &message) noexcept = 0;
 };
 
 using ProgressReporter = std::function<void(double)>;
@@ -27,9 +30,17 @@ using ProgressReporter = std::function<void(double)>;
 class Task
 {
 public:
+    struct StateSnapshot
+    {
+        api::types::v1::State state;
+        std::string message;
+        utils::error::ErrorCode code;
+        double percentage;
+    };
+
     Task(std::function<void(Task &)> job = {});
-    Task(Task &&) = default;
-    Task &operator=(Task &&) = default;
+    Task(Task &&other) noexcept;
+    Task &operator=(Task &&other) noexcept;
     Task(const Task &) = delete;
     Task &operator=(const Task &) = delete;
     virtual ~Task() = default;
@@ -47,30 +58,34 @@ public:
     virtual void updateProgress(double percentage,
                                 std::optional<std::string> message = std::nullopt);
     virtual void updateState(linglong::api::types::v1::State state, const std::string &message);
+    virtual void updateStateMessage(const std::string &message) noexcept;
     virtual void reportError(linglong::utils::error::Error &&err) noexcept;
     virtual void reportDataArrived(uint arrived) noexcept;
     virtual void reportDataHandled(uint handled, uint total) noexcept;
-    virtual void updateMessage(const std::string &message) noexcept;
+    virtual void sendMessage(const std::string &message) noexcept;
 
+    [[nodiscard]] static bool isDoneState(api::types::v1::State state) noexcept;
     [[nodiscard]] virtual bool isTaskDone() const noexcept;
+
+    [[nodiscard]] StateSnapshot stateSnapshot() const noexcept;
 
     virtual GCancellable *cancellable() noexcept { return nullptr; }
 
     [[nodiscard]] std::string taskID() const noexcept { return m_taskID; }
 
-    [[nodiscard]] linglong::api::types::v1::State state() const noexcept { return m_state; }
+    [[nodiscard]] linglong::api::types::v1::State state() const noexcept;
 
-    void setState(linglong::api::types::v1::State newState) noexcept { m_state = newState; }
+    void setState(linglong::api::types::v1::State newState) noexcept;
 
-    [[nodiscard]] utils::error::ErrorCode code() const noexcept { return m_code; }
+    [[nodiscard]] utils::error::ErrorCode code() const noexcept;
 
-    void setCode(utils::error::ErrorCode code) noexcept { m_code = code; }
+    void setCode(utils::error::ErrorCode code) noexcept;
 
-    [[nodiscard]] std::string message() const noexcept { return m_message; }
+    [[nodiscard]] std::string message() const noexcept;
 
-    void setMessage(const std::string &message) noexcept { m_message = message; }
+    void setMessage(const std::string &message) noexcept;
 
-    double percentage() const noexcept { return m_percentage; }
+    double percentage() const noexcept;
 
 private:
     std::string m_taskID;
@@ -87,6 +102,7 @@ private:
     std::string m_message;
     // last error code
     utils::error::ErrorCode m_code{ utils::error::ErrorCode::Unknown };
+    mutable std::mutex m_stateMutex;
 };
 
 class TaskPart : public Task
@@ -111,14 +127,19 @@ public:
         m_owner.get().updateState(newState, message);
     }
 
+    void updateStateMessage(const std::string &message) noexcept override
+    {
+        m_owner.get().updateStateMessage(message);
+    }
+
     void reportError(linglong::utils::error::Error &&err) noexcept override
     {
         m_owner.get().reportError(std::move(err));
     }
 
-    void updateMessage(const std::string &message) noexcept override
+    void sendMessage(const std::string &message) noexcept override
     {
-        m_owner.get().updateMessage(message);
+        m_owner.get().sendMessage(message);
     }
 
     void reportDataArrived(uint arrived) noexcept override
@@ -161,11 +182,13 @@ private:
 
     void onStateChanged() noexcept override { }
 
+    void onStateMessageChanged() noexcept override { }
+
     void onDataArrived([[maybe_unused]] uint arrived) noexcept override { }
 
     void onHandled([[maybe_unused]] uint handled, [[maybe_unused]] uint total) noexcept override { }
 
-    void onMessage() noexcept override { }
+    void onMessage(const std::string &) noexcept override { }
 
     [[nodiscard]] double ownerPercentage() const noexcept;
 

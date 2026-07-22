@@ -134,22 +134,6 @@ void PackageManager::initDaemonMode(bool peerMode) noexcept
     daemonModeInitialized = true;
     m_peerMode = peerMode;
 
-    // tasks and PackageManager are on the same thread, it's safe to getTask in slot
-    QObject::connect(&tasks, &PackageTaskQueue::taskDone, this, [this](const QString &taskID) {
-        auto ret = tasks.getTask(taskID.toStdString());
-        if (!ret) {
-            LogE("get task failed: {}", ret.error());
-            return;
-        }
-
-        if (PackageTask *task = dynamic_cast<PackageTask *>(&(*ret).get()); task != nullptr) {
-            Q_EMIT TaskRemoved(QDBusObjectPath{ task->taskObjectPath().c_str() },
-                               task->getPropertyState(),
-                               task->getPropertyCode(),
-                               task->getPropertyMessage());
-        }
-    });
-
     using namespace std::chrono_literals;
     auto deferredTimeOut = 3600s;
     auto *deferredTimeOutEnv = ::getenv("LINGLONG_DEFERRED_TIMEOUT");
@@ -705,45 +689,41 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
               return;
           }
 
+          if (info->kind == "app") {
+              auto newRef = package::Reference::fromPackageInfo(*info);
+              if (!newRef) {
+                  taskRef.reportError(std::move(newRef).error());
+                  return;
+              }
+
+              auto ret = executePostInstallHooks(*newRef);
+              if (!ret) {
+                  taskRef.reportError(std::move(ret).error());
+                  return;
+              }
+
+              if (!localRef) {
+                  auto res = applyApp(*newRef);
+                  if (!res) {
+                      taskRef.reportError(std::move(res).error());
+                      return;
+                  }
+              } else {
+                  auto modules = this->repo->getModuleList(*localRef);
+                  if (std::find(modules.cbegin(), modules.cend(), module) != modules.cend()) {
+                      ret = switchAppVersion(*localRef, *newRef, true);
+                      if (!ret) {
+                          LogE("failed to remove old reference {} after install {}: {}",
+                               localRef->toString(),
+                               packageRef.toString(),
+                               ret.error().message());
+                      }
+                  }
+              }
+          }
+
           taskRef.updateState(linglong::api::types::v1::State::Succeed,
                               "install layer successfully");
-
-          if (info->kind != "app") {
-              return;
-          }
-
-          auto newRef = package::Reference::fromPackageInfo(*info);
-          if (!newRef) {
-              taskRef.reportError(std::move(newRef).error());
-              return;
-          }
-
-          auto ret = executePostInstallHooks(*newRef);
-          if (!ret) {
-              taskRef.reportError(std::move(ret).error());
-              return;
-          }
-
-          if (!localRef) {
-              auto res = applyApp(*newRef);
-              if (!res) {
-                  taskRef.reportError(std::move(res).error());
-              }
-              return;
-          }
-
-          auto modules = this->repo->getModuleList(*localRef);
-          if (std::find(modules.cbegin(), modules.cend(), module) == modules.cend()) {
-              return;
-          }
-
-          ret = switchAppVersion(*localRef, *newRef, true);
-          if (!ret) {
-              LogE("failed to remove old reference {} after install {}: {}",
-                   localRef->toString(),
-                   packageRef.toString(),
-                   ret.error().message());
-          }
       };
 
     auto taskRet = tasks.addPackageTask(std::move(installer), ctx);
@@ -752,8 +732,7 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
     }
 
     auto &taskRef = taskRet->get();
-    Q_EMIT TaskAdded(QDBusObjectPath{ taskRef.taskObjectPath().c_str() });
-    taskRef.updateState(linglong::api::types::v1::State::Queued, "queued to install from layer");
+    taskRef.updateState(linglong::api::types::v1::State::Pending, "waiting to install from layer");
     return common::serialize::toQVariantMap(api::types::v1::PackageManager1PackageTaskResult{
       .taskObjectPath = taskRef.taskObjectPath(),
       .code = 0,
@@ -1065,8 +1044,7 @@ QVariantMap PackageManager::uninstallImpl(const QVariantMap &parameters,
     }
 
     auto &taskRef = taskRet->get();
-    Q_EMIT TaskAdded(QDBusObjectPath{ taskRef.taskObjectPath().c_str() });
-    taskRef.updateState(linglong::api::types::v1::State::Queued, "queued to uninstall");
+    taskRef.updateState(linglong::api::types::v1::State::Pending, "waiting to uninstall");
     return common::serialize::toQVariantMap(api::types::v1::PackageManager1PackageTaskResult{
       .taskObjectPath = taskRef.taskObjectPath(),
       .code = 0,
@@ -1107,9 +1085,6 @@ utils::error::Result<void> PackageManager::Uninstall(PackageTask &taskContext,
         return LINGLONG_ERR(res);
     }
 
-    taskContext.updateState(linglong::api::types::v1::State::Succeed,
-                            fmt::format("Uninstall {} {} success", ref.toString(), module));
-
     auto mergeRet = this->repo->mergeModules();
     if (!mergeRet.has_value()) {
         LogE("merge modules failed: {}", mergeRet.error());
@@ -1119,6 +1094,9 @@ utils::error::Result<void> PackageManager::Uninstall(PackageTask &taskContext,
     if (!pruneRet) {
         return LINGLONG_ERR(pruneRet);
     }
+
+    taskContext.updateState(linglong::api::types::v1::State::Succeed,
+                            fmt::format("Uninstall {} {} success", ref.toString(), module));
 
     return LINGLONG_OK;
 }
@@ -2149,8 +2127,7 @@ QVariantMap PackageManager::runActionOnTaskQueue(std::shared_ptr<Action> action,
     }
 
     auto &taskRef = taskRet->get();
-    Q_EMIT TaskAdded(QDBusObjectPath{ taskRef.taskObjectPath().c_str() });
-    taskRef.updateState(linglong::api::types::v1::State::Queued, action->getTaskName());
+    taskRef.updateState(linglong::api::types::v1::State::Pending, action->getTaskName());
     return common::serialize::toQVariantMap(api::types::v1::PackageManager1PackageTaskResult{
       .taskObjectPath = taskRef.taskObjectPath(),
       .code = 0,

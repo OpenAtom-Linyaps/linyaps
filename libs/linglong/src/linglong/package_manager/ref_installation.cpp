@@ -74,7 +74,7 @@ utils::error::Result<void> RefInstallationAction::doAction(PackageTask &task)
     mainTask = &task;
 
     DataMonitor monitor(5, 1, [this](DataMonitor &m) {
-        mainTask->updateMessage(
+        mainTask->updateStateMessage(
           fmt::format("{} {:>9}", taskMessage, fmt::format("[{}]", m.getHumanSpeed())));
     });
 
@@ -348,7 +348,7 @@ utils::error::Result<void> RefInstallationAction::install(Task &task)
         const auto &[refRepo, module, meta] = ref;
 
         taskMessage = fmt::format("Installing {}/{}", refRepo.reference.toString(), module);
-        task.updateMessage(taskMessage);
+        task.updateStateMessage(taskMessage);
 
         auto res = pm.installRefModule(task, refRepo, module);
         if (!res) {

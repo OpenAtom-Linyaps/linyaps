@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2024 - 2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -10,6 +10,12 @@
 
 namespace linglong::service {
 
+bool Task::isDoneState(api::types::v1::State state) noexcept
+{
+    return state == api::types::v1::State::Canceled || state == api::types::v1::State::Failed
+      || state == api::types::v1::State::Succeed;
+}
+
 Task::Task(std::function<void(Task &)> job)
     : m_job(std::move(job))
 {
@@ -18,11 +24,46 @@ Task::Task(std::function<void(Task &)> job)
     m_taskID = fmt::format("{}", fmt::join(uuid, ""));
 }
 
+Task::Task(Task &&other) noexcept
+{
+    std::lock_guard lock(other.m_stateMutex);
+    m_taskID = std::move(other.m_taskID);
+    m_job = std::move(other.m_job);
+    m_percentage = other.m_percentage;
+    m_reporter = other.m_reporter;
+    m_state = other.m_state;
+    m_message = std::move(other.m_message);
+    m_code = other.m_code;
+}
+
+Task &Task::operator=(Task &&other) noexcept
+{
+    if (this == &other) {
+        return *this;
+    }
+
+    std::scoped_lock lock(m_stateMutex, other.m_stateMutex);
+    m_taskID = std::move(other.m_taskID);
+    m_job = std::move(other.m_job);
+    m_percentage = other.m_percentage;
+    m_reporter = other.m_reporter;
+    m_state = other.m_state;
+    m_message = std::move(other.m_message);
+    m_code = other.m_code;
+    return *this;
+}
+
 void Task::resetProgress(std::optional<std::string> message)
 {
-    m_percentage = 0;
-    if (message) {
-        updateMessage(std::move(message).value());
+    {
+        std::lock_guard lock(m_stateMutex);
+        if (isDoneState(m_state)) {
+            return;
+        }
+        m_percentage = 0;
+        if (message) {
+            m_message = std::move(message).value();
+        }
     }
 
     if (m_reporter != nullptr) {
@@ -36,34 +77,64 @@ void Task::updateProgress(double percentage, std::optional<std::string> message)
         return;
     }
 
-    if (percentage > m_percentage) {
+    {
+        std::lock_guard lock(m_stateMutex);
+        if (isDoneState(m_state) || percentage <= m_percentage) {
+            return;
+        }
         m_percentage = percentage;
-
         if (message) {
-            updateMessage(std::move(message).value());
+            m_message = std::move(message).value();
         }
+    }
 
-        if (m_reporter != nullptr) {
-            m_reporter->onProgress();
-        }
+    if (m_reporter != nullptr) {
+        m_reporter->onProgress();
     }
 }
 
 void Task::updateState(linglong::api::types::v1::State newState, const std::string &message)
 {
-    m_state = newState;
-    m_message = message;
+    {
+        std::lock_guard lock(m_stateMutex);
+        if (isDoneState(m_state)) {
+            return;
+        }
+        m_state = newState;
+        m_message = message;
+    }
 
     if (m_reporter != nullptr) {
         m_reporter->onStateChanged();
     }
 }
 
+void Task::updateStateMessage(const std::string &message) noexcept
+{
+    {
+        std::lock_guard lock(m_stateMutex);
+        if (isDoneState(m_state)) {
+            return;
+        }
+        m_message = message;
+    }
+
+    if (m_reporter != nullptr) {
+        m_reporter->onStateMessageChanged();
+    }
+}
+
 void Task::reportError(linglong::utils::error::Error &&err) noexcept
 {
-    m_state = linglong::api::types::v1::State::Failed;
-    m_message = err.message();
-    m_code = static_cast<utils::error::ErrorCode>(err.code());
+    {
+        std::lock_guard lock(m_stateMutex);
+        if (isDoneState(m_state)) {
+            return;
+        }
+        m_state = linglong::api::types::v1::State::Failed;
+        m_message = err.message();
+        m_code = static_cast<utils::error::ErrorCode>(err.code());
+    }
 
     if (m_reporter != nullptr) {
         m_reporter->onStateChanged();
@@ -84,20 +155,70 @@ void Task::reportDataHandled(uint handled, uint total) noexcept
     }
 }
 
-void Task::updateMessage(const std::string &message) noexcept
+void Task::sendMessage(const std::string &message) noexcept
 {
-    setMessage(message);
-
     if (m_reporter != nullptr) {
-        m_reporter->onMessage();
+        m_reporter->onMessage(message);
     }
 }
 
 bool Task::isTaskDone() const noexcept
 {
-    return m_state == linglong::api::types::v1::State::Canceled
-      || m_state == linglong::api::types::v1::State::Failed
-      || m_state == linglong::api::types::v1::State::Succeed;
+    std::lock_guard lock(m_stateMutex);
+    return isDoneState(m_state);
+}
+
+Task::StateSnapshot Task::stateSnapshot() const noexcept
+{
+    std::lock_guard lock(m_stateMutex);
+    return {
+        .state = m_state,
+        .message = m_message,
+        .code = m_code,
+        .percentage = m_percentage,
+    };
+}
+
+api::types::v1::State Task::state() const noexcept
+{
+    std::lock_guard lock(m_stateMutex);
+    return m_state;
+}
+
+void Task::setState(api::types::v1::State newState) noexcept
+{
+    std::lock_guard lock(m_stateMutex);
+    m_state = newState;
+}
+
+utils::error::ErrorCode Task::code() const noexcept
+{
+    std::lock_guard lock(m_stateMutex);
+    return m_code;
+}
+
+void Task::setCode(utils::error::ErrorCode code) noexcept
+{
+    std::lock_guard lock(m_stateMutex);
+    m_code = code;
+}
+
+std::string Task::message() const noexcept
+{
+    std::lock_guard lock(m_stateMutex);
+    return m_message;
+}
+
+void Task::setMessage(const std::string &message) noexcept
+{
+    std::lock_guard lock(m_stateMutex);
+    m_message = message;
+}
+
+double Task::percentage() const noexcept
+{
+    std::lock_guard lock(m_stateMutex);
+    return m_percentage;
 }
 
 TaskContainer::TaskContainer(Task &owner, int count)

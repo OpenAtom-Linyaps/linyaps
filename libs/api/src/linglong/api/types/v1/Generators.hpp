@@ -23,6 +23,7 @@
 #include "linglong/api/types/v1/Version.hpp"
 #include "linglong/api/types/v1/Sections.hpp"
 #include "linglong/api/types/v1/UabLayer.hpp"
+#include "linglong/api/types/v1/TaskState.hpp"
 #include "linglong/api/types/v1/State.hpp"
 #include "linglong/api/types/v1/RuntimeConfigure.hpp"
 #include "linglong/api/types/v1/RunContextConfig.hpp"
@@ -254,6 +255,9 @@ void to_json(json & j, const RunContextConfig & x);
 
 void from_json(const json & j, RuntimeConfigure & x);
 void to_json(json & j, const RuntimeConfigure & x);
+
+void from_json(const json & j, TaskState & x);
+void to_json(json & j, const TaskState & x);
 
 void from_json(const json & j, UabLayer & x);
 void to_json(json & j, const UabLayer & x);
@@ -1352,6 +1356,19 @@ j["mounts"] = x.mounts;
 }
 }
 
+inline void from_json(const json & j, TaskState& x) {
+x.message = j.at("message").get<std::string>();
+x.progress = j.at("progress").get<double>();
+x.state = j.at("state").get<State>();
+}
+
+inline void to_json(json & j, const TaskState & x) {
+j = json::object();
+j["message"] = x.message;
+j["progress"] = x.progress;
+j["state"] = x.state;
+}
+
 inline void from_json(const json & j, UabLayer& x) {
 x.info = j.at("info").get<PackageInfoV2>();
 x.minified = j.at("minified").get<bool>();
@@ -1459,6 +1476,7 @@ x.repositoryCache = get_stack_optional<RepositoryCache>(j, "RepositoryCache");
 x.runContextConfig = get_stack_optional<RunContextConfig>(j, "RunContextConfig");
 x.runtimeConfigure = get_stack_optional<RuntimeConfigure>(j, "RuntimeConfigure");
 x.state = get_stack_optional<State>(j, "State");
+x.taskState = get_stack_optional<TaskState>(j, "TaskState");
 x.uabMetaInfo = get_stack_optional<UabMetaInfo>(j, "UABMetaInfo");
 x.upgradeListResult = get_stack_optional<UpgradeListResult>(j, "UpgradeListResult");
 x.xdgDirectoryPermissions = get_stack_optional<std::vector<XdgDirectoryPermission>>(j, "XDGDirectoryPermissions");
@@ -1610,6 +1628,9 @@ j["RuntimeConfigure"] = x.runtimeConfigure;
 if (x.state) {
 j["State"] = x.state;
 }
+if (x.taskState) {
+j["TaskState"] = x.taskState;
+}
 if (x.uabMetaInfo) {
 j["UABMetaInfo"] = x.uabMetaInfo;
 }
@@ -1623,7 +1644,7 @@ j["XDGDirectoryPermissions"] = x.xdgDirectoryPermissions;
 
 inline void from_json(const json & j, DeviceOption & x) {
 if (j == "passthru") x = DeviceOption::Passthru;
-else { throw std::runtime_error("Cannot deserialize to enumeration \"DeviceOption\""); }
+else { throw std::runtime_error("Input JSON does not conform to schema!"); }
 }
 
 inline void to_json(json & j, const DeviceOption & x) {
@@ -1639,7 +1660,7 @@ else if (j == "Install") x = InteractionMessageType::Install;
 else if (j == "Uninstall") x = InteractionMessageType::Uninstall;
 else if (j == "Unknown") x = InteractionMessageType::Unknown;
 else if (j == "Upgrade") x = InteractionMessageType::Upgrade;
-else { throw std::runtime_error("Cannot deserialize to enumeration \"InteractionMessageType\""); }
+else { throw std::runtime_error("Input JSON does not conform to schema!"); }
 }
 
 inline void to_json(json & j, const InteractionMessageType & x) {
@@ -1661,7 +1682,7 @@ else if (j == "Processing") x = State::Processing;
 else if (j == "Queued") x = State::Queued;
 else if (j == "Succeed") x = State::Succeed;
 else if (j == "Unknown") x = State::Unknown;
-else { throw std::runtime_error("Cannot deserialize to enumeration \"State\""); }
+else { throw std::runtime_error("Input JSON does not conform to schema!"); }
 }
 
 inline void to_json(json & j, const State & x) {
@@ -1679,7 +1700,7 @@ default: throw std::runtime_error("Unexpected value in enumeration \"State\": " 
 
 inline void from_json(const json & j, Version & x) {
 if (j == "1") x = Version::The1;
-else { throw std::runtime_error("Cannot deserialize to enumeration \"Version\""); }
+else { throw std::runtime_error("Input JSON does not conform to schema!"); }
 }
 
 inline void to_json(json & j, const Version & x) {

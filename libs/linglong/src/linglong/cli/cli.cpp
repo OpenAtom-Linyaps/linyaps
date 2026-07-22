@@ -52,7 +52,6 @@
 #include <nlohmann/json.hpp>
 #include <uuid.h>
 
-#include <QDBusInterface>
 #include <QDBusReply>
 #include <QDBusUnixFileDescriptor>
 #include <QDir>
@@ -769,67 +768,50 @@ void sortDependsTree(std::vector<DependsNode> &nodes)
 
 namespace linglong::cli {
 
-void Cli::onTaskPropertiesChanged(
-  const QString &interface,                                   // NOLINT
-  const QVariantMap &changed_properties,                      // NOLINT
-  [[maybe_unused]] const QStringList &invalidated_properties) // NOLINT
+void Cli::onTaskEvent(const QString &event, const QVariantMap &data)
 {
-    if (interface != task->interface()) {
+    if (event == QStringLiteral("state")) {
+        auto state = common::serialize::fromQVariantMap<api::types::v1::TaskState>(data);
+        if (!state) {
+            LogE("dbus ipc error, couldn't parse task state event: {}", state.error());
+            return;
+        }
+
+        taskState.state = state->state;
+        if (!globalOptions.noProgress) {
+            printer.printProgress(std::clamp(state->progress, 0.0, 100.0), state->message);
+        }
         return;
     }
 
-    const auto previousState = taskState.state;
-    for (auto entry = changed_properties.cbegin(); entry != changed_properties.cend(); ++entry) {
-        const auto &key = entry.key();
-        const auto &value = entry.value();
-
-        if (key == "State") {
-            bool ok{ false };
-            auto val = value.toInt(&ok);
-            if (!ok) {
-                LogE("dbus ipc error, State couldn't convert to int");
-                continue;
-            }
-
-            taskState.state = static_cast<api::types::v1::State>(val);
-            continue;
+    if (event == QStringLiteral("message")) {
+        const auto message = data.value(QStringLiteral("message"));
+        if (!message.canConvert<QString>()) {
+            LogE("dbus ipc error, task event message couldn't convert to QString");
+            return;
         }
 
-        if (key == "Percentage") {
-            bool ok{ false };
-            auto val = value.toDouble(&ok);
-            if (!ok) {
-                LogE("dbus ipc error, Percentage couldn't convert to int");
-                continue;
-            }
-
-            taskState.percentage = val > 100 ? 100 : val;
-            continue;
-        }
-
-        if (key == "Message") {
-            if (!value.canConvert<QString>()) {
-                LogE("dbus ipc error, Message couldn't convert to QString");
-                continue;
-            }
-
-            taskState.message = value.toString().toStdString();
-            continue;
-        }
-
-        if (key == "Code") {
-            bool ok{ false };
-            auto val = value.toInt(&ok);
-            if (!ok) {
-                LogE("dbus ipc error, Code couldn't convert to int");
-                continue;
-            }
-
-            taskState.errorCode = static_cast<utils::error::ErrorCode>(val);
-        }
+        printer.printMessage(message.toString().toStdString());
+        return;
     }
 
-    handleTaskState(previousState);
+    LogW("unknown task event: {}", event.toStdString());
+}
+
+void Cli::onTaskFinished(const QVariantMap &result)
+{
+    if (taskFinished) {
+        return;
+    }
+
+    taskFinished = true;
+    printer.clearLine();
+    if (taskState.state == api::types::v1::State::Succeed) {
+        printOnTaskSuccess(result);
+    } else {
+        printOnTaskFailed(result);
+    }
+    Q_EMIT taskDone();
 }
 
 void Cli::interaction(const QDBusObjectPath &object_path,
@@ -905,80 +887,26 @@ void Cli::interaction(const QDBusObjectPath &object_path,
     }
 }
 
-void Cli::onTaskAdded(const QDBusObjectPath &object_path)
-{
-    LogD("task added: {}", object_path.path().toStdString());
-}
-
-void Cli::onTaskRemoved(const QDBusObjectPath &object_path,
-                        int state,
-                        int code,
-                        const QString &message)
-{
-    LogD("task removed: {}", object_path.path().toStdString());
-    if (object_path.path() != taskObjectPath) {
-        return;
-    }
-
-    if (task) {
-        if (auto pkgMan = this->getPkgMan()) {
-            (*pkgMan)->connection().disconnect(
-              (*pkgMan)->service(),
-              taskObjectPath,
-              "org.freedesktop.DBus.Properties",
-              "PropertiesChanged",
-              this,
-              SLOT(onTaskPropertiesChanged(QString, QVariantMap, QStringList)));
-        }
-
-        onTaskPropertiesChanged(task->interface(),
-                                {
-                                  { "State", state },
-                                  { "Code", code },
-                                  { "Message", message },
-                                },
-                                {});
-    }
-
-    delete task;
-    task = nullptr;
-    Q_EMIT taskDone();
-}
-
-void Cli::handleTaskState(api::types::v1::State previousState) noexcept
-{
-    if (taskState.state == api::types::v1::State::Unknown) {
-        LogW("task state is unknown");
-        return;
-    }
-
-    if (taskState.state == api::types::v1::State::Failed
-        || taskState.state == api::types::v1::State::Canceled) {
-        if (taskState.state != previousState) {
-            this->printer.clearLine();
-            this->printOnTaskFailed();
-        }
-        return;
-    }
-
-    if (taskState.state == api::types::v1::State::Succeed) {
-        if (taskState.state != previousState) {
-            this->printer.clearLine();
-            this->printOnTaskSuccess();
-        }
-        return;
-    }
-
-    if (!this->globalOptions.noProgress) {
-        this->printer.printProgress(taskState.percentage, taskState.message);
-    }
-}
-
-void Cli::printOnTaskFailed()
+void Cli::printOnTaskFailed(const QVariantMap &result)
 {
     LINGLONG_TRACE("cli handle task failed");
 
-    auto error = LINGLONG_ERRV(taskState.message, taskState.errorCode);
+    std::string message;
+    auto errorCode = utils::error::ErrorCode::Unknown;
+    const auto resultType = result.value(QStringLiteral("type")).toString();
+    if (resultType.isEmpty()) {
+        auto parsed = common::serialize::fromQVariantMap<api::types::v1::CommonResult>(result);
+        if (parsed) {
+            errorCode = static_cast<utils::error::ErrorCode>(parsed->code);
+            message = std::move(parsed->message);
+        } else {
+            message = "invalid CommonResult task result";
+        }
+    } else {
+        message = fmt::format("unknown task result type: {}", resultType.toStdString());
+    }
+
+    auto error = LINGLONG_ERRV(message, errorCode);
 
     switch (taskState.taskType) {
     case TaskType::Install:
@@ -1001,9 +929,22 @@ void Cli::printOnTaskFailed()
     }
 }
 
-void Cli::printOnTaskSuccess()
+void Cli::printOnTaskSuccess(const QVariantMap &result)
 {
-    this->printer.printMessage(taskState.message);
+    std::string message;
+    const auto resultType = result.value(QStringLiteral("type")).toString();
+    if (resultType.isEmpty()) {
+        auto parsed = common::serialize::fromQVariantMap<api::types::v1::CommonResult>(result);
+        if (parsed) {
+            message = std::move(parsed->message);
+        } else {
+            message = "invalid CommonResult task result";
+        }
+    } else {
+        message = fmt::format("unknown task result type: {}", resultType.toStdString());
+    }
+
+    this->printer.printMessage(message);
 }
 
 Cli::Cli(Printer &printer,
@@ -1084,24 +1025,6 @@ utils::error::Result<api::dbus::v1::PackageManager *> Cli::getPkgMan()
     auto pkgManProxy = std::move(*pkgMan);
 
     auto conn = pkgManProxy->connection();
-    if (!conn.connect(pkgManProxy->service(),
-                      pkgManProxy->path(),
-                      pkgManProxy->interface(),
-                      "TaskAdded",
-                      this,
-                      SLOT(onTaskAdded(QDBusObjectPath)))) {
-        return LINGLONG_ERR("couldn't connect to package manager signal 'TaskAdded'");
-    }
-
-    if (!conn.connect(pkgManProxy->service(),
-                      pkgManProxy->path(),
-                      pkgManProxy->interface(),
-                      "TaskRemoved",
-                      this,
-                      SLOT(onTaskRemoved(QDBusObjectPath, int, int, QString)))) {
-        return LINGLONG_ERR("couldn't connect to package manager signal 'TaskRemoved'");
-    }
-
     if (!conn.connect(pkgManProxy->service(),
                       pkgManProxy->path(),
                       pkgManProxy->interface(),
@@ -1904,13 +1827,12 @@ int Cli::install(const InstallOptions &options)
     }
 
     auto pendingReply = (*pkgMan)->Install(common::serialize::toQVariantMap(params));
+    this->taskState.params = params;
     auto res = waitTaskCreated(pendingReply, TaskType::Install);
     if (!res) {
         handleInstallError(res.error(), params);
         return -1;
     }
-    this->taskState.params = std::move(params);
-
     waitTaskDone();
 
     updateAM();
@@ -3106,34 +3028,6 @@ int Cli::getBundleDir(const InspectOptions &options)
     return 0;
 }
 
-utils::error::Result<void> Cli::syncTaskProperties()
-{
-    LINGLONG_TRACE("syncTaskProperties");
-
-    auto pkgMan = this->getPkgMan();
-    if (!pkgMan) {
-        return LINGLONG_ERR(pkgMan);
-    }
-
-    QDBusInterface properties((*pkgMan)->service(),
-                              this->taskObjectPath,
-                              "org.freedesktop.DBus.Properties",
-                              (*pkgMan)->connection());
-    QDBusReply<QVariantMap> reply =
-      properties.call("GetAll", QStringLiteral("org.deepin.linglong.Task1"));
-    if (!reply.isValid()) {
-        if (reply.error().type() == QDBusError::UnknownObject) {
-            return LINGLONG_OK;
-        }
-
-        return LINGLONG_ERR(reply.error().message().toStdString());
-    }
-
-    this->onTaskPropertiesChanged(QStringLiteral("org.deepin.linglong.Task1"), reply.value(), {});
-
-    return LINGLONG_OK;
-}
-
 utils::error::Result<void> Cli::waitTaskCreated(QDBusPendingReply<QVariantMap> &reply,
                                                 TaskType taskType)
 {
@@ -3156,31 +3050,45 @@ utils::error::Result<void> Cli::waitTaskCreated(QDBusPendingReply<QVariantMap> &
 
     auto conn = (*pkgMan)->connection();
     this->taskObjectPath = QString::fromStdString(result->taskObjectPath.value());
-    this->task = new api::dbus::v1::Task1((*pkgMan)->service(), taskObjectPath, conn);
-    this->taskState.state = linglong::api::types::v1::State::Queued;
+    auto newTask =
+      std::make_unique<api::dbus::v1::Task1>((*pkgMan)->service(), taskObjectPath, conn);
+    this->taskState.state = linglong::api::types::v1::State::Pending;
     this->taskState.taskType = taskType;
+    this->taskFinished = false;
 
     LogD("task object path: {}", this->taskObjectPath.toStdString());
 
-    if (!conn.connect((*pkgMan)->service(),
-                      taskObjectPath,
-                      "org.freedesktop.DBus.Properties",
-                      "PropertiesChanged",
-                      this,
-                      SLOT(onTaskPropertiesChanged(QString, QVariantMap, QStringList)))) {
-        Q_ASSERT(false);
-        return LINGLONG_ERR(fmt::format("Failed to connect signal PropertiesChanged: {}",
-                                        conn.lastError().message().toStdString()));
+    if (!QObject::connect(newTask.get(),
+                          &api::dbus::v1::Task1::TaskEvent,
+                          this,
+                          &Cli::onTaskEvent)) {
+        newTask->Cancel().waitForFinished();
+        return LINGLONG_ERR("failed to connect task event signal");
     }
 
-    return this->syncTaskProperties();
+    if (!QObject::connect(newTask.get(),
+                          &api::dbus::v1::Task1::TaskFinished,
+                          this,
+                          &Cli::onTaskFinished)) {
+        newTask->Cancel().waitForFinished();
+        return LINGLONG_ERR("failed to connect task finished signal");
+    }
+
+    auto startReply = newTask->Start();
+    startReply.waitForFinished();
+    if (startReply.isError()) {
+        const auto error = startReply.error().message().toStdString();
+        newTask->Cancel().waitForFinished();
+        return LINGLONG_ERR(error);
+    }
+
+    this->task = std::move(newTask);
+    return LINGLONG_OK;
 }
 
 void Cli::waitTaskDone()
 {
-    if (this->taskState.state == api::types::v1::State::Failed
-        || this->taskState.state == api::types::v1::State::Canceled
-        || this->taskState.state == api::types::v1::State::Succeed) {
+    if (this->taskFinished) {
         return;
     }
 

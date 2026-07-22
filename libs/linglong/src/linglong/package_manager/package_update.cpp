@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025-2026 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2025 - 2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -100,7 +100,7 @@ utils::error::Result<void> PackageUpdateAction::update(PackageTask &task)
     LINGLONG_TRACE("package update");
 
     DataMonitor monitor(5, 1, [this, &task](DataMonitor &m) {
-        task.updateMessage(
+        task.updateStateMessage(
           fmt::format("{} {:>9}", taskMessage, fmt::format("[{}]", m.getHumanSpeed())));
     });
 
@@ -235,7 +235,7 @@ utils::error::Result<void> PackageUpdateAction::updateApp(Task &task,
     for (const auto &[refRepo, modules] : refsToInstall) {
         for (const auto &[module, meta] : modules) {
             taskMessage = fmt::format("Updating {}/{}", refRepo.reference.toString(), module);
-            task.updateMessage(taskMessage);
+            task.updateStateMessage(taskMessage);
             auto res = pm.installRefModule(task, refRepo, module);
             if (!res) {
                 return LINGLONG_ERR(res);

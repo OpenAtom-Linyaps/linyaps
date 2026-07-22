@@ -8,6 +8,7 @@
 #include <gtest/gtest.h>
 
 #include "../../common/tempdir.h"
+#include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/cli/cli.h"
 #include "linglong/cli/cli_printer.h"
 #include "linglong/cli/dummy_notifier.h"
@@ -68,6 +69,9 @@ public:
                 (std::vector<api::types::v1::UpgradeListResult> &),
                 (override));
     MOCK_METHOD(void, printContent, (const QStringList &filePaths), (override));
+    MOCK_METHOD(void, printProgress, (double percentage, const std::string &message), (override));
+    MOCK_METHOD(void, printMessage, (const std::string &message), (override));
+    MOCK_METHOD(void, clearLine, (), (override));
 };
 
 class MockCli : public cli::Cli
@@ -217,6 +221,59 @@ protected:
     std::unique_ptr<runtime::ContainerBuilder> containerBuilder;
     std::unique_ptr<RepoAndPackageManagerCli> cli;
 };
+
+TEST_F(CliTest, taskEventsDriveProgressAndTextOutput)
+{
+    EXPECT_CALL(*printer, printProgress(testing::DoubleEq(42.0), "fetching"));
+    EXPECT_TRUE(
+      QMetaObject::invokeMethod(cli.get(),
+                                "onTaskEvent",
+                                Qt::DirectConnection,
+                                Q_ARG(QString, QStringLiteral("state")),
+                                Q_ARG(QVariantMap,
+                                      common::serialize::toQVariantMap(api::types::v1::TaskState{
+                                        .message = "fetching",
+                                        .progress = 42.0,
+                                        .state = api::types::v1::State::Processing,
+                                      }))));
+
+    EXPECT_CALL(*printer, printMessage("a standalone message"));
+    EXPECT_TRUE(QMetaObject::invokeMethod(
+      cli.get(),
+      "onTaskEvent",
+      Qt::DirectConnection,
+      Q_ARG(QString, QStringLiteral("message")),
+      Q_ARG(
+        QVariantMap,
+        QVariantMap({ { QStringLiteral("message"), QStringLiteral("a standalone message") } }))));
+}
+
+TEST_F(CliTest, taskFinishedDrivesFinalOutput)
+{
+    EXPECT_CALL(*printer, printProgress(testing::DoubleEq(0.0), ""));
+    EXPECT_TRUE(
+      QMetaObject::invokeMethod(cli.get(),
+                                "onTaskEvent",
+                                Qt::DirectConnection,
+                                Q_ARG(QString, QStringLiteral("state")),
+                                Q_ARG(QVariantMap,
+                                      common::serialize::toQVariantMap(api::types::v1::TaskState{
+                                        .message = "",
+                                        .progress = 0.0,
+                                        .state = api::types::v1::State::Succeed,
+                                      }))));
+
+    EXPECT_CALL(*printer, clearLine());
+    EXPECT_CALL(*printer, printMessage("installed"));
+    const auto result = common::serialize::toQVariantMap(api::types::v1::CommonResult{
+      .code = 0,
+      .message = "installed",
+    });
+    EXPECT_TRUE(QMetaObject::invokeMethod(cli.get(),
+                                          "onTaskFinished",
+                                          Qt::DirectConnection,
+                                          Q_ARG(QVariantMap, result)));
+}
 
 TEST_F(CliRepoAndPackageManagerTest, getRepoCachesLoadedRepository)
 {

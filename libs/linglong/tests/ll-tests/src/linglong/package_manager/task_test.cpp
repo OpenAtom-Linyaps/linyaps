@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+ * SPDX-FileCopyrightText: 2025 - 2026 UnionTech Software Technology Co., Ltd.
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
@@ -9,6 +9,9 @@
 
 #include "linglong/package_manager/task.h"
 #include "linglong/utils/log/log.h"
+
+#include <future>
+#include <thread>
 
 namespace {
 
@@ -33,7 +36,9 @@ public:
 
     MOCK_METHOD(void, onStateChanged, (), (override, noexcept));
 
-    MOCK_METHOD(void, onMessage, (), (override, noexcept));
+    MOCK_METHOD(void, onStateMessageChanged, (), (override, noexcept));
+
+    MOCK_METHOD(void, onMessage, (const std::string &message), (override, noexcept));
 
     Task &m_task;
     std::vector<double> m_progress;
@@ -230,6 +235,93 @@ TEST(Task, reportToOwner)
     auto &sub2 = container.next();
     sub2.reportError(LINGLONG_ERRV("test error"));
     EXPECT_EQ(task.message(), "test error");
+}
+
+TEST(Task, terminalStateCannotBeOverwritten)
+{
+    LINGLONG_TRACE("terminalStateCannotBeOverwritten");
+
+    Task task;
+    TaskTester tester(task);
+    task.setReporter(&tester);
+
+    EXPECT_CALL(tester, onStateChanged).Times(1);
+    task.updateState(linglong::api::types::v1::State::Succeed, "succeeded");
+    task.reportError(LINGLONG_ERRV("too late"));
+    task.updateState(linglong::api::types::v1::State::Canceled, "also too late");
+
+    EXPECT_EQ(task.state(), linglong::api::types::v1::State::Succeed);
+    EXPECT_EQ(task.message(), "succeeded");
+    EXPECT_EQ(task.code(), linglong::utils::error::ErrorCode::Unknown);
+}
+
+TEST(Task, settersCanOverwriteTerminalState)
+{
+    Task task;
+    task.updateState(linglong::api::types::v1::State::Succeed, "succeeded");
+
+    task.setState(linglong::api::types::v1::State::Pending);
+    task.setCode(linglong::utils::error::ErrorCode::Failed);
+    task.setMessage("reset");
+
+    EXPECT_EQ(task.state(), linglong::api::types::v1::State::Pending);
+    EXPECT_EQ(task.code(), linglong::utils::error::ErrorCode::Failed);
+    EXPECT_EQ(task.message(), "reset");
+}
+
+TEST(Task, concurrentTerminalUpdatesChooseOneFinalState)
+{
+    Task task;
+    TaskTester tester(task);
+    task.setReporter(&tester);
+
+    EXPECT_CALL(tester, onStateChanged).Times(1);
+    std::promise<void> ready;
+    auto start = ready.get_future().share();
+    std::thread succeed([&task, start]() {
+        start.wait();
+        task.updateState(linglong::api::types::v1::State::Succeed, "succeeded");
+    });
+    std::thread fail([&task, start]() {
+        LINGLONG_TRACE("concurrent terminal failure");
+        start.wait();
+        task.reportError(LINGLONG_ERRV("failed"));
+    });
+
+    ready.set_value();
+    succeed.join();
+    fail.join();
+
+    EXPECT_TRUE(task.state() == linglong::api::types::v1::State::Succeed
+                || task.state() == linglong::api::types::v1::State::Failed);
+    EXPECT_TRUE(task.message() == "succeeded" || task.message() == "failed");
+}
+
+TEST(Task, movePreservesStateSafely)
+{
+    Task source;
+    source.updateProgress(42, "moving");
+    source.setCode(linglong::utils::error::ErrorCode::Failed);
+
+    Task moved(std::move(source));
+
+    EXPECT_DOUBLE_EQ(moved.percentage(), 42);
+    EXPECT_EQ(moved.message(), "moving");
+    EXPECT_EQ(moved.code(), linglong::utils::error::ErrorCode::Failed);
+}
+
+TEST(Task, stateSnapshotContainsConsistentState)
+{
+    Task task;
+    task.updateProgress(42, "snapshot");
+    task.setCode(linglong::utils::error::ErrorCode::Failed);
+
+    const auto snapshot = task.stateSnapshot();
+
+    EXPECT_EQ(snapshot.state, linglong::api::types::v1::State::Queued);
+    EXPECT_EQ(snapshot.message, "snapshot");
+    EXPECT_EQ(snapshot.code, linglong::utils::error::ErrorCode::Failed);
+    EXPECT_DOUBLE_EQ(snapshot.percentage, 42);
 }
 
 } // namespace

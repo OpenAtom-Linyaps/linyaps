@@ -290,7 +290,7 @@ private:
 private Q_SLOTS:
     void onTaskEvent(const QString &event, const QVariantMap &data);
     void onTaskFinished(const QVariantMap &result);
-    void interaction(const QDBusObjectPath &object_path,
+    void interaction(const QString &interactionId,
                      int messageID,
                      const QVariantMap &additionalMessage);
 

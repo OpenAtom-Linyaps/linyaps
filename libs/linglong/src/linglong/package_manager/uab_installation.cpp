@@ -283,9 +283,9 @@ utils::error::Result<void> UabInstallationAction::preInstall(PackageTask &task)
             .localRef = operation->oldRef->toString(),
             .remoteRef = operation->newRef->reference.toString()
         };
-        if (!pm.waitConfirm(task,
-                            api::types::v1::InteractionMessageType::Upgrade,
-                            additionalMessage)) {
+        if (!task.requestInteraction(api::types::v1::InteractionMessageType::Upgrade,
+                                     additionalMessage)) {
+            task.Cancel();
             return LINGLONG_ERR("action canceled");
         }
     }

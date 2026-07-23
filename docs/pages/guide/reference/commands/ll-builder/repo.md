@@ -37,6 +37,9 @@ ll-builder-repo - 显示和管理仓库
 **set-default** _alias_
 : 设置默认仓库名称
 
+**set-priority** _alias_ _priority_
+: 设置仓库优先级
+
 **enable-mirror** _alias_
 : 启用仓库镜像
 
@@ -79,6 +82,12 @@ ll-builder repo update myalias https://new-repo.example.com
 
 ```bash
 ll-builder repo set-default myalias
+```
+
+设置仓库优先级：
+
+```bash
+ll-builder repo set-priority myalias 100
 ```
 
 启用仓库镜像：

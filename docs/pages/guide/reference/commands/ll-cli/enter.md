@@ -1,8 +1,8 @@
-% ll-cli-exec 1
+% ll-cli-enter 1
 
 ## NAME
 
-ll\-cli\-exec - 在当前运行的沙盒中执行命令
+ll\-cli\-enter - 在当前运行的沙盒中执行命令
 
 ## SYNOPSIS
 

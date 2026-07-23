@@ -20,8 +20,8 @@ The `ll-builder push` command is used to push Linyaps packages to the Linyaps re
 **--help-all**
 : Expand all help
 
-**-f, --file** _file_ [./linglong.yaml]
-: Path to the linglong.yaml file
+**-f, --file** _FILE_
+: Specify a project configuration file under the current working directory. If omitted, `linglong.<current-architecture>.yaml` is preferred when it exists; otherwise, `linglong.yaml` is used
 
 **--repo-url** _url_
 : Remote repository URL

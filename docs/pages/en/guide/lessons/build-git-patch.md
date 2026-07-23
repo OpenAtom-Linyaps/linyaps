@@ -37,9 +37,9 @@ sources:
     commit: 4b4003d0fdc09a257a0841ad965b22533ed87a0d
 ```
 
-![commit-1](images/4-commit-1.png)
+![commit-1](https://free.picui.cn/free/2025/11/24/69234bfdc83a8.png)
 
-![commit-2](images/4-commit-2.png)
+![commit-2](https://free.picui.cn/free/2025/11/24/69234bfe1fce8.png)
 
 As can be seen from the figures, the filled commit values all match the commits when the corresponding tags were generated.
 
@@ -85,7 +85,7 @@ For this, we need to learn new knowledge: `git patch` related content. The git p
 
 For example, after pulling the `qBittorrent--4.6.7` repository in this case, I need to add a merge related to security vulnerabilities:
 https://github.com/qbittorrent/qBittorrent/pull/21364
-![commit-3](images/4-commit-3.png)
+![commit-3](https://free.picui.cn/free/2025/11/24/69234bfe54fd8.png)
 
 It should be noted that this submission is based on the `qBittorrent--5.x` version, which means that if I want to fix this vulnerability on `qBittorrent--4.6.7`, I need to manually modify the source code.
 Considering that the main version number of this application maintained in the short term will not be iterated to `5.x`, and with the possibility of other security vulnerabilities occurring and reducing the labor cost of repeatedly modifying the source code, I adopted the method of adding patches to assist me in modifying the source code.
@@ -160,18 +160,18 @@ After obtaining the Linyaps application installation package, I tried to experie
 
 ### deepin 23
 
-![deepin 23](images/4-test-1.png)
+![deepin 23](https://free.picui.cn/free/2025/11/24/69234b2085f30.png)
 
 ### openKylin 2.0
 
-![openKylin 2.0](images/4-test-2.png)
+![openKylin 2.0](https://free.picui.cn/free/2025/11/24/69234b206d8c6.png)
 
 ### Ubuntu 2404
 
-![Ubuntu 2404](images/4-test-3.png)
+![Ubuntu 2404](https://free.picui.cn/free/2025/11/24/69234b200d09f.png)
 
 ### OpenEuler 2403
 
-![OpenEuler 2403](images/4-test-4.png)
+![OpenEuler 2403](https://free.picui.cn/free/2025/11/24/69234b205dca1.png)
 
 So far, it is sufficient to prove that `Qt5-based open source application--qBittorrent` can achieve one-stop pulling of project source code and compilation into executable binary files after adding custom patches and modifying build rules, and can also be used on other distributions!

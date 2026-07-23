@@ -144,13 +144,13 @@ ziggy@linyaps23:/media/szbt/Data/linyaps-testing-toolchains$ ./linyaps-auto-scre
 
 9. After the script starts, minimize the terminal window and keep it running in the background. The testing suite will judge the application installation status and desktop file existence status to `start` and `close` application windows
 
-![test-1](images/5-test-1.png)
-![test-2](images/5-test-2.png)
+![test-1](https://free.picui.cn/free/2025/11/24/69234cbd2353f.png)
+![test-2](https://free.picui.cn/free/2025/11/24/69234cbd95b5d.png)
 
 10. After meeting the running requirements, the suite will simulate launching the program through the desktop file and judge the window after about 30s delay, checking whether the application generates a new window after running
 
-![test-3](images/5-test-3.png)
-![test-4](images/5-test-4.png)
+![test-3](https://free.picui.cn/free/2025/11/24/69234cbdbb020.png)
+![test-4](https://free.picui.cn/free/2025/11/24/69234cbdd6788.png)
 
 11. After the application runs successfully, it will complete screenshot, icon detection & acquisition operations in sequence
 
@@ -179,6 +179,6 @@ res/
         └── 3.png
 ```
 
-![test-5](images/5-test-5.png)
+![test-5](https://free.picui.cn/free/2025/11/24/69234cbd6ca3d.png)
 
 So far, we have successfully completed compatibility testing of Linyaps applications produced in previous lessons through the Linyaps Application Automated Testing Suite

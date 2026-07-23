@@ -20,6 +20,12 @@ ll\-cli\-upgrade - 升级应用程序或运行时
 **--help-all**
 : 展开所有帮助
 
+**--deps-only**
+: 仅升级指定应用的依赖项，与 `--app-only` 互斥
+
+**--app-only**
+: 仅升级指定应用本身，与 `--deps-only` 互斥
+
 ## POSITIONAL ARGUMENTS
 
 **APP** _TEXT_

@@ -20,11 +20,11 @@ ll-builder-export - 导出如意玲珑 layer 或 UAB 文件
 **--help-all**
 : 展开所有帮助
 
-**-f, --file** _file_ [./linglong.yaml]
-: 指定 `linglong.yaml` 配置文件的路径，`linglong.yaml` 文件所在的目录为项目的工作目录
+**-f, --file** _FILE_
+: 指定当前工作目录下的项目配置文件。未指定时优先使用 `linglong.<当前架构>.yaml`，不存在时使用 `linglong.yaml`
 
 **-o, --output** _file_
-: 指定输出文件的路径。对于 UAB，这通常是 `.uab` 文件的完整路径或文件名。对于 layer 这是输出文件名的前缀
+: 指定 UAB 输出文件的路径，与 `--layer` 互斥
 
 **-z, --compressor** _x_
 : 指定压缩算法。支持 `lz4` (UAB 默认), `lzma` (layer 默认), `zstd`
@@ -36,16 +36,16 @@ ll-builder-export - 导出如意玲珑 layer 或 UAB 文件
 : 为导出的 UAB 文件指定自定义加载器 (仅 UAB 模式，与 `--layer` 互斥)
 
 **--layer**
-: **(已弃用)** 导出为 layer 文件格式，而不是 UAB (与 `--icon`, `--loader` 互斥)
+: **(已弃用)** 导出为 layer 文件格式，而不是 UAB；与 `--icon`、`--loader`、`--output`、`--ref` 和 `--modules` 互斥
 
 **--no-develop**
-: 在导出 layer 文件时，不导出 `develop` 模块
+: 在导出 layer 文件时不导出 `develop` 模块，必须与 `--layer` 一起使用
 
 **--ref** _ref_
-: 指定包的引用
+: 指定要导出到 UAB 的包引用，与 `--layer` 互斥
 
 **--modules** _modules_
-: 指定要导出的模块
+: 指定要导出到 UAB 的模块，多个模块用逗号分隔，与 `--layer` 互斥
 
 ## EXAMPLES
 
@@ -73,9 +73,8 @@ ll-builder export --loader /path/to/custom/loader -o my-app-custom-loader.uab
 # 导出 layer 格式，且不包含 develop 模块
 ll-builder export --layer --no-develop
 
-# 导出 layer 格式，并指定输出文件前缀
-ll-builder export --layer -o my-app
-# (会生成 my-app_binary.layer 和 my-app_develop.layer)
+# 导出 layer 格式
+ll-builder export --layer
 ```
 
 ## 进阶说明

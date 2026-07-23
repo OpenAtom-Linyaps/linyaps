@@ -6,11 +6,12 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 # 安装如意玲珑
 
-如意玲珑由三部分组成：
+deepin/UOS 的部分版本已经预装如意玲珑。请先执行 `ll-cli --version`；如果命令可用，可以直接继续[快速上手](./quick-start.md)。其他 Linux 发行版请按本页对应小节配置软件源并安装。普通用户至少需要安装 `linglong-bin`，构建应用的开发者还需要安装 `linglong-builder`。
 
-- ll-builder 用来构建和调试如意玲珑应用，由 linglong-builder 提供。
-- ll-box 沙箱容器，由 linglong-box 提供。
-- ll-cli 管理和运行如意玲珑应用，由 linglong-bin 提供。
+如意玲珑命令行工具主要包括：
+
+- `ll-cli` 管理和运行如意玲珑应用，由 `linglong-bin` 提供。
+- `ll-builder` 用来构建和调试如意玲珑应用，由 `linglong-builder` 提供。
 
 ## 仓库使用说明
 
@@ -30,7 +31,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 :::tip
 
-以下安装步骤均使用基于release仓库，如果想体验还未发布的功能，将仓库地址中的release更改为latest，即可安装基于master分支构建的预览版
+以下安装步骤均使用 release 仓库，以获得当前稳定版本。如果想体验还未发布的功能，将仓库地址中的 `release` 改为 `latest`，即可安装基于主分支构建的预览版。预览版可能包含未完成的功能，不建议用于生产环境。
 
 :::
 

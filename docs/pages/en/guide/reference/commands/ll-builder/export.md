@@ -20,11 +20,11 @@ The `ll-builder export` command is used to export applications from the local bu
 **--help-all**
 : Expand all help
 
-**-f, --file** _file_ [./linglong.yaml]
-: Specify the path to the `linglong.yaml` configuration file. The directory where the `linglong.yaml` file is located is the project's working directory
+**-f, --file** _FILE_
+: Specify a project configuration file under the current working directory. If omitted, `linglong.<current-architecture>.yaml` is preferred when it exists; otherwise, `linglong.yaml` is used
 
 **-o, --output** _file_
-: Specify the path for the output file. For UAB, this is usually the full path or filename of the `.uab` file. For layer, this is the prefix for the output filename
+: Specify the output path for the UAB file; mutually exclusive with `--layer`
 
 **-z, --compressor** _x_
 : Specify the compression algorithm. Supports `lz4` (UAB default), `lzma` (layer default), `zstd`
@@ -36,16 +36,16 @@ The `ll-builder export` command is used to export applications from the local bu
 : Specify a custom loader for the exported UAB file (UAB mode only, mutually exclusive with `--layer`)
 
 **--layer**
-: **(Deprecated)** Export as layer file format instead of UAB (mutually exclusive with `--icon`, `--loader`)
+: **(Deprecated)** Export in layer format instead of UAB; mutually exclusive with `--icon`, `--loader`, `--output`, `--ref`, and `--modules`
 
 **--no-develop**
-: Do not export the `develop` module when exporting layer files
+: Do not export the `develop` module with layer files; must be used with `--layer`
 
 **--ref** _ref_
-: Specify package reference
+: Specify the package reference to export to UAB; mutually exclusive with `--layer`
 
 **--modules** _modules_
-: Specify modules to export
+: Specify modules to export to UAB, separated by commas; mutually exclusive with `--layer`
 
 ## EXAMPLES
 
@@ -73,9 +73,8 @@ ll-builder export --loader /path/to/custom/loader -o my-app-custom-loader.uab
 # Export layer format without develop module
 ll-builder export --layer --no-develop
 
-# Export layer format and specify output file prefix
-ll-builder export --layer -o my-app
-# (Will generate my-app_binary.layer and my-app_develop.layer)
+# Export layer format
+ll-builder export --layer
 ```
 
 ## Advanced Notes

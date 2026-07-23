@@ -10,7 +10,7 @@ ll\-cli\-uninstall - Uninstall applications or runtimes
 
 ## DESCRIPTION
 
-The `ll-cli uninstall` command can uninstall Linyaps applications. This command is used to remove installed applications from the system.
+The `ll-cli uninstall` command removes installed Linyaps applications. Base and Runtime packages are protected from uninstallation by default; use `ll-cli prune` to remove unused Base and Runtime packages.
 
 ## OPTIONS
 
@@ -22,6 +22,9 @@ The `ll-cli uninstall` command can uninstall Linyaps applications. This command 
 
 **--module** _MODULE_
 : Uninstall specified module
+
+**--force**
+: Force the uninstallation of a Base or Runtime
 
 ## POSITIONAL ARGUMENTS
 
@@ -44,9 +47,17 @@ Uninstall main:org.deepin.calculator/5.7.21.4/x86_64 success:100%
 
 After the command executes successfully, the Linyaps application will be removed from the system.
 
+Force-uninstall a specific Runtime version:
+
+```bash
+ll-cli uninstall main:org.deepin.runtime.dtk/23.1.0/x86_64 --force
+```
+
+Forced uninstallation can break applications that still depend on the Runtime. Use `ll-cli prune` instead when cleaning up a Runtime that no application uses.
+
 ## SEE ALSO
 
-**[ll-cli(1)](./ll-cli.md)**, **[ll-cli-install(1)](./install.md)**, **[ll-cli-list(1)](./list.md)**
+**[ll-cli(1)](./ll-cli.md)**, **[ll-cli-install(1)](./install.md)**, **[ll-cli-list(1)](./list.md)**, **[ll-cli-prune(1)](./prune.md)**
 
 ## HISTORY
 

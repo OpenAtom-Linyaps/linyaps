@@ -1,8 +1,8 @@
 # 如意玲珑文档索引
 
-本文档记录所有文档的索引信息。
+本文档记录中文 `guide` 目录当前纳入导航大纲的文档。文档按读者角色分为“入门指南”“用户手册”和“开发者手册”；文件仍按内容类型存放。
 
-## 目录结构概览
+## 目录结构
 
 ```txt
 docs/pages/guide/
@@ -10,176 +10,68 @@ docs/pages/guide/
 ├── debug/                       # 调试相关文档
 ├── desktop-integration/         # 桌面集成文档
 ├── extra/                       # 额外文档
-├── lessons/                     # 教程和示例
+├── lessons/                     # 精选课程
 ├── linyaps-devel/               # 开发者文档
 ├── publishing/                  # 发布相关文档
 ├── reference/                   # 参考文档
 ├── start/                       # 入门指南
-└── tips-and-faq/               # 提示和常见问题
+└── tips-and-faq/               # 提示与常见问题
 ```
 
-## 详细文档索引
+## 文档大纲
 
-### 入门指南 (start/)
+### 入门指南
 
-| 文档名称               | 文件路径                        | 描述                                                      |
-| ---------------------- | ------------------------------- | --------------------------------------------------------- |
-| 概述                   | `start/whatis.md`               | 介绍如意玲珑的基本概念、优势以及与其他包管理工具的对比    |
-| 安装如意玲珑           | `start/install.md`              | 详细说明在不同Linux发行版上安装如意玲珑的步骤             |
-| 构建第一个如意玲珑应用 | `start/build_your_first_app.md` | 从源码构建如意玲珑包的完整教程，包含计算器示例和deb包转换 |
-| 发布说明               | `start/release_note.md`         | 版本发布说明                                              |
+入门指南默认展开，帮助读者快速了解和使用如意玲珑。
 
-### 构建相关 (building/)
+| 文档名称 | 文件路径 | 内容概要 |
+| --- | --- | --- |
+| 概述 | `start/whatis.md` | 介绍如意玲珑的用途、特点、适用场景及文档阅读方式 |
+| 快速上手 | `start/quick-start.md` | 说明如何准备 `ll-cli`，以及搜索、安装和运行应用 |
+| 发布说明 | `start/release_note.md` | 汇总各版本的新功能、问题修复和其他重要变更 |
 
-| 文档名称         | 文件路径                           | 描述                                                       |
-| ---------------- | ---------------------------------- | ---------------------------------------------------------- |
-| 玲珑应用打包规范 | `building/linyaps_package_spec.md` | 详细的应用程序打包规范，包含命名规范、构建配置、目录结构等 |
-| 构建配置文件简介 | `building/manifests.md`            | `linglong.yaml` 配置文件的详细说明和字段定义               |
-| 模块管理         | `building/modules.md`              | 模块拆分和管理说明                                         |
-| 多架构支持       | `building/multiarch.md`            | 多架构构建支持说明                                         |
-| 演示示例         | `building/demo.md`                 | 构建演示示例                                               |
+### 用户手册
 
-### 调试相关 (debug/)
+用户手册默认折叠，介绍如意玲珑的安装、应用管理和高级运行管理功能。
 
-| 文档名称         | 文件路径         | 描述                                                        |
-| ---------------- | ---------------- | ----------------------------------------------------------- |
-| 调试如意玲珑应用 | `debug/debug.md` | 使用gdb、vscode、Qt Creator等工具调试如意玲珑应用的详细指南 |
+| 层级 | 文档名称 | 文件路径 | 内容概要 |
+| --- | --- | --- | --- |
+| 基础 | 安装如意玲珑 | `start/install.md` | 介绍仓库类型及在不同 Linux 发行版中的安装方法 |
+| 基础 | 管理应用 | `start/manage-apps-with-cli.md` | 介绍应用的安装、查看、升级、卸载及运行进程管理 |
+| 高级 | 运行配置 | `extra/runtime_config.md` | 说明运行配置的位置、加载顺序、完整示例和字段含义 |
+| 高级 | 管理运行时 | `start/manage-runtimes-with-cli.md` | 介绍 Runtime 的查看、清理、依赖分析、覆盖和强制卸载 |
+| 高级 | 仓库管理 | `publishing/repositories.md` | 说明仓库配置以及添加、修改优先级和删除等管理操作 |
 
-### 桌面集成 (desktop-integration/)
+### 开发者手册
 
-| 文档名称     | 路径                            | 描述                           |
-| ------------ | ------------------------------- | ------------------------------ |
-| 桌面集成说明 | `desktop-integration/README.md` | 如意玲珑与桌面环境集成相关文档 |
+开发者手册默认折叠，覆盖应用构建、发布、桌面集成和高级开发主题。
 
-### 教程和示例 (lessons/)
+| 层级 | 文档名称 | 文件路径 | 内容概要 |
+| --- | --- | --- | --- |
+| 基础 | 构建第一个如意玲珑应用 | `start/build_your_first_app.md` | 通过配置元数据、依赖、源码和构建脚本完成首个应用构建 |
+| 基础 | ll-builder 工作流 | `start/ll-builder-workflow.md` | 介绍项目创建、配置、构建、调试验证、导出和推送流程 |
+| 构建示例 | 构建配置解读 | `building/demo.md` | 逐段解读 `linglong.yaml` 的软件包信息、依赖、源码和构建配置 |
+| 构建示例 | 从 deb 包转换 | `building/deb_conversion.md` | 演示如何解包 deb、整理文件、补充依赖并生成如意玲珑应用 |
+| 基础 | UAB 格式发布 | `publishing/uab.md` | 介绍使用 UAB 格式发布应用的相关内容，正文待补充 |
+| 基础 | 桌面集成指南 | `desktop-integration/README.md` | 介绍通过 Portals 等机制集成桌面环境，正文待补充 |
+| 高级 | 调试如意玲珑应用 | `debug/debug.md` | 介绍调试示例的准备，以及使用 gdb 调试应用的方法 |
+| 高级 | 模块管理 | `building/modules.md` | 说明模块拆分、模块文件、保留模块及模块的构建和安装 |
+| 高级 | 多架构支持 | `building/multiarch.md` | 介绍支持的架构、项目配置、构建命令和交叉构建方法 |
 
-| 文档名称       | 文件路径                          | 描述                         |
-| -------------- | --------------------------------- | ---------------------------- |
-| 基础笔记       | `lessons/basic-notes.md`          | 基础使用笔记                 |
-| 构建Git补丁    | `lessons/build-git-patch.md`      | Git补丁构建教程              |
-| 环境内构建     | `lessons/build-in-env.md`         | 在特定环境中构建的教程       |
-| 离线源码构建   | `lessons/build-offline-src.md`    | 离线环境下的源码构建教程     |
-| 使用工具链测试 | `lessons/test-with-toolchains.md` | 使用不同工具链进行测试的教程 |
+## 推荐阅读顺序
 
-### 开发者文档 (linyaps-devel/)
+### 普通用户
 
-| 文档名称   | 文件路径                  | 描述                     |
-| ---------- | ------------------------- | ------------------------ |
-| 开发者文档 | `linyaps-devel/README.md` | 开发者相关文档（待补充） |
+1. 概述
+2. 快速上手
+3. 安装如意玲珑
+4. 管理应用
+5. 按需阅读运行配置、管理运行时和仓库管理
 
-### 发布相关 (publishing/)
+### 应用开发者
 
-| 文档名称    | 文件路径                     | 描述                                       |
-| ----------- | ---------------------------- | ------------------------------------------ |
-| 仓库管理    | `publishing/repositories.md` | 如意玲珑仓库的基本概念、管理和发布更新说明 |
-| UAB格式发布 | `publishing/uab.md`          | UAB格式发布说明                            |
-| 镜像站点    | `publishing/mirrors.md`      | 镜像站点配置和管理                         |
-
-### 额外文档 (extra/)
-
-| 文档名称   | 文件路径                 | 描述           |
-| ---------- | ------------------------ | -------------- |
-| 单元测试   | `extra/unit-testing.md`  | 单元测试文档   |
-| 包格式     | `extra/bundle-format.md` | 包格式文档     |
-| 系统助手   | `extra/system-helper.md` | 系统助手文档   |
-| 应用配置   | `extra/app-conf.md`      | 应用配置文档   |
-| 根文件系统 | `extra/rootfs.md`        | 根文件系统文档 |
-| 参考文档   | `extra/ref.md`           | 参考文档       |
-| UAB构建    | `extra/uab-build.md`     | UAB构建文档    |
-
-### 参考文档 (reference/)
-
-#### 基础概念
-
-| 文档名称     | 文件路径                      | 描述                                    |
-| ------------ | ----------------------------- | --------------------------------------- |
-| 基础概念介绍 | `reference/basic-concepts.md` | Base、Runtime、沙箱、仓库等核心概念介绍 |
-| 运行时组件   | `reference/runtime.md`        | 运行时组件的详细介绍                    |
-| 驱动程序     | `reference/driver.md`         | 驱动程序相关文档                        |
-
-#### 命令参考
-
-**ll-appimage-convert 命令**
-
-- `reference/commands/ll-appimage-convert/ll-appimage-convert.md` - 主命令说明
-- `reference/commands/ll-appimage-convert/ll-appimage-convert-convert.md` - convert子命令
-
-**ll-builder 命令**
-
-- `reference/commands/ll-builder/ll-builder.md` - 主命令说明
-- `reference/commands/ll-builder/build.md` - build子命令
-- `reference/commands/ll-builder/create.md` - create子命令
-- `reference/commands/ll-builder/export.md` - export子命令
-- `reference/commands/ll-builder/extract.md` - extract子命令
-- `reference/commands/ll-builder/import.md` - import子命令
-- `reference/commands/ll-builder/list.md` - list子命令
-- `reference/commands/ll-builder/push.md` - push子命令
-- `reference/commands/ll-builder/remove.md` - remove子命令
-- `reference/commands/ll-builder/repo.md` - repo子命令
-- `reference/commands/ll-builder/run.md` - run子命令
-
-**ll-cli 命令**
-
-- `reference/commands/ll-cli/ll-cli.md` - 主命令说明
-- `reference/commands/ll-cli/content.md` - content子命令
-- `reference/commands/ll-cli/enter.md` - enter子命令
-- `reference/commands/ll-cli/info.md` - info子命令
-- `reference/commands/ll-cli/install.md` - install子命令
-- `reference/commands/ll-cli/kill.md` - kill子命令
-- `reference/commands/ll-cli/list.md` - list子命令
-- `reference/commands/ll-cli/prune.md` - prune子命令
-- `reference/commands/ll-cli/ps.md` - ps子命令
-- `reference/commands/ll-cli/repo.md` - repo子命令
-- `reference/commands/ll-cli/run.md` - run子命令
-- `reference/commands/ll-cli/search.md` - search子命令
-- `reference/commands/ll-cli/uninstall.md` - uninstall子命令
-- `reference/commands/ll-cli/upgrade.md` - upgrade子命令
-
-**ll-pica 命令**
-
-- `reference/commands/ll-pica/ll-pica.md` - 主命令说明
-- `reference/commands/ll-pica/install.md` - install子命令
-- `reference/commands/ll-pica/ll-pica-adep.md` - adep子命令
-- `reference/commands/ll-pica/ll-pica-convert.md` - convert子命令
-- `reference/commands/ll-pica/ll-pica-init.md` - init子命令
-
-**ll-pica-flatpak 命令**
-
-- `reference/commands/ll-pica-flatpak/ll-pica-flatpak.md` - 主命令说明
-- `reference/commands/ll-pica-flatpak/ll-pica-flatpak-convert.md` - convert子命令
-
-### 提示和常见问题 (tips-and-faq/)
-
-| 文档名称            | 文件路径                         | 描述                     |
-| ------------------- | -------------------------------- | ------------------------ |
-| 常见问题            | `tips-and-faq/faq.md`            | 常见运行时问题及解决方案 |
-| ll-builder 常见问题 | `tips-and-faq/ll-builder-faq.md` | 构建工具常见问题         |
-| ll-pica 常见问题    | `tips-and-faq/ll-pica-faq.md`    | 包转换工具常见问题       |
-
-## 快速导航
-
-### 新手入门
-
-1. 阅读 [`start/whatis.md`](start/whatis.md) 了解基本概念
-2. 按照 [`start/install.md`](start/install.md) 安装如意玲珑
-3. 跟随 [`start/build_your_first_app.md`](start/build_your_first_app.md) 构建第一个应用
-
-### 开发者参考
-
-- 打包规范: [`building/linyaps_package_spec.md`](building/linyaps_package_spec.md)
-- 配置文件: [`building/manifests.md`](building/manifests.md)
-- 调试指南: [`debug/debug.md`](debug/debug.md)
-
-### 命令参考
-
-- 构建工具: [`reference/commands/ll-builder/`](reference/commands/ll-builder/ll-builder.md) 目录
-- 命令行工具: [`reference/commands/ll-cli/`](reference/commands/ll-cli/ll-cli.md) 目录
-- deb包转换工具: [`reference/commands/ll-pica/`](reference/commands/ll-pica/ll-pica.md) 目录
-- AppImage转换工具: [`reference/commands/ll-appimage-convert/`](reference/commands/ll-appimage-convert/ll-appimage-convert.md) 目录
-- Flatpak转换工具: [`reference/commands/ll-pica-flatpak/`](reference/commands/ll-pica-flatpak/ll-pica-flatpak.md) 目录
-
-### 常见问题
-
-- 运行时问题: [`tips-and-faq/faq.md`](tips-and-faq/faq.md)
-- 构建问题: [`tips-and-faq/ll-builder-faq.md`](tips-and-faq/ll-builder-faq.md)
-- 转换问题: [`tips-and-faq/ll-pica-faq.md`](tips-and-faq/ll-pica-faq.md)
+1. 概述
+2. 构建第一个如意玲珑应用
+3. ll-builder 工作流
+4. 阅读构建配置解读或从 deb 包转换
+5. 按需阅读发布、桌面集成和高级开发文档

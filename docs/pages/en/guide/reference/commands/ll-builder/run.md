@@ -20,11 +20,14 @@ The `ll-builder run` command reads the runtime environment information related t
 **--help-all**
 : Expand all help
 
-**-f, --file** _file_ [./linglong.yaml]
-: Path to the linglong.yaml file
+**-f, --file** _FILE_
+: Specify a project configuration file under the current working directory. If omitted, `linglong.<current-architecture>.yaml` is preferred when it exists; otherwise, `linglong.yaml` is used
 
 **--modules** _modules_...
 : Run specified modules. For example: --modules binary,develop
+
+**--workdir** _PATH_
+: Specify the application's working directory
 
 **--debug**
 : Run in debug mode (enable development modules)

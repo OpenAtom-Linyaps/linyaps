@@ -20,8 +20,8 @@ ll-builder-push - 推送如意玲珑应用到远程仓库
 **--help-all**
 : 展开所有帮助
 
-**-f, --file** _file_ [./linglong.yaml]
-: linglong.yaml 的文件路径
+**-f, --file** _FILE_
+: 指定当前工作目录下的项目配置文件。未指定时优先使用 `linglong.<当前架构>.yaml`，不存在时使用 `linglong.yaml`
 
 **--repo-url** _url_
 : 远程仓库 URL

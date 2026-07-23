@@ -6,7 +6,7 @@ ll-builder - 如意玲珑应用构建工具
 
 ## SYNOPSIS
 
-**ll-builder** _subcommand_
+**ll-builder** [*options*] _subcommand_
 
 ## DESCRIPTION
 
@@ -16,6 +16,17 @@ ll-builder 是为应用开发者提供的一款构建如意玲珑应用的工具
 
 - 在独立容器内构建应用
 - 完整的应用构建、测试、导出和发布流程
+
+## OPTIONS
+
+**-h, --help**
+: 打印帮助信息并退出
+
+**--help-all**
+: 展开所有帮助
+
+**--version**
+: 显示版本信息
 
 ## COMMANDS
 

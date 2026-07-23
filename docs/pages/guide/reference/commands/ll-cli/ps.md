@@ -20,6 +20,9 @@ ll\-cli\-ps - 列出正在运行的应用程序
 **--help-all**
 : 展开所有帮助
 
+**--no-truncated**
+: 完整显示容器 ID，不进行截断
+
 ## EXAMPLES
 
 查看正在运行的应用，运行 `ll-cli ps` 命令：

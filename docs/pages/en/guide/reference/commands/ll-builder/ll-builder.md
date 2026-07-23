@@ -6,7 +6,7 @@ ll-builder - Linyaps application build tool
 
 ## SYNOPSIS
 
-**ll-builder** _subcommand_
+**ll-builder** [*options*] _subcommand_
 
 ## DESCRIPTION
 
@@ -16,6 +16,17 @@ Main features include:
 
 - Building applications in isolated containers
 - Complete application build, test, export, and publish workflow
+
+## OPTIONS
+
+**-h, --help**
+: Print help information and exit
+
+**--help-all**
+: Expand all help
+
+**--version**
+: Display version information
 
 ## COMMANDS
 

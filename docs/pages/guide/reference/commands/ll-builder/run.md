@@ -20,11 +20,14 @@ ll-builder-run - 运行构建好的应用程序
 **--help-all**
 : 展开所有帮助
 
-**-f, --file** _file_ [./linglong.yaml]
-: linglong.yaml 的文件路径
+**-f, --file** _FILE_
+: 指定当前工作目录下的项目配置文件。未指定时优先使用 `linglong.<当前架构>.yaml`，不存在时使用 `linglong.yaml`
 
 **--modules** _modules_...
 : 运行指定模块。例如: --modules binary,develop
+
+**--workdir** _PATH_
+: 指定应用程序运行的工作目录
 
 **--debug**
 : 在调试模式下运行（启用开发模块）

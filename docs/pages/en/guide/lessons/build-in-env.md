@@ -77,7 +77,7 @@ szbt@szbt-linyaps23:/media/szbt/Data/ll-build/QT/qBittorrent-git$ tar -xvf qBitt
 ```
 
 4. After the source code is extracted, according to [Basic Steps for Linyaps Application Building], we should correctly choose which compilation system/tools to use before compiling any source code. We observe the `qBittorrent-4.6.7` source code directory and can see that it has a `CMakeLists.txt` file, which is a `CMake` build project.
-   ![1](images/2-1.png)
+   ![1](https://free.picui.cn/free/2025/11/24/69234a3575f6f.png)
 
 5. Since the [qBittorrent INSTALL](https://github.com/qbittorrent/qBittorrent/blob/release-4.6.7/INSTALL) briefly describes the runtime libraries mainly used by this project, we can compare this document to determine which runtime libraries exist in the `base` and `runtime` provided by Linyaps and which runtime libraries are not provided. For runtime libraries that are not officially provided, we may need to pre-compile the necessary third-party libraries before compiling the main program.
 
@@ -93,7 +93,7 @@ Since the runtime libraries described in the document are few, we can directly p
 
 7. As can be seen from the figure, an error occurred here that prevented the configuration from being completed. We see that `pkg-config` has an error: the `libtorrent-rasterbar>=1.2.19` library cannot meet the conditions:
 
-![error-1](images/2-error-1.png)
+![error-1](https://free.picui.cn/free/2025/11/24/69234a35d4640.png)
 
 ```
 -- Found PkgConfig: /bin/pkg-config (found version "1.8.1")
@@ -112,7 +112,7 @@ Based on this error, we can basically determine that the library is missing, so 
 
 9. After the source code is extracted, according to [Basic Steps for Linyaps Application Building], we should correctly choose which compilation system/tools to use before compiling any source code. We observe the `libtorrent-rasterbar-2.0.9` source code directory and can see that it has a `CMakeLists.txt` file, which is a `CMake` build project.
 
-![2](images/2-2.png)
+![2](https://free.picui.cn/free/2025/11/24/69234a35a84bb.png)
 
 10. We enter the source code directory through the `Linyaps Container Operation` window. In order to avoid interference with the source directory as much as possible, I create a new `build` directory here for compilation. After entering the `build` directory, we enter CMake-related configuration parameters to configure the build project.
     According to [Linyaps Application Directory Structure Specification], we assign the value of `DCMAKE_INSTALL_PREFIX` to `$PREFIX`. Finally, I executed the following operations locally:
@@ -134,6 +134,6 @@ After the process ends, we find the binary executable file of this project in th
 
 It seems that because it is not directly started through the container, there is a problem that the runtime library cannot be found. Since the reported library is also in $PREFIX, we directly use the variable `LD_LIBRARY_PATH` to specify the dynamic runtime library search path
 
-![test](images/2-test.png)
+![test](https://free.picui.cn/free/2025/11/24/69234a367aecf.png)
 
 So far, it is sufficient to prove that `Qt5-based open source application--qBittorrent` can be successfully compiled and run in the `Linyaps` application container!

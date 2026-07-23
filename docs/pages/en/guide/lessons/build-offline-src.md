@@ -207,18 +207,18 @@ After obtaining the Linyaps application installation package, I tried to experie
 
 ### deepin 23
 
-![deepin 23](images/3-test-1.png)
+![deepin 23](https://free.picui.cn/free/2025/11/24/69234b2085f30.png)
 
 ### openKylin 2.0
 
-![openKylin 2.0](images/3-test-2.png)
+![openKylin 2.0](https://free.picui.cn/free/2025/11/24/69234b206d8c6.png)
 
 ### Ubuntu 2404
 
-![Ubuntu 2404](images/3-test-3.png)
+![Ubuntu 2404](https://free.picui.cn/free/2025/11/24/69234b200d09f.png)
 
 ### OpenEuler 2403
 
-![OpenEuler 2403](images/3-test-4.png)
+![OpenEuler 2403](https://free.picui.cn/free/2025/11/24/69234b205dca1.png)
 
 So far, it is sufficient to prove that the "Qt5-based open source application--qBittorrent" can be successfully built and run in third-party distributions that support the "Linyaps" application solution!

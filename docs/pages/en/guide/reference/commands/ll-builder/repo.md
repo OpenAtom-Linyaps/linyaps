@@ -37,6 +37,9 @@ The `ll-builder repo` command is used to display and manage Linyaps repositories
 **set-default** _alias_
 : Set default repository name
 
+**set-priority** _alias_ _priority_
+: Set repository priority
+
 **enable-mirror** _alias_
 : Enable repository mirror
 
@@ -79,6 +82,12 @@ Set default repository:
 
 ```bash
 ll-builder repo set-default myalias
+```
+
+Set repository priority:
+
+```bash
+ll-builder repo set-priority myalias 100
 ```
 
 Enable repository mirror:

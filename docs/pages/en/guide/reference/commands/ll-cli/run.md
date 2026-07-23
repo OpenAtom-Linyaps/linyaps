@@ -12,6 +12,8 @@ ll\-cli\-run - Run applications
 
 The `ll-cli run` command can start a Linyaps application. This command supports running applications by name, or executing commands in the container instead of running the application.
 
+Advanced users can use the [`ll-cli` runtime configuration](../../../extra/runtime_config.md) to persist environment variables, mounts, devices, and instances globally or for one application.
+
 ## OPTIONS
 
 **-h, --help**
@@ -35,8 +37,41 @@ The `ll-cli run` command can start a Linyaps application. This command supports 
 **--runtime** _REF_
 : Specify the runtime used for application execution
 
+**--workdir** _PATH_
+: Specify the application's working directory
+
 **--extensions** _REF_...
 : Specify extensions used for application execution (multiple extensions separated by commas)
+
+**--enable-xdp**, **--disable-xdp**
+: Enable or disable xdg-desktop-portal integration in the sandbox; if both are specified, the last option takes effect
+
+**--enable-pipewire**
+: Mount the PipeWire socket in the sandbox
+
+**--cdi-spec-dir** _DIR_...
+: Specify CDI specification directories, defaulting to `/etc/cdi,/var/run/cdi`; separate multiple directories with commas
+
+**--device** _DEVICE_...
+: Add CDI devices, separated by commas
+
+**--device-mode** _MODE_...
+: Specify device modes; `passthru` is currently supported. Separate multiple modes with commas
+
+**--instance** _NAME_
+: Specify a container instance name to identify or reuse an instance
+
+**--debug**
+: Start the application with gdbserver
+
+**--debug-listen** _ADDR_ [*:2345*]
+: Specify the gdbserver listen address; must be used with `--debug`
+
+**--debug-debuginfod** _URLS_
+: Specify debuginfod URLs for debugging; must be used with `--debug`
+
+**--debug-symbol-dir** _DIR_
+: Specify the directory from which GDB loads debug symbols; must be used with `--debug`
 
 ## POSITIONAL ARGUMENTS
 
@@ -64,7 +99,7 @@ ll-cli run org.deepin.demo -- bash -x /path/to/bash/script
 
 ## SEE ALSO
 
-**[ll-cli(1)](./ll-cli.md)**, **[ll-cli-ps(1)](./ps.md)**, **[ll-cli-exec(1)](./enter.md)**
+**[ll-cli(1)](./ll-cli.md)**, **[ll-cli-ps(1)](./ps.md)**, **[ll-cli-enter(1)](./enter.md)**
 
 ## HISTORY
 

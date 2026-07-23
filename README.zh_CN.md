@@ -146,100 +146,41 @@ ll-cli run cn.org.linyaps.demo
 
 ## :memo: 文档导航
 
-### 命令行工具
-
-- [介绍](./docs/pages/guide/reference/commands/ll-cli/ll-cli.md)
-- [安装](./docs/pages/guide/reference/commands/ll-cli/install.md)
-- [运行](./docs/pages/guide/reference/commands/ll-cli/run.md)
-- [卸载](./docs/pages/guide/reference/commands/ll-cli/uninstall.md)
-- [升级](./docs/pages/guide/reference/commands/ll-cli/upgrade.md)
-- [列表](./docs/pages/guide/reference/commands/ll-cli/list.md)
-- [清理](./docs/pages/guide/reference/commands/ll-cli/prune.md)
-- [进入](./docs/pages/guide/reference/commands/ll-cli/enter.md)
-- [内容](./docs/pages/guide/reference/commands/ll-cli/content.md)
-- [信息](./docs/pages/guide/reference/commands/ll-cli/info.md)
-- [进程](./docs/pages/guide/reference/commands/ll-cli/ps.md)
-- [终止](./docs/pages/guide/reference/commands/ll-cli/kill.md)
-- [搜索](./docs/pages/guide/reference/commands/ll-cli/search.md)
-
-### 构建工具
-
-- [介绍](./docs/pages/guide/reference/commands/ll-builder/ll-builder.md)
-- [演示](./docs/pages/guide/building/demo.md)
-- [创建](./docs/pages/guide/reference/commands/ll-builder/create.md)
-- [运行](./docs/pages/guide/reference/commands/ll-builder/run.md)
-- [推送](./docs/pages/guide/reference/commands/ll-builder/push.md)
-- [导出](./docs/pages/guide/reference/commands/ll-builder/export.md)
-- [构建](./docs/pages/guide/reference/commands/ll-builder/build.md)
-- [提取](./docs/pages/guide/reference/commands/ll-builder/extract.md)
-- [导入](./docs/pages/guide/reference/commands/ll-builder/import.md)
-- [列表](./docs/pages/guide/reference/commands/ll-builder/list.md)
-- [删除](./docs/pages/guide/reference/commands/ll-builder/remove.md)
-- [仓库](./docs/pages/guide/reference/commands/ll-builder/repo.md)
-
-### 包转换工具
-
-#### deb 包转换
-
-- [介绍](./docs/pages/guide/reference/commands/ll-pica/ll-pica.md)
-- [初始化](./docs/pages/guide/reference/commands/ll-pica/ll-pica-init.md)
-- [转换](./docs/pages/guide/reference/commands/ll-pica/ll-pica-convert.md)
-- [依赖](./docs/pages/guide/reference/commands/ll-pica/ll-pica-adep.md)
-
-#### AppImage 包转换
-
-- [介绍](./docs/pages/guide/reference/commands/ll-appimage-convert/ll-appimage-convert.md)
-- [转换](./docs/pages/guide/reference/commands/ll-appimage-convert/ll-appimage-convert-convert.md)
-
-#### Flatpak 包转换
-
-- [介绍](./docs/pages/guide/reference/commands/ll-pica-flatpak/ll-pica-flatpak.md)
-- [转换](./docs/pages/guide/reference/commands/ll-pica-flatpak/ll-pica-flatpak-convert.md)
-
-### 调试
-
-- [调试指南](./docs/pages/guide/debug/debug.md)
-
-### 常见问题
-
-- [运行相关常见问题](./docs/pages/guide/tips-and-faq/faq.md)
-- [如意玲珑构建工具常见问题](./docs/pages/guide/tips-and-faq/ll-builder-faq.md)
-- [如意玲珑转换工具常见问题](./docs/pages/guide/tips-and-faq/ll-pica-faq.md)
-
-## :book: 学习和参考
-
 ### 入门指南
 
-- [概述](./docs/pages/guide/start/whatis.md) - 如意玲珑基本概念介绍
-- [安装指南](./docs/pages/guide/start/install.md) - 详细安装说明
-- [构建第一个应用](./docs/pages/guide/start/build_your_first_app.md) - 初学者完整教程
+- [概述](./docs/pages/guide/start/whatis.md) - 介绍如意玲珑的用途、特点和适用场景
+- [快速上手](./docs/pages/guide/start/quick-start.md) - 准备 ll-cli，搜索、安装和运行应用
+- [发布说明](./docs/pages/guide/start/release_note.md) - 各版本的新功能、问题修复和重要变更
 
-### 构建和打包
+### 用户手册
 
-- [包规范](./docs/pages/guide/building/linyaps_package_spec.md) - 详细打包标准
-- [构建配置](./docs/pages/guide/building/manifests.md) - 理解 linglong.yaml
-- [模块管理](./docs/pages/guide/building/modules.md) - 模块拆分和管理
-- [多架构支持](./docs/pages/guide/building/multiarch.md) - 多架构构建
-- [演示示例](./docs/pages/guide/building/demo.md) - 实际构建演示
+- [安装如意玲珑](./docs/pages/guide/start/install.md) - 不同 Linux 发行版的安装方法
+- [管理应用](./docs/pages/guide/start/manage-apps-with-cli.md) - 应用的安装、查看、升级、卸载和进程管理
 
-### 参考文档
+#### 高级
 
-- [基本概念](./docs/pages/guide/reference/basic-concepts.md) - 核心概念和术语
-- [运行时组件](./docs/pages/guide/reference/runtime.md) - 运行时系统详情
-- [驱动文档](./docs/pages/guide/reference/driver.md) - 驱动相关信息
+- [运行配置](./docs/pages/guide/extra/runtime_config.md) - 运行配置的加载顺序、示例和字段说明
+- [管理运行时](./docs/pages/guide/start/manage-runtimes-with-cli.md) - Runtime 的查看、清理、依赖分析和强制操作
+- [仓库管理](./docs/pages/guide/publishing/repositories.md) - 仓库配置、优先级和日常管理操作
 
-### 高级主题
+### 开发者手册
 
-- [桌面集成](./docs/pages/guide/desktop-integration/README.md) - 桌面环境集成
-- [单元测试](./docs/pages/guide/extra/unit-testing.md) - 测试框架和实践
-- [包格式](./docs/pages/guide/extra/bundle-format.md) - 包格式规范
-- [系统助手](./docs/pages/guide/extra/system-helper.md) - 系统工具文档
-- [应用配置](./docs/pages/guide/extra/app-conf.md) - 应用配置指南
-- [根文件系统](./docs/pages/guide/extra/rootfs.md) - 根文件系统管理
-- [UAB 构建](./docs/pages/guide/extra/uab-build.md) - UAB 格式构建
-- [仓库管理](./docs/pages/guide/publishing/repositories.md) - 仓库操作
-- [UAB 发布](./docs/pages/guide/publishing/uab.md) - UAB 格式发布
-- [镜像站点](./docs/pages/guide/publishing/mirrors.md) - 镜像配置
+- [构建第一个如意玲珑应用](./docs/pages/guide/start/build_your_first_app.md) - 从配置项目到完成首个应用构建
+- [ll-builder 工作流](./docs/pages/guide/start/ll-builder-workflow.md) - 项目创建、构建、调试验证、导出和推送流程
+
+#### 构建示例
+
+- [构建配置解读](./docs/pages/guide/building/demo.md) - 逐段解读 linglong.yaml 构建配置
+- [从 deb 包转换](./docs/pages/guide/building/deb_conversion.md) - 将 deb 包转换为如意玲珑应用
+
+- [UAB 格式发布](./docs/pages/guide/publishing/uab.md) - 使用 UAB 格式发布应用
+- [桌面集成指南](./docs/pages/guide/desktop-integration/README.md) - 如意玲珑与桌面环境的集成方式
+
+#### 高级
+
+- [调试如意玲珑应用](./docs/pages/guide/debug/debug.md) - 使用 gdb 调试如意玲珑应用
+- [模块管理](./docs/pages/guide/building/modules.md) - 模块拆分、构建和安装
+- [多架构支持](./docs/pages/guide/building/multiarch.md) - 多架构配置、构建和交叉构建
 
 ### 系列教程
 

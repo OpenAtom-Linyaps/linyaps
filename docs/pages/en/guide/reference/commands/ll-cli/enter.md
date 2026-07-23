@@ -1,8 +1,8 @@
-% ll-cli-exec 1
+% ll-cli-enter 1
 
 ## NAME
 
-ll\-cli\-exec - Execute commands in the currently running sandbox
+ll\-cli\-enter - Execute commands in the currently running sandbox
 
 ## SYNOPSIS
 

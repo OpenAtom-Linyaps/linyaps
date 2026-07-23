@@ -20,8 +20,8 @@ ll-builder-build - 构建如意玲珑项目
 **--help-all**
 : 展开所有帮助
 
-**-f, --file** _file_ [./linglong.yaml]
-: linglong.yaml 的文件路径
+**-f, --file** _FILE_
+: 指定当前工作目录下的项目配置文件。未指定时优先使用 `linglong.<当前架构>.yaml`，不存在时使用 `linglong.yaml`
 
 **--offline**
 : 仅使用本地文件。这意味着将设置 --skip-fetch-source 和 --skip-pull-depend
@@ -60,10 +60,10 @@ ll-builder-build - 构建如意玲珑项目
 ll-builder build
 ```
 
-或使用 `--file` 参数指定配置文件路径：
+或使用 `--file` 参数指定当前项目目录下的配置文件：
 
 ```bash
-ll-builder build --file /path/to/linglong.yaml
+ll-builder build --file linglong.custom.yaml
 ```
 
 进入容器执行命令而不是构建应用：

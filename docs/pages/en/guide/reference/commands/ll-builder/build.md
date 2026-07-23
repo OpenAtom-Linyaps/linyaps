@@ -20,8 +20,8 @@ The `ll-builder build` command is used to build Linyaps applications. After the 
 **--help-all**
 : Expand all help
 
-**-f, --file** _file_ [./linglong.yaml]
-: Path to the linglong.yaml file
+**-f, --file** _FILE_
+: Specify a project configuration file under the current working directory. If omitted, `linglong.<current-architecture>.yaml` is preferred when it exists; otherwise, `linglong.yaml` is used
 
 **--offline**
 : Use only local files. This implies --skip-fetch-source and --skip-pull-depend
@@ -60,10 +60,10 @@ Build application in project root directory (where linglong.yaml file is located
 ll-builder build
 ```
 
-Or use the `--file` parameter to specify the configuration file path:
+Or use `--file` to specify a configuration file under the current project directory:
 
 ```bash
-ll-builder build --file /path/to/linglong.yaml
+ll-builder build --file linglong.custom.yaml
 ```
 
 Enter container to execute commands instead of building application:

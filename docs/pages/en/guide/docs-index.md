@@ -1,187 +1,77 @@
 # Linyaps Documentation Index
 
-This document provides a comprehensive index of all documentation files in the Linyaps project.
+This document lists the documents currently included in the navigation outline of the English `guide` directory. Documents are grouped by audience into Getting Started, User Guide, and Developer Guide, while files remain organized by content type.
 
-## Directory Structure Overview
+## Directory Structure
 
-```
+```txt
 docs/pages/en/guide/
-├── building/                    # Build-related documentation
-├── debug/                       # Debug-related documentation
+├── building/                    # Build documentation
+├── debug/                       # Debugging documentation
 ├── desktop-integration/         # Desktop integration documentation
 ├── extra/                       # Additional documentation
-├── lessons/                     # Tutorials and examples
+├── lessons/                     # Selected tutorials
 ├── linyaps-devel/               # Developer documentation
-├── publishing/                  # Publishing-related documentation
+├── publishing/                  # Publishing documentation
 ├── reference/                   # Reference documentation
-├── start/                       # Getting started guide
-└── tips-and-faq/                # Tips and FAQ
+├── start/                       # Getting started
+└── tips-and-faq/                # Tips and frequently asked questions
 ```
 
-## Detailed Documentation Index
+## Documentation Outline
 
-### Getting Started (start/)
+### Getting Started
 
-| Document Name                | File Path                       | Description                                                                                                          |
-| ---------------------------- | ------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| Overview                     | `start/whatis.md`               | Introduction to Linyaps basic concepts, advantages, and comparison with other package management tools               |
-| Install Linyaps              | `start/install.md`              | Detailed steps for installing Linyaps on different Linux distributions                                               |
-| Build Your First Linyaps App | `start/build_your_first_app.md` | Complete tutorial for building Linyaps packages from source, including calculator example and deb package conversion |
-| ll-pica Installation         | `start/ll-pica-install.md`      | Installation guide for ll-pica package conversion tool                                                               |
-| Release Notes                | `start/release_note.md`         | Version release notes and changelog                                                                                  |
+Getting Started is expanded by default and helps readers quickly understand and use Linyaps.
 
-### Build Related (building/)
+| Document | File | Summary |
+| --- | --- | --- |
+| Overview | `start/whatis.md` | Introduces Linyaps, its features and use cases, and how to use the documentation |
+| Quick Start | `start/quick-start.md` | Explains how to prepare `ll-cli`, then search for, install, and run applications |
+| Release Notes | `start/release_note.md` | Summarizes new features, bug fixes, and other important changes in each release |
 
-| Document Name                         | File Path                          | Description                                                                                                                 |
-| ------------------------------------- | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| Linyaps Package Specification         | `building/linyaps_package_spec.md` | Detailed application packaging specifications, including naming conventions, build configuration, directory structure, etc. |
-| Build Configuration File Introduction | `building/manifests.md`            | Detailed explanation and field definitions for `linglong.yaml` configuration file                                           |
-| Module Management                     | `building/modules.md`              | Module splitting and management instructions                                                                                |
-| Multi-architecture Support            | `building/multiarch.md`            | Multi-architecture build support instructions                                                                               |
-| Demo Example                          | `building/demo.md`                 | Build demonstration example with practical use cases                                                                        |
+### User Guide
 
-### Debug Related (debug/)
+The User Guide is collapsed by default and covers installation, application management, and advanced runtime management.
 
-| Document Name              | File Path        | Description                                                                                     |
-| -------------------------- | ---------------- | ----------------------------------------------------------------------------------------------- |
-| Debug Linyaps Applications | `debug/debug.md` | Detailed guide for debugging Linyaps applications using gdb, vscode, Qt Creator and other tools |
+| Level | Document | File | Summary |
+| --- | --- | --- | --- |
+| Basic | Install Linyaps | `start/install.md` | Introduces repository types and installation on different Linux distributions |
+| Basic | Manage Applications | `start/manage-apps-with-cli.md` | Covers installing, inspecting, upgrading, uninstalling, and managing application processes |
+| Advanced | Runtime Configuration | `extra/runtime_config.md` | Describes configuration locations, load order, a complete example, and field meanings |
+| Advanced | Manage Runtimes | `start/manage-runtimes-with-cli.md` | Covers runtime inspection, cleanup, dependency analysis, overrides, and forced removal |
+| Advanced | Repository Management | `publishing/repositories.md` | Explains repository configuration and operations such as adding, reprioritizing, and deleting repositories |
 
-### Desktop Integration (desktop-integration/)
+### Developer Guide
 
-| Document Name                    | File Path                       | Description                                                       |
-| -------------------------------- | ------------------------------- | ----------------------------------------------------------------- |
-| Desktop Integration Instructions | `desktop-integration/README.md` | Linyaps and desktop environment integration related documentation |
+The Developer Guide is collapsed by default and covers application building, publishing, desktop integration, and advanced development topics.
 
-### Tutorials and Examples (lessons/)
+| Level | Document | File | Summary |
+| --- | --- | --- | --- |
+| Basic | Build Your First Linyaps Application | `start/build_your_first_app.md` | Completes a first application build by configuring metadata, dependencies, source code, and build scripts |
+| Basic | ll-builder Workflow | `start/ll-builder-workflow.md` | Introduces project creation, configuration, building, debugging, validation, exporting, and pushing |
+| Build Example | Understanding the Build Configuration | `building/demo.md` | Walks through the package, dependency, source, and build sections of `linglong.yaml` |
+| Build Example | Convert a deb Package | `building/deb_conversion.md` | Shows how to unpack a deb, organize files, add dependencies, and generate a Linyaps application |
+| Basic | Publish in UAB Format | `publishing/uab.md` | Introduces publishing in UAB format; content is yet to be added |
+| Basic | Desktop Integration Guide | `desktop-integration/README.md` | Introduces desktop integration through Portals and related mechanisms; content is yet to be added |
+| Advanced | Debug a Linyaps Application | `debug/debug.md` | Introduces preparation of the debugging example and debugging an application with GDB |
+| Advanced | Module Management | `building/modules.md` | Explains module splitting, module files, retained modules, and building and installing modules |
+| Advanced | Multi-architecture Support | `building/multiarch.md` | Introduces supported architectures, project configuration, build commands, and cross-building |
 
-| Document Name        | File Path                         | Description                                               |
-| -------------------- | --------------------------------- | --------------------------------------------------------- |
-| Basic Notes          | `lessons/basic-notes.md`          | Basic usage notes and best practices                      |
-| Build Git Patches    | `lessons/build-git-patch.md`      | Git patch building tutorial for version management        |
-| Build in Environment | `lessons/build-in-env.md`         | Tutorial for building in specific environments            |
-| Build Offline Source | `lessons/build-offline-src.md`    | Tutorial for building source code in offline environments |
-| Test with Toolchains | `lessons/test-with-toolchains.md` | Tutorial for testing with different toolchains            |
+## Recommended Reading Order
 
-### Developer Documentation (linyaps-devel/)
+### General Users
 
-| Document Name           | File Path                 | Description                                        |
-| ----------------------- | ------------------------- | -------------------------------------------------- |
-| Developer Documentation | `linyaps-devel/README.md` | Developer-related documentation and API references |
+1. Overview
+2. Quick Start
+3. Install Linyaps
+4. Manage Applications
+5. Read Runtime Configuration, Manage Runtimes, and Repository Management as needed
 
-### Publishing Related (publishing/)
+### Application Developers
 
-| Document Name         | File Path                    | Description                                                                      |
-| --------------------- | ---------------------------- | -------------------------------------------------------------------------------- |
-| Repository Management | `publishing/repositories.md` | Linyaps repository basic concepts, management and publishing update instructions |
-| UAB Format Publishing | `publishing/uab.md`          | UAB format publishing instructions and best practices                            |
-| Mirrors               | `publishing/mirrors.md`      | Mirror site configuration and management                                         |
-
-### Additional Documentation (extra/)
-
-| Document Name             | File Path                | Description                                       |
-| ------------------------- | ------------------------ | ------------------------------------------------- |
-| Unit Testing              | `extra/unit-testing.md`  | Unit testing documentation and testing frameworks |
-| Bundle Format             | `extra/bundle-format.md` | Bundle format documentation and specifications    |
-| System Helper             | `extra/system-helper.md` | System helper documentation and utilities         |
-| Application Configuration | `extra/app-conf.md`      | Application configuration documentation           |
-| Root Filesystem           | `extra/rootfs.md`        | Root filesystem documentation and management      |
-| Reference                 | `extra/ref.md`           | Reference documentation and quick lookup guides   |
-| UAB Build                 | `extra/uab-build.md`     | UAB build documentation and build process         |
-| README                    | `extra/README.md`        | Additional documentation overview                 |
-
-### Reference Documentation (reference/)
-
-#### Basic Concepts
-
-| Document Name               | File Path                     | Description                                                                 |
-| --------------------------- | ----------------------------- | --------------------------------------------------------------------------- |
-| Basic Concepts Introduction | `reference/basic-concepts.md` | Introduction to core concepts like Base, Runtime, sandbox, repository, etc. |
-| Runtime Component           | `reference/runtime.md`        | Detailed introduction to Runtime component                                  |
-| Driver                      | `reference/driver.md`         | Driver-related documentation and specifications                             |
-
-#### Command Reference
-
-**ll-appimage-convert Command**
-
-- `reference/commands/ll-appimage-convert/ll-appimage-convert.md` - Main command description
-- `reference/commands/ll-appimage-convert/ll-appimage-convert-convert.md` - convert subcommand
-
-**ll-builder Command**
-
-- `reference/commands/ll-builder/ll-builder.md` - Main command description
-- `reference/commands/ll-builder/build.md` - build subcommand
-- `reference/commands/ll-builder/create.md` - create subcommand
-- `reference/commands/ll-builder/export.md` - export subcommand
-- `reference/commands/ll-builder/extract.md` - extract subcommand
-- `reference/commands/ll-builder/import.md` - import subcommand
-- `reference/commands/ll-builder/list.md` - list subcommand
-- `reference/commands/ll-builder/push.md` - push subcommand
-- `reference/commands/ll-builder/remove.md` - remove subcommand
-- `reference/commands/ll-builder/repo.md` - repo subcommand
-- `reference/commands/ll-builder/run.md` - run subcommand
-
-**ll-cli Command**
-
-- `reference/commands/ll-cli/ll-cli.md` - Main command description
-- `reference/commands/ll-cli/content.md` - content subcommand
-- `reference/commands/ll-cli/enter.md` - enter subcommand
-- `reference/commands/ll-cli/info.md` - info subcommand
-- `reference/commands/ll-cli/install.md` - install subcommand
-- `reference/commands/ll-cli/kill.md` - kill subcommand
-- `reference/commands/ll-cli/list.md` - list subcommand
-- `reference/commands/ll-cli/prune.md` - prune subcommand
-- `reference/commands/ll-cli/ps.md` - ps subcommand
-- `reference/commands/ll-cli/repo.md` - repo subcommand
-- `reference/commands/ll-cli/run.md` - run subcommand
-- `reference/commands/ll-cli/search.md` - search subcommand
-- `reference/commands/ll-cli/uninstall.md` - uninstall subcommand
-- `reference/commands/ll-cli/upgrade.md` - upgrade subcommand
-
-**ll-pica Command**
-
-- `reference/commands/ll-pica/ll-pica.md` - Main command description
-- `reference/commands/ll-pica/install.md` - install subcommand
-- `reference/commands/ll-pica/ll-pica-adep.md` - adep subcommand
-- `reference/commands/ll-pica/ll-pica-convert.md` - convert subcommand
-- `reference/commands/ll-pica/ll-pica-init.md` - init subcommand
-
-**ll-pica-flatpak Command**
-
-- `reference/commands/ll-pica-flatpak/ll-pica-flatpak.md` - Main command description
-- `reference/commands/ll-pica-flatpak/ll-pica-flatpak-convert.md` - convert subcommand
-
-### Tips and FAQ (tips-and-faq/)
-
-| Document Name  | File Path                        | Description                                  |
-| -------------- | -------------------------------- | -------------------------------------------- |
-| Common Issues  | `tips-and-faq/faq.md`            | Common runtime issues and solutions          |
-| ll-builder FAQ | `tips-and-faq/ll-builder-faq.md` | Build tool common issues and troubleshooting |
-| ll-pica FAQ    | `tips-and-faq/ll-pica-faq.md`    | Package conversion tool common issues        |
-
-## Quick Navigation
-
-### Getting Started for New Users
-
-1. Read [`start/whatis.md`](start/whatis.md) to understand basic concepts
-2. Follow [`start/install.md`](start/install.md) to install Linyaps
-3. Follow [`start/build_your_first_app.md`](start/build_your_first_app.md) to build your first application
-
-### Developer Reference
-
-- Package Specification: [`building/linyaps_package_spec.md`](building/linyaps_package_spec.md)
-- Configuration File: [`building/manifests.md`](building/manifests.md)
-- Debug Guide: [`debug/debug.md`](debug/debug.md)
-
-### Command Reference
-
-- Build Tool: [`reference/commands/ll-builder/`](reference/commands/ll-builder/ll-builder.md) directory
-- CLI Tool: [`reference/commands/ll-cli/`](reference/commands/ll-cli/ll-cli.md) directory
-- Deb Package Conversion Tool: [`reference/commands/ll-pica/`](reference/commands/ll-pica/ll-pica.md) directory
-- AppImage Conversion Tool: [`reference/commands/ll-appimage-convert/`](reference/commands/ll-appimage-convert/ll-appimage-convert.md) directory
-- Flatpak Conversion Tool: [`reference/commands/ll-pica-flatpak/`](reference/commands/ll-pica-flatpak/ll-pica-flatpak.md) directory
-
-### Common Issues
-
-- Runtime Issues: [`tips-and-faq/faq.md`](tips-and-faq/faq.md)
-- Build Issues: [`tips-and-faq/ll-builder-faq.md`](tips-and-faq/ll-builder-faq.md)
-- Conversion Issues: [`tips-and-faq/ll-pica-faq.md`](tips-and-faq/ll-pica-faq.md)
+1. Overview
+2. Build Your First Linyaps Application
+3. ll-builder Workflow
+4. Read Understanding the Build Configuration or Convert a deb Package
+5. Read publishing, desktop integration, and advanced development documentation as needed

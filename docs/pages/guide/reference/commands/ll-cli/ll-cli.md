@@ -32,19 +32,23 @@ ll-cli 是一个包管理器前端，用于管理如意玲珑应用的安装、�
 **--no-dbus**
 : 使用点对点DBus，仅在DBus守护进程不可用时使用（内部使用）
 
+**--no-progress**
+: 不输出进度信息
+
 ## COMMANDS
 
 | Command   | Man Page                              | Description                                     |
 | --------- | ------------------------------------- | ----------------------------------------------- |
 | run       | [ll-cli-run(1)](./run.md)             | 运行应用程序                                    |
 | ps        | [ll-cli-ps(1)](./ps.md)               | 列出正在运行的应用程序                          |
-| enter     | [ll-cli-exec(1)](./enter.md)          | 进入应用程序正在运行的命名空间                  |
+| enter     | [ll-cli-enter(1)](./enter.md)         | 进入应用程序正在运行的命名空间                  |
 | kill      | [ll-cli-kill(1)](./kill.md)           | 停止运行的应用程序                              |
 | prune     | [ll-cli-prune(1)](./prune.md)         | 移除未使用的最小系统或运行时                    |
 | install   | [ll-cli-install(1)](./install.md)     | 安装应用程序或运行时                            |
 | uninstall | [ll-cli-uninstall(1)](./uninstall.md) | 卸载应用程序或运行时                            |
 | upgrade   | [ll-cli-upgrade(1)](./upgrade.md)     | 升级应用程序或运行时                            |
 | list      | [ll-cli-list(1)](./list.md)           | 列出已安装的应用程序或运行时                    |
+| analyze   | [ll-cli-analyze(1)](./analyze.md)     | 分析已安装应用的磁盘占用和依赖关系              |
 | info      | [ll-cli-info(1)](./info.md)           | 显示已安装的应用程序或运行时的信息              |
 | content   | [ll-cli-content(1)](./content.md)     | 显示已安装应用导出的文件                        |
 | search    | [ll-cli-search(1)](./search.md)       | 从远程仓库中搜索包含指定关键词的应用程序/运行时 |
@@ -52,7 +56,7 @@ ll-cli 是一个包管理器前端，用于管理如意玲珑应用的安装、�
 
 ## SEE ALSO
 
-**[ll-cli-run(1)](./run.md)**, **[ll-cli-ps(1)](./ps.md)**, **[ll-cli-exec(1)](./enter.md)**, **[ll-cli-kill(1)](./kill.md)**, **[ll-cli-prune(1)](./prune.md)**, **[ll-cli-install(1)](./install.md)**, **[ll-cli-uninstall(1)](./uninstall.md)**, **[ll-cli-upgrade(1)](./upgrade.md)**, **[ll-cli-list(1)](./list.md)**, **[ll-cli-info(1)](./info.md)**, **[ll-cli-content(1)](./content.md)**, **[ll-cli-search(1)](./search.md)**, **[ll-cli-repo(1)](./repo.md)**
+**[ll-cli-run(1)](./run.md)**, **[ll-cli-ps(1)](./ps.md)**, **[ll-cli-enter(1)](./enter.md)**, **[ll-cli-kill(1)](./kill.md)**, **[ll-cli-prune(1)](./prune.md)**, **[ll-cli-install(1)](./install.md)**, **[ll-cli-uninstall(1)](./uninstall.md)**, **[ll-cli-upgrade(1)](./upgrade.md)**, **[ll-cli-list(1)](./list.md)**, **[ll-cli-analyze(1)](./analyze.md)**, **[ll-cli-info(1)](./info.md)**, **[ll-cli-content(1)](./content.md)**, **[ll-cli-search(1)](./search.md)**, **[ll-cli-repo(1)](./repo.md)**
 
 ## HISTORY
 

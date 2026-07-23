@@ -6,11 +6,11 @@ ll-builder-remove - Remove built applications
 
 ## SYNOPSIS
 
-**ll-builder remove** [*options*] _package_
+**ll-builder remove** [*options*] _ref_...
 
 ## DESCRIPTION
 
-The `ll-builder remove` command is used to remove built applications.
+The `ll-builder remove` command removes one or more build results from the local build repository. Specify each result using the complete ref shown by `ll-builder list`.
 
 ## OPTIONS
 
@@ -23,15 +23,15 @@ The `ll-builder remove` command is used to remove built applications.
 **--no-clean-objects**
 : Do not clean object files before removing application
 
-**package** (required)
-: Application package name to be removed
+**REF** _TEXT_... _REQUIRED_
+: Complete package reference to remove; multiple references may be specified. The format is `channel:id/version/arch`
 
 ## EXAMPLES
 
-Remove specified application:
+Remove a build result:
 
 ```bash
-ll-builder remove org.deepin.demo
+ll-builder remove main:org.deepin.demo/0.0.0.1/x86_64
 ```
 
 ## SEE ALSO

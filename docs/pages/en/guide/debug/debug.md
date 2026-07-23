@@ -6,41 +6,146 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 # Debugging Linyaps Applications
 
-The following tutorial uses the org.deepin.demo project mentioned in the "Building Tools" section as an example.
+This tutorial uses an example project with the application ID `org.deepin.demo`. Prepare and build the application as shown below before debugging it. For your own application, replace the application ID, executable, and project paths with the corresponding values.
 
-We place the project in `/tmp`. When following the tutorial, **pay attention to replace the paths**.
+## Prepare the Debugging Example
+
+### Create the Project
+
+Create `org.deepin.demo` under `/tmp`:
+
+```bash
+cd /tmp
+ll-builder create org.deepin.demo
+cd org.deepin.demo
+```
+
+`ll-builder create` generates `/tmp/org.deepin.demo/linglong.yaml`. The remaining commands use that directory as the project root.
+
+### Configure linglong.yaml
+
+Change the generated `linglong.yaml` to:
+
+```yaml
+version: "1"
+
+package:
+  id: org.deepin.demo
+  name: demo
+  kind: app
+  version: 1.0.0.0
+  description: |
+    A simple demo app.
+
+command:
+  - demo
+
+base: org.deepin.base/23.1.0
+runtime: org.deepin.runtime.dtk/23.1.0
+
+sources:
+  - kind: git
+    url: "https://github.com/linuxdeepin/linglong-builder-demo.git"
+    commit: master
+    name: linglong-builder-demo
+
+build: |
+  cd /project/linglong/sources/linglong-builder-demo
+  rm -rf build || true
+  mkdir build
+  cd build
+  qmake PREFIX=${PREFIX} ..
+  make
+  make install
+```
+
+This configuration obtains the qmake example from `linglong-builder-demo` and compiles and installs it in the build container. The application ID, executable name, and debug-symbol paths used below correspond to this configuration.
+
+### Build and Validate
+
+Run these commands under `/tmp/org.deepin.demo`:
+
+```bash
+ll-builder build
+ll-builder run
+```
+
+Begin debugging only after confirming that the application runs normally. If the build fails, fix it first; debugging commands can use only successfully generated artifacts.
 
 ## Debugging with gdb in Terminal
 
 ### Running Application in Debug Environment
 
-In the [Running Compiled Applications](../reference/commands/ll-builder/run.md) section, we already know that using `ll-builder run --exec /bin/bash` can run the compiled application and enter the container terminal. Simply add the `--debug` parameter after `run` to run the container in debug environment and enter it. The main differences between debug environment and non-debug environment are as follows:
+`ll-builder run -- bash` enters the application's runtime container. Add `--debug` to run the container in debug mode. The main differences are:
 
-1. Debug environment uses binary+develop modules of base and runtime, while non-debug environment uses binary modules. The gdb tool is in the develop module of base.
-2. Debug environment uses binary+develop modules of app, while non-debug environment uses binary modules by default (debug symbols are usually saved to develop module).
-3. Debug environment generates linglong/gdbinit file in project directory and mounts it to ~/.gdbinit path in container.
+1. Debug mode uses the binary+develop modules of the Base and Runtime, while normal mode enables only binary. Tools such as GDB are provided by the Base's develop module.
+2. Debug mode uses the App's binary+develop modules, while normal mode uses binary by default. Debug symbols are normally saved in develop.
+3. Debug mode generates `linglong/gdbinit` in the project and mounts it at `~/.gdbinit` in the container.
 
-Please execute `ll-builder run --debug --exec /bin/bash` in project directory to enter debug environment container, then execute `gdb /opt/apps/org.deepin.demo/binary/demo` to start application debugging, which is no different from using command line debugging externally. This is thanks to the debugging linglong/gdbinit file providing initial configuration for `gdb`.
+Run `ll-builder run --debug -- bash` in the project, then start GDB with `gdb /opt/apps/org.deepin.demo/files/bin/demo`. It works like command-line debugging on the host because `linglong/gdbinit` provides the required initial configuration.
 
 ### Debugging Application in Runtime Environment
 
-There are minor differences between debug environment and normal user runtime environment. If you need to debug application directly in runtime environment, you can use `ll-builder run --exec /bin/bash` to enter container, then execute `gdbserver 127.0.0.1:12345 /opt/apps/org.deepin.demo/bin/demo`. gdbserver will use tcp protocol to listen on port 12345 and wait for gdb connection.
+The debug environment differs slightly from a user's normal runtime environment. To debug the installed application in that environment, use `ll-cli run --debug`.
 
-Open another host terminal, execute `gdb` in project directory, and input the following commands line by line:
+First export and install the build, because `ll-cli run` can run only installed applications. In `/tmp/org.deepin.demo`, export a UAB:
+
+```bash
+ll-builder export --ref main:org.deepin.demo/1.0.0.0/<arch> --modules binary,develop
+```
+
+`<arch>` is the target architecture, such as `x86_64`, `arm64`, or `loong64`. Use `ll-builder list` and replace the sample ref with its complete output. Both binary and develop are exported here because debug symbols normally reside in develop. Normal distribution generally ships binary and archives develop for later debugging.
+
+Install the exported UAB:
+
+```bash
+ll-cli install ./org.deepin.demo_1.0.0.0_<arch>_main.uab
+```
+
+Replace `<arch>` or use the generated file name. Then start the application:
+
+```bash
+ll-cli run --debug org.deepin.demo
+```
+
+`--debug` starts the application through gdbserver, listening on port 2345 by default. To choose another address:
+
+```bash
+ll-cli run --debug --debug-listen 127.0.0.1:12345 org.deepin.demo
+```
+
+The terminal displays a message similar to:
+
+```
+Debug mode is enabled. Attach from another terminal with:
+  /tmp/linglong-gdb-30e29611-ed83-4032-bd77-aab8a709802d.sh
+
+Generated gdb attach script:
+------------------------------------------------------------
+#!/bin/sh
+set -- -ex 'target remote localhost:2345' "$@"
+set -- -ex 'set debug-file-directory /usr/lib/debug:/runtime/lib/debug:/opt/apps/org.deepin.demo/files/lib/debug' "$@"
+exec gdb "$@"
+------------------------------------------------------------
+============================================================
+Listening on port 2345
+```
+
+Open another host terminal and run the displayed `/tmp/linglong-gdb-...sh` helper script to connect GDB to gdbserver.
+
+To debug binaries from the Base or Runtime, enable deepin's debuginfod service with `--debug-debuginfod https://debuginfod.deepin.com`. Host GDB must be version 10 or later.
+
+You can now set breakpoints on available symbols. For source-level debugging, set the source substitution path in GDB:
 
 ```txt
 set substitute-path /project /tmp/org.deepin.demo
-set debug-file-directory /tmp/org.deepin.demo/linglong/output/develop/files/lib/debug
-target remote 127.0.0.1:12345
 ```
 
-Next, refer to the tutorial in "Run compiled App", run `bash` in the container through the `ll-builder run` command, and run the application to be debugged through `gdbserver`:
-
-_If runtime environment doesn't have gdbserver command, please check if application uses org.deepin.base as base and try upgrading to latest version of org.deepin.base._
+`/project` is the project path in the build environment and `/tmp/org.deepin.demo` is its host path. Use `info source` to inspect source information.
 
 ## Debugging with gdb in vscode
 
-First install C/C++ extension for vscode. Since vscode runs on host machine, it also needs to provide debugging for Linyaps container application through gdbserver. Similar to previous step, start gdbserver in runtime environment first, then configure launch.json file in vscode. Configuration is as follows:
+First install the C/C++ extension for VS Code. Because VS Code runs on the host, it connects to the application in the Linyaps container through gdbserver. Start it with `ll-cli run --debug --debug-listen 127.0.0.1:12345 org.deepin.demo`, then configure `launch.json`:
 
 ```json
 {
@@ -127,16 +232,16 @@ CONFIG += debug
 
 cmake automatically uses cflags and cxxflags environment variables, so no additional configuration is needed. Other build tools can refer to their documentation.
 
-## Downloading Debug Symbols from Debian Repository
+## Downloading Debug Symbols from a Debian Repository
 
-Since base images don't contain debug symbols, if you need to debug system dependency libraries of applications, you need to manually download debug symbol packages from corresponding Debian repository of base. Specific steps are as follows:
+By default, the debug mode of `ll-cli run` automatically downloads the Base's develop module. If debuginfod is configured, matching symbols are downloaded automatically during debugging. If matching fails, download a debug-symbol package manually from the Debian repository corresponding to the Base:
 
 1. Enter container command line environment using one of the following commands:
 
    ```bash
-   ll-builder run --bash
+   ll-builder run -- bash
    # or
-   ll-cli run $appid --bash
+   ll-cli run $appid -- bash
    ```
 
 2. Check repository address used by base image:

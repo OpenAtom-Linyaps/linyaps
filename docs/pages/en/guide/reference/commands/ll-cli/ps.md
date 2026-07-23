@@ -20,6 +20,9 @@ The `ll-cli ps` command can view running Linyaps applications. This command disp
 **--help-all**
 : Expand all help information
 
+**--no-truncated**
+: Display the complete container ID without truncation
+
 ## EXAMPLES
 
 To view running applications, run the `ll-cli ps` command:

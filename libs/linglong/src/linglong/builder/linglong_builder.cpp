@@ -1558,7 +1558,7 @@ utils::error::Result<void> Builder::exportUAB(const ExportOption &option,
             uabFile = outputFile;
         } else {
             std::error_code ec;
-            uabFile = std::filesystem::canonical(outputFile, ec);
+            uabFile = std::filesystem::weakly_canonical(outputFile, ec);
             if (ec) {
                 return LINGLONG_ERR(fmt::format("failed to get canonical path {}", outputFile), ec);
             }

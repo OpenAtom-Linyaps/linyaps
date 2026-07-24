@@ -62,42 +62,6 @@ std::vector<std::string> transformOldExec(int argc, char **argv) noexcept
     return res;
 }
 
-int lockCheck() noexcept
-{
-    std::error_code ec;
-    constexpr auto lock = "/run/linglong/lock";
-    auto fd = ::open(lock, O_RDONLY);
-    if (fd == -1) {
-        if (errno == ENOENT) {
-            return 0;
-        }
-
-        LogE("failed to open lock {}: {}", lock, linglong::common::error::errorString(errno));
-        return -1;
-    }
-
-    auto closeFd = linglong::utils::finally::finally([fd]() {
-        ::close(fd);
-    });
-
-    struct flock lock_info{ .l_type = F_RDLCK,
-                            .l_whence = SEEK_SET,
-                            .l_start = 0,
-                            .l_len = 0,
-                            .l_pid = 0 };
-
-    if (::fcntl(fd, F_GETLK, &lock_info) == -1) {
-        LogE("failed to get lock {}", lock);
-        return -1;
-    }
-
-    if (lock_info.l_type == F_UNLCK) {
-        return 0;
-    }
-
-    return lock_info.l_pid;
-}
-
 // Validator for string inputs
 CLI::Validator validatorString{
     [](const std::string &parameter) {
@@ -697,27 +661,6 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     // set log level if --verbose flag is set
     if (globalOptions.verbose) {
         linglong::utils::log::setLogLevel(linglong::utils::log::LogLevel::Debug);
-    }
-
-    // check lock
-    while (true) {
-        auto lockOwner = lockCheck();
-        if (lockOwner == -1) {
-            LogE("lock check failed");
-            return -1;
-        }
-
-        if (lockOwner > 0) {
-            std::cerr << "\r\33[K"
-                      << "\033[?25l"
-                      << "repository is being operated by another process, waiting for" << lockOwner
-                      << "\033[?25h" << std::endl;
-            using namespace std::chrono_literals;
-            std::this_thread::sleep_for(1s);
-            continue;
-        }
-
-        break;
     }
 
     // create printer

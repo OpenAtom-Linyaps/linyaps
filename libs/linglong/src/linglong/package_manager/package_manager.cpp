@@ -35,6 +35,7 @@
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/file.h"
 #include "linglong/utils/finally/finally.h"
+#include "linglong/utils/gettext.h"
 #include "linglong/utils/hooks.h"
 #include "linglong/utils/log/log.h"
 #include "linglong/utils/namespace.h"
@@ -1321,19 +1322,29 @@ auto PackageManager::Search(const QVariantMap &parameters) noexcept -> QVariantM
         return toDBusReply(paras);
     }
 
-    auto task =
-      m_search_queue.addPackageTask([this, params = std::move(paras).value()](Task &task) {
+    const auto searchID = paras->id;
+    auto task = m_search_queue.addPackageTask(
+      [this, params = std::move(*paras)](Task &task) {
+          auto &packageTask = dynamic_cast<PackageTask &>(task);
+          task.updateState(api::types::v1::State::Processing,
+                           fmt::format("searching {}", params.id));
           std::map<std::string, std::vector<api::types::v1::PackageInfoV2>> pkgs;
           for (const auto &repoAlias : params.repos) {
+              task.updateStateMessage(fmt::format("searching {} from {}", params.id, repoAlias));
               auto repoRet = this->repo->getRepoByAlias(repoAlias);
               if (!repoRet) {
                   LogW("repo {} not found", repoAlias);
+                  task.sendMessage(fmt::format(_("repo {} not found"), repoAlias));
                   continue;
               }
 
               auto pkgInfosRet = this->repo->searchRemote(params.id, *repoRet);
               if (!pkgInfosRet) {
                   LogW("failed to search remote: {}", pkgInfosRet.error());
+                  task.sendMessage(fmt::format(_("failed to search {} from {}: {}"),
+                                               params.id,
+                                               repoAlias,
+                                               pkgInfosRet.error()));
                   continue;
               }
 
@@ -1344,29 +1355,28 @@ auto PackageManager::Search(const QVariantMap &parameters) noexcept -> QVariantM
               pkgs.emplace(repoRet->alias.value_or(repoRet->name), std::move(*pkgInfosRet));
           }
 
-          Q_EMIT this->SearchFinished(
-            QString::fromStdString(task.taskID()),
+          packageTask.setResult(
             common::serialize::toQVariantMap(api::types::v1::PackageManager1SearchResult{
               .packages = std::move(pkgs),
               .code = 0,
               .message = "",
-              .type = "",
+              .type = "PackageManager1SearchResult",
             }));
-      });
+          task.updateState(api::types::v1::State::Succeed, "search completed");
+      },
+      CallerContext{ connection(), message() });
     if (!task) {
         return toDBusReply(task);
     }
 
     auto &taskRef = task->get();
     taskRef.updateState(linglong::api::types::v1::State::Queued,
-                        fmt::format("search {}", paras->id));
-    auto result = common::serialize::toQVariantMap(api::types::v1::PackageManager1JobInfo{
-      .id = taskRef.taskID(),
+                        fmt::format("waiting to search {}", searchID));
+    return common::serialize::toQVariantMap(api::types::v1::PackageManager1PackageTaskResult{
+      .taskObjectPath = taskRef.taskObjectPath(),
       .code = 0,
-      .message = "",
-      .type = "",
+      .message = fmt::format("{} is waiting to be searched", searchID),
     });
-    return result;
 }
 
 utils::error::Result<void>

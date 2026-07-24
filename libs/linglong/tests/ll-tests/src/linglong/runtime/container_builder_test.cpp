@@ -128,3 +128,51 @@ TEST(RunContainerOptionsTest, ApplyCliRunOptionsOverridesRuntimeConfigPipewireSe
     ASSERT_TRUE(cliResult);
     EXPECT_TRUE(options.isPipewireSocketMountEnabled());
 }
+
+TEST(RunContainerOptionsTest, ApplyRuntimeConfigEnablesAtSpiSocketMount)
+{
+    runtime::RunContainerOptions options;
+
+    api::types::v1::RuntimeConfigure runtimeConfig;
+    runtimeConfig.enableAtspi = true;
+
+    auto result = options.applyRuntimeConfig(runtimeConfig);
+    ASSERT_TRUE(result);
+    EXPECT_TRUE(options.isAtSpiSocketMountEnabled());
+}
+
+TEST(RunContainerOptionsTest, ApplyCliRunOptionsPreservesRuntimeConfigAtSpiSettingByDefault)
+{
+    runtime::RunContainerOptions options;
+
+    api::types::v1::RuntimeConfigure runtimeConfig;
+    runtimeConfig.enableAtspi = true;
+
+    auto runtimeResult = options.applyRuntimeConfig(runtimeConfig);
+    ASSERT_TRUE(runtimeResult);
+    ASSERT_TRUE(options.isAtSpiSocketMountEnabled());
+
+    cli::RunOptions runOptions;
+    auto cliResult = options.applyCliRunOptions(runOptions);
+    ASSERT_TRUE(cliResult);
+    EXPECT_TRUE(options.isAtSpiSocketMountEnabled());
+}
+
+TEST(RunContainerOptionsTest, ApplyCliRunOptionsOverridesRuntimeConfigAtSpiSettingWhenSpecified)
+{
+    runtime::RunContainerOptions options;
+
+    api::types::v1::RuntimeConfigure runtimeConfig;
+    runtimeConfig.enableAtspi = false;
+
+    auto runtimeResult = options.applyRuntimeConfig(runtimeConfig);
+    ASSERT_TRUE(runtimeResult);
+    ASSERT_FALSE(options.isAtSpiSocketMountEnabled());
+
+    cli::RunOptions runOptions;
+    runOptions.enableAtSpiSocketMount = true;
+
+    auto cliResult = options.applyCliRunOptions(runOptions);
+    ASSERT_TRUE(cliResult);
+    EXPECT_TRUE(options.isAtSpiSocketMountEnabled());
+}

@@ -1105,6 +1105,8 @@ $defs:
         type: boolean
       enable_pipewire:
         type: boolean
+      enable_atspi:
+        type: boolean
       mounts:
         type: array
         items:

@@ -92,6 +92,10 @@ RuntimeConfigure MergeRuntimeConfig(const std::vector<RuntimeConfigure> &configs
             result.enablePipewire = config.enablePipewire;
         }
 
+        if (config.enableAtspi.has_value()) {
+            result.enableAtspi = config.enableAtspi;
+        }
+
         if (config.deviceMode) {
             if (!result.deviceMode) {
                 result.deviceMode = config.deviceMode;

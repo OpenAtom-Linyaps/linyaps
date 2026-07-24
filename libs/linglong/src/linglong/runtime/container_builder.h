@@ -55,12 +55,14 @@ struct RunContainerOptions
     [[nodiscard]] auto isDevicePassthruEnabled() const noexcept -> bool;
     [[nodiscard]] auto isXdpDisabled() const noexcept -> bool;
     [[nodiscard]] auto isPipewireSocketMountEnabled() const noexcept -> bool;
+    [[nodiscard]] auto isAtSpiSocketMountEnabled() const noexcept -> bool;
     [[nodiscard]] auto isPrivileged() const noexcept -> bool;
 
     CommonContainerOptions common;
 
     bool disableXdp{ false };
     bool enablePipewireSocketMount{ false };
+    bool enableAtSpiSocketMount{ false };
     bool privileged{ false };
     bool devicePassthru{ false };
     std::map<std::string, std::string> env;

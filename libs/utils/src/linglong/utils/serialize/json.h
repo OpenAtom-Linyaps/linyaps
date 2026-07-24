@@ -10,6 +10,7 @@
 #include "linglong/api/types/v1/Generators.hpp" // IWYU pragma: keep
 #include "linglong/utils/error/error.h"
 #include "nlohmann/json.hpp"
+#include "ocppi/runtime/config/types/Generators.hpp" // IWYU pragma: keep
 
 #include <fmt/format.h>
 

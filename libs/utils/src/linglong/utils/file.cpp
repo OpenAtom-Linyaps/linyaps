@@ -15,6 +15,7 @@
 #include <system_error>
 
 #include <sys/stat.h>
+#include <unistd.h>
 
 namespace linglong::utils {
 

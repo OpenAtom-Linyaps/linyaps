@@ -9,8 +9,10 @@
 #include <sys/ioctl.h>
 
 #include <cstring>
+#include <filesystem>
 
 #include <sys/socket.h>
+#include <sys/un.h>
 #include <unistd.h>
 
 namespace linglong::common::socket {
@@ -137,6 +139,60 @@ tl::expected<void, std::string> sendFdWithPayload(int socketFd, int fd, const st
     }
 
     return {};
+}
+
+tl::expected<int, std::string> createUnixSocket(std::string_view path)
+{
+    if (path.empty()) {
+        return tl::make_unexpected("Path cannot be empty");
+    }
+
+    struct sockaddr_un addr{};
+    addr.sun_family = AF_UNIX;
+    constexpr auto capacity = sizeof(addr.sun_path);
+
+    const bool is_abstract{ (path[0] == '@') };
+    size_t addr_len{ 0 };
+
+    if (is_abstract) {
+        if (path.size() > capacity) {
+            return tl::make_unexpected("Path too long");
+        }
+
+        addr.sun_path[0] = '\0';
+        std::copy(path.begin() + 1, path.end(), addr.sun_path + 1);
+
+        addr_len = offsetof(struct sockaddr_un, sun_path) + path.size();
+    } else {
+        if (path.size() >= capacity) {
+            return tl::make_unexpected("Path too long");
+        }
+
+        std::filesystem::remove(path);
+        std::copy(path.cbegin(), path.cend(), addr.sun_path);
+        addr.sun_path[path.size()] = '\0';
+
+        addr_len = sizeof(struct sockaddr_un);
+    }
+
+    auto fd = ::socket(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0);
+    if (fd < 0) {
+        return tl::make_unexpected("Socket creation failed: " + error::errorString(errno));
+    }
+
+    if (::bind(fd, reinterpret_cast<struct sockaddr *>(&addr), addr_len) < 0) {
+        int err = errno;
+        ::close(fd);
+        return tl::make_unexpected("Bind failed: " + std::string(strerror(err)));
+    }
+
+    if (::listen(fd, SOMAXCONN) < 0) {
+        int err = errno;
+        ::close(fd);
+        return tl::make_unexpected("Listen failed: " + std::string(strerror(err)));
+    }
+
+    return fd;
 }
 
 } // namespace linglong::common::socket

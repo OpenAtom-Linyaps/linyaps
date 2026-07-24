@@ -60,6 +60,7 @@ struct RunContainerOptions
 
     CommonContainerOptions common;
 
+    std::string lockName;
     bool disableXdp{ false };
     bool enablePipewireSocketMount{ false };
     bool enableAtSpiSocketMount{ false };

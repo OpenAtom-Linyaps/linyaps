@@ -21,4 +21,6 @@ tl::expected<SocketData, std::string> recvFdWithPayload(int socketFd, std::size_
 
 tl::expected<void, std::string> sendFdWithPayload(int socketFd, int fd, const std::string &payload);
 
+tl::expected<int, std::string> createUnixSocket(std::string_view path);
+
 } // namespace linglong::common::socket

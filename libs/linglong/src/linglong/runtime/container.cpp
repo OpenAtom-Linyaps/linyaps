@@ -8,23 +8,38 @@
 
 #include "configure.h"
 #include "linglong/common/dir.h"
+#include "linglong/common/error.h"
+#include "linglong/common/helper.h"
+#include "linglong/common/socket.h"
 #include "linglong/runtime/container_builder.h"
 #include "linglong/runtime/overlayfs_driver.h"
 #include "linglong/runtime/run_context.h"
 #include "linglong/utils/bash_command_helper.h"
 #include "linglong/utils/file.h"
+#include "linglong/utils/filelock.h"
+#include "linglong/utils/finally/finally.h"
 #include "linglong/utils/log/log.h"
 #include "linglong/utils/overlayfs.h"
+#include "ocppi/runtime/ExecOption.hpp"
 #include "ocppi/runtime/RunOption.hpp"
 #include "ocppi/runtime/config/types/Generators.hpp"
 
 #include <fmt/format.h>
+#include <sys/epoll.h>
+#include <sys/prctl.h>
+#include <sys/signalfd.h>
+#include <sys/sysmacros.h>
+#include <sys/termios.h>
 
 #include <cassert>
 #include <fstream>
 #include <memory>
 #include <utility>
+#include <variant>
 
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 namespace {
@@ -126,7 +141,7 @@ auto ContainerContext::create(RunContext &context, CreateOptions options)
 {
     LINGLONG_TRACE("create container context");
 
-    const auto &containerID = context.getContainerId();
+    auto containerID = context.getContainerId();
     auto bundleDir = makeBundleDir(containerID, options.bundleSuffix);
     if (!bundleDir) {
         return LINGLONG_ERR("create bundle dir", bundleDir);
@@ -144,14 +159,15 @@ auto ContainerContext::create(RunContext &context, CreateOptions options)
         }
     }
 
-    auto containerContext = std::make_unique<ContainerContext>(containerID,
-                                                               std::move(*bundleDir),
-                                                               std::move(options.appCache));
-
-    return containerContext;
+    auto ret = std::make_unique<ContainerContext>(constract_passkey{},
+                                                  std::move(containerID),
+                                                  std::move(bundleDir).value(),
+                                                  std::move(options.appCache));
+    return ret;
 }
 
-ContainerContext::ContainerContext(std::string containerID,
+ContainerContext::ContainerContext([[maybe_unused]] constract_passkey key,
+                                   std::string containerID,
                                    std::filesystem::path bundleDir,
                                    std::optional<std::filesystem::path> appCache)
     : containerID(std::move(containerID))
@@ -275,7 +291,7 @@ Container::Container(ocppi::runtime::config::types::Config cfg,
 }
 
 utils::error::Result<void> Container::run(const ocppi::runtime::config::types::Process &process,
-                                          ocppi::runtime::RunOption &opt) noexcept
+                                          ocppi::runtime::RunOption opt) noexcept
 {
     LINGLONG_TRACE(fmt::format("run container {}", this->context->getContainerID()));
 
@@ -323,7 +339,7 @@ utils::error::Result<void> Container::run(const ocppi::runtime::config::types::P
         return LINGLONG_ERR("make entrypoint executable", ec);
     }
 
-    auto entrypointPath = "/run/linglong/entrypoint.sh";
+    const auto *entrypointPath = "/run/linglong/entrypoint.sh";
 
     this->cfg.mounts->push_back(ocppi::runtime::config::types::Mount{
       .destination = entrypointPath,
@@ -332,7 +348,7 @@ utils::error::Result<void> Container::run(const ocppi::runtime::config::types::P
       .type = "bind",
     });
 
-    auto cmd = utils::BashCommandHelper::generateExecCommand(entrypointPath);
+    auto cmd = utils::BashCommandHelper::generateInitCommand(entrypointPath);
     this->cfg.process->args = cmd;
     res = utils::writeFile(bundleDir / "config.json", nlohmann::json(this->cfg).dump());
     if (!res) {

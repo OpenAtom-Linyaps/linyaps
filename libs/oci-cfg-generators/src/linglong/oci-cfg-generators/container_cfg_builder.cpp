@@ -362,6 +362,12 @@ utils::error::Result<void> ContainerCfgBuilder::buildXDGRuntime() noexcept
                     *containerXDGRuntimeDir / "pipewire-0",
                     false);
     }
+    if (atSpiMountOption) {
+        bindIfExist(*runMount,
+                    atSpiMountOption->hostSocketPath,
+                    *containerXDGRuntimeDir / "at-spi" / "bus_0",
+                    false);
+    }
 
     return LINGLONG_OK;
 }
@@ -1573,6 +1579,12 @@ ContainerCfgBuilder &
 ContainerCfgBuilder::enablePipewireSocketMount(PipewireMountOption option) noexcept
 {
     pipewireMountOption = std::move(option);
+    return *this;
+}
+
+ContainerCfgBuilder &ContainerCfgBuilder::enableAtSpiSocketMount(AtSpiMountOption option) noexcept
+{
+    atSpiMountOption = std::move(option);
     return *this;
 }
 

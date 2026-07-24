@@ -28,6 +28,11 @@ struct PipewireMountOption
     std::filesystem::path hostSocketPath;
 };
 
+struct AtSpiMountOption
+{
+    std::filesystem::path hostSocketPath;
+};
+
 enum class ANNOTATION {
     APPID,
     BASEDIR,
@@ -145,6 +150,7 @@ public:
 
     ContainerCfgBuilder &enableXDP(XdpOption option) noexcept;
     ContainerCfgBuilder &enablePipewireSocketMount(PipewireMountOption option) noexcept;
+    ContainerCfgBuilder &enableAtSpiSocketMount(AtSpiMountOption option) noexcept;
 
     ContainerCfgBuilder &
       setExtensionMounts(std::vector<ocppi::runtime::config::types::Mount>) noexcept;
@@ -337,6 +343,7 @@ private:
     // this 'mounts' is used internally, distinct from config.mounts
     std::vector<ocppi::runtime::config::types::Mount> mounts;
     std::optional<PipewireMountOption> pipewireMountOption;
+    std::optional<AtSpiMountOption> atSpiMountOption;
 
     std::optional<std::pair<std::filesystem::path, bool>> overlayMerged;
 

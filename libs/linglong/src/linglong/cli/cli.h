@@ -59,6 +59,7 @@ struct RunOptions
     std::vector<std::string> extensions;
     std::optional<bool> disableXdp;
     std::optional<bool> enablePipewireSocketMount;
+    std::optional<bool> enableAtSpiSocketMount;
     bool privileged{ false };
     std::vector<std::string> capsAdd;
     std::vector<std::string> cdiSpecDir = { "/etc/cdi", "/var/run/cdi" };

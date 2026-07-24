@@ -791,6 +791,7 @@ void Cli::onTaskEvent(const QString &event, const QVariantMap &data)
             return;
         }
 
+        printer.clearLine();
         printer.printMessage(message.toString().toStdString());
         return;
     }
@@ -931,6 +932,42 @@ void Cli::printOnTaskFailed(const QVariantMap &result)
 
 void Cli::printOnTaskSuccess(const QVariantMap &result)
 {
+    if (taskState.taskType == TaskType::Search) {
+        auto parsed =
+          common::serialize::fromQVariantMap<api::types::v1::PackageManager1SearchResult>(result);
+        if (!parsed) {
+            taskState.state = api::types::v1::State::Failed;
+            this->printer.printErr(parsed.error());
+            return;
+        }
+
+        auto allPackages =
+          std::move(parsed->packages)
+            .value_or(std::map<std::string, std::vector<api::types::v1::PackageInfoV2>>{});
+        const auto &options = std::get<SearchOptions>(taskState.params);
+        if (!options.showDevel) {
+            for (auto &entry : allPackages) {
+                auto &packages = entry.second;
+                packages.erase(std::remove_if(packages.begin(),
+                                              packages.end(),
+                                              [](const api::types::v1::PackageInfoV2 &package) {
+                                                  return package.packageInfoV2Module == "develop";
+                                              }),
+                               packages.end());
+            }
+        }
+
+        if (!options.type.empty()) {
+            filterPackageInfosByType(allPackages, options.type);
+        }
+        if (!options.showAllVersion) {
+            filterPackageInfosByVersion(allPackages);
+        }
+
+        this->printer.printSearchResult(std::move(allPackages));
+        return;
+    }
+
     std::string message;
     const auto resultType = result.value(QStringLiteral("type")).toString();
     if (resultType.isEmpty()) {
@@ -1935,100 +1972,23 @@ int Cli::search(const SearchOptions &options)
         }
     }
 
-    std::optional<QString> pendingJobID;
-
-    QEventLoop loop;
     auto pkgMan = this->getPkgMan();
     if (!pkgMan) {
         this->printer.printErr(pkgMan.error());
         return -1;
     }
 
-    connect(
-      *pkgMan,
-      &api::dbus::v1::PackageManager::SearchFinished,
-      [&pendingJobID, this, &loop, &options](const QString &jobID, const QVariantMap &data) {
-          LINGLONG_TRACE("process search result");
-          // Note: once an error occurs, remember to return after exiting the loop.
-          if (!pendingJobID || *pendingJobID != jobID) {
-              return;
-          }
-          auto result =
-            common::serialize::fromQVariantMap<api::types::v1::PackageManager1SearchResult>(data);
-          if (!result) {
-              this->printer.printErr(result.error());
-              loop.exit(-1);
-              return;
-          }
-          // Note: should check return code of PackageManager1SearchResult
-          auto resultCode = static_cast<utils::error::ErrorCode>(result->code);
-          if (resultCode != utils::error::ErrorCode::Success) {
-              if (resultCode == utils::error::ErrorCode::Failed) {
-                  this->printer.printErr(LINGLONG_ERRV("\n" + result->message, result->code));
-                  loop.exit(result->code);
-                  return;
-              }
-
-              if (resultCode == utils::error::ErrorCode::NetworkError) {
-                  this->printer.printMessage(_("Network connection failed. Please:"
-                                               "\n1. Check your internet connection"
-                                               "\n2. Verify network proxy settings if used"));
-              }
-
-              if (this->globalOptions.verbose) {
-                  this->printer.printErr(LINGLONG_ERRV("\n" + result->message, result->code));
-              }
-
-              loop.exit(result->code);
-              return;
-          }
-
-          if (!result->packages) {
-              this->printer.printPackages({});
-              loop.exit(0);
-              return;
-          }
-
-          auto allPackages = std::move(result->packages).value();
-          if (!options.showDevel) {
-              std::for_each(allPackages.begin(),
-                            allPackages.end(),
-                            [](decltype(allPackages)::reference pkgs) {
-                                auto &vec = pkgs.second;
-
-                                auto it =
-                                  std::remove_if(vec.begin(),
-                                                 vec.end(),
-                                                 [](const api::types::v1::PackageInfoV2 &pkg) {
-                                                     return pkg.packageInfoV2Module == "develop";
-                                                 });
-                                vec.erase(it, vec.end());
-                            });
-          }
-
-          if (!options.type.empty()) {
-              filterPackageInfosByType(allPackages, options.type);
-          }
-
-          // default only the latest version is displayed
-          if (!options.showAllVersion) {
-              filterPackageInfosByVersion(allPackages);
-          }
-
-          this->printer.printSearchResult(allPackages);
-          loop.exit(0);
-      });
-
+    this->taskState.params = options;
     auto pendingReply = (*pkgMan)->Search(common::serialize::toQVariantMap(params));
-    auto result = waitDBusReply<api::types::v1::PackageManager1JobInfo>(pendingReply);
+    auto result = waitTaskCreated(pendingReply, TaskType::Search);
     if (!result) {
         this->printer.printErr(result.error());
         return -1;
     }
 
-    pendingJobID = QString::fromStdString(result->id);
+    waitTaskDone();
 
-    return loop.exec();
+    return this->taskState.state == api::types::v1::State::Succeed ? 0 : -1;
 }
 
 int Cli::prune()

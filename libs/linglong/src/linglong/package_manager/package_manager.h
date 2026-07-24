@@ -105,7 +105,6 @@ public
                                                   const std::string &module) noexcept;
 
 Q_SIGNALS:
-    void SearchFinished(QString jobID, QVariantMap result);
     void PruneFinished(QString jobID, QVariantMap result);
     void InitRunContextFinished(QString jobID, bool success);
 

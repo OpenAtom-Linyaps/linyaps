@@ -160,6 +160,7 @@ enum class TaskType : int {
     None,
     Install,
     InstallFromFile,
+    Search,
     Uninstall,
     Upgrade,
 };
@@ -168,7 +169,7 @@ struct PMTaskState
 {
     linglong::api::types::v1::State state{ linglong::api::types::v1::State::Unknown };
     TaskType taskType{ TaskType::None };
-    std::variant<api::types::v1::PackageManager1InstallParameters> params;
+    std::variant<api::types::v1::PackageManager1InstallParameters, SearchOptions> params;
 };
 
 bool operator!=(const PMTaskState &lhs, const PMTaskState &rhs);

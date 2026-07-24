@@ -348,11 +348,17 @@ create_demo_project()
 
 test_demo_build_and_export()
 {
+    local output_file="${DEMO_APP_ID}-custom-output-${BASHPID}-${RANDOM}.uab"
+
     pushd "${DEMO_PROJECT_DIR}" >/dev/null
 
     "${LL_BUILDER}" build
     "${LL_BUILDER}" export --layer
     "${LL_BUILDER}" export
+    [[ ! -e "${output_file}" ]]
+    "${LL_BUILDER}" export --output "${output_file}"
+    [[ -f "${output_file}" ]]
+    rm -f -- "${output_file}"
     "${LL_BUILDER}" run
 }
 

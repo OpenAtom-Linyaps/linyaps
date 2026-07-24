@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2025 - 2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -24,6 +24,7 @@ pid_t FileLock::pid() const noexcept
 }
 
 utils::error::Result<FileLock> FileLock::create(std::filesystem::path path,
+                                                LockType type,
                                                 bool create_if_missing) noexcept
 {
     LINGLONG_TRACE("create file lock");
@@ -45,18 +46,33 @@ utils::error::Result<FileLock> FileLock::create(std::filesystem::path path,
         return LINGLONG_ERR(fmt::format("process already holds a lock on file {}", abs_path));
     }
 
-    unsigned int flags = O_RDWR | O_CLOEXEC | O_NOFOLLOW;
+    unsigned int flags = O_CLOEXEC | O_NOFOLLOW;
+    switch (type) {
+    case LockType::Read:
+        flags |= O_RDONLY;
+        break;
+    case LockType::Write:
+        flags |= O_WRONLY;
+        break;
+    case LockType::ReadWrite:
+        flags |= O_RDWR;
+        break;
+    }
+
     if (create_if_missing) {
+        LogD("create lock file {} if missing", abs_path);
         flags |= O_CREAT;
     }
 
     auto fd = ::open(abs_path.c_str(), flags, default_file_mode);
     if (fd < 0) {
-        return LINGLONG_ERR(fmt::format("open file failed: {}", common::error::errorString(errno)));
+        return LINGLONG_ERR(fmt::format("failed to open lock file {} :{}",
+                                        abs_path,
+                                        common::error::errorString(errno)));
     }
 
     locked_paths[abs_path] = true;
-    FileLock lock(fd, std::move(abs_path));
+    FileLock lock(fd, std::move(abs_path), type);
 
     return lock;
 }
@@ -81,8 +97,9 @@ FileLock::~FileLock() noexcept
     }
 }
 
-FileLock::FileLock(int fd, std::filesystem::path path) noexcept
-    : fd(fd)
+FileLock::FileLock(int fd, std::filesystem::path path, LockType type) noexcept
+    : type_(type)
+    , fd(fd)
     , path(std::move(path))
 {
 }
@@ -142,16 +159,22 @@ utils::error::Result<void> FileLock::lock(LockType type) noexcept
         return LINGLONG_ERR(ret);
     }
 
+    auto isCompatible = compatibleWith(type);
     if (isLocked()) {
-        if (type == type_) {
+        if (isCompatible) {
             return LINGLONG_OK;
         }
 
         return LINGLONG_ERR(
-          fmt::format("use relock to change lock type from {} to {}", type_, type));
+          fmt::format("failed to lock with different type from {} to {}", type_, type));
     }
 
-    struct flock fl{};
+    if (!isCompatible) {
+        return LINGLONG_ERR(
+          fmt::format("try to lock with incompatible type: current {}, request {}", type_, type));
+    }
+
+    struct flock fl{ };
     fl.l_type = (type == LockType::Write) ? F_WRLCK : F_RDLCK;
     fl.l_whence = SEEK_SET;
     fl.l_start = 0;
@@ -182,8 +205,9 @@ utils::error::Result<bool> FileLock::tryLock(LockType type) noexcept
         return LINGLONG_ERR(ret);
     }
 
+    auto isCompatible = compatibleWith(type);
     if (isLocked()) {
-        if (type == type_) {
+        if (isCompatible) {
             return LINGLONG_OK;
         }
 
@@ -191,7 +215,12 @@ utils::error::Result<bool> FileLock::tryLock(LockType type) noexcept
           fmt::format("use relock to change lock type from {} to {}", type_, type));
     }
 
-    struct flock fl{};
+    if (!isCompatible) {
+        return LINGLONG_ERR(
+          fmt::format("try to lock with incompatible type: current {}, request {}", type_, type));
+    }
+
+    struct flock fl{ };
     fl.l_type = (type == LockType::Write) ? F_WRLCK : F_RDLCK;
     fl.l_whence = SEEK_SET;
     fl.l_start = 0;
@@ -230,7 +259,7 @@ utils::error::Result<void> FileLock::unlock() noexcept
         return LINGLONG_OK;
     }
 
-    struct flock fl{};
+    struct flock fl{ };
     fl.l_type = F_UNLCK;
     fl.l_whence = SEEK_SET;
     fl.l_start = 0;
@@ -246,40 +275,6 @@ utils::error::Result<void> FileLock::unlock() noexcept
         }
         return LINGLONG_ERR(
           fmt::format("failed to unlock file {}: {}", path, common::error::errorString(errno)));
-    }
-}
-
-utils::error::Result<void> FileLock::relock(LockType new_type) noexcept
-{
-    LINGLONG_TRACE("upgrade lock type");
-
-    if (type_ == new_type) {
-        return LINGLONG_OK;
-    }
-
-    auto ret = lockCheck();
-    if (!ret) {
-        return LINGLONG_ERR(ret);
-    }
-
-    struct flock fl{};
-    fl.l_type = (new_type == LockType::Write) ? F_WRLCK : F_RDLCK;
-    fl.l_whence = SEEK_SET;
-    fl.l_start = 0;
-    fl.l_len = 0;
-
-    while (true) {
-        if (::fcntl(fd, F_SETLKW, &fl) == 0) {
-            type_ = new_type;
-            return LINGLONG_OK;
-        }
-
-        if (errno == EINTR) {
-            continue;
-        }
-
-        return LINGLONG_ERR(
-          fmt::format("failed to relock file {}: {}", path, common::error::errorString(errno)));
     }
 }
 

@@ -4,13 +4,15 @@
 
 #include "linglong/common/error.h"
 
-#include <system_error>
+#include <array>
+#include <cstring> // IWYU pragma: keep
 
 namespace linglong::common::error {
 
 std::string errorString(int err)
 {
-    return std::system_category().message(err);
+    std::array<char, 256> buf{ };
+    return { strerror_r(err, buf.data(), buf.size()) };
 }
 
 } // namespace linglong::common::error

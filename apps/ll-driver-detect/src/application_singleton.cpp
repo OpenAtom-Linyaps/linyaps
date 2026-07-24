@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2025-2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -42,7 +42,10 @@ utils::error::Result<bool> ApplicationSingleton::tryAcquireLock()
     }
 
     // Try to create file lock
-    auto fileLock = linglong::utils::filelock::FileLock::create(lockFilePath_, true);
+    auto fileLock =
+      linglong::utils::filelock::FileLock::create(lockFilePath_,
+                                                  linglong::utils::filelock::LockType::Write,
+                                                  true);
     if (!fileLock) {
         return LINGLONG_ERR(fileLock);
     }

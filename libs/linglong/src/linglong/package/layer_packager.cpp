@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
+ * SPDX-FileCopyrightText: 2022 - 2026 UnionTech Software Technology Co., Ltd.
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
@@ -8,17 +8,23 @@
 
 #include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/api/types/v1/LayerInfo.hpp"
+#include "linglong/common/error.h"
 #include "linglong/utils/cmd.h"
 #include "linglong/utils/file.h"
+#include "linglong/utils/finally/finally.h"
 #include "linglong/utils/log/log.h"
+
+#include <nlohmann/json.hpp>
 
 #include <QDataStream>
 #include <QSysInfo>
 
+#include <array>
 #include <filesystem>
 #include <fstream>
 #include <string>
 
+#include <fcntl.h>
 #include <unistd.h>
 
 namespace linglong::package {
@@ -281,6 +287,111 @@ void LayerPackager::setCompressor(const QString &compressor) noexcept
 utils::error::Result<bool> LayerPackager::checkErofsFuseExists() const
 {
     return utils::Cmd("erofsfuse").exists();
+}
+
+utils::error::Result<void> LayerPackager::extractSignData(LayerFile &file,
+                                                          const std::filesystem::path &signDir)
+{
+    LINGLONG_TRACE("extract sign data from layer");
+
+    const auto &number = magicNumber();
+    file.seek(number.size());
+
+    QDataStream metaLenStream(&file);
+    metaLenStream.setByteOrder(QDataStream::LittleEndian);
+    quint32 metaLen = 0;
+    metaLenStream >> metaLen;
+
+    auto metaRawData = file.read(metaLen);
+    auto metaJson = nlohmann::json::parse(metaRawData.toStdString());
+    auto erofsSize = metaJson.value("erofs_size", 0ULL);
+    auto signSize = metaJson.value("sign_size", 0ULL);
+
+    if (signSize == 0) {
+        return LINGLONG_OK;
+    }
+
+    auto signOffset = static_cast<int64_t>(number.size() + sizeof(quint32) + metaLen + erofsSize);
+
+    std::error_code ec;
+    auto destination = signDir / "entries" / "share" / "deepin-elf-verify" / ".elfsign";
+    if (!std::filesystem::create_directories(destination, ec) && ec) {
+        return LINGLONG_ERR(ec.message().c_str());
+    }
+
+    auto tarFile = destination / "sign.tar";
+    auto tarFd = ::open(tarFile.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    if (tarFd == -1) {
+        return LINGLONG_ERR(
+          fmt::format("open {} failed: {}", tarFile.string(), common::error::errorString(errno)));
+    }
+
+    auto removeTar = utils::finally::finally([&tarFd, &tarFile] {
+        if (tarFd != -1) {
+            ::close(tarFd);
+        }
+
+        std::error_code ec;
+        if (!std::filesystem::remove(tarFile, ec) && ec) {
+            LogW("failed to remove {}: {}", tarFile.string(), ec.message());
+        }
+    });
+
+    file.seek(signOffset);
+    auto selfFd = file.handle();
+
+    auto totalBytes = signSize;
+    std::array<unsigned char, 4096> buf{};
+    while (totalBytes > 0) {
+        auto bytesToRead = totalBytes > buf.size() ? buf.size() : totalBytes;
+        auto readBytes = ::read(selfFd, buf.data(), bytesToRead);
+        if (readBytes == -1) {
+            if (errno == EINTR) {
+                errno = 0;
+                continue;
+            }
+            return LINGLONG_ERR(
+              fmt::format("read sign data error: {}", common::error::errorString(errno)));
+        }
+
+        while (true) {
+            auto writeBytes = ::write(tarFd, buf.data(), readBytes);
+            if (writeBytes == -1) {
+                if (errno == EINTR) {
+                    errno = 0;
+                    continue;
+                }
+                return LINGLONG_ERR(
+                  fmt::format("write sign.tar error: {}", common::error::errorString(errno)));
+            }
+
+            if (writeBytes != readBytes) {
+                return LINGLONG_ERR("write sign.tar failed: byte mismatch");
+            }
+
+            totalBytes -= writeBytes;
+            break;
+        }
+    }
+
+    if (::fsync(tarFd) == -1) {
+        return LINGLONG_ERR(
+          fmt::format("fsync sign.tar error: {}", common::error::errorString(errno)));
+    }
+
+    if (::close(tarFd) == -1) {
+        tarFd = -1;
+        return LINGLONG_ERR(
+          fmt::format("failed to close tar: {}", common::error::errorString(errno)));
+    }
+    tarFd = -1;
+
+    auto ret = utils::Cmd("tar").exec({ "-xf", tarFile.string(), "-C", destination.string() });
+    if (!ret) {
+        return LINGLONG_ERR(ret);
+    }
+
+    return LINGLONG_OK;
 }
 
 } // namespace linglong::package

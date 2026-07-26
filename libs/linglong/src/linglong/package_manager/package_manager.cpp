@@ -692,7 +692,20 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
           }
 
           taskRef.updateProgress(60);
-          auto result = this->repo->importLayerDir(*layerDir);
+          auto signOverlayRootDir = layerPackager.getWorkDir() / "sign";
+          auto signRet = layerPackager.extractSignData(*layerFile, signOverlayRootDir);
+          if (!signRet) {
+              taskRef.reportError(std::move(signRet).error());
+              return;
+          }
+          std::vector<std::filesystem::path> overlays;
+          auto signDir =
+            signOverlayRootDir / "entries" / "share" / "deepin-elf-verify" / ".elfsign";
+          if (std::filesystem::exists(signDir)) {
+              overlays.emplace_back(signOverlayRootDir);
+          }
+
+          auto result = this->repo->importLayerDir(*layerDir, overlays);
           if (!result) {
               taskRef.reportError(std::move(result).error());
               return;
@@ -718,6 +731,14 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
               return;
           }
 
+          utils::Transaction transaction;
+          transaction.addRollBack([this, newRef = *newRef, module]() noexcept {
+              auto res = repo->remove(newRef, module);
+              if (!res) {
+                  LogW("failed to roll back importLayerDir {} {}", newRef.toString(), module);
+              }
+          });
+
           auto ret = executePostInstallHooks(*newRef);
           if (!ret) {
               taskRef.reportError(std::move(ret).error());
@@ -728,12 +749,15 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
               auto res = applyApp(*newRef);
               if (!res) {
                   taskRef.reportError(std::move(res).error());
+                  return;
               }
+              transaction.commit();
               return;
           }
 
           auto modules = this->repo->getModuleList(*localRef);
           if (std::find(modules.cbegin(), modules.cend(), module) == modules.cend()) {
+              transaction.commit();
               return;
           }
 
@@ -744,6 +768,7 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
                    packageRef.toString(),
                    ret.error().message());
           }
+          transaction.commit();
       };
 
     auto taskRet = tasks.addPackageTask(std::move(installer), ctx);
@@ -1198,10 +1223,20 @@ utils::error::Result<void> PackageManager::installRefModule(Task &task,
         return LINGLONG_ERR(res);
     }
 
+    utils::Transaction transaction;
+    transaction.addRollBack([this, &ref, module]() noexcept {
+        auto res = repo->remove(ref.reference, module);
+        if (!res) {
+            LogW("failed to roll back pull {} {}", ref.reference.toString(), module);
+        }
+    });
+
     res = executePostInstallHooks(ref.reference);
     if (!res) {
-        LogW(fmt::format("failed to execute postInstall hooks {}", ref.reference.toString()));
+        return LINGLONG_ERR("signature verification failed", res);
     }
+
+    transaction.commit();
 
     return LINGLONG_OK;
 }
@@ -1245,9 +1280,16 @@ utils::error::Result<void> PackageManager::installRef(Task &task,
             return LINGLONG_ERR(res);
         }
 
+        transaction.addRollBack([this, &ref, module]() noexcept {
+            auto res = repo->remove(ref.reference, module);
+            if (!res) {
+                LogW("failed to roll back pull {} {}", ref.reference.toString(), module);
+            }
+        });
+
         res = executePostInstallHooks(ref.reference);
         if (!res) {
-            LogW(fmt::format("failed to execute postInstall hooks {}", ref.reference.toString()));
+            return LINGLONG_ERR("signature verification failed", res);
         }
     }
 

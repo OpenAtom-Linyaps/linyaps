@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024-2026 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2024 - 2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -12,12 +12,16 @@
 #include "linglong/utils/cmd.h"
 #include "linglong/utils/error/error.h"
 
+#include <nlohmann/json.hpp>
+
 #include <QDir>
+#include <QFile>
 #include <QSharedPointer>
 
 #include <filesystem>
 #include <fstream>
 #include <memory>
+#include <sstream>
 #include <string>
 
 using namespace linglong;
@@ -180,6 +184,98 @@ TEST_F(LayerPackagerTest, InitWorkDir)
     ASSERT_TRUE(ret.has_value()) << "Failed to init workdir" << ret.error().message();
     ASSERT_NE(packager.getWorkDir().string(), tmpDir.path() / "not-exists")
       << "workdir should be temporary directory";
+}
+
+TEST_F(LayerPackagerTest, ExtractSignData)
+{
+    TempDir signTempDir("linglong-sign-test-");
+    ASSERT_TRUE(signTempDir.isValid());
+
+    auto signContentDir = signTempDir.path() / "sign";
+    std::filesystem::create_directories(signContentDir);
+    std::ofstream signFile(signContentDir / "sign_test_file");
+    signFile << "sign data content";
+    signFile.close();
+
+    auto signTarPath = signTempDir.path() / "sign.tar";
+    auto tarRet =
+      utils::Cmd("tar").exec({ "-cvf", signTarPath.c_str(), "-C", signContentDir.c_str(), "." });
+    ASSERT_TRUE(tarRet.has_value()) << "Failed to create sign.tar";
+
+    QFile originalLayer(layerFilePath.c_str());
+    ASSERT_TRUE(originalLayer.open(QIODevice::ReadOnly));
+
+    auto magic = originalLayer.read(40);
+    ASSERT_EQ(magic, magicNumber());
+
+    QDataStream metaLenStream(&originalLayer);
+    metaLenStream.setByteOrder(QDataStream::LittleEndian);
+    quint32 metaLen = 0;
+    metaLenStream >> metaLen;
+
+    auto metaData = originalLayer.read(metaLen);
+    auto metaJson = nlohmann::json::parse(metaData.toStdString());
+
+    auto erofsData = originalLayer.readAll();
+    auto erofsSize = static_cast<uint64_t>(erofsData.size());
+    originalLayer.close();
+
+    QFile signTarFile(signTarPath.c_str());
+    ASSERT_TRUE(signTarFile.open(QIODevice::ReadOnly));
+    auto signData = signTarFile.readAll();
+    auto signSize = static_cast<uint64_t>(signData.size());
+    signTarFile.close();
+
+    metaJson["erofs_size"] = erofsSize;
+    metaJson["sign_size"] = signSize;
+    auto newMetaData = QByteArray::fromStdString(metaJson.dump());
+    quint32 newMetaLen = static_cast<quint32>(newMetaData.size());
+
+    auto signedLayerPath = signTempDir.path() / "signed.layer";
+    QFile signedLayer(signedLayerPath.c_str());
+    ASSERT_TRUE(signedLayer.open(QIODevice::WriteOnly));
+
+    signedLayer.write(magicNumber());
+
+    QByteArray lenBytes;
+    QDataStream lenStream(&lenBytes, QIODevice::WriteOnly);
+    lenStream.setByteOrder(QDataStream::LittleEndian);
+    lenStream << newMetaLen;
+    signedLayer.write(lenBytes);
+    signedLayer.write(newMetaData);
+    signedLayer.write(erofsData);
+    signedLayer.write(signData);
+    signedLayer.close();
+
+    auto signedLayerFileRet = package::LayerFile::New(signedLayerPath.c_str());
+    ASSERT_TRUE(signedLayerFileRet.has_value())
+      << "Failed to create layer file: " << signedLayerFileRet.error().message();
+    auto signedLayerFile = *signedLayerFileRet;
+
+    package::LayerPackager packager;
+    auto extractRet = packager.extractSignData(*signedLayerFile, signTempDir.path());
+    ASSERT_TRUE(extractRet.has_value()) << "Failed to extract sign data";
+
+    auto signDataDir = signTempDir.path() / "entries" / "share" / "deepin-elf-verify" / ".elfsign";
+    ASSERT_TRUE(std::filesystem::exists(signDataDir / "sign_test_file"))
+      << "sign_test_file not found in " << signDataDir;
+
+    std::ifstream testFile(signDataDir / "sign_test_file");
+    std::stringstream buffer;
+    buffer << testFile.rdbuf();
+    ASSERT_EQ(buffer.str(), "sign data content");
+}
+
+TEST_F(LayerPackagerTest, ExtractSignDataNoSign)
+{
+    auto layerFileRet = package::LayerFile::New(layerFilePath.c_str());
+    ASSERT_TRUE(layerFileRet.has_value())
+      << "Failed to create layer file: " << layerFileRet.error().message();
+    auto layerFile = *layerFileRet;
+
+    package::LayerPackager packager;
+    auto extractRet = packager.extractSignData(*layerFile, packager.getWorkDir());
+    ASSERT_TRUE(extractRet.has_value()) << "extractSignData should succeed";
 }
 
 } // namespace linglong::package

@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
+ * SPDX-FileCopyrightText: 2022 - 2026 UnionTech Software Technology Co., Ltd.
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
@@ -37,6 +37,9 @@ public:
     utils::error::Result<LayerDir> unpack(LayerFile &file);
     void setCompressor(const QString &compressor) noexcept;
     const std::filesystem::path &getWorkDir() const;
+
+    utils::error::Result<void> extractSignData(LayerFile &file,
+                                               const std::filesystem::path &signDir);
 
 private:
     std::filesystem::path workDir;

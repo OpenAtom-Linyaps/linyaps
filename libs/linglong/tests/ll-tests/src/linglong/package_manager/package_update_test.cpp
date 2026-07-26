@@ -156,6 +156,19 @@ public:
     {
     }
 
+    std::function<void(const package::Reference &ref, const std::vector<std::string> &paths)>
+      exportReferencePathsHook;
+
+    void exportReferencePaths(const package::Reference &ref,
+                              const std::vector<std::string> &paths) noexcept override
+    {
+        if (exportReferencePathsHook) {
+            exportReferencePathsHook(ref, paths);
+            return;
+        }
+        OSTreeRepo::exportReferencePaths(ref, paths);
+    }
+
     MOCK_METHOD(utils::error::Result<std::vector<api::types::v1::PackageInfoV2>>,
                 listLocalApps,
                 (),
@@ -294,6 +307,11 @@ TEST_F(PackageUpdateActionTest, Update)
           return utils::error::Result<void>{};
       });
 
+    repo->exportReferencePathsHook = [](const package::Reference &,
+                                        const std::vector<std::string> &) {
+        // no-op: 跳过真实导出逻辑
+    };
+
     EXPECT_CALL(*repo, mergeModules()).WillOnce([]() {
         return utils::error::Result<void>{};
     });
@@ -303,6 +321,176 @@ TEST_F(PackageUpdateActionTest, Update)
     service::PackageTask task({});
     res = action->doAction(task);
     ASSERT_TRUE(res.has_value());
+}
+
+TEST_F(PackageUpdateActionTest, BaseUpgradeExportsDeepinElfVerify)
+{
+    auto action =
+      service::PackageUpdateAction::create(std::vector<api::types::v1::PackageManager1Package>(),
+                                           false,
+                                           false,
+                                           *pm,
+                                           *repo);
+
+    EXPECT_CALL(*repo, listLocalApps())
+      .WillOnce(Return(std::vector<api::types::v1::PackageInfoV2>{
+        testdata::idV100,
+        testdata::id2V100,
+      }));
+
+    auto res = action->prepare();
+    ASSERT_TRUE(res.has_value());
+
+    auto baseRef = package::Reference::fromPackageInfo(testdata::baseV101);
+    ASSERT_TRUE(baseRef.has_value());
+
+    auto runtimeRef = package::Reference::fromPackageInfo(testdata::runtimeV100);
+    ASSERT_TRUE(runtimeRef.has_value());
+
+    EXPECT_CALL(*pm, needToUpgrade(_, _, false))
+      // id1: app has no updates
+      .WillOnce(Return(std::nullopt))
+      // id1: runtime's extension has no updates
+      .WillOnce(Return(std::nullopt))
+      // id2: app has updates
+      .WillOnce(Return(std::make_pair(
+        package::ReferenceWithRepo{ .repo = api::types::v1::Repo{ .name = "repo" },
+                                    .reference =
+                                      package::Reference::parse("main:id2/1.1.0/x86_64").value() },
+        std::vector<std::string>{ "binary", "develop" })))
+      // id2's dependencies: runtime's extension has no updates
+      .WillOnce(Return(std::nullopt));
+
+    EXPECT_CALL(*pm, needToUpgrade(_, _, true))
+      // id1: base has updates
+      .WillOnce(Return(std::make_pair(
+        package::ReferenceWithRepo{ .repo = api::types::v1::Repo{ .name = "repo" },
+                                    .reference =
+                                      package::Reference::parse("main:base/1.0.1/x86_64").value() },
+        std::vector<std::string>{ "binary" })))
+      // id1: runtime has no updates
+      .WillOnce(DoAll(SetArgReferee<1>(*runtimeRef), Return(std::nullopt)))
+      // id2's dependencies: base has no updates
+      .WillOnce(DoAll(SetArgReferee<1>(*baseRef), Return(std::nullopt)))
+      // id2's dependencies: runtime has no updates
+      .WillOnce(DoAll(SetArgReferee<1>(*runtimeRef), Return(std::nullopt)));
+
+    EXPECT_CALL(*repo, fetchRefMetaData(_, "binary", true))
+      .WillOnce(Return(repo::RefMetaData{ "rev1", nlohmann::json(testdata::baseV101).dump() }))
+      .WillOnce(Return(repo::RefMetaData{ "rev2", nlohmann::json(testdata::id2V110).dump() }));
+    EXPECT_CALL(*repo, fetchRefMetaData(_, "develop", false))
+      .WillOnce(Return(repo::RefMetaData{ "rev3", nlohmann::json(testdata::id2V110).dump() }));
+
+    EXPECT_CALL(*repo, getRefStatistics(_)).WillRepeatedly([](const repo::RefMetaData &) {
+        return utils::error::Result<repo::RefStatistics>{
+            repo::RefStatistics{ .archived = 1024, .needed_archived = 512 }
+        };
+    });
+
+    EXPECT_CALL(*repo, getLayerItem(_, _, _))
+      .WillOnce(Return(utils::error::Result<api::types::v1::RepositoryCacheLayersItem>{
+        api::types::v1::RepositoryCacheLayersItem{ .info = testdata::runtimeV100 } }))
+      .WillOnce(Return(utils::error::Result<api::types::v1::RepositoryCacheLayersItem>{
+        api::types::v1::RepositoryCacheLayersItem{ .info = testdata::baseV101 } }))
+      .WillOnce(Return(utils::error::Result<api::types::v1::RepositoryCacheLayersItem>{
+        api::types::v1::RepositoryCacheLayersItem{ .info = testdata::runtimeV100 } }));
+
+    EXPECT_CALL(*pm, installRefModule(_, _, _))
+      .WillRepeatedly([](service::Task &, const package::ReferenceWithRepo &, const std::string &) {
+          return utils::error::Result<void>{};
+      });
+
+    bool exportReferencePathsCalled = false;
+    std::string exportedRefStr;
+    std::vector<std::string> exportedPaths;
+    repo->exportReferencePathsHook = [&](const package::Reference &ref,
+                                         const std::vector<std::string> &paths) {
+        exportReferencePathsCalled = true;
+        exportedRefStr = ref.toString();
+        exportedPaths = paths;
+    };
+
+    EXPECT_CALL(*repo, mergeModules()).WillOnce([]() {
+        return utils::error::Result<void>{};
+    });
+
+    EXPECT_CALL(*pm, switchAppVersion(_, _, true)).WillOnce(Return(utils::error::Result<void>{}));
+
+    service::PackageTask task({});
+    res = action->doAction(task);
+    ASSERT_TRUE(res.has_value());
+
+    EXPECT_TRUE(exportReferencePathsCalled);
+    ASSERT_EQ(exportedPaths.size(), 1u);
+    EXPECT_EQ(exportedPaths[0], "share/deepin-elf-verify");
+    EXPECT_EQ(exportedRefStr, "main:base/1.0.1/x86_64");
+}
+
+TEST_F(PackageUpdateActionTest, AppUpgradeDoesNotCallExportReferencePaths)
+{
+    auto action =
+      service::PackageUpdateAction::create(std::vector<api::types::v1::PackageManager1Package>(),
+                                           true, // appOnly=true，不升级依赖
+                                           false,
+                                           *pm,
+                                           *repo);
+
+    EXPECT_CALL(*repo, listLocalApps())
+      .WillOnce(Return(std::vector<api::types::v1::PackageInfoV2>{ testdata::idV100 }));
+
+    auto res = action->prepare();
+    ASSERT_TRUE(res.has_value());
+
+    EXPECT_CALL(*pm, needToUpgrade(_, _, false))
+      .WillOnce(Return(std::make_pair(
+        package::ReferenceWithRepo{ .repo = api::types::v1::Repo{ .name = "repo" },
+                                    .reference =
+                                      package::Reference::parse("main:id1/1.1.0/x86_64").value() },
+        std::vector<std::string>{ "binary" })));
+
+    api::types::v1::PackageInfoV2 id1V110{
+        .arch = std::vector<std::string>{ "x86_64" },
+        .base = "main:base/1.0.0/x86_64",
+        .channel = "main",
+        .id = "id1",
+        .kind = "app",
+        .packageInfoV2Module = "binary",
+        .name = "id1",
+        .runtime = "main:runtime/1.0.0/x86_64",
+        .version = "1.1.0",
+    };
+
+    EXPECT_CALL(*repo, fetchRefMetaData(_, "binary", true))
+      .WillOnce(Return(repo::RefMetaData{ "app_rev", nlohmann::json(id1V110).dump() }));
+
+    EXPECT_CALL(*repo, getRefStatistics(_)).WillRepeatedly([](const repo::RefMetaData &) {
+        return utils::error::Result<repo::RefStatistics>{
+            repo::RefStatistics{ .archived = 1024, .needed_archived = 512 }
+        };
+    });
+
+    EXPECT_CALL(*pm, installRefModule(_, _, _))
+      .WillRepeatedly([](service::Task &, const package::ReferenceWithRepo &, const std::string &) {
+          return utils::error::Result<void>{};
+      });
+
+    bool exportReferencePathsCalled = false;
+    repo->exportReferencePathsHook = [&](const package::Reference &,
+                                         const std::vector<std::string> &) {
+        exportReferencePathsCalled = true;
+    };
+
+    EXPECT_CALL(*repo, mergeModules()).WillOnce([]() {
+        return utils::error::Result<void>{};
+    });
+
+    EXPECT_CALL(*pm, switchAppVersion(_, _, true)).WillOnce(Return(utils::error::Result<void>{}));
+
+    service::PackageTask task({});
+    res = action->doAction(task);
+    ASSERT_TRUE(res.has_value());
+
+    EXPECT_FALSE(exportReferencePathsCalled);
 }
 
 } // namespace

@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025-2026 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2025 - 2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -239,6 +239,16 @@ utils::error::Result<void> PackageUpdateAction::updateApp(Task &task,
             auto res = pm.installRefModule(task, refRepo, module);
             if (!res) {
                 return LINGLONG_ERR(res);
+            }
+        }
+
+        if (!modules.empty()) {
+            auto pkgInfo = modules.front().second.getPackageInfo();
+            if (!pkgInfo) {
+                return LINGLONG_ERR(pkgInfo);
+            }
+            if (pkgInfo->kind == "base" || pkgInfo->kind == "runtime") {
+                repo.exportReferencePaths(refRepo.reference, { "share/deepin-elf-verify" });
             }
         }
     }

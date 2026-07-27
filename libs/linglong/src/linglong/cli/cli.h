@@ -67,7 +67,7 @@ struct RunOptions
     std::vector<api::types::v1::DeviceOption> deviceOptions;
     std::optional<std::string> instance;
     bool debug{ false };
-    std::string debugListen{ ":2345" };
+    std::string debugListen{ "127.0.0.1:2345" };
     std::optional<std::string> debugDebuginfod;
     std::optional<std::string> debugSymbolDir;
 };

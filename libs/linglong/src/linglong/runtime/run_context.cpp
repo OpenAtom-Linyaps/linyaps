@@ -336,7 +336,33 @@ utils::error::Result<void> RunContext::resolve(const api::types::v1::BuilderProj
         return LINGLONG_ERR("can't resolve run context from package kind " + target.package.kind);
     }
 
-    auto baseFuzzyRef = package::FuzzyReference::parse(target.base);
+    auto base = target.base;
+    if (target.runtime) {
+        auto runtimeFuzzyRef = package::FuzzyReference::parse(*target.runtime);
+        if (!runtimeFuzzyRef) {
+            return LINGLONG_ERR(runtimeFuzzyRef);
+        }
+
+        auto ref = repo.clearReferenceLocal(*runtimeFuzzyRef, true);
+        if (!ref) {
+            return LINGLONG_ERR("ref doesn't exist " + runtimeFuzzyRef->toString());
+        }
+        auto res = RuntimeLayer::create(std::move(ref).value(), *this);
+        if (!res) {
+            return LINGLONG_ERR(res);
+        }
+        runtimeLayer = std::move(res).value();
+
+        if (!base) {
+            base = runtimeLayer->getCachedItem().info.base;
+        }
+    }
+
+    if (!base) {
+        return LINGLONG_ERR("at least one of base or runtime must be specified");
+    }
+
+    auto baseFuzzyRef = package::FuzzyReference::parse(*base);
     if (!baseFuzzyRef) {
         return LINGLONG_ERR(baseFuzzyRef);
     }
@@ -350,38 +376,6 @@ utils::error::Result<void> RunContext::resolve(const api::types::v1::BuilderProj
         return LINGLONG_ERR(res);
     }
     baseLayer = std::move(res).value();
-
-    if (target.runtime) {
-        auto runtimeFuzzyRef = package::FuzzyReference::parse(*target.runtime);
-        if (!runtimeFuzzyRef) {
-            return LINGLONG_ERR(runtimeFuzzyRef);
-        }
-
-        ref = repo.clearReferenceLocal(*runtimeFuzzyRef, true);
-        if (!ref) {
-            return LINGLONG_ERR("ref doesn't exist " + runtimeFuzzyRef->toString());
-        }
-        auto res = RuntimeLayer::create(std::move(ref).value(), *this);
-        if (!res) {
-            return LINGLONG_ERR(res);
-        }
-        runtimeLayer = std::move(res).value();
-
-        const auto &info = runtimeLayer->getCachedItem().info;
-        auto fuzzyRef = package::FuzzyReference::parse(info.base);
-        if (!fuzzyRef) {
-            return LINGLONG_ERR(fuzzyRef);
-        }
-        auto ref = repo.clearReferenceLocal(*fuzzyRef, true);
-        if (!ref || *ref != baseLayer->getReference()) {
-            auto msg = fmt::format("Base is not compatible with runtime. \n - Current base: {}\n - "
-                                   "Current runtime: {}\n - Base required by runtime: {}",
-                                   baseLayer->getReference().toString(),
-                                   runtimeLayer->getReference().toString(),
-                                   info.base);
-            return LINGLONG_ERR(msg);
-        }
-    }
 
     auto timezoneRet = resolveTimeZone();
     if (!timezoneRet) {

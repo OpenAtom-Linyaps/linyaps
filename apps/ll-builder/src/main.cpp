@@ -34,6 +34,7 @@
 #include <optional>
 #include <ostream>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <wordexp.h>
@@ -77,25 +78,39 @@ parseProjectConfig(const std::filesystem::path &filename)
           "'command' field is missing, app should have command as the default startup command");
     }
 
-    // 校验bese和runtime版本是否合法
-    auto baseFuzzyRef = linglong::package::FuzzyReference::parse(project->base.c_str());
-    if (!baseFuzzyRef) {
-        return LINGLONG_ERR("failed to parse base field", baseFuzzyRef);
+    if (!project->base && !project->runtime) {
+        return LINGLONG_ERR("at least one of 'base' or 'runtime' must be specified");
     }
-    auto ret = linglong::package::Version::validateDependVersion(baseFuzzyRef->version.value());
-    if (!ret) {
-        return LINGLONG_ERR("base version is not valid", ret);
-    }
-    if (project->runtime) {
-        auto runtimeFuzzyRef =
-          linglong::package::FuzzyReference::parse(project->runtime.value().c_str());
-        if (!runtimeFuzzyRef) {
-            return LINGLONG_ERR("failed to parse runtime field", runtimeFuzzyRef);
+
+    // 校验 base 和 runtime 版本是否合法
+    auto validateDependency = [&](const std::optional<std::string> &dependency,
+                                  std::string_view field) -> linglong::utils::error::Result<void> {
+        if (!dependency) {
+            return LINGLONG_OK;
         }
-        ret = linglong::package::Version::validateDependVersion(runtimeFuzzyRef->version.value());
+
+        auto fuzzyRef = linglong::package::FuzzyReference::parse(*dependency);
+        if (!fuzzyRef) {
+            return LINGLONG_ERR(fmt::format("failed to parse {} field", field), fuzzyRef);
+        }
+        if (!fuzzyRef->version) {
+            return LINGLONG_ERR(fmt::format("{} version is missing", field));
+        }
+
+        auto ret = linglong::package::Version::validateDependVersion(*fuzzyRef->version);
         if (!ret) {
-            return LINGLONG_ERR("runtime version is not valid", ret);
+            return LINGLONG_ERR(fmt::format("{} version is not valid", field), ret);
         }
+        return LINGLONG_OK;
+    };
+
+    auto ret = validateDependency(project->base, "base");
+    if (!ret) {
+        return LINGLONG_ERR(ret);
+    }
+    ret = validateDependency(project->runtime, "runtime");
+    if (!ret) {
+        return LINGLONG_ERR(ret);
     }
     return project;
 }

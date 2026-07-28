@@ -1,5 +1,5 @@
 /*
- ; SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
+ ; SPDX-FileCopyrightText: 2023 - 2026 UnionTech Software Technology Co., Ltd.
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
@@ -66,5 +66,26 @@ TEST(Package, Reference)
           << validCase.first << " is valid fuzz reference. Error: "
           << (refer.has_value() ? "no error" : refer.error().message());
         ASSERT_EQ(refer->toString(), validCase.second);
+    }
+}
+
+TEST(Package, ReferenceSemanticMatch)
+{
+    auto reference = Reference::parse("main:org.deepin.base/23.0.0.1/x86_64");
+    ASSERT_TRUE(reference.has_value());
+
+    const std::vector<std::pair<std::string, bool>> cases = {
+        { "main:org.deepin.base/23.0.0/x86_64", true },
+        { "org.deepin.base/23.0.0/x86_64", true },
+        { "main:org.example.base/23.0.0/x86_64", false },
+        { "stable:org.deepin.base/23.0.0/x86_64", false },
+        { "main:org.deepin.base/23.0.0/arm64", false },
+        { "main:org.deepin.base/24.0.0/x86_64", false },
+    };
+
+    for (const auto &[raw, expected] : cases) {
+        auto fuzzy = FuzzyReference::parse(raw);
+        ASSERT_TRUE(fuzzy.has_value()) << raw;
+        EXPECT_EQ(reference->semanticMatch(*fuzzy), expected) << raw;
     }
 }

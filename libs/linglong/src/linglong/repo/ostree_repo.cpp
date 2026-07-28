@@ -362,29 +362,22 @@ utils::error::Result<bool> semanticMatch(const package::FuzzyReference &fuzzy,
 {
     LINGLONG_TRACE("semanticMatch");
 
-    if (fuzzy.id != record.id) {
-        return false;
+    auto version = package::Version::parse(record.version);
+    if (!version) {
+        return LINGLONG_ERR(version);
     }
 
-    if (fuzzy.channel && fuzzy.channel != record.channel) {
-        return false;
+    auto arch = package::Architecture::parse(record.arch[0]);
+    if (!arch) {
+        return LINGLONG_ERR(arch);
     }
 
-    if (fuzzy.arch && fuzzy.arch->toString() != record.arch[0]) {
-        return false;
+    auto reference = package::Reference::create(record.channel, record.id, *version, *arch);
+    if (!reference) {
+        return LINGLONG_ERR(reference);
     }
 
-    if (fuzzy.version) {
-        auto version = package::Version::parse(record.version);
-        if (!version) {
-            return LINGLONG_ERR(version);
-        }
-        if (!version->semanticMatch(*fuzzy.version)) {
-            return false;
-        }
-    }
-
-    return true;
+    return reference->semanticMatch(fuzzy);
 }
 
 } // namespace

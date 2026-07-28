@@ -294,8 +294,7 @@
       "required": [
         "version",
         "package",
-        "build",
-        "base"
+        "build"
       ],
       "properties": {
         "version": {

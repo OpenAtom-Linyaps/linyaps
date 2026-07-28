@@ -1,10 +1,12 @@
 /*
- * SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.:
+ * SPDX-FileCopyrightText: 2023 - 2026 UnionTech Software Technology Co., Ltd.:
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
 #include "linglong/package/reference.h"
+
+#include "linglong/package/fuzzy_reference.h"
 
 #include <fmt/format.h>
 
@@ -112,6 +114,13 @@ Reference::Reference(const std::string &channel,
 std::string Reference::toString() const noexcept
 {
     return fmt::format("{}:{}/{}/{}", channel, id, version.toString(), arch.toString());
+}
+
+bool Reference::semanticMatch(const FuzzyReference &fuzzy) const noexcept
+{
+    return this->id == fuzzy.id && (!fuzzy.channel || *fuzzy.channel == this->channel)
+      && (!fuzzy.arch || *fuzzy.arch == this->arch)
+      && (!fuzzy.version || this->version.semanticMatch(*fuzzy.version));
 }
 
 bool operator!=(const Reference &lhs, const Reference &rhs) noexcept

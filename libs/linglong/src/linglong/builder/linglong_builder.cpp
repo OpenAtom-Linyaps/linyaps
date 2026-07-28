@@ -550,6 +550,10 @@ utils::error::Result<void> Builder::buildStagePullDependency() noexcept
 {
     LINGLONG_TRACE("build stage pull dependency");
 
+    if (!this->project->base && !this->project->runtime) {
+        return LINGLONG_ERR("at least one of base or runtime must be specified");
+    }
+
     printMessage("[Processing Dependency]");
     printMessage(QString("%1%2%3%4")
                    .arg("Package", -35) // NOLINT
@@ -559,7 +563,8 @@ utils::error::Result<void> Builder::buildStagePullDependency() noexcept
                    .toStdString(),
                  2);
 
-    auto handleDependency = [this](const std::string &refStr) -> utils::error::Result<void> {
+    auto handleDependency =
+      [this](const std::string &refStr) -> utils::error::Result<package::Reference> {
         LINGLONG_TRACE("handle dependency " + refStr);
 
         auto printStatus = [](const package::Reference &ref,
@@ -619,7 +624,7 @@ utils::error::Result<void> Builder::buildStagePullDependency() noexcept
 
                 printStatus(*localRef, "develop", layerDir ? "complete" : "missing");
 
-                return LINGLONG_OK;
+                return *localRef;
             }
             printStatus(refRepo->reference, "binary", "complete");
 
@@ -634,18 +639,50 @@ utils::error::Result<void> Builder::buildStagePullDependency() noexcept
         auto layerDir = this->repo.getLayerDir(*resolvedRef, "develop");
         printStatus(*resolvedRef, "develop", layerDir ? "complete" : "missing");
 
-        return LINGLONG_OK;
+        return *resolvedRef;
     };
 
-    auto res = handleDependency(this->project->base);
+    std::optional<std::string> runtimeBase;
+    std::optional<package::Reference> runtimeRef;
+    if (this->project->runtime) {
+        auto resolvedRuntime = handleDependency(*this->project->runtime);
+        if (!resolvedRuntime) {
+            return LINGLONG_ERR(resolvedRuntime);
+        }
+        runtimeRef = *resolvedRuntime;
+
+        auto runtimeItem = this->repo.getLayerItem(*runtimeRef);
+        if (!runtimeItem) {
+            return LINGLONG_ERR("failed to get runtime information", runtimeItem);
+        }
+        if (this->project->base) {
+            runtimeBase = runtimeItem->info.base;
+        } else {
+            this->project->base = runtimeItem->info.base;
+        }
+    }
+
+    auto res = handleDependency(*this->project->base);
     if (!res) {
         return LINGLONG_ERR(res);
     }
 
-    if (this->project->runtime) {
-        res = handleDependency(*this->project->runtime);
-        if (!res) {
-            return LINGLONG_ERR(res);
+    if (runtimeBase) {
+        auto runtimeBaseFuzzyRef = package::FuzzyReference::parse(*runtimeBase);
+        if (!runtimeBaseFuzzyRef) {
+            return LINGLONG_ERR("failed to parse base required by runtime", runtimeBaseFuzzyRef);
+        }
+        if (!runtimeBaseFuzzyRef->version) {
+            return LINGLONG_ERR("base version required by runtime is missing");
+        }
+
+        if (!res->semanticMatch(*runtimeBaseFuzzyRef)) {
+            return LINGLONG_ERR(
+              fmt::format("base is not compatible with runtime. \n - Current base: {}\n - "
+                          "Current runtime: {}\n - base required by runtime: {}",
+                          res->toString(),
+                          runtimeRef->toString(),
+                          *runtimeBase));
         }
     }
 
@@ -1235,7 +1272,7 @@ utils::error::Result<void> Builder::commitToLocalRepo() noexcept
         .version = project.package.version,
     };
 
-    info.base = project.base;
+    info.base = *project.base;
     if (project.runtime) {
         info.runtime = project.runtime;
     }
@@ -1626,7 +1663,24 @@ utils::error::Result<void> Builder::exportUAB(const ExportOption &option,
         }
     }
 
-    auto baseRef = detail::clearDependency(this->project->base, this->repo, false);
+    std::optional<package::Reference> runtimeReference;
+    if (this->project->runtime) {
+        auto runtimeRef = detail::clearDependency(*this->project->runtime, this->repo, false);
+        if (!runtimeRef) {
+            return LINGLONG_ERR(runtimeRef);
+        }
+        runtimeReference = std::move(*runtimeRef).second.value();
+
+        if (!this->project->base) {
+            auto runtimeItem = this->repo.getLayerItem(*runtimeReference);
+            if (!runtimeItem) {
+                return LINGLONG_ERR("failed to get runtime information", runtimeItem);
+            }
+            this->project->base = runtimeItem->info.base;
+        }
+    }
+
+    auto baseRef = detail::clearDependency(*this->project->base, this->repo, false);
     if (!baseRef) {
         return LINGLONG_ERR(baseRef);
     }
@@ -1646,15 +1700,8 @@ utils::error::Result<void> Builder::exportUAB(const ExportOption &option,
         packager.setCompressor(option.compressor.c_str());
     }
 
-    if (this->project->runtime) {
-        auto runtimeRef =
-          detail::clearDependency(this->project->runtime.value(), this->repo, false);
-        if (!runtimeRef) {
-            return LINGLONG_ERR(runtimeRef);
-        }
-        auto runtimeReference = std::move(*runtimeRef).second.value();
-
-        auto runtimeDir = this->repo.getLayerDir(runtimeReference);
+    if (runtimeReference) {
+        auto runtimeDir = this->repo.getLayerDir(*runtimeReference);
         if (!runtimeDir) {
             return LINGLONG_ERR(runtimeDir);
         }

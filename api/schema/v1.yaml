@@ -242,7 +242,6 @@ $defs:
       - version
       - package
       - build
-      - base
     properties:
       version:
         type: string

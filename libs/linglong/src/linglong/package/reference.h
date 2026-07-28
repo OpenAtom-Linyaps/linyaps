@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.:
+ * SPDX-FileCopyrightText: 2023 - 2026 UnionTech Software Technology Co., Ltd.:
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
@@ -13,6 +13,8 @@
 #include "linglong/package/version.h"
 
 namespace linglong::package {
+
+class FuzzyReference;
 
 // This class is a reference to a tier, use as a tier ID.
 class Reference final
@@ -34,6 +36,7 @@ public:
     Architecture arch;
 
     [[nodiscard]] std::string toString() const noexcept;
+    [[nodiscard]] bool semanticMatch(const FuzzyReference &fuzzy) const noexcept;
     friend bool operator!=(const Reference &lhs, const Reference &rhs) noexcept;
     friend bool operator==(const Reference &lhs, const Reference &rhs) noexcept;
 

@@ -510,7 +510,7 @@ j["version"] = x.version;
 }
 
 inline void from_json(const json & j, BuilderProject& x) {
-x.base = j.at("base").get<std::string>();
+x.base = get_stack_optional<std::string>(j, "base");
 x.build = j.at("build").get<std::string>();
 x.buildext = get_stack_optional<BuilderProjectBuildEXT>(j, "buildext");
 x.command = get_stack_optional<std::vector<std::string>>(j, "command");
@@ -527,7 +527,9 @@ x.version = j.at("version").get<std::string>();
 
 inline void to_json(json & j, const BuilderProject & x) {
 j = json::object();
+if (x.base) {
 j["base"] = x.base;
+}
 j["build"] = x.build;
 if (x.buildext) {
 j["buildext"] = x.buildext;

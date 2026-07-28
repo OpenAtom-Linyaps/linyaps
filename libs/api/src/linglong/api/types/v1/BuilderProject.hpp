@@ -40,7 +40,7 @@ struct BuilderProject {
 /**
 * used base of package
 */
-std::string base;
+std::optional<std::string> base;
 /**
 * build script of builder project
 */

@@ -47,6 +47,12 @@ public:
                 clearReferenceLocal,
                 (const package::FuzzyReference &fuzzy, bool semanticMatching),
                 (override, const, noexcept));
+    MOCK_METHOD(utils::error::Result<api::types::v1::RepositoryCacheLayersItem>,
+                getLayerItem,
+                (const package::Reference &ref,
+                 std::string module,
+                 const std::optional<std::string> &subRef),
+                (override, const, noexcept));
     MOCK_METHOD(utils::error::Result<package::ReferenceWithRepo>,
                 latestRemoteReference,
                 (const package::FuzzyReference &fuzzyRef),
@@ -417,6 +423,136 @@ TEST_F(PullDependencyTest, buildStagePullDependency_continues_when_local_develop
     EXPECT_CALL(*m_repo, getLayerDir(_, "develop", _))
       .WillOnce(Return(LINGLONG_ERR("not found")))
       .WillOnce(Return(LINGLONG_ERR("not found")));
+    EXPECT_CALL(*m_repo, mergeModules()).WillOnce(Return(utils::error::Result<void>{}));
+
+    auto result = builder.buildStagePullDependency();
+    EXPECT_TRUE(result.has_value()) << result.error().message();
+}
+
+TEST_F(PullDependencyTest, buildStagePullDependency_resolves_base_from_runtime)
+{
+    LINGLONG_TRACE("buildStagePullDependency_resolves_base_from_runtime");
+
+    auto runtimeRef = package::Reference::parse("main:org.deepin.runtime/23.0.0.0/x86_64");
+    auto baseRef = package::Reference::parse("main:org.deepin.base/23.0.0.0/x86_64");
+    ASSERT_TRUE(runtimeRef.has_value());
+    ASSERT_TRUE(baseRef.has_value());
+
+    auto project = builderProject("org.deepin.runtime/23.0.0.0/x86_64");
+    project.base.reset();
+    builder::Builder builder(std::move(project),
+                             m_tmpDir.path(),
+                             *m_repo,
+                             containerBuilder(),
+                             builderConfig());
+    builder.setBuildOptions(builder::BuilderBuildOptions{ .skipPullDepend = true });
+
+    {
+        InSequence seq;
+        EXPECT_CALL(*m_repo, clearReferenceLocal(_, true)).WillOnce(Return(*runtimeRef));
+        EXPECT_CALL(*m_repo, clearReferenceLocal(_, true)).WillOnce(Return(*baseRef));
+    }
+    EXPECT_CALL(*m_repo, getLayerDir(_, "develop", _))
+      .Times(2)
+      .WillRepeatedly(
+        [](const package::Reference &,
+           const std::string &,
+           const std::optional<std::string> &) -> utils::error::Result<package::LayerDir> {
+            return layerCached();
+        });
+
+    api::types::v1::RepositoryCacheLayersItem runtimeItem;
+    runtimeItem.info.base = "org.deepin.base/23.0.0.0/x86_64";
+    EXPECT_CALL(*m_repo, getLayerItem(*runtimeRef, "binary", _))
+      .WillOnce(Return(std::move(runtimeItem)));
+    EXPECT_CALL(*m_repo, mergeModules()).WillOnce(Return(utils::error::Result<void>{}));
+
+    auto result = builder.buildStagePullDependency();
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+    ASSERT_TRUE(builder.project->base);
+    EXPECT_EQ(*builder.project->base, "org.deepin.base/23.0.0.0/x86_64");
+}
+
+TEST_F(PullDependencyTest, buildStagePullDependency_rejects_incompatible_base_and_runtime)
+{
+    LINGLONG_TRACE("buildStagePullDependency_rejects_incompatible_base_and_runtime");
+
+    auto runtimeRef = package::Reference::parse("main:org.deepin.runtime/23.0.0.0/x86_64");
+    auto configuredBaseRef = package::Reference::parse("main:org.example.base/23.0.0.0/x86_64");
+    ASSERT_TRUE(runtimeRef.has_value());
+    ASSERT_TRUE(configuredBaseRef.has_value());
+
+    auto project = builderProject("org.deepin.runtime/23.0.0.0/x86_64");
+    project.base = "org.example.base/23.0.0/x86_64";
+    builder::Builder builder(std::move(project),
+                             m_tmpDir.path(),
+                             *m_repo,
+                             containerBuilder(),
+                             builderConfig());
+    builder.setBuildOptions(builder::BuilderBuildOptions{ .skipPullDepend = true });
+
+    {
+        InSequence seq;
+        EXPECT_CALL(*m_repo, clearReferenceLocal(_, true)).WillOnce(Return(*runtimeRef));
+        EXPECT_CALL(*m_repo, clearReferenceLocal(_, true)).WillOnce(Return(*configuredBaseRef));
+    }
+    EXPECT_CALL(*m_repo, getLayerDir(_, "develop", _))
+      .Times(2)
+      .WillRepeatedly(
+        [](const package::Reference &,
+           const std::string &,
+           const std::optional<std::string> &) -> utils::error::Result<package::LayerDir> {
+            return layerCached();
+        });
+
+    api::types::v1::RepositoryCacheLayersItem runtimeItem;
+    runtimeItem.info.base = "org.deepin.base/23.0.0.0/x86_64";
+    EXPECT_CALL(*m_repo, getLayerItem(*runtimeRef, "binary", _))
+      .WillOnce(Return(std::move(runtimeItem)));
+    EXPECT_CALL(*m_repo, mergeModules()).Times(0);
+
+    auto result = builder.buildStagePullDependency();
+    ASSERT_FALSE(result.has_value());
+    EXPECT_THAT(result.error().message(),
+                testing::HasSubstr("base is not compatible with runtime"));
+}
+
+TEST_F(PullDependencyTest, buildStagePullDependency_accepts_semantically_compatible_base)
+{
+    LINGLONG_TRACE("buildStagePullDependency_accepts_semantically_compatible_base");
+
+    auto runtimeRef = package::Reference::parse("main:org.deepin.runtime/23.0.0.0/x86_64");
+    auto baseRef = package::Reference::parse("main:org.deepin.base/23.0.0.1/x86_64");
+    ASSERT_TRUE(runtimeRef.has_value());
+    ASSERT_TRUE(baseRef.has_value());
+
+    auto project = builderProject("org.deepin.runtime/23.0.0/x86_64");
+    project.base = "org.deepin.base/23.0.0/x86_64";
+    builder::Builder builder(std::move(project),
+                             m_tmpDir.path(),
+                             *m_repo,
+                             containerBuilder(),
+                             builderConfig());
+    builder.setBuildOptions(builder::BuilderBuildOptions{ .skipPullDepend = true });
+
+    {
+        InSequence seq;
+        EXPECT_CALL(*m_repo, clearReferenceLocal(_, true)).WillOnce(Return(*runtimeRef));
+        EXPECT_CALL(*m_repo, clearReferenceLocal(_, true)).WillOnce(Return(*baseRef));
+    }
+    EXPECT_CALL(*m_repo, getLayerDir(_, "develop", _))
+      .Times(2)
+      .WillRepeatedly(
+        [](const package::Reference &,
+           const std::string &,
+           const std::optional<std::string> &) -> utils::error::Result<package::LayerDir> {
+            return layerCached();
+        });
+
+    api::types::v1::RepositoryCacheLayersItem runtimeItem;
+    runtimeItem.info.base = "org.deepin.base/23.0.0/x86_64";
+    EXPECT_CALL(*m_repo, getLayerItem(*runtimeRef, "binary", _))
+      .WillOnce(Return(std::move(runtimeItem)));
     EXPECT_CALL(*m_repo, mergeModules()).WillOnce(Return(utils::error::Result<void>{}));
 
     auto result = builder.buildStagePullDependency();

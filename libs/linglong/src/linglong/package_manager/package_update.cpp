@@ -92,7 +92,14 @@ utils::error::Result<void> PackageUpdateAction::doAction(PackageTask &task)
         return LINGLONG_ERR(res.error());
     }
 
-    return postUpdate(task);
+    auto postUpdateRet = postUpdate(task);
+    if (!postUpdateRet) {
+        return LINGLONG_ERR(postUpdateRet.error());
+    }
+
+    task.updateState(linglong::api::types::v1::State::Succeed, "Update applications success");
+
+    return LINGLONG_OK;
 }
 
 utils::error::Result<void> PackageUpdateAction::update(PackageTask &task)
@@ -126,6 +133,8 @@ utils::error::Result<void> PackageUpdateAction::update(PackageTask &task)
         auto res = updateApp(task, app, appOnly, depsOnly);
         if (!res) {
             LogW("failed to update app {}: {}", app.id, res.error());
+            task.sendMessage(
+              fmt::format("failed to update app {}: {}", app.id, res.error().message()));
             continue;
         }
         monitor.pause(true);
@@ -137,8 +146,6 @@ utils::error::Result<void> PackageUpdateAction::update(PackageTask &task)
                             utils::error::ErrorCode::AppUpgradeFailed);
     }
 
-    task.updateState(linglong::api::types::v1::State::Succeed, "Update applications success");
-
     return LINGLONG_OK;
 }
 
@@ -149,6 +156,13 @@ utils::error::Result<void> PackageUpdateAction::postUpdate([[maybe_unused]] Task
     auto res = repo.mergeModules();
     if (!res) {
         LogE("failed to merge modules: {}", res.error());
+    }
+
+    if (baseOrRuntimeUpdated) {
+        auto pruneRet = repo.prune();
+        if (!pruneRet) {
+            LogE("failed to prune: {}", pruneRet.error());
+        }
     }
 
     return LINGLONG_OK;
@@ -233,6 +247,15 @@ utils::error::Result<void> PackageUpdateAction::updateApp(Task &task,
         });
     }
     for (const auto &[refRepo, modules] : refsToInstall) {
+        bool isBaseOrRuntime = false;
+        if (!modules.empty()) {
+            auto info = modules.front().second.getPackageInfo();
+            if (!info) {
+                return LINGLONG_ERR(info);
+            }
+            isBaseOrRuntime = info->kind == "base" || info->kind == "runtime";
+        }
+
         for (const auto &[module, meta] : modules) {
             taskMessage = fmt::format("Updating {}/{}", refRepo.reference.toString(), module);
             task.updateStateMessage(taskMessage);
@@ -241,6 +264,8 @@ utils::error::Result<void> PackageUpdateAction::updateApp(Task &task,
                 return LINGLONG_ERR(res);
             }
         }
+
+        baseOrRuntimeUpdated = baseOrRuntimeUpdated || isBaseOrRuntime;
     }
 
     if (!depsOnly && newAppInfo) {

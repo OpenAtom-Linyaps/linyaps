@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2025 - 2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -81,6 +81,7 @@ private:
     uint64_t taskTotalSize;
     uint64_t taskNeededSize;
     uint64_t taskFetchedSize;
+    bool baseOrRuntimeUpdated = false;
 };
 
 } // namespace linglong::service

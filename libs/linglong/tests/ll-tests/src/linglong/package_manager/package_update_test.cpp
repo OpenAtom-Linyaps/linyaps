@@ -23,6 +23,7 @@ using ::testing::_;
 using ::testing::AllOf;
 using ::testing::DoAll;
 using ::testing::Field;
+using ::testing::HasSubstr;
 using ::testing::IsSubsetOf;
 using ::testing::Return;
 using ::testing::SetArgReferee;
@@ -179,6 +180,19 @@ public:
                 (override, const, noexcept));
 
     MOCK_METHOD(utils::error::Result<void>, mergeModules, (), (override, const, noexcept));
+
+    MOCK_METHOD(utils::error::Result<void>, prune, (), (override));
+};
+
+class MockPackageTask : public service::PackageTask
+{
+public:
+    MockPackageTask()
+        : service::PackageTask({})
+    {
+    }
+
+    MOCK_METHOD(void, sendMessage, (const std::string &message), (override, noexcept));
 };
 
 class PackageUpdateActionTest : public ::testing::Test
@@ -297,12 +311,65 @@ TEST_F(PackageUpdateActionTest, Update)
     EXPECT_CALL(*repo, mergeModules()).WillOnce([]() {
         return utils::error::Result<void>{};
     });
+    EXPECT_CALL(*repo, prune()).WillOnce([]() -> utils::error::Result<void> {
+        return LINGLONG_OK;
+    });
 
     EXPECT_CALL(*pm, switchAppVersion(_, _, true)).WillOnce(Return(utils::error::Result<void>{}));
 
     service::PackageTask task({});
     res = action->doAction(task);
     ASSERT_TRUE(res.has_value());
+}
+
+TEST_F(PackageUpdateActionTest, SkipPruneWhenBaseAndRuntimeAreNotUpdated)
+{
+    auto action =
+      service::PackageUpdateAction::create(std::vector<api::types::v1::PackageManager1Package>(),
+                                           true,
+                                           false,
+                                           *pm,
+                                           *repo);
+
+    EXPECT_CALL(*repo, listLocalApps())
+      .WillOnce(Return(std::vector<api::types::v1::PackageInfoV2>{ testdata::idV100 }));
+
+    auto res = action->prepare();
+    ASSERT_TRUE(res.has_value());
+
+    EXPECT_CALL(*pm, needToUpgrade(_, _, false)).WillOnce(Return(std::nullopt));
+    EXPECT_CALL(*repo, mergeModules()).WillOnce(Return(utils::error::Result<void>{}));
+    EXPECT_CALL(*repo, prune()).Times(0);
+
+    service::PackageTask task({});
+    res = action->doAction(task);
+    ASSERT_TRUE(res.has_value());
+}
+
+TEST_F(PackageUpdateActionTest, SendMessageWhenAppUpdateFails)
+{
+    LINGLONG_TRACE("send update failure message");
+
+    auto action =
+      service::PackageUpdateAction::create(std::vector<api::types::v1::PackageManager1Package>(),
+                                           true,
+                                           false,
+                                           *pm,
+                                           *repo);
+
+    EXPECT_CALL(*repo, listLocalApps())
+      .WillOnce(Return(std::vector<api::types::v1::PackageInfoV2>{ testdata::idV100 }));
+
+    auto res = action->prepare();
+    ASSERT_TRUE(res.has_value());
+
+    EXPECT_CALL(*pm, needToUpgrade(_, _, false)).WillOnce(Return(LINGLONG_ERR("update error")));
+
+    MockPackageTask task;
+    EXPECT_CALL(task, sendMessage(HasSubstr("failed to update app id1: update error")));
+
+    res = action->doAction(task);
+    ASSERT_FALSE(res.has_value());
 }
 
 } // namespace

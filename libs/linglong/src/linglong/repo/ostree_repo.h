@@ -147,7 +147,7 @@ public:
     utils::error::Result<void>
     clean(const std::vector<api::types::v1::RepositoryCacheLayersItem> &reserved) noexcept;
 
-    utils::error::Result<void> prune();
+    virtual utils::error::Result<void> prune();
 
     virtual utils::error::Result<RefMetaData>
     fetchRefMetaData(const package::ReferenceWithRepo &refRepo,

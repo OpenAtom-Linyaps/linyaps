@@ -85,9 +85,9 @@ _base 和 runtime 版本号遵循“主版本.次版本.修订版本.打包版�
 
 _在容器中执行 `cat /packages.list` 查看包列表_
 
-[binary包列表](./org.deepin.base_25.2.2_binary.list)
+[binary包列表](./org.deepin.base_25.2.2_binary.list.md)
 
-[develop包列表](./org.deepin.base_25.2.2_develop.list)
+[develop包列表](./org.deepin.base_25.2.2_develop.list.md)
 
 ### org.deepin.base/23.1.0
 
@@ -95,7 +95,7 @@ _在容器中执行 `cat /packages.list` 查看包列表_
 
 _在容器中执行 `cat /packages.list` 查看包列表_
 
-[develop包列表](./org.deepin.base_23.1.0_develop.list)
+[develop包列表](./org.deepin.base_23.1.0_develop.list.md)
 
 ### org.deepin.foundation/20.0.0
 
@@ -103,7 +103,7 @@ _在容器中执行 `cat /packages.list` 查看包列表_
 
 _在容器中执行 `cat /var/lib/dpkg/status|grep "^Package: "|sort|awk '{print $2}'` 查看包列表_
 
-[develop包列表](./org.deepin.foundation_20.0.0_develop.list)
+[develop包列表](./org.deepin.foundation_20.0.0_develop.list.md)
 
 ## runtime 列表
 
@@ -113,7 +113,7 @@ _在容器中执行 `cat /var/lib/dpkg/status|grep "^Package: "|sort|awk '{print
 
 _在容器中执行 `cat /runtime/packages.list` 查看包列表_
 
-[包列表](./org.deepin.runtime.dtk_25.2.2_develop.list)
+[包列表](./org.deepin.runtime.dtk_25.2.2_develop.list.md)
 
 ### org.deepin.runtime.webengine/25.2.2
 
@@ -121,7 +121,7 @@ _在容器中执行 `cat /runtime/packages.list` 查看包列表_
 
 _在容器中执行 `cat /runtime/packages.list` 查看包列表_
 
-[包列表](./org.deepin.runtime.webengine_25.2.2_develop.list)
+[包列表](./org.deepin.runtime.webengine_25.2.2_develop.list.md)
 
 ### org.deepin.runtime.dtk/23.1.0
 
@@ -129,7 +129,7 @@ _在容器中执行 `cat /runtime/packages.list` 查看包列表_
 
 _在容器中执行 `cat /runtime/packages.list` 查看包列表_
 
-[包列表](./org.deepin.runtime.dtk_23.1.0_develop.list)
+[包列表](./org.deepin.runtime.dtk_23.1.0_develop.list.md)
 
 ### org.deepin.Runtime/20.0.0
 
@@ -137,4 +137,4 @@ _在容器中执行 `cat /runtime/packages.list` 查看包列表_
 
 _在容器中执行 `cat /runtime/packages.list` 查看包列表_
 
-[包列表](./org.deepin.Runtime_20.0.0_develop.list)
+[包列表](./org.deepin.Runtime_20.0.0_develop.list.md)

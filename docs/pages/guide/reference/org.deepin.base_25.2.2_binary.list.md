@@ -1,11 +1,10 @@
+# org.deepin.base 25.2.2 Binary Packages
+
+```text
 acl 2.3.1-3
 adduser 3.131-1deepin2
 adwaita-icon-theme 48.1-1
-apt 2.8.0deepin5
 at-spi2-common 2.50.0-1
-autoconf 2.72-3
-automake 1:1.17-4
-autotools-dev 20240727.1
 base-files 25-6deepin4
 base-passwd 3.6.5
 bash 5.2.21-2.1
@@ -20,12 +19,8 @@ bsdutils 1:2.40.4-3deepin4
 busybox 1:1.36.1-7
 bzip2 1.0.8-deepin1
 ca-certificates 20250419
-cmake 3.31.4-2deepin1
-cmake-data 3.31.4-2deepin1
 coreutils 9.4-2-1deepin2
 cpio 2.15+dfsg-2
-cpp 4:13.2.0+really12.3.0-0deepin2
-cpp-12 12.3.0-17deepin15
 cryptsetup 2:2.7.5-1deepin2.3
 cryptsetup-bin 2:2.7.5-1deepin2.3
 cryptsetup-initramfs 2:2.7.5-1deepin2.3
@@ -65,7 +60,6 @@ dpkg 1.22.6deepin7
 dracut-install 103-1
 e2fsprogs 1.47.0-2deepin1
 eject 2.40.4-3deepin4
-elfutils 0.191-1deepin2
 emacsen-common 3.0.4
 fcitx5-frontend-gtk2 5.1.0-1deepin0
 fcitx5-frontend-gtk3 5.1.0-1deepin0
@@ -79,14 +73,8 @@ fonts-noto 20201225-deepin
 fonts-noto-core 20201225-deepin
 fonts-symbola 2.60-1.1
 fonts-urw-base35 20200910-7
-g++ 4:13.2.0+really12.3.0-0deepin2
-g++-12 12.3.0-17deepin15
 gawk 1:5.1.0-1
-gcc 4:13.2.0+really12.3.0-0deepin2
-gcc-12 12.3.0-17deepin15
-gcc-12-base 12.3.0-17deepin15
 gcc-13-base 13.2.0-3deepin4
-gdb 16.3-1deepin1
 gdbserver 16.3-1deepin1
 gettext-base 0.22.5-2
 ghostscript 10.04.0~dfsg-2deepin1
@@ -125,10 +113,7 @@ libacl1 2.3.1-3
 libaio1 0.3.113-8deepin1
 libaom3 3.9.1-1
 libapparmor1 3.0.13-2
-libapt-pkg6.0 2.8.0deepin5
 libarchive13 3.7.2-1deepin1
-libasan8 13.2.0-3deepin4
-libasm1 0.191-1deepin2
 libasound2 1.2.12-1deepin1
 libasound2-data 1.2.12-1deepin1
 libasound2-plugins 1.2.6-deepin
@@ -136,7 +121,6 @@ libassuan0 2.5.6-1
 libasyncns0 0.8-deepin1
 libatk-bridge2.0-0 2.50.0-1
 libatk1.0-0 2.50.0-1
-libatomic1 13.2.0-3deepin4
 libatspi2.0-0 2.50.0-1
 libattr1 1:2.5.1-4
 libaudit-common 1:3.1.2-2
@@ -146,7 +130,6 @@ libavahi-common-data 0.8-17deepin1
 libavahi-common3 0.8-17deepin1
 libavcodec60 7:6.1.1-2deepin6
 libavutil58 7:6.1.1-2deepin6
-libbabeltrace1 1.5.11-3
 libbinutils 2.41-6deepin10
 libblkid1 2.40.4-3deepin4
 libbluetooth3 5.71-1deepin3
@@ -164,7 +147,6 @@ libcap-ng0 0.8.4-2deepin1
 libcap2 1:2.66-5
 libcap2-bin 1:2.66-5
 libcbor0.8 0.8.0-1
-libcc1-0 13.2.0-3deepin4
 libcloudproviders0 0.3.6-1
 libcodec2-0.9 0.9.2-4
 libcolord2 1.4.8-1
@@ -188,8 +170,6 @@ libdb5.3 5.3.28+dfsg2-9deepin1
 libdbus-1-3 1.14.10-3-1deepin3
 libdconf1 0.40.0-2
 libdebconfclient0 0.271
-libdebuginfod-common 0.191-1deepin2
-libdebuginfod1 0.191-1deepin2
 libdecor-0-0 0.2.2-2
 libdeflate0 1.18-1
 libdevmapper-event1.02.1 2:1.02.201-1
@@ -227,7 +207,6 @@ libfreeaptx0 0.1.1-2
 libfreetype6 2.13.2+dfsg-1deepin1
 libfribidi0 1.0.8-2.1
 libgbm1 24.3.0-1deepin5
-libgcc-12-dev 12.3.0-17deepin15
 libgcc-s1 13.2.0-3deepin4
 libgcrypt20 1.10.3-2
 libgdbm-compat4 1.22-1
@@ -287,9 +266,6 @@ libiec61883-0 1.2.0-4
 libijs-0.35 0.35-15
 libio-html-perl 1.004-2
 libio-socket-ssl-perl 2.074-2
-libipt2 2.0.4-1
-libisl23 0.26-3
-libitm1 13.2.0-3deepin4
 libjack-jackd2-0 1.9.22~dfsg-3
 libjansson4 2.14-2
 libjbig0 2.1-3.1-deepin1
@@ -297,7 +273,6 @@ libjbig2dec0 0.20-1
 libjpeg-turbo-progs 1:2.1.5-2
 libjpeg62-turbo 1:2.1.5-2
 libjson-c5 0.17-1
-libjsoncpp25 1.9.5-6deepin0
 libjxl0.7 0.7.0-10.2deepin0
 libk5crypto3 1.20.1-5
 libkeyutils1 1.6.3-3.1
@@ -314,7 +289,6 @@ libldap-2.5-0 2.5.13+dfsg-5
 liblerc4 4.0.0+ds-3
 liblilv-0-0 0.24.12-2
 libllvm17 1:17.0.6-5deepin6
-liblsan0 13.2.0-3deepin4
 libltdl7 2.4.7-7deepin2
 liblvm2cmd2.03 2.03.27-1
 liblwp-mediatypes-perl 6.04-1
@@ -328,7 +302,6 @@ libminizip1 1:1.3.dfsg+really1.3.1-1deepin1
 libmnl0 1.0.5-2
 libmount1 2.40.4-3deepin4
 libmp3lame0 3.100-6
-libmpc3 1.2.1-1
 libmpfr6 4.2.1-1
 libmysofa1 1.2.1~dfsg0-1
 libnatspec0 0.3.1-1+back
@@ -388,11 +361,9 @@ libpython3.12 3.12.11-0deepin1
 libpython3.12-minimal 3.12.11-0deepin1
 libpython3.12-stdlib 3.12.11-0deepin1
 libqpdf29 11.6.1-1deepin0
-libquadmath0 13.2.0-3deepin4
 librav1e0 0.6.6-3
 libraw1394-11 2.1.2-2
 libreadline8 8.2-3
-librhash0 1.4.3-3
 libroc0.3 0.3.0+dfsg-5
 librsvg2-2 2.58.0+dfsg-1
 librtmp1 2.4+20151223.gitfa8646d.1-deepin1
@@ -418,8 +389,6 @@ libsmartcols1 2.40.4-3deepin4
 libsnappy1v5 1.2.1-1
 libsndfile1 1.0.31-2
 libsord-0-0 0.16.14+git221008-1
-libsource-highlight-common 3.1.9-deepin2+rb2
-libsource-highlight4v5 3.1.9-deepin2+rb2
 libsoxr0 0.1.3-4
 libspa-0.2-bluetooth 1.2.5-1deepin16
 libspa-0.2-modules 1.2.5-1deepin16
@@ -430,7 +399,6 @@ libsratom-0-0 0.6.8-1
 libss2 1.47.0-2deepin1
 libssh2-1 1.11.1-1deepin1
 libssl3 3.2.4-0deepin2
-libstdc++-12-dev 12.3.0-17deepin15
 libstdc++6 13.2.0-3deepin4
 libsvtav1enc1d1 1.7.0+dfsg-2
 libswresample4 7:6.1.1-2deepin6
@@ -449,7 +417,6 @@ libtirpc-common 1.3.2-2
 libtirpc-dev 1.3.2-2
 libtirpc3 1.3.2-2
 libtry-tiny-perl 0.30-1
-libtsan2 13.2.0-3deepin4
 libtss2-esys-3.0.2-0 4.0.1-3deepin1
 libtss2-mu0 4.0.1-3deepin1
 libtss2-sys1 4.0.1-3deepin1
@@ -462,7 +429,6 @@ libtss2-tcti-swtpm0 4.0.1-3deepin1
 libtss2-tctildr0 4.0.1-3deepin1
 libturbojpeg0 1:2.1.5-2
 libtwolame0 0.4.0-2
-libubsan1 13.2.0-3deepin4
 libudev1 255.2-4deepin19
 libunbound8 1.23.1-1
 libunistring2 0.9.10-6
@@ -564,8 +530,6 @@ login 1:4.16.0-2+really2.40.4-3deepin4
 login.defs 1:4.16.0-7deepin1
 logsave 1.47.0-2deepin1
 lvm2 2.03.27-1
-m4 1.4.19-4
-make 4.4.1-1
 mawk 1.3.4.20240905-1
 media-types 4.0.0
 mesa-libgallium 24.3.0-1deepin5
@@ -582,7 +546,6 @@ openssl 3.2.4-0deepin2
 p11-kit 0.25.5-2
 p11-kit-modules 0.25.5-2
 passwd 1:4.16.0-7deepin1
-patchelf 0.18.0-1
 perl 5.36.0-10deepin2
 perl-base 5.36.0-10deepin2
 perl-modules-5.36 5.36.0-10deepin2
@@ -636,3 +599,4 @@ xscreensaver-gl-extra 6.09+dfsg1-1
 xz-utils 5.4.5-0.3
 zlib1g 1:1.3.dfsg+really1.3.1-1deepin1
 zstd 1.5.6+dfsg-1
+```

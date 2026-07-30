@@ -101,6 +101,12 @@ public:
         return *this;
     }
 
+    ContainerCfgBuilder &setResolvConf(std::filesystem::path path) noexcept
+    {
+        resolvConf = std::move(path);
+        return *this;
+    }
+
     ContainerCfgBuilder &setAnnotation(ANNOTATION annotation, std::string value) noexcept;
 
     ContainerCfgBuilder &addUIdMapping(int64_t containerID, int64_t hostID, int64_t size) noexcept;
@@ -270,6 +276,7 @@ private:
     std::optional<std::filesystem::path> appCache;
     std::optional<std::filesystem::path> containerXDGRuntimeDir;
     std::optional<std::string> timezone;
+    std::optional<std::filesystem::path> resolvConf;
 
     bool runtimePathRo = true;
     bool appPathRo = true;

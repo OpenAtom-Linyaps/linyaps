@@ -296,6 +296,11 @@ utils::error::Result<void> RunContext::resolve(const linglong::package::Referenc
         return LINGLONG_ERR("failed to resolve timezone", timezoneRet);
     }
 
+    auto networkConfRet = resolveNetworkConf();
+    if (!networkConfRet) {
+        return LINGLONG_ERR("failed to resolve network configuration", networkConfRet);
+    }
+
     if (opts.cdiDevices) {
         contextCfg.cdiDevices = opts.cdiDevices.value();
     }
@@ -381,6 +386,11 @@ utils::error::Result<void> RunContext::resolve(const api::types::v1::BuilderProj
     auto timezoneRet = resolveTimeZone();
     if (!timezoneRet) {
         return LINGLONG_ERR("failed to resolve timezone", timezoneRet);
+    }
+
+    auto networkConfRet = resolveNetworkConf();
+    if (!networkConfRet) {
+        return LINGLONG_ERR("failed to resolve network configuration", networkConfRet);
     }
 
     return resolveLayer(false, {});
@@ -556,6 +566,7 @@ utils::error::Result<void> RunContext::resolve(const api::types::v1::RunContextC
     }
 
     contextCfg.overlayfs = config.overlayfs;
+    contextCfg.resolvConf = config.resolvConf;
     contextCfg.timezone = config.timezone;
     contextCfg.instance = config.instance;
     contextCfg.mounts = config.mounts;
@@ -747,6 +758,43 @@ auto RunContext::selectOverlayMode(utils::OverlayMode requestedMode) const
   -> utils::error::Result<utils::OverlayMode>
 {
     return OverlayFSDriver::resolveOverlayMode(requestedMode);
+}
+
+utils::error::Result<void> RunContext::resolveNetworkConf()
+{
+    LINGLONG_TRACE("resolve network configuration");
+
+    const std::filesystem::path path{ "/etc/resolv.conf" };
+    std::error_code ec;
+    auto status = std::filesystem::symlink_status(path, ec);
+    if (ec) {
+        if (ec == std::errc::no_such_file_or_directory) {
+            contextCfg.resolvConf = std::nullopt;
+            return LINGLONG_OK;
+        }
+        return LINGLONG_ERR(fmt::format("failed to get status of {}", path), ec);
+    }
+
+    if (!std::filesystem::exists(status)) {
+        contextCfg.resolvConf = std::nullopt;
+        return LINGLONG_OK;
+    }
+
+    if (std::filesystem::is_symlink(status)) {
+        auto target = std::filesystem::canonical(path, ec);
+        if (ec) {
+            if (ec == std::errc::no_such_file_or_directory) {
+                contextCfg.resolvConf = std::nullopt;
+                return LINGLONG_OK;
+            }
+            return LINGLONG_ERR(fmt::format("failed to resolve symlink {}", path), ec);
+        }
+        contextCfg.resolvConf = target.string();
+        return LINGLONG_OK;
+    }
+
+    contextCfg.resolvConf = path.string();
+    return LINGLONG_OK;
 }
 
 utils::error::Result<void> RunContext::resolveTimeZone()
@@ -982,6 +1030,9 @@ utils::error::Result<void> RunContext::fillContextCfg(
     builder.setContainerId(containerID);
     if (contextCfg.timezone) {
         builder.setTimezone(*contextCfg.timezone);
+    }
+    if (contextCfg.resolvConf) {
+        builder.setResolvConf(*contextCfg.resolvConf);
     }
 
     if (!baseLayer) {

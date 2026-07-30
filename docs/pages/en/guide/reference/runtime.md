@@ -84,9 +84,9 @@ Built from the deepin 25.0.10 repository. Supports x86, arm64, and loong64.
 
 _Run `cat /packages.list` in the container to inspect the package list._
 
-[Binary package list](../../../guide/reference/org.deepin.base_25.2.2_binary.list)
+[Binary package list](../../../guide/reference/org.deepin.base_25.2.2_binary.list.md)
 
-[Develop package list](../../../guide/reference/org.deepin.base_25.2.2_develop.list)
+[Develop package list](../../../guide/reference/org.deepin.base_25.2.2_develop.list.md)
 
 ### org.deepin.base/23.1.0
 
@@ -94,7 +94,7 @@ Built from the deepin v23 release repository. Supports x86.
 
 _Run `cat /packages.list` in the container to inspect the package list._
 
-[Develop package list](../../../guide/reference/org.deepin.base_23.1.0_develop.list)
+[Develop package list](../../../guide/reference/org.deepin.base_23.1.0_develop.list.md)
 
 ### org.deepin.foundation/20.0.0
 
@@ -102,7 +102,7 @@ Built from the UOS 1070 repository. Supports x86, arm64, and loongarch64.
 
 _Run `cat /var/lib/dpkg/status|grep "^Package: "|sort|awk '{print $2}'` in the container to inspect the package list._
 
-[Develop package list](../../../guide/reference/org.deepin.foundation_20.0.0_develop.list)
+[Develop package list](../../../guide/reference/org.deepin.foundation_20.0.0_develop.list.md)
 
 ## Runtime List
 
@@ -112,7 +112,7 @@ Built from the deepin 25.0.10 repository. Supports x86, arm64, loong64, sw64, an
 
 _Run `cat /runtime/packages.list` in the container to inspect the package list._
 
-[Package list](../../../guide/reference/org.deepin.runtime.dtk_25.2.2_develop.list)
+[Package list](../../../guide/reference/org.deepin.runtime.dtk_25.2.2_develop.list.md)
 
 ### org.deepin.runtime.webengine/25.2.2
 
@@ -120,7 +120,7 @@ Built from the deepin 25.0.10 repository. Supports x86, arm64, loong64, sw64, an
 
 _Run `cat /runtime/packages.list` in the container to inspect the package list._
 
-[Package list](../../../guide/reference/org.deepin.runtime.webengine_25.2.2_develop.list)
+[Package list](../../../guide/reference/org.deepin.runtime.webengine_25.2.2_develop.list.md)
 
 ### org.deepin.runtime.dtk/23.1.0
 
@@ -128,7 +128,7 @@ Built from the deepin 23 release repository. Supports x86.
 
 _Run `cat /runtime/packages.list` in the container to inspect the package list._
 
-[Package list](../../../guide/reference/org.deepin.runtime.dtk_23.1.0_develop.list)
+[Package list](../../../guide/reference/org.deepin.runtime.dtk_23.1.0_develop.list.md)
 
 ### org.deepin.Runtime/20.0.0
 
@@ -136,4 +136,4 @@ Built from the UOS 1070 repository. Supports x86, arm64, and loongarch64.
 
 _Run `cat /runtime/packages.list` in the container to inspect the package list._
 
-[Package list](../../../guide/reference/org.deepin.Runtime_20.0.0_develop.list)
+[Package list](../../../guide/reference/org.deepin.Runtime_20.0.0_develop.list.md)

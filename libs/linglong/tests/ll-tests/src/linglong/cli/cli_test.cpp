@@ -250,7 +250,7 @@ TEST_F(CliTest, taskEventsDriveProgressAndTextOutput)
 
 TEST_F(CliTest, taskFinishedDrivesFinalOutput)
 {
-    EXPECT_CALL(*printer, printProgress(testing::DoubleEq(0.0), ""));
+    EXPECT_CALL(*printer, printProgress(_, _)).Times(0);
     EXPECT_TRUE(
       QMetaObject::invokeMethod(cli.get(),
                                 "onTaskEvent",
@@ -273,6 +273,22 @@ TEST_F(CliTest, taskFinishedDrivesFinalOutput)
                                           "onTaskFinished",
                                           Qt::DirectConnection,
                                           Q_ARG(QVariantMap, result)));
+}
+
+TEST_F(CliTest, failedTaskStateDoesNotPrintErrorAsProgress)
+{
+    EXPECT_CALL(*printer, printProgress(_, _)).Times(0);
+    EXPECT_TRUE(
+      QMetaObject::invokeMethod(cli.get(),
+                                "onTaskEvent",
+                                Qt::DirectConnection,
+                                Q_ARG(QString, QStringLiteral("state")),
+                                Q_ARG(QVariantMap,
+                                      common::serialize::toQVariantMap(api::types::v1::TaskState{
+                                        .message = "installation failed",
+                                        .progress = 42.0,
+                                        .state = api::types::v1::State::Failed,
+                                      }))));
 }
 
 TEST_F(CliRepoAndPackageManagerTest, getRepoCachesLoadedRepository)

@@ -272,6 +272,13 @@ linglong::utils::error::Result<linglong::utils::fd::UniqueFd> acceptConsoleFd(in
     }
 }
 
+bool isTerminalTaskState(linglong::api::types::v1::State state) noexcept
+{
+    return state == linglong::api::types::v1::State::Canceled
+      || state == linglong::api::types::v1::State::Failed
+      || state == linglong::api::types::v1::State::Succeed;
+}
+
 std::string makeDebugInstanceID()
 {
     uuid_t uuid;
@@ -881,7 +888,7 @@ void Cli::onTaskEvent(const QString &event, const QVariantMap &data)
         }
 
         taskState.state = state->state;
-        if (!globalOptions.noProgress) {
+        if (!globalOptions.noProgress && !isTerminalTaskState(state->state)) {
             printer.printProgress(std::clamp(state->progress, 0.0, 100.0), state->message);
         }
         return;

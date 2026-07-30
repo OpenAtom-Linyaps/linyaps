@@ -1450,47 +1450,36 @@ utils::error::Result<void> ContainerCfgBuilder::buildMountNetworkConf() noexcept
 
     networkConfMount = std::vector<Mount>{};
 
-    std::filesystem::path resolvConf{ "/etc/resolv.conf" };
+    const std::filesystem::path resolvConfPath{ "/etc/resolv.conf" };
     std::error_code ec;
-    if (std::filesystem::exists(resolvConf, ec)) {
+    if (resolvConf) {
         // /etc/resolv.conf is volatile on host, we create a new symlink in the bundle
-        // directory pointing to the actual target, and then mount it with the
+        // directory pointing to the target resolved by RunContext, and then mount it with the
         // 'copy-symlink' option, which tells the runtime to recreate the symlink inside
         // the container.
-        // NOTE: it's not working if /etc/resolv.conf is a symlink, and points to a
-        // different path after container started.
+        // NOTE: If the host symlink target changes after the container starts, the running
+        // container still uses the old target.
         if (hostRootMount) {
-            auto target = resolvConf;
-            if (std::filesystem::is_symlink(resolvConf, ec)) {
-                std::array<char, PATH_MAX + 1> buf{};
-                auto *rpath = realpath(resolvConf.string().c_str(), buf.data());
-                if (rpath == nullptr) {
-                    return LINGLONG_ERR(
-                      fmt::format("Failed to read symlink {}: {}", resolvConf, strerror(errno)));
-                }
-                target = std::filesystem::path{ rpath };
-            }
-
-            target = std::filesystem::path{ "/run/host/rootfs" } / target.lexically_relative("/");
+            auto target =
+              std::filesystem::path{ "/run/host/rootfs" } / resolvConf->lexically_relative("/");
             auto bundleResolvConf = bundlePath / "resolv.conf";
             std::filesystem::create_symlink(target, bundleResolvConf, ec);
             if (ec) {
                 return LINGLONG_ERR(fmt::format("Failed to create symlink {}", bundleResolvConf),
                                     ec);
             }
-            networkConfMount->emplace_back(Mount{ .destination = resolvConf.string(),
+            networkConfMount->emplace_back(Mount{ .destination = resolvConfPath.string(),
                                                   .options = string_list{ "bind", "copy-symlink" },
                                                   .source = bundleResolvConf,
                                                   .type = "bind" });
         } else {
-            networkConfMount->emplace_back(Mount{ .destination = resolvConf.string(),
+            networkConfMount->emplace_back(Mount{ .destination = resolvConfPath.string(),
                                                   .options = string_list{ "bind", "ro" },
-                                                  .source = resolvConf,
+                                                  .source = *resolvConf,
                                                   .type = "bind" });
         }
     }
 
-    bindIfExist(*networkConfMount, "/etc/resolvconf");
     bindIfExist(*networkConfMount, "/etc/hosts");
     return LINGLONG_OK;
 }

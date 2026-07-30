@@ -1157,6 +1157,8 @@ $defs:
             type: string
       overlayfs:
         type: string
+      resolvConf:
+        type: string
       timezone:
         type: string
       cdiDevices:

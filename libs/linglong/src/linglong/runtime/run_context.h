@@ -140,6 +140,7 @@ private:
         &externalExtensionDefs);
     utils::error::Result<void>
     resolveOverlayMode(std::optional<std::string> requestedMode = std::nullopt);
+    utils::error::Result<void> resolveNetworkConf();
     utils::error::Result<void> resolveTimeZone();
 
     repo::OSTreeRepo &repo;

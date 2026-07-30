@@ -1276,6 +1276,7 @@ x.extensions = get_stack_optional<std::map<std::string, std::vector<std::string>
 x.instance = get_stack_optional<std::string>(j, "instance");
 x.mounts = get_stack_optional<std::vector<Mount>>(j, "mounts");
 x.overlayfs = get_stack_optional<std::string>(j, "overlayfs");
+x.resolvConf = get_stack_optional<std::string>(j, "resolvConf");
 x.runtime = get_stack_optional<std::string>(j, "runtime");
 x.timezone = get_stack_optional<std::string>(j, "timezone");
 x.version = j.at("version").get<std::string>();
@@ -1303,6 +1304,9 @@ j["mounts"] = x.mounts;
 }
 if (x.overlayfs) {
 j["overlayfs"] = x.overlayfs;
+}
+if (x.resolvConf) {
+j["resolvConf"] = x.resolvConf;
 }
 if (x.runtime) {
 j["runtime"] = x.runtime;

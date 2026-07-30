@@ -34,6 +34,7 @@ std::optional<std::map<std::string, std::vector<std::string>>> extensions;
 std::optional<std::string> instance;
 std::optional<std::vector<Mount>> mounts;
 std::optional<std::string> overlayfs;
+std::optional<std::string> resolvConf;
 std::optional<std::string> runtime;
 std::optional<std::string> timezone;
 std::string version;

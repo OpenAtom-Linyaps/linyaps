@@ -15,6 +15,7 @@
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/runtime/layer.h"
 #include "linglong/utils/error/error.h"
+#include "linglong/utils/overlayfs.h"
 #include "ocppi/runtime/config/types/Generators.hpp"
 
 #include <filesystem>
@@ -59,7 +60,7 @@ public:
     {
     }
 
-    ~RunContext();
+    virtual ~RunContext();
 
     utils::error::Result<void> resolve(const linglong::package::Reference &runnable,
                                        const ResolveOptions &opts = ResolveOptions{});
@@ -112,6 +113,10 @@ public:
     getCachedTargetItem();
 
     [[nodiscard]] bool hasRuntime() const noexcept { return !!runtimeLayer; }
+
+protected:
+    virtual auto selectOverlayMode(utils::OverlayMode requestedMode) const
+      -> utils::error::Result<utils::OverlayMode>;
 
 private:
     utils::error::Result<void> resolveLayer(bool depsExcludeDev,

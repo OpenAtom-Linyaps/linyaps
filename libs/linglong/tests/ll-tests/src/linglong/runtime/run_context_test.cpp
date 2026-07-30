@@ -23,9 +23,27 @@ using ::testing::Return;
 
 namespace {
 
-using RunContext = linglong::runtime::RunContext;
 using RuntimeLayer = linglong::runtime::RuntimeLayer;
 using ResolveOptions = linglong::runtime::ResolveOptions;
+
+class TestRunContext final : public linglong::runtime::RunContext
+{
+public:
+    using linglong::runtime::RunContext::RunContext;
+
+protected:
+    auto selectOverlayMode(utils::OverlayMode requestedMode) const
+      -> utils::error::Result<utils::OverlayMode> override
+    {
+        if (requestedMode == utils::OverlayMode::Auto) {
+            return utils::OverlayMode::FUSE;
+        }
+
+        return requestedMode;
+    }
+};
+
+using RunContext = TestRunContext;
 
 std::string specChecksum(const std::filesystem::path &path)
 {
@@ -535,6 +553,8 @@ TEST_F(RunContextTest, resolveRunnableWithBase)
     EXPECT_FALSE(context.getAppLayer().has_value());
     EXPECT_FALSE(context.getRuntimeLayer().has_value());
     EXPECT_TRUE(context.getBaseLayer().has_value());
+    ASSERT_TRUE(context.getConfig().overlayfs.has_value());
+    EXPECT_EQ(*context.getConfig().overlayfs, "fuse");
 }
 
 TEST_F(RunContextTest, resolveRunnableWithInvalidKind)

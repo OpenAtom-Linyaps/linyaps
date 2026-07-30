@@ -733,7 +733,7 @@ utils::error::Result<void> RunContext::resolveOverlayMode(std::optional<std::str
         mode = *parsedMode;
     }
 
-    auto resolvedMode = OverlayFSDriver::resolveOverlayMode(mode);
+    auto resolvedMode = selectOverlayMode(mode);
     if (!resolvedMode) {
         return LINGLONG_ERR("resolve overlayfs mode", resolvedMode);
     }
@@ -741,6 +741,12 @@ utils::error::Result<void> RunContext::resolveOverlayMode(std::optional<std::str
     contextCfg.overlayfs = std::string(OverlayFSDriver::modeToString(*resolvedMode));
 
     return LINGLONG_OK;
+}
+
+auto RunContext::selectOverlayMode(utils::OverlayMode requestedMode) const
+  -> utils::error::Result<utils::OverlayMode>
+{
+    return OverlayFSDriver::resolveOverlayMode(requestedMode);
 }
 
 utils::error::Result<void> RunContext::resolveTimeZone()

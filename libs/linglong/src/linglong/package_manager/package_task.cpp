@@ -395,7 +395,7 @@ void PackageTaskQueue::tryRunTask()
     for (auto it = m_taskQueue.begin(); it != m_taskQueue.end(); ++it) {
         // skip non-queued task
         if ((*it)->state() != linglong::api::types::v1::State::Queued) {
-            LogW("task {} at front is not in queued state, skip it", (*it)->taskID());
+            LogD("task {} at front is not in queued state, skip it", (*it)->taskID());
             continue;
         }
 

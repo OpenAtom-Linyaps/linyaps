@@ -408,12 +408,10 @@ TEST(TaskQueue, addTask)
     EXPECT_EQ(task->get().message(), "succeeded");
 
     release.set_value();
-    for (int i = 0; i < 1000 && queue.getTask(taskID); ++i) {
-        QCoreApplication::processEvents();
-        std::this_thread::yield();
-    }
 
-    EXPECT_FALSE(queue.getTask(taskID));
+    ASSERT_TRUE(processEventsUntil([&queue, &taskID]() {
+        return !queue.getTask(taskID);
+    }));
 }
 
 TEST(TaskQueue, joinTask)

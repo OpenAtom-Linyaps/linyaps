@@ -2,6 +2,52 @@
 
 ---
 
+## Version 1.14
+
+### 🚀 **New Features**
+
+* **Debug Mode:** `ll-cli run` now supports `--debug` mode, which launches the application under gdbserver, with `--debug-listen`, `--debug-debuginfod`, and `--debug-symbol-dir` options for easy debugger attachment.
+* **Dependency & Size Analysis:** Added `ll-cli analyze depends` and `ll-cli analyze size` subcommands to view the dependency tree of installed applications and to report exclusive, shared, logical, and actual disk usage per module.
+* **PipeWire Support:** Added `--enable-pipewire` option to mount the current user's PipeWire socket inside the sandbox, providing audio and video service access for applications.
+* **AT SPI Support:** Added `--enable-atspi` option to mount the AT SPI socket inside the sandbox, improving accessibility service access.
+* **Runtime Configuration Enhancements:** Support for `config.d/*.json` drop-in configurations and CDI device references in runtime configuration, allowing devices to be declared in config files.
+* **Process List Enhancement:** `ll-cli ps` gained `--no-truncated` to show full container IDs.
+* **Version Info Enhancement:** Non-release builds now embed git hash and build channel metadata in the version string, making build provenance easier to identify.
+
+### 🐞 **Bug Fixes**
+
+* **Module Preservation:** Fixed missing installed modules when upgrading or downgrading applications.
+* **UAB Export:** Fixed UAB export failure when cross-device hard links fail; added fallback copy logic.
+* **Debug Security:** Bound gdbserver to loopback by default to prevent debug services from being exposed to the network.
+* **Export Path:** Fixed relative `--output` path resolution during UAB export.
+* **User Home Directory:** Used `HOME` environment variable instead of hardcoded `/home/` path prefix, fixing runtime on systems with non-default home directories.
+* **D-Bus Fixes:** Fixed QtDBus file descriptor marshaling and `ll-package-manager` abnormal startup issues.
+* **Initialization:** Fixed `ll-init` handling of empty command arguments.
+* **OverlayFS:** Improved kernel OverlayFS support detection and fixed related mode resolution.
+* **Cache Cleanup:** Fixed cache removal failures after modifying directory permissions.
+* **Task State:** Fixed missing final task state when a task is removed quickly.
+* **Network Configuration:** Fixed `/etc/resolv.conf` symlink resolution to ensure correct DNS configuration inside the sandbox.
+
+---
+
+## Version 1.13
+
+### 🚀 **New Features**
+
+* **Instance Configuration:** Added `--instance` option to `ll-cli run`, allowing per-instance runtime configuration with custom mounts for isolated container environments.
+* **System-wide Runtime Configuration:** Added system-level runtime configuration directory at `/etc/linglong`, with system defaults, per-application configs, and user configs merged in priority order.
+* **Run in Runtime/Base Environment:** `ll-cli run` now supports running commands directly inside a runtime or base environment without requiring an application.
+* **NVIDIA GPU Auto-detection:** Automatically detects NVIDIA GPU via CDI when no CDI devices are explicitly specified.
+* **Package Manager Authorization:** Added polkit authorization handling for `ll-package-manager`, improving permission management for install, uninstall, and other operations.
+
+### 🐞 **Bug Fixes**
+
+* **Build Run Identity:** Fixed `ll-builder` run environment not using the current user's UID/GID.
+* **Extension Resolution:** Fixed extension definitions not being properly resolved from runtime configuration.
+* **XDP Compatibility:** Automatically disables XDP integration for applications that do not conform to XDG Desktop Portal ID specification, and fixed document mount options.
+* **Build Dependencies:** Improved build-time dependency pull logic to reduce build failures.
+
+---
 ## Version 1.12
 
 ### 🚀 **New Features**

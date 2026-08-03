@@ -889,6 +889,10 @@
         "force": {
           "description": "force to overwrite",
           "type": "boolean"
+        },
+        "noAutoPrune": {
+          "description": "do not automatically remove unused dependencies",
+          "type": "boolean"
         }
       }
     },
@@ -1073,6 +1077,10 @@
         "appOnly": {
           "type": "boolean",
           "description": "upgrade applications only"
+        },
+        "noAutoPrune": {
+          "type": "boolean",
+          "description": "do not automatically remove unused dependencies"
         }
       }
     },

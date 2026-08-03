@@ -32,6 +32,9 @@ ll\-cli\-install - 安装应用程序或运行时
 **-y**
 : 自动对所有问题回答是
 
+**--no-auto-prune**
+: 安装或替换应用后不自动清理未使用的依赖
+
 ## POSITIONAL ARGUMENTS
 
 **APP** _TEXT_ _REQUIRED_

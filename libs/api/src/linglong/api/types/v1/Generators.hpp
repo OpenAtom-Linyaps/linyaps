@@ -601,12 +601,16 @@ j["pid"] = x.pid;
 
 inline void from_json(const json & j, CommonOptions& x) {
 x.force = j.at("force").get<bool>();
+x.noAutoPrune = get_stack_optional<bool>(j, "noAutoPrune");
 x.skipInteraction = j.at("skipInteraction").get<bool>();
 }
 
 inline void to_json(json & j, const CommonOptions & x) {
 j = json::object();
 j["force"] = x.force;
+if (x.noAutoPrune) {
+j["noAutoPrune"] = x.noAutoPrune;
+}
 j["skipInteraction"] = x.skipInteraction;
 }
 
@@ -1156,6 +1160,7 @@ j["package"] = x.package;
 inline void from_json(const json & j, PackageManager1UpdateParameters& x) {
 x.appOnly = j.at("appOnly").get<bool>();
 x.depsOnly = j.at("depsOnly").get<bool>();
+x.noAutoPrune = get_stack_optional<bool>(j, "noAutoPrune");
 x.packages = j.at("packages").get<std::vector<PackageManager1Package>>();
 }
 
@@ -1163,6 +1168,9 @@ inline void to_json(json & j, const PackageManager1UpdateParameters & x) {
 j = json::object();
 j["appOnly"] = x.appOnly;
 j["depsOnly"] = x.depsOnly;
+if (x.noAutoPrune) {
+j["noAutoPrune"] = x.noAutoPrune;
+}
 j["packages"] = x.packages;
 }
 

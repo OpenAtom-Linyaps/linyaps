@@ -32,6 +32,9 @@ The `ll-cli install` command is used to install Linyaps applications. This comma
 **-y**
 : Automatically answer yes to all questions
 
+**--no-auto-prune**
+: Do not automatically remove unused dependencies after installing or replacing an application
+
 ## POSITIONAL ARGUMENTS
 
 **APP** _TEXT_ _REQUIRED_

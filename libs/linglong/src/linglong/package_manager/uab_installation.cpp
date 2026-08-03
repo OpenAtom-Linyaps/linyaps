@@ -343,6 +343,14 @@ utils::error::Result<void> UabInstallationAction::postInstall(PackageTask &task)
     }
 
     transaction.commit();
+
+    if (operation.kind == "app" && operation.oldRef && !extraModuleOnly(checkedLayers.first)) {
+        auto pruneRet = options.noAutoPrune.value_or(false) ? repo.prune() : pm.pruneUnused();
+        if (!pruneRet) {
+            LogE("failed to prune after installing {}: {}", newRef.toString(), pruneRet.error());
+        }
+    }
+
     task.updateState(linglong::api::types::v1::State::Succeed, "install uab successfully");
 
     return LINGLONG_OK;

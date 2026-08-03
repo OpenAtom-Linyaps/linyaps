@@ -2341,6 +2341,7 @@ int Cli::install(const InstallOptions &options)
                                                                      .skipInteraction = false } };
     params.options.force = options.forceOpt;
     params.options.skipInteraction = options.confirmOpt;
+    params.options.noAutoPrune = options.noAutoPrune;
     params.repo = options.repo;
 
     QFileInfo info(QString::fromStdString(options.appid));
@@ -2431,6 +2432,7 @@ int Cli::upgrade(const UpgradeOptions &options)
     api::types::v1::PackageManager1UpdateParameters params;
     params.appOnly = options.appOnly;
     params.depsOnly = options.depsOnly;
+    params.noAutoPrune = options.noAutoPrune;
     for (const auto &ref : toUpgrade) {
         api::types::v1::PackageManager1Package package;
         package.id = ref.id;
@@ -2581,6 +2583,7 @@ int Cli::uninstall(const UninstallOptions &options)
         .force = options.forceOpt,
         .skipInteraction = false,
     };
+    params.options.noAutoPrune = options.noAutoPrune;
     params.package.id = fuzzyRef->id;
     if (fuzzyRef->channel) {
         params.package.channel = fuzzyRef->channel;

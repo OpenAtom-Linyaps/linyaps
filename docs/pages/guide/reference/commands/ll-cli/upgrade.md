@@ -26,6 +26,9 @@ ll\-cli\-upgrade - 升级应用程序或运行时
 **--app-only**
 : 仅升级指定应用本身，与 `--deps-only` 互斥
 
+**--no-auto-prune**
+: 升级应用后不自动清理未使用的依赖
+
 ## POSITIONAL ARGUMENTS
 
 **APP** _TEXT_

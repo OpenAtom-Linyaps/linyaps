@@ -392,6 +392,15 @@ utils::error::Result<void> RefInstallationAction::postInstall(Task &task)
         LogE("failed to merge modules: {}", mergeRet.error());
     }
 
+    if (operation.kind == "app" && operation.oldRef && !extraModuleOnly(modules)) {
+        auto pruneRet = options.noAutoPrune.value_or(false) ? this->repo.prune() : pm.pruneUnused();
+        if (!pruneRet) {
+            LogE("failed to prune after installing {}: {}",
+                 operation.newRef->reference.toString(),
+                 pruneRet.error());
+        }
+    }
+
     auto &repo = operation.newRef->repo;
     task.updateState(linglong::api::types::v1::State::Succeed,
                      fmt::format("Install {} (from repo: {}) success",

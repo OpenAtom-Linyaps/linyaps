@@ -36,6 +36,10 @@ struct CommonOptions {
 */
 bool force;
 /**
+* do not automatically remove unused dependencies
+*/
+std::optional<bool> noAutoPrune;
+/**
 * skip interaction, such as 'apt install aa -y'
 */
 bool skipInteraction;

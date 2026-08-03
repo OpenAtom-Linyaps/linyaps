@@ -26,6 +26,9 @@ The `ll-cli uninstall` command removes installed Linyaps applications. Base and 
 **--force**
 : Force the uninstallation of a Base or Runtime
 
+**--no-auto-prune**
+: Do not automatically remove unused dependencies after uninstalling an application
+
 ## POSITIONAL ARGUMENTS
 
 **APP** _TEXT_ _REQUIRED_

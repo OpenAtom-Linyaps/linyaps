@@ -60,6 +60,8 @@ public:
                 needToInstall,
                 (const std::string &refStr, std::optional<std::string> channel),
                 (override));
+
+    MOCK_METHOD(utils::error::Result<void>, pruneUnused, (), (override, noexcept));
 };
 
 class MockRepo : public repo::OSTreeRepo
@@ -110,6 +112,8 @@ public:
                 (override, const, noexcept));
 
     MOCK_METHOD(utils::error::Result<void>, mergeModules, (), (override, const, noexcept));
+
+    MOCK_METHOD(utils::error::Result<void>, prune, (), (override));
 };
 
 class RefInstallationTest : public ::testing::Test
@@ -189,6 +193,7 @@ TEST_F(RefInstallationTest, InstallApp)
     EXPECT_CALL(*pm, needToInstall("runtime", _)).WillOnce(Return(std::nullopt));
 
     EXPECT_CALL(*pm, applyApp(_)).WillOnce(Return(utils::error::Result<void>{}));
+    EXPECT_CALL(*pm, pruneUnused()).Times(0);
     EXPECT_CALL(*repo, mergeModules()).WillOnce([]() {
         return utils::error::Result<void>{};
     });
@@ -281,6 +286,7 @@ TEST_F(RefInstallationTest, InstallExtraOnly)
     EXPECT_CALL(*pm, needToInstall("runtime", _)).WillOnce(Return(std::nullopt));
 
     EXPECT_CALL(*pm, applyApp(_)).WillOnce(Return(utils::error::Result<void>{}));
+    EXPECT_CALL(*pm, pruneUnused()).Times(0);
     EXPECT_CALL(*repo, mergeModules()).WillOnce([]() {
         return utils::error::Result<void>{};
     });
@@ -354,6 +360,7 @@ TEST_F(RefInstallationTest, InstallMultipleModules)
     EXPECT_CALL(*pm, needToInstall("runtime", _)).WillOnce(Return(std::nullopt));
 
     EXPECT_CALL(*pm, applyApp(_)).WillOnce(Return(utils::error::Result<void>{}));
+    EXPECT_CALL(*pm, pruneUnused()).Times(0);
     EXPECT_CALL(*repo, mergeModules()).WillOnce([]() {
         return utils::error::Result<void>{};
     });
@@ -369,7 +376,11 @@ TEST_F(RefInstallationTest, InstallDowngrade)
 
     auto fuzzy = package::FuzzyReference::parse("main:id/1.0.0/x86_64").value();
     std::vector<std::string> modules{ "binary" };
-    api::types::v1::CommonOptions opts{ .force = true, .skipInteraction = true };
+    api::types::v1::CommonOptions opts{
+        .force = true,
+        .noAutoPrune = true,
+        .skipInteraction = true,
+    };
     auto action =
       service::RefInstallationAction::create(fuzzy, modules, *pm, *repo, opts, std::nullopt);
 
@@ -425,6 +436,8 @@ TEST_F(RefInstallationTest, InstallDowngrade)
     EXPECT_CALL(*pm, needToInstall("runtime", _)).WillOnce(Return(std::nullopt));
 
     EXPECT_CALL(*pm, switchAppVersion(_, _, true)).WillOnce(Return(utils::error::Result<void>{}));
+    EXPECT_CALL(*pm, pruneUnused()).Times(0);
+    EXPECT_CALL(*repo, prune()).WillOnce(Return(utils::error::Result<void>{}));
     EXPECT_CALL(*repo, mergeModules()).WillOnce([]() {
         return utils::error::Result<void>{};
     });
@@ -526,6 +539,7 @@ TEST_F(RefInstallationTest, InstallDowngradeKeepsInstalledModules)
     EXPECT_CALL(*pm, needToInstall("runtime", _)).WillOnce(Return(std::nullopt));
 
     EXPECT_CALL(*pm, switchAppVersion(_, _, true)).WillOnce(Return(utils::error::Result<void>{}));
+    EXPECT_CALL(*pm, pruneUnused()).WillOnce(Return(utils::error::Result<void>{}));
     EXPECT_CALL(*repo, mergeModules()).WillOnce([]() {
         return utils::error::Result<void>{};
     });
@@ -598,6 +612,7 @@ TEST_F(RefInstallationTest, InstallDowngradeDeduplicatesRuntimeFallback)
     EXPECT_CALL(*pm, needToInstall("runtime", _)).WillOnce(Return(std::nullopt));
 
     EXPECT_CALL(*pm, switchAppVersion(_, _, true)).WillOnce(Return(utils::error::Result<void>{}));
+    EXPECT_CALL(*pm, pruneUnused()).WillOnce(Return(utils::error::Result<void>{}));
     EXPECT_CALL(*repo, mergeModules()).WillOnce([]() {
         return utils::error::Result<void>{};
     });

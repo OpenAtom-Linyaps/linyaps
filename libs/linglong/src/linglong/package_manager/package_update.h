@@ -29,6 +29,7 @@ public:
     create(std::vector<api::types::v1::PackageManager1Package> toUpgrade,
            bool appOnly,
            bool depsOnly,
+           bool noAutoPrune,
            PackageManager &pm,
            repo::OSTreeRepo &repo);
 
@@ -47,6 +48,7 @@ private:
     PackageUpdateAction(std::vector<api::types::v1::PackageManager1Package> toUpgrade,
                         bool appOnly,
                         bool depsOnly,
+                        bool noAutoPrune,
                         PackageManager &pm,
                         repo::OSTreeRepo &repo);
 
@@ -72,6 +74,7 @@ private:
     std::vector<api::types::v1::PackageManager1Package> toUpgrade;
     bool appOnly;
     bool depsOnly;
+    bool noAutoPrune;
 
     std::string taskName;
     std::string taskMessage;
@@ -81,7 +84,7 @@ private:
     uint64_t taskTotalSize;
     uint64_t taskNeededSize;
     uint64_t taskFetchedSize;
-    bool baseOrRuntimeUpdated = false;
+    bool repositoryChanged = false;
 };
 
 } // namespace linglong::service

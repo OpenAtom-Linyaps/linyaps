@@ -97,6 +97,7 @@ struct InstallOptions
     std::optional<std::string> repo;
     bool forceOpt{ false };
     bool confirmOpt{ false };
+    bool noAutoPrune{ false };
 };
 
 struct UpgradeOptions
@@ -104,6 +105,7 @@ struct UpgradeOptions
     std::string appid; // 可选，为空时升级所有应用
     bool appOnly{ false };
     bool depsOnly{ false };
+    bool noAutoPrune{ false };
 };
 
 struct SearchOptions
@@ -120,6 +122,7 @@ struct UninstallOptions
     std::string appid;
     std::string module;
     bool forceOpt{ false };
+    bool noAutoPrune{ false };
 };
 
 struct ListOptions

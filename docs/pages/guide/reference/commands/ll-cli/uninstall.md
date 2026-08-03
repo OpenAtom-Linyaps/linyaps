@@ -26,6 +26,9 @@ ll\-cli\-uninstall - 卸载应用程序或运行时
 **--force**
 : 强制卸载基础环境（Base）或运行时（Runtime）
 
+**--no-auto-prune**
+: 卸载应用后不自动清理未使用的依赖
+
 ## POSITIONAL ARGUMENTS
 
 **APP** _TEXT_ _REQUIRED_

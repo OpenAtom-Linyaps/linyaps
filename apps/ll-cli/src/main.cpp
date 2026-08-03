@@ -299,6 +299,9 @@ ll-cli install stable:org.deepin.demo/0.0.0.1/x86_64
     cliInstall->add_flag("-y",
                          installOptions.confirmOpt,
                          _("Automatically answer yes to all questions"));
+    cliInstall->add_flag("--no-auto-prune",
+                         installOptions.noAutoPrune,
+                         _("Do not automatically remove unused dependencies"));
 }
 
 // Function to add the uninstall subcommand
@@ -320,6 +323,9 @@ void addUninstallCommand(CLI::App &commandParser,
     cliUninstall->add_flag("--force",
                            uninstallOptions.forceOpt,
                            _("Force uninstall base or runtime"));
+    cliUninstall->add_flag("--no-auto-prune",
+                           uninstallOptions.noAutoPrune,
+                           _("Do not automatically remove unused dependencies"));
 
     // below options are used for compatibility with old ll-cli
     const auto &pruneDescription = std::string{ _("Remove all unused modules") };
@@ -351,6 +357,9 @@ void addUpgradeCommand(CLI::App &commandParser,
                                          _("Only upgrade dependencies of application"));
     cliUpgrade->add_flag("--app-only", upgradeOptions.appOnly, _("Only upgrade application"))
       ->excludes(depsOnly);
+    cliUpgrade->add_flag("--no-auto-prune",
+                         upgradeOptions.noAutoPrune,
+                         _("Do not automatically remove unused dependencies"));
 }
 
 // Function to add the search subcommand

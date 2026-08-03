@@ -18,10 +18,12 @@ std::shared_ptr<PackageUpdateAction>
 PackageUpdateAction::create(std::vector<api::types::v1::PackageManager1Package> toUpgrade,
                             bool appOnly,
                             bool depsOnly,
+                            bool noAutoPrune,
                             PackageManager &pm,
                             repo::OSTreeRepo &repo)
 {
-    auto p = new PackageUpdateAction(std::move(toUpgrade), appOnly, depsOnly, pm, repo);
+    auto p =
+      new PackageUpdateAction(std::move(toUpgrade), appOnly, depsOnly, noAutoPrune, pm, repo);
     return std::shared_ptr<PackageUpdateAction>(p);
 }
 
@@ -29,12 +31,14 @@ PackageUpdateAction::PackageUpdateAction(
   std::vector<api::types::v1::PackageManager1Package> toUpgrade,
   bool appOnly,
   bool depsOnly,
+  bool noAutoPrune,
   PackageManager &pm,
   repo::OSTreeRepo &repo)
     : Action(pm, repo, api::types::v1::CommonOptions{})
     , toUpgrade(std::move(toUpgrade))
     , appOnly(appOnly)
     , depsOnly(depsOnly)
+    , noAutoPrune(noAutoPrune)
     , taskTotalSize(0)
     , taskNeededSize(0)
     , taskFetchedSize(0)
@@ -158,10 +162,10 @@ utils::error::Result<void> PackageUpdateAction::postUpdate([[maybe_unused]] Task
         LogE("failed to merge modules: {}", res.error());
     }
 
-    if (baseOrRuntimeUpdated) {
-        auto pruneRet = repo.prune();
+    if (repositoryChanged) {
+        auto pruneRet = noAutoPrune ? repo.prune() : pm.pruneUnused();
         if (!pruneRet) {
-            LogE("failed to prune: {}", pruneRet.error());
+            LogE("failed to prune after update: {}", pruneRet.error());
         }
     }
 
@@ -247,15 +251,6 @@ utils::error::Result<void> PackageUpdateAction::updateApp(Task &task,
         });
     }
     for (const auto &[refRepo, modules] : refsToInstall) {
-        bool isBaseOrRuntime = false;
-        if (!modules.empty()) {
-            auto info = modules.front().second.getPackageInfo();
-            if (!info) {
-                return LINGLONG_ERR(info);
-            }
-            isBaseOrRuntime = info->kind == "base" || info->kind == "runtime";
-        }
-
         for (const auto &[module, meta] : modules) {
             taskMessage = fmt::format("Updating {}/{}", refRepo.reference.toString(), module);
             task.updateStateMessage(taskMessage);
@@ -263,9 +258,8 @@ utils::error::Result<void> PackageUpdateAction::updateApp(Task &task,
             if (!res) {
                 return LINGLONG_ERR(res);
             }
+            repositoryChanged = true;
         }
-
-        baseOrRuntimeUpdated = baseOrRuntimeUpdated || isBaseOrRuntime;
     }
 
     if (!depsOnly && newAppInfo) {

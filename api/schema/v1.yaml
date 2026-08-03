@@ -690,6 +690,9 @@ $defs:
       force:
         description: force to overwrite
         type: boolean
+      noAutoPrune:
+        description: do not automatically remove unused dependencies
+        type: boolean
   CommonResult:
     title: CommonResult
     description: this is common error result of ll-cli command --json
@@ -820,6 +823,9 @@ $defs:
       appOnly:
         type: boolean
         description: upgrade applications only
+      noAutoPrune:
+        type: boolean
+        description: do not automatically remove unused dependencies
   PackageManager1ModifyRepoParameters:
     type: object
     required:

@@ -70,6 +70,8 @@ public
     virtual utils::error::Result<void> switchAppVersion(const package::Reference &oldRef,
                                                         const package::Reference &newRef,
                                                         bool removeOldRef = false) noexcept;
+    // Scan installed application dependencies and remove unreferenced packages.
+    virtual utils::error::Result<void> pruneUnused() noexcept;
     virtual utils::error::Result<void> tryGenerateCache(const package::Reference &ref) noexcept;
     utils::error::Result<void> executePostInstallHooks(const package::Reference &ref) noexcept;
     utils::error::Result<void> executePostUninstallHooks(const package::Reference &ref) noexcept;
@@ -96,7 +98,8 @@ public
                                                         const std::string &module) noexcept;
     utils::error::Result<void> Uninstall(PackageTask &taskContext,
                                          const package::Reference &ref,
-                                         const std::string &module) noexcept;
+                                         const std::string &module,
+                                         bool noAutoPrune = false) noexcept;
     virtual utils::error::Result<bool> tryUninstallRef(const package::Reference &ref) noexcept;
     utils::error::Result<void>
     uninstallRef(const package::Reference &ref,

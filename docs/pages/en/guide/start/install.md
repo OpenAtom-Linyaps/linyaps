@@ -48,7 +48,7 @@ for production systems.
 Review the script before running it, then install Linyaps with:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/OpenAtom-Linyaps/linyaps/master/install.sh | sh
+curl -fsSL https://get.linyaps.org.cn | sh
 ```
 
 The script uses the distribution's native package when it is tracked by the

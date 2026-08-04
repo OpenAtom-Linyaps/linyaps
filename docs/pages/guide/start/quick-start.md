@@ -19,7 +19,7 @@ ll-cli --version
 如果提示找不到命令，可以使用下面的一行命令快速安装：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/OpenAtom-Linyaps/linyaps/master/install.sh | sh
+curl -fsSL https://get.linyaps.org.cn | sh
 ```
 
 安装脚本会识别当前 Linux 发行版，并在需要时请求 `sudo` 权限。安装完成后，就可以开始体验如意玲珑应用了。
@@ -27,7 +27,7 @@ curl -fsSL https://raw.githubusercontent.com/OpenAtom-Linyaps/linyaps/master/ins
 如果您是应用开发者，使用下面命令快速安装，会同时安装 `ll-builder` 构建工具：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/OpenAtom-Linyaps/linyaps/master/install.sh | sh -s -- full
+curl -fsSL https://get.linyaps.org.cn | sh -s -- full
 ```
 
 如果您的发行版不受支持或者需要手动配置仓库，请参阅[安装如意玲珑](./install.md)。

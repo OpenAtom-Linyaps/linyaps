@@ -17,7 +17,7 @@ ll-builder --version
 If it is not found, use the installer's `full` mode to install Linyaps and `ll-builder` together:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/OpenAtom-Linyaps/linyaps/master/install.sh | sh -s -- full
+curl -fsSL https://get.linyaps.org.cn | sh -s -- full
 ```
 
 If the installer does not support your distribution, follow the manual steps in [Install Linyaps](./install.md) to install `ll-builder`.

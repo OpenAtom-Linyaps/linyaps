@@ -6,8 +6,10 @@
 
 set -eu
 
-OBS_BASE_URL=${LINYAPS_OBS_BASE_URL:-https://ci.deepin.com/repo/obs/linglong:/CI:/release}
+OBS_BASE_URL=${LINYAPS_OBS_BASE_URL:-https://ppa.linyaps.org.cn/release/}
+LATEST_OBS_BASE_URL=https://ppa.linyaps.org.cn/latest/
 OS_RELEASE_FILE=${LINYAPS_OS_RELEASE_FILE:-/etc/os-release}
+OS_VERSION_FILE=${LINYAPS_OS_VERSION_FILE:-/etc/os-version}
 DRY_RUN=${LINYAPS_DRY_RUN:-0}
 INSTALL_MODE=default
 
@@ -34,10 +36,11 @@ die()
 usage()
 {
     cat <<'EOF'
-Usage: install.sh [full]
+Usage: install.sh [full] [latest]
 
 Install Linyaps for end users. Use "full" to also install the
-linglong-builder package for application development.
+linglong-builder package for application development. Use "latest" to
+install packages from the latest repository instead of the release repository.
 EOF
 }
 
@@ -100,7 +103,7 @@ install_with_apt()
 
     run_as_root mkdir -p /etc/apt/sources.list.d
     write_root_file /etc/apt/sources.list.d/linglong.list \
-        "deb [trusted=yes] $OBS_BASE_URL/$repository/ ./"
+        "deb [trusted=yes] ${OBS_BASE_URL%/}/$repository/ ./"
 
     log "Refreshing package metadata..."
     run_as_root env DEBIAN_FRONTEND=noninteractive apt-get update
@@ -118,7 +121,7 @@ install_with_dnf()
     repository=$1
     require_command dnf
 
-    repo_url=$OBS_BASE_URL/$repository
+    repo_url=${OBS_BASE_URL%/}/$repository
     repo_config="[linglong_CI_release]
 name=linglong:CI:release ($repository)
 baseurl=$repo_url/
@@ -218,50 +221,132 @@ EOF
     exit 2
 }
 
-select_obs_repository()
+fetch_url()
 {
-    case "$OS_ID:$OS_VERSION" in
-        deepin:23*) repository=Deepin_23 ;;
-        deepin:25*) repository=Deepin_25 ;;
-        debian:12*) repository=Debian_12 ;;
-        debian:13*) repository=Debian_13 ;;
-        ubuntu:24.04*) repository=xUbuntu_24.04 ;;
-        ubuntu:25.04*) repository=Ubuntu_25.04 ;;
-        ubuntu:25.10*) repository=Ubuntu_25.10 ;;
-        fedora:42*) repository=Fedora_42 ;;
-        fedora:43*) repository=Fedora_43 ;;
-        openeuler:24.03*) repository=openEuler_24.03 ;;
-        openeuler:25.03*) repository=openEuler_25.03 ;;
-        anolis:23.3*) repository=AnolisOS_23.3 ;;
-        anolis:23.4*) repository=AnolisOS_23.4 ;;
-        openkylin:2.0*) repository=openkylin_2.0 ;;
-        uos:*) repository=uos_1070 ;;
-        *) return 1 ;;
-    esac
+    if command -v curl >/dev/null 2>&1; then
+        curl -fsSL --max-time 15 "$1"
+    elif command -v wget >/dev/null 2>&1; then
+        wget -qO- --timeout=15 "$1"
+    else
+        printf '%s\n' \
+            "Cannot probe the remote repository: neither curl nor wget is installed." >&2
+        return 1
+    fi
+}
+
+probe_obs_repository()
+{
+    repository_suffix=${ID}_${VERSION_ID}
+    repository_index_url=${OBS_BASE_URL%/}/
+
+    repository_index=$(fetch_url "$repository_index_url") || return 1
+
+    repository=$(printf '%s\n' "$repository_index" | LC_ALL=C awk -v suffix="$repository_suffix" '
+        BEGIN {
+            suffix = tolower(suffix)
+        }
+        match($0, /href="[^"]+\/"/) {
+            candidate = substr($0, RSTART + 6, RLENGTH - 8)
+            normalized = tolower(candidate)
+            if (length(normalized) >= length(suffix) &&
+                substr(normalized, length(normalized) - length(suffix) + 1) == suffix) {
+                print candidate
+                exit
+            }
+        }
+    ')
+    [ -n "$repository" ] || return 1
 
     printf '%s\n' "$repository"
 }
 
-case "${1-}" in
-    "")
-        ;;
-    full)
-        INSTALL_MODE=full
-        ;;
-    -h | --help)
-        usage
-        exit 0
-        ;;
-    *)
-        usage >&2
-        die "unsupported installation mode: $1"
-        ;;
-esac
+probe_repository_type()
+{
+    repository_url=${OBS_BASE_URL%/}/$1/
+    repository_index=$(fetch_url "$repository_url") || return 1
 
-[ "$#" -le 1 ] || {
-    usage >&2
-    die "too many arguments"
+    printf '%s\n' "$repository_index" | LC_ALL=C awk '
+        match($0, /href="[^"]+"/) {
+            candidate = substr($0, RSTART + 6, RLENGTH - 7)
+            if (candidate == "Release") {
+                has_release = 1
+            } else if (tolower(candidate) ~ /\.repo$/) {
+                has_repo = 1
+            }
+        }
+        END {
+            if (has_release && !has_repo) {
+                print "apt"
+                exit 0
+            }
+            if (has_repo && !has_release) {
+                print "dnf"
+                exit 0
+            }
+            exit 1
+        }
+    '
 }
+
+install_from_obs_repository()
+{
+    repository=$1
+    if ! repository_type=$(probe_repository_type "$repository"); then
+        die "cannot determine package manager for repository: $repository"
+    fi
+
+    case "$repository_type" in
+        apt) install_with_apt "$repository" ;;
+        dnf) install_with_dnf "$repository" ;;
+    esac
+}
+
+select_uos_repository()
+{
+    [ -r "$OS_VERSION_FILE" ] || return 1
+
+    uos_minor_version=$(LC_ALL=C awk -F= '
+        $1 ~ /^[[:space:]]*MinorVersion[[:space:]]*$/ {
+            value = $2
+            sub(/^[[:space:]]*/, "", value)
+            sub(/[[:space:]]*$/, "", value)
+            print value
+            exit
+        }
+    ' "$OS_VERSION_FILE")
+    case "$uos_minor_version" in
+        "" | *[!0-9]*) return 1 ;;
+    esac
+
+    printf 'uos_%s\n' "$uos_minor_version"
+}
+
+select_obs_repository()
+{
+    case "$OS_ID" in
+        uos) select_uos_repository ;;
+        *) probe_obs_repository ;;
+    esac
+}
+
+for argument do
+    case "$argument" in
+        full)
+            INSTALL_MODE=full
+            ;;
+        latest)
+            OBS_BASE_URL=$LATEST_OBS_BASE_URL
+            ;;
+        -h | --help)
+            usage
+            exit 0
+            ;;
+        *)
+            usage >&2
+            die "unsupported argument: $argument"
+            ;;
+    esac
+done
 
 [ -r "$OS_RELEASE_FILE" ] ||
     die "cannot read operating system information from $OS_RELEASE_FILE"
@@ -306,14 +391,7 @@ case "$OS_ID" in
                 die "unsupported distribution or version: $OS_NAME"
             fi
         fi
-        case "$repository" in
-            Fedora_* | openEuler_* | AnolisOS_*)
-                install_with_dnf "$repository"
-                ;;
-            ?*)
-                install_with_apt "$repository"
-                ;;
-        esac
+        [ -z "$repository" ] || install_from_obs_repository "$repository"
         ;;
 esac
 

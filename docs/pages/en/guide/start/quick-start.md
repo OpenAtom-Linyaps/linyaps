@@ -19,7 +19,7 @@ ll-cli --version
 If the command is not found, use the following one-line command for a quick installation:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/OpenAtom-Linyaps/linyaps/master/install.sh | sh
+curl -fsSL https://get.linyaps.org.cn | sh
 ```
 
 The installer detects the current Linux distribution and requests `sudo` privileges when necessary. After installation, you can begin using Linyaps applications.
@@ -27,7 +27,7 @@ The installer detects the current Linux distribution and requests `sudo` privile
 Application developers can use the following command to install the `ll-builder` build tool as well:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/OpenAtom-Linyaps/linyaps/master/install.sh | sh -s -- full
+curl -fsSL https://get.linyaps.org.cn | sh -s -- full
 ```
 
 If your distribution is not supported or you need to configure a repository manually, see [Install Linyaps](./install.md).

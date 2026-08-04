@@ -17,7 +17,7 @@ ll-builder --version
 如果命令找不到，推荐使用安装脚本的 `full` 模式，同时安装如意玲珑和 `ll-builder` 构建工具：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/OpenAtom-Linyaps/linyaps/master/install.sh | sh -s -- full
+curl -fsSL https://get.linyaps.org.cn | sh -s -- full
 ```
 
 如果您的发行版不受安装脚本支持，请按照[安装如意玲珑](./install.md)中的手动步骤安装 `ll-builder`。

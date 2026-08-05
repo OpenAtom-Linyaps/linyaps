@@ -2437,7 +2437,6 @@ int Cli::upgrade(const UpgradeOptions &options)
     }
 
     api::types::v1::PackageManager1UpdateParameters params;
-    params.appOnly = options.appOnly;
     params.depsOnly = options.depsOnly;
     params.noAutoPrune = options.noAutoPrune;
     for (const auto &ref : toUpgrade) {

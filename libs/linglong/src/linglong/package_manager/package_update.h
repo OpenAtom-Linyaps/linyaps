@@ -27,7 +27,6 @@ public:
 
     static std::shared_ptr<PackageUpdateAction>
     create(std::vector<api::types::v1::PackageManager1Package> toUpgrade,
-           bool appOnly,
            bool depsOnly,
            bool noAutoPrune,
            PackageManager &pm,
@@ -46,14 +45,14 @@ protected:
 
 private:
     PackageUpdateAction(std::vector<api::types::v1::PackageManager1Package> toUpgrade,
-                        bool appOnly,
                         bool depsOnly,
                         bool noAutoPrune,
                         PackageManager &pm,
                         repo::OSTreeRepo &repo);
 
-    utils::error::Result<void>
-    updateApp(Task &task, const api::types::v1::PackageInfoV2 &app, bool appOnly, bool depsOnly);
+    utils::error::Result<void> updateApp(Task &task,
+                                         const api::types::v1::PackageInfoV2 &app,
+                                         bool depsOnly);
     utils::error::Result<void> postUpdateApp(Task &task,
                                              const package::Reference &localRef,
                                              const package::ReferenceWithRepo &remoteRef);
@@ -72,7 +71,6 @@ private:
                                                       const api::types::v1::PackageInfoV2 &info);
 
     std::vector<api::types::v1::PackageManager1Package> toUpgrade;
-    bool appOnly;
     bool depsOnly;
     bool noAutoPrune;
 

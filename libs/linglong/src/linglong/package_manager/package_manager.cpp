@@ -1180,7 +1180,6 @@ QVariantMap PackageManager::updateImpl(const QVariantMap &parameters,
     }
 
     auto action = PackageUpdateAction::create(paras->packages,
-                                              paras->appOnly,
                                               paras->depsOnly,
                                               paras->noAutoPrune.value_or(false),
                                               *this,

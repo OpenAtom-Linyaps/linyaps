@@ -810,7 +810,6 @@ $defs:
     required:
       - packages
       - depsOnly
-      - appOnly
     properties:
       packages:
         type: array
@@ -820,9 +819,6 @@ $defs:
       depsOnly:
         type: boolean
         description: upgrade dependencies only
-      appOnly:
-        type: boolean
-        description: upgrade applications only
       noAutoPrune:
         type: boolean
         description: do not automatically remove unused dependencies

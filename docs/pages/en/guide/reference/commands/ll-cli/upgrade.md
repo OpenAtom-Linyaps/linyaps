@@ -21,10 +21,7 @@ The `ll-cli upgrade` command can update Linyaps applications. This command is us
 : Expand all help
 
 **--deps-only**
-: Upgrade only the specified application's dependencies; mutually exclusive with `--app-only`
-
-**--app-only**
-: Upgrade only the specified application itself; mutually exclusive with `--deps-only`
+: Upgrade only the specified application's dependencies
 
 **--no-auto-prune**
 : Do not automatically remove unused dependencies after upgrading applications

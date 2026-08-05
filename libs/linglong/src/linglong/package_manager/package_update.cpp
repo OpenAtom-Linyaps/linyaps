@@ -16,27 +16,23 @@ namespace linglong::service {
 
 std::shared_ptr<PackageUpdateAction>
 PackageUpdateAction::create(std::vector<api::types::v1::PackageManager1Package> toUpgrade,
-                            bool appOnly,
                             bool depsOnly,
                             bool noAutoPrune,
                             PackageManager &pm,
                             repo::OSTreeRepo &repo)
 {
-    auto p =
-      new PackageUpdateAction(std::move(toUpgrade), appOnly, depsOnly, noAutoPrune, pm, repo);
+    auto p = new PackageUpdateAction(std::move(toUpgrade), depsOnly, noAutoPrune, pm, repo);
     return std::shared_ptr<PackageUpdateAction>(p);
 }
 
 PackageUpdateAction::PackageUpdateAction(
   std::vector<api::types::v1::PackageManager1Package> toUpgrade,
-  bool appOnly,
   bool depsOnly,
   bool noAutoPrune,
   PackageManager &pm,
   repo::OSTreeRepo &repo)
     : Action(pm, repo, api::types::v1::CommonOptions{})
     , toUpgrade(std::move(toUpgrade))
-    , appOnly(appOnly)
     , depsOnly(depsOnly)
     , noAutoPrune(noAutoPrune)
     , taskTotalSize(0)
@@ -134,7 +130,7 @@ utils::error::Result<void> PackageUpdateAction::update(PackageTask &task)
             return LINGLONG_ERR("task was cancelled");
         }
 
-        auto res = updateApp(task, app, appOnly, depsOnly);
+        auto res = updateApp(task, app, depsOnly);
         if (!res) {
             LogW("failed to update app {}: {}", app.id, res.error());
             task.sendMessage(
@@ -174,11 +170,9 @@ utils::error::Result<void> PackageUpdateAction::postUpdate([[maybe_unused]] Task
 
 utils::error::Result<void> PackageUpdateAction::updateApp(Task &task,
                                                           const api::types::v1::PackageInfoV2 &app,
-                                                          bool appOnly,
                                                           bool depsOnly)
 {
-    LINGLONG_TRACE(
-      fmt::format("update app: {} appOnly: {} depsOnly: {}", app.id, appOnly, depsOnly));
+    LINGLONG_TRACE(fmt::format("update app: {} depsOnly: {}", app.id, depsOnly));
 
     // reset task status
     taskTotalSize = 0;
@@ -218,11 +212,9 @@ utils::error::Result<void> PackageUpdateAction::updateApp(Task &task,
         newAppInfo = std::move(info).value();
     }
 
-    if (!appOnly) {
-        auto res = gatherAppDepsToUpgrade(refsToInstall, newAppInfo ? newAppInfo.value() : app);
-        if (!res) {
-            return LINGLONG_ERR(res);
-        }
+    auto res = gatherAppDepsToUpgrade(refsToInstall, newAppInfo ? newAppInfo.value() : app);
+    if (!res) {
+        return LINGLONG_ERR(res);
     }
 
     for (const auto &[refRepo, modules] : refsToInstall) {

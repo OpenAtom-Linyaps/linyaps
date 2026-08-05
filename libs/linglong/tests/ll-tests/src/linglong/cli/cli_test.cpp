@@ -32,9 +32,14 @@ namespace {
 class MockRepo : public repo::OSTreeRepo
 {
 public:
-    MockRepo(const std::filesystem::path &path)
-        : repo::OSTreeRepo(
-            path, api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 })
+    MockRepo(const std::filesystem::path &path,
+             api::types::v1::RepoConfigV2 config =
+               api::types::v1::RepoConfigV2{
+                 .defaultRepo = "",
+                 .repos = {},
+                 .version = 2,
+               })
+        : repo::OSTreeRepo(path, std::move(config))
     {
     }
 
@@ -58,6 +63,15 @@ public:
                 latestRemoteReference,
                 (const package::FuzzyReference &fuzzyRef),
                 (override, const, noexcept));
+    MOCK_METHOD(utils::error::Result<repo::RemotePackages>,
+                matchRemoteByPriority,
+                (const package::FuzzyReference &fuzzyRef,
+                 const std::optional<api::types::v1::Repo> &repo),
+                (override, const, noexcept));
+    MOCK_METHOD(utils::error::Result<api::types::v1::PackageInfoV2>,
+                fetchRemotePackageInfo,
+                (const package::ReferenceWithRepo &refRepo, const std::string &module),
+                (override, noexcept));
 };
 
 class MockPrinter : public cli::CLIPrinter
@@ -72,6 +86,7 @@ public:
     MOCK_METHOD(void, printProgress, (double percentage, const std::string &message), (override));
     MOCK_METHOD(void, printMessage, (const std::string &message), (override));
     MOCK_METHOD(void, finishProgress, (), (override));
+    MOCK_METHOD(void, printPackage, (const api::types::v1::PackageInfoV2 &info), (override));
 };
 
 class MockCli : public cli::Cli
@@ -143,6 +158,43 @@ utils::error::Result<std::unique_ptr<api::dbus::v1::PackageManager>>
 makePackageManagerInitializationError(const std::string &message)
 {
     LINGLONG_TRACE("make package manager initialization error");
+
+    return LINGLONG_ERR(message);
+}
+
+api::types::v1::PackageInfoV2 makeRemotePackageInfo()
+{
+    return api::types::v1::PackageInfoV2{
+        .arch = { "x86_64" },
+        .channel = "main",
+        .id = "org.example.App",
+        .kind = "app",
+        .packageInfoV2Module = "binary",
+        .name = "Example App",
+        .version = "1.0.0",
+    };
+}
+
+repo::RemotePackages makeRemotePackages(api::types::v1::PackageInfoV2 info)
+{
+    repo::RemotePackages packages;
+    packages.addPackages(
+      api::types::v1::Repo{ .name = "stable", .priority = 0, .url = "https://example.com/repo" },
+      { std::move(info) });
+    return packages;
+}
+
+utils::error::Result<repo::RemotePackages> makeRemotePackagesError(const std::string &message)
+{
+    LINGLONG_TRACE("make remote packages error");
+
+    return LINGLONG_ERR(message);
+}
+
+utils::error::Result<api::types::v1::PackageInfoV2>
+makeRemotePackageInfoError(const std::string &message)
+{
+    LINGLONG_TRACE("make remote package info error");
 
     return LINGLONG_ERR(message);
 }
@@ -383,6 +435,142 @@ TEST_F(CliTest, failedTaskStateDoesNotPrintErrorAsProgress)
                                         .progress = 42.0,
                                         .state = api::types::v1::State::Failed,
                                       }))));
+}
+
+TEST_F(CliTest, remoteInfoPrintsFetchedPackageFromSpecifiedRepo)
+{
+    repo = std::make_unique<MockRepo>(
+      tempDir->path() / "remote-info-repo",
+      api::types::v1::RepoConfigV2{
+        .defaultRepo = "stable",
+        .repos = { api::types::v1::Repo{ .alias = "primary",
+                                         .name = "stable",
+                                         .priority = 0,
+                                         .url = "https://example.com/repo" } },
+        .version = 2,
+      });
+    const auto fetchedInfo = makeRemotePackageInfo();
+
+    EXPECT_CALL(*repo, matchRemoteByPriority(_, _))
+      .WillOnce(Invoke([](const package::FuzzyReference &fuzzyRef,
+                          const std::optional<api::types::v1::Repo> &specifiedRepo)
+                         -> utils::error::Result<repo::RemotePackages> {
+          EXPECT_EQ(fuzzyRef.id, "org.example.App");
+          EXPECT_TRUE(specifiedRepo.has_value());
+          if (specifiedRepo) {
+              EXPECT_EQ(specifiedRepo->name, "stable");
+          }
+          return makeRemotePackages(makeRemotePackageInfo());
+      }));
+    EXPECT_CALL(*repo, fetchRemotePackageInfo(_, "binary"))
+      .WillOnce(Invoke(
+        [&fetchedInfo](const package::ReferenceWithRepo &refRepo,
+                       const std::string &) -> utils::error::Result<api::types::v1::PackageInfoV2> {
+            EXPECT_EQ(refRepo.repo.name, "stable");
+            EXPECT_EQ(refRepo.reference.toString(), "main:org.example.App/1.0.0/x86_64");
+            return fetchedInfo;
+        }));
+    EXPECT_CALL(*printer, printPackage(_))
+      .WillOnce(Invoke([&fetchedInfo](const api::types::v1::PackageInfoV2 &info) {
+          EXPECT_EQ(info.id, fetchedInfo.id);
+          EXPECT_EQ(info.version, fetchedInfo.version);
+      }));
+    EXPECT_CALL(*printer, printErr(_)).Times(0);
+
+    EXPECT_EQ(cli->remoteInfo(cli::InspectOptions{ .appid = "org.example.App", .repo = "primary" }),
+              0);
+}
+
+TEST_F(CliTest, remoteInfoRejectsUnknownRepo)
+{
+    EXPECT_CALL(*repo, matchRemoteByPriority(_, _)).Times(0);
+    EXPECT_CALL(*repo, fetchRemotePackageInfo(_, _)).Times(0);
+    EXPECT_CALL(*printer, printPackage(_)).Times(0);
+    EXPECT_CALL(*printer, printErr(_)).WillOnce(Invoke([](const utils::error::Error &error) {
+        EXPECT_THAT(error.message(), HasSubstr("repo missing not found"));
+    }));
+
+    EXPECT_EQ(cli->remoteInfo(cli::InspectOptions{ .appid = "org.example.App", .repo = "missing" }),
+              -1);
+}
+
+TEST_F(CliTest, remoteInfoReportsRemoteMatchFailure)
+{
+    EXPECT_CALL(*repo, matchRemoteByPriority(_, _))
+      .WillOnce(Invoke([](const package::FuzzyReference &,
+                          const std::optional<api::types::v1::Repo> &specifiedRepo)
+                         -> utils::error::Result<repo::RemotePackages> {
+          EXPECT_FALSE(specifiedRepo.has_value());
+          return makeRemotePackagesError("remote search failed");
+      }));
+    EXPECT_CALL(*repo, fetchRemotePackageInfo(_, _)).Times(0);
+    EXPECT_CALL(*printer, printPackage(_)).Times(0);
+    EXPECT_CALL(*printer, printErr(_)).WillOnce(Invoke([](const utils::error::Error &error) {
+        EXPECT_THAT(error.message(), HasSubstr("remote search failed"));
+    }));
+
+    EXPECT_EQ(cli->remoteInfo(cli::InspectOptions{ .appid = "org.example.App" }), -1);
+}
+
+TEST_F(CliTest, remoteInfoReportsMissingPackage)
+{
+    EXPECT_CALL(*repo, matchRemoteByPriority(_, _))
+      .WillOnce(Invoke([](const package::FuzzyReference &,
+                          const std::optional<api::types::v1::Repo> &specifiedRepo)
+                         -> utils::error::Result<repo::RemotePackages> {
+          EXPECT_FALSE(specifiedRepo.has_value());
+          return repo::RemotePackages{};
+      }));
+    EXPECT_CALL(*repo, fetchRemotePackageInfo(_, _)).Times(0);
+    EXPECT_CALL(*printer, printPackage(_)).Times(0);
+    EXPECT_CALL(*printer, printErr(_)).WillOnce(Invoke([](const utils::error::Error &error) {
+        EXPECT_THAT(error.message(), HasSubstr("Cannot find such application from remote"));
+    }));
+
+    EXPECT_EQ(cli->remoteInfo(cli::InspectOptions{ .appid = "org.example.App" }), -1);
+}
+
+TEST_F(CliTest, remoteInfoRejectsInvalidPackageReference)
+{
+    auto invalidInfo = makeRemotePackageInfo();
+    invalidInfo.arch.clear();
+    EXPECT_CALL(*repo, matchRemoteByPriority(_, _))
+      .WillOnce(Invoke([invalidInfo](const package::FuzzyReference &,
+                                     const std::optional<api::types::v1::Repo> &specifiedRepo)
+                         -> utils::error::Result<repo::RemotePackages> {
+          EXPECT_FALSE(specifiedRepo.has_value());
+          return makeRemotePackages(invalidInfo);
+      }));
+    EXPECT_CALL(*repo, fetchRemotePackageInfo(_, _)).Times(0);
+    EXPECT_CALL(*printer, printPackage(_)).Times(0);
+    EXPECT_CALL(*printer, printErr(_)).WillOnce(Invoke([](const utils::error::Error &error) {
+        EXPECT_THAT(error.message(), HasSubstr("missing architecture"));
+    }));
+
+    EXPECT_EQ(cli->remoteInfo(cli::InspectOptions{ .appid = "org.example.App" }), -1);
+}
+
+TEST_F(CliTest, remoteInfoReportsFetchFailure)
+{
+    EXPECT_CALL(*repo, matchRemoteByPriority(_, _))
+      .WillOnce(Invoke([](const package::FuzzyReference &,
+                          const std::optional<api::types::v1::Repo> &specifiedRepo)
+                         -> utils::error::Result<repo::RemotePackages> {
+          EXPECT_FALSE(specifiedRepo.has_value());
+          return makeRemotePackages(makeRemotePackageInfo());
+      }));
+    EXPECT_CALL(*repo, fetchRemotePackageInfo(_, "binary"))
+      .WillOnce(
+        Invoke([](const package::ReferenceWithRepo &,
+                  const std::string &) -> utils::error::Result<api::types::v1::PackageInfoV2> {
+            return makeRemotePackageInfoError("fetch package info failed");
+        }));
+    EXPECT_CALL(*printer, printPackage(_)).Times(0);
+    EXPECT_CALL(*printer, printErr(_)).WillOnce(Invoke([](const utils::error::Error &error) {
+        EXPECT_THAT(error.message(), HasSubstr("fetch package info failed"));
+    }));
+
+    EXPECT_EQ(cli->remoteInfo(cli::InspectOptions{ .appid = "org.example.App" }), -1);
 }
 
 TEST_F(CliRepoAndPackageManagerTest, getRepoCachesLoadedRepository)

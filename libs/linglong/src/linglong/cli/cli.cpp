@@ -3317,6 +3317,67 @@ int Cli::inspect(CLI::App *app, const InspectOptions &options)
         }
     }
 
+    if (argsParseFunc("remote-info")) {
+        return this->remoteInfo(options);
+    }
+
+    return 0;
+}
+
+int Cli::remoteInfo(const InspectOptions &options)
+{
+    LINGLONG_TRACE("command inspect remote-info");
+
+    auto fuzzyRef = package::FuzzyReference::parse(options.appid);
+    if (!fuzzyRef) {
+        this->printer.printErr(fuzzyRef.error());
+        return -1;
+    }
+
+    auto repo = this->getRepo();
+    if (!repo) {
+        this->printer.printErr(repo.error());
+        return -1;
+    }
+
+    std::optional<api::types::v1::Repo> specifiedRepo;
+    if (options.repo) {
+        auto result = (*repo)->getRepoByAlias(*options.repo);
+        if (!result) {
+            this->printer.printErr(LINGLONG_ERRV(fmt::format("repo {} not found", *options.repo)));
+            return -1;
+        }
+        specifiedRepo = std::move(result).value();
+    }
+
+    auto candidates = (*repo)->matchRemoteByPriority(*fuzzyRef, specifiedRepo);
+    if (!candidates) {
+        this->printer.printErr(candidates.error());
+        return -1;
+    }
+
+    auto target = candidates->getLatestPackage();
+    if (!target) {
+        this->printer.printErr(LINGLONG_ERRV("Cannot find such application from remote."));
+        return -1;
+    }
+
+    auto reference = package::Reference::fromPackageInfo(target->second.get());
+    if (!reference) {
+        this->printer.printErr(reference.error());
+        return -1;
+    }
+
+    auto info = (*repo)->fetchRemotePackageInfo(package::ReferenceWithRepo{
+      .repo = target->first.get(),
+      .reference = std::move(reference).value(),
+    });
+    if (!info) {
+        this->printer.printErr(info.error());
+        return -1;
+    }
+
+    this->printer.printPackage(*info);
     return 0;
 }
 

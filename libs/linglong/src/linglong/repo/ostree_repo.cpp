@@ -1258,6 +1258,29 @@ OSTreeRepo::fetchRefMetaData(const package::ReferenceWithRepo &refRepo,
     return RefMetaData(resolved_rev, std::string_view(content, length));
 }
 
+utils::error::Result<api::types::v1::PackageInfoV2> OSTreeRepo::fetchRemotePackageInfo(
+  const package::ReferenceWithRepo &refRepo, const std::string &module) noexcept
+{
+    LINGLONG_TRACE(fmt::format("fetch remote package info for {}", refRepo.reference.toString()));
+
+    auto temporaryDirectory = utils::TemporaryDirectory::create("linglong-remote-info-");
+    if (!temporaryDirectory) {
+        return LINGLONG_ERR("failed to create temporary directory", temporaryDirectory);
+    }
+
+    auto temporaryRepo = OSTreeRepo::create(temporaryDirectory->path(), this->cfg);
+    if (!temporaryRepo) {
+        return LINGLONG_ERR("failed to create temporary repository", temporaryRepo);
+    }
+
+    auto meta = (*temporaryRepo)->fetchRefMetaData(refRepo, module, true);
+    if (!meta) {
+        return LINGLONG_ERR("failed to fetch remote package info", meta);
+    }
+
+    return meta->getPackageInfo();
+}
+
 utils::error::Result<RefStatistics>
 OSTreeRepo::getRefStatistics(const RefMetaData &meta) const noexcept
 {

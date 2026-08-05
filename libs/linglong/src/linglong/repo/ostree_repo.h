@@ -147,6 +147,8 @@ public:
     fetchRefMetaData(const package::ReferenceWithRepo &refRepo,
                      const std::string &module = "binary",
                      bool fetchPackageInfo = false) noexcept;
+    virtual utils::error::Result<api::types::v1::PackageInfoV2> fetchRemotePackageInfo(
+      const package::ReferenceWithRepo &refRepo, const std::string &module = "binary") noexcept;
     virtual utils::error::Result<RefStatistics>
     getRefStatistics(const RefMetaData &meta) const noexcept;
 

@@ -156,6 +156,7 @@ struct InspectOptions
     std::string appid;
     std::string module;
     std::string dirType{ "layer" };
+    std::optional<std::string> repo;
 };
 
 enum class TaskType : int {
@@ -211,6 +212,7 @@ public:
     int content(const ContentOptions &options);
     int prune();
     int inspect(CLI::App *subcommand, const InspectOptions &options);
+    int remoteInfo(const InspectOptions &options);
 
     void cancelCurrentTask();
 

@@ -567,6 +567,18 @@ void addInspectCommand(CLI::App &commandParser,
                    inspectOptions.module,
                    _("Specify the module type (binary or develop). Only works when type is layer"))
       ->check(validatorString);
+
+    auto *cliInspectRemoteInfo = cliInspect->add_subcommand(
+      "remote-info",
+      _("Display package information fetched from the remote repository"));
+    cliInspectRemoteInfo->usage(_("Usage: ll-cli inspect remote-info [OPTIONS] REF"));
+    cliInspectRemoteInfo
+      ->add_option("REF", inspectOptions.appid, _("Specify the application reference"))
+      ->required()
+      ->check(validatorString);
+    cliInspectRemoteInfo->add_option("--repo", inspectOptions.repo, _("Specify the repo"))
+      ->type_name("REPO")
+      ->check(validatorString);
 }
 
 } // namespace

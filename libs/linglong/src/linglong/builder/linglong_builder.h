@@ -55,6 +55,7 @@ utils::error::Result<void> cmdListApp(repo::OSTreeRepo &repo);
 utils::error::Result<void> cmdRemoveApp(repo::OSTreeRepo &repo,
                                         std::vector<std::string> refs,
                                         bool prune);
+utils::error::Result<void> cmdCleanBuildArtifacts(const std::filesystem::path &workingDir) noexcept;
 
 namespace detail {
 void mergeOutput(const std::vector<std::filesystem::path> &src,

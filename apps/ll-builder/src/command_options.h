@@ -73,6 +73,11 @@ struct ExtractCommandOptions
     std::string dir;
 };
 
+struct CleanCommandOptions
+{
+    std::string filePath;
+};
+
 struct RepoSubcommandOptions
 {
     linglong::common::cli::RepoOptions repoOptions;

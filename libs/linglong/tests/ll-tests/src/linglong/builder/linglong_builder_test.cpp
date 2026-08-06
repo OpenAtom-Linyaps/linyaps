@@ -170,3 +170,65 @@ TEST(LinglongBuilder, LayerExportFilename)
     auto filename = builder.layerExportFilename(*ref, "binary");
     EXPECT_EQ(filename, "org.deepin.demo_1.0.0.0_arm64_binary.layer");
 };
+
+TEST(LinglongBuilder, CleanNoBuildDir)
+{
+    TempDir workingDir;
+    ASSERT_TRUE(workingDir.isValid());
+
+    linglong::builder::BuilderMock builder(workingDir.path());
+    auto result = builder.cleanBuildArtifacts();
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+    EXPECT_FALSE(std::filesystem::exists(workingDir.path() / "linglong"));
+}
+
+TEST(LinglongBuilder, CleanNormal)
+{
+    TempDir workingDir;
+    ASSERT_TRUE(workingDir.isValid());
+
+    linglong::builder::BuilderMock builder(workingDir.path());
+
+    auto linglongDir = workingDir.path() / "linglong";
+    std::filesystem::create_directories(linglongDir / "cache" / "overlay" / "workdir");
+    std::filesystem::create_directories(linglongDir / "output");
+    std::ofstream(linglongDir / "cache" / "overlay" / "workdir" / "work");
+    std::ofstream(linglongDir / "output" / "binary");
+
+    ASSERT_TRUE(std::filesystem::exists(linglongDir));
+
+    auto result = builder.cleanBuildArtifacts();
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+    EXPECT_FALSE(std::filesystem::exists(linglongDir));
+}
+
+TEST(LinglongBuilder, CleanWithPermissionIssue)
+{
+    if (geteuid() == 0) {
+        GTEST_SKIP() << "root can remove files regardless of the owner permission bits";
+    }
+
+    TempDir workingDir;
+    ASSERT_TRUE(workingDir.isValid());
+
+    linglong::builder::BuilderMock builder(workingDir.path());
+
+    namespace fs = std::filesystem;
+    auto linglongDir = workingDir.path() / "linglong";
+    auto blockedDir = linglongDir / "cache" / "overlay" / "workdir" / "work";
+    fs::create_directories(blockedDir);
+
+    // Simulate the overlayfs workdir permission issue: d---------
+    fs::permissions(blockedDir, fs::perms::none, fs::perm_options::replace);
+
+    // Verify the permission issue exists
+    auto blockedPerms = fs::symlink_status(blockedDir).permissions();
+    EXPECT_EQ(blockedPerms
+                & (fs::perms::owner_read | fs::perms::owner_write | fs::perms::owner_exec),
+              fs::perms::none);
+
+    // Builder::cleanBuildArtifacts should fix permissions and remove the directory
+    auto result = builder.cleanBuildArtifacts();
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+    EXPECT_FALSE(fs::exists(linglongDir));
+}

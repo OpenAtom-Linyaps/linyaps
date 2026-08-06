@@ -2288,4 +2288,28 @@ std::string Builder::layerExportFilename(const linglong::package::Reference &ref
                        ref.arch.toString(),
                        module);
 }
+
+utils::error::Result<void> Builder::cleanBuildArtifacts() noexcept
+{
+    LINGLONG_TRACE("clean build artifacts");
+
+    std::error_code ec;
+    if (!std::filesystem::exists(this->internalDir, ec)) {
+        return LINGLONG_OK;
+    }
+
+    auto ret = utils::makeDirectoryTreeRemovable(this->internalDir);
+    if (!ret) {
+        return LINGLONG_ERR("failed to make directory tree removable", ret);
+    }
+
+    std::filesystem::remove_all(this->internalDir, ec);
+    if (ec) {
+        return LINGLONG_ERR(
+          fmt::format("failed to remove {}: {}", this->internalDir.string(), ec.message()));
+    }
+
+    return LINGLONG_OK;
+}
+
 } // namespace linglong::builder

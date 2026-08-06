@@ -122,6 +122,8 @@ public:
 
     void setBuildOptions(const BuilderBuildOptions &options) noexcept { buildOptions = options; }
 
+    auto cleanBuildArtifacts() noexcept -> utils::error::Result<void>;
+
 protected:
     std::string uabExportFilename(const linglong::package::Reference &ref);
     std::string layerExportFilename(const linglong::package::Reference &ref,

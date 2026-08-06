@@ -20,6 +20,13 @@ public:
         : Builder(
             std::nullopt, "", initTempRepo(), initTempContainerBuilder(), initBuilderConfig()) { };
 
+    explicit BuilderMock(const std::filesystem::path &workingDir)
+        : Builder(std::nullopt,
+                  workingDir,
+                  initTempRepo(),
+                  initTempContainerBuilder(),
+                  initBuilderConfig()) { };
+
 private:
     static linglong::repo::OSTreeRepo &initTempRepo()
     {

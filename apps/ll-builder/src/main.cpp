@@ -394,6 +394,18 @@ int handleExtract(const ExtractCommandOptions &options)
     return 0;
 }
 
+int handleClean(linglong::builder::Builder &builder, const CleanCommandOptions &options)
+{
+    auto result = builder.cleanBuildArtifacts();
+    if (!result) {
+        LogE("Clean failed: {}", result.error());
+        return result.error().code();
+    }
+
+    LogI("Clean completed successfully.");
+    return 0;
+}
+
 std::vector<std::string> getProjectModule(const linglong::api::types::v1::BuilderProject &project)
 {
     std::list<std::string> modules = { "binary", "develop" }; // Start with base modules
@@ -482,6 +494,7 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     ImportCommandOptions importOpts;
     ImportDirCommandOptions importDirOpts;
     ExtractCommandOptions extractOpts;
+    CleanCommandOptions cleanOpts;
     RepoSubcommandOptions repoCmdOpts;
 
     // add builder flags
@@ -671,6 +684,12 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     buildExtract->add_option("DIR", extractOpts.dir, _("Destination directory"))
       ->type_name("DIR")
       ->required();
+    // add builder clean
+    auto buildClean = commandParser.add_subcommand("clean", _("Clean build artifacts"));
+    buildClean->usage(_("Usage: ll-builder clean"));
+    buildClean->add_option("-f, --file", filePath, _("File path of the linglong.yaml"))
+      ->type_name("FILE")
+      ->check(CLI::ExistingFile);
 
     auto *buildRepo = linglong::common::cli::addRepoCommand(commandParser,
                                                             repoCmdOpts.repoOptions,
@@ -867,6 +886,10 @@ You can report bugs to the linyaps team under this project: https://github.com/O
             pushOpts.pushModules = getProjectModule(*project);
         }
         return handlePush(builder, pushOpts);
+    }
+
+    if (buildClean->parsed()) {
+        return handleClean(builder, cleanOpts);
     }
 
     if (!canonicalYamlPath) {

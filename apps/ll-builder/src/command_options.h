@@ -73,6 +73,11 @@ struct ExtractCommandOptions
     std::string dir;
 };
 
+struct CleanCommandOptions
+{
+    // No members needed yet
+};
+
 struct RepoSubcommandOptions
 {
     linglong::common::cli::RepoOptions repoOptions;

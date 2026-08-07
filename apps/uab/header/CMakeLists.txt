@@ -56,8 +56,12 @@ pfl_add_executable(
 set(UAB_HEADER_TARGET)
 get_real_target_name(UAB_HEADER_TARGET linglong::header)
 
-target_link_options(${UAB_HEADER_TARGET} PRIVATE -static -static-libgcc
-                    -static-libstdc++)
+set(UAB_HEADER_LINKER_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/uab-header.ld)
+set_property(
+  TARGET ${UAB_HEADER_TARGET} APPEND
+  PROPERTY LINK_DEPENDS ${UAB_HEADER_LINKER_SCRIPT})
+target_link_options(${UAB_HEADER_TARGET} PRIVATE -static -static-libgcc -static-libstdc++
+                    -Wl,-T,${UAB_HEADER_LINKER_SCRIPT})
 
 if(${AGGRESSIVE_UAB_SIZE})
   message(STATUS "minify size of uab header aggressively")

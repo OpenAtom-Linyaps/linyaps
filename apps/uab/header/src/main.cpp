@@ -5,6 +5,7 @@
 #include "light_elf.h"
 #include "linglong/api/types/v1/Generators.hpp" // IWYU pragma: keep
 #include "linglong/api/types/v1/UabMetaInfo.hpp"
+#include "linglong/common/uab_signature.h"
 #include "linglong/utils/sha256.h"
 
 #include <gelf.h>
@@ -19,6 +20,8 @@
 #include <filesystem>
 #include <iomanip>
 #include <iostream>
+#include <string>
+#include <string_view>
 
 #include <fcntl.h>
 #include <sys/mman.h>
@@ -29,6 +32,11 @@
 #include <unistd.h>
 
 extern "C" int erofsfuse_main(int argc, char **argv);
+
+// Stable ELF ABI for signing tools. The linker renames this executable input section to
+// .note.uab.sig. Its descriptor stores the 64-byte SHA-256 digest of linglong.meta.
+__attribute__((used, section(".text.uab.sig"), aligned(4))) const auto linglongUabSignature =
+  linglong::common::uab::signatureNote;
 
 namespace {
 
@@ -160,6 +168,10 @@ std::string calculateDigest(int fd, std::size_t bundleOffset, std::size_t bundle
             sha256.update(buffer.get(), bytesRead);
             totalRead += bytesRead;
         }
+        if (totalRead != bundleLength) {
+            std::cerr << "unexpected end of UAB section" << std::endl;
+            return {};
+        }
     }
 
     sha256.final(digest.data());
@@ -171,6 +183,21 @@ std::string calculateDigest(int fd, std::size_t bundleOffset, std::size_t bundle
         stream << std::setw(2) << static_cast<unsigned int>(v);
     }
 
+    return stream.str();
+}
+
+std::string calculateDigest(std::string_view data) noexcept
+{
+    digest::SHA256 sha256;
+    std::array<std::byte, 32> digest{};
+    sha256.update(reinterpret_cast<const std::byte *>(data.data()), data.size());
+    sha256.final(digest.data());
+
+    std::stringstream stream;
+    stream << std::setfill('0') << std::hex;
+    for (auto value : digest) {
+        stream << std::setw(2) << static_cast<unsigned int>(value);
+    }
     return stream.str();
 }
 
@@ -233,6 +260,63 @@ std::optional<std::filesystem::path> find_fusermount() noexcept
     return std::nullopt;
 }
 
+std::optional<linglong::api::types::v1::UabMetaInfo>
+getVerifiedMetaInfo(const lightElf::native_elf &elf) noexcept
+{
+    const auto signatureSh =
+      elf.getSectionHeader(std::string{ linglong::common::uab::signatureSection });
+    if (!signatureSh || signatureSh->sh_size != sizeof(linglong::common::uab::MetaSignatureNote)) {
+        std::cerr << "UAB signature section is missing or invalid" << std::endl;
+        return std::nullopt;
+    }
+
+    std::string noteData(signatureSh->sh_size, '\0');
+    const auto bytesRead =
+      ::pread(elf.underlyingFd(), noteData.data(), signatureSh->sh_size, signatureSh->sh_offset);
+    if (bytesRead != static_cast<ssize_t>(signatureSh->sh_size)) {
+        std::cerr << "failed to read UAB signature section: " << ::strerror(errno) << std::endl;
+        return std::nullopt;
+    }
+
+    const auto expectedMetaDigest = linglong::common::uab::parseSignatureNote(noteData);
+    if (!expectedMetaDigest || !linglong::common::uab::isDigest(*expectedMetaDigest)) {
+        std::cerr << "UAB signature section contains an invalid meta digest" << std::endl;
+        return std::nullopt;
+    }
+
+    const auto metaSh = elf.getSectionHeader(std::string{ linglong::common::uab::metaSection });
+    if (!metaSh || metaSh->sh_type == SHT_NOBITS) {
+        std::cerr << "couldn't find a valid meta section" << std::endl;
+        return std::nullopt;
+    }
+
+    std::string metaData(metaSh->sh_size, '\0');
+    const auto metaBytesRead =
+      ::pread(elf.underlyingFd(), metaData.data(), metaSh->sh_size, metaSh->sh_offset);
+    if (metaBytesRead != static_cast<ssize_t>(metaSh->sh_size)) {
+        std::cerr << "failed to read meta section: " << ::strerror(errno) << std::endl;
+        return std::nullopt;
+    }
+    if (calculateDigest(metaData) != *expectedMetaDigest) {
+        std::cerr << "linglong.meta digest mismatched" << std::endl;
+        return std::nullopt;
+    }
+
+    std::optional<linglong::api::types::v1::UabMetaInfo> meta;
+    try {
+        meta = nlohmann::json::parse(metaData).get<linglong::api::types::v1::UabMetaInfo>();
+    } catch (const std::exception &e) {
+        std::cerr << "failed to parse verified meta section: " << e.what() << std::endl;
+        return std::nullopt;
+    }
+    if (!linglong::common::uab::isDigest(meta->digest)) {
+        std::cerr << "linglong.meta contains an invalid bundle digest" << std::endl;
+        return std::nullopt;
+    }
+
+    return meta;
+}
+
 int mountSelfBundle(const lightElf::native_elf &elf,
                     const linglong::api::types::v1::UabMetaInfo &meta) noexcept
 {
@@ -241,15 +325,20 @@ int mountSelfBundle(const lightElf::native_elf &elf,
         std::cerr << "couldn't get bundle section '" << meta.sections.bundle << "'" << std::endl;
         return -1;
     }
-
-    auto bundleOffset = bundleSh->sh_offset;
-    if (auto digest = calculateDigest(elf.underlyingFd(), bundleOffset, bundleSh->sh_size);
-        digest != meta.digest) {
-        std::cerr << "sha256 mismatched, expected: " << meta.digest << " calculated: " << digest
-                  << std::endl;
+    if (bundleSh->sh_type == SHT_NOBITS) {
+        std::cerr << "bundle section has no file data" << std::endl;
         return -1;
     }
 
+    const auto bundleDigest =
+      calculateDigest(elf.underlyingFd(), bundleSh->sh_offset, bundleSh->sh_size);
+    if (bundleDigest != meta.digest) {
+        std::cerr << "bundle digest mismatched, expected: " << meta.digest
+                  << " calculated: " << bundleDigest << std::endl;
+        return -1;
+    }
+
+    auto bundleOffset = bundleSh->sh_offset;
     auto selfBin = elf.absolutePath();
     auto offsetStr = "--offset=" + std::to_string(bundleOffset);
     std::array<const char *, 4> erofs_argv = { "erofsfuse",
@@ -414,33 +503,6 @@ int createMountPoint(std::string_view uuid) noexcept
     createFlag.store(true, std::memory_order_relaxed);
 
     return 0;
-}
-
-std::optional<linglong::api::types::v1::UabMetaInfo>
-getMetaInfo(const lightElf::native_elf &elf) noexcept
-{
-    auto metaSh = elf.getSectionHeader("linglong.meta");
-    if (!metaSh) {
-        std::cerr << "couldn't find meta section" << std::endl;
-        return std::nullopt;
-    }
-
-    std::string content(metaSh->sh_size, '\0');
-    if (::pread(elf.underlyingFd(), content.data(), metaSh->sh_size, metaSh->sh_offset) == -1) {
-        std::cerr << "read failed:" << ::strerror(errno) << std::endl;
-        return {};
-    }
-
-    std::optional<linglong::api::types::v1::UabMetaInfo> meta;
-    try {
-        auto json = nlohmann::json::parse(content);
-        meta = json.get<linglong::api::types::v1::UabMetaInfo>();
-    } catch (const nlohmann::json::parse_error &e) {
-        std::cerr << "exception: " << e.what() << std::endl;
-        return std::nullopt;
-    }
-
-    return meta;
 }
 
 int extractBundle(std::string_view destination) noexcept
@@ -655,9 +717,9 @@ int main(int argc, char **argv)
     }
 
     lightElf::native_elf elf(selfBin);
-    auto metaInfoRet = getMetaInfo(elf);
+    auto metaInfoRet = getVerifiedMetaInfo(elf);
     if (!metaInfoRet) {
-        std::cerr << "couldn't get metaInfo of this uab file" << std::endl;
+        std::cerr << "couldn't verify metaInfo of this uab file" << std::endl;
         return -1;
     }
     const auto &metaInfo = *metaInfoRet;

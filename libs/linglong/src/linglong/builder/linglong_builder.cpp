@@ -62,6 +62,9 @@ std::vector<std::string> Builder::privilegeBuilderCaps = {
 
 namespace {
 
+constexpr auto builderUtilsID = "cn.org.linyaps.builder.utils";
+constexpr auto minimumBuilderUtilsVersion = "0.0.4.0";
+
 utils::error::Result<package::Reference>
 currentReference(const api::types::v1::BuilderProject &project)
 {
@@ -520,6 +523,21 @@ Builder::ensureUtils(const std::string &id, const package::Architecture &arch) n
     auto ref = detail::pullDependency(fuzzyRef->toString(), this->repo, "binary");
     if (!ref) {
         return LINGLONG_ERR("failed to get utils " + id, ref);
+    }
+
+    if (id == builderUtilsID) {
+        auto minimumVersion = package::Version::parse(minimumBuilderUtilsVersion);
+        if (!minimumVersion) {
+            return LINGLONG_ERR(fmt::format("failed to parse minimum builder-utils version {}",
+                                            minimumBuilderUtilsVersion),
+                                minimumVersion);
+        }
+        if (ref->version < *minimumVersion) {
+            return LINGLONG_ERR(
+              fmt::format("builder-utils {} is too old; version {} or newer is required",
+                          ref->version.toString(),
+                          minimumBuilderUtilsVersion));
+        }
     }
 
     auto layerItem = this->repo.getLayerItem(*ref);
@@ -1508,10 +1526,13 @@ utils::error::Result<void> Builder::exportUAB(const ExportOption &option,
         return LINGLONG_ERR(curRef);
     }
 
-    // Retrieves static files from the ll-builder-utils matching the target architecture if
-    // available, including uab-header, uab-loader, ll-box. Fallback to defaults if ll-builder-utils
-    // is not found or fails.
-    auto ref = ensureUtils("cn.org.linyaps.builder.utils", curRef->arch);
+    const auto &arch = package::Architecture::currentCPUArchitecture();
+    const bool crossArchitecture = arch != curRef->arch;
+
+    // Retrieve the static files from ll-builder-utils matching the target architecture, including
+    // uab-header, uab-loader and ll-box. These files are required even for native exports because
+    // the installed defaults may produce an older UAB format.
+    auto ref = ensureUtils(builderUtilsID, curRef->arch);
     if (ref) {
         LogD("using static files from cn.org.linyaps.builder.utils");
         std::vector<std::string> args{
@@ -1527,29 +1548,44 @@ utils::error::Result<void> Builder::exportUAB(const ExportOption &option,
             args.emplace_back("/project/.uabBuild/ll-box");
         }
 
-        auto res = runFromRepo(*ref, args);
-        if (res) {
+        auto utilsResult = runFromRepo(*ref, args);
+        if (utilsResult) {
             std::error_code ec;
-            if (std::filesystem::exists(exportWorkingDir / "uab-header", ec)
-                && std::filesystem::exists(exportWorkingDir / "uab-loader", ec)) {
+            const bool hasHeader = std::filesystem::exists(exportWorkingDir / "uab-header", ec);
+            const bool hasLoader = std::filesystem::exists(exportWorkingDir / "uab-loader", ec);
+            if (hasHeader && hasLoader) {
                 packager.setDefaultHeader(exportWorkingDir / "uab-header");
                 packager.setDefaultLoader(exportWorkingDir / "uab-loader");
+            } else {
+                return LINGLONG_ERR(
+                  "builder utils did not provide uab-header and uab-loader for target architecture "
+                  + curRef->arch.toString());
             }
 
-            if (!distributedOnly && std::filesystem::exists(exportWorkingDir / "ll-box", ec)) {
-                packager.setDefaultBox(exportWorkingDir / "ll-box");
+            if (!distributedOnly) {
+                const bool hasBox = std::filesystem::exists(exportWorkingDir / "ll-box", ec);
+                if (hasBox) {
+                    packager.setDefaultBox(exportWorkingDir / "ll-box");
+                } else {
+                    return LINGLONG_ERR(
+                      "builder utils did not provide ll-box for target architecture "
+                      + curRef->arch.toString());
+                }
             }
         } else {
-            LogW("run builder utils error: {}", res.error());
+            return LINGLONG_ERR("failed to get UAB utilities for target architecture "
+                                  + curRef->arch.toString(),
+                                utilsResult);
         }
     } else {
-        LogW("failed to get builder utils for arch {}: {}", curRef->arch.toString(), ref.error());
+        return LINGLONG_ERR("failed to get builder utils for target architecture "
+                              + curRef->arch.toString(),
+                            ref);
     }
 
     // Using the packdir tools matching current architecture
-    const auto &arch = package::Architecture::currentCPUArchitecture();
-    if (arch != curRef->arch) {
-        ref = ensureUtils("cn.org.linyaps.builder.utils", arch);
+    if (crossArchitecture) {
+        ref = ensureUtils(builderUtilsID, arch);
     }
 
     if (ref) {

@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024-2026 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2024 - 2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -8,6 +8,7 @@
 #include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/api/types/v1/UabLayer.hpp"
 #include "linglong/api/types/v1/Version.hpp"
+#include "linglong/common/uab_signature.h"
 #include "linglong/package/architecture.h"
 #include "linglong/utils/cmd.h"
 #include "linglong/utils/error/error.h"
@@ -841,6 +842,29 @@ utils::error::Result<void> UABPackager::packMetaInfo() noexcept
     const auto *metaSection = "linglong.meta";
     if (auto ret = this->uab->addSection(metaSection, metaFilePath); !ret) {
         return LINGLONG_ERR(ret);
+    }
+
+    QFile metaFile{ QString::fromStdString(metaFilePath.string()) };
+    if (!metaFile.open(QIODevice::ReadOnly | QIODevice::ExistingOnly)) {
+        return LINGLONG_ERR(fmt::format("failed to open meta file {}", metaFilePath));
+    }
+    QCryptographicHash cryptor{ QCryptographicHash::Sha256 };
+    if (!cryptor.addData(&metaFile)) {
+        return LINGLONG_ERR(fmt::format("failed to calculate digest from {}: {}",
+                                        metaFilePath,
+                                        metaFile.errorString().toStdString()));
+    }
+    const auto metaDigest = cryptor.result().toHex().toStdString();
+
+    const auto signatureSection = std::string{ common::uab::signatureSection };
+    if (auto ret = this->uab->writeSectionData(signatureSection,
+                                               common::uab::digestOffset,
+                                               metaDigest.data(),
+                                               metaDigest.size());
+        !ret) {
+        return LINGLONG_ERR(
+          fmt::format("failed to write digest for section {}", common::uab::metaSection),
+          ret);
     }
 
     return LINGLONG_OK;

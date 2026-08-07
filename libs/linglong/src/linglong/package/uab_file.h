@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2024 - 2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -13,8 +13,10 @@
 #include <QDir>
 #include <QString>
 
+#include <cstddef>
 #include <filesystem>
 #include <string>
+#include <string_view>
 
 namespace linglong::package {
 
@@ -40,6 +42,11 @@ public:
 private:
     [[nodiscard]] utils::error::Result<GElf_Shdr>
     getSectionHeader(const QString &section) const noexcept;
+    [[nodiscard]] utils::error::Result<std::string> readSectionData(const QString &section,
+                                                                    std::size_t offset,
+                                                                    std::size_t size) noexcept;
+    [[nodiscard]] utils::error::Result<std::reference_wrapper<const api::types::v1::UabMetaInfo>>
+    parseMetaInfo(std::string_view content) noexcept;
     UABFile() = default;
 
     Elf *e{ nullptr };

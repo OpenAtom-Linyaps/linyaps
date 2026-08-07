@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024-2026 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2024 - 2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -7,6 +7,7 @@
 #include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/common/error.h"
 #include "linglong/common/formatter.h"
+#include "linglong/common/uab_signature.h"
 #include "linglong/utils/cmd.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/finally/finally.h"
@@ -20,8 +21,11 @@
 #include <QStandardPaths>
 #include <QUuid>
 
+#include <algorithm>
+#include <array>
 #include <filesystem>
 #include <fstream>
+#include <limits>
 #include <random>
 #include <string_view>
 
@@ -102,6 +106,52 @@ utils::error::Result<GElf_Shdr> UABFile::getSectionHeader(const QString &section
     return LINGLONG_ERR(fmt::format("couldn't found section {}", section));
 }
 
+utils::error::Result<std::string> UABFile::readSectionData(const QString &section,
+                                                           std::size_t offset,
+                                                           std::size_t size) noexcept
+{
+    LINGLONG_TRACE("read uab section data")
+
+    auto sectionHeader = getSectionHeader(section);
+    if (!sectionHeader) {
+        return LINGLONG_ERR(sectionHeader.error());
+    }
+    if (sectionHeader->sh_type == SHT_NOBITS || offset > sectionHeader->sh_size
+        || size > sectionHeader->sh_size - offset) {
+        return LINGLONG_ERR(fmt::format("data exceeds section {}", section));
+    }
+    if (!seek(sectionHeader->sh_offset + offset)) {
+        return LINGLONG_ERR(
+          fmt::format("failed to seek to section {}: {}", section, errorString()));
+    }
+    auto backToHead = utils::finally::finally([this] {
+        seek(0);
+    });
+    auto data = read(size);
+    if (data.size() != static_cast<qint64>(size)) {
+        return LINGLONG_ERR(fmt::format("failed to read section {}: {}", section, errorString()));
+    }
+    return data.toStdString();
+}
+
+utils::error::Result<std::reference_wrapper<const api::types::v1::UabMetaInfo>>
+UABFile::parseMetaInfo(std::string_view metaData) noexcept
+{
+    LINGLONG_TRACE("parse metaInfo")
+
+    try {
+        auto content = nlohmann::json::parse(metaData);
+        this->metaInfo =
+          std::make_unique<api::types::v1::UabMetaInfo>(content.get<api::types::v1::UabMetaInfo>());
+    } catch (nlohmann::json::exception &e) {
+        return LINGLONG_ERR("parsing metaInfo error", e);
+    } catch (...) {
+        return LINGLONG_ERR("unknown exception has been catch");
+    }
+
+    return *(this->metaInfo);
+}
+
 utils::error::Result<std::reference_wrapper<const api::types::v1::UabMetaInfo>>
 UABFile::getMetaInfo() noexcept
 {
@@ -111,85 +161,119 @@ UABFile::getMetaInfo() noexcept
         return { *(this->metaInfo) };
     }
 
-    auto metaSh = getSectionHeader("linglong.meta");
+    const auto metaSection = QString::fromStdString(std::string{ common::uab::metaSection });
+    auto metaSh = getSectionHeader(metaSection);
     if (!metaSh) {
         return LINGLONG_ERR(metaSh.error());
     }
-
-    seek(metaSh->sh_offset);
-    auto backToHead = utils::finally::finally([this] {
-        seek(0);
-    });
-
-    auto metaInfo = read(metaSh->sh_size).toStdString();
-    if (metaInfo.empty()) {
-        return LINGLONG_ERR(fmt::format("couldn't read metaInfo from uab: {}", errorString()));
+    auto metaData = readSectionData(metaSection, 0, metaSh->sh_size);
+    if (!metaData) {
+        return LINGLONG_ERR(metaData.error());
     }
-
-    nlohmann::json content;
-    try {
-        content = nlohmann::json::parse(metaInfo);
-    } catch (nlohmann::json::parse_error &e) {
-        return LINGLONG_ERR("parsing metaInfo error", e);
-    } catch (...) {
-        return LINGLONG_ERR("unknown exception has been catch");
+    if (metaData->empty()) {
+        return LINGLONG_ERR("metaInfo is empty");
     }
-
-    this->metaInfo =
-      std::make_unique<api::types::v1::UabMetaInfo>(content.get<api::types::v1::UabMetaInfo>());
-    return *(this->metaInfo);
+    return parseMetaInfo(*metaData);
 }
 
 utils::error::Result<bool> UABFile::verify() noexcept
 {
     LINGLONG_TRACE("verify uab")
 
-    auto metaInfoRet = getMetaInfo();
+    const auto signatureSection =
+      QString::fromStdString(std::string{ common::uab::signatureSection });
+    auto signatureSh = getSectionHeader(signatureSection);
+    if (!signatureSh) {
+        return LINGLONG_ERR(signatureSh.error());
+    }
+    if (signatureSh->sh_size != sizeof(common::uab::MetaSignatureNote)) {
+        return LINGLONG_ERR(fmt::format("section {} is invalid", signatureSection));
+    }
+
+    auto noteDataRet = readSectionData(signatureSection, 0, signatureSh->sh_size);
+    if (!noteDataRet) {
+        return LINGLONG_ERR(noteDataRet.error());
+    }
+    const auto expectedMetaDigest = common::uab::parseSignatureNote(*noteDataRet);
+    if (!expectedMetaDigest) {
+        return LINGLONG_ERR(fmt::format("section {} has an invalid note layout", signatureSection));
+    }
+    if (!common::uab::isDigest(*expectedMetaDigest)) {
+        return LINGLONG_ERR(fmt::format("section {} has an invalid digest", signatureSection));
+    }
+
+    const auto calculateSectionDigest =
+      [&](const GElf_Shdr &sectionHeader) -> utils::error::Result<std::string> {
+        std::array<char, 4096> buffer{};
+        QCryptographicHash cryptor{ QCryptographicHash::Sha256 };
+        if (!seek(sectionHeader.sh_offset)) {
+            return LINGLONG_ERR(fmt::format("failed to seek to section: {}", errorString()));
+        }
+        auto backToHead = utils::finally::finally([this] {
+            seek(0);
+        });
+
+        std::size_t remaining = sectionHeader.sh_size;
+        while (remaining > 0) {
+            const auto requested = std::min(remaining, buffer.size());
+            const auto bytesRead = read(buffer.data(), static_cast<qint64>(requested));
+            if (bytesRead <= 0) {
+                return LINGLONG_ERR(fmt::format("read error: {}", errorString()));
+            }
+            cryptor.addData(
+#if QT_VERSION >= QT_VERSION_CHECK(6, 4, 0)
+              QByteArrayView{ buffer.data(), bytesRead }
+#else
+              buffer.data(),
+              bytesRead
+#endif
+            );
+            remaining -= static_cast<std::size_t>(bytesRead);
+        }
+        return cryptor.result().toHex().toStdString();
+    };
+
+    const auto metaSection = QString::fromStdString(std::string{ common::uab::metaSection });
+    auto metaSh = getSectionHeader(metaSection);
+    if (!metaSh) {
+        return LINGLONG_ERR(metaSh.error());
+    }
+    auto metaData = readSectionData(metaSection, 0, metaSh->sh_size);
+    if (!metaData) {
+        return LINGLONG_ERR(metaData.error());
+    }
+    if (metaData->size() > static_cast<std::size_t>(std::numeric_limits<int>::max())) {
+        return LINGLONG_ERR("linglong.meta is too large");
+    }
+
+    QCryptographicHash metaCryptor{ QCryptographicHash::Sha256 };
+    metaCryptor.addData(metaData->data(), static_cast<int>(metaData->size()));
+    if (metaCryptor.result().toHex().toStdString() != *expectedMetaDigest) {
+        return false;
+    }
+
+    auto metaInfoRet = parseMetaInfo(*metaData);
     if (!metaInfoRet) {
         return LINGLONG_ERR(metaInfoRet.error());
     }
+    const auto &metaInfo = metaInfoRet->get();
+    if (!common::uab::isDigest(metaInfo.digest)) {
+        return LINGLONG_ERR("linglong.meta contains an invalid bundle digest");
+    }
 
-    auto metaInfo = metaInfoRet->get();
-    auto expectedDigest = metaInfo.digest;
-    auto bundleSection = QString::fromStdString(metaInfo.sections.bundle);
-    auto bundleSh = getSectionHeader(bundleSection);
+    auto bundleSh = getSectionHeader(QString::fromStdString(metaInfo.sections.bundle));
     if (!bundleSh) {
-        return LINGLONG_ERR(
-          fmt::format("couldn't find bundle section which named {}", bundleSection));
+        return LINGLONG_ERR(bundleSh.error());
+    }
+    if (bundleSh->sh_type == SHT_NOBITS) {
+        return LINGLONG_ERR("bundle section has no file data");
+    }
+    auto actualBundleDigest = calculateSectionDigest(*bundleSh);
+    if (!actualBundleDigest) {
+        return LINGLONG_ERR(actualBundleDigest.error());
     }
 
-    std::array<char, 4096> buf{};
-    std::string digest;
-    QCryptographicHash cryptor{ QCryptographicHash::Sha256 };
-
-    seek(bundleSh->sh_offset);
-    auto backToHead = utils::finally::finally([this] {
-        seek(0);
-    });
-
-    auto bundleLength = bundleSh->sh_size;
-    auto readBytes = buf.size();
-    int bytesRead{ 0 };
-    while ((bytesRead = read(buf.data(), readBytes)) != 0) {
-        if (bytesRead == -1) {
-            return LINGLONG_ERR(fmt::format("read error: {}", errorString()));
-        }
-        cryptor.addData(
-#if QT_VERSION >= QT_VERSION_CHECK(6, 4, 0)
-          QByteArrayView{ buf.data(), bytesRead }
-#else
-          buf.data(),
-          bytesRead
-#endif
-        );
-        bundleLength -= bytesRead;
-        if (bundleLength <= 0) {
-            digest = cryptor.result().toHex().toStdString();
-            break;
-        }
-    }
-
-    return (expectedDigest == digest);
+    return *actualBundleDigest == metaInfo.digest;
 }
 
 utils::error::Result<std::filesystem::path> UABFile::unpack() noexcept

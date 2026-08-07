@@ -5,7 +5,7 @@ version: '1'
 package:
   id: cn.org.linyaps.builder.utils
   name: ll-builder-utils
-  version: 0.0.3.0
+  version: 0.0.4.0
   kind: app
   description: |
     Utils for ll-builder
@@ -33,13 +33,13 @@ build: |
   mkdir build || true
   cd build
   meson setup ../
-  meson configure --default-library static -D utils=false -D examples=false -D tests=false -D disable-libc-symbol-version=false
+  meson configure --buildtype release --default-library static -D utils=false -D examples=false -D tests=false -D disable-libc-symbol-version=false
   ninja && ninja install
 
   # build erofsfuse static library
   cd /project/linglong/sources/erofs-utils/erofs-utils-1.8.6
   ./autogen.sh
-  ./configure -with-libzstd --enable-fuse --enable-static-fuse --with-libdeflate --without-xxhash libdeflate_LIBS=-ldeflate libdeflate_CFLAGS=-ldeflate
+  CFLAGS="-O2 -g0" ./configure -with-libzstd --enable-fuse --enable-static-fuse --with-libdeflate --without-xxhash libdeflate_LIBS=-ldeflate libdeflate_CFLAGS=-ldeflate
   make -j$(nproc)
   make install
 
@@ -50,10 +50,10 @@ build: |
   cmake --install build-static --prefix=$PREFIX
 
   cd /project
-  cmake -B build-linglong -DENABLE_CPM=false -DENABLE_TESTING=false -DBUILD_LINGLONG_BUILDER_UTILS_IN_BOX=true -DAGGRESSIVE_UAB_SIZE=ON
+  cmake -B build-linglong -DCMAKE_BUILD_TYPE=MinSizeRel -DENABLE_CPM=false -DENABLE_TESTING=false -DBUILD_LINGLONG_BUILDER_UTILS_IN_BOX=true -DAGGRESSIVE_UAB_SIZE=ON
   cmake --build build-linglong -j$(nproc)
   cmake --install build-linglong --prefix=$PREFIX
-  install /usr/local/bin/mkfs.erofs $PREFIX/bin/
+  install -s -m 0755 /usr/local/bin/mkfs.erofs $PREFIX/bin/
 buildext:
   apt:
     build_depends:

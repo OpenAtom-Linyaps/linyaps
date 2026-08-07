@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2025 - 2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -113,6 +113,24 @@ bool write_all(int fd, const void *buf, size_t count)
         }
         ptr += written;
         left -= written;
+    }
+    return true;
+}
+
+bool pwrite_all(int fd, const void *buf, size_t count, off_t offset)
+{
+    const char *ptr = static_cast<const char *>(buf);
+    size_t left = count;
+    while (left > 0) {
+        auto written = pwrite(fd, ptr, left, offset);
+        if (written <= 0) {
+            if (errno == EINTR)
+                continue;
+            return false;
+        }
+        ptr += written;
+        left -= written;
+        offset += written;
     }
     return true;
 }
@@ -281,6 +299,62 @@ ElfHandler::ElfHandler(std::filesystem::path file)
 }
 
 ElfHandler::~ElfHandler() { }
+
+utils::error::Result<void> ElfHandler::writeSectionData(const std::string &name,
+                                                        std::size_t offset,
+                                                        const char *data,
+                                                        std::size_t size)
+{
+    LINGLONG_TRACE("write section data:" + name);
+
+    if (elf_version(EV_CURRENT) == EV_NONE) {
+        return LINGLONG_ERR("failed to initialize libelf");
+    }
+
+    int fd = open(file_.c_str(), O_RDWR);
+    if (fd < 0) {
+        return LINGLONG_ERR("failed to open file: " + file_.string());
+    }
+    auto close_fd = utils::finally::finally([fd] {
+        close(fd);
+    });
+
+    Elf *e = elf_begin(fd, ELF_C_READ, nullptr);
+    if (e == nullptr) {
+        return LINGLONG_ERR("failed to get elf");
+    }
+    auto clean_elf = utils::finally::finally([e] {
+        elf_end(e);
+    });
+
+    size_t shstrndx{ 0 };
+    if (elf_getshdrstrndx(e, &shstrndx) != 0) {
+        return LINGLONG_ERR("failed to get elf section header string index");
+    }
+
+    Elf_Scn *scn{ nullptr };
+    while ((scn = elf_nextscn(e, scn)) != nullptr) {
+        GElf_Shdr sectionHeader;
+        if (gelf_getshdr(scn, &sectionHeader) == nullptr) {
+            return LINGLONG_ERR("failed to get section header");
+        }
+
+        const auto *sectionName = elf_strptr(e, shstrndx, sectionHeader.sh_name);
+        if (sectionName == nullptr || name != sectionName) {
+            continue;
+        }
+        if (sectionHeader.sh_type == SHT_NOBITS || offset > sectionHeader.sh_size
+            || size > sectionHeader.sh_size - offset) {
+            return LINGLONG_ERR(fmt::format("data exceeds section {}", name));
+        }
+        if (!pwrite_all(fd, data, size, sectionHeader.sh_offset + offset)) {
+            return LINGLONG_ERR(fmt::format("failed to write section {}", name));
+        }
+        return LINGLONG_OK;
+    }
+
+    return LINGLONG_ERR(fmt::format("couldn't find section {}", name));
+}
 
 utils::error::Result<void> ElfHandler::addSection(const std::string &name,
                                                   const std::filesystem::path &file)

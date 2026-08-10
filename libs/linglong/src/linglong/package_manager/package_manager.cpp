@@ -44,6 +44,8 @@
 #include "linglong/utils/transaction.h"
 #include "ocppi/runtime/RunOption.hpp"
 
+#include <sys/sendfile.h>
+
 #include <QDBusInterface>
 #include <QDBusReply>
 #include <QDBusUnixFileDescriptor>
@@ -58,6 +60,8 @@
 #include <utility>
 
 #include <fcntl.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 namespace linglong::service {
 
@@ -120,6 +124,75 @@ PackageManager::PackageManager(
     , m_search_queue(this)
     , m_init_run_context_queue(this)
 {
+}
+
+utils::error::Result<std::filesystem::path> PackageManager::copyToStaging(int sourceFD) noexcept
+{
+    LINGLONG_TRACE("copy package file to staging");
+
+    const auto stagingDir = common::dir::getStagingDir();
+    auto ret = utils::ensureDirectory(stagingDir);
+    if (!ret) {
+        return LINGLONG_ERR("failed to create staging directory", ret);
+    }
+
+    auto pathTemplate = (stagingDir / "install-XXXXXX").string();
+    const auto stagedFD = ::mkostemp(pathTemplate.data(), O_CLOEXEC);
+    if (stagedFD == -1) {
+        return LINGLONG_ERR(fmt::format("failed to create temporary file in {}: {}",
+                                        stagingDir,
+                                        common::error::errorString(errno)));
+    }
+
+    auto closeStagedFD = utils::finally::finally([stagedFD] {
+        if (::close(stagedFD) == -1) {
+            LogW("failed to close staged file: {}", common::error::errorString(errno));
+        }
+    });
+
+    struct stat sourceStat{};
+    if (::fstat(sourceFD, &sourceStat) == -1) {
+        return LINGLONG_ERR(
+          fmt::format("failed to stat source file: {}", common::error::errorString(errno)));
+    }
+    if (!S_ISREG(sourceStat.st_mode)) {
+        return LINGLONG_ERR("source file descriptor is not a regular file");
+    }
+
+    off_t offset = 0;
+    while (offset < sourceStat.st_size) {
+        constexpr off_t maxCopySize = 1024 * 1024 * 1024;
+        const auto copySize =
+          static_cast<size_t>(std::min(sourceStat.st_size - offset, maxCopySize));
+        const auto copied = ::sendfile(stagedFD, sourceFD, &offset, copySize);
+        if (copied == -1 && errno == EINTR) {
+            continue;
+        }
+        if (copied == -1) {
+            return LINGLONG_ERR(
+              fmt::format("failed to copy source file: {}", common::error::errorString(errno)));
+        }
+        if (copied == 0) {
+            return LINGLONG_ERR("source file was truncated while being copied");
+        }
+    }
+
+    return std::filesystem::path(pathTemplate);
+}
+
+utils::error::Result<void> PackageManager::cleanStaging() noexcept
+{
+    LINGLONG_TRACE("clean staging directory");
+
+    const auto stagingDir = common::dir::getStagingDir();
+    std::error_code ec;
+    std::filesystem::remove_all(stagingDir, ec);
+    if (ec) {
+        return LINGLONG_ERR(
+          fmt::format("failed to remove staging directory {}: {}", stagingDir, ec.message()));
+    }
+
+    return LINGLONG_OK;
 }
 
 void PackageManager::initDaemonMode(bool peerMode) noexcept
@@ -770,20 +843,6 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd,
                                            const api::types::v1::CommonOptions &options,
                                            const CallerContext &ctx) noexcept
 {
-    std::unique_ptr<utils::InstallHookManager> installHookManager =
-      std::make_unique<utils::InstallHookManager>();
-
-    auto ret = installHookManager->parseInstallHooks();
-    if (!ret) {
-        return toDBusReply(ret);
-    }
-
-    ret = installHookManager->executeInstallHooks(fd.fileDescriptor());
-    if (!ret) {
-        return toDBusReply(utils::error::ErrorCode::Failed,
-                           "uab package signature verification failed.");
-    }
-
     auto action = UabInstallationAction::create(fd.fileDescriptor(), *this, *repo, options);
     if (!action) {
         return toDBusReply(utils::error::ErrorCode::Failed,
@@ -1988,6 +2047,25 @@ utils::error::Result<void> PackageManager::initRunContext(const std::string &run
     ret = utils::writeFile(runContextConfigFile, runContextCfg);
     if (!ret) {
         return LINGLONG_ERR(fmt::format("failed to write {}", runContextConfigFile), ret);
+    }
+
+    return LINGLONG_OK;
+}
+
+utils::error::Result<void>
+PackageManager::executeInstallHooks(const std::filesystem::path &packageFile) noexcept
+{
+    LINGLONG_TRACE("execute install hooks for: " + packageFile.string());
+
+    utils::InstallHookManager installHookManager;
+    auto ret = installHookManager.parseInstallHooks();
+    if (!ret) {
+        return LINGLONG_ERR(ret);
+    }
+
+    ret = installHookManager.executeInstallHooks(packageFile);
+    if (!ret) {
+        return LINGLONG_ERR(ret);
     }
 
     return LINGLONG_OK;

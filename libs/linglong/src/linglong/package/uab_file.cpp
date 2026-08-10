@@ -16,17 +16,12 @@
 #include <nlohmann/json.hpp>
 
 #include <QCryptographicHash>
-#include <QDir>
-#include <QFileInfo>
-#include <QStandardPaths>
-#include <QUuid>
 
 #include <algorithm>
 #include <array>
 #include <filesystem>
 #include <fstream>
 #include <limits>
-#include <random>
 #include <string_view>
 
 #include <fcntl.h>
@@ -34,22 +29,24 @@
 
 namespace linglong::package {
 
-utils::error::Result<std::unique_ptr<UABFile>> UABFile::loadFromFile(int fd) noexcept
+utils::error::Result<std::unique_ptr<UABFile>>
+UABFile::loadFromFile(const std::filesystem::path &path) noexcept
 {
-    LINGLONG_TRACE("load uab file from fd")
+    LINGLONG_TRACE("load uab file from path")
 
     struct helper : public UABFile
     {
     };
 
     auto file = std::make_unique<helper>();
-
-    if (!file->open(fd, QIODevice::ReadOnly, FileHandleFlag::AutoCloseHandle)) {
-        return LINGLONG_ERR(fmt::format("open uab failed: {}", file->errorString()));
+    file->fd = ::open(path.c_str(), O_RDONLY | O_CLOEXEC);
+    if (file->fd == -1) {
+        return LINGLONG_ERR(
+          fmt::format("failed to open uab file {}: {}", path, common::error::errorString(errno)));
     }
 
     elf_version(EV_CURRENT);
-    auto *elf = elf_begin(fd, ELF_C_READ, nullptr);
+    auto *elf = elf_begin(file->fd, ELF_C_READ, nullptr);
     if (elf == nullptr) {
         return LINGLONG_ERR(fmt::format("libelf err: {}", elf_errmsg(errno)));
     }
@@ -66,16 +63,15 @@ UABFile::~UABFile()
             LogE("failed to umount {}, please umount it manually", m_mountPoint);
         }
     }
-    if (!m_unpackPath.empty()) {
-        std::error_code ec;
-        std::filesystem::remove_all(std::filesystem::path(m_unpackPath).parent_path(), ec);
-        if (ec) {
-            LogE("failed to remove {}, please remove it manually", m_unpackPath);
-        }
-    }
     if (this->e) {
         elf_end(this->e);
         this->e = nullptr;
+    }
+    if (this->fd != -1) {
+        if (::close(this->fd) == -1) {
+            LogW("failed to close fd {}: {}", fd, common::error::errorString(errno));
+        }
+        this->fd = -1;
     }
 }
 
@@ -120,18 +116,27 @@ utils::error::Result<std::string> UABFile::readSectionData(const QString &sectio
         || size > sectionHeader->sh_size - offset) {
         return LINGLONG_ERR(fmt::format("data exceeds section {}", section));
     }
-    if (!seek(sectionHeader->sh_offset + offset)) {
-        return LINGLONG_ERR(
-          fmt::format("failed to seek to section {}: {}", section, errorString()));
+    std::string data(size, '\0');
+    std::size_t totalBytes{ 0 };
+    while (totalBytes < size) {
+        const auto bytesRead = ::pread(fd,
+                                       data.data() + totalBytes,
+                                       size - totalBytes,
+                                       sectionHeader->sh_offset + offset + totalBytes);
+        if (bytesRead == -1 && errno == EINTR) {
+            continue;
+        }
+        if (bytesRead == -1) {
+            return LINGLONG_ERR(fmt::format("failed to read section {}: {}",
+                                            section,
+                                            common::error::errorString(errno)));
+        }
+        if (bytesRead == 0) {
+            return LINGLONG_ERR(fmt::format("unexpected end of section {}", section));
+        }
+        totalBytes += static_cast<std::size_t>(bytesRead);
     }
-    auto backToHead = utils::finally::finally([this] {
-        seek(0);
-    });
-    auto data = read(size);
-    if (data.size() != static_cast<qint64>(size)) {
-        return LINGLONG_ERR(fmt::format("failed to read section {}: {}", section, errorString()));
-    }
-    return data.toStdString();
+    return data;
 }
 
 utils::error::Result<std::reference_wrapper<const api::types::v1::UabMetaInfo>>
@@ -206,19 +211,21 @@ utils::error::Result<bool> UABFile::verify() noexcept
       [&](const GElf_Shdr &sectionHeader) -> utils::error::Result<std::string> {
         std::array<char, 4096> buffer{};
         QCryptographicHash cryptor{ QCryptographicHash::Sha256 };
-        if (!seek(sectionHeader.sh_offset)) {
-            return LINGLONG_ERR(fmt::format("failed to seek to section: {}", errorString()));
-        }
-        auto backToHead = utils::finally::finally([this] {
-            seek(0);
-        });
-
+        std::size_t offset{ 0 };
         std::size_t remaining = sectionHeader.sh_size;
         while (remaining > 0) {
             const auto requested = std::min(remaining, buffer.size());
-            const auto bytesRead = read(buffer.data(), static_cast<qint64>(requested));
-            if (bytesRead <= 0) {
-                return LINGLONG_ERR(fmt::format("read error: {}", errorString()));
+            const auto bytesRead =
+              ::pread(fd, buffer.data(), requested, sectionHeader.sh_offset + offset);
+            if (bytesRead == -1 && errno == EINTR) {
+                continue;
+            }
+            if (bytesRead == -1) {
+                return LINGLONG_ERR(
+                  fmt::format("read error: {}", common::error::errorString(errno)));
+            }
+            if (bytesRead == 0) {
+                return LINGLONG_ERR("unexpected end of section");
             }
             cryptor.addData(
 #if QT_VERSION >= QT_VERSION_CHECK(6, 4, 0)
@@ -229,6 +236,7 @@ utils::error::Result<bool> UABFile::verify() noexcept
 #endif
             );
             remaining -= static_cast<std::size_t>(bytesRead);
+            offset += static_cast<std::size_t>(bytesRead);
         }
         return cryptor.result().toHex().toStdString();
     };
@@ -276,7 +284,7 @@ utils::error::Result<bool> UABFile::verify() noexcept
     return *actualBundleDigest == metaInfo.digest;
 }
 
-utils::error::Result<std::filesystem::path> UABFile::unpack() noexcept
+utils::error::Result<void> UABFile::unpack(const std::filesystem::path &destination) noexcept
 {
     LINGLONG_TRACE("unpack uab bundle")
 
@@ -285,113 +293,81 @@ utils::error::Result<std::filesystem::path> UABFile::unpack() noexcept
         return LINGLONG_ERR(metaInfoRet.error());
     }
 
-    auto bundleSh = getSectionHeader(QString::fromStdString(metaInfo->sections.bundle));
+    const auto &metaInfo = metaInfoRet->get();
+    auto bundleSh = getSectionHeader(QString::fromStdString(metaInfo.sections.bundle));
     if (!bundleSh) {
         return LINGLONG_ERR(bundleSh.error());
     }
 
     auto bundleOffset = bundleSh->sh_offset;
-    auto metaInfo = metaInfoRet->get();
-    auto uuid = metaInfo.uuid;
-
     auto offset = bundleOffset;
-    auto uabFile = QString{ "/proc/%1/fd/%2" }.arg(::getpid()).arg(handle());
+    auto uabFile = std::filesystem::path{
+        fmt::format("/proc/{}/fd/{}", static_cast<long long>(::getpid()), fd)
+    };
 
-    auto dirName = "linglong-uab-" + QUuid::createUuid().toString(QUuid::Id128).toStdString();
-    // 优先使用/var/tmp目录，避免tmpfs内存不足
-    auto *tmpDir = std::getenv("LINGLONG_TMPDIR");
-    auto unpackPath = std::filesystem::path(tmpDir ? tmpDir : "/var/tmp") / dirName / "unpack";
-    auto ret = this->mkdirDir(unpackPath);
+    auto ret = this->mkdirDir(destination);
     if (!ret) {
-        // 如果/var/tmp目录无权限创建，则使用临时目录
-        unpackPath = std::filesystem::temp_directory_path() / dirName / "unpack";
-        ret = this->mkdirDir(unpackPath);
-        if (!ret) {
-            return LINGLONG_ERR("failed to create directory " + unpackPath.string(), ret);
-        }
+        return LINGLONG_ERR("failed to create directory " + destination.string(), ret);
     }
 
     // 如果erofsfuse存在，则使用erofsfuse挂载
     if (this->checkCommandExists("erofsfuse")) {
-        auto isFileReadable = this->isFileReadable(uabFile.toStdString());
+        auto isFileReadable = this->isFileReadable(uabFile.string());
         if (!isFileReadable) {
             offset = 0;
-            uabFile = (unpackPath.parent_path() / "bundle.erofs").c_str();
-            auto ret = this->saveErofsToFile(unpackPath.parent_path() / "bundle.erofs");
+            uabFile = destination.parent_path() / "bundle.erofs";
+            auto ret = this->saveErofsToFile(uabFile);
             if (!ret) {
                 return LINGLONG_ERR(ret.error());
             }
         }
         auto ret = utils::Cmd("erofsfuse")
                      .exec(std::vector<std::string>{ fmt::format("--offset={}", offset),
-                                                     uabFile.toStdString(),
-                                                     unpackPath.string() });
+                                                     uabFile.string(),
+                                                     destination.string() });
         if (!ret) {
             return LINGLONG_ERR(ret.error());
         }
-        this->m_mountPoint = unpackPath;
-        this->m_unpackPath = unpackPath;
-        return unpackPath;
+        this->m_mountPoint = destination;
+        return LINGLONG_OK;
     }
     // 如果erofsfuse不存在，则使用fsck.erofs解压erofs文件
     if (this->checkCommandExists("fsck.erofs")) {
-        uabFile = (unpackPath.parent_path() / "bundle.erofs").c_str();
-        auto ret = this->saveErofsToFile(unpackPath.parent_path() / "bundle.erofs");
+        uabFile = destination.parent_path() / "bundle.erofs";
+        auto ret = this->saveErofsToFile(uabFile);
         if (!ret) {
             return LINGLONG_ERR(ret.error());
         }
         auto cmdRet = utils::Cmd("fsck.erofs")
-                        .exec(std::vector<std::string>{ "--extract=" + unpackPath.string(),
-                                                        uabFile.toStdString() });
+                        .exec(std::vector<std::string>{ "--extract=" + destination.string(),
+                                                        uabFile.string() });
         if (!cmdRet) {
             return LINGLONG_ERR(cmdRet);
         }
-        this->m_unpackPath = unpackPath;
-        return unpackPath;
+        return LINGLONG_OK;
     }
     return LINGLONG_ERR(
       "erofsfuse or fsck.erofs not found, please install erofs-utils or erofsfuse",
       utils::error::ErrorCode::AppInstallErofsNotFound);
 }
 
-utils::error::Result<std::filesystem::path> UABFile::extractSignData() noexcept
+utils::error::Result<std::filesystem::path>
+UABFile::extractSignData(const std::filesystem::path &destination) noexcept
 {
     LINGLONG_TRACE("extract sign data from uab")
-    if (m_unpackPath.empty()) {
-        return LINGLONG_ERR("uab is not mounted");
-    }
-
     auto signSection = getSectionHeader("linglong.bundle.sign");
     if (!signSection) {
         LogI("couldn't get sign data: {} skip", signSection.error());
         return {};
     }
 
+    auto signDir = destination / "entries" / "share" / "deepin-elf-verify" / ".elfsign";
     std::error_code ec;
-    auto tempDir = std::filesystem::temp_directory_path(ec);
-    if (ec) {
+    if (!std::filesystem::create_directories(signDir, ec) && ec) {
         return LINGLONG_ERR(ec.message().c_str());
     }
 
-    constexpr std::string_view charSet =
-      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-    std::random_device rd;
-    std::mt19937 rng(rd());
-    std::uniform_int_distribution<> dist(0, charSet.size() - 1);
-
-    std::string tmpName;
-    for (std::size_t i = 0; i < 8; ++i) {
-        tmpName += charSet[dist(rng)];
-    }
-
-    auto root = tempDir / ("uab-temp-layer-" + tmpName);
-
-    auto destination = root / "entries" / "share" / "deepin-elf-verify" / ".elfsign";
-    if (!std::filesystem::create_directories(destination, ec) && ec) {
-        return LINGLONG_ERR(ec.message().c_str());
-    }
-
-    auto tarFile = destination / "sign.tar";
+    auto tarFile = signDir / "sign.tar";
     auto tarFd = ::open(tarFile.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
     if (tarFd == -1) {
         return LINGLONG_ERR(
@@ -410,17 +386,12 @@ utils::error::Result<std::filesystem::path> UABFile::extractSignData() noexcept
         }
     });
 
-    seek(signSection->sh_offset);
-    auto backToHead = utils::finally::finally([this] {
-        seek(0);
-    });
-
-    auto selfFd = handle();
     auto totalBytes = signSection->sh_size;
+    std::size_t offset{ 0 };
     std::array<unsigned char, 4096> buf{};
     while (totalBytes > 0) {
         auto bytesRead = totalBytes > buf.size() ? buf.size() : totalBytes;
-        auto readBytes = ::read(selfFd, buf.data(), bytesRead);
+        auto readBytes = ::pread(fd, buf.data(), bytesRead, signSection->sh_offset + offset);
         if (readBytes == -1) {
             if (errno == EINTR) {
                 errno = 0;
@@ -429,9 +400,15 @@ utils::error::Result<std::filesystem::path> UABFile::extractSignData() noexcept
             return LINGLONG_ERR(
               fmt::format("read from sign section error: {}", common::error::errorString(errno)));
         }
+        if (readBytes == 0) {
+            return LINGLONG_ERR("unexpected end of sign section");
+        }
 
-        while (true) {
-            auto writeBytes = ::write(tarFd, buf.data(), readBytes);
+        std::size_t writtenBytes{ 0 };
+        while (writtenBytes < static_cast<std::size_t>(readBytes)) {
+            auto writeBytes = this->writeData(tarFd,
+                                              buf.data() + writtenBytes,
+                                              static_cast<std::size_t>(readBytes) - writtenBytes);
             if (writeBytes == -1) {
                 if (errno == EINTR) {
                     errno = 0;
@@ -441,13 +418,15 @@ utils::error::Result<std::filesystem::path> UABFile::extractSignData() noexcept
                   fmt::format("write to sign.tar error: {}", common::error::errorString(errno)));
             }
 
-            if (writeBytes != readBytes) {
-                return LINGLONG_ERR("write to sign.tar failed: byte mismatch");
+            if (writeBytes == 0) {
+                return LINGLONG_ERR("write to sign.tar failed: zero bytes written");
             }
 
-            totalBytes -= writeBytes;
-            break;
+            writtenBytes += static_cast<std::size_t>(writeBytes);
         }
+
+        totalBytes -= static_cast<std::size_t>(readBytes);
+        offset += static_cast<std::size_t>(readBytes);
     }
 
     if (::fsync(tarFd) == -1) {
@@ -462,18 +441,23 @@ utils::error::Result<std::filesystem::path> UABFile::extractSignData() noexcept
     }
     tarFd = -1;
 
-    auto ret = utils::Cmd("tar").exec({ "-xf", tarFile.string(), "-C", destination.string() });
+    auto ret = utils::Cmd("tar").exec({ "-xf", tarFile.string(), "-C", signDir.string() });
     if (!ret) {
         return LINGLONG_ERR(ret);
     }
 
-    return root;
+    return destination;
 }
 
 bool UABFile::isFileReadable(const std::string &path) const
 {
     std::ifstream f(path);
     return f.good();
+}
+
+ssize_t UABFile::writeData(int fd, const void *data, std::size_t size) const noexcept
+{
+    return ::write(fd, data, size);
 }
 
 utils::error::Result<void> UABFile::saveErofsToFile(const std::string &path)
@@ -489,26 +473,30 @@ utils::error::Result<void> UABFile::saveErofsToFile(const std::string &path)
     if (!bundleSh) {
         return LINGLONG_ERR(bundleSh.error());
     }
-    seek(bundleSh->sh_offset);
-    auto backToHead = utils::finally::finally([this] {
-        seek(0);
-    });
     auto bundleLength = bundleSh->sh_size;
+    std::size_t offset{ 0 };
     // 流式保存bundleSection到path
     std::ofstream ofs(path, std::ios::binary);
     std::array<char, 4096> buf{};
     while (bundleLength > 0) {
         auto readBytes = bundleLength > buf.size() ? buf.size() : bundleLength;
-        auto bytesRead = ::read(handle(), buf.data(), readBytes);
+        auto bytesRead = ::pread(fd, buf.data(), readBytes, bundleSh->sh_offset + offset);
+        if (bytesRead == -1 && errno == EINTR) {
+            continue;
+        }
         if (bytesRead == -1) {
             return LINGLONG_ERR(
               fmt::format("read from bundle section error: {}", common::error::errorString(errno)));
+        }
+        if (bytesRead == 0) {
+            return LINGLONG_ERR("unexpected end of bundle section");
         }
         ofs.write(buf.data(), bytesRead);
         if (ofs.fail()) {
             return LINGLONG_ERR(fmt::format("write {} failed", path));
         }
         bundleLength -= bytesRead;
+        offset += static_cast<std::size_t>(bytesRead);
     }
     ofs.close();
     if (ofs.fail()) {

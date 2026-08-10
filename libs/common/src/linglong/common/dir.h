@@ -25,6 +25,8 @@ std::filesystem::path getBundleDir(std::string_view containerId) noexcept;
 std::filesystem::path getContainerCacheDir(const std::string &commit,
                                            const std::string &containerId) noexcept;
 
+std::filesystem::path getStagingDir() noexcept;
+
 // user cache directory for linglong in the following order:
 // 1. $XDG_CACHE_HOME/linglong
 // 2. $HOME/.cache/linglong, if $XDG_CACHE_HOME is either not set or empty

@@ -8,6 +8,7 @@
 
 #include "linglong/utils/error/error.h"
 
+#include <filesystem>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -33,7 +34,7 @@ public:
     ~InstallHookManager() = default;
 
     utils::error::Result<void> parseInstallHooks();
-    utils::error::Result<void> executeInstallHooks(int fd) noexcept;
+    utils::error::Result<void> executeInstallHooks(const std::filesystem::path &path) noexcept;
     utils::error::Result<void> executePostInstallHooks(const std::string &appID,
                                                        const std::string &path) noexcept;
     utils::error::Result<void> executePostUninstallHooks(const std::string &appID) noexcept;

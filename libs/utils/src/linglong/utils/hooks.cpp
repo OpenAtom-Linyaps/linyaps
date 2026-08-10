@@ -8,7 +8,6 @@
 
 #include "cmd.h"
 #include "configure.h"
-#include "linglong/common/error.h"
 #include "linglong/common/strings.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/log/log.h"
@@ -16,18 +15,12 @@
 #include <fmt/format.h>
 
 #include <array>
-#include <climits>
-#include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <optional>
-#include <sstream>
 #include <string_view>
 #include <utility>
 #include <vector>
-
-#include <sys/wait.h>
-#include <unistd.h>
 
 namespace linglong::utils {
 
@@ -153,7 +146,8 @@ utils::error::Result<void> InstallHookManager::parseInstallHooks()
     return LINGLONG_OK;
 }
 
-utils::error::Result<void> InstallHookManager::executeInstallHooks(int fd) noexcept
+utils::error::Result<void>
+InstallHookManager::executeInstallHooks(const std::filesystem::path &path) noexcept
 {
     LINGLONG_TRACE("Executing pre-install hooks.");
 
@@ -161,23 +155,8 @@ utils::error::Result<void> InstallHookManager::executeInstallHooks(int fd) noexc
         return LINGLONG_OK;
     }
 
-    // Convert fd into a specific path using /proc/pid/fd/fd_num
-    std::ostringstream oss;
-    oss << "/proc/" << getpid() << "/fd/" << fd;
-
-    std::array<char, PATH_MAX + 1> pathBuf{};
-    auto size = readlink(oss.str().c_str(), pathBuf.data(), PATH_MAX);
-
-    if (size == -1) {
-        return LINGLONG_ERR(fmt::format("Failed to read file link for fd {}: {}",
-                                        fd,
-                                        common::error::errorString(errno)));
-    }
-
-    pathBuf[size] = '\0';
-    std::string uabPath = pathBuf.data();
-
-    std::vector<std::pair<std::string, std::string>> envVars = { { "LINGLONG_UAB_PATH", uabPath } };
+    const std::vector<std::pair<std::string, std::string>> envVars = { { "LINGLONG_UAB_PATH",
+                                                                         path.string() } };
 
     return executeHookCommands(preInstallCommands, envVars);
 }

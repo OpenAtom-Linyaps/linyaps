@@ -7,7 +7,6 @@
 #include "../mocks/uab_file_mock.h"
 #include "common/tempdir.h"
 #include "linglong/api/types/v1/Generators.hpp"
-#include "linglong/common/strings.h"
 #include "linglong/common/uab_signature.h"
 #include "linglong/package/elf_handler.h"
 #include "linglong/package/uab_file.h"
@@ -16,8 +15,8 @@
 
 #include <QCryptographicHash>
 #include <QFile>
-#include <QFileInfo>
 
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <iterator>
@@ -25,7 +24,6 @@
 #include <string>
 #include <string_view>
 
-#include <fcntl.h>
 #include <unistd.h>
 
 __attribute__((used, section(".note.uab.sig"), aligned(4))) const auto linglongUabSignature =
@@ -152,19 +150,16 @@ std::string readFile(const std::filesystem::path &path)
 
 TEST_F(UabFileTest, UnpackFuseOffset)
 {
-    // 打开UAB文件
-    int fd = open(uabFile.c_str(), O_RDONLY);
-    ASSERT_NE(fd, -1) << "Failed to open uab file" << strerror(errno);
-
     // 初始化UABFile对象
-    auto uab = linglong::package::UABFile::loadFromFile(fd);
+    auto uab = linglong::package::UABFile::loadFromFile(uabFile);
     ASSERT_TRUE(uab.has_value()) << "Failed to load uab file";
-    auto unpackRet = (*uab)->unpack();
+    const auto unpackPath = testDir->path() / "unpack-offset";
+    auto unpackRet = (*uab)->unpack(unpackPath);
     ASSERT_TRUE(unpackRet.has_value())
       << "Failed to unpack uab file" << unpackRet.error().message();
 
-    ASSERT_TRUE(std::filesystem::exists(*unpackRet / "layers/test/binary/info.json"))
-      << "'info.json' not found in unpack dir" << *unpackRet / "info.json";
+    ASSERT_TRUE(std::filesystem::exists(unpackPath / "layers/test/binary/info.json"))
+      << "'info.json' not found in unpack dir" << unpackPath / "info.json";
 }
 
 TEST_F(UabFileTest, UnpackFuse)
@@ -184,18 +179,15 @@ TEST_F(UabFileTest, UnpackFuse)
         return false;
     };
     uab.wrapMkdirDirFunc = [](const std::string &path) -> utils::error::Result<void> {
-        LINGLONG_TRACE("test");
-        if (common::strings::starts_with(path, "/var/tmp")) {
-            return LINGLONG_ERR("Cannot create directory in /var/tmp");
-        }
         std::filesystem::create_directories(path);
         return LINGLONG_OK;
     };
-    auto unpackRet = uab.unpack();
+    const auto unpackPath = testDir->path() / "unpack-fuse";
+    auto unpackRet = uab.unpack(unpackPath);
     ASSERT_TRUE(unpackRet.has_value()) << "Failed to unpack uab file";
 
-    ASSERT_TRUE(std::filesystem::exists(*unpackRet / "layers/test/binary/info.json"))
-      << "'info.json' not found in unpack dir" << *unpackRet / "info.json";
+    ASSERT_TRUE(std::filesystem::exists(unpackPath / "layers/test/binary/info.json"))
+      << "'info.json' not found in unpack dir" << unpackPath / "info.json";
 }
 
 TEST_F(UabFileTest, UnpackFsck)
@@ -207,11 +199,12 @@ TEST_F(UabFileTest, UnpackFsck)
         }
         return true;
     };
-    auto unpackRet = uab.unpack();
+    const auto unpackPath = testDir->path() / "unpack-fsck";
+    auto unpackRet = uab.unpack(unpackPath);
     ASSERT_TRUE(unpackRet.has_value()) << "Failed to unpack uab file";
 
-    ASSERT_TRUE(std::filesystem::exists(*unpackRet / "layers/test/binary/info.json"))
-      << "'info.json' not found in unpack dir" << *unpackRet / "info.json";
+    ASSERT_TRUE(std::filesystem::exists(unpackPath / "layers/test/binary/info.json"))
+      << "'info.json' not found in unpack dir" << unpackPath / "info.json";
 }
 
 TEST_F(UabFileTest, Verify)
@@ -241,9 +234,7 @@ TEST_F(UabFileTest, VerifyRejectsMismatchedMetaSignature)
         ASSERT_TRUE(writeRet.has_value()) << writeRet.error().message();
     }
 
-    const auto fd = open(modifiedUab.c_str(), O_RDONLY);
-    ASSERT_NE(fd, -1);
-    auto uab = UABFile::loadFromFile(fd);
+    auto uab = UABFile::loadFromFile(modifiedUab);
     ASSERT_TRUE(uab.has_value()) << uab.error().message();
     auto verifyRet = (*uab)->verify();
     ASSERT_TRUE(verifyRet.has_value()) << verifyRet.error().message();
@@ -267,9 +258,7 @@ TEST_F(UabFileTest, VerifyRejectsTamperedMetaSection)
         ASSERT_TRUE(writeRet.has_value()) << writeRet.error().message();
     }
 
-    const auto fd = open(modifiedUab.c_str(), O_RDONLY);
-    ASSERT_NE(fd, -1);
-    auto uab = UABFile::loadFromFile(fd);
+    auto uab = UABFile::loadFromFile(modifiedUab);
     ASSERT_TRUE(uab.has_value()) << uab.error().message();
     auto verifyRet = (*uab)->verify();
     ASSERT_TRUE(verifyRet.has_value()) << verifyRet.error().message();
@@ -307,9 +296,7 @@ TEST_F(UabFileTest, VerifyRejectsAuthenticatedInvalidBundleDigest)
         ASSERT_TRUE(writeSignatureRet.has_value()) << writeSignatureRet.error().message();
     }
 
-    const auto fd = open(modifiedUab.c_str(), O_RDONLY);
-    ASSERT_NE(fd, -1);
-    auto uab = UABFile::loadFromFile(fd);
+    auto uab = UABFile::loadFromFile(modifiedUab);
     ASSERT_TRUE(uab.has_value()) << uab.error().message();
     auto verifyRet = (*uab)->verify();
     EXPECT_FALSE(verifyRet.has_value());
@@ -347,9 +334,7 @@ TEST_F(UabFileTest, VerifyRejectsAuthenticatedMissingBundleSection)
         ASSERT_TRUE(writeSignatureRet.has_value()) << writeSignatureRet.error().message();
     }
 
-    const auto fd = open(modifiedUab.c_str(), O_RDONLY);
-    ASSERT_NE(fd, -1);
-    auto uab = UABFile::loadFromFile(fd);
+    auto uab = UABFile::loadFromFile(modifiedUab);
     ASSERT_TRUE(uab.has_value()) << uab.error().message();
     auto verifyRet = (*uab)->verify();
     EXPECT_FALSE(verifyRet.has_value());
@@ -372,9 +357,7 @@ TEST_F(UabFileTest, VerifyRejectsMismatchedBundleDigest)
         ASSERT_TRUE(writeRet.has_value()) << writeRet.error().message();
     }
 
-    const auto fd = open(modifiedUab.c_str(), O_RDONLY);
-    ASSERT_NE(fd, -1);
-    auto uab = UABFile::loadFromFile(fd);
+    auto uab = UABFile::loadFromFile(modifiedUab);
     ASSERT_TRUE(uab.has_value()) << uab.error().message();
     auto verifyRet = (*uab)->verify();
     ASSERT_TRUE(verifyRet.has_value()) << verifyRet.error().message();
@@ -414,9 +397,7 @@ TEST_F(UabFileTest, VerifyWithoutBundleSignSection)
         ASSERT_TRUE(writeRet.has_value()) << writeRet.error().message();
     }
 
-    const auto fd = open(unsignedUab.c_str(), O_RDONLY);
-    ASSERT_NE(fd, -1);
-    auto uab = UABFile::loadFromFile(fd);
+    auto uab = UABFile::loadFromFile(unsignedUab);
     ASSERT_TRUE(uab.has_value()) << uab.error().message();
     auto verifyRet = (*uab)->verify();
     ASSERT_TRUE(verifyRet.has_value()) << verifyRet.error().message();
@@ -454,9 +435,9 @@ TEST(UabSignatureTest, ParseRejectsWrongName)
 TEST_F(UabFileTest, ExtractSignData)
 {
     auto uab = MockUabFile(uabFile);
-    auto ret = uab.unpack();
+    auto ret = uab.unpack(testDir->path() / "unpack-sign");
     ASSERT_TRUE(ret.has_value()) << "Failed to unpack uab file " << ret.error().message();
-    auto extractSignDataRet = uab.extractSignData();
+    auto extractSignDataRet = uab.extractSignData(testDir->path() / "sign-data");
     ASSERT_TRUE(extractSignDataRet.has_value())
       << "Failed to extract sign data " << extractSignDataRet.error().message();
     auto signDataDir = *extractSignDataRet / "entries" / "share" / "deepin-elf-verify" / ".elfsign";
@@ -469,6 +450,25 @@ TEST_F(UabFileTest, ExtractSignData)
     std::error_code ec;
     std::filesystem::remove_all(*extractSignDataRet, ec);
     ASSERT_FALSE(ec) << "Failed to remove extractSignDataRet" << ec.message();
+}
+
+TEST_F(UabFileTest, ExtractSignDataRetriesShortWrites)
+{
+    auto uab = MockUabFile(uabFile);
+    uab.wrapWriteDataFunc = [](int fd, const void *data, std::size_t size) {
+        constexpr std::size_t MaxWriteSize = 7;
+        return ::write(fd, data, std::min(size, MaxWriteSize));
+    };
+
+    auto extractSignDataRet = uab.extractSignData(testDir->path() / "sign-data-short-write");
+    ASSERT_TRUE(extractSignDataRet.has_value())
+      << "Failed to extract sign data " << extractSignDataRet.error().message();
+
+    auto signDataDir = *extractSignDataRet / "entries" / "share" / "deepin-elf-verify" / ".elfsign";
+    std::ifstream helloFile(signDataDir / "hello");
+    std::stringstream buffer;
+    buffer << helloFile.rdbuf();
+    EXPECT_EQ(buffer.str(), "Hello, World!");
 }
 
 } // namespace linglong::package

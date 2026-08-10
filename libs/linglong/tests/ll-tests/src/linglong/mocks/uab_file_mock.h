@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2024 - 2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -22,14 +22,13 @@ public:
     std::function<utils::error::Result<void>(const std::string &)> wrapSaveErofsToFileFunc;
     std::function<utils::error::Result<void>(const std::string &)> wrapMkdirDirFunc;
     std::function<bool(const std::string &)> wrapCheckCommandExistsFunc;
+    std::function<ssize_t(int, const void *, std::size_t)> wrapWriteDataFunc;
 
     explicit MockUabFile(const std::string &path)
     {
-        auto fd = ::open(path.c_str(), O_RDONLY);
-        [[maybe_unused]] auto ret =
-          this->open(fd, QIODevice::ReadOnly, FileHandleFlag::AutoCloseHandle);
+        this->UABFile::fd = ::open(path.c_str(), O_RDONLY | O_CLOEXEC);
         elf_version(EV_CURRENT);
-        auto *elf = elf_begin(fd, ELF_C_READ, nullptr);
+        auto *elf = elf_begin(this->UABFile::fd, ELF_C_READ, nullptr);
         this->UABFile::e = elf;
     }
 
@@ -55,6 +54,12 @@ protected:
     {
         return wrapCheckCommandExistsFunc ? wrapCheckCommandExistsFunc(command)
                                           : UABFile::checkCommandExists(command);
+    }
+
+    ssize_t writeData(int fd, const void *data, std::size_t size) const noexcept override
+    {
+        return wrapWriteDataFunc ? wrapWriteDataFunc(fd, data, size)
+                                 : UABFile::writeData(fd, data, size);
     }
 };
 

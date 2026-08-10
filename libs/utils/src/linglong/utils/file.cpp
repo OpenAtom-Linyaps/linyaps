@@ -79,9 +79,9 @@ linglong::utils::error::Result<void> writeFile(const std::filesystem::path &file
           fmt::format("failed to open file {}: {}", filepath, common::error::errorString(errno)));
     }
     out << content;
-    if (out.bad()) {
-        return LINGLONG_ERR(
-          fmt::format("failed to write file {}", common::error::errorString(errno)));
+    out.close();
+    if (out.fail()) {
+        return LINGLONG_ERR(fmt::format("failed to write file {}", filepath));
     }
     return LINGLONG_OK;
 }

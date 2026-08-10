@@ -420,6 +420,19 @@ TEST_F(FileTest, WriteFile)
     EXPECT_FALSE(result.has_value()); // Should fail because parent directory doesn't exist
 }
 
+TEST_F(FileTest, WriteFileToDevFull)
+{
+    // /dev/full accepts open but rejects writes with ENOSPC
+    const std::string devFull = "/dev/full";
+    if (!fs::exists(devFull)) {
+        GTEST_SKIP() << "/dev/full not available on this platform";
+    }
+
+    auto result = linglong::utils::writeFile(devFull, "test data");
+    EXPECT_FALSE(result.has_value())
+      << "writeFile to /dev/full should return an error, not success";
+}
+
 TEST_F(FileTest, ReadFile)
 {
     // Test reading an existing file

@@ -49,6 +49,7 @@ pfl_add_executable(
   src/linglong/package/versionv2_test.cpp
   src/linglong/repo/client_factory_test.cpp
   src/linglong/repo/config_test.cpp
+  src/linglong/repo/migrate_test.cpp
   src/linglong/repo/ostree_repo_test.cpp
   src/linglong/repo/repo_cache_test.cpp
   src/linglong/runtime/container_builder_test.cpp

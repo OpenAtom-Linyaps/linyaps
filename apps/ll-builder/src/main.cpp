@@ -734,6 +734,9 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     }
 
     auto result = linglong::repo::tryMigrate(builderCfg->repo, *repoCfg);
+    if (result == linglong::repo::MigrateResult::Incompatible) {
+        return -1;
+    }
     if (result == linglong::repo::MigrateResult::Failed) {
         if (!backupFailedMigrationRepo(builderCfg->repo)) {
             return -1;

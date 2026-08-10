@@ -23,6 +23,7 @@
 #include <QList>
 #include <QObject>
 
+#include <filesystem>
 #include <memory>
 #include <optional>
 
@@ -73,8 +74,12 @@ public
     // Scan installed application dependencies and remove unreferenced packages.
     virtual utils::error::Result<void> pruneUnused() noexcept;
     virtual utils::error::Result<void> tryGenerateCache(const package::Reference &ref) noexcept;
+    utils::error::Result<void>
+    executeInstallHooks(const std::filesystem::path &packageFile) noexcept;
     utils::error::Result<void> executePostInstallHooks(const package::Reference &ref) noexcept;
     utils::error::Result<void> executePostUninstallHooks(const package::Reference &ref) noexcept;
+    utils::error::Result<std::filesystem::path> copyToStaging(int sourceFD) noexcept;
+    utils::error::Result<void> cleanStaging() noexcept;
 
     virtual utils::error::Result<void> installAppDepends(Task &task,
                                                          const api::types::v1::PackageInfoV2 &app);

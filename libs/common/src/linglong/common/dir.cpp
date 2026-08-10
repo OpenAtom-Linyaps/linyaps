@@ -30,6 +30,11 @@ std::filesystem::path getContainerCacheDir(const std::string &commit,
     return std::filesystem::path{ LINGLONG_ROOT } / "cache" / commit / containerId;
 }
 
+std::filesystem::path getStagingDir() noexcept
+{
+    return std::filesystem::path{ LINGLONG_ROOT } / "staging";
+}
+
 std::filesystem::path getUserCacheDir() noexcept
 {
     auto cacheDir = xdg::getXDGCacheHomeDir();

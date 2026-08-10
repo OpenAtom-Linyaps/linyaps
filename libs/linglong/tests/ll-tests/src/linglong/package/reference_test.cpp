@@ -6,6 +6,7 @@
 
 #include <gtest/gtest.h>
 
+#include "linglong/api/types/v1/PackageInfoV2.hpp"
 #include "linglong/package/fuzzy_reference.h"
 #include "linglong/package/reference.h"
 
@@ -88,4 +89,18 @@ TEST(Package, ReferenceSemanticMatch)
         ASSERT_TRUE(fuzzy.has_value()) << raw;
         EXPECT_EQ(reference->semanticMatch(*fuzzy), expected) << raw;
     }
+}
+
+TEST(Package, FromPackageInfoRejectsEmptyArchitecture)
+{
+    linglong::api::types::v1::PackageInfoV2 info{};
+    info.channel = "main";
+    info.id = "com.example.App";
+    info.version = "1.0.0.0";
+    info.arch = {};
+
+    auto result = Reference::fromPackageInfo(info);
+    ASSERT_FALSE(result.has_value())
+      << "fromPackageInfo should reject empty arch array instead of crashing";
+    EXPECT_NE(result.error().message().find("architecture"), std::string::npos);
 }

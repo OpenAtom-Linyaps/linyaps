@@ -70,6 +70,10 @@ Reference::fromPackageInfo(const api::types::v1::PackageInfoV2 &info) noexcept
         return LINGLONG_ERR("version .tweak is required");
     }
 
+    if (info.arch.empty()) {
+        return LINGLONG_ERR("missing architecture in package info");
+    }
+
     auto architecture = package::Architecture::parse(info.arch[0]);
     if (!architecture) {
         return LINGLONG_ERR(architecture);

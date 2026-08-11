@@ -137,15 +137,13 @@ void PackageManager::initDaemonMode(bool peerMode) noexcept
     auto deferredTimeOut = 3600s;
     auto *deferredTimeOutEnv = ::getenv("LINGLONG_DEFERRED_TIMEOUT");
     if (deferredTimeOutEnv != nullptr) {
-        constexpr auto maxTimeOut =
-          std::chrono::duration_cast<std::chrono::seconds>(
-            std::chrono::milliseconds{ std::numeric_limits<int>::max() })
-            .count();
+        constexpr auto maxTimeOut = std::chrono::duration_cast<std::chrono::seconds>(
+                                      std::chrono::milliseconds{ std::numeric_limits<int>::max() })
+                                      .count();
         const auto value = std::string_view{ deferredTimeOutEnv };
         std::chrono::seconds::rep seconds{};
         const auto [end, error] = std::from_chars(value.begin(), value.end(), seconds);
-        if (error == std::errc{} && end == value.end() && seconds > 0
-            && seconds <= maxTimeOut) {
+        if (error == std::errc{} && end == value.end() && seconds > 0 && seconds <= maxTimeOut) {
             deferredTimeOut = std::chrono::seconds{ seconds };
         } else {
             LogW("invalid LINGLONG_DEFERRED_TIMEOUT[{}], using {}s",

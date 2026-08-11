@@ -12,6 +12,7 @@ pfl_add_executable(
   SOURCES
   ./src/cache_dialog_resource.qrc
   ./src/main.cpp
+  ./src/permission_dialog_result.h
   ./src/permissionDialog.h
   ./src/permissionDialog.cpp
   ./src/cache_dialog.h

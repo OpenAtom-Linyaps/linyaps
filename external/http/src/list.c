@@ -70,11 +70,13 @@ void list_iterateThroughListBackward(list_t *list,
                                      void *additionalDataNeededForCallbackFunction)
 {
     listEntry_t *currentListEntry = list->lastEntry;
-    listEntry_t *nextListEntry = currentListEntry->prevListEntry;
+    listEntry_t *nextListEntry;
 
     if(currentListEntry == NULL) {
         return;
     }
+
+    nextListEntry = currentListEntry->prevListEntry;
 
     operationToPerform(currentListEntry,
                        additionalDataNeededForCallbackFunction);

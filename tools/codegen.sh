@@ -18,7 +18,7 @@ QUICKTYPE=${QUICKTYPE:=$(command -v quicktype || true)}
 
 if [ -z "$QUICKTYPE" ]; then
         pushd quicktype
-        if not npx quicktype --version &>/dev/null; then
+        if ! npx quicktype --version &>/dev/null; then
                 echo "Installing quicktype"
                 npm i
                 npm run build

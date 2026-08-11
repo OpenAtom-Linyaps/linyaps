@@ -10,11 +10,13 @@
 """
 
 import os
+import shlex
 import subprocess
 import sys
 from typing import Optional
 
-SUDO_FLAGS = "-A"
+DEFAULT_SUDO_FLAGS = "-A"
+
 
 class CommandExecutor:
     """命令执行器，封装 subprocess.run 的调用细节。"""
@@ -57,8 +59,8 @@ class CommandExecutor:
         if env:
             run_env.update(env)
         if sudo:
-            flags = SUDO_FLAGS
-            full_cmd = ["sudo"] + (flags.split() if flags else []) + full_cmd
+            flags = shlex.split(os.environ.get("SUDO_FLAGS", DEFAULT_SUDO_FLAGS))
+            full_cmd = ["sudo", *flags, *full_cmd]
 
         try:
             result = subprocess.run(

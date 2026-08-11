@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 #include "configure.h"
+#include "command_line.h"
 #include "linglong/cli/cli.h"
 #include "linglong/cli/cli_printer.h"
 #include "linglong/cli/dbus_notifier.h"
@@ -46,21 +47,6 @@ using namespace linglong::package;
 using namespace linglong::cli;
 
 namespace {
-
-std::vector<std::string> transformOldExec(int argc, char **argv) noexcept
-{
-    std::vector<std::string> res;
-
-    for (int i = argc - 1; i > 0; --i) {
-        if (std::string_view(argv[i]) == "--exec") {
-            res.emplace_back("--");
-        } else {
-            res.emplace_back(argv[i]);
-        }
-    }
-
-    return res;
-}
 
 // Validator for string inputs
 CLI::Validator validatorString{
@@ -658,7 +644,7 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     addPruneCommand(commandParser, CliAppManagingGroup);
     addInspectCommand(commandParser, inspectOptions, CliHiddenGroup);
 
-    auto res = transformOldExec(argc, argv);
+    auto res = transformOldExecArguments(argc, argv);
     CLI11_PARSE(commandParser, std::move(res));
 
     // print version if --version flag is set

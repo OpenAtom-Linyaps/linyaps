@@ -24,6 +24,11 @@ public:
     {
     }
 
+    bool isVersionNewer(std::string_view candidate, std::string_view current) const noexcept
+    {
+        return compareVersions(candidate, current);
+    }
+
     MOCK_METHOD((linglong::utils::error::Result<std::pair<bool, GraphicsDriverInfo>>),
                 getPackageInfoFromRemoteRepo,
                 (const std::string &packageName),
@@ -51,6 +56,14 @@ protected:
         file.close();
     }
 };
+
+TEST_F(NvidiaDriverDetectorTest, CompareVersionsUsesSemanticOrdering)
+{
+    TestableNVIDIADriverDetector detector("unused-version-file");
+
+    EXPECT_TRUE(detector.isVersionNewer("510.100.0", "510.99.0"));
+    EXPECT_FALSE(detector.isVersionNewer("510.99.0", "510.100.0"));
+}
 
 TEST_F(NvidiaDriverDetectorTest, Detect_Success_PackageNotInstalled)
 {

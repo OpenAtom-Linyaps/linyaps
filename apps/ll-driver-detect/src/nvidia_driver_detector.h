@@ -34,13 +34,14 @@ public:
     // Get the type of driver this detector handles
     std::string getDriverIdentify() const override { return kNvidiaPackageIdentify; }
 
+protected:
+    bool compareVersions(std::string_view v1, std::string_view v2) const noexcept;
+
 private:
     // Get driver version from the specified file path
     std::string getDriverVersion();
     utils::error::Result<std::pair<bool, GraphicsDriverInfo>>
     getInstalledGraphicsDriverInfo(const std::string &packageName) const;
-    bool compareVersions(std::string_view v1, std::string_view v2) const noexcept;
-
     std::string versionFilePath_;
 };
 

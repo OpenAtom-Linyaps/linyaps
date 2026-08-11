@@ -247,7 +247,7 @@ bool NVIDIADriverDetector::compareVersions(std::string_view v1, std::string_view
         return false;
     }
 
-    return v1 > v2;
+    return *ver1 > *ver2;
 }
 
 } // namespace linglong::driver::detect

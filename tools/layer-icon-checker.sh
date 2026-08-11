@@ -25,6 +25,20 @@ prepareEnv() {
 	fi
 }
 
+cleanup() {
+	status=$?
+	trap - EXIT HUP INT TERM
+
+	if [ "${mounted}" = true ]; then
+		umount -- "${dest}" >/dev/null 2>&1 || true
+	fi
+	if [ -n "${dest}" ] && [ -d "${dest}" ]; then
+		rmdir -- "${dest}" >/dev/null 2>&1 || true
+	fi
+
+	exit "${status}"
+}
+
 getLayerOffset() {
 	layerPath=$1
 	layerHeader="<<< deepin linglong layer archive >>>"
@@ -33,13 +47,13 @@ getLayerOffset() {
 	declare -i infoLength=4
 	declare -i infoSize offset
 
-	fileHeader=$(hexdump -n ${layerHeaderLength} -e '1/40 "%s\n"' ${layerPath})
+	fileHeader=$(hexdump -n ${layerHeaderLength} -e '1/40 "%s\n"' "${layerPath}")
 	if [ "${fileHeader}" != "${layerHeader}" ]; then
 		echo "${layerPath} is not a layer file, exit checking process ..."
 		exit 255
 	fi
 
-	infoSize=$(hexdump -n ${infoLength} -s ${layerHeaderLength} -e '1/4 "%u\n"' ${layerPath})
+	infoSize=$(hexdump -n ${infoLength} -s ${layerHeaderLength} -e '1/4 "%u\n"' "${layerPath}")
 	if [ ! ${infoSize} -gt 0 ]; then
 		echo "broken layer file, exit checking process ..."
 		exit 255
@@ -53,9 +67,9 @@ getDesktopIcons() {
 	path=$1
 	declare desktopIcons
 
-	desktopList=$(find $path -name "*.desktop")
+	desktopList=$(find "${path}" -name "*.desktop")
 	for desktop in ${desktopList}; do
-		desktopIcons+=$(sed -n 's/^Icon=\(.*\)/\1/p' ${desktop})
+		desktopIcons+=$(sed -n 's/^Icon=\(.*\)/\1/p' "${desktop}")
 		desktopIcons+="\n"
 	done
 	echo -e "${desktopIcons}"
@@ -86,7 +100,7 @@ iconCheck() {
 	echo "IconPath:"
 
 	for icon in ${icons}; do
-		result=$(find ${iconPath} -name "${icon}*")
+		result=$(find "${iconPath}" -name "${icon}*")
 		if [ "${result}" == "" ]; then
 			formatPrintIconPath "${icon}" "not found"
 			return 255
@@ -99,7 +113,6 @@ iconCheck() {
 main() {
 	RED='\033[0;31m'
 	YELLOW='\033[1;33m'
-	GREEN='\033[0;32m'
 	NC='\033[0m' # No Color
 
 	declare arg1="$1"
@@ -109,7 +122,7 @@ main() {
 		return 0
 	fi
 
-	if [ ! -f ${arg1} ]; then
+	if [ ! -f "${arg1}" ]; then
 		echo "${arg1} is not a regular file or not exists."
 		return 255
 	fi
@@ -119,33 +132,36 @@ main() {
 
 	offset=$(getLayerOffset "${arg1}")
 
-	# mount data from layer
+	# 挂载 layer 数据；trap 同时覆盖失败与信号退出路径
+	dest=""
+	mounted=false
+	trap cleanup EXIT
+	trap 'exit 129' HUP
+	trap 'exit 130' INT
+	trap 'exit 143' TERM
+
 	dest=$(mktemp --tmpdir=/tmp -d linglong-layer-XXXXXXXX)
-	erofsfuse --offset=${offset} ${arg1} ${dest} >/dev/null 2>&1
-	if [ ! $? -eq 0 ]; then
+	mounted=true
+	if ! erofsfuse --offset="${offset}" "${arg1}" "${dest}" >/dev/null 2>&1; then
 		echo "Extract layer failed!"
 		return 255
 	fi
 
 	# check desktop file, quit normally if no Icon set
-	icons=$(getDesktopIcons ${dest})
+	icons=$(getDesktopIcons "${dest}")
 	if [ "${icons}" == "" ]; then
 		echo "No icon set in desktop file, nothing need to check ..."
 		return 0
 	fi
 
 	# check whether icon exists
-	iconCheck "${dest}" "${icons}"
-	if [ ! $? -eq 0 ]; then
+	if ! iconCheck "${dest}" "${icons}"; then
 		echo "---------------------------------------------------"
 		echo -e "Icon check ${RED}failed${NC} ..."
 		return 255
 	fi
 	echo "--------------------------------------------------"
 	echo -e "Icon check ${YELLOW}passed${NC} ..."
-
-	# clean data
-	umount ${dest} && rm ${dest} -rf
 
 	return 0
 }

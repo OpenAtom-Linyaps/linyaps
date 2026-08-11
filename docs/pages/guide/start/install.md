@@ -13,6 +13,20 @@ deepin/UOS 的部分版本已经预装如意玲珑。请先执行 `ll-cli --vers
 - `ll-cli` 管理和运行如意玲珑应用，由 `linglong-bin` 提供。
 - `ll-builder` 用来构建和调试如意玲珑应用，由 `linglong-builder` 提供。
 
+:::warning 存储文件系统
+
+如意玲珑的本地仓库使用 OSTree。目前，OSTree 在 ZFS 上存在严重的写入性能问题。
+
+安装前，请确认如意玲珑的仓库和数据目录不在 ZFS 文件系统上。
+建议使用 ext4、XFS 等其他 Linux 文件系统。
+
+相关背景：
+
+- [Linyaps Issue #1107](https://github.com/OpenAtom-Linyaps/linyaps/issues/1107)
+- [OpenZFS Issue #11140](https://github.com/openzfs/zfs/issues/11140)
+
+:::
+
 ## 仓库使用说明
 
 ### release 仓库

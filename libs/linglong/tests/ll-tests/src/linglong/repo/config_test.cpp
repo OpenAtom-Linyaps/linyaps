@@ -6,13 +6,64 @@
 
 #include <gtest/gtest.h>
 
+#include "common/tempdir.h"
 #include "linglong/api/types/v1/Repo.hpp"
 #include "linglong/api/types/v1/RepoConfig.hpp"
 #include "linglong/api/types/v1/RepoConfigV2.hpp"
 #include "linglong/repo/config.h"
 
+#include <fstream>
+
 using namespace linglong::repo;
 using namespace linglong::api::types::v1;
+
+namespace {
+
+void writeConfig(const std::filesystem::path &path, const std::string &content)
+{
+    std::ofstream stream(path);
+    ASSERT_TRUE(stream.is_open());
+    stream << content;
+    ASSERT_TRUE(stream.good());
+}
+
+} // namespace
+
+TEST(Repo, LoadV1ConfigWithoutDefaultRepoReturnsError)
+{
+    TempDir tempDir("repo_config_test_");
+    const auto configPath = tempDir.path() / "config-v1.yaml";
+    writeConfig(configPath,
+                "version: 1\n"
+                "defaultRepo: missing\n"
+                "repos:\n"
+                "  repo1: https://example.com/repo1\n");
+
+    const auto result = loadConfig(configPath);
+
+    ASSERT_FALSE(result.has_value());
+    EXPECT_NE(result.error().message().find("default repo 'missing' not found in repos"),
+              std::string::npos);
+}
+
+TEST(Repo, LoadV2ConfigWithoutDefaultRepoReturnsError)
+{
+    TempDir tempDir("repo_config_test_");
+    const auto configPath = tempDir.path() / "config-v2.yaml";
+    writeConfig(configPath,
+                "version: 2\n"
+                "defaultRepo: missing\n"
+                "repos:\n"
+                "  - name: repo1\n"
+                "    url: https://example.com/repo1\n"
+                "    priority: 0\n");
+
+    const auto result = loadConfig(configPath);
+
+    ASSERT_FALSE(result.has_value());
+    EXPECT_NE(result.error().message().find("default repo 'missing' not found in repos"),
+              std::string::npos);
+}
 
 TEST(Repo, GetRepoMinPriority)
 {

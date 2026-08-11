@@ -1,14 +1,16 @@
-// SPDX-FileCopyrightText: 2024 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2024-2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 #include "permissionDialog.h"
 
 #include "linglong/utils/gettext.h"
+#include "permission_dialog_result.h"
 
 #include <nlohmann/json.hpp>
 
 #include <QApplication>
+#include <QCloseEvent>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QPushButton>
@@ -42,13 +44,15 @@ PermissionDialog::PermissionDialog(
     // button
     auto *allowedButton = new QPushButton{ _("Allow") };
     connect(allowedButton, &QPushButton::clicked, [] {
-        QApplication::exit(0);
+        QApplication::exit(
+          linglong::dialog::exitCode(linglong::dialog::PermissionDialogResult::Allowed));
     });
 
     QString deniedButtonText{ _("Deny (%1s)") };
     auto *deniedButton = new QPushButton{ deniedButtonText.arg(15) };
     connect(deniedButton, &QPushButton::clicked, [] {
-        QApplication::exit(0);
+        QApplication::exit(
+          linglong::dialog::exitCode(linglong::dialog::PermissionDialogResult::Denied));
     });
 
     using namespace std::chrono_literals;
@@ -57,7 +61,9 @@ PermissionDialog::PermissionDialog(
     connect(timer, &QTimer::timeout, [timer, deniedButtonText, deniedButton] {
         auto timeOut = std::chrono::seconds{ timer->property("timeOut").toInt() };
         if (timeOut == 0s) {
-            QApplication::exit(0);
+            QApplication::exit(
+              linglong::dialog::exitCode(linglong::dialog::PermissionDialogResult::Denied));
+            return;
         }
 
         auto newTimeOut = timeOut - 1s;
@@ -76,4 +82,11 @@ PermissionDialog::PermissionDialog(
 
     setLayout(layout);
     timer->start(1s);
+}
+
+void PermissionDialog::closeEvent(QCloseEvent *event)
+{
+    event->ignore();
+    QApplication::exit(
+      linglong::dialog::exitCode(linglong::dialog::PermissionDialogResult::Denied));
 }

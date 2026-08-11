@@ -316,8 +316,8 @@ try {
 #ifdef OCPPI_WITH_SPDLOG
                 this->logger(),
 #endif
-                this->generateGlobalOptions(option), "list",
-                this->generateSubcommandOptions(option), {});
+                this->generateGlobalOptions(new_option), "list",
+                this->generateSubcommandOptions(new_option), {});
 } catch (...) {
         return tl::unexpected(std::current_exception());
 }

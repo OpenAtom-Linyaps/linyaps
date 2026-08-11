@@ -3,8 +3,8 @@
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
-#include "configure.h"
 #include "command_line.h"
+#include "configure.h"
 #include "linglong/cli/cli.h"
 #include "linglong/cli/cli_printer.h"
 #include "linglong/cli/dbus_notifier.h"

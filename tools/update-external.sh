@@ -23,9 +23,9 @@ unzip "$zip_file" || exit 255
 
 mv ytj-master external/ytj || exit 255
 
-zip_file="$tmpdir"/external/github-TartanLlama-expected-v1.2.0.zip
+zip_file="$tmpdir"/external/github-TartanLlama-expected-v1.3.1.zip
 
-wget https://github.com/TartanLlama/expected/archive/refs/tags/v1.2.0.zip \
+wget https://github.com/TartanLlama/expected/archive/refs/tags/v1.3.1.zip \
         -O "$zip_file" || exit 255
 
 rm -rf external/tl-expected
@@ -33,12 +33,12 @@ rm -rf external/tl-expected
 unzip "$zip_file" || exit 255
 
 mkdir -p external/tl-expected || exit 255
-mv expected-1.2.0/include external/tl-expected || exit 255
-rm -rf expected-1.2.0 || exit 255
+mv expected-1.3.1/include external/tl-expected || exit 255
+rm -rf expected-1.3.1 || exit 255
 
 cli11_file="$tmpdir"/external/CLI.hpp
 
-wget https://github.com/CLIUtils/CLI11/releases/download/v2.5.0/CLI11.hpp \
+wget https://github.com/CLIUtils/CLI11/releases/download/v2.6.1/CLI11.hpp \
         -O "$cli11_file" || exit 255
 
 rm -rf external/CLI11

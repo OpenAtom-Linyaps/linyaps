@@ -40,6 +40,7 @@ pfl_add_executable(
   src/linglong/package/layer_packager_test.cpp
   src/linglong/package_manager/action_test.cpp
   src/linglong/package_manager/data_monitor_test.cpp
+  src/linglong/package_manager/package_manager_test.cpp
   src/linglong/package_manager/task_test.cpp
   src/linglong/package_manager/task_queue_test.cpp
   src/linglong/package_manager/package_update_test.cpp

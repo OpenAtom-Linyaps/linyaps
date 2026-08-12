@@ -470,46 +470,59 @@ ContainerCfgBuilder &ContainerCfgBuilder::bindRemovableStorageMounts() noexcept
 ContainerCfgBuilder &ContainerCfgBuilder::forwardDefaultEnv() noexcept
 {
     return forwardEnv(std::vector<std::string>{
+      // 语言与终端
       "LANG",
       "LANGUAGE",
+      "TERM",
+
+      // 桌面会话
       "XDG_SESSION_DESKTOP",
-      "D_DISABLE_RT_SCREEN_SCALE",
-      "XMODIFIERS",
-      "XCURSOR_SIZE", // 鼠标尺寸
-      "DESKTOP_SESSION",
-      "DEEPIN_WINE_SCALE",
-      "XDG_CURRENT_DESKTOP",
-      "XIM",
       "XDG_SESSION_TYPE",
+      "XDG_CURRENT_DESKTOP",
+      "DESKTOP_SESSION",
+      "GDMSESSION",
+      "GNOME_DESKTOP_SESSION_ID",  // gnome 桌面标识，部分应用会读取此变量以使用 gsettings 配置
+      "GIO_LAUNCHED_DESKTOP_FILE", // 系统监视器
+
+      // 显示与缩放
+      "D_DISABLE_RT_SCREEN_SCALE",
+      "DEEPIN_WINE_SCALE",
+      "XCURSOR_SIZE", // 鼠标尺寸
+
+      // 输入法
+      "XMODIFIERS",
+      "XIM",
       "CLUTTER_IM_MODULE",
       "QT4_IM_MODULE",
+      "QT_IM_MODULE",
+      "QT_IM_MODULES",
       "GTK_IM_MODULE",
-      "all_proxy",
-      "auto_proxy",    // 网络系统代理自动代理
-      "http_proxy",    // 网络系统代理手动http代理
-      "https_proxy",   // 网络系统代理手动https代理
-      "ftp_proxy",     // 网络系统代理手动ftp代理
-      "SOCKS_SERVER",  // 网络系统代理手动socks代理
-      "no_proxy",      // 网络系统代理手动配置代理
-      "USER",          // wine应用会读取此环境变量
-      "QT_IM_MODULE",  // 输入法
-      "LINGLONG_ROOT", // 玲珑安装位置
+      "SDL_IM_MODULE",
+
+      // Qt 显示环境
       "QT_QPA_PLATFORM",
       "QT_WAYLAND_SHELL_INTEGRATION",
-      "GDMSESSION",
       "QT_WAYLAND_FORCE_DPI",
-      "GIO_LAUNCHED_DESKTOP_FILE", // 系统监视器
-      "GNOME_DESKTOP_SESSION_ID",  // gnome 桌面标识，有些应用会读取此变量以使用gsettings配置,
-      // 如chrome
-      "TERM",
-      // 控制应用将渲染任务路由到 NVIDIA 独立显卡
-      "__NV_PRIME_RENDER_OFFLOAD",
-      // 控制应用使用哪个OpenGL厂商提供的驱动库来与显卡通信和渲染。
-      "__GLX_VENDOR_LIBRARY_NAME",
-      // 控制NVIDIA独立显卡在Vulkan应用程序枚举GPU时拥有更高的优先级
-      "__VK_LAYER_NV_optimus",
-      // 控制应用尝试使用非默认（通常是独立显卡）的GPU来执行OpenGL渲染任务
-      "DRI_PRIME" });
+
+      // 网络代理
+      "all_proxy",
+      "auto_proxy",   // 网络系统代理自动代理
+      "http_proxy",   // 网络系统代理手动 http 代理
+      "https_proxy",  // 网络系统代理手动 https 代理
+      "ftp_proxy",    // 网络系统代理手动 ftp 代理
+      "SOCKS_SERVER", // 网络系统代理手动 socks 代理
+      "no_proxy",     // 网络系统代理手动配置代理
+
+      // 运行环境
+      "USER",          // wine 应用会读取此环境变量
+      "LINGLONG_ROOT", // 玲珑安装位置
+
+      // 独立显卡
+      "__NV_PRIME_RENDER_OFFLOAD", // 控制应用将渲染任务路由到 NVIDIA 独立显卡
+      "__GLX_VENDOR_LIBRARY_NAME", // 控制应用使用哪个 OpenGL 厂商提供的驱动库
+      "__VK_LAYER_NV_optimus",     // 控制 NVIDIA 独立显卡在 Vulkan 枚举 GPU 时拥有更高优先级
+      "DRI_PRIME",                 // 控制应用尝试使用非默认 GPU 执行 OpenGL 渲染
+    });
 }
 
 ContainerCfgBuilder &

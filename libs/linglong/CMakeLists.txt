@@ -35,8 +35,6 @@ pfl_add_library(
   src/linglong/cli/printer.h
   src/linglong/cli/terminal_notifier.cpp
   src/linglong/cli/terminal_notifier.h
-  src/linglong/common/dbus/properties_forwarder.cpp
-  src/linglong/common/dbus/properties_forwarder.h
   src/linglong/common/dbus/register.cpp
   src/linglong/common/dbus/register.h
   src/linglong/common/cli/repo.cpp

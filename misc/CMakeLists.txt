@@ -18,7 +18,6 @@ configure_files(
   libexec/linglong/builder/helper/ldd-check.sh
   libexec/linglong/builder/helper/main-check.sh
   libexec/linglong/builder/helper/symbols-strip.sh
-  libexec/linglong/dialog/99-linglong-permission
   libexec/linglong/fetch-archive-source
   libexec/linglong/fetch-dsc-source
   libexec/linglong/fetch-file-source
@@ -31,7 +30,6 @@ configure_files(
   lib/systemd/system/org.deepin.linglong.PackageManager.service
   lib/systemd/system-preset/91-linglong.preset
   lib/systemd/user-generators/linglong-user-systemd-generator
-  lib/systemd/user/linglong-session-helper.service
   lib/sysusers.d/linglong.conf
   lib/tmpfiles.d/linglong.conf
   script/linglong.sh
@@ -90,12 +88,6 @@ install(
            ${CMAKE_CURRENT_BINARY_DIR}/libexec/linglong/fetch-git-source
   DESTINATION ${LIBEXEC_LINGLONG_DIR})
 
-set(LINGLONG_DIALOG_DIR ${LIBEXEC_LINGLONG_DIR}/dialog)
-install(
-  PROGRAMS
-    ${CMAKE_CURRENT_BINARY_DIR}/libexec/linglong/dialog/99-linglong-permission
-  DESTINATION ${LINGLONG_DIALOG_DIR})
-
 # builder helpers
 set(LIBEXEC_LINGLONG_BUILDER_DIR ${LIBEXEC_LINGLONG_DIR}/builder)
 install(
@@ -137,10 +129,6 @@ install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib/systemd/system-preset/
 set(SYSTEMD_SYSTEM_UNIT_PATH ${CMAKE_INSTALL_PREFIX}/lib/systemd)
 install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib/systemd/system
         DESTINATION ${SYSTEMD_SYSTEM_UNIT_PATH})
-
-set(SYSTEMD_USER_UNIT_PATH ${CMAKE_INSTALL_PREFIX}/lib/systemd)
-install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib/systemd/user
-        DESTINATION ${SYSTEMD_USER_UNIT_PATH})
 
 set(SYSTEMD_SYSTEM_GENERATOR_PATH
     ${CMAKE_INSTALL_PREFIX}/lib/systemd/system-environment-generators)

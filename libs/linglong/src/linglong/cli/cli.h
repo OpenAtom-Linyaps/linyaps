@@ -40,7 +40,7 @@ class Printer;
 // 全局选项（仅用于verbose等通用选项）
 struct GlobalOptions
 {
-    bool verbose{ false };
+    int verbose{ 0 };
     bool noProgress{ false };
 };
 

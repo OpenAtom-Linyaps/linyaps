@@ -606,10 +606,10 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     auto *jsonFlag = commandParser.add_flag("--json", jsonDescription);
 
     // verbose flag
-    GlobalOptions globalOptions{ .verbose = false, .noProgress = false };
+    GlobalOptions globalOptions{ .verbose = 0, .noProgress = false };
     commandParser.add_flag("-v,--verbose",
                            globalOptions.verbose,
-                           _("Show debug info (verbose logs)"));
+                           _("Show debug info; repeat to enable backtrace"));
     commandParser.add_flag("--no-progress",
                            globalOptions.noProgress,
                            _("Don't output progress information"));
@@ -673,6 +673,9 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     // set log level if --verbose flag is set
     if (globalOptions.verbose) {
         linglong::utils::log::setLogLevel(linglong::utils::log::LogLevel::Debug);
+    }
+    if (globalOptions.verbose > 1) {
+        ::setenv("LINYAPS_BACKTRACE", "1", 1);
     }
 
     // create printer

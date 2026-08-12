@@ -64,9 +64,16 @@ utils::error::Result<XOrgDisplayConf> getXOrgDisplay(std::string_view display) n
         if (std::filesystem::exists(sub, ec)) {
             result.host = sub;
             try {
-                result.screenNo = std::stoi(std::string(display.substr(dot + 1)));
+                const auto screen = display.substr(dot + 1);
+                size_t screenLen;
+                result.screenNo = std::stoi(std::string(screen), &screenLen);
                 if (result.screenNo < 0) {
                     return LINGLONG_ERR(fmt::format("invalid screen No: {}", result.screenNo));
+                }
+                if (screenLen != screen.size()) {
+                    return LINGLONG_ERR(
+                      fmt::format("unexpected trailing characters after screen number: {}",
+                                  screen));
                 }
             } catch (const std::exception &e) {
                 return LINGLONG_ERR(fmt::format("failed to get screen No: {}", e.what()));
@@ -102,10 +109,19 @@ utils::error::Result<XOrgDisplayConf> getXOrgDisplay(std::string_view display) n
             return LINGLONG_ERR(fmt::format("invalid display No: {}", result.displayNo));
         }
         display = display.substr(s);
-        if (display.size() > 0 && display[0] == '.') {
-            result.screenNo = std::stoi(std::string(display.substr(1)));
+        if (display.size() > 0) {
+            if (display[0] != '.') {
+                return LINGLONG_ERR(
+                  fmt::format("unexpected trailing characters after display number: {}", display));
+            }
+            size_t screenLen;
+            result.screenNo = std::stoi(std::string(display.substr(1)), &screenLen);
             if (result.screenNo < 0) {
                 return LINGLONG_ERR(fmt::format("invalid screen No: {}", result.screenNo));
+            }
+            if (screenLen + 1 != display.size()) {
+                return LINGLONG_ERR(
+                  fmt::format("unexpected trailing characters after screen number: {}", display));
             }
         }
     } catch (const std::exception &e) {

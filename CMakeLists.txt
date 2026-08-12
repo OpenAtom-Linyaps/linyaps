@@ -480,12 +480,10 @@ pfl_add_libraries(
   cdi
   APPS
   ll-init
-  ll-dialog
   ll-builder
   ll-cli
   ll-package-manager
   llpkg
-  ll-session-helper
   ll-driver-detect)
 
 if(ENABLE_LINGLONG_APP_BUILDER_UTILS)

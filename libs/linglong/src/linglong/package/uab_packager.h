@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2024 - 2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -14,6 +14,13 @@
 #include <unordered_set>
 
 namespace linglong::package {
+
+namespace detail {
+
+[[nodiscard]] utils::error::Result<void> copyDirectoryForDistributedBundle(
+  const std::filesystem::path &source, const std::filesystem::path &destination) noexcept;
+
+} // namespace detail
 
 class UABPackager
 {

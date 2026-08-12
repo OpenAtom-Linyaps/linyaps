@@ -36,6 +36,112 @@
 
 namespace linglong::package {
 
+utils::error::Result<void> detail::copyDirectoryForDistributedBundle(
+  const std::filesystem::path &source, const std::filesystem::path &destination) noexcept
+{
+    LINGLONG_TRACE("copy directory for distributed bundle")
+
+    std::error_code ec;
+    std::filesystem::create_directories(destination, ec);
+    if (ec) {
+        return LINGLONG_ERR(fmt::format("couldn't create directory {}", destination), ec);
+    }
+
+    struct stat sourceStat{};
+    if (stat(source.c_str(), &sourceStat) == -1) {
+        return LINGLONG_ERR("couldn't stat source directory: " + source.string());
+    }
+
+    struct stat destinationStat{};
+    if (stat(destination.c_str(), &destinationStat) == -1) {
+        return LINGLONG_ERR("couldn't stat destination directory: " + destination.string());
+    }
+
+    if (sourceStat.st_dev != destinationStat.st_dev) {
+        std::filesystem::copy(source,
+                              destination,
+                              std::filesystem::copy_options::copy_symlinks
+                                | std::filesystem::copy_options::recursive,
+                              ec);
+        if (ec) {
+            return LINGLONG_ERR(fmt::format("couldn't copy from {} to {}", source, destination),
+                                ec);
+        }
+        return LINGLONG_OK;
+    }
+
+    auto iterator = std::filesystem::recursive_directory_iterator(source, ec);
+    if (ec) {
+        return LINGLONG_ERR(fmt::format("couldn't iterate directory {}", source), ec);
+    }
+
+    const auto end = std::filesystem::recursive_directory_iterator{};
+    while (iterator != end) {
+        const auto &entry = *iterator;
+        auto relativePath = entry.path().lexically_relative(source);
+        auto destinationPath = destination / relativePath;
+
+        // is_directory() follows symlinks, so inspect the symlink itself first. Otherwise,
+        // a symlink to a directory would be exported as an empty directory.
+        auto status = entry.symlink_status(ec);
+        if (ec) {
+            return LINGLONG_ERR(fmt::format("couldn't get status of {}", entry.path()), ec);
+        }
+
+        if (std::filesystem::is_symlink(status)) {
+            std::filesystem::create_directories(destinationPath.parent_path(), ec);
+            if (ec) {
+                return LINGLONG_ERR(
+                  fmt::format("couldn't create directories {}", destinationPath.parent_path()),
+                  ec);
+            }
+
+            std::filesystem::copy(entry.path(),
+                                  destinationPath,
+                                  std::filesystem::copy_options::copy_symlinks,
+                                  ec);
+            if (ec) {
+                return LINGLONG_ERR(
+                  fmt::format("couldn't copy symlink from {} to {}", entry.path(), destinationPath),
+                  ec);
+            }
+        } else if (std::filesystem::is_directory(status)) {
+            std::filesystem::create_directories(destinationPath, ec);
+            if (ec) {
+                return LINGLONG_ERR(fmt::format("couldn't create directory {}", destinationPath),
+                                    ec);
+            }
+        } else {
+            std::filesystem::create_directories(destinationPath.parent_path(), ec);
+            if (ec) {
+                return LINGLONG_ERR(
+                  fmt::format("couldn't create directories {}", destinationPath.parent_path()),
+                  ec);
+            }
+
+            std::filesystem::create_hard_link(entry.path(), destinationPath, ec);
+            if (ec) {
+                std::filesystem::copy(entry.path(),
+                                      destinationPath,
+                                      std::filesystem::copy_options::copy_symlinks,
+                                      ec);
+                if (ec) {
+                    return LINGLONG_ERR(
+                      fmt::format("couldn't copy from {} to {}", entry.path(), destinationPath),
+                      ec);
+                }
+            }
+        }
+
+        iterator.increment(ec);
+        if (ec) {
+            return LINGLONG_ERR(fmt::format("couldn't iterate directory {}", source), ec);
+        }
+    }
+
+    return LINGLONG_OK;
+}
+
 UABPackager::UABPackager(std::filesystem::path projectDir, std::filesystem::path workingDir)
 {
     this->buildDir = std::move(workingDir);
@@ -639,12 +745,6 @@ UABPackager::prepareDistributedBundle(const std::filesystem::path &bundleDir) no
         return LINGLONG_ERR(fmt::format("couldn't create directory {}", layersDir.string()), ec);
     }
 
-    // check if we can use hard links for optimization (only need to check once)
-    struct stat layersDirStat{};
-    if (stat(layersDir.c_str(), &layersDirStat) == -1) {
-        return LINGLONG_ERR("couldn't stat layers directory: " + layersDir.string());
-    }
-
     for (const auto &layer : std::as_const(this->layers)) {
         auto info = layer.info();
         if (!info) {
@@ -654,93 +754,9 @@ UABPackager::prepareDistributedBundle(const std::filesystem::path &bundleDir) no
         LogI("info.id: {}, info.packageInfoV2Module: {}", info->id, info->packageInfoV2Module);
         auto layerPath = layer.path();
         auto modulePath = layersDir / info->id / info->packageInfoV2Module;
-        std::filesystem::create_directories(modulePath, ec);
-        if (ec) {
-            return LINGLONG_ERR(fmt::format("couldn't create directory {}", modulePath), ec);
-        }
-
-        // check if layer and target are on the same filesystem
-        struct stat layerStat{};
-        if (stat(layerPath.c_str(), &layerStat) == -1) {
-            return LINGLONG_ERR("couldn't stat layer directory: " + layerPath.string());
-        }
-
-        const bool shouldCopy = layerStat.st_dev != layersDirStat.st_dev;
-
-        if (shouldCopy) {
-            // different filesystem, need to copy files
-            std::filesystem::copy(layerPath,
-                                  modulePath,
-                                  std::filesystem::copy_options::copy_symlinks
-                                    | std::filesystem::copy_options::recursive,
-                                  ec);
-            if (ec) {
-                return LINGLONG_ERR(
-                  fmt::format("couldn't copy from {} to {}", layerPath, modulePath),
-                  ec);
-            }
-        } else {
-            // same filesystem, can use hard links for optimization
-            // use recursive directory iterator to process all files
-
-            // iterate through all files and directories recursively
-            for (const auto &entry : std::filesystem::recursive_directory_iterator(layerPath, ec)) {
-                if (ec) {
-                    return LINGLONG_ERR(fmt::format("couldn't iterate directory {}", layerPath),
-                                        ec);
-                }
-
-                auto relativePath = entry.path().lexically_relative(layerPath);
-                auto destPath = modulePath / relativePath;
-
-                if (entry.is_directory()) {
-                    // create directory if it doesn't exist
-                    std::filesystem::create_directories(destPath, ec);
-                    if (ec) {
-                        return LINGLONG_ERR(fmt::format("couldn't create directory {}", destPath),
-                                            ec);
-                    }
-                    continue;
-                }
-
-                // for non-directory files, create parent directories first
-                std::filesystem::create_directories(destPath.parent_path(), ec);
-                if (ec) {
-                    return LINGLONG_ERR(
-                      fmt::format("couldn't create directories {}", destPath.parent_path()),
-                      ec);
-                }
-
-                if (entry.is_symlink()) {
-                    // handle symlinks - copy them directly to preserve the link target
-                    std::filesystem::copy(entry.path(),
-                                          destPath,
-                                          std::filesystem::copy_options::copy_symlinks,
-                                          ec);
-                    if (ec) {
-                        return LINGLONG_ERR(fmt::format("couldn't copy symlink from {} to {}",
-                                                        entry.path(),
-                                                        destPath),
-                                            ec);
-                    }
-                    continue;
-                }
-
-                // regular file - try to create hard link, fallback to copy if failed
-                std::filesystem::create_hard_link(entry.path(), destPath, ec);
-                if (ec) {
-                    // fallback to copy if hard link fails
-                    std::filesystem::copy(entry.path(),
-                                          destPath,
-                                          std::filesystem::copy_options::copy_symlinks,
-                                          ec);
-                    if (ec) {
-                        return LINGLONG_ERR(
-                          fmt::format("couldn't copy from {} to {}", entry.path(), destPath),
-                          ec);
-                    }
-                }
-            }
+        auto ret = detail::copyDirectoryForDistributedBundle(layerPath, modulePath);
+        if (!ret) {
+            return LINGLONG_ERR("couldn't prepare distributed layer", ret);
         }
 
         // add layer info to meta

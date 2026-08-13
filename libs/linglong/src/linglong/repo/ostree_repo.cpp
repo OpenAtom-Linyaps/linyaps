@@ -2470,34 +2470,42 @@ utils::error::Result<package::LayerDir> OSTreeRepo::getMergedModuleDir(
 }
 
 // this method creates a temporary merged module directory for debugging purposes
-// The caller is responsible for cleaning up the returned directory and must have
-// write permissions to the <repo_dir>/merged directory
-utils::error::Result<package::LayerDir> OSTreeRepo::createTempMergedModuleDir(
+// The returned TempLayerDir owns and removes the directory automatically.
+utils::error::Result<package::TempLayerDir> OSTreeRepo::createTempMergedModuleDir(
   const package::Reference &ref, const std::vector<std::string> &loadModules) const noexcept
 {
     LINGLONG_TRACE("merge modules");
     auto mergedDir = this->repoDir / "merged";
+    if (auto ret = utils::ensureDirectory(mergedDir); !ret) {
+        return LINGLONG_ERR("failed to ensure merged directory", ret);
+    }
+
     auto layerItems = this->cache->queryExistingLayerItem();
     QCryptographicHash hash(QCryptographicHash::Sha256);
     std::vector<std::string> commits;
     std::string findModules;
-    // 筛选指定的layer
-    for (auto &layer : layerItems) {
-        std::string arch;
-        if (!layer.info.arch.empty()) {
-            arch = layer.info.arch.front();
-        }
-        if (layer.info.id != ref.id || layer.info.version != ref.version.toString()
-            || arch != ref.arch.toString()) {
+
+    // ADD_FILES keeps files from the first checkout. Keep binary first so the merged layer uses
+    // its info.json.
+    auto orderedModules = loadModules;
+    auto binaryModule = std::find(orderedModules.begin(), orderedModules.end(), "binary");
+    if (binaryModule != orderedModules.end()) {
+        std::iter_swap(orderedModules.begin(), binaryModule);
+    }
+
+    for (const auto &module : orderedModules) {
+        auto layer = std::find_if(layerItems.cbegin(), layerItems.cend(), [&](const auto &item) {
+            const auto arch = item.info.arch.empty() ? std::string{} : item.info.arch.front();
+            return item.info.id == ref.id && item.info.version == ref.version.toString()
+              && arch == ref.arch.toString() && item.info.packageInfoV2Module == module;
+        });
+        if (layer == layerItems.cend()) {
             continue;
         }
-        if (std::find(loadModules.begin(), loadModules.end(), layer.info.packageInfoV2Module)
-            == loadModules.end()) {
-            continue;
-        }
-        commits.push_back(layer.commit);
-        findModules += layer.info.packageInfoV2Module + " ";
-        hash.addData(QString::fromStdString(layer.commit).toUtf8());
+
+        commits.push_back(layer->commit);
+        findModules += layer->info.packageInfoV2Module + " ";
+        hash.addData(QString::fromStdString(layer->commit).toUtf8());
     }
     if (commits.empty()) {
         return LINGLONG_ERR("not found any layer");
@@ -2508,7 +2516,13 @@ utils::error::Result<package::LayerDir> OSTreeRepo::createTempMergedModuleDir(
     }
     // 合并layer，生成临时merged目录
     const QString mergeID = hash.result().toHex();
-    auto mergeTmp = mergedDir / ("tmp_" + mergeID).toStdString();
+    auto mergePattern = (mergedDir / ("tmp_" + mergeID + "_XXXXXX").toStdString()).string();
+    auto *temporaryDirectory = ::mkdtemp(mergePattern.data());
+    if (temporaryDirectory == nullptr) {
+        return LINGLONG_ERR("failed to create temporary merged module directory", errno);
+    }
+    auto mergeTmp = std::filesystem::path{ temporaryDirectory };
+    package::TempLayerDir tempLayerDir{ mergeTmp };
     for (const auto &commit : commits) {
         int root = open("/", O_DIRECTORY);
         auto _ = utils::finally::finally([root]() {
@@ -2530,7 +2544,7 @@ utils::error::Result<package::LayerDir> OSTreeRepo::createTempMergedModuleDir(
         }
     }
 
-    return mergeTmp;
+    return tempLayerDir;
 }
 
 utils::error::Result<void> OSTreeRepo::mergeModules() const noexcept
@@ -2575,6 +2589,19 @@ utils::error::Result<void> OSTreeRepo::mergeModules() const noexcept
                      api::types::v1::RepositoryCacheLayersItem rhs) {
                       return lhs.info.packageInfoV2Module < rhs.info.packageInfoV2Module;
                   });
+        // ADD_FILES keeps files from the first checkout. Prefer binary metadata, or runtime
+        // metadata for repositories using the legacy runtime-as-binary layout.
+        auto primaryLayer = std::find_if(layers.begin(), layers.end(), [](const auto &layer) {
+            return layer.info.packageInfoV2Module == "binary";
+        });
+        if (primaryLayer == layers.end()) {
+            primaryLayer = std::find_if(layers.begin(), layers.end(), [](const auto &layer) {
+                return layer.info.packageInfoV2Module == "runtime";
+            });
+        }
+        if (primaryLayer != layers.end()) {
+            std::iter_swap(layers.begin(), primaryLayer);
+        }
         // 查找binary模块的commit id
         std::string binaryCommit;
         std::vector<std::string> commits;

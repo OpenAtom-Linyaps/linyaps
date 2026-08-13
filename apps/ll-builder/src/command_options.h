@@ -48,6 +48,7 @@ struct ExportCommandOptions
 {
     linglong::builder::ExportOption exportSpecificOptions;
     bool layerMode = false;
+    bool uabxMode = false;
     std::string outputFile;
 };
 

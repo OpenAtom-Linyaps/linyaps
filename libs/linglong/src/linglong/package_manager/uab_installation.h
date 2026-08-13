@@ -29,8 +29,6 @@ public:
 
     using CheckedLayers = std::pair<std::vector<linglong::api::types::v1::UabLayer>,
                                     std::vector<linglong::api::types::v1::UabLayer>>;
-    static utils::error::Result<CheckedLayers> checkExecModeUABLayers(
-      repo::OSTreeRepo &repo, const std::vector<linglong::api::types::v1::UabLayer> &layers);
     static utils::error::Result<CheckedLayers> checkDistributionModeUABLayers(
       repo::OSTreeRepo &repo, const std::vector<linglong::api::types::v1::UabLayer> &layers);
     static utils::error::Result<void> checkUABLayersConstrain(
@@ -55,7 +53,6 @@ private:
                           repo::OSTreeRepo &repo,
                           api::types::v1::CommonOptions options);
 
-    utils::error::Result<void> installExecModeUAB(PackageTask &task);
     utils::error::Result<void> installDistributionModeUAB(PackageTask &task);
     utils::error::Result<void> prepareUAB();
     utils::error::Result<void> loadUABFile(const std::filesystem::path &path);

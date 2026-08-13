@@ -157,8 +157,10 @@ TEST(LinglongBuilder, UabExportFilename)
     auto ref =
       linglong::package::Reference::parse(std::string("main:org.deepin.demo/1.0.0.0/arm64"));
     EXPECT_TRUE(ref.has_value()) << ref.error().message();
-    auto filename = builder.uabExportFilename(*ref);
+    auto filename = builder.uabExportFilename(*ref, linglong::builder::ExportMode::Distribution);
     EXPECT_EQ(filename, "org.deepin.demo_1.0.0.0_arm64_main.uab");
+    filename = builder.uabExportFilename(*ref, linglong::builder::ExportMode::Exec);
+    EXPECT_EQ(filename, "org.deepin.demo_1.0.0.0_arm64_main.uabx");
 };
 
 TEST(LinglongBuilder, LayerExportFilename)

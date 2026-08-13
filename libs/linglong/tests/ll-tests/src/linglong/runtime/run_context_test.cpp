@@ -88,7 +88,7 @@ public:
                  const std::string &module,
                  const std::optional<std::string> &subRef),
                 (override, const, noexcept));
-    MOCK_METHOD(utils::error::Result<package::LayerDir>,
+    MOCK_METHOD(utils::error::Result<package::TempLayerDir>,
                 createTempMergedModuleDir,
                 (const package::Reference &ref, const std::vector<std::string> &modules),
                 (override, const, noexcept));
@@ -219,11 +219,13 @@ TEST_F(RunContextTest, resolveMultiModules)
       .WillOnce(Return(std::vector<std::string>{ "binary", "debug", "develop" }));
 
     // Mock successful merged module directory retrieval for multiple modules
-    package::LayerDir mockLayerDir(tempDir->path() / "merged");
+    const auto mockLayerPath = tempDir->path() / "merged";
     EXPECT_CALL(
       *repo,
       createTempMergedModuleDir(testing::_, std::vector<std::string>{ "binary", "debug" }))
-      .WillOnce(Return(mockLayerDir));
+      .WillOnce([mockLayerPath](const auto &, const auto &) {
+          return package::TempLayerDir{ mockLayerPath };
+      });
 
     // Create runtime layer
     RunContext context(*this->repo);
@@ -255,11 +257,13 @@ TEST_F(RunContextTest, resolveExcludeModules)
     EXPECT_CALL(*repo, getModuleList(*ref))
       .WillOnce(Return(std::vector<std::string>{ "binary", "develop", "lang_zh" }));
 
-    package::LayerDir mockLayerDir(tempDir->path() / "exclude-develop");
+    const auto mockLayerPath = tempDir->path() / "exclude-develop";
     EXPECT_CALL(
       *repo,
       createTempMergedModuleDir(testing::_, std::vector<std::string>{ "binary", "lang_zh" }))
-      .WillOnce(Return(mockLayerDir));
+      .WillOnce([mockLayerPath](const auto &, const auto &) {
+          return package::TempLayerDir{ mockLayerPath };
+      });
 
     RunContext context(*this->repo);
     auto layer = RuntimeLayer::create(*ref, context);

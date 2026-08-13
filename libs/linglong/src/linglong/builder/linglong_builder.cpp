@@ -1474,27 +1474,20 @@ utils::error::Result<void> Builder::exportUAB(const ExportOption &option,
             LogE("couldn't remove export working directory, please remove it manually.");
         }
     });
-    package::UABPackager packager(workingDir, exportWorkingDir);
+
     auto exportOpts = option;
     if (exportOpts.compressor.empty()) {
         LogI("Compressor not specified, defaulting to lz4 for UAB export.");
         exportOpts.compressor = "lz4";
     }
-
     if (exportOpts.modules.empty()) {
         exportOpts.modules.emplace_back("binary");
     }
 
-    const bool distributedOnly = !exportOpts.ref.empty();
+    auto curRef = [this, &exportOpts]() -> utils::error::Result<package::Reference> {
+        LINGLONG_TRACE("get export reference");
 
-    const bool underProject = this->project.has_value();
-    auto curRef = [this,
-                   &exportOpts,
-                   underProject,
-                   distributedOnly]() -> utils::error::Result<package::Reference> {
-        LINGLONG_TRACE("get current reference");
-
-        if (distributedOnly) {
+        if (!exportOpts.ref.empty()) {
             auto fuzzyRef = package::FuzzyReference::parse(exportOpts.ref);
             if (!fuzzyRef) {
                 return LINGLONG_ERR("fuzzy ref", fuzzyRef);
@@ -1504,73 +1497,42 @@ utils::error::Result<void> Builder::exportUAB(const ExportOption &option,
             if (!targetRef) {
                 return LINGLONG_ERR("clear ref", targetRef);
             }
-
             return targetRef;
         }
 
-        if (!underProject) {
-            return LINGLONG_ERR("not under project");
+        if (!this->project) {
+            return LINGLONG_ERR("not under project and --ref is not specified");
         }
-
-        if (underProject && this->project->package.kind != "app") {
-            return LINGLONG_ERR(
-              fmt::format("can't export {} kind UAB in executable mode, if you want to export UAB "
-                          "in distributed mode, please use --ref option instead",
-                          this->project->package.kind));
-        }
-
         return currentReference(*this->project);
     }();
-
     if (!curRef) {
         return LINGLONG_ERR(curRef);
     }
 
-    const auto &arch = package::Architecture::currentCPUArchitecture();
-    const bool crossArchitecture = arch != curRef->arch;
+    package::UABPackager packager(exportWorkingDir);
+    packager.setCompressor(exportOpts.compressor);
 
-    // Retrieve the static files from ll-builder-utils matching the target architecture, including
-    // uab-header, uab-loader and ll-box. These files are required even for native exports because
-    // the installed defaults may produce an older UAB format.
-    auto ref = ensureUtils(builderUtilsID, curRef->arch);
-    if (ref) {
+    // Only the architecture-matched UAB header is needed by either mode. Exec mode generates its
+    // own loader, and neither mode embeds ll-box.
+    auto utilsRef = ensureUtils(builderUtilsID, curRef->arch);
+    if (utilsRef) {
         LogD("using static files from cn.org.linyaps.builder.utils");
         std::vector<std::string> args{
             "/opt/apps/cn.org.linyaps.builder.utils/files/bin/ll-builder-export",
             "--get-header",
             "/project/.uabBuild/uab-header",
-            "--get-loader",
-            "/project/.uabBuild/uab-loader",
         };
 
-        if (!distributedOnly) {
-            args.emplace_back("--get-box");
-            args.emplace_back("/project/.uabBuild/ll-box");
-        }
-
-        auto utilsResult = runFromRepo(*ref, args);
+        auto utilsResult = runFromRepo(*utilsRef, args);
         if (utilsResult) {
             std::error_code ec;
             const bool hasHeader = std::filesystem::exists(exportWorkingDir / "uab-header", ec);
-            const bool hasLoader = std::filesystem::exists(exportWorkingDir / "uab-loader", ec);
-            if (hasHeader && hasLoader) {
+            if (hasHeader) {
                 packager.setDefaultHeader(exportWorkingDir / "uab-header");
-                packager.setDefaultLoader(exportWorkingDir / "uab-loader");
             } else {
                 return LINGLONG_ERR(
-                  "builder utils did not provide uab-header and uab-loader for target architecture "
+                  "builder utils did not provide uab-header for target architecture "
                   + curRef->arch.toString());
-            }
-
-            if (!distributedOnly) {
-                const bool hasBox = std::filesystem::exists(exportWorkingDir / "ll-box", ec);
-                if (hasBox) {
-                    packager.setDefaultBox(exportWorkingDir / "ll-box");
-                } else {
-                    return LINGLONG_ERR(
-                      "builder utils did not provide ll-box for target architecture "
-                      + curRef->arch.toString());
-                }
             }
         } else {
             return LINGLONG_ERR("failed to get UAB utilities for target architecture "
@@ -1580,17 +1542,17 @@ utils::error::Result<void> Builder::exportUAB(const ExportOption &option,
     } else {
         return LINGLONG_ERR("failed to get builder utils for target architecture "
                               + curRef->arch.toString(),
-                            ref);
+                            utilsRef);
     }
 
-    // Using the packdir tools matching current architecture
-    if (crossArchitecture) {
-        ref = ensureUtils(builderUtilsID, arch);
+    // Use packdir from builder-utils matching the host architecture.
+    const auto &hostArch = package::Architecture::currentCPUArchitecture();
+    if (hostArch != curRef->arch) {
+        utilsRef = ensureUtils(builderUtilsID, hostArch);
     }
-
-    if (ref) {
+    if (utilsRef) {
         auto utilsBundler =
-          [&ref, &exportOpts, this](
+          [&utilsRef, &exportOpts, this](
             const std::filesystem::path &bundleFile,
             const std::filesystem::path &bundleDir) -> utils::error::Result<void> {
             LINGLONG_TRACE("use utils to bundle file");
@@ -1608,17 +1570,17 @@ utils::error::Result<void> Builder::exportUAB(const ExportOption &option,
                 || common::strings::starts_with(relativeBundleDir.string(), "../")) {
                 return LINGLONG_ERR("file must be in project directory");
             }
+
             std::vector<std::string> args{
                 "/opt/apps/cn.org.linyaps.builder.utils/files/bin/ll-builder-export",
                 "--packdir",
                 fmt::format("{}:{}",
                             std::filesystem::path{ "/project" } / relativeBundleDir,
-                            std::filesystem::path{ "/project" } / relativeBundleFile)
+                            std::filesystem::path{ "/project" } / relativeBundleFile),
+                "-z",
+                exportOpts.compressor,
             };
-
-            args.emplace_back("-z");
-            args.emplace_back(exportOpts.compressor);
-            return runFromRepo(*ref, args);
+            return runFromRepo(*utilsRef, args);
         };
         packager.setBundleCB(utilsBundler);
     } else {
@@ -1637,132 +1599,70 @@ utils::error::Result<void> Builder::exportUAB(const ExportOption &option,
             }
         }
     } else {
-        uabFile = workingDir / uabExportFilename(*curRef);
+        uabFile = workingDir / uabExportFilename(*curRef, exportOpts.mode);
     }
 
-    // export single ref
-    if (distributedOnly) {
+    std::optional<package::TempLayerDir> temporaryMergedModuleDir;
+    if (exportOpts.mode == ExportMode::Exec) {
+        if (std::find(exportOpts.modules.cbegin(), exportOpts.modules.cend(), "binary")
+            == exportOpts.modules.cend()) {
+            return LINGLONG_ERR("binary module is required in UABX mode");
+        }
+
+        auto binaryLayerDir = this->repo.getLayerDir(*curRef, "binary");
+        if (!binaryLayerDir) {
+            return LINGLONG_ERR("binary module is required in UABX mode", binaryLayerDir);
+        }
+
+        auto info = binaryLayerDir->info();
+        if (!info) {
+            return LINGLONG_ERR(info);
+        }
+        if (info->kind != "app") {
+            return LINGLONG_ERR("only app packages can be exported in UABX mode");
+        }
+
+        auto layerDir = *binaryLayerDir;
+        if (exportOpts.modules.size() > 1) {
+            auto mergedLayerDir = this->repo.createTempMergedModuleDir(*curRef, exportOpts.modules);
+            if (!mergedLayerDir) {
+                return LINGLONG_ERR("failed to merge modules for UABX export", mergedLayerDir);
+            }
+            temporaryMergedModuleDir = std::move(*mergedLayerDir);
+            layerDir = temporaryMergedModuleDir->layerDir();
+        }
+
+        if (auto ret = packager.appendLayer(std::move(layerDir)); !ret) {
+            return LINGLONG_ERR(ret);
+        }
+    } else {
         for (const auto &module : exportOpts.modules) {
             auto layerDir = this->repo.getLayerDir(*curRef, module);
             if (!layerDir) {
                 return LINGLONG_ERR(layerDir);
             }
 
-            auto ret = packager.appendLayer(*layerDir);
-            if (!ret) {
+            if (auto ret = packager.appendLayer(*layerDir); !ret) {
                 return LINGLONG_ERR(ret);
             }
         }
-        auto ret = packager.pack(uabFile, true);
-        if (!ret) {
-            return LINGLONG_ERR(ret);
-        }
-
-        return LINGLONG_OK;
     }
 
-    // if we get there, project must be set
-    if (!underProject) {
-        return LINGLONG_ERR("project is not set");
-    }
-
-    if (!option.iconPath.empty()) {
-        if (auto ret = packager.setIcon(option.iconPath); !ret) {
-            return LINGLONG_ERR(ret);
-        }
-    }
-
-    if (underProject && this->project->exclude) {
-        auto ret = packager.exclude(project->exclude.value());
-        if (!ret) {
-            return LINGLONG_ERR(ret);
-        }
-    }
-
-    if (underProject && this->project->include) {
-        auto ret = packager.include(project->include.value());
-        if (!ret) {
-            return LINGLONG_ERR(ret);
-        }
-    }
-
-    if (this->project->runtime) {
-        auto ret = packager.loadBlackList();
-        if (!ret) {
-            return LINGLONG_ERR(ret);
-        }
-
-        // load needed libraries
-        ret = packager.loadNeededFiles();
-        if (!ret) {
-            return LINGLONG_ERR(ret);
-        }
-    }
-
-    std::optional<package::Reference> runtimeReference;
-    if (this->project->runtime) {
-        auto runtimeRef = detail::clearDependency(*this->project->runtime, this->repo, false);
-        if (!runtimeRef) {
-            return LINGLONG_ERR(runtimeRef);
-        }
-        runtimeReference = std::move(*runtimeRef).second.value();
-
-        if (!this->project->base) {
-            auto runtimeItem = this->repo.getLayerItem(*runtimeReference);
-            if (!runtimeItem) {
-                return LINGLONG_ERR("failed to get runtime information", runtimeItem);
+    auto packagerMode = package::UABPackagerMode::Distribution;
+    if (exportOpts.mode == ExportMode::Exec) {
+        if (!exportOpts.iconPath.empty()) {
+            if (auto ret = packager.setIcon(exportOpts.iconPath); !ret) {
+                return LINGLONG_ERR(ret);
             }
-            this->project->base = runtimeItem->info.base;
-        }
-    }
-
-    auto baseRef = detail::clearDependency(*this->project->base, this->repo, false);
-    if (!baseRef) {
-        return LINGLONG_ERR(baseRef);
-    }
-    auto baseReference = std::move(*baseRef).second.value();
-
-    auto baseDir = this->repo.getLayerDir(baseReference);
-    if (!baseDir) {
-        return LINGLONG_ERR(baseDir);
-    }
-
-    auto ret = packager.appendLayer(*baseDir);
-    if (!ret) {
-        return LINGLONG_ERR(ret);
-    }
-
-    if (!option.compressor.empty()) {
-        packager.setCompressor(option.compressor.c_str());
-    }
-
-    if (runtimeReference) {
-        auto runtimeDir = this->repo.getLayerDir(*runtimeReference);
-        if (!runtimeDir) {
-            return LINGLONG_ERR(runtimeDir);
         }
 
-        auto ret = packager.appendLayer(*runtimeDir);
-        if (!ret) {
-            return LINGLONG_ERR(ret);
+        if (!exportOpts.loader.empty()) {
+            packager.setLoader(exportOpts.loader);
         }
+        packagerMode = package::UABPackagerMode::Exec;
     }
 
-    auto appDir = this->repo.getLayerDir(*curRef);
-    if (!appDir) {
-        return LINGLONG_ERR(appDir);
-    }
-
-    ret = packager.appendLayer(*appDir); // app layer must be the last of appended layer
-    if (!ret) {
-        return LINGLONG_ERR(ret);
-    }
-
-    if (!option.loader.empty()) {
-        packager.setLoader(option.loader.c_str());
-    }
-
-    if (auto ret = packager.pack(uabFile, false); !ret) {
+    if (auto ret = packager.pack(uabFile, packagerMode); !ret) {
         return LINGLONG_ERR(ret);
     }
 
@@ -2306,13 +2206,14 @@ bool Builder::checkDeprecatedInstallFile()
     return !std::filesystem::exists(installFilepath, ec);
 }
 
-std::string Builder::uabExportFilename(const linglong::package::Reference &ref)
+std::string Builder::uabExportFilename(const linglong::package::Reference &ref, ExportMode mode)
 {
-    return fmt::format("{}_{}_{}_{}.uab",
+    return fmt::format("{}_{}_{}_{}.{}",
                        ref.id,
                        ref.version.toString(),
                        ref.arch.toString(),
-                       ref.channel);
+                       ref.channel,
+                       mode == ExportMode::Exec ? "uabx" : "uab");
 }
 
 std::string Builder::layerExportFilename(const linglong::package::Reference &ref,

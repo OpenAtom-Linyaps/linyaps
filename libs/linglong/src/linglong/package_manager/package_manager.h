@@ -76,7 +76,8 @@ public
     virtual utils::error::Result<void> tryGenerateCache(const package::Reference &ref) noexcept;
     utils::error::Result<void>
     executeInstallHooks(const std::filesystem::path &packageFile) noexcept;
-    utils::error::Result<void> executePostInstallHooks(const package::Reference &ref) noexcept;
+    virtual utils::error::Result<void>
+    executePostInstallHooks(const package::Reference &ref) noexcept;
     utils::error::Result<void> executePostUninstallHooks(const package::Reference &ref) noexcept;
     utils::error::Result<std::filesystem::path> copyToStaging(int sourceFD) noexcept;
     utils::error::Result<void> cleanStaging() noexcept;

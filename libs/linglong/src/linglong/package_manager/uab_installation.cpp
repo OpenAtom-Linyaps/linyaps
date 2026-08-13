@@ -363,15 +363,22 @@ utils::error::Result<void> UabInstallationAction::postInstall(PackageTask &task)
     const auto &newRef = operation.newRef->reference;
     const auto &oldRef = operation.oldRef;
 
-    auto res = repo.mergeModules();
-    if (!res) {
-        LogE("merge modules failed: {}", res.error());
+    auto merged = repo.mergeModules();
+    if (!merged) {
+        LogE("merge modules failed: {}", merged.error());
     }
 
     auto ret = pm.executePostInstallHooks(newRef);
+
+    transaction.addRollBack([this, ref = newRef]() noexcept {
+        auto ret = pm.executePostUninstallHooks(ref);
+        if (!ret) {
+            LogE("failed to compensate post-install hooks for {}: {}", ref.toString(), ret.error());
+        }
+    });
+
     if (!ret) {
-        task.reportError(std::move(ret).error());
-        return LINGLONG_ERR("failed to execute post install hooks");
+        LogW("failed to execute post-install hooks for {}: {}", newRef.toString(), ret.error());
     }
 
     if (operation.kind == "app") {
@@ -447,11 +454,6 @@ utils::error::Result<void> UabInstallationAction::installUabLayer(
             auto ret = this->repo.remove(ref, module, subRef);
             if (!ret) {
                 LogE("rollback importLayerDir failed: {}", ret.error());
-            }
-
-            ret = pm.executePostUninstallHooks(ref);
-            if (!ret) {
-                LogE("failed to rollback execute uninstall hooks: {}", ret.error());
             }
         });
     }

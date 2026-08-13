@@ -14,6 +14,18 @@
 
 namespace linglong::service {
 
+namespace {
+
+bool containsRef(const PackageUpdateAction::RefsToInstall &refs,
+                 const package::Reference &ref) noexcept
+{
+    return std::any_of(refs.begin(), refs.end(), [&ref](const auto &item) {
+        return item.first.reference == ref;
+    });
+}
+
+} // namespace
+
 std::shared_ptr<PackageUpdateAction>
 PackageUpdateAction::create(std::vector<api::types::v1::PackageManager1Package> toUpgrade,
                             bool depsOnly,
@@ -153,11 +165,6 @@ utils::error::Result<void> PackageUpdateAction::postUpdate([[maybe_unused]] Task
 {
     LINGLONG_TRACE("package update postUpdate");
 
-    auto res = repo.mergeModules();
-    if (!res) {
-        LogE("failed to merge modules: {}", res.error());
-    }
-
     if (repositoryChanged) {
         auto pruneRet = noAutoPrune ? repo.prune() : pm.pruneUnused();
         if (!pruneRet) {
@@ -254,6 +261,23 @@ utils::error::Result<void> PackageUpdateAction::updateApp(Task &task,
         }
     }
 
+    if (!refsToInstall.empty()) {
+        auto merged = repo.mergeModules();
+        if (!merged) {
+            LogE("failed to merge modules: {}", merged.error());
+        }
+
+        for (const auto &item : refsToInstall) {
+            const auto &refRepo = item.first;
+            auto hooks = pm.executePostInstallHooks(refRepo.reference);
+            if (!hooks) {
+                LogW("failed to execute post-install hooks for {}: {}",
+                     refRepo.reference.toString(),
+                     hooks.error());
+            }
+        }
+    }
+
     if (!depsOnly && newAppInfo) {
         auto res = postUpdateApp(task, *localRef, refsToInstall.front().first);
         if (!res) {
@@ -298,6 +322,10 @@ PackageUpdateAction::gatherRefsToUpdate(RefsToInstall &refsToInstall,
 
     if (res->has_value()) {
         const auto &[remoteRef, modules] = res->value();
+        if (containsRef(refsToInstall, remoteRef.reference)) {
+            return LINGLONG_OK;
+        }
+
         std::vector<std::pair<std::string, repo::RefMetaData>> modulePairs;
         // fetch package info only once for the same ref
         bool fetchPackageInfo = true;
@@ -390,7 +418,11 @@ utils::error::Result<void> PackageUpdateAction::gatherDepsToUpdate(RefsToInstall
         }
     }
 
-    std::move(tmp.begin(), tmp.end(), std::back_inserter(refsToInstall));
+    for (auto &item : tmp) {
+        if (!containsRef(refsToInstall, item.first.reference)) {
+            refsToInstall.emplace_back(std::move(item));
+        }
+    }
     return LINGLONG_OK;
 }
 

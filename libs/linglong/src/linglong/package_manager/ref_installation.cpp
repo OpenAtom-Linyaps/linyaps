@@ -251,14 +251,22 @@ utils::error::Result<void> RefInstallationAction::install(Task &task)
       refsToInstall;
     refsToInstall.emplace_back(
       std::make_tuple(*operation.newRef, installModules.front(), std::move(meta).value()));
+    std::vector<package::Reference> refsForPostInstallHooks{ operation.newRef->reference };
 
-    auto gatherToInstallInfo = [this,
-                                &refsToInstall](package::ReferenceWithRepo refRepo,
-                                                std::string module) -> utils::error::Result<void> {
+    auto gatherToInstallInfo = [this, &refsToInstall, &refsForPostInstallHooks](
+                                 package::ReferenceWithRepo refRepo,
+                                 std::string module) -> utils::error::Result<void> {
         LINGLONG_TRACE("gather to install info");
         auto meta = repo.fetchRefMetaData(refRepo, module);
         if (!meta) {
             return LINGLONG_ERR(meta);
+        }
+
+        if (std::find(refsForPostInstallHooks.begin(),
+                      refsForPostInstallHooks.end(),
+                      refRepo.reference)
+            == refsForPostInstallHooks.end()) {
+            refsForPostInstallHooks.emplace_back(refRepo.reference);
         }
 
         refsToInstall.emplace_back(
@@ -344,8 +352,8 @@ utils::error::Result<void> RefInstallationAction::install(Task &task)
                  res.error());
         }
     });
-    for (const auto &ref : refsToInstall) {
-        const auto &[refRepo, module, meta] = ref;
+    for (const auto &item : refsToInstall) {
+        const auto &[refRepo, module, meta] = item;
 
         taskMessage = fmt::format("Installing {}/{}", refRepo.reference.toString(), module);
         task.updateStateMessage(taskMessage);
@@ -353,6 +361,18 @@ utils::error::Result<void> RefInstallationAction::install(Task &task)
         auto res = pm.installRefModule(task, refRepo, module);
         if (!res) {
             return LINGLONG_ERR(res);
+        }
+    }
+
+    auto merged = repo.mergeModules();
+    if (!merged) {
+        LogE("failed to merge modules: {}", merged.error());
+    }
+
+    for (const auto &ref : refsForPostInstallHooks) {
+        auto hooks = pm.executePostInstallHooks(ref);
+        if (!hooks) {
+            LogW("failed to execute post-install hooks for {}: {}", ref.toString(), hooks.error());
         }
     }
 
@@ -386,11 +406,6 @@ utils::error::Result<void> RefInstallationAction::postInstallApp([[maybe_unused]
 utils::error::Result<void> RefInstallationAction::postInstall(Task &task)
 {
     LINGLONG_TRACE("ref installation postInstall");
-
-    auto mergeRet = this->repo.mergeModules();
-    if (!mergeRet) {
-        LogE("failed to merge modules: {}", mergeRet.error());
-    }
 
     if (operation.kind == "app" && operation.oldRef && !extraModuleOnly(modules)) {
         auto pruneRet = options.noAutoPrune.value_or(false) ? this->repo.prune() : pm.pruneUnused();

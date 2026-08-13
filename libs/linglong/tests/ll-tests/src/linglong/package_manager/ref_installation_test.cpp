@@ -62,6 +62,11 @@ public:
                 (override));
 
     MOCK_METHOD(utils::error::Result<void>, pruneUnused, (), (override, noexcept));
+
+    MOCK_METHOD(utils::error::Result<void>,
+                executePostInstallHooks,
+                (const package::Reference &ref),
+                (override, noexcept));
 };
 
 class MockRepo : public repo::OSTreeRepo
@@ -130,6 +135,11 @@ protected:
         pm = std::make_unique<MockPackageManager>(std::move(repoOwner),
                                                   std::move(containerBuilderOwner),
                                                   nullptr);
+        EXPECT_CALL(*pm, executePostInstallHooks(_))
+          .Times(testing::AnyNumber())
+          .WillRepeatedly([](const package::Reference &) {
+              return utils::error::Result<void>{};
+          });
     }
 
     void TearDown() override
@@ -197,7 +207,6 @@ TEST_F(RefInstallationTest, InstallApp)
     EXPECT_CALL(*repo, mergeModules()).WillOnce([]() {
         return utils::error::Result<void>{};
     });
-
     service::PackageTask task({});
     ASSERT_TRUE(action->prepare());
     ASSERT_TRUE(action->doAction(task));
@@ -354,6 +363,9 @@ TEST_F(RefInstallationTest, InstallMultipleModules)
     EXPECT_CALL(*pm, installRefModule(_, _, "binary"))
       .WillOnce(Return(utils::error::Result<void>{}));
     EXPECT_CALL(*pm, installRefModule(_, _, "develop"))
+      .WillOnce(Return(utils::error::Result<void>{}));
+    EXPECT_CALL(*pm, executePostInstallHooks(_))
+      .Times(1)
       .WillOnce(Return(utils::error::Result<void>{}));
 
     EXPECT_CALL(*pm, needToInstall("base", _)).WillOnce(Return(std::nullopt));

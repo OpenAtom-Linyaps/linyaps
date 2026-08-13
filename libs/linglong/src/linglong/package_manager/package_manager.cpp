@@ -769,6 +769,18 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
               return;
           }
 
+          auto merged = this->repo->mergeModules();
+          if (!merged) {
+              LogE("failed to merge modules for {}: {}", packageRef.toString(), merged.error());
+          }
+
+          auto hooks = executePostInstallHooks(packageRef);
+          if (!hooks) {
+              LogW("failed to execute post-install hooks for {}: {}",
+                   packageRef.toString(),
+                   hooks.error());
+          }
+
           // develop module only need to import
           if (module != "binary" && module != "runtime") {
               taskRef.updateState(linglong::api::types::v1::State::Succeed,
@@ -784,12 +796,6 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
               }
 
               bool appReplaced = false;
-              auto ret = executePostInstallHooks(*newRef);
-              if (!ret) {
-                  taskRef.reportError(std::move(ret).error());
-                  return;
-              }
-
               if (!localRef) {
                   auto res = applyApp(*newRef);
                   if (!res) {
@@ -799,7 +805,7 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
               } else {
                   auto modules = this->repo->getModuleList(*localRef);
                   if (std::find(modules.cbegin(), modules.cend(), module) != modules.cend()) {
-                      ret = switchAppVersion(*localRef, *newRef, true);
+                      auto ret = switchAppVersion(*localRef, *newRef, true);
                       if (!ret) {
                           LogE("failed to remove old reference {} after install {}: {}",
                                localRef->toString(),
@@ -1271,11 +1277,6 @@ utils::error::Result<void> PackageManager::installRefModule(Task &task,
         return LINGLONG_ERR(res);
     }
 
-    res = executePostInstallHooks(ref.reference);
-    if (!res) {
-        LogW(fmt::format("failed to execute postInstall hooks {}", ref.reference.toString()));
-    }
-
     return LINGLONG_OK;
 }
 
@@ -1317,11 +1318,18 @@ utils::error::Result<void> PackageManager::installRef(Task &task,
         if (!res) {
             return LINGLONG_ERR(res);
         }
+    }
 
-        res = executePostInstallHooks(ref.reference);
-        if (!res) {
-            LogW(fmt::format("failed to execute postInstall hooks {}", ref.reference.toString()));
-        }
+    auto merged = repo->mergeModules();
+    if (!merged) {
+        LogE("failed to merge modules for {}: {}", ref.reference.toString(), merged.error());
+    }
+
+    auto res = executePostInstallHooks(ref.reference);
+    if (!res) {
+        LogW("failed to execute post-install hooks for {}: {}",
+             ref.reference.toString(),
+             res.error());
     }
 
     transaction.commit();
@@ -2076,19 +2084,18 @@ PackageManager::executePostInstallHooks(const package::Reference &ref) noexcept
 {
     LINGLONG_TRACE("execute post install hooks for: " + ref.toString());
 
-    std::unique_ptr<utils::InstallHookManager> installHookManager =
-      std::make_unique<utils::InstallHookManager>();
-    auto ret = installHookManager->parseInstallHooks();
-    if (!ret) {
-        return LINGLONG_ERR(ret);
-    }
-
-    auto layerDir = this->repo->getLayerDir(ref);
+    auto layerDir = this->repo->getMergedModuleDir(ref, true);
     if (!layerDir) {
         return LINGLONG_ERR(layerDir);
     }
 
-    ret = installHookManager->executePostInstallHooks(ref.id, layerDir->path());
+    utils::InstallHookManager installHookManager;
+    auto ret = installHookManager.parseInstallHooks();
+    if (!ret) {
+        return LINGLONG_ERR(ret);
+    }
+
+    ret = installHookManager.executePostInstallHooks(ref.id, layerDir->path());
     if (!ret) {
         return LINGLONG_ERR(ret);
     }

@@ -148,6 +148,11 @@ public:
                 (override, noexcept));
 
     MOCK_METHOD(utils::error::Result<void>, pruneUnused, (), (override, noexcept));
+
+    MOCK_METHOD(utils::error::Result<void>,
+                executePostInstallHooks,
+                (const package::Reference &ref),
+                (override, noexcept));
 };
 
 class MockRepo : public repo::OSTreeRepo
@@ -211,6 +216,11 @@ protected:
         pm = std::make_unique<MockPackageManager>(std::move(repoOwner),
                                                   std::move(containerBuilderOwner),
                                                   nullptr);
+        EXPECT_CALL(*pm, executePostInstallHooks(_))
+          .Times(testing::AnyNumber())
+          .WillRepeatedly([](const package::Reference &) {
+              return utils::error::Result<void>{};
+          });
     }
 
     void TearDown() override
@@ -310,7 +320,7 @@ TEST_F(PackageUpdateActionTest, Update)
           return utils::error::Result<void>{};
       });
 
-    EXPECT_CALL(*repo, mergeModules()).WillOnce([]() {
+    EXPECT_CALL(*repo, mergeModules()).Times(2).WillRepeatedly([]() {
         return utils::error::Result<void>{};
     });
     EXPECT_CALL(*pm, pruneUnused()).WillOnce([]() -> utils::error::Result<void> {
@@ -360,7 +370,7 @@ TEST_F(PackageUpdateActionTest, SkipPruneWhenNothingChanged)
         api::types::v1::RepositoryCacheLayersItem{ .info = testdata::baseV100 } }))
       .WillOnce(Return(utils::error::Result<api::types::v1::RepositoryCacheLayersItem>{
         api::types::v1::RepositoryCacheLayersItem{ .info = testdata::runtimeV100 } }));
-    EXPECT_CALL(*repo, mergeModules()).WillOnce(Return(utils::error::Result<void>{}));
+    EXPECT_CALL(*repo, mergeModules()).Times(0);
     EXPECT_CALL(*pm, pruneUnused()).Times(0);
     EXPECT_CALL(*repo, prune()).Times(0);
 

@@ -284,6 +284,8 @@ int handleExport(linglong::builder::Builder &builder, const ExportCommandOptions
 {
     // Create a mutable copy of the export options to potentially modify defaults
     auto exportOpts = options.exportSpecificOptions;
+    exportOpts.mode = options.uabxMode ? linglong::builder::ExportMode::Exec
+                                       : linglong::builder::ExportMode::Distribution;
     // layer 默认使用lz4, 保持和之前版本的兼容
     if (exportOpts.compressor.empty()) {
         LogI("Compressor not specified, defaulting to lz4 for layer export.");
@@ -597,7 +599,7 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     buildRemove->add_option("APP", removeOpts.removeList);
 
     // build export
-    auto *buildExport = commandParser.add_subcommand("export", _("Export to linyaps layer or uab"));
+    auto *buildExport = commandParser.add_subcommand("export", _("Export to linyaps layer or UAB"));
     buildExport->usage(_("Usage: ll-builder export [OPTIONS]"));
 
     buildExport->add_option("-f, --file", filePath, _("File path of the linglong.yaml"))
@@ -617,10 +619,15 @@ You can report bugs to the linyaps team under this project: https://github.com/O
       buildExport
         ->add_flag("--layer", exportOpts.layerMode, _("Export to linyaps layer file (deprecated)"))
         ->excludes(iconOpt);
+    auto *uabxFlag =
+      buildExport->add_flag("--uabx", exportOpts.uabxMode, _("Export an executable UABX file"))
+        ->excludes(layerFlag);
+    iconOpt->needs(uabxFlag);
     buildExport
       ->add_option("--loader", exportOpts.exportSpecificOptions.loader, _("Use custom loader"))
       ->type_name("FILE")
       ->check(CLI::ExistingFile)
+      ->needs(uabxFlag)
       ->excludes(layerFlag);
     buildExport
       ->add_flag("--no-develop",

@@ -28,7 +28,6 @@ public:
 
     static utils::error::Result<RuntimeLayer> create(package::Reference ref,
                                                      const RunContext &context);
-    ~RuntimeLayer() noexcept;
 
     struct ExtensionRuntimeLayerInfo
     {
@@ -67,8 +66,8 @@ private:
     package::Reference reference;
     const RunContext *runContext{ nullptr };
     std::optional<package::LayerDir> layerDir;
+    std::optional<package::TempLayerDir> tempLayerDir;
     api::types::v1::RepositoryCacheLayersItem cachedItem;
-    bool temporary{ false };
     std::optional<ExtensionRuntimeLayerInfo> extensionOf;
 };
 

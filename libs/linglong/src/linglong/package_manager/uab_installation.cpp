@@ -31,59 +31,6 @@ splitUABLayers(std::vector<linglong::api::types::v1::UabLayer> layers)
     return std::make_pair(std::move(layers), std::move(otherLayers));
 }
 
-// executable mode includes app layers and optional runtime layers
-utils::error::Result<UabInstallationAction::CheckedLayers>
-UabInstallationAction::checkExecModeUABLayers(
-  repo::OSTreeRepo &repo, const std::vector<linglong::api::types::v1::UabLayer> &layers)
-{
-    LINGLONG_TRACE("check exec mode uab layers");
-
-    auto splitLayers = splitUABLayers(layers);
-    const auto &appLayers = splitLayers.first;
-    const auto &otherLayers = splitLayers.second;
-
-    if (appLayers.empty()) {
-        return LINGLONG_ERR("no app layers found");
-    }
-
-    const auto &appInfo = appLayers.front().info;
-    if (appInfo.runtime) {
-        if (otherLayers.empty()) {
-            return LINGLONG_ERR("runtime layer not found");
-        }
-
-        auto runtimeRef = package::Reference::fromPackageInfo(otherLayers.front().info);
-        if (!runtimeRef) {
-            return LINGLONG_ERR(runtimeRef);
-        }
-
-        auto fuzzyRef = package::FuzzyReference::parse(*appInfo.runtime);
-        if (!fuzzyRef) {
-            return LINGLONG_ERR(fuzzyRef);
-        }
-
-        if (fuzzyRef->id != runtimeRef->id || appInfo.channel != runtimeRef->channel) {
-            return LINGLONG_ERR("runtime layer not matched");
-        }
-
-        if (fuzzyRef->version) {
-            if (!runtimeRef->version.semanticMatch(*fuzzyRef->version)) {
-                return LINGLONG_ERR("runtime layer version not matched");
-            }
-        }
-    }
-
-    if (auto res = checkUABLayersConstrain(repo, appLayers); !res) {
-        return LINGLONG_ERR(res);
-    }
-
-    if (auto res = checkUABLayersConstrain(repo, otherLayers); !res) {
-        return LINGLONG_ERR(res);
-    }
-
-    return splitLayers;
-}
-
 // distribution mode includes one or more module layers from a single package
 utils::error::Result<UabInstallationAction::CheckedLayers>
 UabInstallationAction::checkDistributionModeUABLayers(
@@ -220,19 +167,15 @@ utils::error::Result<void> UabInstallationAction::loadUABFile(const std::filesys
     }
     const auto &metaInfo = metaInfoRet->get();
 
-    if (metaInfo.onlyApp && *metaInfo.onlyApp) {
-        auto res = checkExecModeUABLayers(repo, metaInfo.layers);
-        if (!res) {
-            return LINGLONG_ERR(res);
-        }
-        checkedLayers = std::move(res).value();
-    } else {
-        auto res = checkDistributionModeUABLayers(repo, metaInfo.layers);
-        if (!res) {
-            return LINGLONG_ERR(res);
-        }
-        checkedLayers = std::move(res).value();
+    if (metaInfo.onlyApp.value_or(false)) {
+        return LINGLONG_ERR("executable UAB installation is not supported");
     }
+
+    auto layersRet = checkDistributionModeUABLayers(repo, metaInfo.layers);
+    if (!layersRet) {
+        return LINGLONG_ERR(layersRet);
+    }
+    checkedLayers = std::move(layersRet).value();
 
     this->uabFile = std::move(uabFile);
 
@@ -348,12 +291,7 @@ utils::error::Result<void> UabInstallationAction::install([[maybe_unused]] Packa
 
     task.updateProgress(15);
 
-    const auto &metaInfo = uabFile->getMetaInfo()->get();
-    if (metaInfo.onlyApp && *metaInfo.onlyApp) {
-        return installExecModeUAB(task);
-    } else {
-        return installDistributionModeUAB(task);
-    }
+    return installDistributionModeUAB(task);
 }
 
 utils::error::Result<void> UabInstallationAction::postInstall(PackageTask &task)
@@ -456,50 +394,6 @@ utils::error::Result<void> UabInstallationAction::installUabLayer(
                 LogE("rollback importLayerDir failed: {}", ret.error());
             }
         });
-    }
-
-    return LINGLONG_OK;
-}
-
-utils::error::Result<void> UabInstallationAction::installExecModeUAB(PackageTask &task)
-{
-    LINGLONG_TRACE("install exec mode uab");
-
-    const auto &appLayers = checkedLayers.first;
-    const auto &appInfo = appLayers.front().info;
-
-    auto res = pm.installDependsRef(task, appInfo.base, appInfo.channel);
-    if (!res) {
-        return LINGLONG_ERR(res);
-    }
-
-    task.updateProgress(25);
-
-    if (appInfo.runtime) {
-        const auto &otherLayers = checkedLayers.second;
-        auto fuzzyRef = package::FuzzyReference::parse(*appInfo.runtime);
-        if (!fuzzyRef) {
-            return LINGLONG_ERR(fuzzyRef);
-        }
-
-        auto satisfiedRef = repo.latestLocalReference(*fuzzyRef);
-        // no compatible runtime found in local, install the one from the UAB file, the
-        // runtime is identified by a uuid, so it is exclusively usable by the currently
-        // installed application
-        if (!satisfiedRef) {
-            auto metaInfo = uabFile->getMetaInfo()->get();
-            auto res = installUabLayer(otherLayers, metaInfo.uuid);
-            if (!res) {
-                return LINGLONG_ERR(res);
-            }
-        }
-    }
-
-    task.updateProgress(35);
-
-    res = installUabLayer(appLayers);
-    if (!res) {
-        return LINGLONG_ERR(res);
     }
 
     return LINGLONG_OK;

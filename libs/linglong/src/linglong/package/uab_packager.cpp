@@ -8,32 +8,26 @@
 #include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/api/types/v1/UabLayer.hpp"
 #include "linglong/api/types/v1/Version.hpp"
+#include "linglong/common/strings.h"
 #include "linglong/common/uab_signature.h"
-#include "linglong/package/architecture.h"
 #include "linglong/utils/cmd.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/file.h"
 #include "linglong/utils/log/log.h"
 
 #include <fmt/format.h>
-#include <qglobal.h>
-#include <yaml-cpp/yaml.h>
 
 #include <QCryptographicHash>
 #include <QFile>
-#include <QStandardPaths>
 #include <QUuid>
 
+#include <algorithm>
 #include <filesystem>
-#include <fstream>
 #include <functional>
-#include <unordered_set>
+#include <system_error>
 #include <utility>
 
-#include <fcntl.h>
-#include <sys/mman.h>
 #include <sys/stat.h>
-#include <unistd.h>
 
 namespace linglong::package {
 
@@ -143,10 +137,112 @@ utils::error::Result<void> detail::copyDirectoryForDistributedBundle(
     return LINGLONG_OK;
 }
 
-UABPackager::UABPackager(std::filesystem::path projectDir, std::filesystem::path workingDir)
+utils::error::Result<std::string> detail::generateExecEntry(
+  const std::vector<std::string> &command, const std::filesystem::path &prefix) noexcept
+{
+    LINGLONG_TRACE("generate executable UAB entry");
+
+    if (command.empty() || command.front().empty()) {
+        return LINGLONG_ERR("package command is empty");
+    }
+
+    auto executable = std::filesystem::path{ command.front() }.lexically_normal();
+    if (executable.empty() || executable == "." || executable == ".."
+        || common::strings::starts_with(executable.string(), "../")) {
+        return LINGLONG_ERR(fmt::format("invalid package command: {}", command.front()));
+    }
+
+    auto relativeExecutable = executable.lexically_relative(prefix.lexically_normal());
+    const auto commandInPrefix = !relativeExecutable.empty() && *relativeExecutable.begin() != "..";
+
+    std::string entry = "#!/bin/sh\n"
+                        "set -eu\n"
+                        ": \"${LINGLONG_UAB_APPROOT:?LINGLONG_UAB_APPROOT is not set}\"\n"
+                        "cd \"$LINGLONG_UAB_APPROOT\"\n"
+                        "exec ";
+    if (executable.is_relative()) {
+        entry +=
+          "\"$LINGLONG_UAB_APPROOT/bin\"/" + common::strings::quoteBashArg(executable.string());
+    } else if (commandInPrefix) {
+        entry += "\"$LINGLONG_UAB_APPROOT\"";
+        if (relativeExecutable != ".") {
+            entry += "/" + common::strings::quoteBashArg(relativeExecutable.string());
+        }
+    } else {
+        entry += common::strings::quoteBashArg(executable.string());
+    }
+    for (auto it = std::next(command.cbegin()); it != command.cend(); ++it) {
+        entry += " " + common::strings::quoteBashArg(*it);
+    }
+    entry += " \"$@\"\n";
+
+    return entry;
+}
+
+std::string detail::generateExecLoader() noexcept
+{
+    return "#!/bin/sh\n"
+           "set -eu\n"
+           ": \"${LINGLONG_UAB_APPROOT:?LINGLONG_UAB_APPROOT is not set}\"\n"
+           "exec \"$LINGLONG_UAB_APPROOT/entry.sh\" \"$@\"\n";
+}
+
+utils::error::Result<void>
+detail::ensureExecEntry(const std::filesystem::path &entryPath,
+                        const std::optional<std::vector<std::string>> &command,
+                        const std::filesystem::path &prefix) noexcept
+{
+    LINGLONG_TRACE("ensure executable UAB entry");
+
+    std::error_code ec;
+    if (std::filesystem::exists(std::filesystem::symlink_status(entryPath, ec))) {
+        const auto status = std::filesystem::status(entryPath, ec);
+        if (ec) {
+            return LINGLONG_ERR(fmt::format("failed to check {} status", entryPath), ec);
+        }
+        if (!std::filesystem::is_regular_file(status)) {
+            return LINGLONG_ERR(fmt::format("{} is not a regular file", entryPath));
+        }
+
+        constexpr auto executablePermissions = std::filesystem::perms::owner_exec
+          | std::filesystem::perms::group_exec | std::filesystem::perms::others_exec;
+        if ((status.permissions() & executablePermissions) == std::filesystem::perms::none) {
+            return LINGLONG_ERR(fmt::format("{} is not executable", entryPath));
+        }
+        return LINGLONG_OK;
+    }
+    if (ec && ec != std::errc::no_such_file_or_directory) {
+        return LINGLONG_ERR(fmt::format("failed to check {}", entryPath), ec);
+    }
+
+    if (!command || command->empty()) {
+        return LINGLONG_ERR("package command is required for executable bundle");
+    }
+
+    auto entry = generateExecEntry(*command, prefix);
+    if (!entry) {
+        return LINGLONG_ERR("failed to generate executable UAB entry", entry);
+    }
+    if (auto ret = utils::writeFile(entryPath, *entry); !ret) {
+        return LINGLONG_ERR(fmt::format("failed to write {}", entryPath), ret);
+    }
+
+    std::filesystem::permissions(entryPath,
+                                 std::filesystem::perms::owner_exec
+                                   | std::filesystem::perms::group_exec
+                                   | std::filesystem::perms::others_exec,
+                                 std::filesystem::perm_options::add,
+                                 ec);
+    if (ec) {
+        return LINGLONG_ERR(fmt::format("failed to set {} permissions", entryPath), ec);
+    }
+
+    return LINGLONG_OK;
+}
+
+UABPackager::UABPackager(std::filesystem::path workingDir)
 {
     this->buildDir = std::move(workingDir);
-    this->workDir = std::move(projectDir);
 
     meta.version = api::types::v1::Version::The1;
     meta.uuid = QUuid::createUuid().toString(QUuid::WithoutBraces).toStdString();
@@ -183,36 +279,8 @@ utils::error::Result<void> UABPackager::appendLayer(LayerDir layer) noexcept
     return LINGLONG_OK;
 }
 
-utils::error::Result<void> UABPackager::exclude(const std::vector<std::string> &files) noexcept
-{
-    LINGLONG_TRACE("append excluding files")
-    for (const auto &file : files) {
-        if (file.empty() || (file.at(0) != '/')) {
-            return LINGLONG_ERR(std::string("invalid format, excluding file:") + file);
-        }
-
-        excludeFiles.insert(file);
-    }
-
-    return LINGLONG_OK;
-}
-
-utils::error::Result<void> UABPackager::include(const std::vector<std::string> &files) noexcept
-{
-    LINGLONG_TRACE("append including files")
-    for (const auto &file : files) {
-        if (file.empty() || (file.at(0) != '/')) {
-            return LINGLONG_ERR(std::string("invalid format, including file:") + file);
-        }
-
-        includeFiles.insert(file);
-    }
-
-    return LINGLONG_OK;
-}
-
 utils::error::Result<void> UABPackager::pack(const std::filesystem::path &uabFilePath,
-                                             bool distributedOnly) noexcept
+                                             UABPackagerMode mode) noexcept
 {
     LINGLONG_TRACE("package uab")
 
@@ -246,7 +314,7 @@ utils::error::Result<void> UABPackager::pack(const std::filesystem::path &uabFil
         }
     }
 
-    if (auto ret = packBundle(distributedOnly); !ret) {
+    if (auto ret = packBundle(mode); !ret) {
         return ret;
     }
 
@@ -287,391 +355,46 @@ utils::error::Result<void> UABPackager::packIcon() noexcept
     return LINGLONG_OK;
 }
 
-utils::error::Result<std::pair<std::filesystem::path, std::filesystem::path>>
-prepareSymlink(const std::filesystem::path &sourceRoot,
-               const std::filesystem::path &destinationRoot,
-               const std::filesystem::path &fileName,
-               long maxDepth) noexcept
-{
-    LINGLONG_TRACE("prepare symlink")
-
-    auto source = sourceRoot / fileName;
-    auto destination = destinationRoot / fileName;
-
-    std::error_code ec;
-    while (maxDepth >= 0) {
-        auto status = std::filesystem::symlink_status(source, ec);
-        if (ec) {
-            if (ec == std::errc::no_such_file_or_directory) {
-                break;
-            }
-
-            return LINGLONG_ERR("symlink_status error", ec);
-        }
-
-        if (status.type() != std::filesystem::file_type::symlink) {
-            break;
-        }
-
-        auto target = std::filesystem::read_symlink(source, ec);
-        if (ec) {
-            return LINGLONG_ERR("read_symlink error", ec);
-        }
-
-        // ensure parent directory of destination
-        if (!std::filesystem::create_directories(destination.parent_path(), ec) && ec) {
-            return LINGLONG_ERR(fmt::format("couldn't create directories {}:{}",
-                                            destination.parent_path().string(),
-                                            ec.message()));
-        }
-
-        // make sure the destination is not exists
-        std::filesystem::remove(destination, ec);
-        if (ec) {
-            return LINGLONG_ERR(
-              fmt::format("remove symlink {} error: {}", destination.string(), ec.message()));
-        }
-
-        std::filesystem::create_symlink(target, destination, ec);
-        if (ec) {
-            return LINGLONG_ERR(fmt::format("create symlink {} -> {} error: {}",
-                                            target.string(),
-                                            destination.string(),
-                                            ec.message()));
-        }
-
-        if (target.is_absolute()) {
-            source = target;
-            break;
-        }
-
-        source = (source.parent_path() / target).lexically_normal();
-        destination = (destination.parent_path() / target).lexically_normal();
-        --maxDepth;
-    }
-
-    if (maxDepth < 0) {
-        return LINGLONG_ERR(fmt::format("resolve symlink {} too deep", source.string()));
-    }
-
-    return std::make_pair(std::move(source), std::move(destination));
-}
-
 utils::error::Result<void>
 UABPackager::prepareExecutableBundle(const std::filesystem::path &bundleDir) noexcept
 {
-    LINGLONG_TRACE("prepare layers for make a executable bundle")
+    LINGLONG_TRACE("prepare executable bundle")
 
     this->meta.onlyApp = true;
-
-    std::optional<LayerDir> base;
-    for (auto it = this->layers.begin(); it != this->layers.end();) {
-        auto infoRet = it->info();
-        if (!infoRet) {
-            return LINGLONG_ERR(infoRet);
-        }
-
-        const auto &info = *infoRet;
-        // the kind of old org.deepin.base,org.deepin.foundation and com.uniontech.foundation is
-        // runtime
-        if (info.kind == "base" || info.id == "org.deepin.base"
-            || info.id == "org.deepin.foundation" || info.id == "com.uniontech.foundation") {
-            base = *it;
-            it = this->layers.erase(it);
-            continue;
-        }
-
-        // if use custom loader, only app layer will be exported
-        if (info.kind == "runtime" && !this->loader.empty()) {
-            it = this->layers.erase(it);
-            continue;
-        }
-
-        ++it;
+    auto ret = prepareDistributedBundle(bundleDir);
+    if (!ret) {
+        return LINGLONG_ERR(ret);
     }
 
-    if (!base) {
-        return LINGLONG_ERR("couldn't find base layer");
-    }
-
-    // export layers
-    auto layersDir = bundleDir / "layers";
     std::error_code ec;
-    std::filesystem::create_directories(layersDir, ec);
-    if (ec) {
-        return LINGLONG_ERR(fmt::format("couldn't create directory {}", layersDir));
-    }
-
-    auto symlinkCount = sysconf(_SC_SYMLOOP_MAX);
-    if (symlinkCount < 0) {
-        symlinkCount = 40;
-    }
-
-    std::filesystem::path srcLoader;
-    for (const auto &layer : std::as_const(this->layers)) {
-        auto infoRet = layer.info();
-        if (!infoRet) {
-            return LINGLONG_ERR(infoRet);
-        }
-
-        auto info = *infoRet;
-        auto moduleDir = layersDir / info.id / info.packageInfoV2Module;
-        std::filesystem::create_directories(moduleDir, ec);
-        if (ec) {
-            return LINGLONG_ERR(fmt::format("couldn't create directory {}", moduleDir));
-        }
-
-        auto ret = filteringFiles(layer);
-        if (!ret) {
-            return LINGLONG_ERR(ret);
-        }
-        const auto &[minified, files] = *ret;
-
-        // first step, copy files which in layer directory
-        const auto layerPath = layer.path();
-        for (const auto &entry : std::filesystem::directory_iterator(layerPath, ec)) {
-            if (ec) {
-                return LINGLONG_ERR(fmt::format("couldn't iterate directory {}", layerPath), ec);
-            }
-
-            const auto &componentName = entry.path().filename();
-            // we will apply some filters to files later, skip
-            if (componentName == "files") {
-                continue;
-            }
-
-            std::filesystem::copy(entry.path(),
-                                  moduleDir / componentName,
-                                  std::filesystem::copy_options::copy_symlinks
-                                    | std::filesystem::copy_options::recursive,
-                                  ec);
-            if (ec) {
-                return LINGLONG_ERR(fmt::format("couldn't copy from {} to {}",
-                                                entry.path(),
-                                                moduleDir / componentName),
-                                    ec);
-            }
-        };
-
-        // second step, copy files which has been filtered
-        auto basePath = layer.filesDirPath();
-        auto moduleFilesDir = moduleDir / basePath.filename();
-        if (!std::filesystem::create_directories(moduleFilesDir, ec) && ec) {
-            return LINGLONG_ERR(fmt::format("couldn't create directory: {}", moduleFilesDir), ec);
-        }
-
-        if (!files.empty()) {
-            struct stat moduleFilesDirStat{};
-            struct stat filesStat{};
-
-            if (stat(moduleFilesDir.c_str(), &moduleFilesDirStat) == -1) {
-                return LINGLONG_ERR("couldn't stat module files directory: "
-                                    + moduleFilesDir.string());
-            }
-
-            if (stat((*files.begin()).c_str(), &filesStat) == -1) {
-                return LINGLONG_ERR("couldn't stat files directory: "
-                                    + layer.filesDirPath().string());
-            }
-
-            const bool shouldCopy = moduleFilesDirStat.st_dev != filesStat.st_dev;
-            for (const std::filesystem::path source : files) {
-                auto sourceFile = source.lexically_relative(basePath);
-                auto ret = prepareSymlink(basePath, moduleFilesDir, sourceFile, symlinkCount);
-                if (!ret) {
-                    return LINGLONG_ERR(ret);
-                }
-
-                const auto &[realSource, realDestination] = *ret;
-                auto status = std::filesystem::symlink_status(realSource, ec);
-                if (ec) {
-                    // if the source file is a broken symlink, just skip it
-                    if (ec == std::errc::no_such_file_or_directory) {
-                        continue;
-                    }
-
-                    return LINGLONG_ERR(fmt::format("symlink_status error:{}", ec.message()));
-                }
-
-                if (std::filesystem::is_directory(realSource)) {
-                    std::filesystem::create_directories(realDestination, ec);
-                    if (ec) {
-                        return LINGLONG_ERR(
-                          fmt::format("create_directories error:{}", ec.message()));
-                    }
-                }
-
-                // check destination exists or not
-                // 1. multiple symlinks point to the same file
-                // 2. the destination also is a symlink
-                status = std::filesystem::symlink_status(realDestination, ec);
-                if (!ec) {
-                    // no need to check the destination symlink point to which file, just skip it
-                    continue;
-                }
-
-                if (ec && ec != std::errc::no_such_file_or_directory) {
-                    return LINGLONG_ERR(fmt::format("get symlink status of {} failed: {}",
-                                                    realDestination.string(),
-                                                    ec.message()));
-                }
-
-                if (!std::filesystem::exists(realDestination.parent_path(), ec)
-                    && !std::filesystem::create_directories(realDestination.parent_path(), ec)
-                    && ec) {
-                    return LINGLONG_ERR(fmt::format("couldn't create directories {}:{}",
-                                                    realDestination.parent_path().string(),
-                                                    ec.message()));
-                }
-
-                if (shouldCopy) {
-                    std::filesystem::copy(realSource, realDestination, ec);
-                    if (ec) {
-                        return LINGLONG_ERR(fmt::format("couldn't copy from {} to {} {}",
-                                                        source,
-                                                        realDestination,
-                                                        ec.message()));
-                    }
-
-                    continue;
-                }
-
-                std::filesystem::create_hard_link(realSource, realDestination, ec);
-                if (ec) {
-                    // fallback to copy if hard link fails, e.g. source and
-                    // destination are on different filesystems (EXDEV).
-                    std::filesystem::copy(realSource, realDestination, ec);
-                    if (ec) {
-                        return LINGLONG_ERR(fmt::format("couldn't link or copy from {} to {} {}",
-                                                        source,
-                                                        realDestination,
-                                                        ec.message()));
-                    }
-                }
-            }
-        }
-
-        auto &layerInfoRef = this->meta.layers.emplace_back(
-          linglong::api::types::v1::UabLayer{ .info = info, .minified = minified });
-
-        // third step, update meta information
-        if (info.kind == "app") {
-            if (!this->loader.empty()) {
-                srcLoader = this->loader;
-            }
-
-            auto hasMinifiedDeps = std::any_of(this->meta.layers.cbegin(),
-                                               this->meta.layers.cend(),
-                                               [](const api::types::v1::UabLayer &layer) {
-                                                   return layer.minified;
-                                               });
-            // app layer is the last layer, so we could update it's packageInfo directly
-            if (hasMinifiedDeps) {
-                info.uuid = this->meta.uuid;
-            }
-
-            auto res = utils::writeFile(moduleDir / "info.json", nlohmann::json(info).dump());
-            if (!res) {
-                return LINGLONG_ERR(res);
-            }
-            layerInfoRef.info = info;
-            continue;
-        }
-
-        // after copying runtime files, append needed files from base to runtime
-        if (info.kind == "runtime") {
-            const auto filesDir = base->filesDirPath();
-            if (!std::filesystem::exists(filesDir, ec)) {
-                return LINGLONG_ERR(fmt::format("files directory {} doesn't exist", filesDir), ec);
-            }
-
-            const auto fakePrefix =
-              moduleFilesDir / "lib" / Architecture::currentCPUArchitecture().getTriplet();
-
-            for (const std::filesystem::path file : this->neededFiles) {
-                auto fileName = file.filename().string();
-                auto it = std::find_if(this->blackList.begin(),
-                                       this->blackList.end(),
-                                       [&fileName](const std::string &entry) {
-                                           return entry.rfind(fileName, 0) == 0
-                                             || fileName.rfind(entry, 0) == 0;
-                                       });
-                if (it != this->blackList.end()) {
-                    continue;
-                }
-
-                auto ret = prepareSymlink(filesDir, moduleFilesDir, file, symlinkCount);
-                if (!ret) {
-                    return LINGLONG_ERR(ret);
-                }
-
-                auto [source, destination] = std::move(ret).value();
-                if (!std::filesystem::exists(source, ec)) {
-                    if (ec) {
-                        return LINGLONG_ERR(fmt::format("couldn't check file {} exists: {}",
-                                                        source.string(),
-                                                        ec.message()));
-                    }
-
-                    // source file must exist, it must be a regular file
-                    return LINGLONG_ERR(fmt::format("file {} doesn't exist", source.string()));
-                }
-
-                auto relative = destination.lexically_relative(fakePrefix);
-                if (relative.empty() || relative.string().rfind("..", 0) == 0) {
-                    // override the destination file
-                    destination = fakePrefix / source.filename();
-                }
-
-                if (!std::filesystem::create_directories(destination.parent_path(), ec) && ec) {
-                    return LINGLONG_ERR(fmt::format("couldn't create directories {}:{}",
-                                                    destination.parent_path(),
-                                                    ec.message()));
-                }
-
-                std::filesystem::copy(source,
-                                      destination,
-                                      std::filesystem::copy_options::skip_existing,
-                                      ec);
-                if (ec) {
-                    return LINGLONG_ERR(fmt::format("couldn't copy {} to {}, error: {}",
-                                                    source.string(),
-                                                    destination.string(),
-                                                    ec.message()));
-                }
-            }
-
-            // update runtime info.json
-            auto newSize = linglong::utils::calculateDirectorySize(moduleFilesDir);
-            if (!newSize) {
-                return LINGLONG_ERR(newSize);
-            }
-            info.size = static_cast<int64_t>(*newSize);
-
-            auto res = utils::writeFile(moduleDir / "info.json", nlohmann::json(info).dump());
-            if (!res) {
-                return LINGLONG_ERR(res);
-            }
-            layerInfoRef.info = info;
-        }
-    }
-
-    if (srcLoader.empty()) {
-        // default loader
-        auto uabLoader = !defaultLoader.empty()
-          ? defaultLoader
-          : std::filesystem::path{ LINGLONG_UAB_DATA_LOCATION } / "uab-loader";
-        srcLoader = uabLoader;
-        if (!std::filesystem::exists(srcLoader, ec)) {
-            return LINGLONG_ERR(
-              fmt::format("the loader of uab application {} doesn't exist.", srcLoader));
-        }
-    }
-
     auto destLoader = bundleDir / "loader";
-    if (!std::filesystem::copy_file(srcLoader, destLoader, ec)) {
-        return LINGLONG_ERR(fmt::format("couldn't copy loader {} to {}", srcLoader, destLoader),
-                            ec);
+    if (!this->loader.empty()) {
+        if (!std::filesystem::copy_file(this->loader, destLoader, ec)) {
+            return LINGLONG_ERR(
+              fmt::format("couldn't copy loader {} to {}", this->loader, destLoader),
+              ec);
+        }
+    } else {
+        const auto app =
+          std::find_if(this->meta.layers.cbegin(), this->meta.layers.cend(), [](const auto &layer) {
+              return layer.info.kind == "app";
+          });
+        if (app == this->meta.layers.cend()) {
+            return LINGLONG_ERR("app layer is required for executable bundle");
+        }
+        const auto entryPath = bundleDir / "layers" / app->info.id / app->info.packageInfoV2Module
+          / "files" / "entry.sh";
+        if (auto entryRet = detail::ensureExecEntry(entryPath,
+                                                    app->info.command,
+                                                    std::filesystem::path{ "/opt/apps" }
+                                                      / app->info.id / "files");
+            !entryRet) {
+            return LINGLONG_ERR(entryRet);
+        }
+
+        if (auto writeRet = utils::writeFile(destLoader, detail::generateExecLoader()); !writeRet) {
+            return LINGLONG_ERR(fmt::format("failed to write {}", destLoader), writeRet);
+        }
     }
 
     std::filesystem::permissions(destLoader,
@@ -682,52 +405,6 @@ UABPackager::prepareExecutableBundle(const std::filesystem::path &bundleDir) noe
                                  ec);
     if (ec) {
         return LINGLONG_ERR(fmt::format("failed to set {} permissions", destLoader), ec);
-    }
-
-    // add extra data
-    auto extraDir = bundleDir / "extra";
-    std::filesystem::create_directories(extraDir, ec);
-    if (ec) {
-        return LINGLONG_ERR(fmt::format("couldn't create directory {}", extraDir.string()));
-    }
-
-    // copy linglong-triplet-list
-    auto tripletFile = base->filesDirPath() / "etc/linglong-triplet-list";
-    if (std::filesystem::exists(tripletFile, ec)) {
-        if (!std::filesystem::copy_file(tripletFile, extraDir / "linglong-triplet-list", ec)) {
-            return LINGLONG_ERR(fmt::format("couldn't copy {} to {}",
-                                            tripletFile,
-                                            extraDir / "linglong-triplet-list"),
-                                ec);
-        }
-    } else {
-        LogD("{} doesn't exist in base layer", tripletFile);
-    }
-
-    // copy base profile
-    auto profileFile = base->filesDirPath() / "etc/profile.d/linglong.sh";
-    if (std::filesystem::exists(profileFile, ec)) {
-        if (!std::filesystem::copy_file(profileFile, extraDir / "profile", ec)) {
-            return LINGLONG_ERR(
-              fmt::format("couldn't copy {} to {}", profileFile, extraDir / "profile"),
-              ec);
-        }
-    } else {
-        LogD("{} doesn't exist in base layer", profileFile);
-    }
-
-    // use custom loader doesn't need extra layer and ll-box any more
-    if (!this->loader.empty()) {
-        return LINGLONG_OK;
-    }
-
-    // copy ll-box
-    auto boxBin = !defaultBox.empty() ? defaultBox : std::filesystem::path{ BINDIR } / "ll-box";
-    if (!std::filesystem::exists(boxBin, ec)) {
-        return LINGLONG_ERR(fmt::format("couldn't find ll-box: {}", boxBin), ec);
-    }
-    if (!std::filesystem::copy_file(boxBin, extraDir / "ll-box", ec)) {
-        return LINGLONG_ERR(fmt::format("couldn't copy {} to {}", boxBin, extraDir / "ll-box"), ec);
     }
 
     return LINGLONG_OK;
@@ -768,7 +445,7 @@ UABPackager::prepareDistributedBundle(const std::filesystem::path &bundleDir) no
     return LINGLONG_OK;
 }
 
-utils::error::Result<void> UABPackager::packBundle(bool distributedOnly) noexcept
+utils::error::Result<void> UABPackager::packBundle(UABPackagerMode mode) noexcept
 {
     LINGLONG_TRACE("add layers to uab")
 
@@ -783,8 +460,8 @@ utils::error::Result<void> UABPackager::packBundle(bool distributedOnly) noexcep
         return LINGLONG_ERR(fmt::format("couldn't remove file {}", bundleFile));
     }
 
-    auto ret =
-      distributedOnly ? prepareDistributedBundle(bundleDir) : prepareExecutableBundle(bundleDir);
+    auto ret = mode == UABPackagerMode::Distribution ? prepareDistributedBundle(bundleDir)
+                                                     : prepareExecutableBundle(bundleDir);
     if (!ret) {
         return ret;
     }
@@ -870,212 +547,6 @@ utils::error::Result<void> UABPackager::packMetaInfo() noexcept
     return LINGLONG_OK;
 }
 
-utils::error::Result<std::pair<bool, std::unordered_set<std::string>>>
-UABPackager::filteringFiles(const LayerDir &layer) const noexcept
-{
-    LINGLONG_TRACE("filtering files in layer directory")
-
-    auto filesDir = layer.filesDirPath();
-    std::error_code ec;
-    if (!std::filesystem::exists(filesDir, ec)) {
-        return LINGLONG_ERR(fmt::format("there isn't a files dir in layer {}", layer.path()), ec);
-    }
-
-    auto expandPaths = [prefix = filesDir](const std::unordered_set<std::string> &originalFiles)
-      -> utils::error::Result<std::unordered_set<std::string>> {
-        LINGLONG_TRACE("expand all filters")
-        std::unordered_set<std::string> expandFiles;
-        std::error_code ec;
-
-        for (const auto &originalEntry : originalFiles) {
-            auto entry = prefix / originalEntry.substr(1);
-            auto status = std::filesystem::symlink_status(entry, ec);
-            if (ec) {
-                return LINGLONG_ERR(ec.message());
-            }
-
-            if (!std::filesystem::exists(status)) {
-                if (ec) {
-                    return LINGLONG_ERR(ec.message());
-                }
-                continue;
-            }
-
-            if (status.type() == std::filesystem::file_type::regular) {
-                expandFiles.insert(entry);
-                continue;
-            }
-            if (ec) {
-                return LINGLONG_ERR(ec.message());
-            }
-
-            if (status.type() == std::filesystem::file_type::directory) {
-                auto iterator = std::filesystem::recursive_directory_iterator(entry, ec);
-                if (ec) {
-                    return LINGLONG_ERR(ec.message());
-                }
-
-                for (const auto &file : iterator) {
-                    if (file.is_directory(ec)) {
-                        continue;
-                    }
-
-                    if (ec) {
-                        return LINGLONG_ERR(ec.message());
-                    }
-
-                    expandFiles.insert(file.path().string());
-                }
-            }
-            if (ec) {
-                return LINGLONG_ERR(ec.message());
-            }
-        }
-
-        return expandFiles;
-    };
-
-    auto expandedExcludesRet = expandPaths(excludeFiles);
-    if (!expandedExcludesRet) {
-        return LINGLONG_ERR(expandedExcludesRet);
-    }
-    auto &expandedExcludes = *expandedExcludesRet;
-
-    auto expandedIncludeRet = expandPaths(includeFiles);
-    if (!expandedIncludeRet) {
-        return LINGLONG_ERR(expandedIncludeRet);
-    }
-    const auto &expandedInclude = *expandedIncludeRet;
-
-    for (const auto &entry : expandedInclude) {
-        auto it = expandedExcludes.find(entry);
-        if (it != expandedExcludes.cend()) {
-            expandedExcludes.erase(it);
-        }
-    }
-
-    auto iterator = std::filesystem::recursive_directory_iterator(filesDir, ec);
-    if (ec) {
-        return LINGLONG_ERR(ec.message());
-    }
-
-    bool minified{ false };
-    std::unordered_set<std::string> allFiles;
-    for (const auto &file : iterator) {
-        // only process regular file and symlink
-        // relay on the short circuit evaluation, do not change the order of the conditions
-        if (!(file.is_symlink(ec) || file.is_regular_file(ec))) {
-            continue;
-        }
-
-        if (ec) {
-            return LINGLONG_ERR(
-              fmt::format("failed to check file {} type: {}", file.path().string(), ec.message()));
-        }
-
-        const auto &filePath = file.path();
-        auto fileName = filePath.filename().string();
-        auto it =
-          std::find_if(this->blackList.begin(),
-                       this->blackList.end(),
-                       [&fileName](const std::string &entry) {
-                           return entry.rfind(fileName, 0) == 0 || fileName.rfind(entry, 0) == 0;
-                       });
-        if (it != this->blackList.end()) {
-            continue;
-        }
-
-        if (expandedExcludes.find(filePath) != expandedExcludes.cend()) {
-            minified = true;
-            continue;
-        }
-
-        allFiles.insert(filePath);
-    }
-
-    // append all files from include
-    std::copy(expandedInclude.begin(),
-              expandedInclude.end(),
-              std::inserter(allFiles, allFiles.end()));
-
-    return std::make_pair(minified, std::move(allFiles));
-}
-
-utils::error::Result<void> UABPackager::loadBlackList() noexcept
-{
-    LINGLONG_TRACE("load black list")
-    auto blackListFile =
-      std::filesystem::path{ LINGLONG_DATA_DIR } / "builder" / "uab" / "blacklist";
-
-    std::error_code ec;
-    if (!std::filesystem::exists(blackListFile, ec)) {
-        if (ec) {
-            return LINGLONG_ERR(fmt::format("failed to load blacklist: {}", ec.message()));
-        }
-
-        return LINGLONG_ERR(fmt::format("backlist {} doesn't exist", blackListFile.string()));
-    }
-
-    std::ifstream stream{ blackListFile };
-    if (!stream.is_open()) {
-        return LINGLONG_ERR(fmt::format("couldn't open blacklist: {}", blackListFile.string()));
-    }
-
-    std::string line;
-    while (!stream.eof()) {
-        std::getline(stream, line);
-        if (line.empty() || line.rfind('#', 0) == 0) {
-            continue;
-        }
-
-        auto [_, success] = this->blackList.emplace(line);
-        if (!success) {
-            LogW("duplicate entry: {}", line);
-        }
-    }
-
-    return LINGLONG_OK;
-}
-
-utils::error::Result<void> UABPackager::loadNeededFiles() noexcept
-{
-    LINGLONG_TRACE("load needed files");
-
-    auto file = workDir / "linglong" / "depends.yaml";
-    if (!std::filesystem::exists(file)) {
-        return LINGLONG_ERR(
-          fmt::format("{} is generated by ldd-check but not found currently, it may be "
-                      "deleted or ldd-check has been skipped",
-                      file));
-    }
-
-    auto content = YAML::LoadFile(file.string());
-    auto node = content["depends"];
-    if (!node || !node.IsSequence()) {
-        return LINGLONG_ERR(fmt::format("the content of {} is invalid", file.string()));
-    }
-
-    auto libs = node.as<std::vector<std::string>>();
-    for (const auto &libStr : libs) {
-        std::filesystem::path lib{ libStr };
-
-        if (lib.empty()) {
-            continue;
-        }
-
-        if (!lib.is_absolute()) {
-            return LINGLONG_ERR(fmt::format("invalid format, lib: {}", lib.string()));
-        }
-
-        auto [_, success] = this->neededFiles.insert(lib.lexically_relative("/"));
-        if (!success) {
-            return LINGLONG_ERR(fmt::format("duplicate entry: {}", lib.string()));
-        }
-    }
-
-    return LINGLONG_OK;
-}
-
 void UABPackager::setLoader(std::filesystem::path loader) noexcept
 {
     this->loader = std::move(loader);
@@ -1089,16 +560,6 @@ void UABPackager::setCompressor(std::string compressor) noexcept
 void UABPackager::setDefaultHeader(std::filesystem::path header) noexcept
 {
     this->defaultHeader = std::move(header);
-}
-
-void UABPackager::setDefaultLoader(std::filesystem::path loader) noexcept
-{
-    this->defaultLoader = std::move(loader);
-}
-
-void UABPackager::setDefaultBox(std::filesystem::path box) noexcept
-{
-    this->defaultBox = std::move(box);
 }
 
 void UABPackager::setBundleCB(

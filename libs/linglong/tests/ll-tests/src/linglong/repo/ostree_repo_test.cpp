@@ -9,6 +9,7 @@
 
 #include "../../common/tempdir.h"
 #include "../mocks/ostree_repo_mock.h"
+#include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/package/reference.h"
 #include "linglong/repo/client_factory.h"
 #include "linglong/repo/config.h"
@@ -120,6 +121,75 @@ TEST_F(RepoTest, createPersistsConfigAndBootstrapsRepoArtifacts)
 
     auto loaded = OSTreeRepo::loadFromPath(repoRoot);
     EXPECT_TRUE(loaded.has_value()) << loaded.error().message();
+}
+
+TEST_F(RepoTest, moduleMergesUseBinaryInfo)
+{
+    TempDir tempDir;
+    TempDir developDir;
+    TempDir binaryDir;
+    ASSERT_TRUE(tempDir.isValid());
+    ASSERT_TRUE(developDir.isValid());
+    ASSERT_TRUE(binaryDir.isValid());
+
+    auto repoRoot = tempDir.path() / "repo-root";
+    ASSERT_TRUE(fs::create_directories(repoRoot));
+    auto repo = OSTreeRepo::create(repoRoot, createRepoConfig());
+    ASSERT_TRUE(repo.has_value()) << repo.error().message();
+
+    auto makeInfo = [](std::string module) {
+        return api::types::v1::PackageInfoV2{
+            .arch = std::vector<std::string>{ "x86_64" },
+            .channel = "main",
+            .id = "org.test.merge",
+            .kind = "app",
+            .packageInfoV2Module = std::move(module),
+            .version = "1.0.0",
+        };
+    };
+    const auto developInfo = makeInfo("develop");
+    const auto binaryInfo = makeInfo("binary");
+
+    std::ofstream(developDir.path() / "info.json") << nlohmann::json(developInfo).dump();
+    std::ofstream(binaryDir.path() / "info.json") << nlohmann::json(binaryInfo).dump();
+
+    auto importedDevelop = repo->get()->importLayerDir(package::LayerDir{ developDir.path() });
+    ASSERT_TRUE(importedDevelop.has_value()) << importedDevelop.error().message();
+    auto importedBinary = repo->get()->importLayerDir(package::LayerDir{ binaryDir.path() });
+    ASSERT_TRUE(importedBinary.has_value()) << importedBinary.error().message();
+
+    auto ref = package::Reference::fromPackageInfo(binaryInfo);
+    ASSERT_TRUE(ref.has_value()) << ref.error().message();
+    ASSERT_FALSE(fs::exists(repoRoot / "merged"));
+    fs::path temporaryMergedPath;
+    {
+        auto merged =
+          repo->get()->createTempMergedModuleDir(*ref,
+                                                 std::vector<std::string>{ "develop", "binary" });
+        ASSERT_TRUE(merged.has_value()) << merged.error().message();
+        temporaryMergedPath = merged->path();
+        EXPECT_TRUE(fs::exists(temporaryMergedPath));
+
+        auto anotherMerged =
+          repo->get()->createTempMergedModuleDir(*ref,
+                                                 std::vector<std::string>{ "develop", "binary" });
+        ASSERT_TRUE(anotherMerged.has_value()) << anotherMerged.error().message();
+        EXPECT_NE(anotherMerged->path(), temporaryMergedPath);
+        EXPECT_TRUE(fs::exists(anotherMerged->path()));
+
+        auto mergedInfo = merged->layerDir().info();
+        ASSERT_TRUE(mergedInfo.has_value()) << mergedInfo.error().message();
+        EXPECT_EQ(mergedInfo->packageInfoV2Module, "binary");
+    }
+    EXPECT_FALSE(fs::exists(temporaryMergedPath));
+
+    auto mergeResult = repo->get()->mergeModules();
+    ASSERT_TRUE(mergeResult.has_value()) << mergeResult.error().message();
+    auto persistentMerged = repo->get()->getMergedModuleDir(*ref, false);
+    ASSERT_TRUE(persistentMerged.has_value()) << persistentMerged.error().message();
+    auto persistentMergedInfo = persistentMerged->info();
+    ASSERT_TRUE(persistentMergedInfo.has_value()) << persistentMergedInfo.error().message();
+    EXPECT_EQ(persistentMergedInfo->packageInfoV2Module, "binary");
 }
 
 TEST_F(RepoTest, createPrefersRepoLocalConfigOverFallbackConfig)

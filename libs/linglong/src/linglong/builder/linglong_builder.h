@@ -23,6 +23,11 @@
 
 namespace linglong::builder {
 
+enum class ExportMode {
+    Distribution,
+    Exec,
+};
+
 struct ExportOption
 {
     std::string iconPath;
@@ -31,6 +36,7 @@ struct ExportOption
     std::string ref;
     std::vector<std::string> modules;
     bool noExportDevelop{ false };
+    ExportMode mode{ ExportMode::Distribution };
 };
 
 struct BuilderBuildOptions
@@ -125,7 +131,7 @@ public:
     auto cleanBuildArtifacts() noexcept -> utils::error::Result<void>;
 
 protected:
-    std::string uabExportFilename(const linglong::package::Reference &ref);
+    std::string uabExportFilename(const linglong::package::Reference &ref, ExportMode mode);
     std::string layerExportFilename(const linglong::package::Reference &ref,
                                     const std::string &module);
 

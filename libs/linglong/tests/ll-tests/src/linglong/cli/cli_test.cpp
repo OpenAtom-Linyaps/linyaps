@@ -21,6 +21,7 @@
 using namespace linglong;
 using ::testing::_;
 using ::testing::ElementsAre;
+using ::testing::HasSubstr;
 using ::testing::InSequence;
 using ::testing::Invoke;
 using ::testing::IsEmpty;
@@ -64,6 +65,7 @@ public:
 class MockPrinter : public cli::CLIPrinter
 {
 public:
+    MOCK_METHOD(void, printErr, (const utils::error::Error &error), (override));
     MOCK_METHOD(void,
                 printUpgradeList,
                 (std::vector<api::types::v1::UpgradeListResult> &),
@@ -80,6 +82,7 @@ public:
     using cli::Cli::Cli;
 
     MOCK_METHOD(utils::error::Result<repo::OSTreeRepo *>, getRepo, (bool), (override, noexcept));
+    MOCK_METHOD(utils::error::Result<api::dbus::v1::PackageManager *>, getPkgMan, (), (override));
 };
 
 class RepoAndPackageManagerCli : public cli::Cli
@@ -221,6 +224,97 @@ protected:
     std::unique_ptr<runtime::ContainerBuilder> containerBuilder;
     std::unique_ptr<RepoAndPackageManagerCli> cli;
 };
+
+TEST_F(CliTest, installRejectsMissingExplicitLocalPath)
+{
+    const auto packagePath = tempDir->path() / "net.example_1.0_x86_64_binary";
+
+    EXPECT_CALL(*cli, getPkgMan()).Times(0);
+    EXPECT_CALL(*printer, printErr(_))
+      .WillOnce(Invoke([&packagePath](const utils::error::Error &error) {
+          EXPECT_EQ(error.code(), static_cast<int>(utils::error::ErrorCode::Failed));
+          EXPECT_THAT(error.message(), HasSubstr(packagePath.string()));
+          EXPECT_THAT(error.message(), HasSubstr("does not exist"));
+      }));
+
+    EXPECT_EQ(cli->install(cli::InstallOptions{ .appid = packagePath.string() }), -1);
+}
+
+TEST_F(CliTest, installRejectsLocalDirectoryBeforeParsingReference)
+{
+    const auto packagePath = tempDir->path() / "net.example_1.0_x86_64_binary";
+    ASSERT_TRUE(std::filesystem::create_directory(packagePath));
+
+    EXPECT_CALL(*cli, getPkgMan()).Times(0);
+    EXPECT_CALL(*printer, printErr(_))
+      .WillOnce(Invoke([&packagePath](const utils::error::Error &error) {
+          EXPECT_EQ(error.code(),
+                    static_cast<int>(utils::error::ErrorCode::AppInstallUnsupportedFileFormat));
+          EXPECT_THAT(error.message(), HasSubstr(packagePath.string()));
+          EXPECT_THAT(error.message(), HasSubstr("not a regular file"));
+      }));
+
+    EXPECT_EQ(cli->install(cli::InstallOptions{ .appid = packagePath.string() }), -1);
+}
+
+TEST_F(CliTest, installRejectsUnsupportedLocalFileBeforeContactingPackageManager)
+{
+    const auto packagePath = tempDir->path() / "net.example_1.0_x86_64_binary";
+    std::ofstream(packagePath) << "not a package";
+
+    EXPECT_CALL(*cli, getPkgMan()).Times(0);
+    EXPECT_CALL(*printer, printErr(_))
+      .WillOnce(Invoke([&packagePath](const utils::error::Error &error) {
+          EXPECT_EQ(error.code(),
+                    static_cast<int>(utils::error::ErrorCode::AppInstallUnsupportedFileFormat));
+          EXPECT_THAT(error.message(), HasSubstr(packagePath.string()));
+          EXPECT_THAT(error.message(), HasSubstr("Unsupported file format"));
+      }));
+
+    EXPECT_EQ(cli->install(cli::InstallOptions{ .appid = packagePath.string() }), -1);
+}
+
+TEST_F(CliTest, installKeepsRemoteVersionReference)
+{
+    EXPECT_CALL(*cli, getPkgMan())
+      .WillOnce(Invoke([]() -> utils::error::Result<api::dbus::v1::PackageManager *> {
+          return makePackageManagerError("package manager unavailable");
+      }));
+    EXPECT_CALL(*printer, printErr(_)).WillOnce(Invoke([](const utils::error::Error &error) {
+        EXPECT_THAT(error.message(), HasSubstr("package manager unavailable"));
+    }));
+
+    EXPECT_EQ(cli->install(cli::InstallOptions{ .appid = "org.example.App/1.0.0" }), -1);
+}
+
+TEST_F(CliTest, installKeepsRemoteReferencesEndingWithPackageFileSuffix)
+{
+    EXPECT_CALL(*cli, getPkgMan())
+      .Times(2)
+      .WillRepeatedly(Invoke([]() -> utils::error::Result<api::dbus::v1::PackageManager *> {
+          return makePackageManagerError("package manager unavailable");
+      }));
+    EXPECT_CALL(*printer, printErr(_)).Times(2);
+
+    EXPECT_EQ(cli->install(cli::InstallOptions{ .appid = "org.example.layer" }), -1);
+    EXPECT_EQ(cli->install(cli::InstallOptions{ .appid = "org.example.uab/1.0.0" }), -1);
+}
+
+TEST_F(CliTest, installRecognizesExistingLayerFile)
+{
+    const auto packagePath = tempDir->path() / "net.example_1.0_x86_64_binary.layer";
+    std::ofstream(packagePath) << "layer placeholder";
+
+    EXPECT_CALL(*cli, getPkgMan())
+      .WillOnce(Invoke([]() -> utils::error::Result<api::dbus::v1::PackageManager *> {
+          return makePackageManagerError("package manager unavailable");
+      }));
+    EXPECT_CALL(*printer, printErr(_)).WillOnce(Invoke([](const utils::error::Error &error) {
+        EXPECT_THAT(error.message(), HasSubstr("package manager unavailable"));
+    }));
+
+    EXPECT_EQ(cli->install(cli::InstallOptions{ .appid = packagePath.string() }), -1);
+}
 
 TEST_F(CliTest, taskEventsDriveProgressAndTextOutput)
 {

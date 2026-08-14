@@ -273,9 +273,9 @@ Example:
 # install application by appid
 ll-cli install org.deepin.demo
 # install application by linyaps layer
-ll-cli install demo_0.0.0.1_x86_64_binary.layer
+ll-cli install ./demo_0.0.0.1_x86_64_binary.layer
 # install application by linyaps uab
-ll-cli install demo_x86_64_0.0.0.1_main.uab
+ll-cli install ./demo_x86_64_0.0.0.1_main.uab
 # install specified module of the appid
 ll-cli install org.deepin.demo --module=binary
 # install specified version of the appid

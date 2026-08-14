@@ -2351,11 +2351,39 @@ int Cli::install(const InstallOptions &options)
     params.options.noAutoPrune = options.noAutoPrune;
     params.repo = options.repo;
 
-    QFileInfo info(QString::fromStdString(options.appid));
+    const std::filesystem::path localPath{ options.appid };
+    std::error_code ec;
+    const auto pathExists = std::filesystem::exists(localPath, ec);
+    if (pathExists) {
+        if (!std::filesystem::is_regular_file(localPath, ec)) {
+            this->printer.printErr(
+              LINGLONG_ERRV(fmt::format(_("{} is not a regular file; expected a .layer or .uab "
+                                          "file."),
+                                        options.appid),
+                            utils::error::ErrorCode::AppInstallUnsupportedFileFormat));
+            return -1;
+        }
 
-    // 如果检测是文件，则直接安装
-    if (info.exists() && info.isFile()) {
-        return installFromFile(QFileInfo{ info.absoluteFilePath() }, params.options);
+        const auto extension = localPath.extension();
+        const auto isSupportedPackageFile = extension == ".layer" || extension == ".uab";
+        if (!isSupportedPackageFile) {
+            this->printer.printErr(LINGLONG_ERRV(
+              fmt::format(_("Unsupported file format {}; expected a .layer or .uab file."),
+                          options.appid),
+              utils::error::ErrorCode::AppInstallUnsupportedFileFormat));
+            return -1;
+        }
+
+        return installFromFile(QFileInfo{ QString::fromStdString(options.appid) }, params.options);
+    } else {
+        const auto isExplicitPath = localPath.is_absolute()
+          || common::strings::starts_with(localPath.string(), "./")
+          || common::strings::starts_with(localPath.string(), "../");
+        if (isExplicitPath) {
+            this->printer.printErr(
+              LINGLONG_ERRV(fmt::format(_("Package file {} does not exist."), options.appid)));
+            return -1;
+        }
     }
 
     auto fuzzyRef = package::FuzzyReference::parse(options.appid);

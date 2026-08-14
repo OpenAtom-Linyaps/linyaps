@@ -565,7 +565,6 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
     Q_ASSERT(*layerFileRet != nullptr);
 
     const auto &layerFile = *layerFileRet;
-    auto realFile = layerFile->symLinkTarget();
     auto metaInfoRet = layerFile->metaInfo();
     if (!metaInfoRet) {
         return toDBusReply(metaInfoRet);
@@ -764,8 +763,7 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
     return common::serialize::toQVariantMap(api::types::v1::PackageManager1PackageTaskResult{
       .taskObjectPath = taskRef.taskObjectPath(),
       .code = 0,
-      .message = (realFile + " is now installing").toStdString(),
-    });
+      .message = "layer file is now installing" });
 }
 
 QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd,

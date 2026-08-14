@@ -24,7 +24,7 @@ utils::error::Result<Reference> Reference::parse(const std::string &raw) noexcep
 
     static auto referenceRegExp = []() noexcept {
         QRegularExpression referenceRegExp(
-          R"((?<channel>[^:]+):(?<id>[^\/]+)\/(?<version>[^\/]+)\/(?<architecture>[^\/]+))");
+          R"(^(?<channel>[^:]+):(?<id>[^\/]+)\/(?<version>[^\/]+)\/(?<architecture>[^\/]+)$)");
         referenceRegExp.optimize();
         return referenceRegExp;
     }();

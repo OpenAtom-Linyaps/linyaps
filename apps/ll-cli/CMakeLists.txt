@@ -4,6 +4,7 @@
 
 pfl_add_executable(
   SOURCES
+  ./src/command_line.h
   ./src/main.cpp
   OUTPUT_NAME
   ${LINGLONG_CLI_BIN}

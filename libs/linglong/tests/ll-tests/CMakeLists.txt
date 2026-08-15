@@ -12,6 +12,7 @@ pfl_add_executable(
   DISABLE_INSTALL
   SOURCES
   # find -regex '\./src/.+\.[ch]\(pp\)?' -type f -printf '%P\n'| sort
+  src/apps/ll-cli/command_line_test.cpp
   src/common/tempdir.h
   src/linglong/builder/config_test.cpp
   src/linglong/builder/linglong_builder_test.cpp
@@ -104,3 +105,5 @@ target_include_directories(${tests}
                            PUBLIC ${PROJECT_SOURCE_DIR}/apps/uab/header/src)
 target_include_directories(${tests}
                            PUBLIC ${PROJECT_SOURCE_DIR}/apps/ll-driver-detect/src)
+target_include_directories(${tests}
+                           PUBLIC ${PROJECT_SOURCE_DIR}/apps/ll-cli/src)

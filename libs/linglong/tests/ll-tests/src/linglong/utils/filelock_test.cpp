@@ -368,6 +368,7 @@ TEST_F(FileLockTest, TryLockAlreadyLockedSameType)
 
     auto try_result = lock.tryLock(LockType::Read);
     ASSERT_TRUE(try_result);
+    EXPECT_TRUE(*try_result);
 }
 
 // Test lock when already locked different type

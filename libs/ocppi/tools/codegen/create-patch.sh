@@ -5,7 +5,7 @@ set -o pipefail
 
 GIT=${GIT:="git"}
 
-repoRoot="$("$GIT" rev-parse --show-toplevel)"
+repoRoot="$("$GIT" rev-parse --show-toplevel)/libs/ocppi"
 cd "$repoRoot"/tools/codegen || exit 255
 
 include="$repoRoot/include"

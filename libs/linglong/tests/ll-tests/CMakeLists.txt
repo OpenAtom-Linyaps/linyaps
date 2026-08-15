@@ -70,6 +70,7 @@ pfl_add_executable(
   src/linglong/utils/transaction_test.cpp
   src/linglong/utils/xdg/directory_test.cpp
   src/linglong/utils/xdp_test.cpp
+  src/ocppi/process_test.cpp
   src/main.cpp
 
 
@@ -92,6 +93,7 @@ pfl_add_executable(
   GTest::gtest
   GTest::gmock
   linglong::linglong
+  linglong::ocppi
   linglong::oci-cfg-generators
   PkgConfig::CRYPTO)
 
@@ -104,3 +106,5 @@ target_include_directories(${tests}
                            PUBLIC ${PROJECT_SOURCE_DIR}/apps/uab/header/src)
 target_include_directories(${tests}
                            PUBLIC ${PROJECT_SOURCE_DIR}/apps/ll-driver-detect/src)
+target_include_directories(${tests}
+                           PRIVATE ${PROJECT_SOURCE_DIR}/libs/ocppi/src)

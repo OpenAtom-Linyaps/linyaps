@@ -31,7 +31,7 @@ mv build-iwyu/{new-,}compile_commands.json
 # shellcheck disable=SC2046
 "$IWYU_TOOL" -p build-iwyu \
 	$(find . -path './libs*' \( -name '*.c' -o -name '*.cpp' \) -printf "%p ") |
-	tee build/iwyu.out
+	tee build-iwyu/iwyu.out
 
 IWYU_FIX_INCLUDES=${IWYU_FIX_INCLUDES:=$({
 	command -v fix_include &>/dev/null && echo "fix_include" && exit
@@ -44,7 +44,7 @@ IWYU_FIX_INCLUDES=${IWYU_FIX_INCLUDES:=$({
 	'(\.cache|build|src\/ocppi\/runtime\/(config|features|state)\/types)\/*' \
 	--nocomments \
 	--nosafe_headers \
-	<build/iwyu.out
+	<build-iwyu/iwyu.out
 
 CLANG_FORMAT=${CLANG_FORMAT:=$({
 	command -v clang-format-16 &>/dev/null && echo "clang-format-16" && exit

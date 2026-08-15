@@ -78,29 +78,45 @@ utils::error::Result<GraphicsDriverInfo> NVIDIADriverDetector::detect()
 utils::error::Result<std::pair<bool, GraphicsDriverInfo>>
 NVIDIADriverDetector::getPackageInfoFromRemoteRepo(const std::string &packageName)
 {
-    using json = nlohmann::json;
-
     LINGLONG_TRACE("Check if NVIDIA driver package exists in repository");
 
-    GraphicsDriverInfo driverInfo;
-    driverInfo.identify = getDriverIdentify();
-    driverInfo.packageName = packageName;
     // Execute ll-cli search command to check driver package existence
     auto ret = linglong::utils::Cmd("ll-cli").exec({ "--json", "search", packageName });
     if (!ret) {
         return LINGLONG_ERR("Search command failed: " + ret.error().message());
     }
 
+    return parsePackageSearchResult(*ret, packageName);
+}
+
+utils::error::Result<std::pair<bool, GraphicsDriverInfo>>
+NVIDIADriverDetector::parsePackageSearchResult(const std::string &searchResult,
+                                               const std::string &packageName) const
+{
+    using json = nlohmann::json;
+
+    GraphicsDriverInfo driverInfo;
+    driverInfo.identify = getDriverIdentify();
+    driverInfo.packageName = packageName;
     bool found = false;
 
     try {
-        json j = json::parse(*ret);
+        json j = json::parse(searchResult);
 
         for (const auto &[category, apps] : j.items()) {
             if (!apps.is_array())
                 continue;
 
             for (const auto &item : apps) {
+                if (!item.is_object())
+                    continue;
+
+                auto id = item.find("id");
+                if (id == item.end() || !id->is_string()
+                    || id->get<std::string_view>() != packageName) {
+                    continue;
+                }
+
                 auto it = item.find("version");
                 if (it == item.end() || !it->is_string())
                     continue;

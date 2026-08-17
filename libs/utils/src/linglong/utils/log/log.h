@@ -97,7 +97,7 @@ public:
         }
 
         if ((logBackend & LogBackend::Console) != LogBackend::None) {
-            fmt::println(stderr, "{}", message);
+            fmt::print(stderr, "{}\n", message);
         }
 
         if ((logBackend & LogBackend::Journal) != LogBackend::None) {

@@ -870,13 +870,6 @@ UABPackager::filteringFiles(const LayerDir &layer) const noexcept
                 return LINGLONG_ERR(ec.message());
             }
 
-            if (!std::filesystem::exists(status)) {
-                if (ec) {
-                    return LINGLONG_ERR(ec.message());
-                }
-                continue;
-            }
-
             if (status.type() == std::filesystem::file_type::regular) {
                 expandFiles.insert(entry);
                 continue;
@@ -989,7 +982,7 @@ utils::error::Result<void> UABPackager::loadBlackList() noexcept
             return LINGLONG_ERR(fmt::format("failed to load blacklist: {}", ec.message()));
         }
 
-        return LINGLONG_ERR(fmt::format("backlist {} doesn't exist", blackListFile.string()));
+        return LINGLONG_ERR(fmt::format("blacklist {} doesn't exist", blackListFile.string()));
     }
 
     std::ifstream stream{ blackListFile };

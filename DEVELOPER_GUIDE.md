@@ -7,6 +7,7 @@ Before building Linglong, ensure the following dependencies are installed:
 - cmake
 - debhelper-compat (= 12)
 - intltool
+- libcap-dev
 - libcli11-dev (>= 2.4.1) | hello
 - libcurl4-openssl-dev
 - libdeflate-dev
@@ -30,7 +31,13 @@ Before building Linglong, ensure the following dependencies are installed:
 - qt6-base-dev | qtbase5-dev
 - qt6-base-private-dev | qtbase5-private-dev
 - systemd
+- uuid-dev
 - zlib1g-dev
+
+For running the unit tests (`ll-tests`) you also need:
+
+- `erofs-utils` (provides `mkfs.erofs`, used by `LayerPackagerTest` and `UabFileTest`)
+- `erofsfuse` (used by the fuse-based unpack tests)
 
 Linglong uses [cmake presets]. To build and install:
 
@@ -72,6 +79,39 @@ export CPM_USE_LOCAL_PACKAGES=1
 See [CPM.cmake] README for more information.
 
 [CPM.cmake]: https://github.com/cpm-cmake/CPM.cmake
+
+## Pre-commit Hooks
+
+Linglong uses [pre-commit] to enforce code style (trailing whitespace, end-of-file,
+YAML/JSON/TOML/XML checks, clang-format for C/C++, and shfmt for shell scripts).
+The configuration lives in [`.pre-commit-config.yaml`](.pre-commit-config.yaml).
+
+To run these checks automatically on every `git commit`, install the framework and
+register the hooks once:
+
+```bash
+pip install pre-commit          # or: apt install pre-commit
+pre-commit install              # registers the git hooks in .git/hooks/
+```
+
+After that, `git commit` runs all configured hooks. If a hook fixes formatting
+(e.g. `clang-format` reorders includes via `--sort-includes`), the commit is blocked
+and the files are reformatted in place - just `git add` them again and commit.
+
+To run the hooks manually (useful when you did not run `pre-commit install`):
+
+```bash
+pre-commit run --all-files                       # all hooks on all files
+pre-commit run clang-format --files path/to/file # a specific hook on specific files
+```
+
+On pull requests, [pre-commit.ci] runs the same hooks automatically. Because
+`autofix_prs: false` is set, failing hooks are fixed manually - comment
+`pre-commit.ci autofix` on the PR (or apply the label) to let the bot push
+formatting fixes, or fix locally and push.
+
+[pre-commit]: https://pre-commit.com/
+[pre-commit.ci]: https://pre-commit.ci/
 
 ## Internationalization (i18n) Management
 

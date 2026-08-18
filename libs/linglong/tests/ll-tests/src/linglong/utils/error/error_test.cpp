@@ -11,7 +11,8 @@
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/log/log.h"
 
-#include <filesystem>
+#include <cerrno>
+#include <system_error>
 
 using namespace linglong::utils::error;
 
@@ -103,21 +104,20 @@ TEST(Error, WarpErrorCode)
 TEST(Error, WarpStdErrorCode)
 {
     EnvironmentVariableGuard guard("LINYAPS_BACKTRACE", "1");
-    std::system_error se;
-    auto res = [&se]() -> Result<void> {
+    // Use a std::error_code that always fails instead of a real filesystem
+    // operation, so the result does not depend on whether the test runs as
+    // root (root could create "/no_permission_to_create" and the error path
+    // would never be exercised).
+    std::error_code ec = std::make_error_code(std::errc::permission_denied);
+    std::system_error se(ec);
+    auto res = [&ec]() -> Result<void> {
         LINGLONG_TRACE("test LINGLONG_ERR");
-        std::error_code ec;
-        std::filesystem::create_directory("/no_permission_to_create", ec);
-        if (ec) {
-            se = std::system_error(ec);
-            return LINGLONG_ERR("create directory failed", ec);
-        }
-        return LINGLONG_OK;
+        return LINGLONG_ERR("operation failed", ec);
     }();
     ASSERT_FALSE(res.has_value());
     auto msg = res.error().message();
     ASSERT_TRUE(strings::contains(msg, "test LINGLONG_ERR")) << msg;
-    ASSERT_TRUE(strings::contains(msg, "create directory failed")) << msg;
+    ASSERT_TRUE(strings::contains(msg, "operation failed")) << msg;
     ASSERT_TRUE(strings::contains(msg, se.what())) << msg;
 }
 

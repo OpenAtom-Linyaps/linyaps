@@ -11,8 +11,15 @@
 #include "linglong/api/types/v1/RepoConfigV2.hpp"
 #include "linglong/repo/config.h"
 
+#include <common/tempdir.h>
+
+#include <filesystem>
+#include <fstream>
+
 using namespace linglong::repo;
 using namespace linglong::api::types::v1;
+
+namespace fs = std::filesystem;
 
 TEST(Repo, GetRepoMinPriority)
 {
@@ -134,4 +141,87 @@ TEST(Repo, GetPriorityGroupedRepos)
     ASSERT_EQ(groupedRepos[2].size(), 1);
     EXPECT_EQ(groupedRepos[2][0].name, "repo2");
     EXPECT_EQ(groupedRepos[2][0].priority, 100);
+}
+
+TEST(Repo, LoadConfigFromV2Yaml)
+{
+    TempDir dir;
+    auto file = dir.path() / "config.yaml";
+    std::ofstream(file) << R"(
+defaultRepo: stable
+repos:
+  - name: stable
+    priority: 0
+    url: https://example.com/repo
+version: 2
+)";
+
+    auto cfg = loadConfig(file);
+    ASSERT_TRUE(cfg.has_value()) << cfg.error().message();
+    EXPECT_EQ(cfg->defaultRepo, "stable");
+    ASSERT_EQ(cfg->repos.size(), 1);
+    EXPECT_EQ(cfg->repos[0].url, "https://example.com/repo");
+}
+
+TEST(Repo, LoadConfigMissingFileFails)
+{
+    TempDir dir;
+    auto cfg = loadConfig(dir.path() / "nope.yaml");
+    EXPECT_FALSE(cfg.has_value());
+}
+
+TEST(Repo, LoadConfigFromVectorTriesUntilSuccess)
+{
+    TempDir dir;
+    auto bad = dir.path() / "bad.yaml";
+    auto good = dir.path() / "good.yaml";
+    std::ofstream(good) << R"(
+defaultRepo: stable
+repos:
+  - name: stable
+    priority: 0
+    url: https://example.com/repo
+version: 2
+)";
+
+    auto cfg = loadConfig(std::vector<fs::path>{ bad, good });
+    ASSERT_TRUE(cfg.has_value());
+    EXPECT_EQ(cfg->repos[0].url, "https://example.com/repo");
+}
+
+TEST(Repo, LoadConfigVectorAllFail)
+{
+    TempDir dir;
+    auto cfg = loadConfig(std::vector<fs::path>{ dir.path() / "a.yaml", dir.path() / "b.yaml" });
+    EXPECT_FALSE(cfg.has_value());
+}
+
+TEST(Repo, SaveConfigWritesFile)
+{
+    TempDir dir;
+    auto cfg = RepoConfigV2{
+        .defaultRepo = "stable",
+        .repos = { Repo{ .name = "stable", .priority = 0, .url = "https://example.com/repo" } },
+        .version = 2,
+    };
+
+    auto file = dir.path() / "saved.yaml";
+    ASSERT_TRUE(saveConfig(cfg, file).has_value());
+    EXPECT_TRUE(fs::exists(file));
+
+    auto loaded = loadConfig(file);
+    ASSERT_TRUE(loaded.has_value());
+    EXPECT_EQ(loaded->repos[0].url, "https://example.com/repo");
+}
+
+TEST(Repo, SaveConfigMissingDefaultRepoFails)
+{
+    TempDir dir;
+    auto cfg = RepoConfigV2{
+        .defaultRepo = "missing",
+        .repos = { Repo{ .name = "stable", .priority = 0, .url = "https://example.com/repo" } },
+        .version = 2,
+    };
+    auto file = dir.path() / "saved.yaml";
+    EXPECT_FALSE(saveConfig(cfg, file).has_value());
 }

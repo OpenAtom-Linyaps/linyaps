@@ -18,8 +18,10 @@ pfl_add_executable(
   src/linglong/builder/linglong_builder_test.cpp
   src/linglong/builder/pull_dependency_test.cpp
   src/linglong/builder/source_fetcher_test.cpp
+  src/linglong/cli/cli_printer_test.cpp
   src/linglong/cli/cli_test.cpp
   src/linglong/common/gkeyfile_wrapper_test.cpp
+  src/linglong/common/global/initialize_test.cpp
   src/linglong/common/cli/repo_test.cpp
   src/linglong/common/dir_test.cpp
   src/linglong/common/strings_test.cpp
@@ -30,11 +32,14 @@ pfl_add_executable(
   src/linglong/mocks/linglong_builder_mock.h
   src/linglong/mocks/ostree_repo_mock.h
   src/linglong/mocks/uab_file_mock.h
+  src/linglong/oci-cfg-generators/container_cfg_builder_test.cpp
   src/linglong/package/architecture_test.cpp
+  src/linglong/package/elf_handler_test.cpp
   src/linglong/package/fallback_version_test.cpp
   src/linglong/package/layer_dir_test.cpp
   src/linglong/package/layer_packager_test.cpp
   src/linglong/package_manager/action_test.cpp
+  src/linglong/package_manager/data_monitor_test.cpp
   src/linglong/package_manager/task_test.cpp
   src/linglong/package_manager/task_queue_test.cpp
   src/linglong/package_manager/package_update_test.cpp
@@ -48,10 +53,12 @@ pfl_add_executable(
   src/linglong/package/semver_version_test.cpp
   src/linglong/package/uab_file_test.cpp
   src/linglong/package/uab_packager_test.cpp
+  src/linglong/package/version_extra_test.cpp
   src/linglong/package/version_test.cpp
   src/linglong/package/versionv2_test.cpp
   src/linglong/repo/client_factory_test.cpp
   src/linglong/repo/config_test.cpp
+  src/linglong/repo/migrate_test.cpp
   src/linglong/repo/ostree_repo_test.cpp
   src/linglong/repo/repo_cache_test.cpp
   src/linglong/runtime/container_builder_test.cpp
@@ -63,6 +70,7 @@ pfl_add_executable(
   src/linglong/utils/file_test.cpp
   src/linglong/utils/filelock_test.cpp
   src/linglong/utils/hooks_test.cpp
+  src/linglong/utils/io_test.cpp
   src/linglong/utils/log.cpp
   src/linglong/utils/namespce.cpp
   src/linglong/utils/overlayfs_test.cpp

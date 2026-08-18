@@ -36,8 +36,7 @@ Before building Linglong, ensure the following dependencies are installed:
 
 For running the unit tests (`ll-tests`) you also need:
 
-- `erofs-utils` (provides `mkfs.erofs`, used by `LayerPackagerTest` and `UabFileTest`)
-- `erofsfuse` (used by the fuse-based unpack tests)
+- `erofs-utils` (provides `mkfs.erofs`, used by the `LayerPackagerTest` and `UabFileTest` suite setup)
 
 Linglong uses [cmake presets]. To build and install:
 
@@ -80,36 +79,46 @@ See [CPM.cmake] README for more information.
 
 [CPM.cmake]: https://github.com/cpm-cmake/CPM.cmake
 
-## Pre-commit Hooks
+## Code Style & Pre-commit
 
-Linglong uses [pre-commit] to enforce code style (trailing whitespace, end-of-file,
-YAML/JSON/TOML/XML checks, clang-format for C/C++, and shfmt for shell scripts).
-The configuration lives in [`.pre-commit-config.yaml`](.pre-commit-config.yaml).
+Linglong uses [clang-format] for C/C++ code style; the rules live in
+[`.clang-format`](.clang-format). Before committing C/C++ changes, run clang-format
+on the files you touched:
 
-To run these checks automatically on every `git commit`, install the framework and
-register the hooks once:
+```bash
+clang-format -i --sort-includes --style=file path/to/file.cpp
+```
+
+Note that `--sort-includes` reorders `#include` lines alphabetically -- if you add
+includes by hand in the wrong order, the CI check will flag it. Just run clang-format
+first and commit the formatted result.
+
+The repository also uses [pre-commit] for a set of repo-wide checks (trailing
+whitespace, EOF newline, YAML/JSON/XML validation, and `shfmt` for shell scripts),
+which are enforced automatically on pull requests via [pre-commit.ci]. To run the
+same checks locally, install and register the hooks once:
 
 ```bash
 pip install pre-commit          # or: apt install pre-commit
 pre-commit install              # registers the git hooks in .git/hooks/
 ```
 
-After that, `git commit` runs all configured hooks. If a hook fixes formatting
-(e.g. `clang-format` reorders includes via `--sort-includes`), the commit is blocked
-and the files are reformatted in place - just `git add` them again and commit.
-
-To run the hooks manually (useful when you did not run `pre-commit install`):
+After that, `git commit` runs the configured hooks. If a hook reformats a file,
+the commit is blocked -- just `git add` the reformatted file and commit again. To
+run them once without installing:
 
 ```bash
-pre-commit run --all-files                       # all hooks on all files
-pre-commit run clang-format --files path/to/file # a specific hook on specific files
+pre-commit run --all-files
+pre-commit run clang-format --files path/to/file
 ```
 
-On pull requests, [pre-commit.ci] runs the same hooks automatically. Because
-`autofix_prs: false` is set, failing hooks are fixed manually - comment
-`pre-commit.ci autofix` on the PR (or apply the label) to let the bot push
-formatting fixes, or fix locally and push.
+When a [pre-commit.ci] check fails on a PR, comment `pre-commit.ci autofix` on the
+PR (or apply the label) to let the bot fix and push the formatting, or fix locally
+and push. The `shfmt` check (shell formatting) is only enforced by CI -- you do not
+need to install it locally; just follow the existing style in shell files or let
+pre-commit.ci fix them.
 
+[clang-format]: https://clang.llvm.org/docs/ClangFormat.html
 [pre-commit]: https://pre-commit.com/
 [pre-commit.ci]: https://pre-commit.ci/
 

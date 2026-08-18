@@ -87,6 +87,9 @@ std::filesystem::path LayerPackagerTest::layerFilePath;
 
 TEST_F(LayerPackagerTest, LayerPackagerUnpackFuseOffset)
 {
+    if (!std::filesystem::exists("/dev/fuse")) {
+        GTEST_SKIP() << "fuse device is not available";
+    }
     auto layerFileRet = package::LayerFile::New((layerFilePath).string().c_str());
     ASSERT_TRUE(layerFileRet.has_value())
       << "Failed to create layer file" << layerFileRet.error().message();
@@ -108,6 +111,9 @@ TEST_F(LayerPackagerTest, LayerPackagerUnpackFuseOffset)
 
 TEST_F(LayerPackagerTest, LayerPackagerUnpackFuse)
 {
+    if (!std::filesystem::exists("/dev/fuse")) {
+        GTEST_SKIP() << "fuse device is not available";
+    }
     {
         auto ret = utils::Cmd("erofsfuse").exists();
         if (!ret) {

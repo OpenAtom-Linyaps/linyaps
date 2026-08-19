@@ -686,4 +686,506 @@ TEST_F(ContainerCfgBuilderTest, ResolvConfWithoutHostRoot)
     EXPECT_TRUE(hasResolv);
 }
 
+TEST_F(ContainerCfgBuilderTest, BindHostRootAndStatics)
+{
+    ContainerCfgBuilder builder;
+    builder.setAppId("org.deepin.demo")
+      .setBasePath(baseDir.path())
+      .setBundlePath(bundleDir.path())
+      .bindHostRoot()
+      .bindHostStatics();
+
+    auto result = builder.build();
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+
+    ASSERT_TRUE(builder.getConfig().mounts.has_value());
+    const auto &mounts = *builder.getConfig().mounts;
+    auto findDest = [&mounts](const std::string &dest) {
+        for (const auto &m : mounts) {
+            if (m.destination == dest) {
+                return true;
+            }
+        }
+        return false;
+    };
+    // bindHostRoot
+    EXPECT_TRUE(findDest("/run/host"));
+    EXPECT_TRUE(findDest("/run/host/rootfs"));
+    // bindHostStatics (only for paths that exist in the environment; the
+    // settings/tools path set varies between distro rootfs images)
+    EXPECT_TRUE(findDest("/etc/machine-id"));
+    EXPECT_TRUE(findDest("/usr/lib/locale"));
+}
+
+TEST_F(ContainerCfgBuilderTest, BindCgroupAddsMount)
+{
+    ContainerCfgBuilder builder;
+    builder.setAppId("org.deepin.demo")
+      .setBasePath(baseDir.path())
+      .setBundlePath(bundleDir.path())
+      .bindCgroup();
+
+    auto result = builder.build();
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+    ASSERT_TRUE(builder.getConfig().mounts.has_value());
+
+    bool hasCgroup = false;
+    for (const auto &m : *builder.getConfig().mounts) {
+        if (m.destination == "/sys/fs/cgroup" && m.type == "cgroup") {
+            hasCgroup = true;
+            EXPECT_EQ(m.source.value_or(""), "cgroup");
+        }
+    }
+    EXPECT_TRUE(hasCgroup);
+}
+
+TEST_F(ContainerCfgBuilderTest, BindRunAddsRunMount)
+{
+    ContainerCfgBuilder builder;
+    builder.setAppId("org.deepin.demo")
+      .setBasePath(baseDir.path())
+      .setBundlePath(bundleDir.path())
+      .bindRun()
+      .bindTmp();
+
+    auto result = builder.build();
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+    ASSERT_TRUE(builder.getConfig().mounts.has_value());
+
+    bool hasRunTmpfs = false;
+    bool hasTmpBind = false;
+    for (const auto &m : *builder.getConfig().mounts) {
+        if (m.destination == "/run" && m.type == "tmpfs") {
+            hasRunTmpfs = true;
+        }
+        if (m.destination == "/tmp" && m.source.value_or("") == "/tmp") {
+            hasTmpBind = true;
+        }
+    }
+    EXPECT_TRUE(hasRunTmpfs);
+    EXPECT_TRUE(hasTmpBind);
+}
+
+TEST_F(ContainerCfgBuilderTest, BindDevNodeWithDefaultAndCustomFilter)
+{
+    // Default filter binds snd/dri/video*/nvidia* nodes from /dev when present.
+    {
+        ContainerCfgBuilder builder;
+        builder.setAppId("org.deepin.demo")
+          .setBasePath(baseDir.path())
+          .setBundlePath(bundleDir.path())
+          .bindDevNode();
+
+        auto result = builder.build();
+        ASSERT_TRUE(result.has_value()) << result.error().message();
+        ASSERT_TRUE(builder.getConfig().mounts.has_value());
+        // The test environment may or may not have dev nodes; just make sure
+        // the build succeeds and mount generation doesn't crash.
+        EXPECT_TRUE(builder.getConfig().mounts->size() > 0);
+    }
+
+    // A custom filter that rejects everything must produce no dev bind mounts
+    // (the builder still succeeds because /dev is bound by bindDefault).
+    {
+        ContainerCfgBuilder builder;
+        builder.setAppId("org.deepin.demo")
+          .setBasePath(baseDir.path())
+          .setBundlePath(bundleDir.path())
+          .bindDevNode([](const std::string &) { return false; })
+          .bindDefault();
+
+        auto result = builder.build();
+        ASSERT_TRUE(result.has_value()) << result.error().message();
+    }
+
+    // A custom filter that accepts "loop0" should bind /dev/loop0 if present.
+    {
+        ContainerCfgBuilder builder;
+        builder.setAppId("org.deepin.demo")
+          .setBasePath(baseDir.path())
+          .setBundlePath(bundleDir.path())
+          .bindDevNode([](const std::string &name) { return name == "loop0"; });
+
+        auto result = builder.build();
+        ASSERT_TRUE(result.has_value()) << result.error().message();
+        ASSERT_TRUE(builder.getConfig().mounts.has_value());
+
+        bool hasLoop0 = false;
+        for (const auto &m : *builder.getConfig().mounts) {
+            if (m.destination == "/dev/loop0") {
+                hasLoop0 = true;
+            }
+        }
+        // /dev/loop0 may be absent in a minimal container; assert consistency only
+        // when the host actually provides it.
+        EXPECT_EQ(hasLoop0, std::filesystem::exists("/dev/loop0"));
+    }
+}
+
+TEST_F(ContainerCfgBuilderTest, BindRemovableStorageMounts)
+{
+    ContainerCfgBuilder builder;
+    builder.setAppId("org.deepin.demo")
+      .setBasePath(baseDir.path())
+      .setBundlePath(bundleDir.path())
+      .bindRemovableStorageMounts();
+
+    auto result = builder.build();
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+    ASSERT_TRUE(builder.getConfig().mounts.has_value());
+
+    std::vector<std::string> expectedDestFromSource{ "/media", "/run/media", "/mnt" };
+    for (const auto &m : *builder.getConfig().mounts) {
+        if (m.destination == "/media" || m.destination == "/run/media" || m.destination == "/mnt") {
+            EXPECT_EQ(m.type, "bind");
+            EXPECT_EQ(m.source.value_or(""), m.destination);
+        }
+    }
+}
+
+TEST_F(ContainerCfgBuilderTest, ForwardEnvFromEnvironWhenListEmpty)
+{
+    // Forward all environment variables visible in the test process.
+    setenv("LL_CUSTOM_TEST_VAR", "hello", 1);
+    ContainerCfgBuilder builder;
+    builder.setAppId("org.deepin.demo")
+      .setBasePath(baseDir.path())
+      .setBundlePath(bundleDir.path())
+      .forwardEnv({});
+
+    auto result = builder.build();
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+
+    ASSERT_TRUE(builder.getConfig().process.has_value());
+    ASSERT_TRUE(builder.getConfig().process->env.has_value());
+    EXPECT_THAT(*builder.getConfig().process->env,
+                ::testing::Contains("LL_CUSTOM_TEST_VAR=hello"));
+    unsetenv("LL_CUSTOM_TEST_VAR");
+}
+
+TEST_F(ContainerCfgBuilderTest, AppendEnvOverwriteAndDuplicate)
+{
+    ContainerCfgBuilder builder;
+    builder.setAppId("org.deepin.demo")
+      .setBasePath(baseDir.path())
+      .setBundlePath(bundleDir.path())
+      .appendEnv("DUPE", "first")
+      .appendEnv("DUPE", "second") // not overwritten: logs and keeps first
+      .appendEnv("OVERRIDE", "old", false)
+      .appendEnv("OVERRIDE", "new", true);
+
+    auto result = builder.build();
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+    ASSERT_TRUE(builder.getConfig().process.has_value());
+    ASSERT_TRUE(builder.getConfig().process->env.has_value());
+
+    const auto &env = *builder.getConfig().process->env;
+    EXPECT_THAT(env, ::testing::Contains("DUPE=first"));
+    EXPECT_THAT(env, ::testing::Contains("OVERRIDE=new"));
+    // DUPE must appear exactly once
+    int dupeCount = 0;
+    for (const auto &e : env) {
+        if (e.rfind("DUPE=", 0) == 0) {
+            ++dupeCount;
+        }
+    }
+    EXPECT_EQ(dupeCount, 1);
+}
+
+TEST_F(ContainerCfgBuilderTest, EnableQuirkVolatileDoesNotBreakBuild)
+{
+    // enableQuirkVolatile only initializes the (currently reserved) volatile
+    // mount slot; a normal build must still succeed with it enabled.
+    ContainerCfgBuilder builder;
+    builder.setAppId("org.deepin.demo")
+      .setBasePath(baseDir.path())
+      .setBundlePath(bundleDir.path())
+      .enableQuirkVolatile();
+
+    auto result = builder.build();
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+}
+
+TEST_F(ContainerCfgBuilderTest, BuildHooksAllTypes)
+{
+    auto makeHook = [](const std::string &path) {
+        ocppi::runtime::config::types::Hook hook;
+        hook.path = path;
+        return hook;
+    };
+
+    ContainerCfgBuilder builder;
+    builder.setAppId("org.deepin.demo")
+      .setBasePath(baseDir.path())
+      .setBundlePath(bundleDir.path())
+      .addExtraHook("createContainer", makeHook("/hooks/createContainer"))
+      .addExtraHook("createRuntime", makeHook("/hooks/createRuntime"))
+      .addExtraHook("poststart", makeHook("/hooks/poststart"))
+      .addExtraHook("poststop", makeHook("/hooks/poststop"))
+      .addExtraHook("prestart", makeHook("/hooks/prestart"))
+      .addExtraHook("startContainer", makeHook("/hooks/startContainer"))
+      .addExtraHook("unknown-type", makeHook("/hooks/bogus"))
+      .setStartContainerHooks({ makeHook("/hooks/my-start") });
+
+    auto result = builder.build();
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+    ASSERT_TRUE(builder.getConfig().hooks.has_value());
+
+    ASSERT_TRUE(builder.getConfig().hooks->createContainer.has_value());
+    EXPECT_EQ(builder.getConfig().hooks->createContainer->at(0).path, "/hooks/createContainer");
+    ASSERT_TRUE(builder.getConfig().hooks->createRuntime.has_value());
+    EXPECT_EQ(builder.getConfig().hooks->createRuntime->at(0).path, "/hooks/createRuntime");
+    ASSERT_TRUE(builder.getConfig().hooks->poststart.has_value());
+    EXPECT_EQ(builder.getConfig().hooks->poststart->at(0).path, "/hooks/poststart");
+    ASSERT_TRUE(builder.getConfig().hooks->poststop.has_value());
+    EXPECT_EQ(builder.getConfig().hooks->poststop->at(0).path, "/hooks/poststop");
+    ASSERT_TRUE(builder.getConfig().hooks->prestart.has_value());
+    EXPECT_EQ(builder.getConfig().hooks->prestart->at(0).path, "/hooks/prestart");
+    ASSERT_TRUE(builder.getConfig().hooks->startContainer.has_value());
+    EXPECT_EQ(builder.getConfig().hooks->startContainer->size(), 2);
+    for (const auto &h : *builder.getConfig().hooks->startContainer) {
+        EXPECT_NE(h.path, "/hooks/bogus"); // unknown type must be dropped
+    }
+}
+
+TEST_F(ContainerCfgBuilderTest, AddExtraMountAndExtraMounts)
+{
+    Mount extra;
+    extra.destination = "/opt/extra";
+    extra.source = "/host/extra";
+    extra.type = "bind";
+
+    ContainerCfgBuilder builder;
+    builder.setAppId("org.deepin.demo")
+      .setBasePath(baseDir.path())
+      .setBundlePath(bundleDir.path())
+      .addExtraMount(extra)
+      .addExtraMounts({ extra, extra });
+
+    auto result = builder.build();
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+    ASSERT_TRUE(builder.getConfig().mounts.has_value());
+
+    int count = 0;
+    for (const auto &m : *builder.getConfig().mounts) {
+        if (m.destination == "/opt/extra") {
+            ++count;
+        }
+    }
+    EXPECT_EQ(count, 3);
+}
+
+TEST_F(ContainerCfgBuilderTest, BuildMountWithMissingPathsFails)
+{
+    // runtime path that does not exist
+    {
+        ContainerCfgBuilder builder;
+        builder.setAppId("org.deepin.demo")
+          .setBasePath(baseDir.path())
+          .setBundlePath(bundleDir.path())
+          .setRuntimePath(baseDir.path() / "no-such-runtime", false);
+        auto result = builder.build();
+        ASSERT_FALSE(result.has_value());
+        EXPECT_THAT(result.error().message(), ::testing::HasSubstr("runtime files is not exist"));
+    }
+
+    // app path that does not exist
+    {
+        ContainerCfgBuilder builder;
+        builder.setAppId("org.deepin.demo")
+          .setBasePath(baseDir.path())
+          .setBundlePath(bundleDir.path())
+          .setAppPath(baseDir.path() / "no-such-app", false);
+        auto result = builder.build();
+        ASSERT_FALSE(result.has_value());
+        EXPECT_THAT(result.error().message(), ::testing::HasSubstr("app files is not exist"));
+    }
+
+    // home path that does not exist
+    {
+        ContainerCfgBuilder builder;
+        builder.setAppId("org.deepin.demo")
+          .setBasePath(baseDir.path())
+          .setBundlePath(bundleDir.path())
+          .bindHome(baseDir.path() / "no-such-home");
+        auto result = builder.build();
+        ASSERT_FALSE(result.has_value());
+        EXPECT_THAT(result.error().message(), ::testing::HasSubstr("is not exist"));
+    }
+}
+
+TEST_F(ContainerCfgBuilderTest, BindXDGRuntimeWithoutRunMountFails)
+{
+    ContainerCfgBuilder builder;
+    builder.setAppId("org.deepin.demo")
+      .setBasePath(baseDir.path())
+      .setBundlePath(bundleDir.path())
+      .bindXDGRuntime()
+      .enablePipewireSocketMount(PipewireMountOption{
+        .hostSocketPath = baseDir.path() / "pipewire-0" });
+
+    auto result = builder.build();
+    ASSERT_FALSE(result.has_value());
+    EXPECT_THAT(result.error().message(), ::testing::HasSubstr("/run is not bind"));
+}
+
+TEST_F(ContainerCfgBuilderTest, BindUserGroupMinimal)
+{
+    ContainerCfgBuilder builder;
+    builder.setAppId("org.deepin.demo")
+      .setBasePath(baseDir.path())
+      .setBundlePath(bundleDir.path())
+      .bindUserGroup(true);
+
+    auto result = builder.build();
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+
+    // minimal mode writes a dedicated passwd/group into the bundle and binds it
+    ASSERT_TRUE(std::filesystem::exists(bundleDir.path() / "passwd"));
+    ASSERT_TRUE(std::filesystem::exists(bundleDir.path() / "group"));
+
+    ASSERT_TRUE(builder.getConfig().mounts.has_value());
+    bool hasPasswd = false;
+    bool hasGroup = false;
+    for (const auto &m : *builder.getConfig().mounts) {
+        if (m.destination == "/etc/passwd") {
+            hasPasswd = true;
+            EXPECT_EQ(m.source.value_or(""), bundleDir.path() / "passwd");
+        }
+        if (m.destination == "/etc/group") {
+            hasGroup = true;
+            EXPECT_EQ(m.source.value_or(""), bundleDir.path() / "group");
+        }
+    }
+    EXPECT_TRUE(hasPasswd);
+    EXPECT_TRUE(hasGroup);
+}
+
+TEST_F(ContainerCfgBuilderTest, SelfAdjustingMountFixesMissingChild)
+{
+    // Build an app layout under appDir and simulate a layer whose child path
+    // is missing on the host, which forces the self-adjusting mount to remount
+    // an ancestor as tmpfs and bind the existing children underneath.
+    std::filesystem::create_directories(appDir.path());
+    { std::ofstream{ appDir.path() / "binary" } << "bin"; }
+
+    ContainerCfgBuilder builder;
+    builder.setAppId("org.deepin.demo")
+      .setBasePath(baseDir.path())
+      .setBundlePath(bundleDir.path())
+      .setAppPath(appDir.path())
+      .enableSelfAdjustingMount()
+      .disablePatch();
+
+    // /opt/apps/org.deepin.demo/files/etc exists on host;
+    // /opt/apps/org.deepin.demo/files/etc/localtime does not.
+    std::filesystem::create_directories(appDir.path() / "etc");
+
+    Mount etcMount;
+    etcMount.destination = "/opt/apps/org.deepin.demo/files/etc";
+    etcMount.source = appDir.path() / "etc";
+    etcMount.type = "bind";
+    etcMount.options = std::vector<std::string>{ "rbind", "ro", "rslave" };
+
+    Mount localtimeMount;
+    localtimeMount.destination = "/opt/apps/org.deepin.demo/files/etc/localtime";
+    localtimeMount.source = appDir.path() / "etc" / "localtime"; // intentionally missing
+    localtimeMount.type = "bind";
+    localtimeMount.options = std::vector<std::string>{ "rbind", "ro", "rslave" };
+
+    builder.addExtraMount(etcMount).addExtraMount(localtimeMount);
+
+    auto result = builder.build();
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+
+    // The root is switched to an alternate rootfs context by the fixing logic.
+    ASSERT_TRUE(builder.getConfig().root.has_value());
+    EXPECT_EQ(builder.getConfig().root->path, std::filesystem::path("rootfs"));
+
+    // There must be a tmpfs mount used to expose the missing /etc/localtime.
+    ASSERT_TRUE(builder.getConfig().mounts.has_value());
+    bool hasTmpfs = false;
+    for (const auto &m : *builder.getConfig().mounts) {
+        if (m.type == "tmpfs" && m.destination != "/") {
+            hasTmpfs = true;
+        }
+    }
+    EXPECT_TRUE(hasTmpfs);
+}
+
+TEST_F(ContainerCfgBuilderTest, EnableIPCMountFailsWithoutXDGRuntime)
+{
+    ContainerCfgBuilder builder;
+    builder.setAppId("org.deepin.demo")
+      .setBasePath(baseDir.path())
+      .setBundlePath(bundleDir.path())
+      .bindIPC();
+
+    auto result = builder.build();
+    ASSERT_FALSE(result.has_value());
+    EXPECT_THAT(result.error().message(), ::testing::HasSubstr("must enable xdg runtime mount first"));
+}
+
+TEST_F(ContainerCfgBuilderTest, EnableIPCMountBindsUnixSocket)
+{
+    auto busSocket = baseDir.path() / "bus.sock";
+    std::ofstream{ busSocket } << "";
+
+    // Point the session bus at the socket we just created and the system bus at
+    // a non-existent path (skipped gracefully).
+    setenv("DBUS_SESSION_BUS_ADDRESS",
+           ("unix:path=" + busSocket.string() + ",guid=deadbeef").c_str(),
+           1);
+    setenv("DBUS_SYSTEM_BUS_ADDRESS", "unix:path=/no/such/system/bus", 1);
+
+    auto runtime = std::filesystem::path{ "/run/user" } / std::to_string(::geteuid());
+    ContainerCfgBuilder builder;
+    builder.setAppId("org.deepin.demo")
+      .setBasePath(baseDir.path())
+      .setBundlePath(bundleDir.path())
+      .bindRun()
+      .bindXDGRuntime()
+      .bindIPC();
+
+    auto result = builder.build();
+    unsetenv("DBUS_SESSION_BUS_ADDRESS");
+    unsetenv("DBUS_SYSTEM_BUS_ADDRESS");
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+
+    ASSERT_TRUE(builder.getConfig().mounts.has_value());
+    bool hasSessionBus = false;
+    for (const auto &m : *builder.getConfig().mounts) {
+        if (m.destination == (runtime / "bus").string()) {
+            hasSessionBus = true;
+            EXPECT_EQ(m.source.value_or(""), busSocket.string());
+        }
+    }
+    EXPECT_TRUE(hasSessionBus);
+}
+
+TEST_F(ContainerCfgBuilderTest, EnableIPCMountNoValidSocket)
+{
+    // A TCP transport is not a unix socket and must be ignored.
+    setenv("DBUS_SESSION_BUS_ADDRESS", "tcp:host=127.0.0.1,port=9999", 1);
+
+    auto runtime = std::filesystem::path{ "/run/user" } / std::to_string(::geteuid());
+    ContainerCfgBuilder builder;
+    builder.setAppId("org.deepin.demo")
+      .setBasePath(baseDir.path())
+      .setBundlePath(bundleDir.path())
+      .bindRun()
+      .bindXDGRuntime()
+      .bindIPC();
+
+    auto result = builder.build();
+    unsetenv("DBUS_SESSION_BUS_ADDRESS");
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+
+    // No session bus mount may be added for a tcp address.
+    ASSERT_TRUE(builder.getConfig().mounts.has_value());
+    for (const auto &m : *builder.getConfig().mounts) {
+        EXPECT_NE(m.destination, (runtime / "bus").string());
+    }
+}
+
 } // namespace

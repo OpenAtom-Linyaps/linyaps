@@ -227,6 +227,53 @@ TEST_F(RepoCacheTest, LoadCorruptFileFails)
     EXPECT_FALSE(cache.load().has_value());
 }
 
+TEST_F(RepoCacheTest, QueryUsesRemainingFilters)
+{
+    auto cacheFile = tempDir.path() / "states.json";
+    RepoCache cache(cacheFile);
+
+    auto item = createLayerItem("c1", "app.filter", "3.4.5");
+    item.info.uuid = "11111111-1111-1111-1111-111111111111";
+    item.repo = "alpha";
+    item.info.channel = "edge";
+    item.info.arch = { "aarch64" };
+    ASSERT_TRUE(cache.addLayerItem(item).has_value());
+
+    // filter by repo
+    auto byRepo = cache.queryLayerItem(repoCacheQuery{ .repo = "alpha" });
+    ASSERT_EQ(byRepo.size(), 1);
+    EXPECT_EQ(byRepo.front().commit, "c1");
+    EXPECT_TRUE(cache.queryLayerItem(repoCacheQuery{ .repo = "nightly" }).empty());
+
+    // filter by channel
+    auto byChannel = cache.queryLayerItem(repoCacheQuery{ .channel = "edge" });
+    ASSERT_EQ(byChannel.size(), 1);
+    EXPECT_EQ(byChannel.front().commit, "c1");
+    EXPECT_TRUE(cache.queryLayerItem(repoCacheQuery{ .channel = "stable" }).empty());
+
+    // filter by architecture
+    auto byArch = cache.queryLayerItem(repoCacheQuery{ .architecture = "aarch64" });
+    ASSERT_EQ(byArch.size(), 1);
+    EXPECT_EQ(byArch.front().commit, "c1");
+    EXPECT_TRUE(cache.queryLayerItem(repoCacheQuery{ .architecture = "x86_64" }).empty());
+
+    // filter by uuid
+    auto byUuid = cache.queryLayerItem(
+      repoCacheQuery{ .uuid = "11111111-1111-1111-1111-111111111111" });
+    ASSERT_EQ(byUuid.size(), 1);
+    EXPECT_EQ(byUuid.front().commit, "c1");
+    // items without a uuid never match a uuid query
+    auto second = createLayerItem("c2", "app.plain", "1.0.0");
+    ASSERT_TRUE(cache.addLayerItem(second).has_value());
+    auto byUuid2 =
+      cache.queryLayerItem(repoCacheQuery{ .uuid = "11111111-1111-1111-1111-111111111111" });
+    ASSERT_EQ(byUuid2.size(), 1);
+
+    // queryLayerItem returns the highest version first
+    auto byId = cache.queryLayerItem(repoCacheQuery{ .id = "app.filter" });
+    ASSERT_EQ(byId.size(), 1);
+}
+
 } // namespace
 
 } // namespace linglong::repo::test

@@ -33,74 +33,13 @@
 
 ## :gear: Installation
 
-Installation instructions for supported distributions:
-
-### deepin 23
-
-Install:
+One-click installation:
 
 ```sh
-echo "deb [trusted=yes] https://ci.deepin.com/repo/obs/linglong:/CI:/release/Deepin_23/ ./" | sudo tee /etc/apt/sources.list.d/linglong.list
-sudo apt update
-sudo apt install linglong-bin
+curl -fsSL https://get.linyaps.org.cn | sh
 ```
 
-### Fedora 41
-
-```sh
-sudo dnf config-manager addrepo --from-repofile "https://ci.deepin.com/repo/obs/linglong:/CI:/release/Fedora_41/linglong%3ACI%3Arelease.repo"
-sudo dnf update
-sudo dnf install linglong-bin
-```
-
-### Ubuntu 24.04
-
-```sh
-echo "deb [trusted=yes] https://ci.deepin.com/repo/obs/linglong:/CI:/release/xUbuntu_24.04/ ./" | sudo tee /etc/apt/sources.list.d/linglong.list
-sudo apt update
-sudo apt install linglong-bin
-```
-
-### Debian 12
-
-```sh
-echo "deb [trusted=yes] https://ci.deepin.com/repo/obs/linglong:/CI:/release/Debian_12/ ./" | sudo tee /etc/apt/sources.list.d/linglong.list
-sudo apt update
-sudo apt install linglong-bin
-```
-
-### openEuler 23.09
-
-```sh
-sudo dnf config-manager --add-repo "https://ci.deepin.com/repo/obs/linglong:/CI:/release/openEuler_23.09/linglong%3ACI%3Arelease.repo"
-sudo sh -c "echo gpgcheck=0 >> /etc/yum.repos.d/linglong%3ACI%3Arelease.repo"
-sudo dnf update
-sudo dnf install linglong-bin
-```
-
-### uos 1070
-
-```sh
-echo "deb [trusted=yes] https://ci.deepin.com/repo/obs/linglong:/CI:/release/uos_1070/ ./" | sudo tee /etc/apt/sources.list.d/linglong.list
-sudo apt update
-sudo apt install linglong-bin
-```
-
-### AnolisOS 8
-
-```sh
-sudo dnf config-manager addrepo --from-repofile "https://ci.deepin.com/repo/obs/linglong:/CI:/release/AnolisOS_8/linglong%3ACI%3Arelease.repo"
-sudo dnf update
-sudo dnf install linglong-bin
-```
-
-### openkylin 2.0
-
-```sh
-echo "deb [trusted=yes] https://ci.deepin.com/repo/obs/linglong:/CI:/release/openkylin_2.0/ ./" | sudo tee /etc/apt/sources.list.d/linglong.list
-sudo apt update
-sudo apt install linglong-bin
-```
+You can also install manually for a supported distribution: see [Install Linyaps](https://linyaps.org.cn/guide/start/install.html).
 
 ## :rocket: Quick Start
 

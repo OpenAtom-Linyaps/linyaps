@@ -133,7 +133,6 @@ RepoCache::addLayerItem(const api::types::v1::RepositoryCacheLayersItem &item)
 
     auto it = findMatchingItem(item);
     if (it) {
-        Q_ASSERT(false);
         return LINGLONG_ERR("item already exist");
     }
 
@@ -175,7 +174,6 @@ RepoCache::deleteLayerItem(const api::types::v1::RepositoryCacheLayersItem &item
 
     auto it = findMatchingItem(item);
     if (!it) {
-        Q_ASSERT(false);
         return LINGLONG_ERR(it);
     }
 

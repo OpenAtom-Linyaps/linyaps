@@ -62,7 +62,7 @@ WaylandSecurityContextManagerV1::WaylandSecurityContextManagerV1()
         },
         []([[maybe_unused]] void *data,
            [[maybe_unused]] wl_registry *registry,
-           [[maybe_unused]] uint32_t id) {}, // we don't need to handle this
+           [[maybe_unused]] uint32_t id) { }, // we don't need to handle this
     };
 
     auto ret = wl_registry_add_listener(registry, &registry_listener, this);

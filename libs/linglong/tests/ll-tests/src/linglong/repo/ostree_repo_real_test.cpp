@@ -54,19 +54,19 @@ protected:
         ASSERT_TRUE(created.has_value()) << created.error().message();
         repo = std::move(*created);
 
-        appRef = importLayer("com.example.app",
-                             "1.0.0",
-                             "app",
-                             "binary",
-                             { "files/usr/bin/hello",
-                               "files/share/applications/com.example.app.desktop" });
+        appRef = importLayer(
+          "com.example.app",
+          "1.0.0",
+          "app",
+          "binary",
+          { "files/usr/bin/hello", "files/share/applications/com.example.app.desktop" });
         ASSERT_TRUE(appRef.has_value()) << "failed to import app layer";
-        runtimeRef = importLayer("org.deepin.runtime",
-                                 "23",
-                                 "runtime",
-                                 "binary",
-                                 { "files/usr/lib/libruntime.so",
-                                   "files/lib/systemd/user/org.deepin.runtime.service" });
+        runtimeRef = importLayer(
+          "org.deepin.runtime",
+          "23",
+          "runtime",
+          "binary",
+          { "files/usr/lib/libruntime.so", "files/lib/systemd/user/org.deepin.runtime.service" });
         ASSERT_TRUE(runtimeRef.has_value()) << "failed to import runtime layer";
     }
 
@@ -215,8 +215,7 @@ TEST_F(RealRepoTest, ClearReferenceAndLatestLocal)
 
 TEST_F(RealRepoTest, ListLocalAppsReturnsLatestVersionPerApp)
 {
-    importLayer("com.example.app", "2.0.0", "app", "binary",
-                { "files/usr/bin/hello2" });
+    importLayer("com.example.app", "2.0.0", "app", "binary", { "files/usr/bin/hello2" });
 
     auto apps = repo->listLocalApps();
     ASSERT_TRUE(apps.has_value()) << apps.error().message();
@@ -283,11 +282,8 @@ TEST_F(RealRepoTest, QueriesForMissingReferencesFail)
 TEST_F(RealRepoTest, MergeModulesMergesMultipleModules)
 {
     // Add a second (develop) module for the same app id/version/arch.
-    auto developRef = importLayer("com.example.app",
-                                  "1.0.0",
-                                  "app",
-                                  "develop",
-                                  { "files/usr/include/hello.h" });
+    auto developRef =
+      importLayer("com.example.app", "1.0.0", "app", "develop", { "files/usr/include/hello.h" });
     ASSERT_TRUE(developRef.has_value());
 
     auto modules = repo->getModuleList(*appRef);
@@ -304,11 +300,8 @@ TEST_F(RealRepoTest, MergeModulesMergesMultipleModules)
 
 TEST_F(RealRepoTest, CreateTempMergedModuleDirWorks)
 {
-    auto developRef = importLayer("com.example.app",
-                                  "1.0.0",
-                                  "app",
-                                  "develop",
-                                  { "files/usr/include/hello.h" });
+    auto developRef =
+      importLayer("com.example.app", "1.0.0", "app", "develop", { "files/usr/include/hello.h" });
     ASSERT_TRUE(developRef.has_value());
 
     // The caller must ensure the <repo>/merged output directory exists.
@@ -372,12 +365,12 @@ TEST_F(RealRepoTest, UpgradableAppsDetectsNewerRemote)
     auto remoteRef = Reference::parse("stable:com.example.app/2.0.0/x86_64");
     ASSERT_TRUE(remoteRef.has_value());
     EXPECT_CALL(*mock, latestRemoteReference(::testing::_))
-      .WillOnce(::testing::Return(
-        linglong::package::ReferenceWithRepo{
-          .repo = linglong::api::types::v1::Repo{
-            .name = "stable", .priority = 0, .url = "https://example.com/repo" },
-          .reference = *remoteRef,
-        }));
+      .WillOnce(::testing::Return(linglong::package::ReferenceWithRepo{
+        .repo = linglong::api::types::v1::Repo{ .name = "stable",
+                                                .priority = 0,
+                                                .url = "https://example.com/repo" },
+        .reference = *remoteRef,
+      }));
 
     auto upgradeList = mock->upgradableApps();
     ASSERT_TRUE(upgradeList.has_value()) << upgradeList.error().message();

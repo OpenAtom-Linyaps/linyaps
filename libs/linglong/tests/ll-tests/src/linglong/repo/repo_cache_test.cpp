@@ -258,8 +258,8 @@ TEST_F(RepoCacheTest, QueryUsesRemainingFilters)
     EXPECT_TRUE(cache.queryLayerItem(repoCacheQuery{ .architecture = "x86_64" }).empty());
 
     // filter by uuid
-    auto byUuid = cache.queryLayerItem(
-      repoCacheQuery{ .uuid = "11111111-1111-1111-1111-111111111111" });
+    auto byUuid =
+      cache.queryLayerItem(repoCacheQuery{ .uuid = "11111111-1111-1111-1111-111111111111" });
     ASSERT_EQ(byUuid.size(), 1);
     EXPECT_EQ(byUuid.front().commit, "c1");
     // items without a uuid never match a uuid query

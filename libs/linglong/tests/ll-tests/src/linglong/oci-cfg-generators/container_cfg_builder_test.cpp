@@ -791,7 +791,9 @@ TEST_F(ContainerCfgBuilderTest, BindDevNodeWithDefaultAndCustomFilter)
         builder.setAppId("org.deepin.demo")
           .setBasePath(baseDir.path())
           .setBundlePath(bundleDir.path())
-          .bindDevNode([](const std::string &) { return false; })
+          .bindDevNode([](const std::string &) {
+              return false;
+          })
           .bindDefault();
 
         auto result = builder.build();
@@ -804,7 +806,9 @@ TEST_F(ContainerCfgBuilderTest, BindDevNodeWithDefaultAndCustomFilter)
         builder.setAppId("org.deepin.demo")
           .setBasePath(baseDir.path())
           .setBundlePath(bundleDir.path())
-          .bindDevNode([](const std::string &name) { return name == "loop0"; });
+          .bindDevNode([](const std::string &name) {
+              return name == "loop0";
+          });
 
         auto result = builder.build();
         ASSERT_TRUE(result.has_value()) << result.error().message();
@@ -858,8 +862,7 @@ TEST_F(ContainerCfgBuilderTest, ForwardEnvFromEnvironWhenListEmpty)
 
     ASSERT_TRUE(builder.getConfig().process.has_value());
     ASSERT_TRUE(builder.getConfig().process->env.has_value());
-    EXPECT_THAT(*builder.getConfig().process->env,
-                ::testing::Contains("LL_CUSTOM_TEST_VAR=hello"));
+    EXPECT_THAT(*builder.getConfig().process->env, ::testing::Contains("LL_CUSTOM_TEST_VAR=hello"));
     unsetenv("LL_CUSTOM_TEST_VAR");
 }
 
@@ -1021,8 +1024,8 @@ TEST_F(ContainerCfgBuilderTest, BindXDGRuntimeWithoutRunMountFails)
       .setBasePath(baseDir.path())
       .setBundlePath(bundleDir.path())
       .bindXDGRuntime()
-      .enablePipewireSocketMount(PipewireMountOption{
-        .hostSocketPath = baseDir.path() / "pipewire-0" });
+      .enablePipewireSocketMount(
+        PipewireMountOption{ .hostSocketPath = baseDir.path() / "pipewire-0" });
 
     auto result = builder.build();
     ASSERT_FALSE(result.has_value());
@@ -1067,7 +1070,9 @@ TEST_F(ContainerCfgBuilderTest, SelfAdjustingMountFixesMissingChild)
     // is missing on the host, which forces the self-adjusting mount to remount
     // an ancestor as tmpfs and bind the existing children underneath.
     std::filesystem::create_directories(appDir.path());
-    { std::ofstream{ appDir.path() / "binary" } << "bin"; }
+    {
+        std::ofstream{ appDir.path() / "binary" } << "bin";
+    }
 
     ContainerCfgBuilder builder;
     builder.setAppId("org.deepin.demo")
@@ -1123,7 +1128,8 @@ TEST_F(ContainerCfgBuilderTest, EnableIPCMountFailsWithoutXDGRuntime)
 
     auto result = builder.build();
     ASSERT_FALSE(result.has_value());
-    EXPECT_THAT(result.error().message(), ::testing::HasSubstr("must enable xdg runtime mount first"));
+    EXPECT_THAT(result.error().message(),
+                ::testing::HasSubstr("must enable xdg runtime mount first"));
 }
 
 TEST_F(ContainerCfgBuilderTest, EnableIPCMountBindsUnixSocket)

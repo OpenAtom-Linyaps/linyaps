@@ -134,8 +134,7 @@ TEST(MigrateTest, RealOstreeRepoMigratesUnprefixedRefs)
 
     // A ref without the "stable:" prefix must be migrated into the default
     // repo namespace; a ref that already carries the prefix must be untouched.
-    const char *checksum =
-      "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+    const char *checksum = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
     ASSERT_TRUE(ostree_repo_prepare_transaction(repo, nullptr, nullptr, &gErr));
     // NOTE: ostree_repo_transaction_set_ref takes (repo, prefix, ref, commit)
     // and returns void in this ostree version; errors surface at commit.
@@ -158,12 +157,14 @@ TEST(MigrateTest, RealOstreeRepoMigratesUnprefixedRefs)
     // exist and the legacy layer symlink is created.)
     g_autoptr(GHashTable) refs = nullptr;
     ASSERT_TRUE(ostree_repo_list_refs(repo, nullptr, &refs, nullptr, &gErr));
+
     struct RefCheck
     {
         bool unprefixedRemaining = false;
         bool prefixedMain = false;
         bool prefixedAlready = false;
     } check;
+
     g_hash_table_foreach(
       refs,
       [](gpointer key, gpointer /*value*/, gpointer data) {

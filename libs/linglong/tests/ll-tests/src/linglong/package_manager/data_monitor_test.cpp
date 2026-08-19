@@ -40,10 +40,10 @@ TEST(DataMonitor, StartStopAndMeasureSpeed)
 
 TEST(DataMonitor, StopWithoutStartIsSafe)
 {
-    DataMonitor monitor(2, 1, [](DataMonitor &) {});
+    DataMonitor monitor(2, 1, [](DataMonitor &) { });
     monitor.stop();
     // repeated stop is safe as well
-    DataMonitor monitor2(2, 1, [](DataMonitor &) {});
+    DataMonitor monitor2(2, 1, [](DataMonitor &) { });
     monitor2.start();
     monitor2.stop();
     monitor2.stop();
@@ -51,7 +51,7 @@ TEST(DataMonitor, StopWithoutStartIsSafe)
 
 TEST(DataMonitor, HumanSpeedFormatting)
 {
-    DataMonitor monitor(3, 1, [](DataMonitor &) {});
+    DataMonitor monitor(3, 1, [](DataMonitor &) { });
 
     // No data -> 0 B/s
     EXPECT_EQ(monitor.getHumanSpeed(), "0B/s");

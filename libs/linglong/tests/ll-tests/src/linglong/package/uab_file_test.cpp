@@ -150,6 +150,10 @@ std::string readFile(const std::filesystem::path &path)
 
 TEST_F(UabFileTest, UnpackFuseOffset)
 {
+    if (!std::filesystem::exists("/dev/fuse")) {
+        GTEST_SKIP() << "fuse device is not available";
+    }
+
     // 初始化UABFile对象
     auto uab = linglong::package::UABFile::loadFromFile(uabFile);
     ASSERT_TRUE(uab.has_value()) << "Failed to load uab file";
@@ -164,6 +168,9 @@ TEST_F(UabFileTest, UnpackFuseOffset)
 
 TEST_F(UabFileTest, UnpackFuse)
 {
+    if (!std::filesystem::exists("/dev/fuse")) {
+        GTEST_SKIP() << "fuse device is not available";
+    }
     {
         auto ret = utils::Cmd("erofsfuse").exists();
         if (!ret) {

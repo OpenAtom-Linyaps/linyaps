@@ -89,3 +89,24 @@ TEST(InstallHooks, RejectUnterminatedOuterQuote)
 }
 
 } // namespace linglong::utils::details
+
+namespace linglong::utils {
+
+TEST(InstallHookManagerTest, EmptyHooksAreNoop)
+{
+    InstallHookManager manager;
+    EXPECT_TRUE(manager.executeInstallHooks("/tmp/test.uab").has_value());
+    EXPECT_TRUE(manager.executePostInstallHooks("org.deepin.demo", "/path").has_value());
+    EXPECT_TRUE(manager.executePostUninstallHooks("org.deepin.demo").has_value());
+}
+
+TEST(InstallHookManagerTest, ParseInstallHooksMissingDirYieldsNoHooks)
+{
+    // When LINGLONG_INSTALL_HOOKS_DIR does not exist, the directory iterator
+    // is empty and parseInstallHooks simply produces no commands.
+    InstallHookManager manager;
+    auto result = manager.parseInstallHooks();
+    EXPECT_TRUE(result.has_value()) << result.error().message();
+}
+
+} // namespace linglong::utils

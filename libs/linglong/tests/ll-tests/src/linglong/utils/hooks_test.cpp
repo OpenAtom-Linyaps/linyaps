@@ -95,7 +95,7 @@ namespace linglong::utils {
 TEST(InstallHookManagerTest, EmptyHooksAreNoop)
 {
     InstallHookManager manager;
-    EXPECT_TRUE(manager.executeInstallHooks(-1).has_value());
+    EXPECT_TRUE(manager.executeInstallHooks("/tmp/test.uab").has_value());
     EXPECT_TRUE(manager.executePostInstallHooks("org.deepin.demo", "/path").has_value());
     EXPECT_TRUE(manager.executePostUninstallHooks("org.deepin.demo").has_value());
 }

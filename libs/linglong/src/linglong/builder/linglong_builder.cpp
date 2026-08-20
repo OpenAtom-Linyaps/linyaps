@@ -20,6 +20,7 @@
 #include "linglong/package/uab_packager.h"
 #include "linglong/repo/config.h"
 #include "linglong/repo/ostree_repo.h"
+#include "linglong/package_manager/package_task.h"
 #include "linglong/runtime/container.h"
 #include "linglong/utils/cmd.h"
 #include "linglong/utils/error/error.h"

@@ -267,6 +267,13 @@ utils::error::Result<void> PackageUpdateAction::updateApp(Task &task,
             LogE("failed to merge modules: {}", merged.error());
         }
 
+        if (!depsOnly && newAppInfo) {
+            auto res = postUpdateApp(task, *localRef, refsToInstall.front().first);
+            if (!res) {
+                return LINGLONG_ERR(res);
+            }
+        }
+
         for (const auto &item : refsToInstall) {
             const auto &refRepo = item.first;
             auto hooks = pm.executePostInstallHooks(refRepo.reference);
@@ -275,13 +282,6 @@ utils::error::Result<void> PackageUpdateAction::updateApp(Task &task,
                      refRepo.reference.toString(),
                      hooks.error());
             }
-        }
-    }
-
-    if (!depsOnly && newAppInfo) {
-        auto res = postUpdateApp(task, *localRef, refsToInstall.front().first);
-        if (!res) {
-            return LINGLONG_ERR(res);
         }
     }
 

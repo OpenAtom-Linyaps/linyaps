@@ -244,7 +244,8 @@ utils::error::Result<void> UabInstallationAction::preInstall(PackageTask &task)
     task.updateState(linglong::api::types::v1::State::Processing, "installing uab");
 
     const auto &toCheck = checkedLayers.first.empty() ? checkedLayers.second : checkedLayers.first;
-    auto operation = getActionOperation(toCheck.front().info, extraModuleOnly(toCheck));
+    installingExtraModulesOnly = extraModuleOnly(toCheck);
+    auto operation = getActionOperation(toCheck.front().info, installingExtraModulesOnly);
     if (!operation) {
         return LINGLONG_ERR(operation);
     }
@@ -306,6 +307,25 @@ utils::error::Result<void> UabInstallationAction::postInstall(PackageTask &task)
         LogE("merge modules failed: {}", merged.error());
     }
 
+    if (operation.kind == "app") {
+        if (installingExtraModulesOnly) {
+            for (const auto &layer : checkedLayers.first) {
+                if (layer.info.kind != "app") {
+                    continue;
+                }
+                auto res = pm.applyApp(newRef, layer.info.packageInfoV2Module);
+                if (!res) {
+                    return LINGLONG_ERR(res);
+                }
+            }
+        } else {
+            auto res = oldRef ? pm.switchAppVersion(*oldRef, newRef, true) : pm.applyApp(newRef);
+            if (!res) {
+                return LINGLONG_ERR(res);
+            }
+        }
+    }
+
     auto ret = pm.executePostInstallHooks(newRef);
 
     transaction.addRollBack([this, ref = newRef]() noexcept {
@@ -319,16 +339,9 @@ utils::error::Result<void> UabInstallationAction::postInstall(PackageTask &task)
         LogW("failed to execute post-install hooks for {}: {}", newRef.toString(), ret.error());
     }
 
-    if (operation.kind == "app") {
-        auto res = oldRef ? pm.switchAppVersion(*oldRef, newRef, true) : pm.applyApp(newRef);
-        if (!res) {
-            return LINGLONG_ERR(res);
-        }
-    }
-
     transaction.commit();
 
-    if (operation.kind == "app" && operation.oldRef && !extraModuleOnly(checkedLayers.first)) {
+    if (operation.kind == "app" && operation.oldRef && !installingExtraModulesOnly) {
         auto pruneRet = options.noAutoPrune.value_or(false) ? repo.prune() : pm.pruneUnused();
         if (!pruneRet) {
             LogE("failed to prune after installing {}: {}", newRef.toString(), pruneRet.error());
@@ -377,6 +390,8 @@ UabInstallationAction::installUabLayer(const std::vector<api::types::v1::UabLaye
         if (!ret) {
             return LINGLONG_ERR(ret);
         }
+
+        this->repo.exportLayerSignData(*ret);
 
         std::for_each(overlays.begin(), overlays.end(), [](const std::filesystem::path &dir) {
             std::error_code ec;

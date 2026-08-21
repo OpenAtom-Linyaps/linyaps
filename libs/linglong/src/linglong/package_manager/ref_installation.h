@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2025 - 2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -53,6 +53,7 @@ private:
 
     package::FuzzyReference fuzzyRef;
     std::vector<std::string> modules;
+    bool installingExtraModulesOnly{ false };
 
     ActionOperation operation;
     std::string taskName;

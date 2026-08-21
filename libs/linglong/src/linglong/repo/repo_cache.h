@@ -25,7 +25,6 @@ struct repoCacheQuery
     std::optional<std::string> channel;
     std::optional<std::string> version; // could be fuzzy version
     std::optional<std::string> module;
-    std::optional<std::string> uuid;
     std::optional<bool> deleted;
     std::optional<std::string> architecture;
 

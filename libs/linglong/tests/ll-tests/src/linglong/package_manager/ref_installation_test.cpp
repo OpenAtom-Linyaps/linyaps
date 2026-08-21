@@ -85,9 +85,7 @@ public:
 
     MOCK_METHOD(utils::error::Result<api::types::v1::RepositoryCacheLayersItem>,
                 getLayerItem,
-                (const package::Reference &ref,
-                 std::string module,
-                 const std::optional<std::string> &subRef),
+                (const package::Reference &ref, std::string module),
                 (override, const, noexcept));
 
     MOCK_METHOD(std::vector<std::string>,
@@ -248,7 +246,7 @@ TEST_F(RefInstallationTest, InstallExtraOnly)
     auto localRef = package::Reference::parse("main:id/1.0.0/x86_64").value();
     EXPECT_CALL(*repo, latestLocalReference(_)).WillOnce(Return(localRef));
 
-    EXPECT_CALL(*repo, getLayerItem(localRef, "develop", _))
+    EXPECT_CALL(*repo, getLayerItem(localRef, "develop"))
       .WillOnce(Return(LINGLONG_ERR("not found")));
 
     api::types::v1::PackageInfoV2 infoBinary{

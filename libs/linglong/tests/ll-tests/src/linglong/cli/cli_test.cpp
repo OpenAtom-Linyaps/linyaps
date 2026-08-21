@@ -52,9 +52,7 @@ public:
                 (override, const, noexcept));
     MOCK_METHOD(utils::error::Result<api::types::v1::RepositoryCacheLayersItem>,
                 getLayerItem,
-                (const package::Reference &ref,
-                 std::string module,
-                 const std::optional<std::string> &subRef),
+                (const package::Reference &ref, std::string module),
                 (override, const, noexcept));
     MOCK_METHOD(utils::error::Result<package::ReferenceWithRepo>,
                 latestRemoteReference,
@@ -709,12 +707,11 @@ TEST_F(CliTest, contentPreferDesktopFromDefaultSharedDir)
     layerItem.info.kind = "app";
 
     EXPECT_CALL(*repo, clearReferenceLocal(_, _)).WillOnce(Return(*ref));
-    EXPECT_CALL(*repo, getLayerItem(_, _, _))
-      .WillRepeatedly(
-        [layerItem](const package::Reference &, std::string, const std::optional<std::string> &)
-          -> utils::error::Result<api::types::v1::RepositoryCacheLayersItem> {
-            return layerItem;
-        });
+    EXPECT_CALL(*repo, getLayerItem(_, _))
+      .WillRepeatedly([layerItem](const package::Reference &, std::string)
+                        -> utils::error::Result<api::types::v1::RepositoryCacheLayersItem> {
+          return layerItem;
+      });
     EXPECT_CALL(*printer,
                 printContent(ElementsAre(QString::fromStdString(defaultDesktopPath.string()))))
       .WillOnce(Return());
@@ -751,12 +748,11 @@ TEST_F(CliTest, contentResolvesDesktopFromSymlinkedEntriesShareDir)
     layerItem.info.kind = "app";
 
     EXPECT_CALL(*repo, clearReferenceLocal(_, _)).WillOnce(Return(*ref));
-    EXPECT_CALL(*repo, getLayerItem(_, _, _))
-      .WillRepeatedly(
-        [layerItem](const package::Reference &, std::string, const std::optional<std::string> &)
-          -> utils::error::Result<api::types::v1::RepositoryCacheLayersItem> {
-            return layerItem;
-        });
+    EXPECT_CALL(*repo, getLayerItem(_, _))
+      .WillRepeatedly([layerItem](const package::Reference &, std::string)
+                        -> utils::error::Result<api::types::v1::RepositoryCacheLayersItem> {
+          return layerItem;
+      });
     EXPECT_CALL(*printer,
                 printContent(ElementsAre(QString::fromStdString(defaultDesktopPath.string()))))
       .WillOnce(Return());
@@ -793,12 +789,11 @@ TEST_F(CliTest, contentResolvesOverlayDesktopFromSymlinkedEntriesShareDir)
     layerItem.info.kind = "app";
 
     EXPECT_CALL(*repo, clearReferenceLocal(_, _)).WillOnce(Return(*ref));
-    EXPECT_CALL(*repo, getLayerItem(_, _, _))
-      .WillRepeatedly(
-        [layerItem](const package::Reference &, std::string, const std::optional<std::string> &)
-          -> utils::error::Result<api::types::v1::RepositoryCacheLayersItem> {
-            return layerItem;
-        });
+    EXPECT_CALL(*repo, getLayerItem(_, _))
+      .WillRepeatedly([layerItem](const package::Reference &, std::string)
+                        -> utils::error::Result<api::types::v1::RepositoryCacheLayersItem> {
+          return layerItem;
+      });
     EXPECT_CALL(*printer,
                 printContent(ElementsAre(QString::fromStdString(overlayDesktopPath.string()))))
       .WillOnce(Return());
@@ -827,12 +822,11 @@ TEST_F(CliTest, contentFallbackDesktopToOverlaySharedDir)
     layerItem.info.kind = "app";
 
     EXPECT_CALL(*repo, clearReferenceLocal(_, _)).WillOnce(Return(*ref));
-    EXPECT_CALL(*repo, getLayerItem(_, _, _))
-      .WillRepeatedly(
-        [layerItem](const package::Reference &, std::string, const std::optional<std::string> &)
-          -> utils::error::Result<api::types::v1::RepositoryCacheLayersItem> {
-            return layerItem;
-        });
+    EXPECT_CALL(*repo, getLayerItem(_, _))
+      .WillRepeatedly([layerItem](const package::Reference &, std::string)
+                        -> utils::error::Result<api::types::v1::RepositoryCacheLayersItem> {
+          return layerItem;
+      });
     EXPECT_CALL(*printer,
                 printContent(ElementsAre(QString::fromStdString(overlayDesktopPath.string()))))
       .WillOnce(Return());
@@ -862,12 +856,11 @@ TEST_F(CliTest, contentMapsLegacySystemdUserPathToExportedLibPath)
     layerItem.info.kind = "app";
 
     EXPECT_CALL(*repo, clearReferenceLocal(_, _)).WillOnce(Return(*ref));
-    EXPECT_CALL(*repo, getLayerItem(_, _, _))
-      .WillRepeatedly(
-        [layerItem](const package::Reference &, std::string, const std::optional<std::string> &)
-          -> utils::error::Result<api::types::v1::RepositoryCacheLayersItem> {
-            return layerItem;
-        });
+    EXPECT_CALL(*repo, getLayerItem(_, _))
+      .WillRepeatedly([layerItem](const package::Reference &, std::string)
+                        -> utils::error::Result<api::types::v1::RepositoryCacheLayersItem> {
+          return layerItem;
+      });
     EXPECT_CALL(*printer, printContent(ElementsAre(QString::fromStdString(exportedFile.string()))))
       .WillOnce(Return());
 
@@ -899,12 +892,11 @@ TEST_F(CliTest, contentPrefersLibSystemdUserOverLegacySharePath)
     layerItem.info.kind = "app";
 
     EXPECT_CALL(*repo, clearReferenceLocal(_, _)).WillOnce(Return(*ref));
-    EXPECT_CALL(*repo, getLayerItem(_, _, _))
-      .WillRepeatedly(
-        [layerItem](const package::Reference &, std::string, const std::optional<std::string> &)
-          -> utils::error::Result<api::types::v1::RepositoryCacheLayersItem> {
-            return layerItem;
-        });
+    EXPECT_CALL(*repo, getLayerItem(_, _))
+      .WillRepeatedly([layerItem](const package::Reference &, std::string)
+                        -> utils::error::Result<api::types::v1::RepositoryCacheLayersItem> {
+          return layerItem;
+      });
     EXPECT_CALL(*printer, printContent(ElementsAre(QString::fromStdString(exportedFile.string()))))
       .WillOnce(Return());
 

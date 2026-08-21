@@ -605,19 +605,11 @@ utils::error::Result<void> RunContext::resolveLayer(bool depsExcludeDev,
 {
     LINGLONG_TRACE("resolve layers");
 
-    std::optional<std::string> subRef;
-    if (appLayer) {
-        const auto &info = appLayer->getCachedItem().info;
-        if (info.uuid) {
-            subRef = info.uuid;
-        }
-    }
-
     std::optional<std::vector<std::string>> depsExcludeModules;
     if (depsExcludeDev) {
         depsExcludeModules = std::vector<std::string>{ "develop" };
     }
-    auto ref = baseLayer->resolveLayer(std::nullopt, depsExcludeModules, subRef);
+    auto ref = baseLayer->resolveLayer(std::nullopt, depsExcludeModules);
     if (!ref.has_value()) {
         return LINGLONG_ERR("failed to resolve base layer", ref);
     }
@@ -634,7 +626,7 @@ utils::error::Result<void> RunContext::resolveLayer(bool depsExcludeDev,
     }
 
     if (runtimeLayer) {
-        auto ref = runtimeLayer->resolveLayer(std::nullopt, depsExcludeModules, subRef);
+        auto ref = runtimeLayer->resolveLayer(std::nullopt, depsExcludeModules);
         if (!ref.has_value()) {
             return LINGLONG_ERR("failed to resolve runtime layer", ref);
         }

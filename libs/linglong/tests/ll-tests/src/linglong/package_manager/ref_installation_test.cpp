@@ -53,7 +53,7 @@ public:
 
     MOCK_METHOD(utils::error::Result<void>,
                 applyApp,
-                (const package::Reference &ref),
+                (const package::Reference &ref, const std::optional<std::string> &module),
                 (override, noexcept));
 
     MOCK_METHOD(utils::error::Result<std::optional<package::ReferenceWithRepo>>,
@@ -85,9 +85,7 @@ public:
 
     MOCK_METHOD(utils::error::Result<api::types::v1::RepositoryCacheLayersItem>,
                 getLayerItem,
-                (const package::Reference &ref,
-                 std::string module,
-                 const std::optional<std::string> &subRef),
+                (const package::Reference &ref, std::string module),
                 (override, const, noexcept));
 
     MOCK_METHOD(std::vector<std::string>,
@@ -202,9 +200,21 @@ TEST_F(RefInstallationTest, InstallApp)
     EXPECT_CALL(*pm, needToInstall("base", _)).WillOnce(Return(std::nullopt));
     EXPECT_CALL(*pm, needToInstall("runtime", _)).WillOnce(Return(std::nullopt));
 
-    EXPECT_CALL(*pm, applyApp(_)).WillOnce(Return(utils::error::Result<void>{}));
+    bool modulesMerged = false;
+    bool appApplied = false;
+    EXPECT_CALL(*pm, applyApp(_, ::testing::Eq(std::optional<std::string>{})))
+      .WillOnce([&appApplied, &modulesMerged](const auto &, const auto &) {
+          EXPECT_TRUE(modulesMerged);
+          appApplied = true;
+          return utils::error::Result<void>{};
+      });
+    EXPECT_CALL(*pm, executePostInstallHooks(_)).WillOnce([&appApplied](const auto &) {
+        EXPECT_TRUE(appApplied);
+        return utils::error::Result<void>{};
+    });
     EXPECT_CALL(*pm, pruneUnused()).Times(0);
-    EXPECT_CALL(*repo, mergeModules()).WillOnce([]() {
+    EXPECT_CALL(*repo, mergeModules()).WillOnce([&modulesMerged]() {
+        modulesMerged = true;
         return utils::error::Result<void>{};
     });
     service::PackageTask task({});
@@ -248,7 +258,7 @@ TEST_F(RefInstallationTest, InstallExtraOnly)
     auto localRef = package::Reference::parse("main:id/1.0.0/x86_64").value();
     EXPECT_CALL(*repo, latestLocalReference(_)).WillOnce(Return(localRef));
 
-    EXPECT_CALL(*repo, getLayerItem(localRef, "develop", _))
+    EXPECT_CALL(*repo, getLayerItem(localRef, "develop"))
       .WillOnce(Return(LINGLONG_ERR("not found")));
 
     api::types::v1::PackageInfoV2 infoBinary{
@@ -294,7 +304,8 @@ TEST_F(RefInstallationTest, InstallExtraOnly)
     EXPECT_CALL(*pm, needToInstall("base", _)).WillOnce(Return(std::nullopt));
     EXPECT_CALL(*pm, needToInstall("runtime", _)).WillOnce(Return(std::nullopt));
 
-    EXPECT_CALL(*pm, applyApp(_)).WillOnce(Return(utils::error::Result<void>{}));
+    EXPECT_CALL(*pm, applyApp(_, ::testing::Eq(std::optional<std::string>{ "develop" })))
+      .WillOnce(Return(utils::error::Result<void>{}));
     EXPECT_CALL(*pm, pruneUnused()).Times(0);
     EXPECT_CALL(*repo, mergeModules()).WillOnce([]() {
         return utils::error::Result<void>{};
@@ -371,7 +382,8 @@ TEST_F(RefInstallationTest, InstallMultipleModules)
     EXPECT_CALL(*pm, needToInstall("base", _)).WillOnce(Return(std::nullopt));
     EXPECT_CALL(*pm, needToInstall("runtime", _)).WillOnce(Return(std::nullopt));
 
-    EXPECT_CALL(*pm, applyApp(_)).WillOnce(Return(utils::error::Result<void>{}));
+    EXPECT_CALL(*pm, applyApp(_, ::testing::Eq(std::optional<std::string>{})))
+      .WillOnce(Return(utils::error::Result<void>{}));
     EXPECT_CALL(*pm, pruneUnused()).Times(0);
     EXPECT_CALL(*repo, mergeModules()).WillOnce([]() {
         return utils::error::Result<void>{};

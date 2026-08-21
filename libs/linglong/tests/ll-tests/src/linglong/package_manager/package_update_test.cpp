@@ -181,9 +181,7 @@ public:
 
     MOCK_METHOD(utils::error::Result<api::types::v1::RepositoryCacheLayersItem>,
                 getLayerItem,
-                (const package::Reference &ref,
-                 std::string module,
-                 const std::optional<std::string> &subRef),
+                (const package::Reference &ref, std::string module),
                 (override, const, noexcept));
 
     MOCK_METHOD(utils::error::Result<void>, mergeModules, (), (override, const, noexcept));
@@ -301,7 +299,7 @@ TEST_F(PackageUpdateActionTest, Update)
         };
     });
 
-    EXPECT_CALL(*repo, getLayerItem(_, _, _))
+    EXPECT_CALL(*repo, getLayerItem(_, _))
       .WillOnce(Return(utils::error::Result<api::types::v1::RepositoryCacheLayersItem>{
         api::types::v1::RepositoryCacheLayersItem{
           .info = testdata::runtimeV100,
@@ -365,7 +363,7 @@ TEST_F(PackageUpdateActionTest, SkipPruneWhenNothingChanged)
       .WillOnce(DoAll(SetArgReferee<1>(*baseRef), Return(std::nullopt)))
       // runtime has no updates
       .WillOnce(DoAll(SetArgReferee<1>(*runtimeRef), Return(std::nullopt)));
-    EXPECT_CALL(*repo, getLayerItem(_, _, _))
+    EXPECT_CALL(*repo, getLayerItem(_, _))
       .WillOnce(Return(utils::error::Result<api::types::v1::RepositoryCacheLayersItem>{
         api::types::v1::RepositoryCacheLayersItem{ .info = testdata::baseV100 } }))
       .WillOnce(Return(utils::error::Result<api::types::v1::RepositoryCacheLayersItem>{
@@ -415,7 +413,7 @@ TEST_F(PackageUpdateActionTest, PruneRepositoryWhenAutoPruneDisabled)
       .WillOnce(Return(repo::RefMetaData{ "rev1", nlohmann::json(testdata::id2V110).dump() }));
     EXPECT_CALL(*repo, getRefStatistics(_))
       .WillOnce(Return(repo::RefStatistics{ .archived = 1024, .needed_archived = 512 }));
-    EXPECT_CALL(*repo, getLayerItem(_, _, _))
+    EXPECT_CALL(*repo, getLayerItem(_, _))
       .WillOnce(Return(utils::error::Result<api::types::v1::RepositoryCacheLayersItem>{
         api::types::v1::RepositoryCacheLayersItem{ .info = testdata::baseV101 } }))
       .WillOnce(Return(utils::error::Result<api::types::v1::RepositoryCacheLayersItem>{
@@ -474,7 +472,7 @@ TEST_F(PackageUpdateActionTest, InstallChangedDependencyAndPruneUnusedWhenAppUpd
             repo::RefStatistics{ .archived = 1024, .needed_archived = 512 }
         };
     });
-    EXPECT_CALL(*repo, getLayerItem(_, _, _))
+    EXPECT_CALL(*repo, getLayerItem(_, _))
       .WillOnce(Return(utils::error::Result<api::types::v1::RepositoryCacheLayersItem>{
         api::types::v1::RepositoryCacheLayersItem{ .info = testdata::runtimeV100 } }));
     EXPECT_CALL(*pm, installRefModule(_, _, "binary"))

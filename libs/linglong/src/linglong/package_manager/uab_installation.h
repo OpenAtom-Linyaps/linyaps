@@ -56,11 +56,11 @@ private:
     utils::error::Result<void> installDistributionModeUAB(PackageTask &task);
     utils::error::Result<void> prepareUAB();
     utils::error::Result<void> loadUABFile(const std::filesystem::path &path);
-    utils::error::Result<void> installUabLayer(const std::vector<api::types::v1::UabLayer> &layers,
-                                               std::optional<std::string> subRef = std::nullopt);
+    utils::error::Result<void> installUabLayer(const std::vector<api::types::v1::UabLayer> &layers);
 
     int fd;
     ActionOperation operation;
+    bool installingExtraModulesOnly{ false };
     std::string taskName;
     CheckedLayers checkedLayers;
     std::unique_ptr<package::UABFile> uabFile;

@@ -380,13 +380,14 @@ PackageManager::getAllRunningContainers() noexcept
     return LINGLONG_OK;
 }
 
-utils::error::Result<void> PackageManager::applyApp(const package::Reference &reference) noexcept
+utils::error::Result<void> PackageManager::applyApp(
+  const package::Reference &reference, const std::optional<std::string> &module) noexcept
 {
     auto refStr = reference.toString();
     LINGLONG_TRACE(fmt::format("apply app {}", refStr));
 
     LogI("export new reference", refStr);
-    this->repo->exportReference(reference);
+    this->repo->exportAppReference(reference, module);
 
     auto res = tryGenerateCache(reference);
     if (!res) {
@@ -396,18 +397,21 @@ utils::error::Result<void> PackageManager::applyApp(const package::Reference &re
     return LINGLONG_OK;
 }
 
-utils::error::Result<void> PackageManager::unapplyApp(const package::Reference &reference) noexcept
+utils::error::Result<void> PackageManager::unapplyApp(
+  const package::Reference &reference, const std::optional<std::string> &module) noexcept
 {
     auto refStr = reference.toString();
     LINGLONG_TRACE(fmt::format("unapply app {}", refStr));
 
-    auto removed = this->removeCache(reference);
-    if (!removed) {
-        LogW("Failed to remove old reference {} cache: {}", refStr, removed.error());
+    if (!module) {
+        auto removed = this->removeCache(reference);
+        if (!removed) {
+            LogW("Failed to remove old reference {} cache: {}", refStr, removed.error());
+        }
     }
 
     LogI("unexport old reference {}", refStr);
-    this->repo->unexportReference(reference);
+    this->repo->unexportAppReference(reference, module);
 
     return LINGLONG_OK;
 }
@@ -768,26 +772,14 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
               taskRef.reportError(std::move(result).error());
               return;
           }
+          this->repo->exportLayerSignData(*result);
 
           auto merged = this->repo->mergeModules();
           if (!merged) {
               LogE("failed to merge modules for {}: {}", packageRef.toString(), merged.error());
           }
 
-          auto hooks = executePostInstallHooks(packageRef);
-          if (!hooks) {
-              LogW("failed to execute post-install hooks for {}: {}",
-                   packageRef.toString(),
-                   hooks.error());
-          }
-
-          // develop module only need to import
-          if (module != "binary" && module != "runtime") {
-              taskRef.updateState(linglong::api::types::v1::State::Succeed,
-                                  "install layer successfully");
-              return;
-          }
-
+          bool appReplaced = false;
           if (info->kind == "app") {
               auto newRef = package::Reference::fromPackageInfo(*info);
               if (!newRef) {
@@ -795,8 +787,14 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
                   return;
               }
 
-              bool appReplaced = false;
-              if (!localRef) {
+              const auto mainModule = module == "binary" || module == "runtime";
+              if (!mainModule) {
+                  auto res = applyApp(*newRef, module);
+                  if (!res) {
+                      taskRef.reportError(std::move(res).error());
+                      return;
+                  }
+              } else if (!localRef) {
                   auto res = applyApp(*newRef);
                   if (!res) {
                       taskRef.reportError(std::move(res).error());
@@ -816,15 +814,22 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
                       }
                   }
               }
+          }
 
-              if (appReplaced) {
-                  auto pruneRet =
-                    options.noAutoPrune.value_or(false) ? this->repo->prune() : pruneUnused();
-                  if (!pruneRet) {
-                      LogE("failed to prune after installing {}: {}",
-                           newRef->toString(),
-                           pruneRet.error());
-                  }
+          auto hooks = executePostInstallHooks(packageRef);
+          if (!hooks) {
+              LogW("failed to execute post-install hooks for {}: {}",
+                   packageRef.toString(),
+                   hooks.error());
+          }
+
+          if (appReplaced) {
+              auto pruneRet =
+                options.noAutoPrune.value_or(false) ? this->repo->prune() : pruneUnused();
+              if (!pruneRet) {
+                  LogE("failed to prune after installing {}: {}",
+                       packageRef.toString(),
+                       pruneRet.error());
               }
           }
 
@@ -1159,21 +1164,24 @@ utils::error::Result<void> PackageManager::Uninstall(PackageTask &taskContext,
 
     std::vector<std::string> removedModules{ module };
     bool mayHaveUnusedDependencies = false;
+    const auto mainModule = module == "binary" || module == "runtime";
 
-    if (module == "binary" || module == "runtime") {
+    auto item = repo->getLayerItem(ref, module);
+    if (!item) {
+        return LINGLONG_ERR(item);
+    }
+
+    if (mainModule) {
         // remove main module means remove all modules
         removedModules = this->repo->getModuleList(ref);
+    }
 
-        auto item = repo->getLayerItem(ref);
-        if (!item) {
-            return LINGLONG_ERR(item);
+    if (item->info.kind == "app") {
+        auto res = mainModule ? unapplyApp(ref) : unapplyApp(ref, module);
+        if (!res) {
+            return LINGLONG_ERR(res);
         }
-
-        if (item->info.kind == "app") {
-            auto res = unapplyApp(ref);
-            if (!res) {
-                return LINGLONG_ERR(res);
-            }
+        if (mainModule) {
             mayHaveUnusedDependencies = true;
         }
     }
@@ -1277,6 +1285,8 @@ utils::error::Result<void> PackageManager::installRefModule(Task &task,
         return LINGLONG_ERR(res);
     }
 
+    repo->exportLayerSignData(ref.reference, module);
+
     return LINGLONG_OK;
 }
 
@@ -1318,6 +1328,8 @@ utils::error::Result<void> PackageManager::installRef(Task &task,
         if (!res) {
             return LINGLONG_ERR(res);
         }
+
+        repo->exportLayerSignData(ref.reference, module);
     }
 
     auto merged = repo->mergeModules();

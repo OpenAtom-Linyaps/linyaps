@@ -29,7 +29,7 @@
 // The directory where the package install hooks reside.
 #define LINGLONG_INSTALL_HOOKS_DIR LINGLONG_SYSCONFDIR "/config.d"
 
-#define LINGLONG_EXPORT_VERSION "1.0.0.2"
+#define LINGLONG_EXPORT_VERSION "1.0.0.3"
 // The package's locale domain.
 #define PACKAGE_LOCALE_DOMAIN "@GETTEXT_DOMAIN_NAME@"
 

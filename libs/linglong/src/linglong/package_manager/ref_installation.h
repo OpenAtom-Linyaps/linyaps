@@ -53,6 +53,7 @@ private:
 
     package::FuzzyReference fuzzyRef;
     std::vector<std::string> modules;
+    bool installingExtraModulesOnly{ false };
 
     ActionOperation operation;
     std::string taskName;

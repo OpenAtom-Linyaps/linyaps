@@ -95,15 +95,11 @@ public:
     getPriorityGroupedRepos() const noexcept;
     utils::error::Result<void> setConfig(const api::types::v1::RepoConfigV2 &cfg) noexcept;
 
-    utils::error::Result<package::LayerDir>
-    importLayerDir(const package::LayerDir &dir,
-                   std::vector<std::filesystem::path> overlays = {},
-                   const std::optional<std::string> &subRef = std::nullopt) noexcept;
+    utils::error::Result<api::types::v1::RepositoryCacheLayersItem> importLayerDir(
+      const package::LayerDir &dir, std::vector<std::filesystem::path> overlays = {}) noexcept;
 
     virtual utils::error::Result<package::LayerDir>
-    getLayerDir(const package::Reference &ref,
-                const std::string &module = "binary",
-                const std::optional<std::string> &subRef = std::nullopt) const noexcept;
+    getLayerDir(const package::Reference &ref, const std::string &module = "binary") const noexcept;
     [[nodiscard]] utils::error::Result<void>
     push(const package::Reference &reference, const std::string &module = "binary") const noexcept;
 
@@ -138,10 +134,8 @@ public:
     listLocalBy(const linglong::repo::repoCacheQuery &query) const noexcept;
     utils::error::Result<int64_t>
     getLayerCreateTime(const api::types::v1::RepositoryCacheLayersItem &item) const noexcept;
-    utils::error::Result<void>
-    remove(const package::Reference &ref,
-           const std::string &module = "binary",
-           const std::optional<std::string> &subRef = std::nullopt) noexcept;
+    utils::error::Result<void> remove(const package::Reference &ref,
+                                      const std::string &module = "binary") noexcept;
     utils::error::Result<void>
     remove(const api::types::v1::RepositoryCacheLayersItem &item) noexcept;
     utils::error::Result<void>
@@ -156,26 +150,27 @@ public:
     virtual utils::error::Result<RefStatistics>
     getRefStatistics(const RefMetaData &meta) const noexcept;
 
-    // exportReference should be called when LayerDir of ref is existed in local repo
-    void exportReference(const package::Reference &ref) noexcept;
-    // unexportReference should be called when LayerDir of ref is existed in local repo
-    void unexportReference(const package::Reference &ref) noexcept;
-    void unexportReference(const std::string &layerDir) noexcept;
+    // Export desktop integration entries for all or one module of an application reference.
+    void exportAppReference(const package::Reference &ref,
+                            const std::optional<std::string> &module = std::nullopt) noexcept;
+    void exportLayerSignData(const package::Reference &ref,
+                             const std::string &module = "binary") noexcept;
+    void exportLayerSignData(const api::types::v1::RepositoryCacheLayersItem &item) noexcept;
+    // Unexport desktop integration entries for all or one module of an application reference.
+    void unexportAppReference(const package::Reference &ref,
+                              const std::optional<std::string> &module = std::nullopt) noexcept;
+    void unexportLayerSignData(const api::types::v1::RepositoryCacheLayersItem &item) noexcept;
     void updateSharedInfo() noexcept;
-    utils::error::Result<void>
-    markDeleted(const package::Reference &ref,
-                bool deleted,
-                const std::string &module = "binary",
-                const std::optional<std::string> &subRef = std::nullopt) noexcept;
+    utils::error::Result<void> markDeleted(const package::Reference &ref,
+                                           bool deleted,
+                                           const std::string &module = "binary") noexcept;
     bool isMarkedDeleted(const package::Reference &ref, const std::string &module) const noexcept;
 
     // 扫描layers变动，重新合并变动layer的modules
     [[nodiscard]] virtual utils::error::Result<void> mergeModules() const noexcept;
     // 获取合并后的layerDir，如果没有找到则返回binary模块的layerDir
     [[nodiscard]] virtual utils::error::Result<package::LayerDir>
-    getMergedModuleDir(const package::Reference &ref,
-                       bool fallbackLayerDir = true,
-                       const std::optional<std::string> &subRef = std::nullopt) const noexcept;
+    getMergedModuleDir(const package::Reference &ref, bool fallbackLayerDir = true) const noexcept;
     // 将指定的modules合并到临时目录，返回值析构时自动删除该目录
     [[nodiscard]] virtual utils::error::Result<package::TempLayerDir> createTempMergedModuleDir(
       const package::Reference &ref, const std::vector<std::string> &modules) const noexcept;
@@ -188,9 +183,7 @@ public:
     latestLocalReference(const package::FuzzyReference &fuzzyRef) const noexcept;
 
     [[nodiscard]] virtual utils::error::Result<api::types::v1::RepositoryCacheLayersItem>
-    getLayerItem(const package::Reference &ref,
-                 std::string module = "binary",
-                 const std::optional<std::string> &subRef = std::nullopt) const noexcept;
+    getLayerItem(const package::Reference &ref, std::string module = "binary") const noexcept;
     utils::error::Result<void> fixExportAllEntries() noexcept;
     [[nodiscard]] std::filesystem::path resolveEntryExportPath(
       const std::filesystem::path &relativePath, bool preferLibSystemdUser = false) const noexcept;
@@ -255,7 +248,7 @@ private:
     static utils::error::Result<void> IniLikeFileRewrite(const QFileInfo &info,
                                                          const QString &id) noexcept;
 
-    // exportEntries will clear the entries/share and export all applications to the entries/share
+    // Rebuild entries exported by all locally installed layers.
     utils::error::Result<void> exportAllEntries() noexcept;
     utils::error::Result<std::vector<guint64>> getCommitSize(const std::string &remote,
                                                              const std::string &refString) noexcept;
@@ -281,8 +274,17 @@ protected:
                                          const std::filesystem::path &source,
                                          const std::filesystem::path &destination,
                                          const int &max_depth);
-    utils::error::Result<void> exportEntries(
+    utils::error::Result<void> exportLayerEntries(
       const std::filesystem::path &, const api::types::v1::RepositoryCacheLayersItem &) noexcept;
+    utils::error::Result<void> exportLayerSignData(
+      const std::filesystem::path &, const api::types::v1::RepositoryCacheLayersItem &) noexcept;
+    virtual utils::error::Result<bool> shouldExportSignData() const noexcept;
+    utils::error::Result<void> exportAppEntries(
+      const std::filesystem::path &, const api::types::v1::RepositoryCacheLayersItem &) noexcept;
+    utils::error::Result<void> unexportLayerSignData(
+      const std::filesystem::path &, const api::types::v1::RepositoryCacheLayersItem &) noexcept;
+    utils::error::Result<void> unexportAppEntries(
+      const std::filesystem::path &, const std::vector<std::filesystem::path> &) noexcept;
 };
 
 } // namespace linglong::repo

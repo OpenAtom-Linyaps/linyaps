@@ -123,6 +123,7 @@ set(ENABLE_TESTING
     CACHE BOOL "enable testing")
 
 option(ENABLE_CPM "enable CPM module" ON)
+option(ENABLE_PCH "Enable precompiled headers for build acceleration" ON)
 
 set(LINGLONG_USERNAME
     "deepin-linglong"

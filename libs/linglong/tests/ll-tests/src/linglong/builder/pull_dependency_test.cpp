@@ -38,9 +38,7 @@ public:
 
     MOCK_METHOD(utils::error::Result<package::LayerDir>,
                 getLayerDir,
-                (const package::Reference &ref,
-                 const std::string &module,
-                 const std::optional<std::string> &subRef),
+                (const package::Reference &ref, const std::string &module),
                 (override, const, noexcept));
 
     MOCK_METHOD(utils::error::Result<package::Reference>,
@@ -49,9 +47,7 @@ public:
                 (override, const, noexcept));
     MOCK_METHOD(utils::error::Result<api::types::v1::RepositoryCacheLayersItem>,
                 getLayerItem,
-                (const package::Reference &ref,
-                 std::string module,
-                 const std::optional<std::string> &subRef),
+                (const package::Reference &ref, std::string module),
                 (override, const, noexcept));
     MOCK_METHOD(utils::error::Result<package::ReferenceWithRepo>,
                 latestRemoteReference,
@@ -213,7 +209,7 @@ TEST_F(PullDependencyTest, clearDependency_module_missing_returns_remote_variant
     ASSERT_TRUE(remoteRef.has_value());
 
     EXPECT_CALL(*m_repo, clearReferenceLocal(_, true)).WillOnce(Return(std::move(*localRef)));
-    EXPECT_CALL(*m_repo, getLayerDir(_, "develop", _)).WillOnce(Return(LINGLONG_ERR("not found")));
+    EXPECT_CALL(*m_repo, getLayerDir(_, "develop")).WillOnce(Return(LINGLONG_ERR("not found")));
     EXPECT_CALL(*m_repo, latestRemoteReference(_))
       .WillOnce(Return(refWithRepo(std::move(*remoteRef), "custom")));
 
@@ -236,7 +232,7 @@ TEST_F(PullDependencyTest, useRemoteTrue_prefers_remote_when_newer)
     EXPECT_CALL(*m_repo, latestRemoteReference(_))
       .WillOnce(Return(refWithRepo(std::move(*remoteRef))));
 
-    EXPECT_CALL(*m_repo, getLayerDir(_, "binary", _)).WillOnce(Return(layerCached()));
+    EXPECT_CALL(*m_repo, getLayerDir(_, "binary")).WillOnce(Return(layerCached()));
 
     auto result = builder::detail::pullDependency("org.example.test", *m_repo, "binary");
     ASSERT_TRUE(result.has_value()) << result.error().message();
@@ -254,7 +250,7 @@ TEST_F(PullDependencyTest, useRemoteTrue_prefers_local_when_newer)
     EXPECT_CALL(*m_repo, latestRemoteReference(_))
       .WillOnce(Return(refWithRepo(std::move(*remoteRef))));
 
-    EXPECT_CALL(*m_repo, getLayerDir(_, _, _)).Times(0);
+    EXPECT_CALL(*m_repo, getLayerDir(_, _)).Times(0);
 
     auto result =
       builder::detail::pullDependency("org.example.test/2.0.0.0/x86_64", *m_repo, "binary");
@@ -275,7 +271,7 @@ TEST_F(PullDependencyTest, useRemoteTrue_falls_back_to_local_when_remote_pull_fa
     EXPECT_CALL(*m_repo, latestRemoteReference(_))
       .WillOnce(Return(refWithRepo(std::move(*remoteRef))));
 
-    EXPECT_CALL(*m_repo, getLayerDir(_, "binary", _)).WillOnce(Return(LINGLONG_ERR("not found")));
+    EXPECT_CALL(*m_repo, getLayerDir(_, "binary")).WillOnce(Return(LINGLONG_ERR("not found")));
     EXPECT_CALL(*m_repo, pull(_, _, "binary")).WillOnce(Return(LINGLONG_ERR("not found")));
 
     auto result = builder::detail::pullDependency("org.example.test", *m_repo, "binary");
@@ -294,7 +290,7 @@ TEST_F(PullDependencyTest, useRemoteTrue_equal_version_prefers_local)
     EXPECT_CALL(*m_repo, latestRemoteReference(_))
       .WillOnce(Return(refWithRepo(std::move(*remoteRef))));
 
-    EXPECT_CALL(*m_repo, getLayerDir(_, _, _)).Times(0);
+    EXPECT_CALL(*m_repo, getLayerDir(_, _)).Times(0);
 
     auto result = builder::detail::pullDependency("org.example.test", *m_repo, "binary");
     ASSERT_TRUE(result.has_value()) << result.error().message();
@@ -326,7 +322,7 @@ TEST_F(PullDependencyTest, useRemoteTrue_only_local_exists)
     EXPECT_CALL(*m_repo, clearReferenceLocal(_, true)).WillOnce(Return(std::move(*localRef)));
     EXPECT_CALL(*m_repo, latestRemoteReference(_)).WillOnce(Return(LINGLONG_ERR("not found")));
 
-    EXPECT_CALL(*m_repo, getLayerDir(_, _, _)).Times(0);
+    EXPECT_CALL(*m_repo, getLayerDir(_, _)).Times(0);
 
     auto result = builder::detail::pullDependency("org.example.test", *m_repo, "binary");
     ASSERT_TRUE(result.has_value()) << result.error().message();
@@ -344,7 +340,7 @@ TEST_F(PullDependencyTest, useRemoteTrue_only_remote_exists)
     EXPECT_CALL(*m_repo, latestRemoteReference(_))
       .WillOnce(Return(refWithRepo(std::move(*remoteRef))));
 
-    EXPECT_CALL(*m_repo, getLayerDir(_, _, _)).WillOnce(Return(layerCached()));
+    EXPECT_CALL(*m_repo, getLayerDir(_, _)).WillOnce(Return(layerCached()));
 
     auto result =
       builder::detail::pullDependency("org.example.test/1.0.0.0/x86_64", *m_repo, "binary");
@@ -374,7 +370,7 @@ TEST_F(PullDependencyTest, pullResolvedRef_cached_module_returns_ok)
     auto ref = package::Reference::parse("main:org.example.test/1.0.0.0/x86_64");
     ASSERT_TRUE(ref.has_value()) << ref.error().message();
 
-    EXPECT_CALL(*m_repo, getLayerDir(_, _, _)).WillOnce(Return(layerCached()));
+    EXPECT_CALL(*m_repo, getLayerDir(_, _)).WillOnce(Return(layerCached()));
 
     auto result = builder::detail::pullResolvedRef(refWithRepo(std::move(*ref)), *m_repo, "binary");
     EXPECT_TRUE(result.has_value()) << result.error().message();
@@ -387,7 +383,7 @@ TEST_F(PullDependencyTest, pullResolvedRef_not_cached_triggers_pull)
     auto ref = package::Reference::parse("main:org.example.test/1.0.0.0/x86_64");
     ASSERT_TRUE(ref.has_value()) << ref.error().message();
 
-    EXPECT_CALL(*m_repo, getLayerDir(_, _, _)).WillOnce(Return(LINGLONG_ERR("not found")));
+    EXPECT_CALL(*m_repo, getLayerDir(_, _)).WillOnce(Return(LINGLONG_ERR("not found")));
     EXPECT_CALL(*m_repo, pull(_, _, _))
       .WillOnce([](service::Task &,
                    const package::ReferenceWithRepo &refRepo,
@@ -420,7 +416,7 @@ TEST_F(PullDependencyTest, buildStagePullDependency_continues_when_local_develop
         EXPECT_CALL(*m_repo, clearReferenceLocal(_, true)).WillOnce(Return(*baseRef));
     }
     EXPECT_CALL(*m_repo, latestRemoteReference(_)).WillOnce(Return(LINGLONG_ERR("not found")));
-    EXPECT_CALL(*m_repo, getLayerDir(_, "develop", _))
+    EXPECT_CALL(*m_repo, getLayerDir(_, "develop"))
       .WillOnce(Return(LINGLONG_ERR("not found")))
       .WillOnce(Return(LINGLONG_ERR("not found")));
     EXPECT_CALL(*m_repo, mergeModules()).WillOnce(Return(utils::error::Result<void>{}));
@@ -452,18 +448,16 @@ TEST_F(PullDependencyTest, buildStagePullDependency_resolves_base_from_runtime)
         EXPECT_CALL(*m_repo, clearReferenceLocal(_, true)).WillOnce(Return(*runtimeRef));
         EXPECT_CALL(*m_repo, clearReferenceLocal(_, true)).WillOnce(Return(*baseRef));
     }
-    EXPECT_CALL(*m_repo, getLayerDir(_, "develop", _))
+    EXPECT_CALL(*m_repo, getLayerDir(_, "develop"))
       .Times(2)
-      .WillRepeatedly(
-        [](const package::Reference &,
-           const std::string &,
-           const std::optional<std::string> &) -> utils::error::Result<package::LayerDir> {
-            return layerCached();
-        });
+      .WillRepeatedly([](const package::Reference &,
+                         const std::string &) -> utils::error::Result<package::LayerDir> {
+          return layerCached();
+      });
 
     api::types::v1::RepositoryCacheLayersItem runtimeItem;
     runtimeItem.info.base = "org.deepin.base/23.0.0.0/x86_64";
-    EXPECT_CALL(*m_repo, getLayerItem(*runtimeRef, "binary", _))
+    EXPECT_CALL(*m_repo, getLayerItem(*runtimeRef, "binary"))
       .WillOnce(Return(std::move(runtimeItem)));
     EXPECT_CALL(*m_repo, mergeModules()).WillOnce(Return(utils::error::Result<void>{}));
 
@@ -496,18 +490,16 @@ TEST_F(PullDependencyTest, buildStagePullDependency_rejects_incompatible_base_an
         EXPECT_CALL(*m_repo, clearReferenceLocal(_, true)).WillOnce(Return(*runtimeRef));
         EXPECT_CALL(*m_repo, clearReferenceLocal(_, true)).WillOnce(Return(*configuredBaseRef));
     }
-    EXPECT_CALL(*m_repo, getLayerDir(_, "develop", _))
+    EXPECT_CALL(*m_repo, getLayerDir(_, "develop"))
       .Times(2)
-      .WillRepeatedly(
-        [](const package::Reference &,
-           const std::string &,
-           const std::optional<std::string> &) -> utils::error::Result<package::LayerDir> {
-            return layerCached();
-        });
+      .WillRepeatedly([](const package::Reference &,
+                         const std::string &) -> utils::error::Result<package::LayerDir> {
+          return layerCached();
+      });
 
     api::types::v1::RepositoryCacheLayersItem runtimeItem;
     runtimeItem.info.base = "org.deepin.base/23.0.0.0/x86_64";
-    EXPECT_CALL(*m_repo, getLayerItem(*runtimeRef, "binary", _))
+    EXPECT_CALL(*m_repo, getLayerItem(*runtimeRef, "binary"))
       .WillOnce(Return(std::move(runtimeItem)));
     EXPECT_CALL(*m_repo, mergeModules()).Times(0);
 
@@ -540,18 +532,16 @@ TEST_F(PullDependencyTest, buildStagePullDependency_accepts_semantically_compati
         EXPECT_CALL(*m_repo, clearReferenceLocal(_, true)).WillOnce(Return(*runtimeRef));
         EXPECT_CALL(*m_repo, clearReferenceLocal(_, true)).WillOnce(Return(*baseRef));
     }
-    EXPECT_CALL(*m_repo, getLayerDir(_, "develop", _))
+    EXPECT_CALL(*m_repo, getLayerDir(_, "develop"))
       .Times(2)
-      .WillRepeatedly(
-        [](const package::Reference &,
-           const std::string &,
-           const std::optional<std::string> &) -> utils::error::Result<package::LayerDir> {
-            return layerCached();
-        });
+      .WillRepeatedly([](const package::Reference &,
+                         const std::string &) -> utils::error::Result<package::LayerDir> {
+          return layerCached();
+      });
 
     api::types::v1::RepositoryCacheLayersItem runtimeItem;
     runtimeItem.info.base = "org.deepin.base/23.0.0/x86_64";
-    EXPECT_CALL(*m_repo, getLayerItem(*runtimeRef, "binary", _))
+    EXPECT_CALL(*m_repo, getLayerItem(*runtimeRef, "binary"))
       .WillOnce(Return(std::move(runtimeItem)));
     EXPECT_CALL(*m_repo, mergeModules()).WillOnce(Return(utils::error::Result<void>{}));
 

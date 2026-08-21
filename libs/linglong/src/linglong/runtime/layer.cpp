@@ -38,8 +38,7 @@ RuntimeLayer::RuntimeLayer(package::Reference ref, const RunContext &context)
 
 utils::error::Result<void>
 RuntimeLayer::resolveLayer(const std::optional<std::vector<std::string>> &includeModules,
-                           const std::optional<std::vector<std::string>> &excludeModules,
-                           const std::optional<std::string> &subRef)
+                           const std::optional<std::vector<std::string>> &excludeModules)
 {
     LINGLONG_TRACE("resolve layer");
 
@@ -51,7 +50,7 @@ RuntimeLayer::resolveLayer(const std::optional<std::vector<std::string>> &includ
     utils::error::Result<package::LayerDir> layer(LINGLONG_ERR("null"));
     std::optional<package::TempLayerDir> resolvedTempLayer;
     if (!includeModules && !excludeModules) {
-        layer = repo.getMergedModuleDir(reference, true, subRef);
+        layer = repo.getMergedModuleDir(reference, true);
     } else {
         auto normalizeModules = [](std::vector<std::string> modules) {
             std::sort(modules.begin(), modules.end());
@@ -73,9 +72,9 @@ RuntimeLayer::resolveLayer(const std::optional<std::vector<std::string>> &includ
         }
 
         if (modules == installedModules) {
-            layer = repo.getMergedModuleDir(reference, true, subRef);
+            layer = repo.getMergedModuleDir(reference, true);
         } else if (modules.size() == 1) {
-            layer = repo.getLayerDir(reference, modules.front(), subRef);
+            layer = repo.getLayerDir(reference, modules.front());
         } else {
             auto mergedLayer = repo.createTempMergedModuleDir(reference, modules);
             if (!mergedLayer) {

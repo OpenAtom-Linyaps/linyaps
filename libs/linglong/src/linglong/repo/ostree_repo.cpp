@@ -156,11 +156,9 @@ std::string ostreeSpecFromReference(const package::Reference &ref,
     return spec;
 }
 
-std::string
-ostreeSpecFromReferenceV2(const package::Reference &ref,
-                          const std::optional<std::string> &repo = std::nullopt,
-                          std::string module = "binary",
-                          const std::optional<std::string> &subRef = std::nullopt) noexcept
+std::string ostreeSpecFromReferenceV2(const package::Reference &ref,
+                                      const std::optional<std::string> &repo = std::nullopt,
+                                      std::string module = "binary") noexcept
 {
     auto ret = ref.channel + "/" + ref.id + "/" + ref.version.toString() + "/" + ref.arch.toString()
       + "/" + module;
@@ -168,11 +166,7 @@ ostreeSpecFromReferenceV2(const package::Reference &ref,
     if (repo) {
         ret = repo.value() + ":" + ret;
     }
-    if (!subRef) {
-        return ret;
-    }
-
-    return ret + "_" + subRef.value();
+    return ret;
 }
 
 utils::error::Result<QString> commitDirToRepo(std::vector<GFile *> dirs,
@@ -845,10 +839,8 @@ utils::error::Result<void> OSTreeRepo::setConfig(const api::types::v1::RepoConfi
     return LINGLONG_OK;
 }
 
-utils::error::Result<package::LayerDir>
-OSTreeRepo::importLayerDir(const package::LayerDir &dir,
-                           std::vector<std::filesystem::path> overlays,
-                           const std::optional<std::string> &subRef) noexcept
+utils::error::Result<package::LayerDir> OSTreeRepo::importLayerDir(
+  const package::LayerDir &dir, std::vector<std::filesystem::path> overlays) noexcept
 {
     LINGLONG_TRACE("import layer dir");
 
@@ -884,8 +876,7 @@ OSTreeRepo::importLayerDir(const package::LayerDir &dir,
     }
 
     // NOTE: we save repo info in cache, if import a local layer dir, set repo to 'local'
-    auto refspec =
-      ostreeSpecFromReferenceV2(*reference, std::nullopt, info->packageInfoV2Module, subRef);
+    auto refspec = ostreeSpecFromReferenceV2(*reference, std::nullopt, info->packageInfoV2Module);
     auto commitID = commitDirToRepo(dirs, this->ostreeRepo.get(), refspec.c_str());
     if (!commitID) {
         return LINGLONG_ERR(commitID);
@@ -1013,8 +1004,7 @@ utils::error::Result<void> OSTreeRepo::pushToRemote(const std::string &remoteRep
 }
 
 utils::error::Result<void> OSTreeRepo::remove(const package::Reference &ref,
-                                              const std::string &module,
-                                              const std::optional<std::string> &subRef) noexcept
+                                              const std::string &module) noexcept
 {
     LINGLONG_TRACE(fmt::format("remove {}", ref.toString()));
 
@@ -1022,7 +1012,7 @@ utils::error::Result<void> OSTreeRepo::remove(const package::Reference &ref,
         return LINGLONG_ERR("module is empty");
     }
 
-    auto layer = this->getLayerItem(ref, module, subRef);
+    auto layer = this->getLayerItem(ref, module);
     if (!layer) {
         return LINGLONG_ERR(layer);
     }
@@ -2235,15 +2225,13 @@ bool OSTreeRepo::isMarkedDeleted(const package::Reference &ref,
     return (*it)->deleted.has_value() && *item->deleted;
 }
 
-utils::error::Result<void>
-OSTreeRepo::markDeleted(const package::Reference &ref,
-                        bool deleted,
-                        const std::string &module,
-                        const std::optional<std::string> &subRef) noexcept
+utils::error::Result<void> OSTreeRepo::markDeleted(const package::Reference &ref,
+                                                   bool deleted,
+                                                   const std::string &module) noexcept
 {
     LINGLONG_TRACE(fmt::format("mark {} to deleted", ref.toString()));
 
-    auto item = this->getLayerItem(ref, module, subRef);
+    auto item = this->getLayerItem(ref, module);
     if (!item) {
         return LINGLONG_ERR(item);
     }
@@ -2273,9 +2261,7 @@ OSTreeRepo::markDeleted(const package::Reference &ref,
 }
 
 utils::error::Result<api::types::v1::RepositoryCacheLayersItem>
-OSTreeRepo::getLayerItem(const package::Reference &ref,
-                         std::string module,
-                         const std::optional<std::string> &subRef) const noexcept
+OSTreeRepo::getLayerItem(const package::Reference &ref, std::string module) const noexcept
 {
     LINGLONG_TRACE(fmt::format("get latest layer of {}", ref.toString()));
     if (module == "runtime") {
@@ -2300,7 +2286,6 @@ OSTreeRepo::getLayerItem(const package::Reference &ref,
                           .channel = ref.channel,
                           .version = ref.version.toString(),
                           .module = std::move(module),
-                          .uuid = subRef,
                           .deleted = std::nullopt,
                           .architecture = ref.arch.toString() };
     auto item = queryItem(query);
@@ -2349,13 +2334,12 @@ auto OSTreeRepo::getLayerDir(const api::types::v1::RepositoryCacheLayersItem &la
 }
 
 auto OSTreeRepo::getLayerDir(const package::Reference &ref,
-                             const std::string &module,
-                             const std::optional<std::string> &subRef) const noexcept
+                             const std::string &module) const noexcept
   -> utils::error::Result<package::LayerDir>
 {
     LINGLONG_TRACE(fmt::format("get dir from ref {}", ref.toString()));
 
-    auto layer = this->getLayerItem(ref, module, subRef);
+    auto layer = this->getLayerItem(ref, module);
     if (!layer) {
         LogD("no such item: {}/{}:{}", ref.toString(), module, layer.error().message());
         return LINGLONG_ERR(layer);
@@ -2421,13 +2405,11 @@ std::vector<std::string> OSTreeRepo::getModuleList(const package::Reference &ref
 
 // 获取合并后的layerDir，如果没有找到则返回binary模块的layerDir
 utils::error::Result<package::LayerDir>
-OSTreeRepo::getMergedModuleDir(const package::Reference &ref,
-                               bool fallbackLayerDir,
-                               const std::optional<std::string> &subRef) const noexcept
+OSTreeRepo::getMergedModuleDir(const package::Reference &ref, bool fallbackLayerDir) const noexcept
 {
     LINGLONG_TRACE(fmt::format("get merge dir from ref {}", ref.toString()));
     LogD("getMergedModuleDir: {}", ref.toString());
-    auto layer = this->getLayerItem(ref, "binary", subRef);
+    auto layer = this->getLayerItem(ref, "binary");
     if (!layer) {
         LogD("no such item {}/binary: {}", ref.toString(), layer.error().message());
         return LINGLONG_ERR(layer);

@@ -340,8 +340,8 @@ utils::error::Result<void> UabInstallationAction::postInstall(PackageTask &task)
     return LINGLONG_OK;
 }
 
-utils::error::Result<void> UabInstallationAction::installUabLayer(
-  const std::vector<api::types::v1::UabLayer> &layers, std::optional<std::string> subRef)
+utils::error::Result<void>
+UabInstallationAction::installUabLayer(const std::vector<api::types::v1::UabLayer> &layers)
 {
     LINGLONG_TRACE("install uab layers from single package");
 
@@ -373,7 +373,7 @@ utils::error::Result<void> UabInstallationAction::installUabLayer(
             return LINGLONG_ERR(ref);
         }
 
-        auto ret = this->repo.importLayerDir(package::LayerDir{ layerDirPath }, overlays, subRef);
+        auto ret = this->repo.importLayerDir(package::LayerDir{ layerDirPath }, overlays);
         if (!ret) {
             return LINGLONG_ERR(ret);
         }
@@ -385,15 +385,13 @@ utils::error::Result<void> UabInstallationAction::installUabLayer(
             }
         });
 
-        transaction.addRollBack([this,
-                                 ref = std::move(ref).value(),
-                                 module = layer.info.packageInfoV2Module,
-                                 subRef]() noexcept {
-            auto ret = this->repo.remove(ref, module, subRef);
-            if (!ret) {
-                LogE("rollback importLayerDir failed: {}", ret.error());
-            }
-        });
+        transaction.addRollBack(
+          [this, ref = std::move(ref).value(), module = layer.info.packageInfoV2Module]() noexcept {
+              auto ret = this->repo.remove(ref, module);
+              if (!ret) {
+                  LogE("rollback importLayerDir failed: {}", ret.error());
+              }
+          });
     }
 
     return LINGLONG_OK;

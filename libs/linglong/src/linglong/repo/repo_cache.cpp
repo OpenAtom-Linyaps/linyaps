@@ -238,16 +238,6 @@ RepoCache::queryLayerItem(const repoCacheQuery &query) const noexcept
             }
         }
 
-        if (query.uuid) {
-            if (!layer.info.uuid) {
-                continue;
-            }
-
-            if (query.uuid.value() != layer.info.uuid.value()) {
-                continue;
-            }
-        }
-
         layers_view.emplace_back(layer);
     }
 

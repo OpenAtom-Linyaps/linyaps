@@ -60,6 +60,7 @@ private:
 
     int fd;
     ActionOperation operation;
+    bool installingExtraModulesOnly{ false };
     std::string taskName;
     CheckedLayers checkedLayers;
     std::unique_ptr<package::UABFile> uabFile;

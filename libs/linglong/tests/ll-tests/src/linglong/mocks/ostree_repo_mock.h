@@ -31,10 +31,53 @@ public:
         return this->OSTreeRepo::exportDir(appID, source, destination, max_depth);
     }
 
+    utils::error::Result<void>
+    exportLayerEntries(const std::filesystem::path &destination,
+                       const api::types::v1::RepositoryCacheLayersItem &item)
+    {
+        return this->OSTreeRepo::exportLayerEntries(destination, item);
+    }
+
+    utils::error::Result<void>
+    exportAppEntries(const std::filesystem::path &destination,
+                     const api::types::v1::RepositoryCacheLayersItem &item)
+    {
+        return this->OSTreeRepo::exportAppEntries(destination, item);
+    }
+
+    utils::error::Result<void>
+    exportLayerSignData(const std::filesystem::path &destination,
+                        const api::types::v1::RepositoryCacheLayersItem &item)
+    {
+        return this->OSTreeRepo::exportLayerSignData(destination, item);
+    }
+
+    utils::error::Result<void>
+    unexportLayerSignData(const std::filesystem::path &destination,
+                          const api::types::v1::RepositoryCacheLayersItem &item)
+    {
+        return this->OSTreeRepo::unexportLayerSignData(destination, item);
+    }
+
+    utils::error::Result<void> unexportAppEntries(
+      const std::filesystem::path &destination, const std::vector<std::filesystem::path> &layerDirs)
+    {
+        return this->OSTreeRepo::unexportAppEntries(destination, layerDirs);
+    }
+
     // mock getOverlayShareDir
     std::function<std::filesystem::path()> wrapGetOverlayShareDirFunc;
+    std::function<utils::error::Result<bool>()> wrapShouldExportSignDataFunc;
 
 protected:
+    utils::error::Result<bool> shouldExportSignData() const noexcept override
+    {
+        if (wrapShouldExportSignDataFunc) {
+            return wrapShouldExportSignDataFunc();
+        }
+        return OSTreeRepo::shouldExportSignData();
+    }
+
     std::filesystem::path getOverlayShareDir() const noexcept override
     {
         if (wrapGetOverlayShareDirFunc) {

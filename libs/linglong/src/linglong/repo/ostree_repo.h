@@ -95,7 +95,7 @@ public:
     getPriorityGroupedRepos() const noexcept;
     utils::error::Result<void> setConfig(const api::types::v1::RepoConfigV2 &cfg) noexcept;
 
-    utils::error::Result<package::LayerDir> importLayerDir(
+    utils::error::Result<api::types::v1::RepositoryCacheLayersItem> importLayerDir(
       const package::LayerDir &dir, std::vector<std::filesystem::path> overlays = {}) noexcept;
 
     virtual utils::error::Result<package::LayerDir>
@@ -150,11 +150,16 @@ public:
     virtual utils::error::Result<RefStatistics>
     getRefStatistics(const RefMetaData &meta) const noexcept;
 
-    // exportReference should be called when LayerDir of ref is existed in local repo
-    void exportReference(const package::Reference &ref) noexcept;
-    // unexportReference should be called when LayerDir of ref is existed in local repo
-    void unexportReference(const package::Reference &ref) noexcept;
-    void unexportReference(const std::string &layerDir) noexcept;
+    // Export desktop integration entries for all or one module of an application reference.
+    void exportAppReference(const package::Reference &ref,
+                            const std::optional<std::string> &module = std::nullopt) noexcept;
+    void exportLayerSignData(const package::Reference &ref,
+                             const std::string &module = "binary") noexcept;
+    void exportLayerSignData(const api::types::v1::RepositoryCacheLayersItem &item) noexcept;
+    // Unexport desktop integration entries for all or one module of an application reference.
+    void unexportAppReference(const package::Reference &ref,
+                              const std::optional<std::string> &module = std::nullopt) noexcept;
+    void unexportLayerSignData(const api::types::v1::RepositoryCacheLayersItem &item) noexcept;
     void updateSharedInfo() noexcept;
     utils::error::Result<void> markDeleted(const package::Reference &ref,
                                            bool deleted,
@@ -243,7 +248,7 @@ private:
     static utils::error::Result<void> IniLikeFileRewrite(const QFileInfo &info,
                                                          const QString &id) noexcept;
 
-    // exportEntries will clear the entries/share and export all applications to the entries/share
+    // Rebuild entries exported by all locally installed layers.
     utils::error::Result<void> exportAllEntries() noexcept;
     utils::error::Result<std::vector<guint64>> getCommitSize(const std::string &remote,
                                                              const std::string &refString) noexcept;
@@ -269,8 +274,17 @@ protected:
                                          const std::filesystem::path &source,
                                          const std::filesystem::path &destination,
                                          const int &max_depth);
-    utils::error::Result<void> exportEntries(
+    utils::error::Result<void> exportLayerEntries(
       const std::filesystem::path &, const api::types::v1::RepositoryCacheLayersItem &) noexcept;
+    utils::error::Result<void> exportLayerSignData(
+      const std::filesystem::path &, const api::types::v1::RepositoryCacheLayersItem &) noexcept;
+    virtual utils::error::Result<bool> shouldExportSignData() const noexcept;
+    utils::error::Result<void> exportAppEntries(
+      const std::filesystem::path &, const api::types::v1::RepositoryCacheLayersItem &) noexcept;
+    utils::error::Result<void> unexportLayerSignData(
+      const std::filesystem::path &, const api::types::v1::RepositoryCacheLayersItem &) noexcept;
+    utils::error::Result<void> unexportAppEntries(
+      const std::filesystem::path &, const std::vector<std::filesystem::path> &) noexcept;
 };
 
 } // namespace linglong::repo

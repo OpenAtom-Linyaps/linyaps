@@ -18,6 +18,16 @@ The main command-line tools are:
 - `ll-builder` builds and debugs Linyaps applications and is provided by
   `linglong-builder`.
 
+:::warning Storage filesystem
+
+The local Linyaps repository uses OSTree, which currently has severe write
+performance problems on ZFS. Do not place Linyaps repository or data
+directories on a ZFS filesystem; use another Linux filesystem such as ext4 or
+XFS instead. See [Issue #1107](https://github.com/OpenAtom-Linyaps/linyaps/issues/1107)
+and [OpenZFS #11140](https://github.com/openzfs/zfs/issues/11140) for context.
+
+:::
+
 ## Repository usage
 
 ### Release repository

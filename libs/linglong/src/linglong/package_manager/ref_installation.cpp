@@ -108,9 +108,9 @@ utils::error::Result<void> RefInstallationAction::preInstall(Task &task)
     task.updateState(linglong::api::types::v1::State::Processing,
                      fmt::format("Installing {} - Preparing...", fuzzyRef.id));
 
-    auto extraOnly = extraModuleOnly(modules);
+    installingExtraModulesOnly = extraModuleOnly(modules);
     auto localRef = repo.latestLocalReference(fuzzyRef);
-    if (extraOnly) {
+    if (installingExtraModulesOnly) {
         if (!localRef) {
             return LINGLONG_ERR("no matched binary module found",
                                 utils::error::ErrorCode::AppInstallModuleRequireAppFirst);
@@ -152,7 +152,7 @@ utils::error::Result<void> RefInstallationAction::preInstall(Task &task)
                             utils::error::ErrorCode::AppInstallNotFoundFromRemote);
     }
 
-    auto operation = getActionOperation(target->second.get(), extraOnly);
+    auto operation = getActionOperation(target->second.get(), installingExtraModulesOnly);
     if (!operation) {
         return LINGLONG_ERR(operation);
     }
@@ -369,17 +369,17 @@ utils::error::Result<void> RefInstallationAction::install(Task &task)
         LogE("failed to merge modules: {}", merged.error());
     }
 
-    for (const auto &ref : refsForPostInstallHooks) {
-        auto hooks = pm.executePostInstallHooks(ref);
-        if (!hooks) {
-            LogW("failed to execute post-install hooks for {}: {}", ref.toString(), hooks.error());
-        }
-    }
-
     if (isApp) {
         auto res = postInstallApp(task);
         if (!res) {
             return LINGLONG_ERR(res);
+        }
+    }
+
+    for (const auto &ref : refsForPostInstallHooks) {
+        auto hooks = pm.executePostInstallHooks(ref);
+        if (!hooks) {
+            LogW("failed to execute post-install hooks for {}: {}", ref.toString(), hooks.error());
         }
     }
 
@@ -395,6 +395,16 @@ utils::error::Result<void> RefInstallationAction::postInstallApp([[maybe_unused]
     auto &newRef = operation.newRef->reference;
     auto &oldRef = operation.oldRef;
 
+    if (installingExtraModulesOnly) {
+        for (const auto &module : modules) {
+            auto res = pm.applyApp(newRef, module);
+            if (!res) {
+                return LINGLONG_ERR(res);
+            }
+        }
+        return LINGLONG_OK;
+    }
+
     auto res = oldRef ? pm.switchAppVersion(*oldRef, newRef, true) : pm.applyApp(newRef);
     if (!res) {
         return LINGLONG_ERR(res);
@@ -407,7 +417,7 @@ utils::error::Result<void> RefInstallationAction::postInstall(Task &task)
 {
     LINGLONG_TRACE("ref installation postInstall");
 
-    if (operation.kind == "app" && operation.oldRef && !extraModuleOnly(modules)) {
+    if (operation.kind == "app" && operation.oldRef && !installingExtraModulesOnly) {
         auto pruneRet = options.noAutoPrune.value_or(false) ? this->repo.prune() : pm.pruneUnused();
         if (!pruneRet) {
             LogE("failed to prune after installing {}: {}",

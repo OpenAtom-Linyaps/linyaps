@@ -53,7 +53,7 @@ public:
 
     MOCK_METHOD(utils::error::Result<void>,
                 applyApp,
-                (const package::Reference &ref),
+                (const package::Reference &ref, const std::optional<std::string> &module),
                 (override, noexcept));
 
     MOCK_METHOD(utils::error::Result<std::optional<package::ReferenceWithRepo>>,
@@ -200,9 +200,21 @@ TEST_F(RefInstallationTest, InstallApp)
     EXPECT_CALL(*pm, needToInstall("base", _)).WillOnce(Return(std::nullopt));
     EXPECT_CALL(*pm, needToInstall("runtime", _)).WillOnce(Return(std::nullopt));
 
-    EXPECT_CALL(*pm, applyApp(_)).WillOnce(Return(utils::error::Result<void>{}));
+    bool modulesMerged = false;
+    bool appApplied = false;
+    EXPECT_CALL(*pm, applyApp(_, ::testing::Eq(std::optional<std::string>{})))
+      .WillOnce([&appApplied, &modulesMerged](const auto &, const auto &) {
+          EXPECT_TRUE(modulesMerged);
+          appApplied = true;
+          return utils::error::Result<void>{};
+      });
+    EXPECT_CALL(*pm, executePostInstallHooks(_)).WillOnce([&appApplied](const auto &) {
+        EXPECT_TRUE(appApplied);
+        return utils::error::Result<void>{};
+    });
     EXPECT_CALL(*pm, pruneUnused()).Times(0);
-    EXPECT_CALL(*repo, mergeModules()).WillOnce([]() {
+    EXPECT_CALL(*repo, mergeModules()).WillOnce([&modulesMerged]() {
+        modulesMerged = true;
         return utils::error::Result<void>{};
     });
     service::PackageTask task({});
@@ -292,7 +304,8 @@ TEST_F(RefInstallationTest, InstallExtraOnly)
     EXPECT_CALL(*pm, needToInstall("base", _)).WillOnce(Return(std::nullopt));
     EXPECT_CALL(*pm, needToInstall("runtime", _)).WillOnce(Return(std::nullopt));
 
-    EXPECT_CALL(*pm, applyApp(_)).WillOnce(Return(utils::error::Result<void>{}));
+    EXPECT_CALL(*pm, applyApp(_, ::testing::Eq(std::optional<std::string>{ "develop" })))
+      .WillOnce(Return(utils::error::Result<void>{}));
     EXPECT_CALL(*pm, pruneUnused()).Times(0);
     EXPECT_CALL(*repo, mergeModules()).WillOnce([]() {
         return utils::error::Result<void>{};
@@ -369,7 +382,8 @@ TEST_F(RefInstallationTest, InstallMultipleModules)
     EXPECT_CALL(*pm, needToInstall("base", _)).WillOnce(Return(std::nullopt));
     EXPECT_CALL(*pm, needToInstall("runtime", _)).WillOnce(Return(std::nullopt));
 
-    EXPECT_CALL(*pm, applyApp(_)).WillOnce(Return(utils::error::Result<void>{}));
+    EXPECT_CALL(*pm, applyApp(_, ::testing::Eq(std::optional<std::string>{})))
+      .WillOnce(Return(utils::error::Result<void>{}));
     EXPECT_CALL(*pm, pruneUnused()).Times(0);
     EXPECT_CALL(*repo, mergeModules()).WillOnce([]() {
         return utils::error::Result<void>{};

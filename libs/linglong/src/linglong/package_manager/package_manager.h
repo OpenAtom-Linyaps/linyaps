@@ -66,8 +66,12 @@ public
                                               const std::string &containerID) noexcept;
     void initDaemonMode(bool peerMode = false) noexcept;
 
-    virtual utils::error::Result<void> applyApp(const package::Reference &reference) noexcept;
-    virtual utils::error::Result<void> unapplyApp(const package::Reference &reference) noexcept;
+    virtual utils::error::Result<void>
+    applyApp(const package::Reference &reference,
+             const std::optional<std::string> &module = std::nullopt) noexcept;
+    virtual utils::error::Result<void>
+    unapplyApp(const package::Reference &reference,
+               const std::optional<std::string> &module = std::nullopt) noexcept;
     virtual utils::error::Result<void> switchAppVersion(const package::Reference &oldRef,
                                                         const package::Reference &newRef,
                                                         bool removeOldRef = false) noexcept;

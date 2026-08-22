@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2024-2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 #include <gmock/gmock.h>
@@ -247,6 +247,46 @@ TEST_F(SourceFetcherTest, FetchNoSetName)
     fetcher.setCommand(mockCmd);
     auto ret = fetcher.fetch(QDir("/tmp/dest"));
     EXPECT_TRUE(ret.has_value());
+}
+
+TEST_F(SourceFetcherTest, RejectSourceNamesOutsideDestination)
+{
+    const std::vector<std::string> invalidNames = { "",           ".",           "..",
+                                                    "../outside", "nested/repo", "/tmp/outside" };
+
+    for (const auto &name : invalidNames) {
+        api::types::v1::BuilderProjectSource source;
+        source.kind = "file";
+        source.url = "https://example.com/repo.tar.gz";
+        source.digest = "digest";
+        source.name = name;
+
+        QDir cacheDir("/tmp/cache");
+        auto mockCmd = std::make_shared<MockCommand>("mock");
+        EXPECT_CALL(*mockCmd, exec(_)).Times(0);
+
+        SourceFetcher fetcher(source, cacheDir);
+        fetcher.setCommand(mockCmd);
+        auto ret = fetcher.fetch(QDir("/tmp/dest"));
+        EXPECT_FALSE(ret.has_value()) << "accepted source name: " << name;
+    }
+}
+
+TEST_F(SourceFetcherTest, RejectEmptyNameDerivedFromUrl)
+{
+    api::types::v1::BuilderProjectSource source;
+    source.kind = "file";
+    source.url = "https://example.com/downloads/";
+    source.digest = "digest";
+
+    QDir cacheDir("/tmp/cache");
+    auto mockCmd = std::make_shared<MockCommand>("mock");
+    EXPECT_CALL(*mockCmd, exec(_)).Times(0);
+
+    SourceFetcher fetcher(source, cacheDir);
+    fetcher.setCommand(mockCmd);
+    auto ret = fetcher.fetch(QDir("/tmp/dest"));
+    EXPECT_FALSE(ret.has_value());
 }
 
 } // namespace linglong::builder

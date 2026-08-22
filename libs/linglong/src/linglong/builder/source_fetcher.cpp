@@ -59,12 +59,19 @@ auto SourceFetcher::fetch(QDir destination) noexcept -> utils::error::Result<voi
     if (source.kind == "git") {
         m_cmd->setEnv("GIT_SUBMODULES", source.submodules.value_or(true) ? "true" : "");
     }
-    auto output = m_cmd->exec(
-      std::vector<std::string>{ scriptFile.toStdString(),
-                                destination.absoluteFilePath(getSourceName()).toStdString(),
-                                *source.url,
-                                source.kind == "git" ? *source.commit : *source.digest,
-                                this->cacheDir.absolutePath().toStdString() });
+
+    auto sourceName = getSourceName();
+    if (sourceName.isEmpty() || sourceName == "." || sourceName == ".."
+        || QDir::isAbsolutePath(sourceName) || QFileInfo(sourceName).fileName() != sourceName) {
+        return LINGLONG_ERR("source name must be a non-empty file name");
+    }
+
+    auto output =
+      m_cmd->exec(std::vector<std::string>{ scriptFile.toStdString(),
+                                            destination.absoluteFilePath(sourceName).toStdString(),
+                                            *source.url,
+                                            source.kind == "git" ? *source.commit : *source.digest,
+                                            this->cacheDir.absolutePath().toStdString() });
     if (!output.has_value()) {
         LogE("output error: {}", output.error());
         return LINGLONG_ERR("stderr:", output);

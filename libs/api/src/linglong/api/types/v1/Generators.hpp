@@ -1177,6 +1177,7 @@ x.alias = get_stack_optional<std::string>(j, "alias");
 x.mirrorEnabled = get_stack_optional<bool>(j, "mirror_enabled");
 x.name = j.at("name").get<std::string>();
 x.priority = j.at("priority").get<int64_t>();
+x.region = get_stack_optional<std::string>(j, "region");
 x.url = j.at("url").get<std::string>();
 }
 
@@ -1190,6 +1191,9 @@ j["mirror_enabled"] = x.mirrorEnabled;
 }
 j["name"] = x.name;
 j["priority"] = x.priority;
+if (x.region) {
+j["region"] = x.region;
+}
 j["url"] = x.url;
 }
 
@@ -1656,7 +1660,7 @@ j["XDGDirectoryPermissions"] = x.xdgDirectoryPermissions;
 
 inline void from_json(const json & j, DeviceOption & x) {
 if (j == "passthru") x = DeviceOption::Passthru;
-else { throw std::runtime_error("Input JSON does not conform to schema!"); }
+else { throw std::runtime_error("Cannot deserialize to enumeration \"DeviceOption\""); }
 }
 
 inline void to_json(json & j, const DeviceOption & x) {
@@ -1672,7 +1676,7 @@ else if (j == "Install") x = InteractionMessageType::Install;
 else if (j == "Uninstall") x = InteractionMessageType::Uninstall;
 else if (j == "Unknown") x = InteractionMessageType::Unknown;
 else if (j == "Upgrade") x = InteractionMessageType::Upgrade;
-else { throw std::runtime_error("Input JSON does not conform to schema!"); }
+else { throw std::runtime_error("Cannot deserialize to enumeration \"InteractionMessageType\""); }
 }
 
 inline void to_json(json & j, const InteractionMessageType & x) {
@@ -1694,7 +1698,7 @@ else if (j == "Processing") x = State::Processing;
 else if (j == "Queued") x = State::Queued;
 else if (j == "Succeed") x = State::Succeed;
 else if (j == "Unknown") x = State::Unknown;
-else { throw std::runtime_error("Input JSON does not conform to schema!"); }
+else { throw std::runtime_error("Cannot deserialize to enumeration \"State\""); }
 }
 
 inline void to_json(json & j, const State & x) {
@@ -1712,7 +1716,7 @@ default: throw std::runtime_error("Unexpected value in enumeration \"State\": " 
 
 inline void from_json(const json & j, Version & x) {
 if (j == "1") x = Version::The1;
-else { throw std::runtime_error("Input JSON does not conform to schema!"); }
+else { throw std::runtime_error("Cannot deserialize to enumeration \"Version\""); }
 }
 
 inline void to_json(json & j, const Version & x) {

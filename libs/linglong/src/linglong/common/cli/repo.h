@@ -24,6 +24,7 @@ struct RepoOptions
     std::string repoUrl;
     std::optional<std::string> repoAlias;
     std::int64_t repoPriority{ 0 };
+    std::optional<std::string> repoRegion;
 };
 
 struct RepoConfigBackend

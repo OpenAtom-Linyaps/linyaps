@@ -285,6 +285,9 @@ updateOstreeRepoConfig(OstreeRepo *repo,
         // add contenturl to use mirrorlist
         if (repoCfg.mirrorEnabled.value_or(false)) {
             auto mirrorlist = std::string("mirrorlist=") + repoCfg.url + "/api/v2/mirrors/stable";
+            if (repoCfg.region.has_value() && !repoCfg.region->empty()) {
+                mirrorlist += "?region=" + *repoCfg.region;
+            }
             g_variant_builder_add(&builder,
                                   "{sv}",
                                   "contenturl",

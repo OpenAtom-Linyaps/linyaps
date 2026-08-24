@@ -493,6 +493,9 @@ $defs:
       mirror_enabled:
         type: boolean
         description: whether mirror is enabled for this repo
+      region:
+        type: string
+        description: region code for mirror selection, e.g. CN, US
   LayerInfo:
     description: Meta information on the head of layer file.
     type: object

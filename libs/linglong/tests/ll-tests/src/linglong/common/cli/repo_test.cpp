@@ -155,6 +155,19 @@ TEST_F(RepoCommandTest, EnableMirror)
     ASSERT_TRUE(ret.has_value()) << ret.error().message();
     ASSERT_TRUE(config.repos[0].mirrorEnabled.has_value());
     EXPECT_TRUE(*config.repos[0].mirrorEnabled);
+    EXPECT_FALSE(config.repos[0].region.has_value());
+}
+
+TEST_F(RepoCommandTest, EnableMirrorWithRegion)
+{
+    parse("repo enable-mirror stable --region CN");
+    auto ret = handle();
+
+    ASSERT_TRUE(ret.has_value()) << ret.error().message();
+    ASSERT_TRUE(config.repos[0].mirrorEnabled.has_value());
+    EXPECT_TRUE(*config.repos[0].mirrorEnabled);
+    ASSERT_TRUE(config.repos[0].region.has_value());
+    EXPECT_EQ(*config.repos[0].region, "CN");
 }
 
 TEST_F(RepoCommandTest, DisableMirror)

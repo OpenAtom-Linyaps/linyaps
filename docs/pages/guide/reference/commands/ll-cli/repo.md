@@ -119,11 +119,13 @@ ll-cli repo set-priority myrepo 100
 **参数**:
 
 - **ALIAS** _TEXT_ _REQUIRED_: 仓库名称的别名
+- **--region** _REGION_: 镜像区域代码，例如 CN、US。设置后会将该参数作为查询参数追加到 mirrorlist URL
 
 **示例**:
 
 ```bash
 ll-cli repo enable-mirror myrepo
+ll-cli repo enable-mirror myrepo --region CN
 ```
 
 ### disable-mirror

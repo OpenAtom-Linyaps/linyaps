@@ -48,6 +48,10 @@ std::string name;
 */
 int64_t priority;
 /**
+* region code for mirror selection, e.g. CN, US
+*/
+std::optional<std::string> region;
+/**
 * repo url
 */
 std::string url;

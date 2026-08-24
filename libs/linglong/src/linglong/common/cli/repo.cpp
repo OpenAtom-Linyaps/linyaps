@@ -113,6 +113,12 @@ CLI::App *addRepoCommand(CLI::App &commandParser,
     repoEnableMirror->add_option("ALIAS", repoOptions.repoAlias, _("Alias of the repo name"))
       ->required()
       ->check(validatorString);
+    repoEnableMirror
+      ->add_option("--region",
+                   repoOptions.repoRegion,
+                   _("Region code for mirror selection, e.g. CN, US"))
+      ->type_name("REGION")
+      ->check(validatorString);
 
     auto *repoDisableMirror =
       cliRepo->add_subcommand("disable-mirror", _("Disable mirror for the repo"));
@@ -248,6 +254,7 @@ utils::error::Result<void> handleRepoCommand(CLI::App *app,
 
     if (argsParsed("enable-mirror")) {
         existingRepo->mirrorEnabled = true;
+        existingRepo->region = options.repoRegion;
         auto ret = backend.setConfig(cfgRef);
         if (!ret) {
             return LINGLONG_ERR(ret);

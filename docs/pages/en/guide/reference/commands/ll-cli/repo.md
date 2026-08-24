@@ -119,11 +119,13 @@ Enable mirror for repository.
 **Parameters**:
 
 - **ALIAS** _TEXT_ _REQUIRED_: Repository name alias
+- **--region** _REGION_: Region code for mirror selection, e.g. CN, US. When set, it is appended to the mirrorlist URL as a query parameter
 
 **Examples**:
 
 ```bash
 ll-cli repo enable-mirror myrepo
+ll-cli repo enable-mirror myrepo --region CN
 ```
 
 ### disable-mirror

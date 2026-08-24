@@ -38,8 +38,23 @@ loadConfig(const std::filesystem::path &file) noexcept
                 return LINGLONG_ERR("parse yaml failed");
             }
 
+            // V1 转换会优先访问默认仓库，转换前必须保证查找结果有效。
+            if (configV1->repos.find(configV1->defaultRepo) == configV1->repos.end()) {
+                return LINGLONG_ERR(
+                  fmt::format("default repo '{}' not found in repos", configV1->defaultRepo));
+            }
+
             // 将旧版本配置转换为新版本
             config = convertToV2(*configV1);
+        }
+
+        const auto defaultRepo =
+          std::find_if(config->repos.begin(), config->repos.end(), [&config](const auto &repo) {
+              return repo.alias.value_or(repo.name) == config->defaultRepo;
+          });
+        if (defaultRepo == config->repos.end()) {
+            return LINGLONG_ERR(
+              fmt::format("default repo '{}' not found in repos", config->defaultRepo));
         }
 
         return config;

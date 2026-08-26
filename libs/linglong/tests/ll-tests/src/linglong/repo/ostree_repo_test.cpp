@@ -7,9 +7,11 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "../../common/scoped_umask.h"
 #include "../../common/tempdir.h"
 #include "../mocks/ostree_repo_mock.h"
 #include "linglong/api/types/v1/Generators.hpp"
+#include "linglong/common/constants.h"
 #include "linglong/package/reference.h"
 #include "linglong/repo/client_factory.h"
 #include "linglong/repo/config.h"
@@ -112,12 +114,28 @@ TEST_F(RepoTest, createPersistsConfigAndBootstrapsRepoArtifacts)
     ASSERT_TRUE(fs::create_directories(repoRoot));
 
     auto config = createRepoConfig();
+    ScopedUmask scopedUmask{ 0022 };
     auto repo = OSTreeRepo::create(repoRoot, config);
     ASSERT_TRUE(repo.has_value()) << repo.error().message();
 
     EXPECT_TRUE(fs::exists(repoRoot / "config.yaml"));
     EXPECT_TRUE(fs::exists(repoRoot / "repo"));
     EXPECT_TRUE(fs::exists(repoRoot / "states.json"));
+    EXPECT_EQ(fs::status(repoRoot / "config.yaml").permissions() & fs::perms::mask,
+              common::shared_file_permissions);
+    EXPECT_EQ(fs::status(repoRoot / "repo").permissions() & fs::perms::mask,
+              common::shared_directory_permissions);
+    EXPECT_EQ(fs::status(repoRoot / "states.json").permissions() & fs::perms::mask,
+              common::shared_file_permissions);
+    EXPECT_EQ(fs::status(repoRoot / ".version").permissions() & fs::perms::mask,
+              common::shared_file_permissions);
+
+    auto entriesResult = repo->get()->fixExportAllEntries();
+    ASSERT_TRUE(entriesResult.has_value()) << entriesResult.error().message();
+    EXPECT_EQ(fs::status(repoRoot / "entries").permissions() & fs::perms::mask,
+              common::shared_directory_permissions);
+    EXPECT_EQ(fs::status(repoRoot / "entries/.version").permissions() & fs::perms::mask,
+              common::shared_file_permissions);
 
     auto loaded = OSTreeRepo::loadFromPath(repoRoot);
     EXPECT_TRUE(loaded.has_value()) << loaded.error().message();
@@ -138,6 +156,7 @@ TEST_F(RepoTest, exportLayerSignDataExportsWhitelistedPathForEveryLayerKindAndMo
         std::pair{ "custom", "custom-module" },
     };
 
+    ScopedUmask scopedUmask{ 0022 };
     for (std::size_t i = 0; i < layerTypes.size(); ++i) {
         const auto commit = "commit-" + std::to_string(i);
         const auto source = tempDir.path() / "layers" / commit / "entries";
@@ -163,6 +182,13 @@ TEST_F(RepoTest, exportLayerSignDataExportsWhitelistedPathForEveryLayerKindAndMo
     }
 
     EXPECT_FALSE(fs::exists(tempDir.path() / "entries/share/applications"));
+    for (const auto &entry : fs::recursive_directory_iterator(tempDir.path() / "entries")) {
+        if (entry.is_directory()) {
+            EXPECT_EQ(entry.status().permissions() & fs::perms::mask,
+                      common::shared_directory_permissions)
+              << entry.path();
+        }
+    }
 }
 
 TEST_F(RepoTest, exportLayerSignDataSkipsPathNotInWhitelist)

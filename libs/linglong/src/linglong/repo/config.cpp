@@ -89,6 +89,10 @@ utils::error::Result<void> saveConfig(const api::types::v1::RepoConfigV2 &cfg,
 
         auto node = ytj::to_yaml(cfg);
         ofs << node;
+        ofs.close();
+        if (!ofs) {
+            return LINGLONG_ERR("write failed");
+        }
 
         return LINGLONG_OK;
     } catch (const std::exception &e) {

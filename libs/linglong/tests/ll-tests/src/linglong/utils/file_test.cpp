@@ -4,6 +4,7 @@
 
 #include <gtest/gtest.h>
 
+#include "common/scoped_umask.h"
 #include "common/tempdir.h"
 #include "linglong/utils/file.h"
 
@@ -277,6 +278,34 @@ TEST_F(FileTest, EnsureDirectory)
     result = linglong::utils::ensureDirectory(multiple_dir);
     ASSERT_TRUE(result.has_value());
     EXPECT_TRUE(fs::is_directory(multiple_dir));
+}
+
+TEST_F(FileTest, EnsureDirectoryWithPermissionsIgnoresUmask)
+{
+    constexpr auto permissions = fs::perms::owner_all | fs::perms::group_read
+      | fs::perms::group_exec | fs::perms::others_read | fs::perms::others_exec;
+    const auto parentDirectory = dest_dir / "public-directory";
+    const auto directory = parentDirectory / "nested-directory";
+
+    ScopedUmask scopedUmask{ 0077 };
+    auto result = linglong::utils::ensureDirectory(directory, permissions);
+
+    ASSERT_TRUE(result.has_value());
+    EXPECT_EQ(fs::status(parentDirectory).permissions() & fs::perms::mask, permissions);
+    EXPECT_EQ(fs::status(directory).permissions() & fs::perms::mask, permissions);
+}
+
+TEST_F(FileTest, WriteFileWithPermissionsIgnoresUmask)
+{
+    constexpr auto permissions = fs::perms::owner_read | fs::perms::owner_write
+      | fs::perms::group_read | fs::perms::others_read;
+    const auto file = dest_dir / "public-file";
+
+    ScopedUmask scopedUmask{ 0077 };
+    auto result = linglong::utils::writeFile(file, "content", permissions);
+
+    ASSERT_TRUE(result.has_value());
+    EXPECT_EQ(fs::status(file).permissions() & fs::perms::mask, permissions);
 }
 
 TEST_F(FileTest, MakeDirectoryTreeRemovable)

@@ -6,12 +6,14 @@
 
 #include <gtest/gtest.h>
 
+#include "../../common/scoped_umask.h"
 #include "../../common/tempdir.h"
 #include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/api/types/v1/PackageInfoV2.hpp"
 #include "linglong/api/types/v1/Repo.hpp"
 #include "linglong/api/types/v1/RepoConfigV2.hpp"
 #include "linglong/api/types/v1/RepositoryCache.hpp"
+#include "linglong/common/constants.h"
 #include "linglong/repo/repo_cache.h"
 
 #include <filesystem>
@@ -147,6 +149,23 @@ TEST_F(RepoCacheTest, addAndDeleteLayerItemPersistAcrossReload)
     RepoCache afterDelete(cacheFile);
     ASSERT_TRUE(afterDelete.load().has_value());
     EXPECT_TRUE(afterDelete.queryLayerItem(repoCacheQuery{ .id = "app.test" }).empty());
+}
+
+TEST_F(RepoCacheTest, PersistedFilesUsePackageManagerUmask)
+{
+    ASSERT_TRUE(tempDir.isValid());
+
+    auto cacheFile = tempDir.path() / "states.json";
+    RepoCache cache(cacheFile);
+
+    ScopedUmask scopedUmask{ 0022 };
+    auto result = cache.addLayerItem(createLayerItem("commit-1", "app.test", "1.0.0"));
+
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+    EXPECT_EQ(fs::status(cacheFile).permissions() & fs::perms::mask,
+              common::shared_file_permissions);
+    EXPECT_EQ(fs::status(tempDir.path() / ".version").permissions() & fs::perms::mask,
+              common::shared_file_permissions);
 }
 
 } // namespace

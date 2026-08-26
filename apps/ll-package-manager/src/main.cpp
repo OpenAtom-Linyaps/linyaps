@@ -28,7 +28,11 @@
 #include <memory>
 #include <string>
 
+#include <sys/stat.h>
+
 namespace {
+
+constexpr mode_t packageManagerUmask = 0022;
 
 struct CommandLineOptions
 {
@@ -258,6 +262,8 @@ auto runInitRunMode(ocppi::cli::CLI &cli, const CommandLineOptions &options) -> 
 
 auto main(int argc, char *argv[]) -> int
 {
+    ::umask(packageManagerUmask);
+
     QCoreApplication app(argc, argv);
 
     linglong::common::global::applicationInitialize();

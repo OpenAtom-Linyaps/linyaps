@@ -24,6 +24,7 @@
 #include "linglong/api/types/v1/PackageManager1UninstallParameters.hpp"
 #include "linglong/api/types/v1/State.hpp"
 #include "linglong/cli/printer.h"
+#include "linglong/common/constants.h"
 #include "linglong/common/dir.h"
 #include "linglong/common/error.h"
 #include "linglong/common/socket.h"
@@ -1646,7 +1647,8 @@ int Cli::run(const RunOptions &options)
     LINGLONG_TRACE("command run");
 
     auto userContainerDir = std::filesystem::path{ "/run/linglong" } / std::to_string(getuid());
-    if (auto ret = utils::ensureDirectory(userContainerDir); !ret) {
+    if (auto ret = utils::ensureDirectory(userContainerDir, common::shared_directory_permissions);
+        !ret) {
         this->printer.printErr(ret.error());
         return -1;
     }
@@ -1809,14 +1811,13 @@ int Cli::run(const RunOptions &options)
         }
 
         auto pidFile = userContainerDir / std::to_string(getpid());
-        std::ofstream stream{ pidFile };
-        if (!stream.is_open()) {
-            this->printer.printErr(
-              LINGLONG_ERRV(fmt::format("failed to open {}", pidFile.c_str())));
+        auto result = utils::writeFile(pidFile,
+                                       nlohmann::json(runContext->stateInfo()).dump(),
+                                       common::shared_file_permissions);
+        if (!result) {
+            this->printer.printErr(result.error());
             return false;
         }
-        stream << nlohmann::json(runContext->stateInfo());
-        stream.close();
 
         return true;
     };

@@ -12,6 +12,7 @@ pfl_add_executable(
   DISABLE_INSTALL
   SOURCES
   # find -regex '\./src/.+\.[ch]\(pp\)?' -type f -printf '%P\n'| sort
+  src/common/scoped_umask.h
   src/common/tempdir.h
   src/linglong/builder/config_test.cpp
   src/linglong/builder/linglong_builder_test.cpp
@@ -20,6 +21,7 @@ pfl_add_executable(
   src/linglong/cli/cli_test.cpp
   src/linglong/common/gkeyfile_wrapper_test.cpp
   src/linglong/common/cli/repo_test.cpp
+  src/linglong/common/dir_test.cpp
   src/linglong/common/strings_test.cpp
   src/linglong/common/display_test.cpp
   src/linglong/common/socket_test.cpp

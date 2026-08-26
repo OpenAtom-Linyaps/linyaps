@@ -64,7 +64,7 @@ utils::error::Result<FileLock> FileLock::create(std::filesystem::path path,
         flags |= O_CREAT;
     }
 
-    auto fd = ::open(abs_path.c_str(), flags, default_file_mode);
+    auto fd = ::open(abs_path.c_str(), flags, common::default_file_mode);
     if (fd < 0) {
         return LINGLONG_ERR(fmt::format("failed to open lock file {} :{}",
                                         abs_path,

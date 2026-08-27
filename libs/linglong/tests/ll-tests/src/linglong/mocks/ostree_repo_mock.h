@@ -46,6 +46,13 @@ public:
     }
 
     utils::error::Result<void>
+    exportAppBinaries(const std::filesystem::path &destination,
+                      const api::types::v1::RepositoryCacheLayersItem &item)
+    {
+        return this->OSTreeRepo::exportAppBinaries(destination, item);
+    }
+
+    utils::error::Result<void>
     exportLayerSignData(const std::filesystem::path &destination,
                         const api::types::v1::RepositoryCacheLayersItem &item)
     {

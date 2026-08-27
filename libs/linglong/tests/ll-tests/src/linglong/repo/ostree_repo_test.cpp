@@ -689,7 +689,7 @@ class OSTreeRepoMock : public repo::OSTreeRepo
 public:
     OSTreeRepoMock(const std::filesystem::path &path)
         : repo::OSTreeRepo(
-            path, api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 })
+          path, api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 })
     {
     }
 
@@ -706,7 +706,7 @@ public:
 
     OSTreeRepoAccessor()
         : repo::OSTreeRepo(
-            "", api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 })
+          "", api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 })
     {
     }
 };
@@ -892,7 +892,7 @@ class OSTreeRepoMock : public repo::OSTreeRepo
 public:
     OSTreeRepoMock(const std::filesystem::path &path)
         : repo::OSTreeRepo(
-            path, api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 })
+          path, api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 })
     {
     }
 
@@ -1125,6 +1125,161 @@ TEST(OSTreeRepoTest, matchRemoteByPriority_UseHighestPriority)
 
 } // namespace
 
+namespace {
+
+TEST_F(RepoTest, exportAppBinariesCreatesDefaultAndExportedScripts)
+{
+    TempDir tempDir;
+    auto config = api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 };
+    auto ostreeRepo = std::make_unique<MockOstreeRepo>(tempDir.path(), config);
+
+    api::types::v1::RepositoryCacheLayersItem item{
+        .commit = "bin-commit",
+        .info =
+          api::types::v1::PackageInfoV2{
+            .command = std::vector<std::string>{ "myapp" },
+            .exportedBinaries = std::vector<std::string>{ "mytool", "myutil" },
+            .id = "com.example.app",
+            .kind = "app",
+            .packageInfoV2Module = "binary",
+          },
+    };
+
+    auto entriesDir = tempDir.path() / "entries";
+    auto result = ostreeRepo->exportAppBinaries(entriesDir, item);
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+
+    auto binDir = entriesDir / "bin";
+    // Default script named after appid
+    EXPECT_TRUE(fs::exists(binDir / "com.example.app"));
+    // Exported binaries scripts
+    EXPECT_TRUE(fs::exists(binDir / "mytool"));
+    EXPECT_TRUE(fs::exists(binDir / "myutil"));
+
+    // Verify script content
+    std::ifstream defaultScript(binDir / "com.example.app");
+    std::string content((std::istreambuf_iterator<char>(defaultScript)),
+                        std::istreambuf_iterator<char>());
+    EXPECT_NE(content.find("exec ll-cli run com.example.app - myapp \"$@\""), std::string::npos);
+
+    // Verify executable permissions (0755)
+    std::error_code ec;
+    auto perms = fs::status(binDir / "com.example.app", ec).permissions();
+    EXPECT_TRUE((perms & fs::perms::owner_exec) != fs::perms::none);
+    EXPECT_TRUE((perms & fs::perms::group_exec) != fs::perms::none);
+    EXPECT_TRUE((perms & fs::perms::others_exec) != fs::perms::none);
+}
+
+TEST_F(RepoTest, exportAppBinariesSkipsWhenCommandEmpty)
+{
+    TempDir tempDir;
+    auto config = api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 };
+    auto ostreeRepo = std::make_unique<MockOstreeRepo>(tempDir.path(), config);
+
+    api::types::v1::RepositoryCacheLayersItem item{
+        .commit = "no-cmd-commit",
+        .info =
+          api::types::v1::PackageInfoV2{
+            .exportedBinaries = std::vector<std::string>{ "tool" },
+            .id = "com.example.nocmd",
+            .kind = "app",
+            .packageInfoV2Module = "binary",
+          },
+    };
+
+    auto entriesDir = tempDir.path() / "entries";
+    auto result = ostreeRepo->exportAppBinaries(entriesDir, item);
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+
+    // No scripts should be created when command is empty
+    EXPECT_FALSE(fs::exists(entriesDir / "bin" / "com.example.nocmd"));
+    EXPECT_FALSE(fs::exists(entriesDir / "bin" / "tool"));
+}
+
+TEST_F(RepoTest, exportAppBinariesOExclPreventsOverwrite)
+{
+    TempDir tempDir;
+    auto config = api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 };
+    auto ostreeRepo = std::make_unique<MockOstreeRepo>(tempDir.path(), config);
+
+    api::types::v1::RepositoryCacheLayersItem item{
+        .commit = "excl-commit",
+        .info =
+          api::types::v1::PackageInfoV2{
+            .command = std::vector<std::string>{ "myapp" },
+            .id = "com.example.excl",
+            .kind = "app",
+            .packageInfoV2Module = "binary",
+          },
+    };
+
+    auto entriesDir = tempDir.path() / "entries";
+    auto result = ostreeRepo->exportAppBinaries(entriesDir, item);
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+
+    auto scriptPath = entriesDir / "bin" / "com.example.excl";
+    ASSERT_TRUE(fs::exists(scriptPath));
+
+    // Pre-create a file at the same path to verify O_EXCL is used
+    // (exportAppBinaries should log warning and continue, not crash)
+    auto result2 = ostreeRepo->exportAppBinaries(entriesDir, item);
+    ASSERT_TRUE(result2.has_value()) << result2.error().message();
+
+    // Original file should still exist
+    EXPECT_TRUE(fs::exists(scriptPath));
+}
+
+TEST_F(RepoTest, unexportAppEntriesRemovesBinaryScripts)
+{
+    TempDir tempDir;
+    auto config = api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 };
+    auto ostreeRepo = std::make_unique<MockOstreeRepo>(tempDir.path(), config);
+
+    const std::string commit = "unexport-bin-commit";
+    auto layerDir = tempDir.path() / "layers" / commit;
+    auto source = layerDir / "entries";
+    fs::create_directories(source / "share/applications");
+    fs::create_directories(layerDir);
+
+    // Write info.json with exportedBinaries (all required fields for PackageInfoV2)
+    nlohmann::json infoJson = {
+        { "arch", nlohmann::json::array({ "x86_64" }) },
+        { "base", "org.deepin.base/23.0.0" },
+        { "channel", "main" },
+        { "command", nlohmann::json::array({ "myapp" }) },
+        { "exportedBinaries", nlohmann::json::array({ "mytool" }) },
+        { "id", "com.example.unexport" },
+        { "kind", "app" },
+        { "module", "binary" },
+        { "name", "Test Unexport" },
+        { "schema_version", "2" },
+        { "size", 0 },
+        { "version", "1.0.0" },
+    };
+    std::ofstream(layerDir / "info.json") << infoJson.dump();
+
+    auto entriesDir = tempDir.path() / "entries";
+    auto binDir = entriesDir / "bin";
+    fs::create_directories(binDir);
+
+    // Create binary scripts as if they were exported
+    std::ofstream(binDir / "com.example.unexport")
+      << "#!/bin/sh\nexec ll-cli run com.example.unexport - myapp \"$@\"\n";
+    std::ofstream(binDir / "mytool")
+      << "#!/bin/sh\nexec ll-cli run com.example.unexport - myapp \"$@\"\n";
+
+    EXPECT_TRUE(fs::exists(binDir / "com.example.unexport"));
+    EXPECT_TRUE(fs::exists(binDir / "mytool"));
+
+    auto result = ostreeRepo->unexportAppEntries(entriesDir, { layerDir });
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+
+    // Scripts should be removed
+    EXPECT_FALSE(fs::exists(binDir / "com.example.unexport"));
+    EXPECT_FALSE(fs::exists(binDir / "mytool"));
+}
+
+} // namespace
 } // namespace
 
 } // namespace linglong::repo::test

@@ -34,7 +34,7 @@ class MockRepo : public repo::OSTreeRepo
 public:
     MockRepo(const std::filesystem::path &path)
         : repo::OSTreeRepo(
-            path, api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 })
+          path, api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 })
     {
     }
 
@@ -913,10 +913,9 @@ TEST_F(CliTest, aliasFailsWhenPackageManagerUnavailable)
         EXPECT_THAT(error.message(), HasSubstr("package manager unavailable"));
     }));
 
-    EXPECT_EQ(cli->alias(cli::AliasOptions{ .name = "ls",
-                                            .from = "org.example.app",
-                                            .command = "ls" }),
-              -1);
+    EXPECT_EQ(
+      cli->alias(cli::AliasOptions{ .name = "ls", .from = "org.example.app", .command = "ls" }),
+      -1);
 }
 
 TEST_F(CliTest, aliasUsesNameAsBinaryNameWhenCommandIsEmpty)
@@ -935,10 +934,9 @@ TEST_F(CliTest, aliasUsesNameAsBinaryNameWhenCommandIsEmpty)
         EXPECT_THAT(error.message(), HasSubstr("package manager unavailable"));
     }));
 
-    EXPECT_EQ(cli->alias(cli::AliasOptions{ .name = "myalias",
-                                            .from = "org.example.app",
-                                            .command = "" }),
-              -1);
+    EXPECT_EQ(
+      cli->alias(cli::AliasOptions{ .name = "myalias", .from = "org.example.app", .command = "" }),
+      -1);
 }
 
 } // namespace

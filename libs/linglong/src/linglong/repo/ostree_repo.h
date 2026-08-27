@@ -208,7 +208,8 @@ public:
     upgradableApps() const noexcept;
 
     utils::error::Result<void> exportAppBinary(const std::string &appID,
-                                               const std::string &binaryName) noexcept;
+                                               const std::string &scriptName,
+                                               const std::string &commandName) noexcept;
 
 private:
     api::types::v1::RepoConfigV2 cfg;

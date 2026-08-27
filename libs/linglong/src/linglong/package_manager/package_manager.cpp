@@ -640,9 +640,14 @@ PackageManager::setConfigurationImpl(const QVariantMap &parameters) noexcept
     return LINGLONG_OK;
 }
 
-QVariantMap PackageManager::ExportBinary(const QString &appID, const QString &binaryName) noexcept
+QVariantMap PackageManager::ExportBinary(const QString &appID,
+                                         const QString &scriptName,
+                                         const QString &commandName) noexcept
 {
-    LogI("Export binary alias {} for app {}", binaryName.toStdString(), appID.toStdString());
+    LogI("Export binary alias {} (command {}) for app {}",
+         scriptName.toStdString(),
+         commandName.toStdString(),
+         appID.toStdString());
 
     if (!daemonModeInitialized) {
         return toDBusReply(utils::error::ErrorCode::Failed, "daemon mode not initialized");
@@ -656,7 +661,7 @@ QVariantMap PackageManager::ExportBinary(const QString &appID, const QString &bi
         checkPolkitAuthorizationAsync(
           "org.deepin.linglong.PackageManager1.export-binary",
           msg.service().toStdString(),
-          [this, appID, binaryName, msg, conn](utils::error::Result<void> authResult) {
+          [this, appID, scriptName, commandName, msg, conn](utils::error::Result<void> authResult) {
               if (!authResult) {
                   conn.send(
                     msg.createErrorReply(QDBusError::AccessDenied,
@@ -664,8 +669,9 @@ QVariantMap PackageManager::ExportBinary(const QString &appID, const QString &bi
                   return;
               }
 
-              auto result =
-                this->repo->exportAppBinary(appID.toStdString(), binaryName.toStdString());
+              auto result = this->repo->exportAppBinary(appID.toStdString(),
+                                                        scriptName.toStdString(),
+                                                        commandName.toStdString());
               if (!result) {
                   conn.send(msg.createErrorReply(QDBusError::Failed,
                                                  QString::fromStdString(result.error().message())));
@@ -675,7 +681,7 @@ QVariantMap PackageManager::ExportBinary(const QString &appID, const QString &bi
               auto replyData = common::serialize::toQVariantMap(
                 api::types::v1::CommonResult{ .code = 0,
                                               .message = fmt::format("binary {} exported for {}",
-                                                                     binaryName.toStdString(),
+                                                                     scriptName.toStdString(),
                                                                      appID.toStdString()),
                                               .type = "display" });
               conn.send(msg.createReply(replyData));
@@ -683,7 +689,9 @@ QVariantMap PackageManager::ExportBinary(const QString &appID, const QString &bi
         return {};
     }
 
-    auto result = this->repo->exportAppBinary(appID.toStdString(), binaryName.toStdString());
+    auto result = this->repo->exportAppBinary(appID.toStdString(),
+                                              scriptName.toStdString(),
+                                              commandName.toStdString());
     if (!result) {
         return toDBusReply(result);
     }
@@ -691,7 +699,7 @@ QVariantMap PackageManager::ExportBinary(const QString &appID, const QString &bi
     return common::serialize::toQVariantMap(api::types::v1::CommonResult{
       .code = 0,
       .message =
-        fmt::format("binary {} exported for {}", binaryName.toStdString(), appID.toStdString()),
+        fmt::format("binary {} exported for {}", scriptName.toStdString(), appID.toStdString()),
       .type = "display" });
 }
 

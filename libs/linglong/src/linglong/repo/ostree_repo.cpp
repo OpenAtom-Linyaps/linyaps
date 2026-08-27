@@ -2313,18 +2313,32 @@ utils::error::Result<void> createBinaryWrapperScript(const std::filesystem::path
     std::string content =
       fmt::format("#!/bin/sh\nexec ll-cli run {} - {} \"$@\"\n", appID, command0);
 
-    ssize_t written = ::write(fd, content.data(), content.size());
     // fchmod ensures executable bit regardless of process umask
     if (::fchmod(fd, 0755) != 0) {
         ::close(fd);
+        std::error_code rmEc;
+        std::filesystem::remove(path, rmEc);
         return LINGLONG_ERR(fmt::format("fchmod {}: {}", path.string(), std::strerror(errno)));
     }
-    ::close(fd);
+
+    ssize_t written = ::write(fd, content.data(), content.size());
     if (written < 0) {
+        ::close(fd);
+        std::error_code rmEc;
+        std::filesystem::remove(path, rmEc);
         return LINGLONG_ERR(fmt::format("write to {}: {}", path.string(), std::strerror(errno)));
     }
     if (static_cast<size_t>(written) != content.size()) {
+        ::close(fd);
+        std::error_code rmEc;
+        std::filesystem::remove(path, rmEc);
         return LINGLONG_ERR(fmt::format("partial write to {}", path.string()));
+    }
+
+    if (::close(fd) != 0) {
+        std::error_code rmEc;
+        std::filesystem::remove(path, rmEc);
+        return LINGLONG_ERR(fmt::format("close {}: {}", path.string(), std::strerror(errno)));
     }
 
     return LINGLONG_OK;
@@ -2375,14 +2389,21 @@ OSTreeRepo::exportAppBinaries(const std::filesystem::path &rootEntriesDir,
 }
 
 utils::error::Result<void> OSTreeRepo::exportAppBinary(const std::string &appID,
-                                                       const std::string &binaryName) noexcept
+                                                       const std::string &scriptName,
+                                                       const std::string &commandName) noexcept
 {
-    LINGLONG_TRACE(fmt::format("export binary alias {} for {}", binaryName, appID));
+    LINGLONG_TRACE(fmt::format("export binary alias {} for {}", scriptName, appID));
 
-    // Validate the binary name (Linux single path component rules)
-    auto nameResult = package::validateExecutableName(binaryName);
-    if (!nameResult) {
-        return LINGLONG_ERR(nameResult);
+    // Validate the script name (Linux single path component rules)
+    auto scriptNameResult = package::validateExecutableName(scriptName);
+    if (!scriptNameResult) {
+        return LINGLONG_ERR(scriptNameResult);
+    }
+
+    // Validate the command name as well
+    auto commandNameResult = package::validateExecutableName(commandName);
+    if (!commandNameResult) {
+        return LINGLONG_ERR(commandNameResult);
     }
 
     // Look up the app's info from the repo cache to find command[0] and verify exportedBinaries
@@ -2406,16 +2427,16 @@ utils::error::Result<void> OSTreeRepo::exportAppBinary(const std::string &appID,
         return LINGLONG_ERR(fmt::format("app {} has no app module", appID));
     }
 
-    // Strict match: binaryName must be in exportedBinaries
+    // Strict match: commandName must be in exportedBinaries
     if (!info->exportedBinaries) {
         return LINGLONG_ERR(fmt::format("app {} has no exportedBinaries", appID));
     }
     bool matched =
-      std::find(info->exportedBinaries->cbegin(), info->exportedBinaries->cend(), binaryName)
+      std::find(info->exportedBinaries->cbegin(), info->exportedBinaries->cend(), commandName)
       != info->exportedBinaries->cend();
     if (!matched) {
         return LINGLONG_ERR(
-          fmt::format("binary name '{}' is not in exportedBinaries of app {}", binaryName, appID));
+          fmt::format("command '{}' is not in exportedBinaries of app {}", commandName, appID));
     }
 
     const auto cmd = info->command.value_or(std::vector<std::string>{});
@@ -2424,7 +2445,7 @@ utils::error::Result<void> OSTreeRepo::exportAppBinary(const std::string &appID,
     }
 
     auto binDir = this->getEntriesDir() / "bin";
-    auto scriptPath = binDir / binaryName;
+    auto scriptPath = binDir / scriptName;
     return createBinaryWrapperScript(scriptPath, appID, cmd[0]);
 }
 

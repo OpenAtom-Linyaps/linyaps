@@ -3038,11 +3038,15 @@ int Cli::alias(const AliasOptions &options)
         return -1;
     }
 
-    // The binary name to export: use --command if specified, otherwise the positional name
-    std::string binaryName = options.command.empty() ? options.name : options.command;
+    // scriptName is the positional NAME (the script filename to create).
+    // commandName is --command if specified, otherwise NAME (the value to match
+    // against exportedBinaries in info.json).
+    const auto &scriptName = options.name;
+    std::string commandName = options.command.empty() ? options.name : options.command;
 
     auto reply = (*pkgMan)->ExportBinary(QString::fromStdString(options.from),
-                                         QString::fromStdString(binaryName));
+                                         QString::fromStdString(scriptName),
+                                         QString::fromStdString(commandName));
     reply.waitForFinished();
     if (reply.isError()) {
         auto err = LINGLONG_ERRV(reply.error().message().toStdString());
@@ -3051,7 +3055,7 @@ int Cli::alias(const AliasOptions &options)
     }
 
     this->printer.printMessage(
-      fmt::format("alias '{}' created for app '{}'", binaryName, options.from));
+      fmt::format("alias '{}' created for app '{}'", scriptName, options.from));
     return 0;
 }
 

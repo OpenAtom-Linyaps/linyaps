@@ -64,7 +64,8 @@ SPDX-License-Identifier: LGPL-3.0-or-later
     </method>
     <method name="ExportBinary">
       <arg direction="in" name="appID" type="s" />
-      <arg direction="in" name="binaryName" type="s" />
+      <arg direction="in" name="scriptName" type="s" />
+      <arg direction="in" name="commandName" type="s" />
       <arg direction="out" name="result" type="a{sv}" />
       <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QVariantMap" />
     </method>

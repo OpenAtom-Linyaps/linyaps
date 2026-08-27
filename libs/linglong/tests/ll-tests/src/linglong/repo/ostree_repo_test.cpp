@@ -1160,7 +1160,7 @@ TEST_F(RepoTest, exportAppBinariesCreatesDefaultAndExportedScripts)
     std::ifstream defaultScript(binDir / "com.example.app");
     std::string content((std::istreambuf_iterator<char>(defaultScript)),
                         std::istreambuf_iterator<char>());
-    EXPECT_NE(content.find("exec ll-cli run com.example.app - myapp \"$@\""), std::string::npos);
+    EXPECT_NE(content.find("exec ll-cli run com.example.app -- 'myapp' \"$@\""), std::string::npos);
 
     // Verify executable permissions (0755)
     std::error_code ec;
@@ -1264,9 +1264,9 @@ TEST_F(RepoTest, unexportAppEntriesRemovesBinaryScripts)
 
     // Create binary scripts as if they were exported
     std::ofstream(binDir / "com.example.unexport")
-      << "#!/bin/sh\nexec ll-cli run com.example.unexport - myapp \"$@\"\n";
+      << "#!/bin/sh\nexec ll-cli run com.example.unexport -- 'myapp' \"$@\"\n";
     std::ofstream(binDir / "mytool")
-      << "#!/bin/sh\nexec ll-cli run com.example.unexport - myapp \"$@\"\n";
+      << "#!/bin/sh\nexec ll-cli run com.example.unexport -- 'myapp' \"$@\"\n";
 
     EXPECT_TRUE(fs::exists(binDir / "com.example.unexport"));
     EXPECT_TRUE(fs::exists(binDir / "mytool"));

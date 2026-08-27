@@ -63,6 +63,11 @@ public
                       const QString &scriptName,
                       const QString &commandName) noexcept -> QVariantMap;
 
+    QVariantMap exportBinaryImpl(const QString &appID,
+                                 const QString &scriptName,
+                                 const QString &commandName,
+                                 const CallerContext &ctx) noexcept;
+
     auto InitRunContext(const QString &runContextCfg, const QString &containerID) noexcept
       -> QVariantMap;
     utils::error::Result<void> initRunContext(const std::string &runContextCfg,

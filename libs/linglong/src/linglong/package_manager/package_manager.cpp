@@ -23,6 +23,7 @@
 #include "linglong/package/layer_file.h"
 #include "linglong/package/layer_packager.h"
 #include "linglong/package/reference.h"
+#include "linglong/package_manager/export_binary_action.h"
 #include "linglong/package_manager/package_task.h"
 #include "linglong/package_manager/package_update.h"
 #include "linglong/package_manager/polkit_authority.h"
@@ -658,49 +659,47 @@ QVariantMap PackageManager::ExportBinary(const QString &appID,
         auto conn = connection();
         setDelayedReply(true);
 
+        CallerContext ctx{ conn, msg };
+
         checkPolkitAuthorizationAsync(
           "org.deepin.linglong.PackageManager1.export-binary",
           msg.service().toStdString(),
-          [this, appID, scriptName, commandName, msg, conn](utils::error::Result<void> authResult) {
+          [this, appID, scriptName, commandName, ctx](utils::error::Result<void> authResult) {
               if (!authResult) {
-                  conn.send(
-                    msg.createErrorReply(QDBusError::AccessDenied,
-                                         QString::fromStdString(authResult.error().message())));
+                  ctx.connection.send(ctx.message.createErrorReply(
+                    QDBusError::AccessDenied,
+                    QString::fromStdString(authResult.error().message())));
                   return;
               }
 
-              auto result = this->repo->exportAppBinary(appID.toStdString(),
-                                                        scriptName.toStdString(),
-                                                        commandName.toStdString());
-              if (!result) {
-                  conn.send(msg.createErrorReply(QDBusError::Failed,
-                                                 QString::fromStdString(result.error().message())));
-                  return;
-              }
-
-              auto replyData = common::serialize::toQVariantMap(
-                api::types::v1::CommonResult{ .code = 0,
-                                              .message = fmt::format("binary {} exported for {}",
-                                                                     scriptName.toStdString(),
-                                                                     appID.toStdString()),
-                                              .type = "display" });
-              conn.send(msg.createReply(replyData));
+              auto result = exportBinaryImpl(appID, scriptName, commandName, ctx);
+              ctx.connection.send(ctx.message.createReply(result));
           });
         return {};
     }
 
-    auto result = this->repo->exportAppBinary(appID.toStdString(),
-                                              scriptName.toStdString(),
-                                              commandName.toStdString());
-    if (!result) {
-        return toDBusReply(result);
+    return exportBinaryImpl(appID,
+                            scriptName,
+                            commandName,
+                            CallerContext{ connection(), message() });
+}
+
+QVariantMap PackageManager::exportBinaryImpl(const QString &appID,
+                                             const QString &scriptName,
+                                             const QString &commandName,
+                                             const CallerContext &ctx) noexcept
+{
+    auto action = ExportBinaryAction::create(appID.toStdString(),
+                                             scriptName.toStdString(),
+                                             commandName.toStdString(),
+                                             *this,
+                                             *repo);
+    if (!action) {
+        return toDBusReply(utils::error::ErrorCode::Failed,
+                           "failed to create export binary action");
     }
 
-    return common::serialize::toQVariantMap(api::types::v1::CommonResult{
-      .code = 0,
-      .message =
-        fmt::format("binary {} exported for {}", scriptName.toStdString(), appID.toStdString()),
-      .type = "display" });
+    return runActionOnTaskQueue(action, ctx);
 }
 
 QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,

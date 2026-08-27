@@ -2288,7 +2288,7 @@ OSTreeRepo::exportAppEntries(const std::filesystem::path &rootEntriesDir,
 
 namespace {
 // Create an executable shell script at path using O_EXCL (atomic creation, prevents TOCTOU).
-// Content: #!/bin/sh\nexec ll-cli run <appID> - <command0> "$@"
+// Content: #!/bin/sh\nexec ll-cli run <appID> -- <command0> "$@"
 utils::error::Result<void> createBinaryWrapperScript(const std::filesystem::path &path,
                                                      const std::string &appID,
                                                      const std::string &command0) noexcept
@@ -2311,7 +2311,7 @@ utils::error::Result<void> createBinaryWrapperScript(const std::filesystem::path
     }
 
     std::string content =
-      fmt::format("#!/bin/sh\nexec ll-cli run {} - {} \"$@\"\n", appID, command0);
+      fmt::format("#!/bin/sh\nexec ll-cli run {} -- '{}' \"$@\"\n", appID, command0);
 
     // fchmod ensures executable bit regardless of process umask
     if (::fchmod(fd, 0755) != 0) {

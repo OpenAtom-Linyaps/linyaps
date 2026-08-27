@@ -63,6 +63,10 @@ std::optional<std::string> compatibleVersion;
 * description of package info
 */
 std::optional<std::string> description;
+/**
+* command names exported to host entries/bin
+*/
+std::optional<std::vector<std::string>> exportedBinaries;
 std::optional<ExtensionImpl> extImpl;
 /**
 * description of extension

@@ -381,6 +381,11 @@ $defs:
         description: command of builder project
         items:
           type: string
+      exportedBinaries:
+        type: array
+        description: command names exported to host entries/bin
+        items:
+          type: string
       strip:
         title: BuilderProjectStripScript
         description: strip script of builder project
@@ -596,6 +601,11 @@ $defs:
       command:
         type: array
         description: command of package info
+        items:
+          type: string
+      exportedBinaries:
+        type: array
+        description: command names exported to host entries/bin
         items:
           type: string
       permissions:

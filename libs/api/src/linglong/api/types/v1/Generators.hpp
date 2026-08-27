@@ -515,6 +515,7 @@ x.build = j.at("build").get<std::string>();
 x.buildext = get_stack_optional<BuilderProjectBuildEXT>(j, "buildext");
 x.command = get_stack_optional<std::vector<std::string>>(j, "command");
 x.exclude = get_stack_optional<std::vector<std::string>>(j, "exclude");
+x.exportedBinaries = get_stack_optional<std::vector<std::string>>(j, "exportedBinaries");
 x.include = get_stack_optional<std::vector<std::string>>(j, "include");
 x.modules = get_stack_optional<std::vector<BuilderProjectModules>>(j, "modules");
 x.package = j.at("package").get<BuilderProjectPackage>();
@@ -539,6 +540,9 @@ j["command"] = x.command;
 }
 if (x.exclude) {
 j["exclude"] = x.exclude;
+}
+if (x.exportedBinaries) {
+j["exportedBinaries"] = x.exportedBinaries;
 }
 if (x.include) {
 j["include"] = x.include;
@@ -849,6 +853,7 @@ x.channel = j.at("channel").get<std::string>();
 x.command = get_stack_optional<std::vector<std::string>>(j, "command");
 x.compatibleVersion = get_stack_optional<std::string>(j, "compatible_version");
 x.description = get_stack_optional<std::string>(j, "description");
+x.exportedBinaries = get_stack_optional<std::vector<std::string>>(j, "exportedBinaries");
 x.extImpl = get_stack_optional<ExtensionImpl>(j, "ext_impl");
 x.extensions = get_stack_optional<std::vector<ExtensionDefine>>(j, "extensions");
 x.id = j.at("id").get<std::string>();
@@ -877,6 +882,9 @@ j["compatible_version"] = x.compatibleVersion;
 }
 if (x.description) {
 j["description"] = x.description;
+}
+if (x.exportedBinaries) {
+j["exportedBinaries"] = x.exportedBinaries;
 }
 if (x.extImpl) {
 j["ext_impl"] = x.extImpl;
@@ -912,6 +920,7 @@ x.channel = j.at("channel").get<std::string>();
 x.command = get_stack_optional<std::vector<std::string>>(j, "command");
 x.compatibleVersion = get_stack_optional<std::string>(j, "compatible_version");
 x.description = get_stack_optional<std::string>(j, "description");
+x.exportedBinaries = get_stack_optional<std::vector<std::string>>(j, "exportedBinaries");
 x.extImpl = get_stack_optional<ExtensionImpl>(j, "ext_impl");
 x.extensions = get_stack_optional<std::vector<ExtensionDefine>>(j, "extensions");
 x.id = j.at("id").get<std::string>();
@@ -939,6 +948,9 @@ j["compatible_version"] = x.compatibleVersion;
 }
 if (x.description) {
 j["description"] = x.description;
+}
+if (x.exportedBinaries) {
+j["exportedBinaries"] = x.exportedBinaries;
 }
 if (x.extImpl) {
 j["ext_impl"] = x.extImpl;

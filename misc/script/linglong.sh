@@ -6,11 +6,16 @@
 
 # shellcheck shell=sh
 
-# Profile.d script for linglong/linyaps
-# This script sources the XDG_DATA_DIRS generation script and exports
-# the modified XDG_DATA_DIRS environment variable for user sessions.
-
-source_script="@CMAKE_INSTALL_PREFIX@/lib/linglong/generate-xdg-data-dirs.sh"
+# Inject entries/bin into PATH so exported binary wrapper scripts are accessible
+# from the user's shell session.
+_linglong_bin_dir="@LINGLONG_ROOT@/entries/bin"
+if [ -n "${_linglong_bin_dir}" ] && [ -d "${_linglong_bin_dir}" ]; then
+    case ":${PATH}:" in
+    *":${_linglong_bin_dir}:"*) ;; # Already in PATH
+    *) PATH="${_linglong_bin_dir}:${PATH}" && export PATH ;;
+    esac
+fi
+unset _linglong_bin_dir
 
 # Source the script and export XDG_DATA_DIRS if successful
 [ -r "${source_script}" ] && . "${source_script}" && [ -n "${XDG_DATA_DIRS}" ] && export XDG_DATA_DIRS

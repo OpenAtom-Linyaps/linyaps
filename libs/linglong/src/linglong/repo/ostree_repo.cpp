@@ -1836,6 +1836,13 @@ OSTreeRepo::unexportAppEntries(const std::filesystem::path &rootEntriesDir,
         // Remove scripts for each exportedBinaries entry
         if (infoResult->exportedBinaries) {
             for (const auto &name : *infoResult->exportedBinaries) {
+                auto nameValidation = package::validateExecutableName(name);
+                if (!nameValidation) {
+                    LogW("Skipping invalid executable name '{}' during unexport: {}",
+                         name,
+                         nameValidation.error().message());
+                    continue;
+                }
                 auto scriptPath = binDir / name;
                 if (std::filesystem::exists(scriptPath, ec)) {
                     std::filesystem::remove(scriptPath, ec);
@@ -2374,6 +2381,14 @@ OSTreeRepo::exportAppBinaries(const std::filesystem::path &rootEntriesDir,
     // Export additional scripts for each name in exportedBinaries
     if (item.info.exportedBinaries) {
         for (const auto &name : *item.info.exportedBinaries) {
+            auto nameValidation = package::validateExecutableName(name);
+            if (!nameValidation) {
+                LogW("Skipping invalid executable name '{}' for {}: {}",
+                     name,
+                     item.info.id,
+                     nameValidation.error().message());
+                continue;
+            }
             auto scriptPath = binDir / name;
             auto nameRet = createBinaryWrapperScript(scriptPath, item.info.id, command0);
             if (!nameRet) {

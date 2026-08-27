@@ -5,7 +5,7 @@ Create command aliases for exported binaries of an application.
 ## Synopsis
 
 ```bash
-ll-cli alias <alias-name> --from=<appid> --command=<command> [options]
+ll-cli alias <alias-name> --from=<appid> [--command=<command>] [options]
 ```
 
 ## Description
@@ -13,7 +13,7 @@ ll-cli alias <alias-name> --from=<appid> --command=<command> [options]
 The `alias` subcommand creates an executable wrapper script in `/var/lib/linglong/entries/bin` 
 that allows you to run a specific binary from a Linglong application directly from the host shell.
 
-The script content is `exec ll-cli run <appid> -- <command> "$@"`.
+The script content is `exec ll-cli run <appid> -- '<command>' "$@"`.
 
 Before creating the alias, the package manager checks that the `command` is listed in the 
 application's `exportedBinaries` field in its `info.json`. Only commands that are explicitly 
@@ -23,7 +23,7 @@ conditions (TOCTOU).
 ## Options
 
 - `--from=<appid>`: The application ID whose binary you want to alias. **Required.**
-- `--command=<command>`: The command name (from the app's `exportedBinaries`) to alias. **Required.**
+- `--command=<command>`: The command name (from the app's `exportedBinaries`) to alias. **Optional.** If omitted, defaults to `<alias-name>`.
 
 ## Examples
 

@@ -207,6 +207,9 @@ public:
     utils::error::Result<std::vector<std::pair<package::Reference, package::ReferenceWithRepo>>>
     upgradableApps() const noexcept;
 
+    utils::error::Result<void> exportAppBinary(const std::string &appID,
+                                               const std::string &binaryName) noexcept;
+
 private:
     api::types::v1::RepoConfigV2 cfg;
 
@@ -281,6 +284,10 @@ protected:
     virtual utils::error::Result<bool> shouldExportSignData() const noexcept;
     utils::error::Result<void> exportAppEntries(
       const std::filesystem::path &, const api::types::v1::RepositoryCacheLayersItem &) noexcept;
+    // Export binary wrapper scripts (default appid-named + exportedBinaries) to entries/bin
+    utils::error::Result<void>
+    exportAppBinaries(const std::filesystem::path &rootEntriesDir,
+                      const api::types::v1::RepositoryCacheLayersItem &item) noexcept;
     utils::error::Result<void> unexportLayerSignData(
       const std::filesystem::path &, const api::types::v1::RepositoryCacheLayersItem &) noexcept;
     utils::error::Result<void> unexportAppEntries(

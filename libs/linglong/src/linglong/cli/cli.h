@@ -151,6 +151,13 @@ struct ContentOptions
     std::string appid;
 };
 
+struct AliasOptions
+{
+    std::string name;    // positional: the binary name to create
+    std::string from;    // --from: the source app ID
+    std::string command; // --command: command to match in exportedBinaries (defaults to name)
+};
+
 struct InspectOptions
 {
     std::string appid;
@@ -208,6 +215,7 @@ public:
     int repo(CLI::App *subcommand, const common::cli::RepoOptions &options);
     int info(const InfoOptions &options);
     int content(const ContentOptions &options);
+    int alias(const AliasOptions &options);
     int prune();
     int inspect(CLI::App *subcommand, const InspectOptions &options);
 

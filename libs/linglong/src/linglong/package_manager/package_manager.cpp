@@ -150,7 +150,10 @@ utils::error::Result<std::filesystem::path> PackageManager::copyToStaging(int so
         }
     });
 
-    struct stat sourceStat{};
+    struct stat sourceStat
+    {
+    };
+
     if (::fstat(sourceFD, &sourceStat) == -1) {
         return LINGLONG_ERR(
           fmt::format("failed to stat source file: {}", common::error::errorString(errno)));
@@ -347,7 +350,10 @@ PackageManager::getAllRunningContainers() noexcept
                                         common::error::errorString(errno)));
     }
 
-    struct flock locker{ .l_type = F_WRLCK, .l_whence = SEEK_SET, .l_start = 0, .l_len = 0 };
+    struct flock locker
+    {
+        .l_type = F_WRLCK, .l_whence = SEEK_SET, .l_start = 0, .l_len = 0
+    };
 
     if (::fcntl(lockFd, F_SETLK, &locker) == -1) {
         return LINGLONG_ERR(fmt::format("failed to lock {}: {}",
@@ -366,7 +372,10 @@ PackageManager::getAllRunningContainers() noexcept
         return LINGLONG_OK;
     }
 
-    struct flock unlocker{ .l_type = F_UNLCK, .l_whence = SEEK_SET, .l_start = 0, .l_len = 0 };
+    struct flock unlocker
+    {
+        .l_type = F_UNLCK, .l_whence = SEEK_SET, .l_start = 0, .l_len = 0
+    };
 
     if (::fcntl(lockFd, F_SETLK, &unlocker)) {
         return LINGLONG_ERR(fmt::format("failed to unlock {}: {}",
@@ -629,6 +638,61 @@ PackageManager::setConfigurationImpl(const QVariantMap &parameters) noexcept
     }
 
     return LINGLONG_OK;
+}
+
+QVariantMap PackageManager::ExportBinary(const QString &appID, const QString &binaryName) noexcept
+{
+    LogI("Export binary alias {} for app {}", binaryName.toStdString(), appID.toStdString());
+
+    if (!daemonModeInitialized) {
+        return toDBusReply(utils::error::ErrorCode::Failed, "daemon mode not initialized");
+    }
+
+    if (!m_peerMode) {
+        auto msg = message();
+        auto conn = connection();
+        setDelayedReply(true);
+
+        checkPolkitAuthorizationAsync(
+          "org.deepin.linglong.PackageManager1.export-binary",
+          msg.service().toStdString(),
+          [this, appID, binaryName, msg, conn](utils::error::Result<void> authResult) {
+              if (!authResult) {
+                  conn.send(
+                    msg.createErrorReply(QDBusError::AccessDenied,
+                                         QString::fromStdString(authResult.error().message())));
+                  return;
+              }
+
+              auto result =
+                this->repo->exportAppBinary(appID.toStdString(), binaryName.toStdString());
+              if (!result) {
+                  conn.send(msg.createErrorReply(QDBusError::Failed,
+                                                 QString::fromStdString(result.error().message())));
+                  return;
+              }
+
+              auto replyData = common::serialize::toQVariantMap(
+                api::types::v1::CommonResult{ .code = 0,
+                                              .message = fmt::format("binary {} exported for {}",
+                                                                     binaryName.toStdString(),
+                                                                     appID.toStdString()),
+                                              .type = "display" });
+              conn.send(msg.createReply(replyData));
+          });
+        return {};
+    }
+
+    auto result = this->repo->exportAppBinary(appID.toStdString(), binaryName.toStdString());
+    if (!result) {
+        return toDBusReply(result);
+    }
+
+    return common::serialize::toQVariantMap(api::types::v1::CommonResult{
+      .code = 0,
+      .message =
+        fmt::format("binary {} exported for {}", binaryName.toStdString(), appID.toStdString()),
+      .type = "display" });
 }
 
 QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,

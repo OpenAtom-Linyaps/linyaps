@@ -34,8 +34,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-
-      - uses: awalsh128/cache-apt-pkgs-action@latest
+      - name: Update apt metadata
+        run: sudo apt-get update
+      - name: Install dependencies
+        uses: awalsh128/cache-apt-pkgs-action@v1
         with:
           packages: >-
             gcovr cmake debhelper-compat erofs-utils erofsfuse intltool libcap-dev libcli11-dev

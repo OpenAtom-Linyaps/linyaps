@@ -35,8 +35,10 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+      - name: Update apt metadata
+        run: sudo apt-get update
       - name: Install dependencies
-        uses: awalsh128/cache-apt-pkgs-action@latest
+        uses: awalsh128/cache-apt-pkgs-action@v1
         with:
           packages: >-
             cmake ninja-build debhelper-compat erofs-utils erofsfuse intltool libcap-dev
@@ -62,8 +64,10 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+      - name: Update apt metadata
+        run: sudo apt-get update
       - name: Install dependencies
-        uses: awalsh128/cache-apt-pkgs-action@latest
+        uses: awalsh128/cache-apt-pkgs-action@v1
         with:
           packages: >-
             cmake ninja-build debhelper-compat erofs-utils erofsfuse intltool libcap-dev
@@ -89,8 +93,10 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+      - name: Update apt metadata
+        run: sudo apt-get update
       - name: Install dependencies
-        uses: awalsh128/cache-apt-pkgs-action@latest
+        uses: awalsh128/cache-apt-pkgs-action@v1
         with:
           packages: >-
             cmake ninja-build debhelper-compat erofs-utils erofsfuse intltool libcap-dev
@@ -114,8 +120,10 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+      - name: Update apt metadata
+        run: sudo apt-get update
       - name: Install dependencies
-        uses: awalsh128/cache-apt-pkgs-action@latest
+        uses: awalsh128/cache-apt-pkgs-action@v1
         with:
           packages: >-
             cmake ninja-build debhelper-compat erofs-utils erofsfuse intltool libcap-dev

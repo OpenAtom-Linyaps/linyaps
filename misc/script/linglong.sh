@@ -15,8 +15,8 @@
 _linglong_bin_dir="@LINGLONG_ROOT@/entries/bin"
 if [ -n "${_linglong_bin_dir}" ] && [ -d "${_linglong_bin_dir}" ]; then
     case ":${PATH}:" in
-    *":${_linglong_bin_dir}:"*) ;; # Already in PATH
-    *) PATH="${_linglong_bin_dir}:${PATH}" && export PATH ;;
+        *":${_linglong_bin_dir}:"*) ;; # Already in PATH
+        *) PATH="${_linglong_bin_dir}:${PATH}" && export PATH ;;
     esac
 fi
 unset _linglong_bin_dir

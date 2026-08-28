@@ -689,7 +689,7 @@ class OSTreeRepoMock : public repo::OSTreeRepo
 public:
     OSTreeRepoMock(const std::filesystem::path &path)
         : repo::OSTreeRepo(
-          path, api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 })
+            path, api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 })
     {
     }
 
@@ -706,7 +706,7 @@ public:
 
     OSTreeRepoAccessor()
         : repo::OSTreeRepo(
-          "", api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 })
+            "", api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 })
     {
     }
 };
@@ -892,7 +892,7 @@ class OSTreeRepoMock : public repo::OSTreeRepo
 public:
     OSTreeRepoMock(const std::filesystem::path &path)
         : repo::OSTreeRepo(
-          path, api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 })
+            path, api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 })
     {
     }
 

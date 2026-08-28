@@ -2162,9 +2162,7 @@ utils::error::Result<bool> Builder::generateDependsScript() noexcept
 
 void Builder::takeTerminalForeground()
 {
-    struct sigaction sa
-    {
-    };
+    struct sigaction sa{};
 
     sa.sa_handler = SIG_IGN;
     sigaction(SIGTTOU, &sa, NULL);

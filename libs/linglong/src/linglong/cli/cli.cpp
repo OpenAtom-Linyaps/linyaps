@@ -236,9 +236,7 @@ linglong::utils::error::Result<linglong::utils::fd::UniqueFd> acceptConsoleFd(in
         for (int i = 0; i < waitRet->count; ++i) {
             auto fd = waitRet->events[i].data.fd;
             if (fd == signalFd) {
-                struct signalfd_siginfo info
-                {
-                };
+                struct signalfd_siginfo info{};
 
                 const auto n = ::read(signalFd, &info, sizeof(info));
                 if (n == sizeof(info) && info.ssi_signo == SIGCHLD) {
@@ -247,9 +245,7 @@ linglong::utils::error::Result<linglong::utils::fd::UniqueFd> acceptConsoleFd(in
                 continue;
             }
 
-            struct sockaddr_un clientAddr
-            {
-            };
+            struct sockaddr_un clientAddr{};
 
             socklen_t addrLen = sizeof(clientAddr);
             auto client = ::accept4(listenFd,
@@ -269,9 +265,7 @@ linglong::utils::error::Result<linglong::utils::fd::UniqueFd> acceptConsoleFd(in
                 return LINGLONG_ERR(data.error());
             }
 
-            struct stat buf
-            {
-            };
+            struct stat buf{};
 
             if (::fstat(data->fd, &buf) != 0 || !S_ISCHR(buf.st_mode)) {
                 return LINGLONG_ERR("received fd is not a character device");
@@ -691,9 +685,7 @@ calculateModuleSizes(const std::vector<std::filesystem::path> &moduleDirs) noexc
 
     auto addEntry = [&](const std::filesystem::path &path,
                         std::size_t moduleIndex) -> Result<void> {
-        struct stat64 st
-        {
-        };
+        struct stat64 st{};
         if (::lstat64(path.c_str(), &st) == -1) {
             const auto err = errno;
             return LINGLONG_ERR(fmt::format("failed to stat {}: {}",
@@ -782,9 +774,7 @@ Result<std::uint64_t> calculateRealDiskUsage(const std::filesystem::path &dir) n
     std::unordered_set<InodeKey, InodeKeyHash> visitedInodes;
 
     auto addPath = [&](const std::filesystem::path &path) -> Result<void> {
-        struct stat64 st
-        {
-        };
+        struct stat64 st{};
 
         if (::lstat64(path.c_str(), &st) == -1) {
             const auto err = errno;
@@ -1385,9 +1375,7 @@ utils::error::Result<int> Cli::reuseContainer(const std::string &id,
         }
         termGuard = std::move(*termRet);
 
-        struct winsize ws
-        {
-        };
+        struct winsize ws{};
 
         bool wsSet = false;
         if (::ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == 0 && ws.ws_col > 0 && ws.ws_row > 0) {
@@ -1541,9 +1529,7 @@ utils::error::Result<int> Cli::reuseContainer(const std::string &id,
 
     auto drainSignals = [&]() {
         while (true) {
-            struct signalfd_siginfo info
-            {
-            };
+            struct signalfd_siginfo info{};
             auto n = ::read(signalFd, &info, sizeof(info));
             if (n == sizeof(info)) {
                 if (info.ssi_signo == SIGCHLD) {

@@ -151,9 +151,7 @@ utils::error::Result<std::filesystem::path> PackageManager::copyToStaging(int so
         }
     });
 
-    struct stat sourceStat
-    {
-    };
+    struct stat sourceStat{};
 
     if (::fstat(sourceFD, &sourceStat) == -1) {
         return LINGLONG_ERR(
@@ -351,10 +349,7 @@ PackageManager::getAllRunningContainers() noexcept
                                         common::error::errorString(errno)));
     }
 
-    struct flock locker
-    {
-        .l_type = F_WRLCK, .l_whence = SEEK_SET, .l_start = 0, .l_len = 0
-    };
+    struct flock locker{ .l_type = F_WRLCK, .l_whence = SEEK_SET, .l_start = 0, .l_len = 0 };
 
     if (::fcntl(lockFd, F_SETLK, &locker) == -1) {
         return LINGLONG_ERR(fmt::format("failed to lock {}: {}",
@@ -373,10 +368,7 @@ PackageManager::getAllRunningContainers() noexcept
         return LINGLONG_OK;
     }
 
-    struct flock unlocker
-    {
-        .l_type = F_UNLCK, .l_whence = SEEK_SET, .l_start = 0, .l_len = 0
-    };
+    struct flock unlocker{ .l_type = F_UNLCK, .l_whence = SEEK_SET, .l_start = 0, .l_len = 0 };
 
     if (::fcntl(lockFd, F_SETLK, &unlocker)) {
         return LINGLONG_ERR(fmt::format("failed to unlock {}: {}",

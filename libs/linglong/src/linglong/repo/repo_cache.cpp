@@ -153,10 +153,11 @@ RepoCache::findMatchingItem(const api::types::v1::RepositoryCacheLayersItem &ite
       cache.layers.begin(),
       cache.layers.end(),
       [&item](const api::types::v1::RepositoryCacheLayersItem &val) {
+          const auto itemArch = item.info.arch.empty() ? std::string{} : item.info.arch.front();
+          const auto valArch = val.info.arch.empty() ? std::string{} : val.info.arch.front();
           return !(item.commit != val.commit || item.repo != val.repo
                    || item.info.channel != val.info.channel || item.info.id != val.info.id
-                   || item.info.version != val.info.version
-                   || item.info.arch.front() != val.info.arch.front()
+                   || item.info.version != val.info.version || itemArch != valArch
                    || item.info.packageInfoV2Module != val.info.packageInfoV2Module);
       });
 
@@ -226,7 +227,8 @@ RepoCache::queryLayerItem(const repoCacheQuery &query) const noexcept
             continue;
         }
 
-        if (query.architecture && query.architecture.value() != layer.info.arch.front()) {
+        if (query.architecture
+            && (layer.info.arch.empty() || query.architecture.value() != layer.info.arch.front())) {
             continue;
         }
 

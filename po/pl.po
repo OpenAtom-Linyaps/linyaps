@@ -275,15 +275,15 @@ msgstr "Uruchom aplikację na gdbserver"
 
 #: ../apps/ll-cli/src/main.cpp:190
 msgid "Specify the gdbserver listen address"
-msgstr ""
+msgstr "Wprowadź adres nasłuchiwania gdbserver"
 
 #: ../apps/ll-cli/src/main.cpp:198
 msgid "Specify debuginfod urls for debugging"
-msgstr ""
+msgstr "Wprowadź adres debugowania gdbserver"
 
 #: ../apps/ll-cli/src/main.cpp:205
 msgid "Specify the directory used by gdb to load debug symbols"
-msgstr ""
+msgstr "Wprowadź katalog używany przez GDB do ładowania symboli debugowania"
 
 #: ../apps/ll-cli/src/main.cpp:209 ../apps/ll-cli/src/main.cpp:241
 msgid "Run commands in a running sandbox"
@@ -295,7 +295,7 @@ msgstr "Wyświetl listę uruchomionych aplikacji"
 
 #: ../apps/ll-cli/src/main.cpp:218
 msgid "Do not truncate container IDs"
-msgstr ""
+msgstr "Nie skracaj ID kontenerów"
 
 #: ../apps/ll-cli/src/main.cpp:219
 msgid "Usage: ll-cli ps [OPTIONS]"
@@ -307,7 +307,7 @@ msgstr "Wejdź do przestrzeni nazw, w której jest uruchomiona aplikacja"
 
 #: ../apps/ll-cli/src/main.cpp:234
 msgid "Specify the application running instance(you can get it by ps command)"
-msgstr ""
+msgstr "Wprowadź instancję aplikacji (sprawdź poleceniem `ps`)"
 
 #: ../apps/ll-cli/src/main.cpp:238
 msgid "Specify working directory"

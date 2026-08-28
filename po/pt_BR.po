@@ -662,6 +662,7 @@ msgstr "Use: ll-cli inspect SUBCOMANDO [OPÇÕES]"
 msgid ""
 "Display the data(bundle) directory of the installed(running) application"
 msgstr ""
+"Exibir o diretório de dados (bundle) do aplicativo instalado (em execução)"
 
 #: ../apps/ll-cli/src/main.cpp:551
 msgid "Usage: ll-cli inspect dir [OPTIONS] APP"

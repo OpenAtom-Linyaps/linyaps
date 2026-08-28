@@ -27,7 +27,7 @@ msgstr "Tryb debug jest włączony. Podłącz drugi terminal z GDB:"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:468
 msgid "Debug mode is enabled. Attach from another terminal with:"
-msgstr ""
+msgstr "Tryb debug jest włączony. Podłącz drugi terminal za pomocą:"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:471
 msgid "Generated gdb attach script:"

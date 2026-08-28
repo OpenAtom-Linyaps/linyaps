@@ -598,7 +598,7 @@ msgstr "Uso: ll-cli analyze SUBCOMMAND [OPÇÕES]"
 
 #: ../apps/ll-cli/src/main.cpp:478
 msgid "Display installed application dependency tree"
-msgstr ""
+msgstr "Exibir a árvore de dependências dos aplicativos instalados"
 
 #: ../apps/ll-cli/src/main.cpp:480
 msgid ""

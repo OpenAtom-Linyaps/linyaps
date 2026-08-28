@@ -511,6 +511,126 @@ TEST_F(RunContextTest, resolveRunnableWithBase)
     EXPECT_EQ(*context.getConfig().overlayfs, "fuse");
 }
 
+TEST_F(RunContextTest, resolveConfigRejectsTimezoneOutsideZoneinfo)
+{
+    auto baseRef = package::Reference::parse("stable:org.deepin.base/23.0.0/x86_64");
+    ASSERT_TRUE(baseRef.has_value());
+
+    api::types::v1::RepositoryCacheLayersItem baseItem;
+    baseItem.info.id = "org.deepin.base";
+    baseItem.info.version = "23.0.0";
+    baseItem.info.kind = "base";
+    baseItem.info.channel = "stable";
+    baseItem.info.arch = { std::string{ "x86_64" } };
+    EXPECT_CALL(*repo, getLayerItem(*baseRef, testing::_)).WillOnce(Return(baseItem));
+
+    api::types::v1::RunContextConfig config;
+    config.version = "1";
+    config.base = "stable:org.deepin.base/23.0.0/x86_64";
+    config.timezone = "../../etc";
+
+    RunContext context(*this->repo);
+    auto result = context.resolve(config);
+    ASSERT_FALSE(result.has_value());
+    EXPECT_THAT(result.error().message(), ::testing::HasSubstr("timezone"));
+}
+
+TEST_F(RunContextTest, resolveConfigRejectsRelativeResolvConf)
+{
+    auto baseRef = package::Reference::parse("stable:org.deepin.base/23.0.0/x86_64");
+    ASSERT_TRUE(baseRef.has_value());
+
+    api::types::v1::RepositoryCacheLayersItem baseItem;
+    baseItem.info.id = "org.deepin.base";
+    baseItem.info.version = "23.0.0";
+    baseItem.info.kind = "base";
+    baseItem.info.channel = "stable";
+    baseItem.info.arch = { std::string{ "x86_64" } };
+    EXPECT_CALL(*repo, getLayerItem(*baseRef, testing::_)).WillOnce(Return(baseItem));
+
+    api::types::v1::RunContextConfig config;
+    config.version = "1";
+    config.base = "stable:org.deepin.base/23.0.0/x86_64";
+    config.resolvConf = "etc/resolv.conf";
+
+    RunContext context(*this->repo);
+    auto result = context.resolve(config);
+    ASSERT_FALSE(result.has_value());
+    EXPECT_THAT(result.error().message(), ::testing::HasSubstr("resolv.conf"));
+}
+
+TEST_F(RunContextTest, resolveConfigRejectsUnknownOverlayMode)
+{
+    auto baseRef = package::Reference::parse("stable:org.deepin.base/23.0.0/x86_64");
+    ASSERT_TRUE(baseRef.has_value());
+
+    api::types::v1::RepositoryCacheLayersItem baseItem;
+    baseItem.info.id = "org.deepin.base";
+    baseItem.info.version = "23.0.0";
+    baseItem.info.kind = "base";
+    baseItem.info.channel = "stable";
+    baseItem.info.arch = { std::string{ "x86_64" } };
+    EXPECT_CALL(*repo, getLayerItem(*baseRef, testing::_)).WillOnce(Return(baseItem));
+
+    api::types::v1::RunContextConfig config;
+    config.version = "1";
+    config.base = "stable:org.deepin.base/23.0.0/x86_64";
+    config.overlayfs = "bogus";
+
+    RunContext context(*this->repo);
+    auto result = context.resolve(config);
+    ASSERT_FALSE(result.has_value());
+}
+
+TEST_F(RunContextTest, resolveConfigValidatesCallerFields)
+{
+    if (!std::filesystem::exists("/usr/share/zoneinfo/UTC")
+        || !std::filesystem::exists("/etc/resolv.conf")) {
+        GTEST_SKIP() << "required host files are not available";
+    }
+
+    auto baseRef = package::Reference::parse("stable:org.deepin.base/23.0.0/x86_64");
+    ASSERT_TRUE(baseRef.has_value());
+
+    api::types::v1::RepositoryCacheLayersItem baseItem;
+    baseItem.info.id = "org.deepin.base";
+    baseItem.info.version = "23.0.0";
+    baseItem.info.kind = "base";
+    baseItem.info.channel = "stable";
+    baseItem.info.arch = { std::string{ "x86_64" } };
+    EXPECT_CALL(*repo, getLayerItem(*baseRef, testing::_)).WillOnce(Return(baseItem));
+
+    package::LayerDir mockLayerDir(tempDir->path() / "merged");
+    EXPECT_CALL(*repo, getMergedModuleDir(*baseRef, testing::_))
+      .WillOnce(Return(utils::error::Result<package::LayerDir>(mockLayerDir)));
+
+    api::types::v1::RunContextConfig config;
+    config.version = "1";
+    config.base = "stable:org.deepin.base/23.0.0/x86_64";
+    config.timezone = "UTC";
+    config.resolvConf = "/etc/resolv.conf";
+    config.mounts =
+      std::vector<api::types::v1::Mount>{ api::types::v1::Mount{ .destination = "/mnt/host-data",
+                                                                 .source = tempDir->path(),
+                                                                 .type = "bind" } };
+
+    RunContext context(*this->repo);
+    auto result = context.resolve(config);
+    ASSERT_TRUE(result.has_value()) << "Failed to resolve config: " << result.error().message();
+
+    const auto &resolved = context.getConfig();
+    ASSERT_TRUE(resolved.timezone.has_value());
+    EXPECT_EQ(*resolved.timezone, "UTC");
+    ASSERT_TRUE(resolved.resolvConf.has_value());
+    EXPECT_EQ(*resolved.resolvConf, "/etc/resolv.conf");
+    ASSERT_TRUE(resolved.overlayfs.has_value());
+    EXPECT_EQ(*resolved.overlayfs, "fuse");
+    ASSERT_TRUE(resolved.mounts.has_value());
+    ASSERT_EQ(resolved.mounts->size(), 1);
+    ASSERT_TRUE(resolved.mounts->front().srcType.has_value());
+    EXPECT_EQ(*resolved.mounts->front().srcType, "dir");
+}
+
 TEST_F(RunContextTest, resolveRunnableWithInvalidKind)
 {
     LINGLONG_TRACE("resolveRunnableWithInvalidKind");

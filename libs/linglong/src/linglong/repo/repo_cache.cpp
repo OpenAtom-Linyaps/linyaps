@@ -242,14 +242,16 @@ RepoCache::queryLayerItem(const repoCacheQuery &query) const noexcept
 
     std::sort(layers_view.begin(), layers_view.end(), [](itemRef lhs, itemRef rhs) {
         auto lhsVersion = linglong::package::Version::parse(lhs.get().info.version.c_str());
+        auto rhsVersion = linglong::package::Version::parse(rhs.get().info.version.c_str());
         if (!lhsVersion) {
-            LogE("Failed to parse lhs version: {}", lhs.get().info.version);
+            // the list is sorted in descending version order, so treat an
+            // unparsable version as the smallest value: it never comes before a
+            // valid version and is equivalent to other unparsable versions,
+            // keeping the sort well-defined
             return false;
         }
-        auto rhsVersion = linglong::package::Version::parse(rhs.get().info.version.c_str());
         if (!rhsVersion) {
-            LogE("Failed to parse rhs version: {}", rhs.get().info.version);
-            return false;
+            return true;
         }
         return *lhsVersion > *rhsVersion;
     });

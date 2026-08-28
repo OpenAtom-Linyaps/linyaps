@@ -280,6 +280,35 @@ TEST_F(RepoCacheTest, QueryUsesRemainingFilters)
     ASSERT_EQ(byId.size(), 1);
 }
 
+TEST_F(RepoCacheTest, queryLayerItemSortsUnparsableVersionsLast)
+{
+    auto cacheFile = tempDir.path() / "states.json";
+    RepoCache cache(cacheFile);
+
+    ASSERT_TRUE(cache.addLayerItem(createLayerItem("c-low", "app.sort", "1.0.0")).has_value());
+    ASSERT_TRUE(cache.addLayerItem(createLayerItem("c-high", "app.sort", "2.0.0")).has_value());
+
+    // entries whose version cannot be parsed must not introduce a comparator
+    // that violates strict weak ordering while std::sort runs
+    for (int i = 0; i < 20; ++i) {
+        auto invalid = createLayerItem("c-invalid-" + std::to_string(i), "app.bad", ".");
+        ASSERT_TRUE(cache.addLayerItem(invalid).has_value());
+    }
+
+    ASSERT_TRUE(cache.addLayerItem(createLayerItem("c-mid", "app.sort", "1.5.0")).has_value());
+
+    auto items = cache.queryLayerItem(repoCacheQuery{});
+    ASSERT_EQ(items.size(), 23);
+
+    // valid entries keep descending version order, unparsable ones sort last
+    EXPECT_EQ(items.front().commit, "c-high");
+    EXPECT_EQ(items[1].commit, "c-mid");
+    EXPECT_EQ(items[2].commit, "c-low");
+    for (std::size_t i = 3; i < items.size(); ++i) {
+        EXPECT_EQ(items[i].commit.rfind("c-invalid-", 0), 0) << "commit: " << items[i].commit;
+    }
+}
+
 } // namespace
 
 } // namespace linglong::repo::test

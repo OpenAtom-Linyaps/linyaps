@@ -610,6 +610,13 @@ msgid ""
 "# show dependency tree for an installed application\n"
 "ll-cli analyze depends org.deepin.demo\n"
 msgstr ""
+"Uso: ll-cli analyze depends [APP]\n"
+"\n"
+"Exemplo:\n"
+"# exibir a árvore de dependências de todos os aplicativos instalados\n"
+"ll-cli analyze depends\n"
+"# exibir a árvore de dependências de um aplicativo instalado\n"
+"ll-cli analyze depends org.deepin.demo\n"
 
 #: ../apps/ll-cli/src/main.cpp:488 ../apps/ll-cli/src/main.cpp:520
 msgid "Specify the installed application ID"

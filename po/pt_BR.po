@@ -816,11 +816,11 @@ msgstr "ID do contêiner"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:182
 msgid "Pid"
-msgstr ""
+msgstr "PID"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:250
 msgid "Url"
-msgstr ""
+msgstr "URL"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:251
 msgid "Alias"
@@ -844,19 +844,19 @@ msgstr "Novo"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:368
 msgid "Exclusive"
-msgstr ""
+msgstr "Exclusivo"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:369
 msgid "Shared"
-msgstr ""
+msgstr "Compartilhado"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:370
 msgid "Logical"
-msgstr ""
+msgstr "Lógico"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:370
 msgid "Actual"
-msgstr ""
+msgstr "Real"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:385
 msgid "Calculated logical total size: "

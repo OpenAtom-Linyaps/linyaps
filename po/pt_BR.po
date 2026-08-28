@@ -27,19 +27,25 @@ msgstr ""
 #: ../libs/linglong/src/linglong/cli/cli.cpp:448
 msgid "Debug mode is enabled. Attach from another terminal with gdb:"
 msgstr ""
+"O modo de depuração está ativado. Anexe a partir de outro terminal usando o "
+"gdb:"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:468
 msgid "Debug mode is enabled. Attach from another terminal with:"
 msgstr ""
+"O modo de depuração está ativado. Conecte-se a partir de outro terminal "
+"usando:"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:471
 msgid "Generated gdb attach script:"
-msgstr ""
+msgstr "Script de conexão do gdb gerado:"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1949
 #, c++-format
 msgid "Base {} has no develop module installed, installing it now."
 msgstr ""
+"A base {} não possui o módulo de desenvolvimento instalado. Instalando-o "
+"agora."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2361
 #, c++-format

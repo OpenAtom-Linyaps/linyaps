@@ -104,7 +104,7 @@ msgstr "安裝失敗"
 msgid ""
 "The application is currently running and cannot be uninstalled. Please turn "
 "off the application and try again."
-msgstr "該應用程式目前正在執行，無法解鎖安裝。請先關閉應用程式後再試。"
+msgstr "該應用程式目前正在執行，無法解除安裝。請先關閉應用程式後再試。"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:3706
 #: ../libs/linglong/src/linglong/cli/cli.cpp:3739

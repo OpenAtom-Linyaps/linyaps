@@ -586,15 +586,15 @@ msgstr ""
 
 #: ../apps/ll-cli/src/main.cpp:461
 msgid "Sort in ascending order"
-msgstr ""
+msgstr "Ordenar em ordem crescente"
 
 #: ../apps/ll-cli/src/main.cpp:470
 msgid "Analyze installed applications"
-msgstr ""
+msgstr "Analisar os aplicativos instalados"
 
 #: ../apps/ll-cli/src/main.cpp:472
 msgid "Usage: ll-cli analyze SUBCOMMAND [OPTIONS]"
-msgstr ""
+msgstr "Uso: ll-cli analyze SUBCOMMAND [OPÇÕES]"
 
 #: ../apps/ll-cli/src/main.cpp:478
 msgid "Display installed application dependency tree"

@@ -283,19 +283,20 @@ msgstr ""
 
 #: ../apps/ll-cli/src/main.cpp:186
 msgid "Run the application under gdbserver"
-msgstr ""
+msgstr "Executar o aplicativo usando o gdbserver"
 
 #: ../apps/ll-cli/src/main.cpp:190
 msgid "Specify the gdbserver listen address"
-msgstr ""
+msgstr "Especificar o endereço de escuta do gdbserver"
 
 #: ../apps/ll-cli/src/main.cpp:198
 msgid "Specify debuginfod urls for debugging"
-msgstr ""
+msgstr "Especificar URLs do debuginfod para depuração"
 
 #: ../apps/ll-cli/src/main.cpp:205
 msgid "Specify the directory used by gdb to load debug symbols"
 msgstr ""
+"Especificar o diretório usado pelo gdb para carregar símbolos de depuração"
 
 #: ../apps/ll-cli/src/main.cpp:209 ../apps/ll-cli/src/main.cpp:241
 msgid "Run commands in a running sandbox"
@@ -307,7 +308,7 @@ msgstr "Listar aplicativos em execução"
 
 #: ../apps/ll-cli/src/main.cpp:218
 msgid "Do not truncate container IDs"
-msgstr ""
+msgstr "Não truncar os IDs dos contêineres"
 
 #: ../apps/ll-cli/src/main.cpp:219
 msgid "Usage: ll-cli ps [OPTIONS]"
@@ -320,6 +321,8 @@ msgstr "Informe o namespace onde o aplicativo está em execução"
 #: ../apps/ll-cli/src/main.cpp:234
 msgid "Specify the application running instance(you can get it by ps command)"
 msgstr ""
+"Especificar a instância em execução do aplicativo (você pode obtê-la usando "
+"o comando ps)"
 
 #: ../apps/ll-cli/src/main.cpp:238
 msgid "Specify working directory"

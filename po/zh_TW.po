@@ -23,35 +23,35 @@ msgstr ""
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:448
 msgid "Debug mode is enabled. Attach from another terminal with gdb:"
-msgstr ""
+msgstr "除錯模式已啟用。請從另一個終端機使用 gdb 連線："
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:468
 msgid "Debug mode is enabled. Attach from another terminal with:"
-msgstr ""
+msgstr "除錯模式已啟用。請從另一個終端機使用以下命令連線："
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:471
 msgid "Generated gdb attach script:"
-msgstr ""
+msgstr "已產生的 gdb 連線指令稿："
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1949
 #, c++-format
 msgid "Base {} has no develop module installed, installing it now."
-msgstr ""
+msgstr "基礎環境 {} 未安裝開發模組，正在進行安裝。"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2361
 #, c++-format
 msgid "{} is not a regular file; expected a .layer or .uab file."
-msgstr ""
+msgstr "{} 不是一般檔案；應為 .layer 或 .uab 檔案。"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2372
 #, c++-format
 msgid "Unsupported file format {}; expected a .layer or .uab file."
-msgstr ""
+msgstr "不支援的檔案格式 {}；應為 .layer 或 .uab 檔案。"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2385
 #, c++-format
 msgid "Package file {} does not exist."
-msgstr ""
+msgstr "套件檔案 {} 不存在。"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2452
 #, c++-format
@@ -78,7 +78,7 @@ msgstr "在遠端找不到該模組。"
 #: ../libs/linglong/src/linglong/cli/cli.cpp:3640
 #: ../libs/linglong/src/linglong/cli/cli.cpp:3676
 msgid "Application already installed"
-msgstr ""
+msgstr "應用程式已安裝"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:3644
 #, c++-format
@@ -228,11 +228,11 @@ msgstr "啟用或停用沙盒內與 xdg-desktop-portal 相關的整合"
 
 #: ../apps/ll-cli/src/main.cpp:149
 msgid "Enable PipeWire socket mount inside the sandbox"
-msgstr ""
+msgstr "在沙盒內啟用 PipeWire socket 掛載"
 
 #: ../apps/ll-cli/src/main.cpp:154
 msgid "Enable AT SPI socket mount inside the sandbox"
-msgstr ""
+msgstr "在沙盒內啟用 AT SPI socket 掛載"
 
 #: ../apps/ll-cli/src/main.cpp:156
 msgid "Run context json string"
@@ -264,19 +264,19 @@ msgstr "指定容器實例名稱以用於重複使用或識別"
 
 #: ../apps/ll-cli/src/main.cpp:186
 msgid "Run the application under gdbserver"
-msgstr ""
+msgstr "在 gdbserver 下執行應用程式"
 
 #: ../apps/ll-cli/src/main.cpp:190
 msgid "Specify the gdbserver listen address"
-msgstr ""
+msgstr "指定 gdbserver 的接聽位址"
 
 #: ../apps/ll-cli/src/main.cpp:198
 msgid "Specify debuginfod urls for debugging"
-msgstr ""
+msgstr "指定用於除錯的 debuginfod URL"
 
 #: ../apps/ll-cli/src/main.cpp:205
 msgid "Specify the directory used by gdb to load debug symbols"
-msgstr ""
+msgstr "指定 gdb 用於載入除錯符號的目錄"
 
 #: ../apps/ll-cli/src/main.cpp:209 ../apps/ll-cli/src/main.cpp:241
 msgid "Run commands in a running sandbox"
@@ -288,7 +288,7 @@ msgstr "列出正在執行的應用程式"
 
 #: ../apps/ll-cli/src/main.cpp:218
 msgid "Do not truncate container IDs"
-msgstr ""
+msgstr "不截斷容器 ID"
 
 #: ../apps/ll-cli/src/main.cpp:219
 msgid "Usage: ll-cli ps [OPTIONS]"
@@ -300,7 +300,7 @@ msgstr "進入應用程式執行中的命名空間（Namespace）"
 
 #: ../apps/ll-cli/src/main.cpp:234
 msgid "Specify the application running instance(you can get it by ps command)"
-msgstr ""
+msgstr "指定應用程式的執行實例（可透過 ps 命令獲取）"
 
 #: ../apps/ll-cli/src/main.cpp:238
 msgid "Specify working directory"
@@ -345,6 +345,22 @@ msgid ""
 "ll-cli install stable:org.deepin.demo/0.0.0.1/x86_64\n"
 "    "
 msgstr ""
+"用法：ll-cli install [選項] 應用程式\n"
+"\n"
+"範例：\n"
+"# 透過 appid 安裝應用程式\n"
+"ll-cli install org.deepin.demo\n"
+"# 透過 linyaps layer 安裝應用程式\n"
+"ll-cli install ./demo_0.0.0.1_x86_64_binary.layer\n"
+"# 透過 linyaps uab 安裝應用程式\n"
+"ll-cli install ./demo_x86_64_0.0.0.1_main.uab\n"
+"# 安裝 appid 的指定模組\n"
+"ll-cli install org.deepin.demo --module=binary\n"
+"# 安裝 appid 的指定版本\n"
+"ll-cli install org.deepin.demo/0.0.0.1\n"
+"# 透過詳細參考資訊安裝應用程式\n"
+"ll-cli install stable:org.deepin.demo/0.0.0.1/x86_64\n"
+"    "
 
 #: ../apps/ll-cli/src/main.cpp:289
 msgid "Specify the application ID, and it can also be a .uab or .layer file"
@@ -352,7 +368,7 @@ msgstr "指定應用程式 ID，也可以是 .uab 或 .layer 檔案"
 
 #: ../apps/ll-cli/src/main.cpp:292
 msgid "Install a specify module"
-msgstr ""
+msgstr "安裝指定模組"
 
 #: ../apps/ll-cli/src/main.cpp:295
 msgid "Install from a specific repo"
@@ -369,7 +385,7 @@ msgstr "對所有提問自動回答 yes"
 #: ../apps/ll-cli/src/main.cpp:304 ../apps/ll-cli/src/main.cpp:328
 #: ../apps/ll-cli/src/main.cpp:360
 msgid "Do not automatically remove unused dependencies"
-msgstr ""
+msgstr "不自動移除未使用的相依項目"
 
 #: ../apps/ll-cli/src/main.cpp:313
 msgid "Uninstall the application or runtimes"
@@ -381,11 +397,11 @@ msgstr "用法：ll-cli uninstall [選項] 應用程式"
 
 #: ../apps/ll-cli/src/main.cpp:317
 msgid "Specify the applications ID"
-msgstr ""
+msgstr "指定應用程式 ID"
 
 #: ../apps/ll-cli/src/main.cpp:320
 msgid "Uninstall a specify module"
-msgstr ""
+msgstr "解除安裝指定模組"
 
 #: ../apps/ll-cli/src/main.cpp:325
 msgid "Force uninstall base or runtime"
@@ -412,7 +428,7 @@ msgstr "用法：ll-cli upgrade [選項] [應用程式]"
 msgid ""
 "Specify the application ID. If it not be specified, all applications will be"
 " upgraded"
-msgstr ""
+msgstr "指定應用程式 ID。如果未指定，將升級所有應用程式"
 
 #: ../apps/ll-cli/src/main.cpp:357
 msgid "Only upgrade dependencies of application"
@@ -452,11 +468,11 @@ msgstr ""
 
 #: ../apps/ll-cli/src/main.cpp:385
 msgid "Specify the Keywords"
-msgstr ""
+msgstr "指定關鍵字"
 
 #: ../apps/ll-cli/src/main.cpp:392 ../apps/ll-cli/src/main.cpp:431
 msgid "Filter result with specify type. One of \"runtime\", \"base\", \"app\" or \"all\""
-msgstr ""
+msgstr "使用指定類型過濾結果。可為 \"runtime\"、\"base\"、\"app\" 或 \"all\" 其中之一"
 
 #: ../apps/ll-cli/src/main.cpp:396
 msgid "Specify the repo"
@@ -464,15 +480,15 @@ msgstr "指定軟體庫"
 
 #: ../apps/ll-cli/src/main.cpp:401
 msgid "Include develop application in result"
-msgstr ""
+msgstr "結果中包含開發版（develop）應用程式"
 
 #: ../apps/ll-cli/src/main.cpp:404
 msgid "Show all versions of an application(s), base(s) or runtime(s)"
-msgstr ""
+msgstr "顯示應用程式、基礎環境或執行時環境的所有版本"
 
 #: ../apps/ll-cli/src/main.cpp:412
 msgid "List installed application(s), base(s) or runtime(s)"
-msgstr ""
+msgstr "列出已安裝的應用程式、基礎環境或執行時環境"
 
 #: ../apps/ll-cli/src/main.cpp:415
 msgid ""
@@ -504,11 +520,11 @@ msgstr ""
 msgid ""
 "Show the list of latest version of the currently installed application(s), "
 "base(s) or runtime(s)"
-msgstr ""
+msgstr "顯示目前已安裝的應用程式、基礎環境或執行時環境的最新版本列表"
 
 #: ../apps/ll-cli/src/main.cpp:445
 msgid "Show installed module sizes and repository real size"
-msgstr ""
+msgstr "顯示已安裝模組的大小與軟體庫實際大小"
 
 #: ../apps/ll-cli/src/main.cpp:447
 msgid ""
@@ -518,28 +534,33 @@ msgid ""
 "# show installed module sizes\n"
 "ll-cli analyze size\n"
 msgstr ""
+"用法：ll-cli analyze size [選項]\n"
+"\n"
+"範例：\n"
+"# 顯示已安裝模組的大小\n"
+"ll-cli analyze size\n"
 
 #: ../apps/ll-cli/src/main.cpp:457
 msgid ""
 "Sort result by specify field. One of \"actual\", \"logical\", \"exclusive\","
 " \"shared\" or \"id\""
-msgstr ""
+msgstr "依指定欄位排序結果。可為 \"實際大小\"、\"邏輯大小\"、\"獨佔大小\"、\"共享大小\" 或 \"應用程式 ID\" 其中之一"
 
 #: ../apps/ll-cli/src/main.cpp:461
 msgid "Sort in ascending order"
-msgstr ""
+msgstr "升冪排序"
 
 #: ../apps/ll-cli/src/main.cpp:470
 msgid "Analyze installed applications"
-msgstr ""
+msgstr "分析已安裝的應用程式"
 
 #: ../apps/ll-cli/src/main.cpp:472
 msgid "Usage: ll-cli analyze SUBCOMMAND [OPTIONS]"
-msgstr ""
+msgstr "用法：ll-cli analyze 子命令 [選項]"
 
 #: ../apps/ll-cli/src/main.cpp:478
 msgid "Display installed application dependency tree"
-msgstr ""
+msgstr "顯示已安裝應用程式的相依性樹狀圖"
 
 #: ../apps/ll-cli/src/main.cpp:480
 msgid ""
@@ -551,6 +572,13 @@ msgid ""
 "# show dependency tree for an installed application\n"
 "ll-cli analyze depends org.deepin.demo\n"
 msgstr ""
+"用法：ll-cli analyze depends [應用程式]\n"
+"\n"
+"範例：\n"
+"# 顯示所有已安裝應用程式的相依性樹狀圖\n"
+"ll-cli analyze depends\n"
+"# 顯示特定已安裝應用程式的相依性樹狀圖\n"
+"ll-cli analyze depends org.deepin.demo\n"
 
 #: ../apps/ll-cli/src/main.cpp:488 ../apps/ll-cli/src/main.cpp:520
 msgid "Specify the installed application ID"
@@ -595,7 +623,7 @@ msgstr "用法：ll-cli inspect 子命令 [選項]"
 #: ../apps/ll-cli/src/main.cpp:550
 msgid ""
 "Display the data(bundle) directory of the installed(running) application"
-msgstr ""
+msgstr "顯示已安裝（執行中）應用程式的資料（bundle）目錄"
 
 #: ../apps/ll-cli/src/main.cpp:551
 msgid "Usage: ll-cli inspect dir [OPTIONS] APP"
@@ -603,11 +631,11 @@ msgstr "用法：ll-cli inspect dir [選項] 應用程式"
 
 #: ../apps/ll-cli/src/main.cpp:555
 msgid "Specify the application ID, and it can also be reference"
-msgstr ""
+msgstr "指定應用程式 ID，也可以是參考資訊（reference）"
 
 #: ../apps/ll-cli/src/main.cpp:561
 msgid "Specify the directory type (layer or bundle),the default is layer"
-msgstr ""
+msgstr "指定目錄類型（layer 或 bundle），預設為 layer"
 
 #: ../apps/ll-cli/src/main.cpp:568
 msgid ""
@@ -619,6 +647,8 @@ msgid ""
 "linyaps CLI\n"
 "A CLI program to run application and manage application and runtime\n"
 msgstr ""
+"linyaps 命令列介面\n"
+"一個用來執行應用程式並管理應用程式與執行時環境的命令列工具\n"
 
 #: ../apps/ll-cli/src/main.cpp:585 ../apps/ll-builder/src/main.cpp:478
 msgid "Print this help message and exit"
@@ -649,16 +679,16 @@ msgstr "顯示版本"
 msgid ""
 "Use peer to peer DBus, this is used only in case that DBus daemon is not "
 "available"
-msgstr ""
+msgstr "使用點對點（P2P）DBus，僅在 DBus 背景程式無法使用時啟用"
 
 #. json flag
 #: ../apps/ll-cli/src/main.cpp:605
 msgid "Use json format to output result"
-msgstr ""
+msgstr "使用 JSON 格式輸出結果"
 
 #: ../apps/ll-cli/src/main.cpp:612
 msgid "Show debug info; repeat to enable backtrace"
-msgstr ""
+msgstr "顯示除錯資訊；重複輸入可啟用回溯（backtrace）"
 
 #: ../apps/ll-cli/src/main.cpp:615
 msgid "Don't output progress information"
@@ -743,11 +773,11 @@ msgstr "容器 ID"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:182
 msgid "Pid"
-msgstr ""
+msgstr "Pid"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:250
 msgid "Url"
-msgstr ""
+msgstr "Url"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:251
 msgid "Alias"
@@ -771,45 +801,47 @@ msgstr "全新"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:368
 msgid "Exclusive"
-msgstr ""
+msgstr "獨佔"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:369
 msgid "Shared"
-msgstr ""
+msgstr "共享"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:370
 msgid "Logical"
-msgstr ""
+msgstr "邏輯"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:370
 msgid "Actual"
-msgstr ""
+msgstr "實際"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:385
 msgid "Calculated logical total size: "
-msgstr ""
+msgstr "計算出的邏輯總大小："
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:386
 msgid "Exclusive: "
-msgstr ""
+msgstr "獨佔："
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:386
 msgid "Shared: "
-msgstr ""
+msgstr "共享："
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:388
 msgid "Calculated actual total size: "
-msgstr ""
+msgstr "計算出的實際總大小："
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:389
 msgid "Repository real size: "
-msgstr ""
+msgstr "軟體庫真實大小："
 
 #: ../apps/ll-builder/src/main.cpp:476
 msgid ""
 "linyaps builder CLI \n"
 "A CLI program to build linyaps application\n"
 msgstr ""
+"linyaps 構建器命令列工具 \n"
+"一個用來構建 linyaps 應用程式的命令列程式\n"
 
 #: ../apps/ll-builder/src/main.cpp:481
 msgid "Usage: ll-builder [OPTIONS] [SUBCOMMAND]"
@@ -919,7 +951,7 @@ msgstr "指定應用程式執行所需的擴充功能"
 
 #: ../apps/ll-builder/src/main.cpp:592
 msgid "List built linyaps app"
-msgstr ""
+msgstr "列出已構建的 linyaps 應用程式"
 
 #: ../apps/ll-builder/src/main.cpp:593
 msgid "Usage: ll-builder list [OPTIONS]"
@@ -927,7 +959,7 @@ msgstr "用法：ll-builder list [選項]"
 
 #: ../apps/ll-builder/src/main.cpp:594
 msgid "Remove built linyaps app"
-msgstr ""
+msgstr "移除已構建的 linyaps 應用程式"
 
 #: ../apps/ll-builder/src/main.cpp:595
 msgid "Usage: ll-builder remove [OPTIONS] [APP...]"
@@ -935,12 +967,12 @@ msgstr "用法：ll-builder remove [選項] [應用程式...]"
 
 #: ../apps/ll-builder/src/main.cpp:598
 msgid "Do not clean objects files before remove apps"
-msgstr ""
+msgstr "移除應用程式前不清除中介目的檔案（object files）"
 
 #. build export
 #: ../apps/ll-builder/src/main.cpp:602
 msgid "Export to linyaps layer or UAB"
-msgstr ""
+msgstr "匯出為 linyaps layer 或 UAB"
 
 #: ../apps/ll-builder/src/main.cpp:603
 msgid "Usage: ll-builder export [OPTIONS]"
@@ -948,7 +980,7 @@ msgstr "用法：ll-builder export [選項]"
 
 #: ../apps/ll-builder/src/main.cpp:615
 msgid "Uab icon (optional)"
-msgstr ""
+msgstr "Uab 圖示（選填）"
 
 #: ../apps/ll-builder/src/main.cpp:620
 msgid "Export to linyaps layer file (deprecated)"
@@ -956,7 +988,7 @@ msgstr "匯出為 linyaps layer 檔案（已棄用）"
 
 #: ../apps/ll-builder/src/main.cpp:623
 msgid "Export an executable UABX file"
-msgstr ""
+msgstr "匯出可執行的 UABX 檔案"
 
 #: ../apps/ll-builder/src/main.cpp:627
 msgid "Use custom loader"
@@ -988,7 +1020,7 @@ msgstr "用法：ll-builder push [選項]"
 
 #: ../apps/ll-builder/src/main.cpp:659
 msgid "Remote repo url"
-msgstr ""
+msgstr "遠端軟體庫 URL"
 
 #: ../apps/ll-builder/src/main.cpp:662
 msgid "Remote repo name"
@@ -1020,12 +1052,12 @@ msgstr "用法：ll-builder import-dir 路徑"
 
 #: ../apps/ll-builder/src/main.cpp:681
 msgid "Layer dir path"
-msgstr ""
+msgstr "Layer 目錄路徑"
 
 #. add build extract
 #: ../apps/ll-builder/src/main.cpp:686
 msgid "Extract linyaps layer to dir"
-msgstr ""
+msgstr "解壓縮 linyaps layer 到目錄"
 
 #: ../apps/ll-builder/src/main.cpp:687
 msgid "Usage: ll-builder extract [OPTIONS] LAYER DIR"
@@ -1038,11 +1070,11 @@ msgstr "目標目錄"
 #. add builder clean
 #: ../apps/ll-builder/src/main.cpp:695
 msgid "Clean build artifacts"
-msgstr ""
+msgstr "清除構建產物"
 
 #: ../apps/ll-builder/src/main.cpp:696
 msgid "Usage: ll-builder clean"
-msgstr ""
+msgstr "用法：ll-builder clean"
 
 #: ../apps/ll-builder/src/main.cpp:710
 msgid "linyaps build tool version "
@@ -1099,7 +1131,7 @@ msgstr "用法："
 
 #: ../libs/linglong/src/linglong/common/cli/repo.cpp:50
 msgid "Display or modify information of the repository currently using"
-msgstr ""
+msgstr "顯示或修改目前正在使用的軟體庫資訊"
 
 #: ../libs/linglong/src/linglong/common/cli/repo.cpp:55
 msgid "Add a new repository"
@@ -1114,7 +1146,7 @@ msgstr "指定軟體庫名稱"
 #: ../libs/linglong/src/linglong/common/cli/repo.cpp:71
 #: ../libs/linglong/src/linglong/common/cli/repo.cpp:86
 msgid "Url of the repository"
-msgstr ""
+msgstr "軟體庫的 URL"
 
 #: ../libs/linglong/src/linglong/common/cli/repo.cpp:63
 #: ../libs/linglong/src/linglong/common/cli/repo.cpp:77
@@ -1160,7 +1192,7 @@ msgstr "啟用該軟體庫的鏡像（Mirror）"
 
 #: ../libs/linglong/src/linglong/common/cli/repo.cpp:119
 msgid "Region code for mirror selection, e.g. CN, US"
-msgstr ""
+msgstr "鏡像選擇的地區代碼，例如：CN, US"
 
 #: ../libs/linglong/src/linglong/common/cli/repo.cpp:124
 msgid "Disable mirror for the repo"

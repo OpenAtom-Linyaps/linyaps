@@ -727,11 +727,11 @@ msgstr ""
 #. json flag
 #: ../apps/ll-cli/src/main.cpp:605
 msgid "Use json format to output result"
-msgstr ""
+msgstr "Usar o formato JSON para exibir o resultado"
 
 #: ../apps/ll-cli/src/main.cpp:612
 msgid "Show debug info; repeat to enable backtrace"
-msgstr ""
+msgstr "Exibir informações de depuração; repita para ativar o backtrace"
 
 #: ../apps/ll-cli/src/main.cpp:615
 msgid "Don't output progress information"

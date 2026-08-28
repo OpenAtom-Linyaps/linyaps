@@ -313,13 +313,23 @@ installModule(const std::filesystem::path &buildOutput,
                   }
               } else {
                   // rule is a regex
+                  // the build output directory is an arbitrary path, escape it so
+                  // regex metacharacters in the project path cannot break the rule
+                  auto escapedOutput =
+                    QRegularExpression::escape(QString::fromStdString(buildOutput.string()));
                   if (rule.rfind("^/", 0) != 0) {
-                      rule.insert(1, buildOutput.string() + "/");
+                      rule.insert(1, (escapedOutput + "/").toStdString());
                   } else {
-                      rule.insert(1, buildOutput);
+                      rule.insert(1, escapedOutput.toStdString());
                   }
 
                   QRegularExpression regexp(rule.c_str());
+                  if (!regexp.isValid()) {
+                      LogW("skip invalid module rule {}: {}",
+                           rule,
+                           regexp.errorString().toStdString());
+                      continue;
+                  }
                   if (regexp.match((buildOutput / path).c_str()).hasMatch()) {
                       return true;
                   }

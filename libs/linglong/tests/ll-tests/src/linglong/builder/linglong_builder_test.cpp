@@ -98,6 +98,34 @@ TEST(LinglongBuilder, installModule)
     EXPECT_EQ(installedFiles, expectedFiles);
 }
 
+TEST(LinglongBuilder, installModuleWithRegexMetacharactersInPath)
+{
+    // the project path may contain regex metacharacters; the directory is
+    // interpolated into "^"-rules and must not break or invalidate them
+    TempDir buildOutput{ "ll-build-+([x])" };
+    ASSERT_TRUE(buildOutput.isValid());
+    TempDir moduleOutput;
+    ASSERT_TRUE(moduleOutput.isValid());
+    ASSERT_NE(buildOutput.path().string().find('+'), std::string::npos);
+
+    std::filesystem::create_directories(buildOutput.path() / "include");
+    std::filesystem::create_directories(buildOutput.path() / "lib");
+
+    std::ofstream(buildOutput.path() / "include/header.h");
+    std::ofstream(buildOutput.path() / "lib/libfoo.a");
+
+    std::unordered_set<std::string> rules = {
+        "^/include/.+",  // regex rule
+        "^/lib/.+\\.a$", // regex rule
+    };
+
+    auto result = linglong::builder::installModule(buildOutput.path(), moduleOutput.path(), rules);
+    ASSERT_TRUE(result.has_value());
+
+    EXPECT_TRUE(std::filesystem::exists(moduleOutput.path() / "include/header.h"));
+    EXPECT_TRUE(std::filesystem::exists(moduleOutput.path() / "lib/libfoo.a"));
+}
+
 TEST(LinglongBuilder, mergeOutput)
 {
     TempDir srcDir1;

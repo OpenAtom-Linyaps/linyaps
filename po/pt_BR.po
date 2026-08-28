@@ -860,15 +860,15 @@ msgstr "Real"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:385
 msgid "Calculated logical total size: "
-msgstr ""
+msgstr "Tamanho total lógico calculado:"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:386
 msgid "Exclusive: "
-msgstr ""
+msgstr "Exclusivo:"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:386
 msgid "Shared: "
-msgstr ""
+msgstr "Compartilhado:"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:388
 msgid "Calculated actual total size: "

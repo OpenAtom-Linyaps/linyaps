@@ -421,11 +421,11 @@ msgstr "Uso: ll-cli uninstall [OPÇÕES] APP"
 
 #: ../apps/ll-cli/src/main.cpp:317
 msgid "Specify the applications ID"
-msgstr ""
+msgstr "Especificar o ID do aplicativo"
 
 #: ../apps/ll-cli/src/main.cpp:320
 msgid "Uninstall a specify module"
-msgstr ""
+msgstr "Desinstalar um módulo específico"
 
 #: ../apps/ll-cli/src/main.cpp:325
 msgid "Force uninstall base or runtime"
@@ -453,6 +453,8 @@ msgid ""
 "Specify the application ID. If it not be specified, all applications will be"
 " upgraded"
 msgstr ""
+"Especificar o ID do aplicativo. Se não for especificado, todos os "
+"aplicativos serão atualizados"
 
 #: ../apps/ll-cli/src/main.cpp:357
 msgid "Only upgrade dependencies of application"
@@ -494,11 +496,13 @@ msgstr ""
 
 #: ../apps/ll-cli/src/main.cpp:385
 msgid "Specify the Keywords"
-msgstr ""
+msgstr "Especificar as palavras-chave"
 
 #: ../apps/ll-cli/src/main.cpp:392 ../apps/ll-cli/src/main.cpp:431
 msgid "Filter result with specify type. One of \"runtime\", \"base\", \"app\" or \"all\""
 msgstr ""
+"Filtrar o resultado pelo tipo especificado. Um dos seguintes: \"runtime\", "
+"\"base\", \"app\" ou \"all\""
 
 #: ../apps/ll-cli/src/main.cpp:396
 msgid "Specify the repo"

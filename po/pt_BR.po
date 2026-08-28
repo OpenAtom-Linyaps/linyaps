@@ -510,15 +510,15 @@ msgstr "Especificar o repositório"
 
 #: ../apps/ll-cli/src/main.cpp:401
 msgid "Include develop application in result"
-msgstr ""
+msgstr "Incluir aplicativos de desenvolvimento no resultado"
 
 #: ../apps/ll-cli/src/main.cpp:404
 msgid "Show all versions of an application(s), base(s) or runtime(s)"
-msgstr ""
+msgstr "Exibir todas as versões dos aplicativos, bases ou runtimes"
 
 #: ../apps/ll-cli/src/main.cpp:412
 msgid "List installed application(s), base(s) or runtime(s)"
-msgstr ""
+msgstr "Listar aplicativos, bases ou runtimes instalados"
 
 #: ../apps/ll-cli/src/main.cpp:415
 msgid ""
@@ -554,10 +554,13 @@ msgid ""
 "Show the list of latest version of the currently installed application(s), "
 "base(s) or runtime(s)"
 msgstr ""
+"Exibir a lista das versões mais recentes dos aplicativos, bases ou runtimes "
+"atualmente instalados"
 
 #: ../apps/ll-cli/src/main.cpp:445
 msgid "Show installed module sizes and repository real size"
 msgstr ""
+"Exibir os tamanhos dos módulos instalados e o tamanho real do repositório"
 
 #: ../apps/ll-cli/src/main.cpp:447
 msgid ""
@@ -567,12 +570,19 @@ msgid ""
 "# show installed module sizes\n"
 "ll-cli analyze size\n"
 msgstr ""
+"Uso: ll-cli analyze size [OPÇÕES]\n"
+"\n"
+"Exemplo:\n"
+"# exibir os tamanhos dos módulos instalados\n"
+"ll-cli analyze size\n"
 
 #: ../apps/ll-cli/src/main.cpp:457
 msgid ""
 "Sort result by specify field. One of \"actual\", \"logical\", \"exclusive\","
 " \"shared\" or \"id\""
 msgstr ""
+"Ordenar o resultado pelo campo especificado. Um dos seguintes: \"actual\", "
+"\"logical\", \"exclusive\", \"shared\" ou \"id\""
 
 #: ../apps/ll-cli/src/main.cpp:461
 msgid "Sort in ascending order"

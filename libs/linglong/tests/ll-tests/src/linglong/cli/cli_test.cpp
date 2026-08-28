@@ -34,7 +34,7 @@ class MockRepo : public repo::OSTreeRepo
 public:
     MockRepo(const std::filesystem::path &path)
         : repo::OSTreeRepo(
-          path, api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 })
+            path, api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 })
     {
     }
 

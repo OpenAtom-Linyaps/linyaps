@@ -10,14 +10,14 @@ ll-cli alias <alias-name> --from=<appid> [--command=<command>] [options]
 
 ## Description
 
-The `alias` subcommand creates an executable wrapper script in `/var/lib/linglong/entries/bin` 
+The `alias` subcommand creates an executable wrapper script in `/var/lib/linglong/entries/bin`
 that allows you to run a specific binary from a Linglong application directly from the host shell.
 
 The script content is `exec ll-cli run <appid> -- '<command>' "$@"`.
 
-Before creating the alias, the package manager checks that the `command` is listed in the 
-application's `exportedBinaries` field in its `info.json`. Only commands that are explicitly 
-declared can be exported. The script is created atomically using `O_EXCL` to prevent race 
+Before creating the alias, the package manager checks that the `command` is listed in the
+application's `exportedBinaries` field in its `info.json`. Only commands that are explicitly
+declared can be exported. The script is created atomically using `O_EXCL` to prevent race
 conditions (TOCTOU).
 
 ## Options

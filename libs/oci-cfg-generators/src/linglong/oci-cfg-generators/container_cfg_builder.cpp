@@ -992,9 +992,23 @@ utils::error::Result<void> ContainerCfgBuilder::buildMountHome() noexcept
         return true;
     };
 
-    auto *value = getenv("XDG_DATA_HOME");
-    std::filesystem::path XDG_DATA_HOME =
-      value ? std::filesystem::path{ value } : *homePath / ".local" / "share";
+    // XDG base directory spec: empty or relative overrides are invalid, fall back
+    // to the default location instead of mounting a broken host path
+    auto xdgHomeDir = [](const char *name,
+                         const std::filesystem::path &fallback) -> std::filesystem::path {
+        const auto *value = getenv(name);
+        if (value == nullptr || *value == '\0') {
+            return fallback;
+        }
+        std::filesystem::path dir{ value };
+        if (!dir.is_absolute()) {
+            LogW("ignoring non-absolute {} value: {}", name, value);
+            return fallback;
+        }
+        return dir;
+    };
+
+    auto XDG_DATA_HOME = xdgHomeDir("XDG_DATA_HOME", *homePath / ".local" / "share");
     std::string containerDataHome = containerHome + "/.local/share";
     if (XDG_DATA_HOME != containerDataHome) {
         if (!mountDir(XDG_DATA_HOME, containerDataHome)) {
@@ -1016,9 +1030,7 @@ utils::error::Result<void> ContainerCfgBuilder::buildMountHome() noexcept
         return std::filesystem::path{};
     };
 
-    value = getenv("XDG_CONFIG_HOME");
-    std::filesystem::path XDG_CONFIG_HOME =
-      value ? std::filesystem::path{ value } : *homePath / ".config";
+    auto XDG_CONFIG_HOME = xdgHomeDir("XDG_CONFIG_HOME", *homePath / ".config");
     std::filesystem::path XDGConfigHome = XDG_CONFIG_HOME;
     auto privateConfigPath = checkPrivatePath("config");
     if (!privateConfigPath.empty()) {
@@ -1032,9 +1044,7 @@ utils::error::Result<void> ContainerCfgBuilder::buildMountHome() noexcept
     }
     environment["XDG_CONFIG_HOME"] = containerConfigHome;
 
-    value = getenv("XDG_CACHE_HOME");
-    std::filesystem::path XDG_CACHE_HOME =
-      value ? std::filesystem::path{ value } : *homePath / ".cache";
+    auto XDG_CACHE_HOME = xdgHomeDir("XDG_CACHE_HOME", *homePath / ".cache");
     std::filesystem::path XDGCacheHome = XDG_CACHE_HOME;
     auto privateCachePath = checkPrivatePath("cache");
     if (!privateCachePath.empty()) {
@@ -1048,9 +1058,7 @@ utils::error::Result<void> ContainerCfgBuilder::buildMountHome() noexcept
     }
     environment["XDG_CACHE_HOME"] = containerCacheHome;
 
-    value = getenv("XDG_STATE_HOME");
-    std::filesystem::path XDG_STATE_HOME =
-      value ? std::filesystem::path{ value } : *homePath / ".local" / "state";
+    auto XDG_STATE_HOME = xdgHomeDir("XDG_STATE_HOME", *homePath / ".local" / "state");
     auto privateStatePath = checkPrivatePath("state");
     if (!privateStatePath.empty()) {
         XDG_STATE_HOME = privateStatePath;

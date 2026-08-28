@@ -352,6 +352,22 @@ msgid ""
 "ll-cli install stable:org.deepin.demo/0.0.0.1/x86_64\n"
 "    "
 msgstr ""
+"Polecenie: ll-cli install [OPCJE] APLIKACJA\n"
+"\n"
+"Przykład:\n"
+"# zainstaluj aplikację po ID aplikacji\n"
+"ll-cli install org.deepin.demo\n"
+"# zainstaluj aplikację po warstwie linyaps\n"
+"ll-cli install ./demo_0.0.0.1_x86_64_binary.layer\n"
+"# zainstaluj aplikację linyaps uab\n"
+"ll-cli install ./demo_x86_64_0.0.0.1_main.uab\n"
+"# zainstaluj moduł po ID aplikacji\n"
+"ll-cli install org.deepin.demo --module=binary\n"
+"# zainstaluj określoną wersję po ID aplikacji\n"
+"ll-cli install org.deepin.demo/0.0.0.1\n"
+"# zainstaluj aplikację po szczegółowym odniesieniu\n"
+"ll-cli install stable:org.deepin.demo/0.0.0.1/x86_64\n"
+"    "
 
 #: ../apps/ll-cli/src/main.cpp:289
 msgid "Specify the application ID, and it can also be a .uab or .layer file"
@@ -359,7 +375,7 @@ msgstr "Wprowadź ID aplikacji, może być to również plik .uab lub .layer"
 
 #: ../apps/ll-cli/src/main.cpp:292
 msgid "Install a specify module"
-msgstr ""
+msgstr "Zainstaluj wybrany moduł"
 
 #: ../apps/ll-cli/src/main.cpp:295
 msgid "Install from a specific repo"
@@ -376,7 +392,7 @@ msgstr "Automatycznie odpowiedz tak dla wszystkich pytań"
 #: ../apps/ll-cli/src/main.cpp:304 ../apps/ll-cli/src/main.cpp:328
 #: ../apps/ll-cli/src/main.cpp:360
 msgid "Do not automatically remove unused dependencies"
-msgstr ""
+msgstr "Nie usuwaj automatycznie nieużywanych zależności"
 
 #: ../apps/ll-cli/src/main.cpp:313
 msgid "Uninstall the application or runtimes"
@@ -388,11 +404,11 @@ msgstr "Polecenie: ll-cli uninstall [OPCJE] APLIKACJA"
 
 #: ../apps/ll-cli/src/main.cpp:317
 msgid "Specify the applications ID"
-msgstr ""
+msgstr "Wprowadź ID aplikacji"
 
 #: ../apps/ll-cli/src/main.cpp:320
 msgid "Uninstall a specify module"
-msgstr ""
+msgstr "Odinstaluj wybrany moduł"
 
 #: ../apps/ll-cli/src/main.cpp:325
 msgid "Force uninstall base or runtime"
@@ -420,6 +436,8 @@ msgid ""
 "Specify the application ID. If it not be specified, all applications will be"
 " upgraded"
 msgstr ""
+"Wprowadź ID aplikacji. W przeciwnym razie, wszystkie aplikacje zostaną "
+"zaktualizowane."
 
 #: ../apps/ll-cli/src/main.cpp:357
 msgid "Only upgrade dependencies of application"
@@ -461,11 +479,11 @@ msgstr ""
 
 #: ../apps/ll-cli/src/main.cpp:385
 msgid "Specify the Keywords"
-msgstr ""
+msgstr "Wprowadź słowa kluczowe"
 
 #: ../apps/ll-cli/src/main.cpp:392 ../apps/ll-cli/src/main.cpp:431
 msgid "Filter result with specify type. One of \"runtime\", \"base\", \"app\" or \"all\""
-msgstr ""
+msgstr "Filtruj wyniki wybranego typu. Na przykład \"runtime\", \"base\", \"app\" lub \"all\""
 
 #: ../apps/ll-cli/src/main.cpp:396
 msgid "Specify the repo"
@@ -473,15 +491,16 @@ msgstr "Wprowadź repozytorium"
 
 #: ../apps/ll-cli/src/main.cpp:401
 msgid "Include develop application in result"
-msgstr ""
+msgstr "Uwzględnij aplikacje w trakcie rozwoju w wynikach wyszukiwania"
 
 #: ../apps/ll-cli/src/main.cpp:404
 msgid "Show all versions of an application(s), base(s) or runtime(s)"
-msgstr ""
+msgstr "Pokaż wszystkie wersje aplikacji, baz i środowisk wykonawczych"
 
 #: ../apps/ll-cli/src/main.cpp:412
 msgid "List installed application(s), base(s) or runtime(s)"
 msgstr ""
+"Wyświetl listę zainstalowanych aplikacji, baz i środowisk wykonawczych"
 
 #: ../apps/ll-cli/src/main.cpp:415
 msgid ""
@@ -514,10 +533,12 @@ msgid ""
 "Show the list of latest version of the currently installed application(s), "
 "base(s) or runtime(s)"
 msgstr ""
+"Wyświetl listę najnowszych wersji zainstalowanych aplikacji, baz i środowisk"
+" wykonawczych"
 
 #: ../apps/ll-cli/src/main.cpp:445
 msgid "Show installed module sizes and repository real size"
-msgstr ""
+msgstr "Pokaż realny rozmiar zainstalowanych modułów i repozytorium"
 
 #: ../apps/ll-cli/src/main.cpp:447
 msgid ""

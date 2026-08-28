@@ -1194,4 +1194,32 @@ TEST_F(ContainerCfgBuilderTest, EnableIPCMountNoValidSocket)
     }
 }
 
+TEST_F(ContainerCfgBuilderTest, SelfAdjustingMountWithoutMountOptions)
+{
+    // a bind mount whose source exists as a regular file under the base layer and
+    // whose "options" is absent must not dereference the missing options vector
+    auto hostFile = baseDir.path() / "opt" / "apps" / "org.deepin.demo" / "files" / "datafile";
+    ASSERT_TRUE(std::filesystem::create_directories(hostFile.parent_path()));
+    {
+        std::ofstream out{ hostFile };
+        out << "data";
+    }
+
+    Mount mount;
+    mount.destination = "/opt/apps/org.deepin.demo/files/datafile";
+    mount.source = hostFile;
+    mount.type = "bind";
+    // mount.options deliberately left unset
+
+    ContainerCfgBuilder builder;
+    builder.setAppId("org.deepin.demo")
+      .setBasePath(baseDir.path())
+      .setBundlePath(bundleDir.path())
+      .addExtraMount(mount)
+      .enableSelfAdjustingMount();
+
+    auto result = builder.build();
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+}
+
 } // namespace

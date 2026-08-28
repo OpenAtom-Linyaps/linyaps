@@ -21,7 +21,7 @@ if(NOT LINGLONG_VERSION STREQUAL "")
 endif()
 
 set(LINGLONG_RELEASE
-    OFF
+    ON
     CACHE BOOL "Build a release version of the project.")
 set(LINGLONG_GIT_HASH
     ""

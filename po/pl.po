@@ -239,7 +239,7 @@ msgstr "Włącz montowanie gniazda PipeWire wewnątrz piaskownicy"
 
 #: ../apps/ll-cli/src/main.cpp:154
 msgid "Enable AT SPI socket mount inside the sandbox"
-msgstr ""
+msgstr "Włącz montowanie gniazda AT SPI wewnątrz piaskownicy"
 
 #: ../apps/ll-cli/src/main.cpp:156
 msgid "Run context json string"
@@ -271,7 +271,7 @@ msgstr "Ustaw nazwę kontenera, by móc ją rozpoznać lub wykorzystać ponownie
 
 #: ../apps/ll-cli/src/main.cpp:186
 msgid "Run the application under gdbserver"
-msgstr ""
+msgstr "Uruchom aplikację na gdbserver"
 
 #: ../apps/ll-cli/src/main.cpp:190
 msgid "Specify the gdbserver listen address"

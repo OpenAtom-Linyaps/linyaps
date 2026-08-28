@@ -25,6 +25,7 @@
 #include <sys/mount.h>
 
 #include <algorithm>
+#include <cctype>
 #include <climits>
 #include <fstream>
 #include <iomanip>
@@ -1545,6 +1546,17 @@ utils::error::Result<void> ContainerCfgBuilder::buildEnv() noexcept
 
     auto env = std::vector<std::string>{};
     for (const auto &[key, value] : environment) {
+        // the profile script exports entries unquoted, so only plain POSIX
+        // identifiers are safe; anything else would corrupt or inject into 00env.sh
+        auto validKey = !key.empty()
+          && (std::isalpha(static_cast<unsigned char>(key[0])) != 0 || key[0] == '_')
+          && std::all_of(key.begin() + 1, key.end(), [](char ch) {
+                 return std::isalnum(static_cast<unsigned char>(ch)) != 0 || ch == '_';
+             });
+        if (!validKey) {
+            return LINGLONG_ERR(fmt::format("invalid environment variable name: {}", key));
+        }
+
         env.emplace_back(key + "=" + value);
 
         // here we process environment variables with single quotes.

@@ -2,6 +2,7 @@
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "common/tempdir.h"
@@ -294,4 +295,86 @@ TEST_F(PackageInfoHandlerTest, parsePackageInfo_FromJSONInvalid)
 
     // 验证解析失败
     EXPECT_FALSE(result.has_value());
+}
+
+TEST_F(PackageInfoHandlerTest, parsePackageInfo_RejectsPathLikeIds)
+{
+    // the id becomes a host path component (app runtime dir, private dir), so a
+    // malformed id from a layer or uab must not escape its intended directory
+    for (const auto *id : { "../evil", "a/b", ".", "..", "com.example.App\\id" }) {
+        nlohmann::json jsonData = { { "arch", { "x86_64" } },
+                                    { "base", "org.deepin.base" },
+                                    { "channel", "main" },
+                                    { "description", "Test application" },
+                                    { "id", id },
+                                    { "kind", "app" },
+                                    { "module", "runtime" },
+                                    { "name", "TestApp" },
+                                    { "schema_version", "1.0" },
+                                    { "size", 1024 },
+                                    { "version", "1.0.0" } };
+
+        auto result = linglong::utils::serialize::parsePackageInfo(jsonData);
+        EXPECT_FALSE(result.has_value()) << "id was accepted: " << id;
+        if (!result.has_value()) {
+            EXPECT_THAT(result.error().message(), ::testing::HasSubstr("package id"))
+              << "id: " << id;
+        }
+    }
+}
+
+TEST_F(PackageInfoHandlerTest, parsePackageInfoFile_RejectsPathLikeIds)
+{
+    for (const auto *id : { "../evil", "a/b" }) {
+        nlohmann::json jsonData = { { "arch", { "x86_64" } },
+                                    { "base", "org.deepin.base" },
+                                    { "channel", "main" },
+                                    { "description", "Test application" },
+                                    { "id", id },
+                                    { "kind", "app" },
+                                    { "module", "runtime" },
+                                    { "name", "TestApp" },
+                                    { "schema_version", "1.0" },
+                                    { "size", 1024 },
+                                    { "version", "1.0.0" } };
+
+        auto filePath = tempDir->path() / "info.json";
+        std::ofstream file{ filePath };
+        file << jsonData.dump();
+        file.close();
+
+        auto result = linglong::utils::serialize::parsePackageInfoFile(filePath);
+        EXPECT_FALSE(result.has_value()) << "id was accepted: " << id;
+    }
+}
+
+TEST_F(PackageInfoHandlerTest, parsePackageInfo_RejectsPathLikeLegacyIds)
+{
+    // the legacy PackageInfo conversion goes through the same validation
+    nlohmann::json jsonData = { { "arch", { "x86_64" } },
+                                { "appid", "../evil" },
+                                { "base", "org.deepin.base" },
+                                { "description", "Test application" },
+                                { "kind", "app" },
+                                { "module", "runtime" },
+                                { "name", "TestApp" },
+                                { "size", 1024 },
+                                { "version", "1.0.0" } };
+
+    auto result = linglong::utils::serialize::parsePackageInfo(jsonData);
+    EXPECT_FALSE(result.has_value());
+}
+
+TEST_F(PackageInfoHandlerTest, validatePackageId_AcceptsRegularIds)
+{
+    for (const auto *id : { "com.example.testapp", "org.deepin.something", "a", "a1" }) {
+        auto result = linglong::utils::serialize::validatePackageId(id);
+        ASSERT_TRUE(result.has_value())
+          << "id was rejected: " << id << " " << result.error().message();
+    }
+}
+
+TEST_F(PackageInfoHandlerTest, validatePackageId_RejectsEmptyId)
+{
+    EXPECT_FALSE(linglong::utils::serialize::validatePackageId("").has_value());
 }

@@ -872,17 +872,19 @@ msgstr "Compartilhado:"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:388
 msgid "Calculated actual total size: "
-msgstr ""
+msgstr "Tamanho total real calculado:"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:389
 msgid "Repository real size: "
-msgstr ""
+msgstr "Tamanho real do repositório:"
 
 #: ../apps/ll-builder/src/main.cpp:476
 msgid ""
 "linyaps builder CLI \n"
 "A CLI program to build linyaps application\n"
 msgstr ""
+"CLI do Linyaps Builder\n"
+"Um programa de linha de comando para compilar aplicativos Linyaps\n"
 
 #: ../apps/ll-builder/src/main.cpp:481
 msgid "Usage: ll-builder [OPTIONS] [SUBCOMMAND]"
@@ -996,7 +998,7 @@ msgstr "Especifique as extensões usadas pelo aplicativo para execução"
 
 #: ../apps/ll-builder/src/main.cpp:592
 msgid "List built linyaps app"
-msgstr ""
+msgstr "Listar os aplicativos Linyaps compilados"
 
 #: ../apps/ll-builder/src/main.cpp:593
 msgid "Usage: ll-builder list [OPTIONS]"
@@ -1004,7 +1006,7 @@ msgstr "Uso: ll-builder list [OPÇÕES]"
 
 #: ../apps/ll-builder/src/main.cpp:594
 msgid "Remove built linyaps app"
-msgstr ""
+msgstr "Remover aplicativos Linyaps compilados"
 
 #: ../apps/ll-builder/src/main.cpp:595
 msgid "Usage: ll-builder remove [OPTIONS] [APP...]"
@@ -1012,12 +1014,12 @@ msgstr "Uso: ll-builder remove [OPÇÕES] [APP...]"
 
 #: ../apps/ll-builder/src/main.cpp:598
 msgid "Do not clean objects files before remove apps"
-msgstr ""
+msgstr "Não limpar os arquivos-objeto antes de remover os aplicativos"
 
 #. build export
 #: ../apps/ll-builder/src/main.cpp:602
 msgid "Export to linyaps layer or UAB"
-msgstr ""
+msgstr "Exportar para uma camada Linyaps ou UAB"
 
 #: ../apps/ll-builder/src/main.cpp:603
 msgid "Usage: ll-builder export [OPTIONS]"

@@ -31,27 +31,27 @@ msgstr "Tryb debug jest włączony. Podłącz drugi terminal za pomocą:"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:471
 msgid "Generated gdb attach script:"
-msgstr ""
+msgstr "Wygenerowany skrypt podłączenia GDB:"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1949
 #, c++-format
 msgid "Base {} has no develop module installed, installing it now."
-msgstr ""
+msgstr "Baza {} nie posiada zainstalowanego modułu, rozpoczynam instalację."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2361
 #, c++-format
 msgid "{} is not a regular file; expected a .layer or .uab file."
-msgstr ""
+msgstr "{} jest nietypowym plikiem; spodziewany plik .layer lub .uab."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2372
 #, c++-format
 msgid "Unsupported file format {}; expected a .layer or .uab file."
-msgstr ""
+msgstr "Niewspierany format pliku {}; spodziewany plik .layer lub .uab."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2385
 #, c++-format
 msgid "Package file {} does not exist."
-msgstr ""
+msgstr "Pakiet {} nie istnieje."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2452
 #, c++-format
@@ -78,7 +78,7 @@ msgstr "Nie znaleziono modułu w zdalnym repozytorium."
 #: ../libs/linglong/src/linglong/cli/cli.cpp:3640
 #: ../libs/linglong/src/linglong/cli/cli.cpp:3676
 msgid "Application already installed"
-msgstr ""
+msgstr "Aplikacja jest już zainstalowana"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:3644
 #, c++-format
@@ -235,7 +235,7 @@ msgstr "Włącz lub wyłącz integrację xdg-desktop-portal wewnątrz kontenera"
 
 #: ../apps/ll-cli/src/main.cpp:149
 msgid "Enable PipeWire socket mount inside the sandbox"
-msgstr ""
+msgstr "Włącz montowanie gniazda PipeWire wewnątrz piaskownicy"
 
 #: ../apps/ll-cli/src/main.cpp:154
 msgid "Enable AT SPI socket mount inside the sandbox"

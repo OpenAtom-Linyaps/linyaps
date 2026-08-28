@@ -151,6 +151,7 @@ private:
       std::vector<api::types::v1::ContainerProcessStateInfo>>
     getAllRunningContainers() noexcept;
     utils::error::Result<bool> isRefBusy(const package::Reference &ref) noexcept;
+    QVariantMap queueInitRunContext(const QString &runContextCfg, const QString &containerID);
     void deferredUninstall() noexcept;
     utils::error::Result<void>
     Prune(std::vector<api::types::v1::PackageInfoV2> &removedInfo) noexcept;

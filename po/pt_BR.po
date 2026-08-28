@@ -367,6 +367,22 @@ msgid ""
 "ll-cli install stable:org.deepin.demo/0.0.0.1/x86_64\n"
 "    "
 msgstr ""
+"Uso: ll-cli install [OPÇÕES] APP\n"
+"\n"
+"Exemplos:\n"
+"# instalar um aplicativo pelo appid\n"
+"ll-cli install org.deepin.demo\n"
+"# instalar um aplicativo a partir de uma camada Linyaps\n"
+"ll-cli install ./demo_0.0.0.1_x86_64_binary.layer\n"
+"# instalar um aplicativo a partir de um UAB Linyaps\n"
+"ll-cli install ./demo_x86_64_0.0.0.1_main.uab\n"
+"# instalar um módulo específico do appid\n"
+"ll-cli install org.deepin.demo --module=binary\n"
+"# instalar uma versão específica do appid\n"
+"ll-cli install org.deepin.demo/0.0.0.1\n"
+"# instalar um aplicativo usando uma referência detalhada\n"
+"ll-cli install stable:org.deepin.demo/0.0.0.1/x86_64\n"
+"    "
 
 #: ../apps/ll-cli/src/main.cpp:289
 msgid "Specify the application ID, and it can also be a .uab or .layer file"
@@ -376,7 +392,7 @@ msgstr ""
 
 #: ../apps/ll-cli/src/main.cpp:292
 msgid "Install a specify module"
-msgstr ""
+msgstr "Instalar um módulo específico"
 
 #: ../apps/ll-cli/src/main.cpp:295
 msgid "Install from a specific repo"
@@ -393,7 +409,7 @@ msgstr "Responda automaticamente sim a todas as perguntas"
 #: ../apps/ll-cli/src/main.cpp:304 ../apps/ll-cli/src/main.cpp:328
 #: ../apps/ll-cli/src/main.cpp:360
 msgid "Do not automatically remove unused dependencies"
-msgstr ""
+msgstr "Não remover automaticamente as dependências não utilizadas"
 
 #: ../apps/ll-cli/src/main.cpp:313
 msgid "Uninstall the application or runtimes"

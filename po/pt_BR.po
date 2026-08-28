@@ -670,11 +670,11 @@ msgstr "Use: ll-cli inspect dir [OPÇÕES] APP"
 
 #: ../apps/ll-cli/src/main.cpp:555
 msgid "Specify the application ID, and it can also be reference"
-msgstr ""
+msgstr "Especificar o ID do aplicativo, que também pode ser uma referência"
 
 #: ../apps/ll-cli/src/main.cpp:561
 msgid "Specify the directory type (layer or bundle),the default is layer"
-msgstr ""
+msgstr "Especificar o tipo de diretório (layer ou bundle); o padrão é layer"
 
 #: ../apps/ll-cli/src/main.cpp:568
 msgid ""
@@ -688,6 +688,8 @@ msgid ""
 "linyaps CLI\n"
 "A CLI program to run application and manage application and runtime\n"
 msgstr ""
+"CLI do Linyaps\n"
+"Um programa de linha de comando para executar e gerenciar aplicativos e runtimes\n"
 
 #: ../apps/ll-cli/src/main.cpp:585 ../apps/ll-builder/src/main.cpp:478
 msgid "Print this help message and exit"
@@ -719,6 +721,8 @@ msgid ""
 "Use peer to peer DBus, this is used only in case that DBus daemon is not "
 "available"
 msgstr ""
+"Usar D-Bus ponto a ponto; essa opção deve ser usada somente quando o daemon "
+"do D-Bus não estiver disponível"
 
 #. json flag
 #: ../apps/ll-cli/src/main.cpp:605

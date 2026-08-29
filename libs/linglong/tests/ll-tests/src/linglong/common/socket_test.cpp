@@ -6,7 +6,13 @@
 
 #include "linglong/common/socket.h"
 
+#include <common/tempdir.h>
+
+#include <filesystem>
+#include <fstream>
+
 #include <sys/socket.h>
+#include <sys/un.h>
 
 class SocketFdTest : public ::testing::Test
 {
@@ -192,4 +198,48 @@ TEST_F(SocketFdTest, LargePayloadHandling)
     }
 
     waitpid(child, nullptr, 0);
+}
+
+TEST(SocketPathTest, PreserveExistingRegularFile)
+{
+    TempDir tempDir("linglong-socket-test-");
+    ASSERT_TRUE(tempDir.isValid());
+    auto path = tempDir.path() / "service.sock";
+
+    {
+        std::ofstream file(path);
+        ASSERT_TRUE(file.is_open());
+        file << "keep me";
+    }
+
+    auto result = createUnixSocket(path.string());
+    ASSERT_FALSE(result.has_value());
+    EXPECT_EQ(result.error(), "Existing socket path is not a socket");
+
+    std::ifstream file(path);
+    std::string content;
+    std::getline(file, content);
+    EXPECT_EQ(content, "keep me");
+}
+
+TEST(SocketPathTest, ReplaceStaleSocket)
+{
+    TempDir tempDir("linglong-socket-test-");
+    ASSERT_TRUE(tempDir.isValid());
+    auto path = tempDir.path() / "service.sock";
+
+    auto staleFd = ::socket(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0);
+    ASSERT_GE(staleFd, 0);
+
+    struct sockaddr_un addr{};
+    addr.sun_family = AF_UNIX;
+    auto pathString = path.string();
+    ASSERT_LT(pathString.size(), sizeof(addr.sun_path));
+    std::copy(pathString.begin(), pathString.end(), addr.sun_path);
+    ASSERT_EQ(::bind(staleFd, reinterpret_cast<struct sockaddr *>(&addr), sizeof(addr)), 0);
+    ::close(staleFd);
+
+    auto result = createUnixSocket(path.string());
+    ASSERT_TRUE(result.has_value()) << result.error();
+    ::close(*result);
 }

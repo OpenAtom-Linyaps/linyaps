@@ -19,7 +19,7 @@
 #include "linglong/package/fuzzy_reference.h"
 #include "linglong/package/layer_dir.h"
 #include "linglong/package/reference.h"
-#include "linglong/package_manager/package_task.h"
+#include "linglong/package_manager/task.h"
 #include "linglong/repo/config.h"
 #include "linglong/utils/cmd.h"
 #include "linglong/utils/env.h"
@@ -44,6 +44,7 @@
 #include <QProcess>
 #include <QTemporaryDir>
 #include <QTimer>
+#include <QUuid>
 #include <QtGlobal>
 
 #include <algorithm>

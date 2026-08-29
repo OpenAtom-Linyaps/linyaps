@@ -699,15 +699,17 @@ msgid ""
 "Use peer to peer DBus, this is used only in case that DBus daemon is not "
 "available"
 msgstr ""
+"Użyj połączenia peer-to-peer D-Bus (zalecane, gdy usługa D-Bus nie jest "
+"dostępna)."
 
 #. json flag
 #: ../apps/ll-cli/src/main.cpp:605
 msgid "Use json format to output result"
-msgstr ""
+msgstr "Wyświetl wynik w formacie JSON"
 
 #: ../apps/ll-cli/src/main.cpp:612
 msgid "Show debug info; repeat to enable backtrace"
-msgstr ""
+msgstr "Pokaż informacje debug; powtórz, aby włączyć ślad stosu"
 
 #: ../apps/ll-cli/src/main.cpp:615
 msgid "Don't output progress information"
@@ -792,11 +794,11 @@ msgstr "ID kontenera"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:182
 msgid "Pid"
-msgstr ""
+msgstr "PID"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:250
 msgid "Url"
-msgstr ""
+msgstr "URL"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:251
 msgid "Alias"
@@ -836,7 +838,7 @@ msgstr ""
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:385
 msgid "Calculated logical total size: "
-msgstr ""
+msgstr "Obliczony rozmiar logiczny:"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:386
 msgid "Exclusive: "
@@ -848,17 +850,19 @@ msgstr ""
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:388
 msgid "Calculated actual total size: "
-msgstr ""
+msgstr "Obliczony rozmiar rzeczywisty:"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:389
 msgid "Repository real size: "
-msgstr ""
+msgstr "Rzeczywisty rozmiar repozytorium:"
 
 #: ../apps/ll-builder/src/main.cpp:476
 msgid ""
 "linyaps builder CLI \n"
 "A CLI program to build linyaps application\n"
 msgstr ""
+"linyaps builder CLI \n"
+"Aplikacja wiersza poleceń do budowania aplikacji\n"
 
 #: ../apps/ll-builder/src/main.cpp:481
 msgid "Usage: ll-builder [OPTIONS] [SUBCOMMAND]"
@@ -973,7 +977,7 @@ msgstr "Wybierz rozszerzenia wymagane do uruchomienia aplikacji"
 
 #: ../apps/ll-builder/src/main.cpp:592
 msgid "List built linyaps app"
-msgstr ""
+msgstr "Wyświetl listę zbudowanych aplikacji linyaps"
 
 #: ../apps/ll-builder/src/main.cpp:593
 msgid "Usage: ll-builder list [OPTIONS]"
@@ -981,7 +985,7 @@ msgstr "Polecenie: ll-builder list [OPCJE]"
 
 #: ../apps/ll-builder/src/main.cpp:594
 msgid "Remove built linyaps app"
-msgstr ""
+msgstr "Usuń zbudowaną aplikację linyaps"
 
 #: ../apps/ll-builder/src/main.cpp:595
 msgid "Usage: ll-builder remove [OPTIONS] [APP...]"
@@ -989,7 +993,7 @@ msgstr "Polecenie: ll-builder remove [OPCJE] [APLIKACJA...]"
 
 #: ../apps/ll-builder/src/main.cpp:598
 msgid "Do not clean objects files before remove apps"
-msgstr ""
+msgstr "Nie usuwaj plików obiektów przed usunięciem aplikacji"
 
 #. build export
 #: ../apps/ll-builder/src/main.cpp:602

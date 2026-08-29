@@ -307,7 +307,8 @@ msgstr "Wejdź do przestrzeni nazw, w której jest uruchomiona aplikacja"
 
 #: ../apps/ll-cli/src/main.cpp:234
 msgid "Specify the application running instance(you can get it by ps command)"
-msgstr "Wprowadź instancję aplikacji (sprawdź poleceniem `ps`)"
+msgstr ""
+"Wprowadź instancję, w której uruchomić aplikację (sprawdź poleceniem `ps`)"
 
 #: ../apps/ll-cli/src/main.cpp:238
 msgid "Specify working directory"
@@ -538,7 +539,7 @@ msgstr ""
 
 #: ../apps/ll-cli/src/main.cpp:445
 msgid "Show installed module sizes and repository real size"
-msgstr "Pokaż realny rozmiar zainstalowanych modułów i repozytorium"
+msgstr "Pokaż rozmiar zainstalowanych modułów i repozytorium"
 
 #: ../apps/ll-cli/src/main.cpp:447
 msgid ""
@@ -548,20 +549,27 @@ msgid ""
 "# show installed module sizes\n"
 "ll-cli analyze size\n"
 msgstr ""
+"Polecenie: ll-cli analyze size [OPCJE]\n"
+"\n"
+"Przykład:\n"
+"# pokaż rozmiar zainstalowanych modułów\n"
+"ll-cli analyze size\n"
 
 #: ../apps/ll-cli/src/main.cpp:457
 msgid ""
 "Sort result by specify field. One of \"actual\", \"logical\", \"exclusive\","
 " \"shared\" or \"id\""
 msgstr ""
+"Sortuj wyniki według określonego filtra. Dostępne opcje: \"actual\", "
+"\"logical\", \"exclusive\", \"shared\", lub \"id\""
 
 #: ../apps/ll-cli/src/main.cpp:461
 msgid "Sort in ascending order"
-msgstr ""
+msgstr "Sortuj rosnąco"
 
 #: ../apps/ll-cli/src/main.cpp:470
 msgid "Analyze installed applications"
-msgstr ""
+msgstr "Analizuj zainstalowane aplikacje"
 
 #: ../apps/ll-cli/src/main.cpp:472
 msgid "Usage: ll-cli analyze SUBCOMMAND [OPTIONS]"

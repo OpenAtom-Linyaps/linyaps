@@ -998,7 +998,7 @@ msgstr "Nie usuwaj plików obiektów przed usunięciem aplikacji"
 #. build export
 #: ../apps/ll-builder/src/main.cpp:602
 msgid "Export to linyaps layer or UAB"
-msgstr ""
+msgstr "Eksportuj do warstwy linyaps lub UAB"
 
 #: ../apps/ll-builder/src/main.cpp:603
 msgid "Usage: ll-builder export [OPTIONS]"
@@ -1006,7 +1006,7 @@ msgstr "Polecenie: ll-builder export [OPCJE]"
 
 #: ../apps/ll-builder/src/main.cpp:615
 msgid "Uab icon (optional)"
-msgstr ""
+msgstr "Ikona UAB (opcjonalne)"
 
 #: ../apps/ll-builder/src/main.cpp:620
 msgid "Export to linyaps layer file (deprecated)"
@@ -1014,7 +1014,7 @@ msgstr "Eksportuj do pliku warstwy linyaps (przestarzałe)"
 
 #: ../apps/ll-builder/src/main.cpp:623
 msgid "Export an executable UABX file"
-msgstr ""
+msgstr "Eksportuj plik wykonywalny UABX"
 
 #: ../apps/ll-builder/src/main.cpp:627
 msgid "Use custom loader"
@@ -1046,7 +1046,7 @@ msgstr "Polecenie: ll-builder push [OPCJE]"
 
 #: ../apps/ll-builder/src/main.cpp:659
 msgid "Remote repo url"
-msgstr ""
+msgstr "URL zdalnego repozytorium"
 
 #: ../apps/ll-builder/src/main.cpp:662
 msgid "Remote repo name"
@@ -1078,12 +1078,12 @@ msgstr "Polecenie: ll-builder import-dir ŚCIEŻKA"
 
 #: ../apps/ll-builder/src/main.cpp:681
 msgid "Layer dir path"
-msgstr ""
+msgstr "Ścieżka katalogu layer"
 
 #. add build extract
 #: ../apps/ll-builder/src/main.cpp:686
 msgid "Extract linyaps layer to dir"
-msgstr ""
+msgstr "Wypakuj warstwę linyaps do katalogu"
 
 #: ../apps/ll-builder/src/main.cpp:687
 msgid "Usage: ll-builder extract [OPTIONS] LAYER DIR"
@@ -1100,7 +1100,7 @@ msgstr ""
 
 #: ../apps/ll-builder/src/main.cpp:696
 msgid "Usage: ll-builder clean"
-msgstr ""
+msgstr "Polecenie: ll-builder clean"
 
 #: ../apps/ll-builder/src/main.cpp:710
 msgid "linyaps build tool version "
@@ -1172,7 +1172,7 @@ msgstr "Wprowadź nazwę repozytorium"
 #: ../libs/linglong/src/linglong/common/cli/repo.cpp:71
 #: ../libs/linglong/src/linglong/common/cli/repo.cpp:86
 msgid "Url of the repository"
-msgstr ""
+msgstr "Adres URL repozytorium"
 
 #: ../libs/linglong/src/linglong/common/cli/repo.cpp:63
 #: ../libs/linglong/src/linglong/common/cli/repo.cpp:77
@@ -1218,7 +1218,7 @@ msgstr "Włącz mirror dla wybranego repozytorium"
 
 #: ../libs/linglong/src/linglong/common/cli/repo.cpp:119
 msgid "Region code for mirror selection, e.g. CN, US"
-msgstr ""
+msgstr "Kod regionalny do wyboru mirrora, np. CN, US"
 
 #: ../libs/linglong/src/linglong/common/cli/repo.cpp:124
 msgid "Disable mirror for the repo"

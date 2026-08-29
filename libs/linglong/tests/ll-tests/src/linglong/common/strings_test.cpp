@@ -19,8 +19,13 @@ TEST(StringsTest, StringEqual)
     EXPECT_TRUE(stringEqual("", "", true));
     EXPECT_TRUE(stringEqual("", "", false));
     EXPECT_FALSE(stringEqual("hello", "", true));
+    EXPECT_FALSE(stringEqual("hello", "", false));
     EXPECT_FALSE(stringEqual("", "hello", false));
     EXPECT_FALSE(stringEqual("hello", "hello world", true));
+    EXPECT_FALSE(stringEqual("hello world", "hello", false));
+
+    const std::string nonAscii{ static_cast<char>(0xFF) };
+    EXPECT_TRUE(stringEqual(nonAscii, nonAscii, false));
 }
 
 TEST(StringsTest, Trim)

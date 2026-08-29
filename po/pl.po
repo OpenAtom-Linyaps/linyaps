@@ -822,19 +822,19 @@ msgstr "Nowa"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:368
 msgid "Exclusive"
-msgstr ""
+msgstr "Ekskluzywnie"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:369
 msgid "Shared"
-msgstr ""
+msgstr "Współdzielone"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:370
 msgid "Logical"
-msgstr ""
+msgstr "Logiczne"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:370
 msgid "Actual"
-msgstr ""
+msgstr "Rzeczywiste"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:385
 msgid "Calculated logical total size: "
@@ -842,11 +842,11 @@ msgstr "Obliczony rozmiar logiczny:"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:386
 msgid "Exclusive: "
-msgstr ""
+msgstr "Ekskluzywnie: "
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:386
 msgid "Shared: "
-msgstr ""
+msgstr "Współdzielone: "
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:388
 msgid "Calculated actual total size: "
@@ -1096,7 +1096,7 @@ msgstr "Katalog docelowy"
 #. add builder clean
 #: ../apps/ll-builder/src/main.cpp:695
 msgid "Clean build artifacts"
-msgstr ""
+msgstr "Wyczyść niepotrzebne pliki kompilacji"
 
 #: ../apps/ll-builder/src/main.cpp:696
 msgid "Usage: ll-builder clean"
@@ -1157,7 +1157,7 @@ msgstr "Polecenie:"
 
 #: ../libs/linglong/src/linglong/common/cli/repo.cpp:50
 msgid "Display or modify information of the repository currently using"
-msgstr ""
+msgstr "Pokaż lub zmień informacje używanego repozytorium"
 
 #: ../libs/linglong/src/linglong/common/cli/repo.cpp:55
 msgid "Add a new repository"

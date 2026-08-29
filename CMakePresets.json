@@ -8,6 +8,7 @@
     "configurePresets": [
         {
             "name": "release",
+            "generator": "Ninja",
             "displayName": "Release configuration",
             "description": "Configure linglong for installing from source.",
             "binaryDir": "${sourceDir}/build-release",
@@ -17,6 +18,7 @@
         },
         {
             "name": "debug",
+            "generator": "Ninja",
             "displayName": "Debug configuration",
             "description": "Configure linglong for development and debugging.",
             "binaryDir": "${sourceDir}/build",
@@ -29,6 +31,7 @@
         },
         {
             "name": "clang-tidy",
+            "generator": "Ninja",
             "displayName": "clang-tidy configuration",
             "description": "Configure linglong for rnning clang-tidy.",
             "binaryDir": "${sourceDir}/build-clang-tidy",

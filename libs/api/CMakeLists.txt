@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
 pfl_add_library(
-  MERGED_HEADER_PLACEMENT
   DISABLE_INSTALL
   LIBRARY_TYPE
   STATIC
@@ -66,3 +65,10 @@ pfl_add_library(
   LINK_LIBRARIES
   PUBLIC
   nlohmann_json::nlohmann_json)
+
+get_real_target_name(_linglong_api_target linglong::api)
+target_include_directories(
+  ${_linglong_api_target}
+  PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/src>)

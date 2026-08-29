@@ -7,6 +7,7 @@
 #include "linglong/cli/cli.h"
 #include "linglong/cli/cli_printer.h"
 #include "linglong/cli/dbus_notifier.h"
+#include "linglong/cli/doctor.h"
 #include "linglong/cli/dummy_notifier.h"
 #include "linglong/cli/json_printer.h"
 #include "linglong/cli/terminal_notifier.h"
@@ -571,6 +572,37 @@ void addInspectCommand(CLI::App &commandParser,
 
 } // namespace
 
+int runDoctor(bool jsonOutput)
+{
+    const auto &checks = linglong::cli::runDoctorChecks();
+
+    if (jsonOutput) {
+        auto array = nlohmann::json::array();
+        for (const auto &check : checks) {
+            array.push_back(nlohmann::json{ { "name", check.name },
+                                            { "required", check.required },
+                                            { "ok", check.ok },
+                                            { "detail", check.detail } });
+        }
+        std::cout << array.dump() << std::endl;
+    } else {
+        for (const auto &check : checks) {
+            if (check.ok) {
+                std::cout << "[ ok ] " << check.name << ": " << check.detail << std::endl;
+            } else if (check.required) {
+                std::cout << "[FAIL] " << check.name << ": " << check.detail << std::endl;
+            } else {
+                std::cout << "[warn] " << check.name << ": " << check.detail << std::endl;
+            }
+        }
+    }
+
+    const auto failed = std::any_of(checks.cbegin(), checks.cend(), [](const auto &check) {
+        return check.required && !check.ok;
+    });
+    return failed ? 1 : 0;
+}
+
 int runCliApplication(int argc, char **mainArgv)
 {
     CLI::App commandParser{ _(
@@ -656,6 +688,11 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     addInfoCommand(commandParser, infoOptions, CliBuildInGroup);
     addContentCommand(commandParser, contentOptions, CliBuildInGroup);
     addPruneCommand(commandParser, CliAppManagingGroup);
+    auto *CliDiagnosticGroup = _("Diagnosing the environment");
+    auto *cliDoctor =
+      commandParser.add_subcommand("doctor", _("Check the local environment for common problems"))
+        ->group(CliDiagnosticGroup);
+    cliDoctor->usage(_("Usage: ll-cli doctor"));
     addInspectCommand(commandParser, inspectOptions, CliHiddenGroup);
 
     auto res = transformOldExec(argc, argv);
@@ -676,6 +713,18 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     }
     if (globalOptions.verbose > 1) {
         ::setenv("LINYAPS_BACKTRACE", "1", 1);
+    }
+
+    // doctor runs before any runtime setup: its purpose is to report problems
+    // such as a missing OCI runtime or an unusable repository
+    {
+        const auto &commands = commandParser.get_subcommands();
+        auto parsedCommand = std::find_if(commands.begin(), commands.end(), [](CLI::App *app) {
+            return app->parsed();
+        });
+        if (parsedCommand != commands.end() && (*parsedCommand)->get_name() == "doctor") {
+            return runDoctor(jsonFlag->count() > 0);
+        }
     }
 
     // create printer

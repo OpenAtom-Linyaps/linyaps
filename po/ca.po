@@ -310,7 +310,7 @@ msgstr "Llista les aplicacions en execució."
 
 #: ../apps/ll-cli/src/main.cpp:218
 msgid "Do not truncate container IDs"
-msgstr ""
+msgstr "No trenquis els identificadors de contenidor."
 
 #: ../apps/ll-cli/src/main.cpp:219
 msgid "Usage: ll-cli ps [OPTIONS]"
@@ -323,6 +323,8 @@ msgstr "Introduïu l'espai de noms on s'executa l'aplicació."
 #: ../apps/ll-cli/src/main.cpp:234
 msgid "Specify the application running instance(you can get it by ps command)"
 msgstr ""
+"Especifiqueu la instància de l'aplicació en execució (la podeu obtenir amb "
+"l'ordre ps)."
 
 #: ../apps/ll-cli/src/main.cpp:238
 msgid "Specify working directory"
@@ -367,6 +369,21 @@ msgid ""
 "ll-cli install stable:org.deepin.demo/0.0.0.1/x86_64\n"
 "    "
 msgstr ""
+"Ús: ll-cli install [OPCIONS] APP\n"
+"\n"
+"Exemple:\n"
+"# instal·lar l'aplicació mitjançant l'appid\n"
+"ll-cli install org.deepin.demo\n"
+"# instal·lar l'aplicació mitjançant una capa de linyaps\n"
+"ll-cli install ./demo_0.0.0.1_x86_64_binary.layer\n"
+"# instal·lar l'aplicació mitjançant un fitxer uab de linyaps\n"
+"ll-cli install ./demo_x86_64_0.0.0.1_main.uab\n"
+"# instal·lar un mòdul específic de l'appid\n"
+"ll-cli install org.deepin.demo --module=binary\n"
+"# instal·lar una versió específica de l'appid\n"
+"ll-cli install org.deepin.demo/0.0.0.1\n"
+"# instal·lar l'aplicació mitjançant una referència detallada\n"
+"ll-cli install stable:org.deepin.demo/0.0.0.1/x86_64"
 
 #: ../apps/ll-cli/src/main.cpp:289
 msgid "Specify the application ID, and it can also be a .uab or .layer file"
@@ -375,7 +392,7 @@ msgstr ""
 
 #: ../apps/ll-cli/src/main.cpp:292
 msgid "Install a specify module"
-msgstr ""
+msgstr "Instal·la un mòdul especificat"
 
 #: ../apps/ll-cli/src/main.cpp:295
 msgid "Install from a specific repo"
@@ -392,7 +409,7 @@ msgstr "Respon automàticament sí a totes les preguntes."
 #: ../apps/ll-cli/src/main.cpp:304 ../apps/ll-cli/src/main.cpp:328
 #: ../apps/ll-cli/src/main.cpp:360
 msgid "Do not automatically remove unused dependencies"
-msgstr ""
+msgstr "No eliminis automàticament les dependències no usades."
 
 #: ../apps/ll-cli/src/main.cpp:313
 msgid "Uninstall the application or runtimes"
@@ -404,11 +421,11 @@ msgstr "Ús: ll-cli uninstall [OPCIONS] APLICACIÓ"
 
 #: ../apps/ll-cli/src/main.cpp:317
 msgid "Specify the applications ID"
-msgstr ""
+msgstr "Especifiqueu l'identificador de l'aplicació."
 
 #: ../apps/ll-cli/src/main.cpp:320
 msgid "Uninstall a specify module"
-msgstr ""
+msgstr "Desinstal·leu un mòdul especificat."
 
 #: ../apps/ll-cli/src/main.cpp:325
 msgid "Force uninstall base or runtime"
@@ -436,6 +453,8 @@ msgid ""
 "Specify the application ID. If it not be specified, all applications will be"
 " upgraded"
 msgstr ""
+"Especifiqueu l'identificador de l'aplicació. Si no s'especifica, "
+"s'actualitzaran totes les aplicacions."
 
 #: ../apps/ll-cli/src/main.cpp:357
 msgid "Only upgrade dependencies of application"
@@ -477,11 +496,13 @@ msgstr ""
 
 #: ../apps/ll-cli/src/main.cpp:385
 msgid "Specify the Keywords"
-msgstr ""
+msgstr "Especifiqueu les paraules clau."
 
 #: ../apps/ll-cli/src/main.cpp:392 ../apps/ll-cli/src/main.cpp:431
 msgid "Filter result with specify type. One of \"runtime\", \"base\", \"app\" or \"all\""
 msgstr ""
+"Filtra el resultat segons el tipus especificat. Un dels valors següents: "
+"entorn d'execució, base, aplicació o tot."
 
 #: ../apps/ll-cli/src/main.cpp:396
 msgid "Specify the repo"
@@ -489,15 +510,16 @@ msgstr "Especifiqueu el repositori."
 
 #: ../apps/ll-cli/src/main.cpp:401
 msgid "Include develop application in result"
-msgstr ""
+msgstr "Inclou la sol·licitud de desenvolupament al resultat."
 
 #: ../apps/ll-cli/src/main.cpp:404
 msgid "Show all versions of an application(s), base(s) or runtime(s)"
 msgstr ""
+"Mostra totes les versions de les aplicacions, bases o entorns d'execució."
 
 #: ../apps/ll-cli/src/main.cpp:412
 msgid "List installed application(s), base(s) or runtime(s)"
-msgstr ""
+msgstr "Llista les aplicacions, bases o entorns d'execució instal·lats."
 
 #: ../apps/ll-cli/src/main.cpp:415
 msgid ""
@@ -530,6 +552,8 @@ msgid ""
 "Show the list of latest version of the currently installed application(s), "
 "base(s) or runtime(s)"
 msgstr ""
+"Mostra la llista de les versions més recents de les aplicacions, bases o "
+"entorns d'execució instal·lats actualment."
 
 #: ../apps/ll-cli/src/main.cpp:445
 msgid "Show installed module sizes and repository real size"

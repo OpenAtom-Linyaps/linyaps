@@ -117,6 +117,7 @@ TEST(LinglongBuilder, installModuleWithRegexMetacharactersInPath)
     std::unordered_set<std::string> rules = {
         "^/include/.+",  // regex rule
         "^/lib/.+\\.a$", // regex rule
+        "^[/lib/[.+",    // invalid regex rule, skipped with a warning
     };
 
     auto result = linglong::builder::installModule(buildOutput.path(), moduleOutput.path(), rules);

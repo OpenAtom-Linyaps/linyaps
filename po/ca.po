@@ -25,34 +25,40 @@ msgstr ""
 #: ../libs/linglong/src/linglong/cli/cli.cpp:448
 msgid "Debug mode is enabled. Attach from another terminal with gdb:"
 msgstr ""
+"El mode de depuració està activat. Connecteu-vos-hi des d'un altre terminal "
+"amb gdb:"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:468
 msgid "Debug mode is enabled. Attach from another terminal with:"
 msgstr ""
+"El mode de depuració està activat. Connecteu-vos-hi des d'un altre terminal "
+"amb"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:471
 msgid "Generated gdb attach script:"
-msgstr ""
+msgstr "Script d'adjunció a gdb generat:"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1949
 #, c++-format
 msgid "Base {} has no develop module installed, installing it now."
 msgstr ""
+"La base {} no té cap mòdul de desenvolupament instal·lat; s'instal·la ara."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2361
 #, c++-format
 msgid "{} is not a regular file; expected a .layer or .uab file."
-msgstr ""
+msgstr "{} no és un fitxer regular; s'esperava un fitxer .layer o .uab."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2372
 #, c++-format
 msgid "Unsupported file format {}; expected a .layer or .uab file."
 msgstr ""
+"Format de fitxer no compatible {}; s'esperava un fitxer .layer o .uab."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2385
 #, c++-format
 msgid "Package file {} does not exist."
-msgstr ""
+msgstr "El fitxer del paquet {} no existeix."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2452
 #, c++-format
@@ -79,7 +85,7 @@ msgstr "No s'ha pogut trobar el mòdul remotament."
 #: ../libs/linglong/src/linglong/cli/cli.cpp:3640
 #: ../libs/linglong/src/linglong/cli/cli.cpp:3676
 msgid "Application already installed"
-msgstr ""
+msgstr "L'aplicació ja està instal·lada."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:3644
 #, c++-format
@@ -240,11 +246,11 @@ msgstr ""
 
 #: ../apps/ll-cli/src/main.cpp:149
 msgid "Enable PipeWire socket mount inside the sandbox"
-msgstr ""
+msgstr "Habilita el muntatge del sòcol de PipeWire dins de l'entorn de prova."
 
 #: ../apps/ll-cli/src/main.cpp:154
 msgid "Enable AT SPI socket mount inside the sandbox"
-msgstr ""
+msgstr "Habilita el muntatge del sòcol AT-SPI dins de l'entorn de prova."
 
 #: ../apps/ll-cli/src/main.cpp:156
 msgid "Run context json string"
@@ -278,19 +284,21 @@ msgstr ""
 
 #: ../apps/ll-cli/src/main.cpp:186
 msgid "Run the application under gdbserver"
-msgstr ""
+msgstr "Executa l'aplicació amb gdbserver."
 
 #: ../apps/ll-cli/src/main.cpp:190
 msgid "Specify the gdbserver listen address"
-msgstr ""
+msgstr "Especifiqueu l'adreça d'escolta del gdbserver."
 
 #: ../apps/ll-cli/src/main.cpp:198
 msgid "Specify debuginfod urls for debugging"
-msgstr ""
+msgstr "Especifiqueu els URL de debuginfod per a la depuració,"
 
 #: ../apps/ll-cli/src/main.cpp:205
 msgid "Specify the directory used by gdb to load debug symbols"
 msgstr ""
+"Especifiqueu el directori que usa el gdb per carregar els símbols de "
+"depuració."
 
 #: ../apps/ll-cli/src/main.cpp:209 ../apps/ll-cli/src/main.cpp:241
 msgid "Run commands in a running sandbox"

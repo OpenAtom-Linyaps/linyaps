@@ -557,7 +557,7 @@ msgstr ""
 
 #: ../apps/ll-cli/src/main.cpp:445
 msgid "Show installed module sizes and repository real size"
-msgstr ""
+msgstr "Mostra la mida dels mòduls instal·lats i la mida real del repositori."
 
 #: ../apps/ll-cli/src/main.cpp:447
 msgid ""
@@ -567,28 +567,35 @@ msgid ""
 "# show installed module sizes\n"
 "ll-cli analyze size\n"
 msgstr ""
+"Ús: ll-cli analyze size [OPCIONS]\n"
+"\n"
+"Exemple:\n"
+"# mostra la mida dels mòduls instal·lats\n"
+"ll-cli analyze size\n"
 
 #: ../apps/ll-cli/src/main.cpp:457
 msgid ""
 "Sort result by specify field. One of \"actual\", \"logical\", \"exclusive\","
 " \"shared\" or \"id\""
 msgstr ""
+"Ordena el resultat segons el camp especificat. Un dels següents: actual, "
+"lògic, exclusiu, compartit o identificador."
 
 #: ../apps/ll-cli/src/main.cpp:461
 msgid "Sort in ascending order"
-msgstr ""
+msgstr "Ordena en ordre ascendent."
 
 #: ../apps/ll-cli/src/main.cpp:470
 msgid "Analyze installed applications"
-msgstr ""
+msgstr "Analitza les aplicacions instal·lades."
 
 #: ../apps/ll-cli/src/main.cpp:472
 msgid "Usage: ll-cli analyze SUBCOMMAND [OPTIONS]"
-msgstr ""
+msgstr "Ús: ll-cli analyze SUBORDRE [OPCIONS]"
 
 #: ../apps/ll-cli/src/main.cpp:478
 msgid "Display installed application dependency tree"
-msgstr ""
+msgstr "Mostra l'arbre de dependències de l'aplicació instal·lada."
 
 #: ../apps/ll-cli/src/main.cpp:480
 msgid ""
@@ -600,6 +607,13 @@ msgid ""
 "# show dependency tree for an installed application\n"
 "ll-cli analyze depends org.deepin.demo\n"
 msgstr ""
+"Ús: ll-cli analyze depends [APLICACIÓ]\n"
+"\n"
+"Exemple:\n"
+"# mostra l'arbre de dependències de totes les aplicacions instal·lades\n"
+"ll-cli analyze depends\n"
+"# mostra l'arbre de dependències d'una aplicació instal·lada\n"
+"ll-cli analyze depends org.deepin.demo\n"
 
 #: ../apps/ll-cli/src/main.cpp:488 ../apps/ll-cli/src/main.cpp:520
 msgid "Specify the installed application ID"
@@ -646,6 +660,7 @@ msgstr "Ús: ll-cli inspect SUBORDRE [OPCIONS]"
 msgid ""
 "Display the data(bundle) directory of the installed(running) application"
 msgstr ""
+"Mostra el directori de dades (lot) de l'aplicació instal·lada (en execució)."
 
 #: ../apps/ll-cli/src/main.cpp:551
 msgid "Usage: ll-cli inspect dir [OPTIONS] APP"

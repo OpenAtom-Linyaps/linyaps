@@ -689,6 +689,8 @@ msgid ""
 "linyaps CLI\n"
 "A CLI program to run application and manage application and runtime\n"
 msgstr ""
+"linyaps CLI\n"
+"Un programa de línia d'ordres per executar i gestionar aplicacions i entorns d'execució.\n"
 
 #: ../apps/ll-cli/src/main.cpp:585 ../apps/ll-builder/src/main.cpp:478
 msgid "Print this help message and exit"

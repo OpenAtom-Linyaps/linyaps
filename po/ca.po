@@ -669,10 +669,13 @@ msgstr "Ús: ll-cli inspect dir [OPCIONS] APP"
 #: ../apps/ll-cli/src/main.cpp:555
 msgid "Specify the application ID, and it can also be reference"
 msgstr ""
+"Especifiqueu l'identificador de l'aplicació. També pot ser una referència."
 
 #: ../apps/ll-cli/src/main.cpp:561
 msgid "Specify the directory type (layer or bundle),the default is layer"
 msgstr ""
+"Especifiqueu el tipus de directori (capa o lot); el valor per defecte és "
+"capa."
 
 #: ../apps/ll-cli/src/main.cpp:568
 msgid ""
@@ -718,15 +721,18 @@ msgid ""
 "Use peer to peer DBus, this is used only in case that DBus daemon is not "
 "available"
 msgstr ""
+"Useu D-Bus de punt a punt; això només s'usa en cas que el dimoni de D-Bus no"
+" estigui disponible."
 
 #. json flag
 #: ../apps/ll-cli/src/main.cpp:605
 msgid "Use json format to output result"
-msgstr ""
+msgstr "Usa el format JSON per mostrar el resultat."
 
 #: ../apps/ll-cli/src/main.cpp:612
 msgid "Show debug info; repeat to enable backtrace"
 msgstr ""
+"Mostra informació de depuració; repetiu l'acció per activar el rastreig."
 
 #: ../apps/ll-cli/src/main.cpp:615
 msgid "Don't output progress information"
@@ -811,11 +817,11 @@ msgstr "ID del contenidor"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:182
 msgid "Pid"
-msgstr ""
+msgstr "PID"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:250
 msgid "Url"
-msgstr ""
+msgstr "URL"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:251
 msgid "Alias"
@@ -839,39 +845,39 @@ msgstr "Nova"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:368
 msgid "Exclusive"
-msgstr ""
+msgstr "Exclusiu"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:369
 msgid "Shared"
-msgstr ""
+msgstr "Compartit"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:370
 msgid "Logical"
-msgstr ""
+msgstr "Lògic"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:370
 msgid "Actual"
-msgstr ""
+msgstr "Real"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:385
 msgid "Calculated logical total size: "
-msgstr ""
+msgstr "Mida total lògica calculada:"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:386
 msgid "Exclusive: "
-msgstr ""
+msgstr "Exclusiu:"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:386
 msgid "Shared: "
-msgstr ""
+msgstr "Compartit:"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:388
 msgid "Calculated actual total size: "
-msgstr ""
+msgstr "Mida total real calculada:"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:389
 msgid "Repository real size: "
-msgstr ""
+msgstr "Mida real del repositori:"
 
 #: ../apps/ll-builder/src/main.cpp:476
 msgid ""

@@ -578,7 +578,7 @@ msgid ""
 "Sort result by specify field. One of \"actual\", \"logical\", \"exclusive\","
 " \"shared\" or \"id\""
 msgstr ""
-"Ordena el resultat segons el camp especificat. Un dels següents: actual, "
+"Ordena el resultat segons el camp especificat. Un dels següents: real, "
 "lògic, exclusiu, compartit o identificador."
 
 #: ../apps/ll-cli/src/main.cpp:461
@@ -884,6 +884,8 @@ msgid ""
 "linyaps builder CLI \n"
 "A CLI program to build linyaps application\n"
 msgstr ""
+"CLI del constructor linyaps\n"
+"Un programa de línia d'ordres per construir aplicacions de linyaps\n"
 
 #: ../apps/ll-builder/src/main.cpp:481
 msgid "Usage: ll-builder [OPTIONS] [SUBCOMMAND]"
@@ -997,7 +999,7 @@ msgstr "Especifica les extensions que usa l'aplicació per executar-se."
 
 #: ../apps/ll-builder/src/main.cpp:592
 msgid "List built linyaps app"
-msgstr ""
+msgstr "Llista d'aplicacions creades amb Linyaps"
 
 #: ../apps/ll-builder/src/main.cpp:593
 msgid "Usage: ll-builder list [OPTIONS]"
@@ -1005,7 +1007,7 @@ msgstr "Ús: ll-builder list [OPCIONS]"
 
 #: ../apps/ll-builder/src/main.cpp:594
 msgid "Remove built linyaps app"
-msgstr ""
+msgstr "Elimina les aplicacions construïdes amb Linyaps."
 
 #: ../apps/ll-builder/src/main.cpp:595
 msgid "Usage: ll-builder remove [OPTIONS] [APP...]"
@@ -1013,12 +1015,12 @@ msgstr "Ús: ll-builder remove [OPCIONS] [APLICACIÓ...]"
 
 #: ../apps/ll-builder/src/main.cpp:598
 msgid "Do not clean objects files before remove apps"
-msgstr ""
+msgstr "No netegis els fitxers d'objecte abans d'eliminar les aplicacions."
 
 #. build export
 #: ../apps/ll-builder/src/main.cpp:602
 msgid "Export to linyaps layer or UAB"
-msgstr ""
+msgstr "Exporta a la capa de linyaps o a UAB."
 
 #: ../apps/ll-builder/src/main.cpp:603
 msgid "Usage: ll-builder export [OPTIONS]"
@@ -1026,7 +1028,7 @@ msgstr "Ús: ll-builder export [OPCIONS]"
 
 #: ../apps/ll-builder/src/main.cpp:615
 msgid "Uab icon (optional)"
-msgstr ""
+msgstr "Icona per a UAB (opcional)"
 
 #: ../apps/ll-builder/src/main.cpp:620
 msgid "Export to linyaps layer file (deprecated)"
@@ -1034,7 +1036,7 @@ msgstr "Exporta a un fitxer de capa de Linyaps (obsolet)"
 
 #: ../apps/ll-builder/src/main.cpp:623
 msgid "Export an executable UABX file"
-msgstr ""
+msgstr "Exporta un fitxer UABX executable."
 
 #: ../apps/ll-builder/src/main.cpp:627
 msgid "Use custom loader"
@@ -1066,7 +1068,7 @@ msgstr "Ús: ll-builder push [OPCIONS]"
 
 #: ../apps/ll-builder/src/main.cpp:659
 msgid "Remote repo url"
-msgstr ""
+msgstr "URL del repositori remot"
 
 #: ../apps/ll-builder/src/main.cpp:662
 msgid "Remote repo name"
@@ -1099,12 +1101,12 @@ msgstr "Usage: ll-builder import-dir PATH"
 
 #: ../apps/ll-builder/src/main.cpp:681
 msgid "Layer dir path"
-msgstr ""
+msgstr "Camí del directori de la capa"
 
 #. add build extract
 #: ../apps/ll-builder/src/main.cpp:686
 msgid "Extract linyaps layer to dir"
-msgstr ""
+msgstr "Extreu la capa de linyaps al directori."
 
 #: ../apps/ll-builder/src/main.cpp:687
 msgid "Usage: ll-builder extract [OPTIONS] LAYER DIR"
@@ -1117,11 +1119,11 @@ msgstr "Directori de destinació"
 #. add builder clean
 #: ../apps/ll-builder/src/main.cpp:695
 msgid "Clean build artifacts"
-msgstr ""
+msgstr "Neteja els artefactes construïts."
 
 #: ../apps/ll-builder/src/main.cpp:696
 msgid "Usage: ll-builder clean"
-msgstr ""
+msgstr "Ús: ll-builder clean"
 
 #: ../apps/ll-builder/src/main.cpp:710
 msgid "linyaps build tool version "
@@ -1179,7 +1181,7 @@ msgstr "Ús:"
 
 #: ../libs/linglong/src/linglong/common/cli/repo.cpp:50
 msgid "Display or modify information of the repository currently using"
-msgstr ""
+msgstr "Mostra o modifica la informació del repositori que s'usa actualment."
 
 #: ../libs/linglong/src/linglong/common/cli/repo.cpp:55
 msgid "Add a new repository"
@@ -1194,7 +1196,7 @@ msgstr "Especifiqueu el nom del repositori."
 #: ../libs/linglong/src/linglong/common/cli/repo.cpp:71
 #: ../libs/linglong/src/linglong/common/cli/repo.cpp:86
 msgid "Url of the repository"
-msgstr ""
+msgstr "URL del repositori"
 
 #: ../libs/linglong/src/linglong/common/cli/repo.cpp:63
 #: ../libs/linglong/src/linglong/common/cli/repo.cpp:77
@@ -1240,7 +1242,7 @@ msgstr "Habilita la rèplica per al repositori"
 
 #: ../libs/linglong/src/linglong/common/cli/repo.cpp:119
 msgid "Region code for mirror selection, e.g. CN, US"
-msgstr ""
+msgstr "Codi de regió per a la selecció de rèpliques, p. ex., CN, US"
 
 #: ../libs/linglong/src/linglong/common/cli/repo.cpp:124
 msgid "Disable mirror for the repo"

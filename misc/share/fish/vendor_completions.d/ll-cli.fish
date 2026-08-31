@@ -34,23 +34,27 @@ for opt in $global_short_opts
 end
 
 # --- 一级子命令定义 ---
-set -l subcommands run ps enter kill install uninstall upgrade search list repo info content prune
+set -l subcommands run ps enter kill install uninstall upgrade search list analyze repo info content prune
 complete -c ll-cli -n "__fish_use_subcommand" -a "$subcommands"
 
 # --- 子命令参数补全逻辑 ---
 
 # run, enter, kill
 complete -c ll-cli -n "__fish_seen_subcommand_from run" -l file -l url -l env -l base -l runtime -l extensions
+complete -c ll-cli -n "__fish_seen_subcommand_from run" -l workdir -l enable-xdp -l disable-xdp -l enable-pipewire -l enable-atspi -l cdi-spec-dir -l device -l device-mode -l instance -l debug -l debug-listen -l debug-debuginfod -l debug-symbol-dir
+complete -c ll-cli -n "__fish_seen_subcommand_from run; and __fish_contains_opt device-mode" -xa "passthru"
+complete -c ll-cli -n "__fish_seen_subcommand_from ps" -l no-truncated
 complete -c ll-cli -n "__fish_seen_subcommand_from run" -a "(__fish_ll_cli_get_installed_apps)"
 complete -c ll-cli -n "__fish_seen_subcommand_from enter" -l working-directory
 complete -c ll-cli -n "__fish_seen_subcommand_from kill" -s s -l signal -xa "SIGTERM SIGKILL SIGINT SIGHUP"
 complete -c ll-cli -n "__fish_seen_subcommand_from enter kill" -a "(__fish_ll_cli_get_containers)"
 
 # install / uninstall / upgrade
-complete -c ll-cli -n "__fish_seen_subcommand_from install" -l module -l repo -l force -s y
+complete -c ll-cli -n "__fish_seen_subcommand_from install" -l module -l repo -l force -s y -l no-auto-prune
 complete -c ll-cli -n "__fish_seen_subcommand_from install" -k -a "(__fish_complete_suffix .layer .uab)"
-complete -c ll-cli -n "__fish_seen_subcommand_from uninstall" -l module -l force
+complete -c ll-cli -n "__fish_seen_subcommand_from uninstall" -l module -l force -l no-auto-prune
 complete -c ll-cli -n "__fish_seen_subcommand_from uninstall upgrade" -a "(__fish_ll_cli_get_installed_apps)"
+complete -c ll-cli -n "__fish_seen_subcommand_from upgrade" -l deps-only -l no-auto-prune
 
 # search / list
 complete -c ll-cli -n "__fish_seen_subcommand_from search list" -l type -xa "runtime base app all"
@@ -62,6 +66,13 @@ set -l repo_subs add remove update set-default show set-priority enable-mirror d
 complete -c ll-cli -n "__fish_seen_subcommand_from repo; and not __fish_seen_subcommand_from $repo_subs" -a "$repo_subs"
 complete -c ll-cli -n "__fish_seen_subcommand_from repo; and __fish_seen_subcommand_from add" -l alias
 complete -c ll-cli -n "__fish_seen_subcommand_from repo; and __fish_seen_subcommand_from remove update set-default set-priority enable-mirror disable-mirror" -a "(__fish_ll_cli_get_repo_aliases)"
+complete -c ll-cli -n "__fish_seen_subcommand_from repo; and __fish_seen_subcommand_from enable-mirror" -l region
+
+# analyze
+complete -c ll-cli -n "__fish_seen_subcommand_from analyze; and not __fish_seen_subcommand_from size depends" -a "size depends"
+complete -c ll-cli -n "__fish_seen_subcommand_from analyze; and __fish_seen_subcommand_from size" -l sort -l asc
+complete -c ll-cli -n "__fish_seen_subcommand_from analyze; and __fish_seen_subcommand_from size; and __fish_contains_opt sort" -a "actual logical exclusive shared id"
+complete -c ll-cli -n "__fish_seen_subcommand_from analyze; and __fish_seen_subcommand_from depends" -a "(__fish_ll_cli_get_installed_all)"
 
 # info 和 content 支持已安装的 app/runtime
 complete -c ll-cli -n "__fish_seen_subcommand_from info content" -a "(__fish_ll_cli_get_installed_all)"

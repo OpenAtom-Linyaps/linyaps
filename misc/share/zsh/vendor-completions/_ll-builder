@@ -14,7 +14,7 @@ _ll_builder_get_repo_name_list() {
 
 _ll-builder() {
     local -a subcommands
-    subcommands=(create build run export push import import-dir extract repo list remove)
+    subcommands=(create build run export push import extract clean repo list remove)
 
     _arguments -C \
         '--version' \
@@ -32,7 +32,7 @@ _ll-builder() {
                     _arguments '(-h --help --help-all)'{-h,--help,--help-all}
                     ;;
                 build)
-                    _values '' -f --file --offline --isolate-network --full-develop-module \
+                    _values '' -f --file --offline --isolate-network \
                         --skip-fetch-source --skip-pull-depend --skip-run-container \
                         --skip-commit-output --skip-output-check --skip-strip-symbols \
                         -h --help --help-all
@@ -40,13 +40,13 @@ _ll-builder() {
                 run)
                     _arguments \
                         '(-f --file)'{-f,--file} \
-                        '--modules' '--debug' \
+                        '--modules' '--workdir' '--debug' \
                         '--extensions: :($( _ll_builder_get_commited_list ))' \
                         '(-h --help --help-all)'{-h,--help,--help-all}
                     ;;
                 export)
                     _arguments \
-                        '(-f --file)'{-f,--file} '--icon' '--layer' '--loader' '--no-develop' \
+                        '(-f --file)'{-f,--file} '--icon' '--layer' '--uabx' '--loader' '--no-develop' \
                         '(-o --output)'{-o,--output} '--modules' \
                         '(-z --compressor)'{-z,--compressor}': :(lz4 lzma zstd)' \
                         '--ref: :($( _ll_builder_get_commited_list ))' \
@@ -58,10 +58,15 @@ _ll-builder() {
                         '*: :($( _ll_builder_get_commited_list ))' \
                         '(-h --help --help-all)'{-h,--help,--help-all}
                     ;;
+                clean)
+                    _arguments \
+                        '(-f --file)'{-f,--file} \
+                        '(-h --help --help-all)'{-h,--help,--help-all}
+                    ;;
                 push)
                     _values '' -f --file --repo-url --repo-name --module -h --help --help-all
                     ;;
-                import|import-dir)
+                import)
                     _arguments '1: :_files' '(-h --help --help-all)'{-h,--help,--help-all}
                     ;;
                 extract)
@@ -69,11 +74,14 @@ _ll-builder() {
                     ;;
                 repo)
                     if (( CURRENT == 2 )); then
-                        compadd add remove update set-default show enable-mirror disable-mirror
+                        compadd add remove update set-default show set-priority enable-mirror disable-mirror
                     else
                         case $words[2] in
-                            remove|update|set-default|enable-mirror|disable-mirror)
+                            remove|update|set-default|set-priority|disable-mirror)
                                 compadd $(_ll_builder_get_repo_name_list)
+                                ;;
+                            enable-mirror)
+                                _arguments '--region:region:' '*: :($(_ll_builder_get_repo_name_list))'
                                 ;;
                         esac
                     fi

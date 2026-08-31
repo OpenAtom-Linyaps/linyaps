@@ -1,6 +1,6 @@
 #!/bin/env bash
 
-# SPDX-FileCopyrightText: 2023 - 2025 UnionTech Software Technology Co., Ltd.
+# SPDX-FileCopyrightText: 2023 - 2026 UnionTech Software Technology Co., Ltd.
 #
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -54,7 +54,7 @@ _ll_cli_completion() {
         cword=$COMP_CWORD
     }
 
-    local subcommands="run ps enter kill install uninstall upgrade search list repo info content prune"
+    local subcommands="run ps enter kill install uninstall upgrade search list analyze repo info content prune"
     local global_opts="--help --help-all --json --verbose -v --no-progress"
 
     COMPREPLY=()
@@ -81,29 +81,36 @@ _ll_cli_completion() {
     local opts=""
     case "$subcmd" in
     run)
-        if [[ "$prev" == "run" ]]; then
+        if [[ "$prev" == "run" && "$cur" != -* ]]; then
             opts="$(__ll_cli_get_installed_app_list)"
         else
-            opts="--file --url --env --base --runtime --extensions"
+            opts="--file --url --env --base --runtime --extensions --workdir"
+            opts+=" --enable-xdp --disable-xdp --enable-pipewire --enable-atspi"
+            opts+=" --cdi-spec-dir --device --device-mode --instance"
+            opts+=" --debug --debug-listen --debug-debuginfod --debug-symbol-dir"
         fi
         ;;
+    ps)
+        opts="--no-truncated"
+        ;;
     enter)
-        if [[ "$prev" == "enter" ]]; then
+        if [[ "$prev" == "enter" && "$cur" != -* ]]; then
             opts="$(__ll_cli_get_container_list)"
         else
             opts="--working-directory"
         fi
         ;;
     kill)
-        if [[ "$prev" == "kill" || "$prev" == "-s" || "$prev" == "--signal" ]]; then
-            [[ "$prev" == "kill" ]] && opts="$(__ll_cli_get_container_list)"
-            [[ "$prev" != "kill" ]] && opts="SIGTERM SIGKILL SIGINT SIGHUP"
+        if [[ "$prev" == "-s" || "$prev" == "--signal" ]]; then
+            opts="SIGTERM SIGKILL SIGINT SIGHUP"
+        elif [[ "$prev" == "kill" && "$cur" != -* ]]; then
+            opts="$(__ll_cli_get_container_list)"
         else
             opts="--signal -s"
         fi
         ;;
     install)
-        opts="--module --repo --force -y"
+        opts="--module --repo --force -y --no-auto-prune"
 
         if [[ "$cur" != -* ]]; then
             _filedir '@(layer|uab)'
@@ -116,13 +123,28 @@ _ll_cli_completion() {
         fi
         ;;
     upgrade)
-        opts="$(__ll_cli_get_installed_app_list)"
+        if [[ "$cur" == -* ]]; then
+            opts="--deps-only --no-auto-prune"
+        else
+            opts="$(__ll_cli_get_installed_app_list)"
+        fi
         ;;
     uninstall)
-        if [[ "$prev" == "uninstall" ]]; then
+        if [[ "$prev" == "uninstall" && "$cur" != -* ]]; then
             opts="$(__ll_cli_get_installed_app_list)"
         else
-            opts="--module --force"
+            opts="--module --force --no-auto-prune"
+        fi
+        ;;
+    analyze)
+        local analyze_subs="size depends"
+        if [[ "$prev" == "analyze" ]]; then
+            opts="$analyze_subs"
+        elif [[ "$prev" == "size" || "$prev" == "--sort" ]]; then
+            [[ "$prev" == "size" ]] && opts="--sort --asc"
+            [[ "$prev" == "--sort" ]] && opts="actual logical exclusive shared id"
+        elif [[ "$prev" == "depends" ]]; then
+            opts="$(__ll_cli_get_installed_list)"
         fi
         ;;
     search | list)
@@ -137,6 +159,8 @@ _ll_cli_completion() {
         local repo_subs="add remove update set-default show set-priority enable-mirror disable-mirror"
         if [[ "$prev" == "repo" ]]; then
             opts="$repo_subs"
+        elif [[ " ${words[*]} " =~ " enable-mirror " ]]; then
+            opts="--region"
         elif [[ " remove update set-default set-priority enable-mirror disable-mirror " =~ " $prev " ]]; then
             opts="$(__ll_cli_get_repo_alias_list)"
         elif [[ " ${words[*]} " =~ " add " ]]; then

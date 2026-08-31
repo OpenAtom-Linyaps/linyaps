@@ -47,7 +47,7 @@ _ll_cli() {
             local -a subcmds
             subcmds=(
                 'run' 'ps' 'enter' 'kill' 'install' 'uninstall'
-                'upgrade' 'search' 'list' 'repo' 'info' 'content' 'prune'
+                'upgrade' 'search' 'list' 'analyze' 'repo' 'info' 'content' 'prune'
             )
             _values 'subcommand' $subcmds
             ;;
@@ -56,15 +56,22 @@ _ll_cli() {
                 run)
                     _arguments -S -s $global_opts \
                         '--file' '--url' '--env' '--base' '--runtime' '--extensions' \
+                        '--workdir' '--enable-xdp' '--disable-xdp' '--enable-pipewire' \
+                        '--enable-atspi' '--cdi-spec-dir' '--device' \
+                        '--device-mode:mode:(passthru)' '--instance' '--debug' \
+                        '--debug-listen' '--debug-debuginfod' '--debug-symbol-dir' \
                         '1: :__ll_cli_get_installed_apps'
+                    ;;
+                ps)
+                    _arguments -S -s $global_opts '--no-truncated'
                     ;;
                 install)
                     _arguments -S -s $global_opts \
-                        '--module' '--repo' '--force' '-y' \
+                        '--module' '--repo' '--force' '-y' '--no-auto-prune' \
                         '*:file:_files -g "*.uab *.layer"'
                     ;;
                 uninstall)
-                    _arguments -S -s $global_opts '--module' '--force' '1: :__ll_cli_get_installed_apps'
+                    _arguments -S -s $global_opts '--module' '--force' '--no-auto-prune' '1: :__ll_cli_get_installed_apps'
                     ;;
                 repo)
                     if ((CURRENT == 2)); then
@@ -78,8 +85,11 @@ _ll_cli() {
                                     '--alias:alias: ' \
                                     '*:repository name/URL:'
                                 ;;
-                            remove | set-default | set-priority | enable-mirror | disable-mirror | update)
+                            remove | set-default | set-priority | disable-mirror | update)
                                 _arguments -S -s $global_opts "*: :__ll_cli_get_repo_aliases"
+                                ;;
+                            enable-mirror)
+                                _arguments -S -s $global_opts '--region' "*: :__ll_cli_get_repo_aliases"
                                 ;;
                         esac
                     fi
@@ -100,7 +110,31 @@ _ll_cli() {
                         '--upgradable'
                     ;;
                 upgrade)
-                    _arguments -S -s $global_opts '1: :__ll_cli_get_installed_apps'
+                    _arguments -S -s $global_opts '--deps-only' '--no-auto-prune' '1: :__ll_cli_get_installed_apps'
+                    ;;
+                analyze)
+                    if ((CURRENT == 2)); then
+                        local -a analyze_subs
+                        analyze_subs=('size' 'depends')
+                        _values 'analyze subcommand' $analyze_subs
+                    else
+                        case $words[2] in
+                            size)
+                                if [[ $words[CURRENT-1] == "--sort" ]]; then
+                                    compadd -- actual logical exclusive shared id
+                                else
+                                    compadd -- --sort --asc \
+                                        --help --help-all --json --verbose -v --no-progress
+                                fi
+                                ;;
+                            depends)
+                                local -a all_items
+                                all_items=(${(f)"$(ll-cli list 2>/dev/null | awk 'NR>1 {print $1}')"})
+                                compadd -- --help --help-all --json --verbose -v --no-progress
+                                compadd -- $all_items
+                                ;;
+                        esac
+                    fi
                     ;;
                 info)
                     _arguments -s -S $global_opts \

@@ -1,40 +1,35 @@
 #!/bin/sh
 
-# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
-#
+# SPDX-FileCopyrightText: 2023 - 2026 UnionTech Software Technology Co., Ltd.
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
 set -e
 
-workdir=$1
+action=$1
 url=$2
-commit=$3
-# cachedir=$4
+ref=$3
+workdir=$4
 
-# Check command tools
-if ! command -v git
-then
-    echo "git not found, please install git first"
-    exit 1;
-fi
-mkdir -p "$workdir" || true
-cd "$workdir"
-
-# Init repo
-if [ -d ".git" ]; then
-    git remote set-url origin "$url"
-else
-    git init
-    git remote add origin "$url"
+if [ "$action" != "checkout" ]; then
+    echo "unsupported git source action: $action" >&2
+    exit 1
 fi
 
-# Fetch commit
-git fetch origin "$commit" --depth 1 -n
-git add :/
-git reset --hard FETCH_HEAD
-
-# Fetch submodule
-if [ -n "$GIT_SUBMODULES" ]; then
-    git submodule update --init --recursive --depth 1
-    git submodule foreach git reset --hard HEAD
+if ! command -v git >/dev/null 2>&1; then
+    echo "git not found, please install git first" >&2
+    exit 1
 fi
+
+mkdir "$workdir"
+git -C "$workdir" init
+git -C "$workdir" remote add origin "$url"
+
+git -C "$workdir" fetch origin "$ref" --depth 1 -n
+git -C "$workdir" reset --hard FETCH_HEAD
+
+if [ -n "${GIT_SUBMODULES:-}" ]; then
+    git -C "$workdir" submodule update --init --recursive --depth 1
+    git -C "$workdir" submodule foreach git reset --hard HEAD
+fi
+
+git -C "$workdir" rev-parse --verify HEAD

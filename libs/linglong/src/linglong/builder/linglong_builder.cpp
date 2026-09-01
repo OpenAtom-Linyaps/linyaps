@@ -11,6 +11,7 @@
 #include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/builder/builder_script.h"
 #include "linglong/builder/printer.h"
+#include "linglong/builder/source_cache.h"
 #include "linglong/common/global/initialize.h"
 #include "linglong/common/strings.h"
 #include "linglong/common/version.h"
@@ -30,8 +31,9 @@
 #include "linglong/utils/log/log.h"
 #include "linglong/utils/serialize/json.h"
 #include "linglong/utils/serialize/packageinfo_handler.h"
+#include "linglong/utils/temporary_directory.h"
 #include "ocppi/runtime/RunOption.hpp"
-#include "source_fetcher.h"
+#include "project_lock.h"
 
 #include <fmt/ranges.h>
 #include <nlohmann/json.hpp>
@@ -41,6 +43,7 @@
 #include <QRegularExpression>
 
 #include <algorithm>
+#include <cassert>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
@@ -48,6 +51,7 @@
 #include <optional>
 #include <string>
 #include <system_error>
+#include <utility>
 #include <vector>
 
 #include <fcntl.h>
@@ -72,42 +76,46 @@ currentReference(const api::types::v1::BuilderProject &project)
     return package::Reference::fromBuilderProject(project);
 }
 
-utils::error::Result<void>
-fetchSources(const std::vector<api::types::v1::BuilderProjectSource> &sources,
-             const QDir &cacheDir,
-             const QDir &destination,
-             [[maybe_unused]] const api::types::v1::BuilderConfig &cfg) noexcept
+void printSourceFetchStatus(std::size_t,
+                            const api::types::v1::BuilderProjectSource &source,
+                            SourceFetchStatus status)
 {
-    LINGLONG_TRACE("fetch sources to " + destination.absolutePath().toStdString());
-
-    for (decltype(sources.size()) pos = 0; pos < sources.size(); ++pos) {
-        if (!sources.at(pos).url.has_value()) {
-            return LINGLONG_ERR("source missing url");
-        }
-        auto url = QString::fromStdString(*(sources.at(pos).url));
-        if (url.length() > 75) {         // NOLINT
-            url = "..." + url.right(70); // NOLINT
-        }
-        printReplacedText(fmt::format("{:<20}{:<15}{:<75}downloading ...",
-                                      "Source " + std::to_string(pos),
-                                      sources.at(pos).kind,
-                                      url.toStdString()),
-                          2);
-        SourceFetcher fetcher(sources.at(pos), cacheDir);
-        auto result = fetcher.fetch(QDir(destination));
-        if (!result) {
-            return LINGLONG_ERR(result);
-        }
-        printReplacedText(QString("%1%2%3%4")
-                            .arg("Source " + QString::number(pos), -20)             // NOLINT
-                            .arg(QString::fromStdString(sources.at(pos).kind), -15) // NOLINT
-                            .arg(url, -75)                                          // NOLINT
-                            .arg("complete\n")
-                            .toStdString(),
-                          2);
+    auto url = QString::fromStdString(source.url.value_or(""));
+    if (url.length() > 75) {
+        url = "..." + url.right(70);
     }
 
-    return LINGLONG_OK;
+    std::string_view statusText;
+    switch (status) {
+    case SourceFetchStatus::Fetching:
+        statusText = "fetching ...";
+        break;
+    case SourceFetchStatus::Complete:
+        statusText = "complete\n";
+        break;
+    case SourceFetchStatus::Failed:
+        statusText = "failed\n";
+        break;
+    }
+
+    printReplacedText(fmt::format("{:<20}{:<15}{:<75}{}",
+                                  sourceOutputName(source),
+                                  source.kind,
+                                  url.toStdString(),
+                                  statusText),
+                      2);
+}
+
+void printDependencyStatus(const package::Reference &reference,
+                           std::string_view module,
+                           std::string_view status)
+{
+    printReplacedText(fmt::format("{:<35}{:<15}{:<15}{}\n",
+                                  reference.id,
+                                  reference.version.toString(),
+                                  module,
+                                  status),
+                      2);
 }
 
 } // namespace
@@ -242,11 +250,13 @@ utils::error::Result<package::Reference> pullDependency(const std::string &fuzzy
     return std::move(refRepo->reference);
 }
 
-void mergeOutput(const std::vector<std::filesystem::path> &src,
-                 const std::filesystem::path &dest,
-                 const std::vector<std::string> &targets,
-                 const std::vector<std::string> &excludes)
+utils::error::Result<void> mergeOutput(const std::vector<std::filesystem::path> &src,
+                                       const std::filesystem::path &dest,
+                                       const std::vector<std::string> &targets,
+                                       const std::vector<std::string> &excludes)
 {
+    LINGLONG_TRACE("merge build output");
+
     for (const auto &dir : src) {
         LogD("merge {} to {}", dir, dest);
         auto matcher = [&dir, &targets, &excludes](const std::filesystem::path &path) {
@@ -276,8 +286,56 @@ void mergeOutput(const std::vector<std::filesystem::path> &src,
             return false;
         };
 
-        utils::copyDirectory(dir, dest, matcher);
+        auto copied = utils::copyDirectory(dir, dest, matcher);
+        if (!copied) {
+            return LINGLONG_ERR(copied);
+        }
     }
+
+    return LINGLONG_OK;
+}
+
+auto prepareBuildOverlays(const BuilderDirectoryLayout &directories,
+                          const std::string &dependencyState,
+                          bool hasRuntime) -> utils::error::Result<bool>
+{
+    LINGLONG_TRACE("prepare build overlays");
+
+    const auto &marker = directories.buildOverlayState();
+    auto previousState = utils::readFile(marker);
+    std::error_code ec;
+    if (previousState && *previousState == dependencyState
+        && std::filesystem::is_directory(directories.buildBaseOverlay() / "upperdir", ec)
+        && (!hasRuntime
+            || std::filesystem::is_directory(directories.buildRuntimeOverlay() / "upperdir", ec))) {
+        return true;
+    }
+
+    std::filesystem::remove(marker, ec);
+    if (ec) {
+        return LINGLONG_ERR("failed to invalidate build overlay state: " + ec.message());
+    }
+
+    auto baseReset = directories.resetOverlay(directories.buildBaseOverlay(), true);
+    if (!baseReset) {
+        return LINGLONG_ERR(baseReset);
+    }
+    auto runtimeReset = directories.resetOverlay(directories.buildRuntimeOverlay(), hasRuntime);
+    if (!runtimeReset) {
+        return LINGLONG_ERR(runtimeReset);
+    }
+
+    auto temporaryMarker = marker;
+    temporaryMarker += ".tmp";
+    auto written = utils::writeFile(temporaryMarker, dependencyState);
+    if (!written) {
+        return LINGLONG_ERR("failed to write build overlay state", written);
+    }
+    std::filesystem::rename(temporaryMarker, marker, ec);
+    if (ec) {
+        return LINGLONG_ERR("failed to publish build overlay state: " + ec.message());
+    }
+    return false;
 }
 
 } // namespace detail
@@ -398,14 +456,13 @@ Builder::Builder(std::optional<api::types::v1::BuilderProject> project,
                  runtime::ContainerBuilder &containerBuilder,
                  const api::types::v1::BuilderConfig &cfg)
     : repo(repo)
-    , workingDir(std::move(projectDir))
+    , directories(std::move(projectDir))
     , project(project)
     , containerBuilder(containerBuilder)
     , cfg(cfg)
     , buildContext(repo)
 {
-    LogD("builder working dir: {}", workingDir);
-    internalDir = workingDir / "linglong";
+    LogD("builder working dir: {}", directories.project());
 }
 
 auto Builder::getConfig() const noexcept -> api::types::v1::BuilderConfig
@@ -423,9 +480,77 @@ void Builder::setConfig(const api::types::v1::BuilderConfig &cfg) noexcept
     this->cfg = cfg;
 }
 
+auto Builder::lockProject() noexcept -> utils::error::Result<void>
+{
+    LINGLONG_TRACE("lock builder project operation");
+
+    if (projectMutex) {
+        return LINGLONG_OK;
+    }
+
+    auto lock = directories.lockProject();
+    if (!lock) {
+        return LINGLONG_ERR(lock);
+    }
+
+    std::optional<utils::filelock::FileLock> yamlLock;
+    if (!projectYamlFile.empty()) {
+        std::error_code ec;
+        const auto projectDirectory = std::filesystem::canonical(directories.project(), ec);
+        if (ec) {
+            return LINGLONG_ERR("failed to resolve project directory: " + ec.message());
+        }
+
+        const auto manifest = std::filesystem::path(projectYamlFile);
+        const auto parent =
+          manifest.has_parent_path() ? manifest.parent_path() : std::filesystem::path(".");
+        const auto yamlDirectory = std::filesystem::canonical(parent, ec);
+        if (ec) {
+            return LINGLONG_ERR("failed to resolve project YAML directory: " + ec.message());
+        }
+
+        if (yamlDirectory != projectDirectory) {
+            auto acquired = BuilderDirectoryLayout(yamlDirectory).lockProject();
+            if (!acquired) {
+                return LINGLONG_ERR(acquired);
+            }
+            yamlLock.emplace(std::move(*acquired));
+        }
+    }
+
+    // Publish ownership only after every required lock has been acquired.
+    projectMutex.emplace(std::move(*lock));
+    projectYamlMutex = std::move(yamlLock);
+    return LINGLONG_OK;
+}
+
 utils::error::Result<void> Builder::buildStagePrepare() noexcept
 {
     LINGLONG_TRACE("build prepare");
+
+    if (buildOptions.locked && buildOptions.skipFetchSource) {
+        return LINGLONG_ERR("--locked cannot be combined with --skip-fetch-source");
+    }
+
+    projectLock.reset();
+    pendingSources.reset();
+
+    const auto path = projectLockPath(projectYamlFile);
+    std::error_code ec;
+    const bool exists = std::filesystem::exists(path, ec);
+    if (ec) {
+        return LINGLONG_ERR("failed to check project lock file: " + ec.message());
+    }
+
+    if (exists) {
+        auto loaded = readProjectLock(path);
+        if (!loaded) {
+            return LINGLONG_ERR(loaded);
+        }
+        projectLock = std::move(*loaded);
+    } else if (buildOptions.locked) {
+        return LINGLONG_ERR(path.string() + " does not exist; run ll-builder generate-lockfile");
+    }
 
     uid = getuid();
     gid = getgid();
@@ -468,12 +593,9 @@ utils::error::Result<void> Builder::buildStagePrepare() noexcept
 
     printRepo();
 
-    std::error_code ec;
-    std::filesystem::create_directory(this->internalDir, ec);
-    if (ec) {
-        return LINGLONG_ERR(
-          fmt::format("failed to create internal dir {} {}", this->internalDir, ec.message())
-            .c_str());
+    auto ensured = directories.ensureRoot();
+    if (!ensured) {
+        return LINGLONG_ERR(ensured);
     }
 
     return LINGLONG_OK;
@@ -483,8 +605,21 @@ utils::error::Result<void> Builder::buildStageFetchSource() noexcept
 {
     LINGLONG_TRACE("build stage fetch source");
 
-    if (!this->project->sources || this->buildOptions.skipFetchSource) {
+    if (this->buildOptions.skipFetchSource) {
+        LogW("using existing sources without source lock verification");
         return LINGLONG_OK;
+    }
+
+    utils::error::Result<ProjectSourcePlan> plan;
+    if (this->buildOptions.locked) {
+        // buildStagePrepare() requires and loads the lock for locked builds.
+        assert(projectLock.has_value());
+        plan = verifyProjectLockSources(this->project->sources, *projectLock);
+    } else {
+        plan = resolveProjectLockSources(this->project->sources, projectLock);
+    }
+    if (!plan) {
+        return LINGLONG_ERR(plan);
     }
 
     printMessage("[Processing Sources]");
@@ -495,20 +630,91 @@ utils::error::Result<void> Builder::buildStageFetchSource() noexcept
                    .arg("Status")
                    .toStdString(),
                  2);
-    auto fetchCacheDir = QString::fromStdString(internalDir / "cache");
-    if (!qEnvironmentVariableIsEmpty("LINGLONG_FETCH_CACHE")) {
-        fetchCacheDir = qgetenv("LINGLONG_FETCH_CACHE");
-    }
-    // clean sources directory on every build
-    auto fetchSourcesDir = QDir(QString::fromStdString(internalDir / "sources"));
-    fetchSourcesDir.removeRecursively();
-    auto result = fetchSources(*this->project->sources, fetchCacheDir, fetchSourcesDir, this->cfg);
 
-    if (!result) {
-        return LINGLONG_ERR(result);
+    auto reset = directories.resetSources();
+    if (!reset) {
+        return LINGLONG_ERR(reset);
+    }
+
+    auto entries = fetchProjectSources(*plan,
+                                       sourceCachePath(),
+                                       directories.sources(),
+                                       this->buildOptions.offline,
+                                       printSourceFetchStatus);
+    if (!entries) {
+        return LINGLONG_ERR(entries);
+    }
+
+    if (!this->buildOptions.locked && plan->changed) {
+        pendingSources = std::move(*entries);
     }
 
     return LINGLONG_OK;
+}
+
+utils::error::Result<void> Builder::processProjectLock(ProjectLockMode mode) noexcept
+{
+    LINGLONG_TRACE("process project lock");
+
+    auto locked = lockProject();
+    if (!locked) {
+        return LINGLONG_ERR(locked);
+    }
+
+    projectLock.reset();
+    pendingSources.reset();
+
+    const auto path = projectLockPath(projectYamlFile);
+    std::error_code ec;
+    const bool exists = std::filesystem::exists(path, ec);
+    if (ec) {
+        return LINGLONG_ERR("failed to check project lock file: " + ec.message());
+    }
+
+    if (mode == ProjectLockMode::Generate && exists) {
+        return LINGLONG_ERR(path.string() + " already exists; run ll-builder update-lockfile");
+    }
+    if (mode == ProjectLockMode::Update && !exists) {
+        return LINGLONG_ERR(path.string() + " does not exist; run ll-builder generate-lockfile");
+    }
+
+    auto plan = resolveProjectLockSources(this->project->sources, projectLock);
+    if (!plan) {
+        return LINGLONG_ERR(plan);
+    }
+
+    const auto cache = sourceCachePath();
+    SourceCacheLayout cacheLayout(cache);
+    auto ensured = cacheLayout.ensure();
+    if (!ensured) {
+        return LINGLONG_ERR(ensured);
+    }
+
+    auto temporaryDestination =
+      utils::TemporaryDirectory::create("fetch-", cacheLayout.temporary());
+    if (!temporaryDestination) {
+        return LINGLONG_ERR(temporaryDestination);
+    }
+
+    auto entries = fetchProjectSources(*plan, cache, temporaryDestination->path(), false);
+    if (!entries) {
+        return LINGLONG_ERR(entries);
+    }
+
+    if (plan->changed) {
+        pendingSources = std::move(*entries);
+    }
+
+    return buildStagePullDependency();
+}
+
+auto Builder::sourceCachePath() const -> std::filesystem::path
+{
+    if (const auto *cacheEnv = std::getenv("LINGLONG_FETCH_CACHE");
+        cacheEnv && cacheEnv[0] != '\0') {
+        return std::filesystem::path(cacheEnv);
+    }
+    return directories.cache();
 }
 
 utils::error::Result<package::Reference>
@@ -569,8 +775,11 @@ utils::error::Result<void> Builder::buildStagePullDependency() noexcept
 {
     LINGLONG_TRACE("build stage pull dependency");
 
-    if (!this->project->base && !this->project->runtime) {
-        return LINGLONG_ERR("at least one of base or runtime must be specified");
+    assert(!buildOptions.locked || projectLock.has_value());
+    auto plan =
+      planProjectDependencies(project->base, project->runtime, projectLock, buildOptions.locked);
+    if (!plan) {
+        return LINGLONG_ERR(plan);
     }
 
     printMessage("[Processing Dependency]");
@@ -582,134 +791,291 @@ utils::error::Result<void> Builder::buildStagePullDependency() noexcept
                    .toStdString(),
                  2);
 
-    auto handleDependency =
-      [this](const std::string &refStr) -> utils::error::Result<package::Reference> {
-        LINGLONG_TRACE("handle dependency " + refStr);
-
-        auto printStatus = [](const package::Reference &ref,
-                              std::string_view module,
-                              std::string_view status) {
-            printReplacedText(
-              fmt::format("{:<35}{:<15}{:<15}{}\n", ref.id, ref.version.toString(), module, status),
-              2);
-        };
-
-        auto ref = detail::clearDependency(refStr, this->repo, !this->buildOptions.skipPullDepend);
-        if (!ref) {
-            return LINGLONG_ERR(ref);
-        }
-
-        const package::Reference *resolvedRef = nullptr;
-        auto &[refRepo, localRef] = *ref;
-        if (!refRepo) {
-            const auto &local = *localRef;
-            resolvedRef = &local;
-            // binary module is install
-            printStatus(local, "binary", "complete");
-
-            // try pull develop module if skipPullDepend is not set
-            if (!this->buildOptions.skipPullDepend) {
-                auto res = detail::pullDependency(localRef->toString(), this->repo, "develop");
-                if (!res) {
-                    LogW("failed to pull develop module of {}: {}", refStr, res.error().message());
-                }
-            }
-        } else {
-            // use remote reference
-            resolvedRef = &refRepo->reference;
-            auto res = detail::pullResolvedRef(*refRepo, this->repo, "binary");
-            if (!res) {
-                if (!localRef) {
-                    return LINGLONG_ERR(res);
-                }
-
-                LogW("failed to pull binary module of {}, use local version {}: {}",
-                     refRepo->reference.toString(),
-                     localRef->toString(),
-                     res.error());
-                printStatus(*localRef, "binary", "complete");
-
-                auto layerDir = this->repo.getLayerDir(*localRef, "develop");
-                if (!layerDir) {
-                    auto developRes =
-                      detail::pullDependency(localRef->toString(), this->repo, "develop");
-                    if (!developRes) {
-                        LogW("failed to pull develop module of {}: {}",
-                             refStr,
-                             developRes.error().message());
-                    }
-                    layerDir = this->repo.getLayerDir(*localRef, "develop");
-                }
-
-                printStatus(*localRef, "develop", layerDir ? "complete" : "missing");
-
-                return *localRef;
-            }
-            printStatus(refRepo->reference, "binary", "complete");
-
-            res = detail::pullResolvedRef(*refRepo, this->repo, "develop");
-            if (!res) {
-                LogW("failed to pull develop module of {}: {}",
-                     refRepo->reference.toString(),
-                     res.error().message());
-            }
-        }
-
-        auto layerDir = this->repo.getLayerDir(*resolvedRef, "develop");
-        printStatus(*resolvedRef, "develop", layerDir ? "complete" : "missing");
-
-        return *resolvedRef;
-    };
-
-    std::optional<std::string> runtimeBase;
+    std::optional<package::FuzzyReference> runtimeBase;
     std::optional<package::Reference> runtimeRef;
-    if (this->project->runtime) {
-        auto resolvedRuntime = handleDependency(*this->project->runtime);
-        if (!resolvedRuntime) {
-            return LINGLONG_ERR(resolvedRuntime);
+    if (plan->runtime) {
+        auto fetched = fetchProjectDependency(*plan->runtime);
+        if (!fetched) {
+            return LINGLONG_ERR(fetched);
         }
-        runtimeRef = *resolvedRuntime;
 
-        auto runtimeItem = this->repo.getLayerItem(*runtimeRef);
+        runtimeRef = std::move(*fetched);
+        auto runtimeItem = repo.getLayerItem(*runtimeRef);
         if (!runtimeItem) {
             return LINGLONG_ERR("failed to get runtime information", runtimeItem);
         }
-        if (this->project->base) {
-            runtimeBase = runtimeItem->info.base;
-        } else {
-            this->project->base = runtimeItem->info.base;
+
+        auto requiredBase = package::FuzzyReference::parse(runtimeItem->info.base);
+        if (!requiredBase) {
+            return LINGLONG_ERR("failed to parse base required by runtime", requiredBase);
+        }
+        runtimeBase = std::move(*requiredBase);
+
+        if (!plan->base) {
+            // Preserve the runtime's base declaration, including any explicit architecture.
+            const auto &baseDeclaration = runtimeItem->info.base;
+            auto oldBase = projectLock ? lockedDependency(*projectLock, "base") : std::nullopt;
+            if (oldBase && oldBase->requested == baseDeclaration) {
+                plan->base = LockedDependencyRequest{ std::move(*oldBase) };
+            } else {
+                if (buildOptions.locked) {
+                    return LINGLONG_ERR("base differs from linglong.lock; run ll-builder "
+                                        "update-lockfile");
+                }
+
+                plan->base = ResolveDependencyRequest{ baseDeclaration, "base" };
+                plan->changed = true;
+            }
         }
     }
 
-    auto res = handleDependency(*this->project->base);
-    if (!res) {
-        return LINGLONG_ERR(res);
+    assert(plan->base.has_value());
+    auto baseRef = fetchProjectDependency(*plan->base);
+    if (!baseRef) {
+        return LINGLONG_ERR(baseRef);
     }
 
     if (runtimeBase) {
-        auto runtimeBaseFuzzyRef = package::FuzzyReference::parse(*runtimeBase);
-        if (!runtimeBaseFuzzyRef) {
-            return LINGLONG_ERR("failed to parse base required by runtime", runtimeBaseFuzzyRef);
-        }
-        if (!runtimeBaseFuzzyRef->version) {
-            return LINGLONG_ERR("base version required by runtime is missing");
-        }
-
-        if (!res->semanticMatch(*runtimeBaseFuzzyRef)) {
+        if (!baseRef->semanticMatch(*runtimeBase)) {
             return LINGLONG_ERR(
               fmt::format("base is not compatible with runtime. \n - Current base: {}\n - "
                           "Current runtime: {}\n - base required by runtime: {}",
-                          res->toString(),
+                          baseRef->toString(),
                           runtimeRef->toString(),
-                          *runtimeBase));
+                          runtimeBase->toString()));
         }
     }
 
-    auto ret = this->repo.mergeModules();
-    if (!ret) {
-        return LINGLONG_ERR("failed to merge modules", ret);
+    auto merged = repo.mergeModules();
+    if (!merged) {
+        return LINGLONG_ERR("failed to merge modules", merged);
     }
 
+    auto finished = finishProjectLockDependencies(*plan, *baseRef, runtimeRef);
+    if (!finished) {
+        return LINGLONG_ERR(finished);
+    }
+
+    return LINGLONG_OK;
+}
+
+auto Builder::fetchProjectDependency(const DependencyFetchRequest &request) noexcept
+  -> utils::error::Result<package::Reference>
+{
+    LINGLONG_TRACE("fetch project dependency");
+
+    if (const auto *lockedRequest = std::get_if<LockedDependencyRequest>(&request)) {
+        const auto &lockedEntry = lockedRequest->entry;
+        auto reference = lockedDependencyReference(lockedEntry);
+        if (!reference) {
+            return LINGLONG_ERR("invalid locked dependency reference", reference);
+        }
+
+        std::optional<package::ReferenceWithRepo> remote;
+        for (const auto &module : lockedEntry.resolved.modules) {
+            auto fetched = ensureDependencyModule(*reference, module, remote);
+            if (!fetched) {
+                printDependencyStatus(*reference, module, "failed");
+                return LINGLONG_ERR(fetched);
+            }
+            printDependencyStatus(*reference, module, "complete");
+        }
+        return *reference;
+    }
+
+    return fetchResolvedProjectDependency(std::get<ResolveDependencyRequest>(request));
+}
+
+auto Builder::fetchResolvedProjectDependency(const ResolveDependencyRequest &request) noexcept
+  -> utils::error::Result<package::Reference>
+{
+    LINGLONG_TRACE("resolve and fetch dependency " + request.requested);
+
+    auto fuzzy = package::FuzzyReference::parse(request.requested);
+    if (!fuzzy) {
+        return LINGLONG_ERR("invalid dependency reference " + request.requested, fuzzy);
+    }
+
+    if (!fuzzy->arch) {
+        fuzzy->arch = package::Architecture::currentCPUArchitecture();
+    }
+
+    auto ref = detail::clearDependency(fuzzy->toString(), repo, !buildOptions.skipPullDepend);
+    if (!ref) {
+        return LINGLONG_ERR(ref);
+    }
+
+    auto &[remote, localRef] = *ref;
+    auto reference = remote ? remote->reference : *localRef;
+
+    auto binary = ensureDependencyModule(reference, "binary", remote);
+    if (!binary && localRef && *localRef != reference) {
+        LogW("failed to fetch binary module of {}, use local version {}: {}",
+             reference.toString(),
+             localRef->toString(),
+             binary.error().message());
+        reference = *localRef;
+        remote.reset();
+        binary = ensureDependencyModule(reference, "binary", remote);
+    }
+    if (!binary) {
+        printDependencyStatus(reference, "binary", "failed");
+        return LINGLONG_ERR(binary);
+    }
+    printDependencyStatus(reference, "binary", "complete");
+
+    auto develop = ensureDependencyModule(reference, "develop", remote);
+    if (!develop && !buildOptions.skipPullDepend) {
+        LogW("failed to fetch develop module of {}: {}",
+             reference.toString(),
+             develop.error().message());
+    }
+    printDependencyStatus(reference, "develop", develop ? "complete" : "missing");
+    return reference;
+}
+
+auto Builder::ensureDependencyModule(const package::Reference &reference,
+                                     const std::string &module,
+                                     std::optional<package::ReferenceWithRepo> &remote) noexcept
+  -> utils::error::Result<void>
+{
+    LINGLONG_TRACE("ensure dependency module " + reference.toString() + "/" + module);
+
+    if (repo.getLayerDir(reference, module)) {
+        return LINGLONG_OK;
+    }
+
+    if (buildOptions.skipPullDepend) {
+        return LINGLONG_ERR("dependency is unavailable locally: " + reference.toString() + "/"
+                            + module);
+    }
+
+    if (!remote) {
+        auto fuzzy = package::FuzzyReference::parse(reference.toString());
+        if (!fuzzy) {
+            return LINGLONG_ERR(fuzzy);
+        }
+
+        auto candidates = repo.matchRemoteByPriority(*fuzzy);
+        if (!candidates) {
+            return LINGLONG_ERR("failed to find dependency remotely: " + reference.toString(),
+                                candidates);
+        }
+
+        for (const auto &[candidateRepo, packages] : candidates->getRepoPackages()) {
+            for (const auto &packageInfo : packages) {
+                auto candidate = package::Reference::fromPackageInfo(packageInfo);
+                if (candidate && *candidate == reference) {
+                    remote = package::ReferenceWithRepo{ candidateRepo, *candidate };
+                    break;
+                }
+            }
+            if (remote) {
+                break;
+            }
+        }
+        if (!remote) {
+            return LINGLONG_ERR("dependency is unavailable remotely: " + reference.toString());
+        }
+    }
+
+    assert(remote->reference == reference);
+    auto pulled = detail::pullResolvedRef(*remote, repo, module);
+    if (!pulled) {
+        return LINGLONG_ERR(pulled);
+    }
+
+    if (!repo.getLayerDir(reference, module)) {
+        return LINGLONG_ERR("dependency module is unavailable: " + reference.toString() + "/"
+                            + module);
+    }
+    return LINGLONG_OK;
+}
+
+auto Builder::recordProjectDependency(const DependencyFetchRequest &request,
+                                      const package::Reference &reference) noexcept
+  -> utils::error::Result<LockedDependency>
+{
+    LINGLONG_TRACE("record locked dependency");
+
+    if (const auto *lockedRequest = std::get_if<LockedDependencyRequest>(&request)) {
+        return lockedRequest->entry;
+    }
+
+    const auto &resolved = std::get<ResolveDependencyRequest>(request);
+    auto fuzzy = package::FuzzyReference::parse(resolved.requested);
+    if (!fuzzy) {
+        return LINGLONG_ERR(fuzzy);
+    }
+    if (!reference.semanticMatch(*fuzzy)) {
+        return LINGLONG_ERR("resolved dependency does not match its declaration");
+    }
+
+    fuzzy->channel = reference.channel;
+    fuzzy->id = reference.id;
+    fuzzy->version = reference.version.toString();
+
+    LockedDependency locked;
+    locked.requested = resolved.requested;
+    locked.type = resolved.type;
+    locked.resolved.reference = fuzzy->toString();
+    locked.resolved.modules = repo.getModuleList(reference);
+
+    std::sort(locked.resolved.modules.begin(), locked.resolved.modules.end());
+    locked.resolved.modules.erase(
+      std::unique(locked.resolved.modules.begin(), locked.resolved.modules.end()),
+      locked.resolved.modules.end());
+
+    if (locked.resolved.modules.empty()) {
+        return LINGLONG_ERR("dependency has no available modules: " + reference.toString());
+    }
+
+    return locked;
+}
+
+auto Builder::finishProjectLockDependencies(
+  const ProjectDependencyPlan &plan,
+  const package::Reference &base,
+  const std::optional<package::Reference> &runtime) noexcept -> utils::error::Result<void>
+{
+    LINGLONG_TRACE("finish project dependency lock");
+
+    if (!plan.changed && !pendingSources) {
+        return LINGLONG_OK;
+    }
+
+    assert(plan.base.has_value());
+    auto baseEntry = recordProjectDependency(*plan.base, base);
+    if (!baseEntry) {
+        return LINGLONG_ERR(baseEntry);
+    }
+
+    std::optional<LockedDependency> runtimeEntry;
+    if (runtime) {
+        assert(plan.runtime.has_value());
+        auto recorded = recordProjectDependency(*plan.runtime, *runtime);
+        if (!recorded) {
+            return LINGLONG_ERR(recorded);
+        }
+        runtimeEntry = std::move(*recorded);
+    }
+
+    std::vector<api::types::v1::BuilderSourceLockEntry> sources;
+    if (pendingSources) {
+        sources = *pendingSources;
+    } else if (projectLock) {
+        sources = projectLock->sources;
+    }
+
+    auto complete =
+      completeProjectLock(std::move(sources), std::move(*baseEntry), std::move(runtimeEntry));
+    auto written = writeCompleteProjectLock(projectYamlFile, complete);
+    if (!written) {
+        return LINGLONG_ERR("failed to write complete project lock", written);
+    }
+
+    projectLock = std::move(complete);
+    pendingSources.reset();
     return LINGLONG_OK;
 }
 
@@ -782,13 +1148,15 @@ utils::error::Result<void> Builder::processBuildDepends() noexcept
     runtime::BuilderContainerOptions options{
         .common =
           runtime::CommonContainerOptions{
-            .containerCachePath = this->workingDir / "linglong/cache",
+            .containerCachePath = directories.cache(),
             .extraMounts =
               std::vector<ocppi::runtime::config::types::Mount>{
-                ocppi::runtime::config::types::Mount{ .destination = "/project",
-                                                      .options = { { "rbind", "ro" } },
-                                                      .source = this->workingDir,
-                                                      .type = "bind" },
+                ocppi::runtime::config::types::Mount{
+                  .destination = directories.containerProject.string(),
+                  .options = { { "rbind", "ro" } },
+                  .source = directories.project(),
+                  .type = "bind",
+                },
               },
           },
         .basePath = baseOverlay->mergedDirPath(),
@@ -803,8 +1171,8 @@ utils::error::Result<void> Builder::processBuildDepends() noexcept
     }
 
     auto process = ocppi::runtime::config::types::Process{};
-    process.args = { "/bin/bash", "/project/linglong/buildext.sh" };
-    process.cwd = "/project";
+    process.args = { "/bin/bash", directories.containerBuildExtScript.string() };
+    process.cwd = directories.containerProject.string();
     process.noNewPrivileges = true;
 
     ocppi::runtime::RunOption opt{};
@@ -820,20 +1188,14 @@ utils::error::Result<void> Builder::buildStagePreBuild() noexcept
 {
     LINGLONG_TRACE("build stage pre build");
 
-    // clean output
-    QDir(QString::fromStdString(internalDir / "output")).removeRecursively();
-
-    buildOutput = internalDir / "output" / "_build";
-    std::error_code ec;
-    std::filesystem::create_directories(buildOutput, ec);
-    if (ec) {
-        return LINGLONG_ERR(
-          fmt::format("failed to create directory {}: {}", buildOutput.string(), ec.message())
-            .c_str());
+    auto resetOutput = directories.resetOutput();
+    if (!resetOutput) {
+        return LINGLONG_ERR(resetOutput);
     }
     LogD("create develop output success");
 
-    auto res = buildContext.resolve(this->project.value(), buildOutput);
+    assert(projectLock.has_value());
+    auto res = buildContext.resolve(this->project.value(), directories.buildOutput(), *projectLock);
     if (!res) {
         return LINGLONG_ERR(res);
     }
@@ -842,20 +1204,38 @@ utils::error::Result<void> Builder::buildStagePreBuild() noexcept
     if (!baseLayerPath) {
         return LINGLONG_ERR(baseLayerPath);
     }
-    // prepare overlayfs
-    auto overlayDir = internalDir / "overlay";
-    baseOverlay = makeOverlay(*baseLayerPath / "files", overlayDir / "build_base");
+
+    std::optional<std::filesystem::path> runtimeLayerPath;
+    if (buildContext.hasRuntime()) {
+        auto resolved = buildContext.getRuntimeLayerPath();
+        if (!resolved) {
+            return LINGLONG_ERR(resolved);
+        }
+        runtimeLayerPath = std::move(*resolved);
+    }
+
+    auto state = projectLockDependencyState(*projectLock);
+    if (!state) {
+        return LINGLONG_ERR("failed to get project lock dependencies", state);
+    }
+
+    baseOverlay.reset();
+    runtimeOverlay.reset();
+    auto prepared = detail::prepareBuildOverlays(directories, *state, runtimeLayerPath.has_value());
+    if (!prepared) {
+        return LINGLONG_ERR(prepared);
+    }
+    LogD("build overlays: {}", *prepared ? "reusing existing state" : "reset for dependencies");
+
+    baseOverlay = makeOverlay(*baseLayerPath / "files", directories.buildBaseOverlay());
     if (!baseOverlay) {
         return LINGLONG_ERR("failed to mount build base overlayfs");
     }
     fixLocaltimeInOverlay(baseOverlay);
 
-    if (buildContext.hasRuntime()) {
-        auto runtimeLayerPath = buildContext.getRuntimeLayerPath();
-        if (!runtimeLayerPath) {
-            return LINGLONG_ERR(runtimeLayerPath);
-        }
-        runtimeOverlay = makeOverlay(*runtimeLayerPath / "files", overlayDir / "build_runtime");
+    if (runtimeLayerPath) {
+        runtimeOverlay =
+          makeOverlay(*runtimeLayerPath / "files", directories.buildRuntimeOverlay());
         if (!runtimeOverlay) {
             return LINGLONG_ERR("failed to mount build runtime overlayfs");
         }
@@ -869,7 +1249,7 @@ utils::error::Result<void> Builder::buildStagePreBuild() noexcept
     return LINGLONG_OK;
 }
 
-utils::error::Result<bool> Builder::buildStageBuild(const QStringList &args) noexcept
+utils::error::Result<bool> Builder::buildStageBuild(std::vector<std::string> args) noexcept
 {
     LINGLONG_TRACE("build stage build");
 
@@ -895,12 +1275,14 @@ utils::error::Result<bool> Builder::buildStageBuild(const QStringList &args) noe
     runtime::BuilderContainerOptions containerOptions{
         .common =
           runtime::CommonContainerOptions{
-            .containerCachePath = this->workingDir / "linglong/cache",
+            .containerCachePath = directories.cache(),
             .extraMounts = std::vector<ocppi::runtime::config::types::Mount>{
-              ocppi::runtime::config::types::Mount{ .destination = "/project",
-                                                    .options = { { "rbind", "rw" } },
-                                                    .source = this->workingDir,
-                                                    .type = "bind" },
+              ocppi::runtime::config::types::Mount{
+                .destination = directories.containerProject.string(),
+                .options = { { "rbind", "rw" } },
+                .source = directories.project(),
+                .type = "bind",
+              },
               ocppi::runtime::config::types::Mount{ .destination = LINGLONG_BUILDER_HELPER,
                                                     .options = { { "rbind", "ro" } },
                                                     .source = LINGLONG_BUILDER_HELPER,
@@ -910,8 +1292,8 @@ utils::error::Result<bool> Builder::buildStageBuild(const QStringList &args) noe
         .basePath = baseOverlay->mergedDirPath(),
         .isolateNetWork = this->buildOptions.isolateNetWork,
         .masks = {
-            "/project/linglong/output",
-            "/project/linglong/overlay",
+            directories.containerOutput.string(),
+            directories.containerOverlays.string(),
         },
         .startContainerHooks = std::vector<ocppi::runtime::config::types::Hook>{
             ocppi::runtime::config::types::Hook{ .path = "/sbin/ldconfig" },
@@ -928,14 +1310,9 @@ utils::error::Result<bool> Builder::buildStageBuild(const QStringList &args) noe
     }
     LogD("create container success");
 
-    auto arguments = std::vector<std::string>{};
-    for (const auto &arg : args) {
-        arguments.push_back(arg.toStdString());
-    }
-
     auto process = ocppi::runtime::config::types::Process{};
-    process.args = std::move(arguments);
-    process.cwd = "/project";
+    process.args = std::move(args);
+    process.cwd = directories.containerProject.string();
     process.env = { {
       "PREFIX=" + installPrefix,
       // During the build stage, we use overlayfs where /etc/ld.so.cache is safe
@@ -977,16 +1354,23 @@ utils::error::Result<void> Builder::buildStagePreCommit() noexcept
     takeTerminalForeground();
 
     // clean prepare overlay
-    auto overlayDir = internalDir / "overlay";
-    QDir(QString::fromStdString(overlayDir / "prepare_base")).removeRecursively();
-    QDir(QString::fromStdString(overlayDir / "prepare_runtime")).removeRecursively();
+    baseOverlay.reset();
+    runtimeOverlay.reset();
+    auto baseReset = directories.resetOverlay(directories.prepareBaseOverlay());
+    if (!baseReset) {
+        return LINGLONG_ERR(baseReset);
+    }
+    auto runtimeReset = directories.resetOverlay(directories.prepareRuntimeOverlay());
+    if (!runtimeReset) {
+        return LINGLONG_ERR(runtimeReset);
+    }
 
     // prepare overlay
     auto baseLayerPath = buildContext.getBaseLayerPath();
     if (!baseLayerPath) {
         return LINGLONG_ERR(baseLayerPath);
     }
-    baseOverlay = makeOverlay(*baseLayerPath / "files", overlayDir / "prepare_base");
+    baseOverlay = makeOverlay(*baseLayerPath / "files", directories.prepareBaseOverlay());
     if (!baseOverlay) {
         return LINGLONG_ERR("failed to mount prepare base overlayfs");
     }
@@ -997,7 +1381,8 @@ utils::error::Result<void> Builder::buildStagePreCommit() noexcept
         if (!runtimeLayerPath) {
             return LINGLONG_ERR(runtimeLayerPath);
         }
-        runtimeOverlay = makeOverlay(*runtimeLayerPath / "files", overlayDir / "prepare_runtime");
+        runtimeOverlay =
+          makeOverlay(*runtimeLayerPath / "files", directories.prepareRuntimeOverlay());
         if (!runtimeOverlay) {
             return LINGLONG_ERR("failed to mount prepare runtime overlayfs");
         }
@@ -1006,13 +1391,15 @@ utils::error::Result<void> Builder::buildStagePreCommit() noexcept
     runtime::BuilderContainerOptions containerOptions{
         .common =
           runtime::CommonContainerOptions{
-            .containerCachePath = this->workingDir / "linglong/cache",
+            .containerCachePath = directories.cache(),
             .extraMounts =
               std::vector<ocppi::runtime::config::types::Mount>{
-                ocppi::runtime::config::types::Mount{ .destination = "/project",
-                                                      .options = { { "rbind", "rw" } },
-                                                      .source = this->workingDir,
-                                                      .type = "bind" },
+                ocppi::runtime::config::types::Mount{
+                  .destination = directories.containerProject.string(),
+                  .options = { { "rbind", "rw" } },
+                  .source = directories.project(),
+                  .type = "bind",
+                },
               },
           },
         .basePath = baseOverlay->mergedDirPath(),
@@ -1028,7 +1415,7 @@ utils::error::Result<void> Builder::buildStagePreCommit() noexcept
     }
 
     ocppi::runtime::config::types::Process process;
-    process.args = std::vector{ std::string("bash"), std::string("/project/linglong/buildext.sh") };
+    process.args = { "bash", directories.containerBuildExtScript.string() };
     ocppi::runtime::RunOption opt{};
     auto result = (*container)->run(process, opt);
     if (!result) {
@@ -1044,7 +1431,28 @@ utils::error::Result<void> Builder::buildStagePreCommit() noexcept
         return LINGLONG_ERR("base overlay missing upperdir");
     }
 
-    std::vector<std::filesystem::path> src = { *baseOverlay->upperDirPath() / "usr" };
+    const auto baseUpper = *baseOverlay->upperDirPath();
+    std::error_code ec;
+    const auto baseUpperStatus = std::filesystem::status(baseUpper, ec);
+    if (ec) {
+        return LINGLONG_ERR(fmt::format("failed to inspect base overlay upperdir {}", baseUpper),
+                            ec);
+    }
+    if (!std::filesystem::is_directory(baseUpperStatus)) {
+        return LINGLONG_ERR(fmt::format("base overlay upperdir is not a directory: {}", baseUpper));
+    }
+
+    // /usr can remain entirely in the lower layer if no changes were made there.
+    const auto baseUsr = baseUpper / "usr";
+    const auto hasUsrChanges = std::filesystem::exists(baseUsr, ec);
+    if (ec) {
+        return LINGLONG_ERR(fmt::format("failed to inspect base overlay directory {}", baseUsr),
+                            ec);
+    }
+    std::vector<std::filesystem::path> src;
+    if (hasUsrChanges) {
+        src.push_back(baseUsr);
+    }
     if (project.package.kind == "app" || project.package.kind == "extension") {
         if (runtimeOverlay) {
             if (!runtimeOverlay->upperDirPath()) {
@@ -1053,12 +1461,10 @@ utils::error::Result<void> Builder::buildStagePreCommit() noexcept
             src.push_back(*runtimeOverlay->upperDirPath());
         }
     }
-    detail::mergeOutput(src,
-                        buildOutput,
-                        { "bin/", "sbin/", "lib/" },
-                        { "lib/systemd", "share/systemd" });
-
-    return LINGLONG_OK;
+    return detail::mergeOutput(src,
+                               directories.buildOutput(),
+                               { "bin/", "sbin/", "lib/" },
+                               { "lib/systemd", "share/systemd" });
 }
 
 utils::error::Result<void> Builder::generateAppConf() noexcept
@@ -1076,7 +1482,7 @@ utils::error::Result<void> Builder::generateAppConf() noexcept
         return LINGLONG_ERR(scriptFile);
     }
     auto output = utils::Cmd("bash").exec(
-      { "-e", scriptFile->string(), project.package.id, buildOutput.string() });
+      { "-e", scriptFile->string(), project.package.id, directories.buildOutput().string() });
     if (!output) {
         return LINGLONG_ERR(output);
     }
@@ -1099,7 +1505,11 @@ utils::error::Result<void> Builder::installFiles() noexcept
                  2);
     // 保存全量的develop, runtime需要对旧的ll-builder保持兼容
     if (this->buildOptions.fullDevelop) {
-        utils::copyDirectory(buildOutput, internalDir / "output" / "develop" / "files");
+        auto copied =
+          utils::copyDirectory(directories.buildOutput(), directories.module("develop") / "files");
+        if (!copied) {
+            return LINGLONG_ERR("failed to copy develop module files", copied);
+        }
     }
 
     std::vector<api::types::v1::BuilderProjectModules> projectModules;
@@ -1137,7 +1547,7 @@ utils::error::Result<void> Builder::installFiles() noexcept
 
     for (const auto &module : projectModules) {
         std::unordered_set<std::string> installRules;
-        auto moduleDir = internalDir / "output" / module.name;
+        auto moduleDir = directories.module(module.name);
         auto moduleFilesDir = moduleDir / "files";
         std::error_code ec;
         std::filesystem::create_directories(moduleFilesDir, ec);
@@ -1156,7 +1566,7 @@ utils::error::Result<void> Builder::installFiles() noexcept
         for (const auto &file : module.files) {
             installRules.emplace(file);
         }
-        auto ret = installModule(buildOutput, moduleFilesDir, installRules);
+        auto ret = installModule(directories.buildOutput(), moduleFilesDir, installRules);
         if (!ret.has_value()) {
             return LINGLONG_ERR("install module", ret);
         }
@@ -1202,7 +1612,14 @@ utils::error::Result<void> Builder::generateEntries() noexcept
     // configuration file(linglong.yaml).
     // 仅导出名单中的目录，以避免意外文件影响系统功能
     const std::filesystem::path exportDirConfigPath = LINGLONG_DATA_DIR "/export-dirs.json";
-    if (!std::filesystem::exists(exportDirConfigPath)) {
+    std::error_code ec;
+    const auto exportDirConfigExists = std::filesystem::exists(exportDirConfigPath, ec);
+    if (ec) {
+        return LINGLONG_ERR(fmt::format("failed to check export config file {}: {}",
+                                        exportDirConfigPath,
+                                        ec.message()));
+    }
+    if (!exportDirConfigExists) {
         return LINGLONG_ERR(
           fmt::format("this export config file doesn't exist: {}", exportDirConfigPath));
     }
@@ -1215,8 +1632,8 @@ utils::error::Result<void> Builder::generateEntries() noexcept
           exportDirConfig);
     }
 
-    QDir binaryFiles(QString::fromStdString(internalDir / "output" / "binary" / "files"));
-    QDir binaryEntries(QString::fromStdString(internalDir / "output" / "binary" / "entries"));
+    QDir binaryFiles(QString::fromStdString(directories.module("binary") / "files"));
+    QDir binaryEntries(QString::fromStdString(directories.module("binary") / "entries"));
 
     if (!binaryEntries.mkpath(".")) {
         return LINGLONG_ERR("make path " + binaryEntries.absolutePath().toStdString()
@@ -1235,14 +1652,13 @@ utils::error::Result<void> Builder::generateEntries() noexcept
             continue;
         }
         // appdata是旧版本的metainfo
-        if (path == "share/appdata") {
-            utils::copyDirectory(binaryFiles.absoluteFilePath(path).toStdString(),
-                                 binaryEntries.filePath("share/metainfo").toStdString());
-            continue;
+        const auto entryPath = path == "share/appdata" ? binaryEntries.filePath("share/metainfo")
+                                                       : binaryEntries.absoluteFilePath(path);
+        auto copied = utils::copyDirectory(binaryFiles.absoluteFilePath(path).toStdString(),
+                                           entryPath.toStdString());
+        if (!copied) {
+            return LINGLONG_ERR("failed to copy application entries", copied);
         }
-
-        utils::copyDirectory(binaryFiles.absoluteFilePath(path).toStdString(),
-                             binaryEntries.absoluteFilePath(path).toStdString());
     }
 
     if (binaryFiles.exists("lib/systemd/user")) {
@@ -1256,8 +1672,12 @@ utils::error::Result<void> Builder::generateEntries() noexcept
             LogW("mkpath files/lib/systemd/user: failed");
         }
 
-        utils::copyDirectory(binaryFiles.filePath("lib/systemd/user").toStdString(),
-                             binaryEntries.absoluteFilePath("lib/systemd/user").toStdString());
+        auto copied =
+          utils::copyDirectory(binaryFiles.filePath("lib/systemd/user").toStdString(),
+                               binaryEntries.absoluteFilePath("lib/systemd/user").toStdString());
+        if (!copied) {
+            return LINGLONG_ERR("failed to copy systemd user entries", copied);
+        }
     }
 
     return LINGLONG_OK;
@@ -1279,15 +1699,17 @@ utils::error::Result<void> Builder::commitToLocalRepo() noexcept
         .kind = project.package.kind,
         .name = project.package.name,
         .permissions = project.permissions,
-        .runtime = {},
+        .runtime = project.runtime,
         .schemaVersion = PACKAGE_INFO_VERSION,
         .version = project.package.version,
     };
 
-    info.base = *project.base;
-    if (project.runtime) {
-        info.runtime = project.runtime;
+    assert(projectLock.has_value());
+    const auto base = lockedDependency(*projectLock, "base");
+    if (!base) {
+        return LINGLONG_ERR("project lock base dependency is missing");
     }
+    info.base = base->requested;
 
     if (info.kind == "extension") {
         info.extImpl = api::types::v1::ExtensionImpl{ .deviceNodes = project.package.deviceNodes,
@@ -1313,7 +1735,7 @@ utils::error::Result<void> Builder::commitToLocalRepo() noexcept
                    .toStdString(),
                  2);
     for (const auto &module : std::as_const(packageModules)) {
-        auto moduleOutput = internalDir / "output" / module;
+        auto moduleOutput = directories.module(module);
         info.packageInfoV2Module = module;
         auto ret = linglong::utils::calculateDirectorySize(moduleOutput);
         if (!ret) {
@@ -1394,11 +1816,20 @@ utils::error::Result<bool> Builder::buildStageCommit() noexcept
     return true;
 }
 
-utils::error::Result<void> Builder::build(const QStringList &args) noexcept
+utils::error::Result<void> Builder::build(std::vector<std::string> args) noexcept
 {
-    LINGLONG_TRACE(fmt::format("build project {}", this->workingDir / "linglong.yaml"));
+    LINGLONG_TRACE(fmt::format("build project {}", directories.project() / "linglong.yaml"));
+
+    auto locked = lockProject();
+    if (!locked) {
+        return LINGLONG_ERR(locked);
+    }
 
     auto &project = *this->project;
+    if (args.empty()) {
+        args.push_back(directories.containerEntryScript.string());
+    }
+
     utils::error::Result<void> res;
     if (!(res = buildStagePrepare())) {
         return LINGLONG_ERR("stage prepare error", res);
@@ -1413,7 +1844,7 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
     }
 
     utils::error::Result<bool> success;
-    if (!(success = buildStageBuild(args))) {
+    if (!(success = buildStageBuild(std::move(args)))) {
         return LINGLONG_ERR("stage build error", success);
     }
     // skip build stage means skip all following stage
@@ -1443,7 +1874,12 @@ utils::error::Result<void> Builder::exportUAB(const ExportOption &option,
 {
     LINGLONG_TRACE("export uab file");
 
-    auto exportWorkingDir = this->workingDir / ".uabBuild";
+    auto locked = lockProject();
+    if (!locked) {
+        return LINGLONG_ERR(locked);
+    }
+
+    auto exportWorkingDir = directories.project() / ".uabBuild";
     auto res = utils::ensureDirectory(exportWorkingDir);
     if (!res) {
         return LINGLONG_ERR("failed to ensure export working directory", res);
@@ -1552,11 +1988,13 @@ utils::error::Result<void> Builder::exportUAB(const ExportOption &option,
             LINGLONG_TRACE("use utils to bundle file");
 
             std::error_code ec;
-            const auto relativeBundleFile = std::filesystem::relative(bundleFile, workingDir, ec);
+            const auto relativeBundleFile =
+              std::filesystem::relative(bundleFile, directories.project(), ec);
             if (ec) {
                 return LINGLONG_ERR(fmt::format("failed to get relative path {}", bundleFile), ec);
             }
-            const auto relativeBundleDir = std::filesystem::relative(bundleDir, workingDir, ec);
+            const auto relativeBundleDir =
+              std::filesystem::relative(bundleDir, directories.project(), ec);
             if (ec) {
                 return LINGLONG_ERR(fmt::format("failed to get relative path {}", bundleDir), ec);
             }
@@ -1569,8 +2007,8 @@ utils::error::Result<void> Builder::exportUAB(const ExportOption &option,
                 "/opt/apps/cn.org.linyaps.builder.utils/files/bin/ll-builder-export",
                 "--packdir",
                 fmt::format("{}:{}",
-                            std::filesystem::path{ "/project" } / relativeBundleDir,
-                            std::filesystem::path{ "/project" } / relativeBundleFile),
+                            directories.containerProject / relativeBundleDir,
+                            directories.containerProject / relativeBundleFile),
                 "-z",
                 exportOpts.compressor,
             };
@@ -1593,7 +2031,7 @@ utils::error::Result<void> Builder::exportUAB(const ExportOption &option,
             }
         }
     } else {
-        uabFile = workingDir / uabExportFilename(*curRef, exportOpts.mode);
+        uabFile = directories.project() / uabExportFilename(*curRef, exportOpts.mode);
     }
 
     std::optional<package::TempLayerDir> temporaryMergedModuleDir;
@@ -1667,6 +2105,11 @@ utils::error::Result<void> Builder::exportLayer(const ExportOption &option)
 {
     LINGLONG_TRACE("export layer file");
 
+    auto locked = lockProject();
+    if (!locked) {
+        return LINGLONG_ERR(locked);
+    }
+
     auto &project = *this->project;
     auto ref = currentReference(project);
     if (!ref) {
@@ -1696,7 +2139,8 @@ utils::error::Result<void> Builder::exportLayer(const ExportOption &option)
             continue;
         }
 
-        auto layerFile = QString::fromStdString(workingDir / layerExportFilename(*ref, module));
+        auto layerFile =
+          QString::fromStdString(directories.project() / layerExportFilename(*ref, module));
         auto ret = pkger.pack(*layerDir, layerFile);
         if (!ret) {
             LogE("export layer {}/{} failed: {}", ref->toString(), module, ret.error());
@@ -1741,6 +2185,11 @@ linglong::utils::error::Result<void> Builder::push(const std::string &module,
                                                    const std::string &repoName)
 {
     LINGLONG_TRACE("push reference to remote repository");
+
+    auto locked = lockProject();
+    if (!locked) {
+        return LINGLONG_ERR(locked);
+    }
 
     if (!this->project) {
         return LINGLONG_ERR("not under project");
@@ -1803,6 +2252,11 @@ utils::error::Result<void> Builder::run(std::vector<std::string> modules,
 {
     LINGLONG_TRACE("run application");
 
+    auto locked = lockProject();
+    if (!locked) {
+        return LINGLONG_ERR(locked);
+    }
+
     auto &project = *this->project;
     if (project.package.kind != "app") {
         return LINGLONG_ERR("only app can run");
@@ -1826,17 +2280,19 @@ utils::error::Result<void> Builder::run(std::vector<std::string> modules,
     }
 
     std::vector<ocppi::runtime::config::types::Mount> applicationMounts{
-        ocppi::runtime::config::types::Mount{ .destination = "/project",
-                                              .options = { { "rbind", "rw" } },
-                                              .source = this->workingDir,
-                                              .type = "bind" },
+        ocppi::runtime::config::types::Mount{
+          .destination = directories.containerProject.string(),
+          .options = { { "rbind", "rw" } },
+          .source = directories.project(),
+          .type = "bind",
+        },
         ocppi::runtime::config::types::Mount{ .destination = LINGLONG_BUILDER_HELPER,
                                               .options = { { "rbind", "ro" } },
                                               .source = LINGLONG_BUILDER_HELPER,
                                               .type = "bind" },
     };
 
-    auto appCache = internalDir / "cache";
+    auto appCache = directories.cache();
 
     {
         // run init container
@@ -1860,10 +2316,11 @@ utils::error::Result<void> Builder::run(std::vector<std::string> modules,
     if (debug) {
         // 生成 host_gdbinit 可使用 gdb --init-command=linglong/host_gdbinit 从宿主机调试
         {
-            auto gdbinit = internalDir / "host_gdbinit";
-            auto debugDir = internalDir / "output/develop/files/lib/debug";
+            auto gdbinit = directories.root() / "host_gdbinit";
+            auto debugDir = directories.module("develop") / "files/lib/debug";
             std::ofstream hostConf(gdbinit);
-            hostConf << "set substitute-path /project " << workingDir << std::endl;
+            hostConf << "set substitute-path " << directories.containerProject << ' '
+                     << directories.project() << std::endl;
             hostConf << "set debug-file-directory " << debugDir << std::endl;
             hostConf << "# target remote :12345";
         }
@@ -1876,7 +2333,7 @@ utils::error::Result<void> Builder::run(std::vector<std::string> modules,
 
             std::string appPrefix = "/opt/apps/" + project.package.id + "/files";
             std::string debugDir = "/usr/lib/debug:/runtime/lib/debug:" + appPrefix + "/lib/debug";
-            auto gdbinit = internalDir / "gdbinit";
+            auto gdbinit = directories.root() / "gdbinit";
             std::ofstream f(gdbinit);
             f << "set debug-file-directory " << debugDir << std::endl;
 
@@ -1939,7 +2396,7 @@ utils::error::Result<void> Builder::runFromRepo(const package::Reference &ref,
     uid = getuid();
     gid = getgid();
 
-    auto appCache = internalDir / "cache" / ref.id;
+    auto appCache = directories.cache() / ref.id;
 
     {
         auto container = this->containerBuilder.createInitContainer(
@@ -1967,9 +2424,9 @@ utils::error::Result<void> Builder::runFromRepo(const package::Reference &ref,
         .extraMounts =
           std::vector<ocppi::runtime::config::types::Mount>{
             ocppi::runtime::config::types::Mount{
-              .destination = "/project",
+              .destination = directories.containerProject.string(),
               .options = { { "rbind", "rw" } },
-              .source = this->workingDir,
+              .source = directories.project(),
               .type = "bind",
             },
           },
@@ -2026,7 +2483,7 @@ utils::error::Result<void> Builder::generateEntryScript() noexcept
     LINGLONG_TRACE("generate entry script");
 
     auto &project = *this->project;
-    auto entry = internalDir / "entry.sh";
+    const auto &entry = directories.entryScript();
     std::string scriptContent = R"(#!/bin/bash
 set -e
 
@@ -2083,6 +2540,7 @@ utils::error::Result<bool> Builder::generateBuildDependsScript() noexcept
                 }
 
                 if (!packages.empty()) {
+                    content.append("set -e\n");
                     // ll-box current support single-user mode only, force apt use user
                     content.append("echo 'APT::Sandbox::User \"root\";' > "
                                    "/etc/apt/apt.conf.d/99linglong-builder.conf\n");
@@ -2095,7 +2553,7 @@ utils::error::Result<bool> Builder::generateBuildDependsScript() noexcept
         }
 
         if (!content.empty()) {
-            auto res = utils::writeFile(internalDir / "buildext.sh", content);
+            auto res = utils::writeFile(directories.buildExtScript(), content);
 
             return res ? utils::error::Result<bool>(true) : LINGLONG_ERR(res);
         }
@@ -2133,7 +2591,7 @@ utils::error::Result<bool> Builder::generateDependsScript() noexcept
         }
 
         if (!content.empty()) {
-            auto res = utils::writeFile(internalDir / "buildext.sh", content);
+            auto res = utils::writeFile(directories.buildExtScript(), content);
 
             return res ? utils::error::Result<bool>(true) : LINGLONG_ERR(res);
         }
@@ -2195,7 +2653,7 @@ void Builder::printRepo()
 
 bool Builder::checkDeprecatedInstallFile()
 {
-    auto installFilepath = this->workingDir / (this->project->package.id + ".install");
+    auto installFilepath = directories.project() / (this->project->package.id + ".install");
     std::error_code ec;
     return !std::filesystem::exists(installFilepath, ec);
 }
@@ -2224,23 +2682,14 @@ utils::error::Result<void> Builder::cleanBuildArtifacts() noexcept
 {
     LINGLONG_TRACE("clean build artifacts");
 
-    std::error_code ec;
-    if (!std::filesystem::exists(this->internalDir, ec)) {
-        return LINGLONG_OK;
+    auto locked = lockProject();
+    if (!locked) {
+        return LINGLONG_ERR(locked);
     }
 
-    auto ret = utils::makeDirectoryTreeRemovable(this->internalDir);
-    if (!ret) {
-        return LINGLONG_ERR("failed to make directory tree removable", ret);
-    }
-
-    std::filesystem::remove_all(this->internalDir, ec);
-    if (ec) {
-        return LINGLONG_ERR(
-          fmt::format("failed to remove {}: {}", this->internalDir.string(), ec.message()));
-    }
-
-    return LINGLONG_OK;
+    baseOverlay.reset();
+    runtimeOverlay.reset();
+    return directories.clean();
 }
 
 } // namespace linglong::builder

@@ -2945,7 +2945,7 @@ utils::error::Result<package::LayerDir> OSTreeRepo::getMergedModuleDir(
     return LINGLONG_ERR("merged doesn't exist");
 }
 
-// this method creates a temporary merged module directory for debugging purposes
+// Select only the requested modules for a build or run context.
 // The returned TempLayerDir owns and removes the directory automatically.
 utils::error::Result<package::TempLayerDir> OSTreeRepo::createTempMergedModuleDir(
   const package::Reference &ref, const std::vector<std::string> &loadModules) const noexcept
@@ -2956,39 +2956,38 @@ utils::error::Result<package::TempLayerDir> OSTreeRepo::createTempMergedModuleDi
         return LINGLONG_ERR("failed to ensure merged directory", ret);
     }
 
-    auto layerItems = this->cache->queryExistingLayerItem();
     QCryptographicHash hash(QCryptographicHash::Sha256);
     std::vector<std::string> commits;
-    std::string findModules;
+    const auto layerItems = this->cache->queryExistingLayerItem();
 
-    // ADD_FILES keeps files from the first checkout. Keep binary first so the merged layer uses
-    // its info.json.
+    // ADD_FILES keeps files from the first checkout. Keep the main module first so its
+    // info.json describes the merged layer.
     auto orderedModules = loadModules;
     auto binaryModule = std::find(orderedModules.begin(), orderedModules.end(), "binary");
+    if (binaryModule == orderedModules.end()) {
+        binaryModule = std::find(orderedModules.begin(), orderedModules.end(), "runtime");
+    }
     if (binaryModule != orderedModules.end()) {
         std::iter_swap(orderedModules.begin(), binaryModule);
     }
 
     for (const auto &module : orderedModules) {
-        auto layer = std::find_if(layerItems.cbegin(), layerItems.cend(), [&](const auto &item) {
-            const auto arch = item.info.arch.empty() ? std::string{} : item.info.arch.front();
-            return item.info.id == ref.id && item.info.version == ref.version.toString()
-              && arch == ref.arch.toString() && item.info.packageInfoV2Module == module;
-        });
+        const auto layer =
+          std::find_if(layerItems.cbegin(), layerItems.cend(), [&](const auto &item) {
+              const auto arch = item.info.arch.empty() ? std::string{} : item.info.arch.front();
+              return item.info.id == ref.id && item.info.channel == ref.channel
+                && item.info.version == ref.version.toString() && arch == ref.arch.toString()
+                && item.info.packageInfoV2Module == module;
+          });
         if (layer == layerItems.cend()) {
-            continue;
+            return LINGLONG_ERR("failed to find module " + module + " for " + ref.toString());
         }
 
         commits.push_back(layer->commit);
-        findModules += layer->info.packageInfoV2Module + " ";
         hash.addData(QString::fromStdString(layer->commit).toUtf8());
     }
     if (commits.empty()) {
         return LINGLONG_ERR("not found any layer");
-    }
-    // 模块未全部找到
-    if (commits.size() < loadModules.size()) {
-        return LINGLONG_ERR(fmt::format("missing module, only found: {}", findModules));
     }
     // 合并layer，生成临时merged目录
     const QString mergeID = hash.result().toHex();
@@ -3043,10 +3042,9 @@ utils::error::Result<void> OSTreeRepo::mergeModules() const noexcept
         if (!layer.info.arch.empty()) {
             arch = layer.info.arch.front();
         }
-        // 将id、version和arch相同的item合并，不区分repo和channel
-        auto groupKey = QString("%1/%2/%3")
-                          .arg(layer.info.id.c_str(), layer.info.version.c_str(), arch.c_str())
-                          .toStdString();
+        // Group modules by channel, ID, version, and architecture.
+        const auto groupKey =
+          fmt::format("{}:{}/{}/{}", layer.info.channel, layer.info.id, layer.info.version, arch);
         layerGroup[groupKey].push_back(layer);
     }
 

@@ -6,9 +6,11 @@
 
 #include "command_options.h"
 #include "configure.h"
+#include "linglong/builder/builder_directory.h"
 #include "linglong/builder/builder_script.h"
 #include "linglong/builder/config.h"
 #include "linglong/builder/linglong_builder.h"
+#include "linglong/builder/project_lock.h"
 #include "linglong/cli/cli.h"
 #include "linglong/cli/cli_printer.h"
 #include "linglong/common/global/initialize.h"
@@ -29,8 +31,8 @@
 #include <CLI/CLI.hpp>
 
 #include <QCoreApplication>
-#include <QStringList>
 
+#include <algorithm>
 #include <filesystem>
 #include <iostream>
 #include <list>
@@ -118,42 +120,6 @@ parseProjectConfig(const std::filesystem::path &filename)
     return project;
 }
 
-linglong::utils::error::Result<std::filesystem::path>
-getProjectYAMLPath(const std::filesystem::path &projectDir, const std::string &usePath)
-{
-    LINGLONG_TRACE("get project yaml path");
-
-    std::error_code ec;
-    if (!usePath.empty()) {
-        std::filesystem::path path = std::filesystem::canonical(usePath, ec);
-        if (ec) {
-            return LINGLONG_ERR(
-              fmt::format("invalid file path {} error: {}", usePath, ec.message()));
-        }
-        return path;
-    }
-
-    std::filesystem::path path = projectDir
-      / ("linglong." + linglong::package::Architecture::currentCPUArchitecture().toString()
-         + ".yaml");
-    if (std::filesystem::exists(path, ec)) {
-        return path;
-    }
-    if (ec) {
-        return LINGLONG_ERR(fmt::format("path {} error: {}", path, ec.message()));
-    }
-
-    path = projectDir / "linglong.yaml";
-    if (std::filesystem::exists(path, ec)) {
-        return path;
-    }
-    if (ec) {
-        return LINGLONG_ERR(fmt::format("path {} error: {}", path, ec.message()));
-    }
-
-    return LINGLONG_ERR("project yaml file not found");
-}
-
 int handleCreate(const CreateCommandOptions &options)
 {
     LogI("Handling create for project: {}", options.projectName);
@@ -208,6 +174,18 @@ int handleCreate(const CreateCommandOptions &options)
     return 0;
 }
 
+int handleProjectLock(linglong::builder::Builder &builder, linglong::builder::ProjectLockMode mode)
+{
+    auto result = builder.processProjectLock(mode);
+    if (!result) {
+        LogE("failed to process project lock: {}", result.error());
+        return result.error().code();
+    }
+
+    LogI("Project lock processed successfully.");
+    return 0;
+}
+
 int handleBuild(linglong::builder::Builder &builder, const BuildCommandOptions &options)
 {
     LogI("Handling build command");
@@ -216,27 +194,15 @@ int handleBuild(linglong::builder::Builder &builder, const BuildCommandOptions &
 
     auto finalBuildOptions = options.builderSpecificOptions;
 
-    // offline means skip fetch source and pull dependency
-    if (options.buildOffline || cfg.offline) {
-        finalBuildOptions.skipFetchSource = true;
+    // Offline builds still prepare sources from the verified source cache.
+    if (options.buildOffline || cfg.offline.value_or(false)) {
         finalBuildOptions.skipPullDepend = true;
+        finalBuildOptions.offline = true;
     }
 
     builder.setBuildOptions(finalBuildOptions);
 
-    QStringList commandList;
-    if (!options.commands.empty()) {
-        for (const auto &command : options.commands) {
-            commandList.append(QString::fromStdString(command));
-        }
-    }
-
-    linglong::utils::error::Result<void> ret;
-    if (!commandList.isEmpty()) {
-        ret = builder.build(commandList);
-    } else {
-        ret = builder.build();
-    }
+    auto ret = builder.build(options.commands);
     if (!ret) {
         LogE("Build failed: {}", ret.error());
         return ret.error().code();
@@ -393,7 +359,8 @@ int handleExtract(const ExtractCommandOptions &options)
     return 0;
 }
 
-int handleClean(linglong::builder::Builder &builder, const CleanCommandOptions &options)
+int handleClean(linglong::builder::Builder &builder,
+                [[maybe_unused]] const CleanCommandOptions &options)
 {
     auto result = builder.cleanBuildArtifacts();
     if (!result) {
@@ -521,16 +488,21 @@ You can report bugs to the linyaps team under this project: https://github.com/O
       _("Enter the container to execute command instead of building applications"));
     buildBuilder->add_flag("--offline",
                            buildOpts.buildOffline,
-                           _("Only use local files. This implies --skip-fetch-source and "
-                             "--skip-pull-depend will be set"));
+                           _("Only use verified cached sources and local dependencies"));
+    auto *lockedFlag =
+      buildBuilder->add_flag("--locked",
+                             buildOpts.builderSpecificOptions.locked,
+                             _("Require an existing up-to-date project lock file"));
     buildBuilder
       ->add_flag("--full-develop-module",
                  buildOpts.builderSpecificOptions.fullDevelop,
                  _("Build full develop packages, runtime requires"))
       ->group(hiddenGroup);
-    buildBuilder->add_flag("--skip-fetch-source",
-                           buildOpts.builderSpecificOptions.skipFetchSource,
-                           _("Skip fetch sources"));
+    buildBuilder
+      ->add_flag("--skip-fetch-source",
+                 buildOpts.builderSpecificOptions.skipFetchSource,
+                 _("Skip fetching sources and use existing sources as-is"))
+      ->excludes(lockedFlag);
     buildBuilder->add_flag("--skip-pull-depend",
                            buildOpts.builderSpecificOptions.skipPullDepend,
                            _("Skip pull dependency"));
@@ -549,6 +521,19 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     buildBuilder->add_flag("--isolate-network",
                            buildOpts.builderSpecificOptions.isolateNetWork,
                            _("Build in an isolated network environment"));
+
+    auto generateLock =
+      commandParser.add_subcommand("generate-lockfile",
+                                   _("Generate a project lock file without building"));
+    generateLock->add_option("-f, --file", filePath, _("File path of the linglong.yaml"))
+      ->type_name("FILE")
+      ->check(CLI::ExistingFile);
+
+    auto updateLock =
+      commandParser.add_subcommand("update-lockfile", _("Update the project lock file"));
+    updateLock->add_option("-f, --file", filePath, _("File path of the linglong.yaml"))
+      ->type_name("FILE")
+      ->check(CLI::ExistingFile);
 
     // add builder run
     auto buildRun = commandParser.add_subcommand("run", _("Run built linyaps app"));
@@ -853,17 +838,29 @@ You can report bugs to the linyaps team under this project: https://github.com/O
         return -1;
     }
 
-    auto canonicalYamlPath = getProjectYAMLPath(cwd, filePath);
-    if (canonicalYamlPath && canonicalYamlPath->string().rfind(cwd.string(), 0) != 0) {
+    if (buildClean->parsed()) {
+        linglong::builder::Builder builder(std::nullopt,
+                                           cwd,
+                                           **repo,
+                                           *containerBuilder,
+                                           *builderCfg);
+        return handleClean(builder, cleanOpts);
+    }
+
+    auto projectYamlPath = linglong::builder::getProjectYamlPath(cwd, filePath);
+    if (projectYamlPath
+        && std::mismatch(cwd.begin(), cwd.end(), projectYamlPath->begin(), projectYamlPath->end())
+             .first
+          != cwd.end()) {
         LogE("the project file {} is not under the current working directory {}",
-             canonicalYamlPath->string(),
+             projectYamlPath->string(),
              cwd.string());
         return -1;
     }
 
     std::optional<linglong::api::types::v1::BuilderProject> project;
-    if (canonicalYamlPath && std::filesystem::exists(*canonicalYamlPath, ec)) {
-        auto projectRet = parseProjectConfig(*canonicalYamlPath);
+    if (projectYamlPath && std::filesystem::exists(*projectYamlPath, ec)) {
+        auto projectRet = parseProjectConfig(*projectYamlPath);
         if (!projectRet) {
             LogE("{}", projectRet.error());
             return -1;
@@ -872,14 +869,27 @@ You can report bugs to the linyaps team under this project: https://github.com/O
         project = std::move(projectRet).value();
     }
 
-    linglong::builder::Builder builder(std::move(project),
-                                       cwd,
-                                       **repo,
-                                       *containerBuilder,
-                                       *builderCfg);
+    linglong::builder::Builder builder(project, cwd, **repo, *containerBuilder, *builderCfg);
+
+    if (project) {
+        builder.projectYamlFile = projectYamlPath->string();
+    }
 
     if (buildExport->parsed()) {
         return handleExport(builder, exportOpts);
+    }
+
+    if (!project) {
+        LogE("the project file is not found");
+        return -1;
+    }
+
+    if (generateLock->parsed()) {
+        return handleProjectLock(builder, linglong::builder::ProjectLockMode::Generate);
+    }
+
+    if (updateLock->parsed()) {
+        return handleProjectLock(builder, linglong::builder::ProjectLockMode::Update);
     }
 
     if (buildPush->parsed()) {
@@ -891,16 +901,6 @@ You can report bugs to the linyaps team under this project: https://github.com/O
         return handlePush(builder, pushOpts);
     }
 
-    if (buildClean->parsed()) {
-        return handleClean(builder, cleanOpts);
-    }
-
-    if (!canonicalYamlPath) {
-        LogE("the project file is not found");
-        return -1;
-    }
-
-    builder.projectYamlFile = std::move(canonicalYamlPath).value();
     if (buildBuilder->parsed()) {
         return handleBuild(builder, buildOpts);
     }

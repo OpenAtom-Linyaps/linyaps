@@ -6,6 +6,7 @@
 #include <gtest/gtest.h>
 
 #include "../../common/tempdir.h"
+#include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/cli/cli.h"
 #include "linglong/oci-cfg-generators/container_cfg_builder.h"
 #include "linglong/package/fuzzy_reference.h"
@@ -130,6 +131,167 @@ protected:
     std::unique_ptr<TempDir> tempDir;
     std::unique_ptr<MockRepo> repo;
 };
+
+TEST(RunContextBuildModules, UsesExactBaseAndRuntimeModulesIncludingLegacyMainModule)
+{
+    for (const auto &binaryName : { "binary", "runtime" }) {
+        SCOPED_TRACE(binaryName);
+        TempDir temporary;
+        const auto repoRoot = temporary.path() / "repo";
+        std::filesystem::create_directories(repoRoot);
+        auto repo = repo::OSTreeRepo::create(
+          repoRoot,
+          api::types::v1::RepoConfigV2{
+            .defaultRepo = "stable",
+            .repos = { api::types::v1::Repo{ .name = "stable",
+                                             .priority = 0,
+                                             .url = "https://example.com/repo" } },
+            .version = 2 });
+        ASSERT_TRUE(repo) << repo.error().message();
+
+        for (const auto &module : { binaryName, "develop", "locale" }) {
+            const auto directory = temporary.path() / module;
+            std::filesystem::create_directories(directory / "files");
+            const api::types::v1::PackageInfoV2 info{ .arch = { "x86_64" },
+                                                      .channel = "main",
+                                                      .id = "org.test.Base",
+                                                      .kind = "runtime",
+                                                      .packageInfoV2Module = module,
+                                                      .version = "1.0.0.0" };
+            std::ofstream(directory / "info.json") << nlohmann::json(info).dump();
+            std::ofstream(directory / "files" / module) << module;
+            auto imported = (*repo)->importLayerDir(package::LayerDir(directory));
+            ASSERT_TRUE(imported) << imported.error().message();
+        }
+        ASSERT_TRUE((*repo)->mergeModules());
+
+        api::types::v1::BuilderProject project;
+        project.version = "1";
+        project.package.id = "org.test.App";
+        project.package.kind = "app";
+        project.package.version = "1.0.0.0";
+        project.package.architecture = "arm64";
+        project.base = "org.test.Base/1.0.0.0/x86_64";
+        project.runtime = project.base;
+        const auto output = temporary.path() / "output";
+        const std::string reference = "main:org.test.Base/1.0.0.0/x86_64";
+
+        // A newly generated lock can include all installed modules.
+        const std::vector<std::string> allModules{ binaryName, "develop", "locale" };
+        const api::types::v1::BuilderProjectLock complete{
+            .dependencies = { { *project.base, { allModules, reference }, "base" },
+                              { *project.runtime, { allModules, reference }, "runtime" } },
+            .sources = {},
+            .version = 1
+        };
+        runtime::RunContext defaultContext(**repo);
+        ASSERT_TRUE(defaultContext.resolve(project, output, complete));
+        const auto defaultLayer = defaultContext.getBaseLayerPath();
+        ASSERT_TRUE(defaultLayer);
+        EXPECT_TRUE(std::filesystem::exists(*defaultLayer / "files/locale"));
+
+        for (const auto &modules : { std::vector<std::string>{ binaryName },
+                                     std::vector<std::string>{ binaryName, "develop" } }) {
+            SCOPED_TRACE(modules.size());
+            runtime::RunContext lockedContext(**repo);
+            const api::types::v1::BuilderProjectLockDependency base{ *project.base,
+                                                                     { modules, reference },
+                                                                     "base" };
+            const api::types::v1::BuilderProjectLockDependency runtime{ *project.runtime,
+                                                                        { modules, reference },
+                                                                        "runtime" };
+            const api::types::v1::BuilderProjectLock lock{ .dependencies = { base, runtime },
+                                                           .sources = {},
+                                                           .version = 1 };
+            auto resolved = lockedContext.resolve(project, output, lock);
+            ASSERT_TRUE(resolved) << resolved.error().message();
+
+            const auto baseLayer = lockedContext.getBaseLayerPath();
+            const auto runtimeLayer = lockedContext.getRuntimeLayerPath();
+            ASSERT_TRUE(baseLayer);
+            ASSERT_TRUE(runtimeLayer);
+            for (const auto &layer : { *baseLayer, *runtimeLayer }) {
+                EXPECT_TRUE(std::filesystem::exists(layer / "files" / binaryName));
+                EXPECT_EQ(std::filesystem::exists(layer / "files/develop"), modules.size() == 2);
+                EXPECT_FALSE(std::filesystem::exists(layer / "files/locale"));
+            }
+
+            auto baseOnly = lock;
+            baseOnly.dependencies.pop_back();
+            ASSERT_TRUE(lockedContext.resolve(project, output, baseOnly));
+            EXPECT_FALSE(lockedContext.hasRuntime());
+        }
+    }
+}
+
+TEST(RunContextBuildModules, BaseUsesLockedArchitectureOrBuildHost)
+{
+    for (const bool explicitArchitecture : { false, true }) {
+        SCOPED_TRACE(explicitArchitecture);
+        const auto host = package::Architecture::currentCPUArchitecture().toString();
+        const std::string other = host == "arm64" ? "x86_64" : "arm64";
+        const auto baseArchitecture = explicitArchitecture ? other : host;
+        const std::string baseDeclaration =
+          "org.test.Base/1.0.0" + (explicitArchitecture ? "/" + other : "");
+        TempDir temporary;
+        const auto root = temporary.path() / "repo";
+        std::filesystem::create_directories(root);
+        auto repository = repo::OSTreeRepo::create(
+          root,
+          api::types::v1::RepoConfigV2{
+            .defaultRepo = "stable",
+            .repos = { api::types::v1::Repo{ .name = "stable",
+                                             .priority = 0,
+                                             .url = "https://example.com/repo" } },
+            .version = 2 });
+        ASSERT_TRUE(repository) << repository.error().message();
+        for (const auto &id : { "org.test.Base", "org.test.Runtime" }) {
+            const auto directory = temporary.path() / id;
+            std::filesystem::create_directories(directory / "files");
+            api::types::v1::PackageInfoV2 info{
+                .arch = { std::string(id) == "org.test.Base" ? baseArchitecture : other },
+                .base = baseDeclaration,
+                .channel = "main",
+                .id = id,
+                .kind = "runtime",
+                .packageInfoV2Module = "binary",
+                .version = "1.0.0.0"
+            };
+            std::ofstream(directory / "info.json") << nlohmann::json(info).dump();
+            std::ofstream(directory / "files" / id) << id;
+            ASSERT_TRUE((*repository)->importLayerDir(package::LayerDir(directory)));
+        }
+        ASSERT_TRUE((*repository)->mergeModules());
+        api::types::v1::BuilderProject project;
+        project.version = "1";
+        project.package.id = "org.test.App";
+        project.package.kind = "app";
+        project.package.version = "1.0.0.0";
+        project.package.architecture = other;
+        project.runtime = "org.test.Runtime/1.0.0/" + other;
+        api::types::v1::BuilderProjectLock lock{
+            .dependencies = { { baseDeclaration,
+                                { { "binary" },
+                                  "main:org.test.Base/1.0.0.0/"
+                                    + (explicitArchitecture ? other : "unknown") },
+                                "base" },
+                              { *project.runtime,
+                                { { "binary" }, "main:org.test.Runtime/1.0.0.0/" + other },
+                                "runtime" } },
+            .sources = {},
+            .version = 1
+        };
+        const auto original = nlohmann::json(lock);
+        runtime::RunContext context(**repository);
+        auto resolved = context.resolve(project, temporary.path() / "output", lock);
+        ASSERT_TRUE(resolved) << resolved.error().message();
+        ASSERT_TRUE(context.getBaseLayer());
+        ASSERT_TRUE(context.getRuntimeLayer());
+        EXPECT_EQ(context.getBaseLayer()->getReference().arch.toString(), baseArchitecture);
+        EXPECT_EQ(context.getRuntimeLayer()->getReference().arch.toString(), other);
+        EXPECT_EQ(nlohmann::json(lock), original);
+    }
+}
 
 TEST_F(RunContextTest, layerExist)
 {

@@ -104,6 +104,12 @@ See [Repository Management](../publishing/repositories.md) for repository config
 
 ## How ll-builder Works
 
+Only one `build`, `clean`, `run`, `export`, `push`, `generate-lockfile`, or `update-lockfile` command may run in a project working directory at a time; a competing command fails immediately. `run` holds the lock until the application exits, so the same project cannot be built or cleaned while it is running. Different configuration files selected with `-f` in the same working directory share the project lock. Commands from different working directories also exclude each other when they use the same YAML entry directory; projects whose working and YAML entry directories do not overlap may run concurrently. Keep each working and YAML entry directory's `.ll-builder.lock` out of version control and do not delete it while a command is running. The lock is released automatically on process exit, and `clean` preserves the file.
+
+Commands that do not load a YAML file, such as `clean` or `export --ref` in a directory without a configuration file, only lock the working directory.
+
+When a YAML file is a symbolic link, its contents are read from the target, but the resource lock is stored beside the link, with the link filename’s extension replaced by `.lock`. For example, `linglong.yaml -> /shared/app.yaml` uses `linglong.lock` beside the entry file. Automatic discovery and explicit `-f` selection follow the same rule; symbolic links in parent directories are resolved first.
+
 You can think of `ll-builder build` as an automated assembly line: `linglong.yaml` is the assembly specification, source code is the raw material, Base and Runtime provide a consistent work environment, and the resulting artifacts are organized and stored in the local repository.
 
 A complete build proceeds through these stages:
@@ -121,6 +127,16 @@ Read configuration → Prepare sources and dependencies → Create isolated envi
 
 `ll-builder` downloads or expands sources according to `sources` and prepares them in `linglong/sources/`. The corresponding path in the build container is `/project/linglong/sources/`. Downloaded content can be reused from cache, but a normal build prepares the source directory again each time so files modified by a previous build cannot affect the result. Obtaining sources in a separate step instead of in the build instructions makes the build reproducible, traceable, and auditable.
 
+Source output names must be unique, and the same fetch request cannot be declared more than once, even with different `name` or `version` values. Within the same source kind, Git requests are compared by `url`, `commit`, and `submodules`; other kinds are compared by `url` and `digest`. The `commit` and `submodules` fields are ignored for non-Git sources. To use the same resource in multiple directories, declare it once and copy it in the build script.
+
+The first build resolves sources, Base, and Runtime and writes `linglong.lock` once sources have been verified and dependencies have been acquired. Commit this file to version control; later builds verify file sources with SHA-256 and prepare Git sources at their locked commits. A normal build updates only resources whose declarations changed and keeps the locked versions of unchanged resources. Use `ll-builder generate-lockfile` to create a lock explicitly, `ll-builder update-lockfile` to refresh resources without changing their declarations, and `ll-builder build --locked` to require an existing, complete lock that matches the declarations.
+
+The lock has a `dependencies` list. Each Base and Runtime entry records its original declaration, selected locked reference, and available module names. Modules may include `binary`, `develop`, and other names. Normal builds acquire unchanged dependencies at their locked references and resolve only dependencies whose declarations changed. `--locked` builds always use the lock without rewriting it. A file source whose content differs from the locked hash fails verification until `update-lockfile` is run explicitly. Git sources are prepared at their locked commits, so changes to cached working trees do not enter the build sources. If Git cache verification fails, online builds fetch the locked sources again and offline builds fail. Dependency content is checked by the repository's other mechanisms. Updates replace the old file once all resources are prepared. The `buildext.apt.build_depends` overlay is reset when the actual full reference (including architecture) or module list changes. APT runs on that overlay for every build.
+
+Version 1 of the lock includes sources and `dependencies`; each dependency uses `type: base` or `type: runtime`. Dependency references lock the channel, package ID, and exact version while preserving any explicit architecture in the original declaration. An unspecified architecture is recorded as `unknown`, such as `main:org.example.Base/1.0.0.0/unknown`, and uses the current build environment architecture, independently of the output target specified by `package.architecture`. A Base derived from Runtime follows the same rule using the Runtime's Base declaration. Dependencies without an explicit architecture can reuse the same lock across build architectures without an update solely for an architecture change. All architectures must use the same locked sources, dependency versions, and module sets. Missing locked dependencies for the selected architecture cause an error rather than an automatic upgrade or fallback.
+
+`--skip-fetch-source` only skips obtaining sources and uses the existing `linglong/sources/` as-is, which supports locally modified sources. Reading the project lock and resolving and locking Base and Runtime still follow the normal build rules. It cannot be combined with `--locked`; use `--locked --offline` to verify cached sources against the lock using only local caches.
+
 It then prepares `base` and `runtime` for the build environment.
 
 ### Create the Isolated Build Environment
@@ -129,7 +145,7 @@ Before compiling, `ll-builder`:
 
 1. Cleans temporary directories from the previous build, such as `linglong/output/`. The `linglong` directory is an internal `ll-builder` work directory and must not be used to store other files.
 2. Combines the Base, Runtime, project directory, sources, and output directory into the build environment, and creates temporary writable layers for the Base and Runtime so the original dependencies are not modified.
-3. Installs build-time dependencies such as `buildext.apt.buildDepends`.
+3. Installs build-time dependencies such as `buildext.apt.build_depends`.
 
 The environment is a container isolated from the host, but it can access the current project and prepared sources. Two commonly used variables are available inside it:
 
@@ -161,8 +177,9 @@ The following options alter build inputs or how stages are executed. `-h, --help
 | Option | Affected stage | Effect |
 | --- | --- | --- |
 | `-f, --file <file>` | Read configuration | Use the specified file instead of an automatically discovered `linglong.<arch>.yaml` or `linglong.yaml`. The file must be in the current project directory or one of its subdirectories |
-| `--offline` | Obtain sources and dependencies | Do not fetch sources or pull Base and Runtime from remote repositories. All required sources and dependencies must already exist locally. `offline: true` in `linglong.yaml` has the same effect |
-| `--skip-fetch-source` | Obtain sources | Preserve and use the existing `linglong/sources/` without cleaning or fetching `sources` |
+| `--offline` | Obtain sources and dependencies | Use only source caches verified by the lock and do not pull Base or Runtime remotely. All required content must already exist locally. `offline: true` in the ll-builder configuration file (default: `~/.config/linglong/builder/config.yaml`) has the same effect |
+| `--locked` | Obtain sources and dependencies | Require an existing project lock matching the source, Base, and Runtime declarations; never update the lock during the build |
+| `--skip-fetch-source` | Obtain sources | Skip obtaining sources and use the existing `linglong/sources/` as-is; project lock and dependency handling still follow the normal build rules; cannot be combined with `--locked` |
 | `--skip-pull-depend` | Obtain dependencies | Do not pull new content from remotes, but still resolve and merge locally available Base and Runtime modules. The build fails if a dependency is missing locally |
 | `--skip-run-container` | Run build | Prepare the configuration, sources, and dependencies, but do not clean output, create the build container, or run the build script. The command then exits without organizing or checking output |
 | `--skip-commit-output` | Save artifacts | Run the container build normally, but do not generate modules, desktop-integration content, or application configuration, and do not save to the local repository. The runtime check is also skipped |

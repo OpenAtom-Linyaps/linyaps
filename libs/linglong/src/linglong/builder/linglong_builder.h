@@ -8,6 +8,8 @@
 
 #include "linglong/api/types/v1/BuilderConfig.hpp"
 #include "linglong/api/types/v1/BuilderProject.hpp"
+#include "linglong/builder/builder_directory.h"
+#include "linglong/builder/project_lock.h"
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/runtime/container_builder.h"
 #include "linglong/runtime/run_context.h"
@@ -51,6 +53,8 @@ struct BuilderBuildOptions
     bool skipCheckOutput{ false };
     bool skipStripSymbols{ false };
     bool isolateNetWork{ false };
+    bool locked{ false };
+    bool offline{ false };
 };
 
 utils::error::Result<std::vector<std::filesystem::path>>
@@ -63,10 +67,10 @@ utils::error::Result<void> cmdRemoveApp(repo::OSTreeRepo &repo,
                                         bool prune);
 
 namespace detail {
-void mergeOutput(const std::vector<std::filesystem::path> &src,
-                 const std::filesystem::path &dest,
-                 const std::vector<std::string> &targets,
-                 const std::vector<std::string> &excludes);
+utils::error::Result<void> mergeOutput(const std::vector<std::filesystem::path> &src,
+                                       const std::filesystem::path &dest,
+                                       const std::vector<std::string> &targets,
+                                       const std::vector<std::string> &excludes);
 utils::error::Result<void> pullResolvedRef(const package::ReferenceWithRepo &refRepo,
                                            repo::OSTreeRepo &repo,
                                            const std::string &module) noexcept;
@@ -80,6 +84,9 @@ clearDependency(const std::string &fuzzyRefStr,
 utils::error::Result<package::Reference> pullDependency(const std::string &fuzzyRefStr,
                                                         repo::OSTreeRepo &repo,
                                                         const std::string &module) noexcept;
+auto prepareBuildOverlays(const BuilderDirectoryLayout &directories,
+                          const std::string &dependencyState,
+                          bool hasRuntime) -> utils::error::Result<bool>;
 } // namespace detail
 
 class Builder
@@ -98,8 +105,9 @@ public:
 
     auto create(const QString &projectName) -> utils::error::Result<void>;
 
-    auto build(const QStringList &args = { "/project/linglong/entry.sh" }) noexcept
-      -> utils::error::Result<void>;
+    auto build(std::vector<std::string> args = {}) noexcept -> utils::error::Result<void>;
+
+    auto processProjectLock(ProjectLockMode mode) noexcept -> utils::error::Result<void>;
 
     auto exportUAB(const ExportOption &option, const std::filesystem::path &outputFile = {})
       -> utils::error::Result<void>;
@@ -123,8 +131,6 @@ public:
              const std::string &workdir = "",
              std::vector<std::string> extensions = {}) -> utils::error::Result<void>;
     auto runtimeCheck() -> utils::error::Result<void>;
-    auto runFromRepo(const package::Reference &ref, const std::vector<std::string> &args)
-      -> utils::error::Result<void>;
 
     void setBuildOptions(const BuilderBuildOptions &options) noexcept { buildOptions = options; }
 
@@ -134,12 +140,29 @@ protected:
     std::string uabExportFilename(const linglong::package::Reference &ref, ExportMode mode);
     std::string layerExportFilename(const linglong::package::Reference &ref,
                                     const std::string &module);
+    auto buildStageFetchSource() noexcept -> utils::error::Result<void>;
 
 private:
+    auto lockProject() noexcept -> utils::error::Result<void>;
     auto buildStagePrepare() noexcept -> utils::error::Result<void>;
-    auto buildStageFetchSource() noexcept -> utils::error::Result<void>;
+    auto sourceCachePath() const -> std::filesystem::path;
     utils::error::Result<void> buildStagePullDependency() noexcept;
-    utils::error::Result<bool> buildStageBuild(const QStringList &args) noexcept;
+    auto fetchProjectDependency(const DependencyFetchRequest &request) noexcept
+      -> utils::error::Result<package::Reference>;
+    auto fetchResolvedProjectDependency(const ResolveDependencyRequest &request) noexcept
+      -> utils::error::Result<package::Reference>;
+    auto ensureDependencyModule(const package::Reference &reference,
+                                const std::string &module,
+                                std::optional<package::ReferenceWithRepo> &remote) noexcept
+      -> utils::error::Result<void>;
+    auto recordProjectDependency(const DependencyFetchRequest &request,
+                                 const package::Reference &reference) noexcept
+      -> utils::error::Result<LockedDependency>;
+    auto finishProjectLockDependencies(const ProjectDependencyPlan &plan,
+                                       const package::Reference &base,
+                                       const std::optional<package::Reference> &runtime) noexcept
+      -> utils::error::Result<void>;
+    utils::error::Result<bool> buildStageBuild(std::vector<std::string> args) noexcept;
     utils::error::Result<void> buildStagePreBuild() noexcept;
     utils::error::Result<void> buildStagePreCommit() noexcept;
     utils::error::Result<bool> buildStageCommit() noexcept;
@@ -154,6 +177,8 @@ private:
     void fixLocaltimeInOverlay(std::unique_ptr<utils::OverlayFS> &base);
     utils::error::Result<package::Reference>
     ensureUtils(const std::string &id, const package::Architecture &arch) noexcept;
+    auto runFromRepo(const package::Reference &ref, const std::vector<std::string> &args)
+      -> utils::error::Result<void>;
     auto generateEntryScript() noexcept -> utils::error::Result<void>;
     auto generateBuildDependsScript() noexcept -> utils::error::Result<bool>;
     auto generateDependsScript() noexcept -> utils::error::Result<bool>;
@@ -164,12 +189,18 @@ private:
 
 private:
     repo::OSTreeRepo &repo;
-    std::filesystem::path workingDir;
-    std::filesystem::path internalDir;
+    BuilderDirectoryLayout directories;
     std::optional<api::types::v1::BuilderProject> project;
     runtime::ContainerBuilder &containerBuilder;
     api::types::v1::BuilderConfig cfg;
     BuilderBuildOptions buildOptions;
+    // Acquired lazily and kept until this Builder and its overlays are destroyed.
+    std::optional<utils::filelock::FileLock> projectMutex;
+    std::optional<utils::filelock::FileLock> projectYamlMutex;
+    // An existing or fully resolved lock; absent until fresh sources and dependencies are ready.
+    std::optional<api::types::v1::BuilderProjectLock> projectLock;
+    // Source changes waiting for dependency resolution, including an empty source list.
+    std::optional<std::vector<api::types::v1::BuilderSourceLockEntry>> pendingSources;
 
     int64_t uid;
     int64_t gid;
@@ -178,7 +209,6 @@ private:
     std::vector<std::string> packageModules;
     std::unique_ptr<utils::OverlayFS> baseOverlay;
     std::unique_ptr<utils::OverlayFS> runtimeOverlay;
-    std::filesystem::path buildOutput;
     std::string installPrefix;
     runtime::RunContext buildContext;
 

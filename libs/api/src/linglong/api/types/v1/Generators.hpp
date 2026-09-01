@@ -68,6 +68,11 @@
 #include "linglong/api/types/v1/CliContainer.hpp"
 #include "linglong/api/types/v1/CdiDeviceEntry.hpp"
 #include "linglong/api/types/v1/CdiSpec.hpp"
+#include "linglong/api/types/v1/BuilderProjectLock.hpp"
+#include "linglong/api/types/v1/BuilderSourceLockEntry.hpp"
+#include "linglong/api/types/v1/BuilderSourceLockResolved.hpp"
+#include "linglong/api/types/v1/BuilderProjectLockDependency.hpp"
+#include "linglong/api/types/v1/BuilderProjectLockDependencyResolved.hpp"
 #include "linglong/api/types/v1/BuilderProject.hpp"
 #include "linglong/api/types/v1/BuilderProjectSource.hpp"
 #include "linglong/api/types/v1/BuilderProjectPackage.hpp"
@@ -128,6 +133,21 @@ void to_json(json & j, const BuilderProjectSource & x);
 
 void from_json(const json & j, BuilderProject & x);
 void to_json(json & j, const BuilderProject & x);
+
+void from_json(const json & j, BuilderProjectLockDependencyResolved & x);
+void to_json(json & j, const BuilderProjectLockDependencyResolved & x);
+
+void from_json(const json & j, BuilderProjectLockDependency & x);
+void to_json(json & j, const BuilderProjectLockDependency & x);
+
+void from_json(const json & j, BuilderSourceLockResolved & x);
+void to_json(json & j, const BuilderSourceLockResolved & x);
+
+void from_json(const json & j, BuilderSourceLockEntry & x);
+void to_json(json & j, const BuilderSourceLockEntry & x);
+
+void from_json(const json & j, BuilderProjectLock & x);
+void to_json(json & j, const BuilderProjectLock & x);
 
 void from_json(const json & j, CdiSpec & x);
 void to_json(json & j, const CdiSpec & x);
@@ -555,6 +575,65 @@ j["sources"] = x.sources;
 if (x.strip) {
 j["strip"] = x.strip;
 }
+j["version"] = x.version;
+}
+
+inline void from_json(const json & j, BuilderProjectLockDependencyResolved& x) {
+x.modules = j.at("modules").get<std::vector<std::string>>();
+x.reference = j.at("reference").get<std::string>();
+}
+
+inline void to_json(json & j, const BuilderProjectLockDependencyResolved & x) {
+j = json::object();
+j["modules"] = x.modules;
+j["reference"] = x.reference;
+}
+
+inline void from_json(const json & j, BuilderProjectLockDependency& x) {
+x.requested = j.at("requested").get<std::string>();
+x.resolved = j.at("resolved").get<BuilderProjectLockDependencyResolved>();
+x.type = j.at("type").get<std::string>();
+}
+
+inline void to_json(json & j, const BuilderProjectLockDependency & x) {
+j = json::object();
+j["requested"] = x.requested;
+j["resolved"] = x.resolved;
+j["type"] = x.type;
+}
+
+inline void from_json(const json & j, BuilderSourceLockResolved& x) {
+x.hash = j.at("hash").get<std::string>();
+}
+
+inline void to_json(json & j, const BuilderSourceLockResolved & x) {
+j = json::object();
+j["hash"] = x.hash;
+}
+
+inline void from_json(const json & j, BuilderSourceLockEntry& x) {
+x.resolved = j.at("resolved").get<BuilderSourceLockResolved>();
+x.source = j.at("source").get<BuilderProjectSource>();
+}
+
+inline void to_json(json & j, const BuilderSourceLockEntry & x) {
+j = json::object();
+j["resolved"] = x.resolved;
+j["source"] = x.source;
+}
+
+inline void from_json(const json & j, BuilderProjectLock& x) {
+x.buildArchitecture = j.at("build_architecture").get<std::string>();
+x.dependencies = j.at("dependencies").get<std::vector<BuilderProjectLockDependency>>();
+x.sources = j.at("sources").get<std::vector<BuilderSourceLockEntry>>();
+x.version = j.at("version").get<int64_t>();
+}
+
+inline void to_json(json & j, const BuilderProjectLock & x) {
+j = json::object();
+j["build_architecture"] = x.buildArchitecture;
+j["dependencies"] = x.dependencies;
+j["sources"] = x.sources;
 j["version"] = x.version;
 }
 
@@ -1434,6 +1513,12 @@ x.applicationConfigurationPermissions = get_stack_optional<ApplicationConfigurat
 x.applicationPermissionsRequest = get_stack_optional<ApplicationPermissionsRequest>(j, "ApplicationPermissionsRequest");
 x.builderConfig = get_stack_optional<BuilderConfig>(j, "BuilderConfig");
 x.builderProject = get_stack_optional<BuilderProject>(j, "BuilderProject");
+x.builderProjectLock = get_stack_optional<BuilderProjectLock>(j, "BuilderProjectLock");
+x.builderProjectLockDependency = get_stack_optional<BuilderProjectLockDependency>(j, "BuilderProjectLockDependency");
+x.builderProjectLockDependencyResolved = get_stack_optional<BuilderProjectLockDependencyResolved>(j, "BuilderProjectLockDependencyResolved");
+x.builderProjectSource = get_stack_optional<BuilderProjectSource>(j, "BuilderProjectSource");
+x.builderSourceLockEntry = get_stack_optional<BuilderSourceLockEntry>(j, "BuilderSourceLockEntry");
+x.builderSourceLockResolved = get_stack_optional<BuilderSourceLockResolved>(j, "BuilderSourceLockResolved");
 x.cdiDeviceEntry = get_stack_optional<CdiDeviceEntry>(j, "CDIDeviceEntry");
 x.cliContainer = get_stack_optional<CliContainer>(j, "CLIContainer");
 x.commonOptions = get_stack_optional<CommonOptions>(j, "CommonOptions");
@@ -1498,6 +1583,24 @@ j["BuilderConfig"] = x.builderConfig;
 }
 if (x.builderProject) {
 j["BuilderProject"] = x.builderProject;
+}
+if (x.builderProjectLock) {
+j["BuilderProjectLock"] = x.builderProjectLock;
+}
+if (x.builderProjectLockDependency) {
+j["BuilderProjectLockDependency"] = x.builderProjectLockDependency;
+}
+if (x.builderProjectLockDependencyResolved) {
+j["BuilderProjectLockDependencyResolved"] = x.builderProjectLockDependencyResolved;
+}
+if (x.builderProjectSource) {
+j["BuilderProjectSource"] = x.builderProjectSource;
+}
+if (x.builderSourceLockEntry) {
+j["BuilderSourceLockEntry"] = x.builderSourceLockEntry;
+}
+if (x.builderSourceLockResolved) {
+j["BuilderSourceLockResolved"] = x.builderSourceLockResolved;
 }
 if (x.cdiDeviceEntry) {
 j["CDIDeviceEntry"] = x.cdiDeviceEntry;
@@ -1641,7 +1744,7 @@ j["XDGDirectoryPermissions"] = x.xdgDirectoryPermissions;
 
 inline void from_json(const json & j, DeviceOption & x) {
 if (j == "passthru") x = DeviceOption::Passthru;
-else { throw std::runtime_error("Cannot deserialize to enumeration \"DeviceOption\""); }
+else { throw std::runtime_error("Input JSON does not conform to schema!"); }
 }
 
 inline void to_json(json & j, const DeviceOption & x) {
@@ -1657,7 +1760,7 @@ else if (j == "Install") x = InteractionMessageType::Install;
 else if (j == "Uninstall") x = InteractionMessageType::Uninstall;
 else if (j == "Unknown") x = InteractionMessageType::Unknown;
 else if (j == "Upgrade") x = InteractionMessageType::Upgrade;
-else { throw std::runtime_error("Cannot deserialize to enumeration \"InteractionMessageType\""); }
+else { throw std::runtime_error("Input JSON does not conform to schema!"); }
 }
 
 inline void to_json(json & j, const InteractionMessageType & x) {
@@ -1679,7 +1782,7 @@ else if (j == "Processing") x = State::Processing;
 else if (j == "Queued") x = State::Queued;
 else if (j == "Succeed") x = State::Succeed;
 else if (j == "Unknown") x = State::Unknown;
-else { throw std::runtime_error("Cannot deserialize to enumeration \"State\""); }
+else { throw std::runtime_error("Input JSON does not conform to schema!"); }
 }
 
 inline void to_json(json & j, const State & x) {
@@ -1697,7 +1800,7 @@ default: throw std::runtime_error("Unexpected value in enumeration \"State\": " 
 
 inline void from_json(const json & j, Version & x) {
 if (j == "1") x = Version::The1;
-else { throw std::runtime_error("Cannot deserialize to enumeration \"Version\""); }
+else { throw std::runtime_error("Input JSON does not conform to schema!"); }
 }
 
 inline void to_json(json & j, const Version & x) {

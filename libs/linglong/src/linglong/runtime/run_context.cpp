@@ -319,7 +319,8 @@ utils::error::Result<void> RunContext::resolve(const linglong::package::Referenc
 }
 
 utils::error::Result<void> RunContext::resolve(const api::types::v1::BuilderProject &target,
-                                               const std::filesystem::path &buildOutput)
+                                               const std::filesystem::path &buildOutput,
+                                               const api::types::v1::BuilderProjectLock &lock)
 {
     LINGLONG_TRACE("resolve RunContext from builder project " + target.package.id);
 
@@ -339,41 +340,38 @@ utils::error::Result<void> RunContext::resolve(const api::types::v1::BuilderProj
         return LINGLONG_ERR("can't resolve run context from package kind " + target.package.kind);
     }
 
-    auto base = target.base;
-    if (target.runtime) {
-        auto runtimeFuzzyRef = package::FuzzyReference::parse(*target.runtime);
-        if (!runtimeFuzzyRef) {
-            return LINGLONG_ERR(runtimeFuzzyRef);
+    const auto base =
+      std::find_if(lock.dependencies.begin(), lock.dependencies.end(), [](const auto &entry) {
+          return entry.type == "base";
+      });
+    if (base == lock.dependencies.end()) {
+        return LINGLONG_ERR("project lock base dependency is missing");
+    }
+
+    const auto runtime =
+      std::find_if(lock.dependencies.begin(), lock.dependencies.end(), [](const auto &entry) {
+          return entry.type == "runtime";
+      });
+    if (runtime != lock.dependencies.end()) {
+        auto ref = package::Reference::parse(runtime->resolved.reference);
+        if (!ref) {
+            return LINGLONG_ERR("invalid locked runtime reference", ref);
         }
 
-        auto ref = repo.clearReferenceLocal(*runtimeFuzzyRef, true);
-        if (!ref) {
-            return LINGLONG_ERR("ref doesn't exist " + runtimeFuzzyRef->toString());
-        }
         auto res = RuntimeLayer::create(std::move(ref).value(), *this);
         if (!res) {
             return LINGLONG_ERR(res);
         }
         runtimeLayer = std::move(res).value();
-
-        if (!base) {
-            base = runtimeLayer->getCachedItem().info.base;
-        }
+    } else {
+        runtimeLayer.reset();
     }
 
-    if (!base) {
-        return LINGLONG_ERR("at least one of base or runtime must be specified");
-    }
-
-    auto baseFuzzyRef = package::FuzzyReference::parse(*base);
-    if (!baseFuzzyRef) {
-        return LINGLONG_ERR(baseFuzzyRef);
-    }
-
-    auto ref = repo.clearReferenceLocal(*baseFuzzyRef, true);
+    auto ref = package::Reference::parse(base->resolved.reference);
     if (!ref) {
-        return LINGLONG_ERR(ref);
+        return LINGLONG_ERR("invalid locked base reference", ref);
     }
+
     auto res = RuntimeLayer::create(std::move(ref).value(), *this);
     if (!res) {
         return LINGLONG_ERR(res);
@@ -392,7 +390,12 @@ utils::error::Result<void> RunContext::resolve(const api::types::v1::BuilderProj
 
     resolveHostDynamic();
 
-    return resolveLayer(false, {});
+    return resolveLayer(false,
+                        {},
+                        base->resolved.modules,
+                        runtime != lock.dependencies.end()
+                          ? std::make_optional(runtime->resolved.modules)
+                          : std::nullopt);
 }
 
 utils::error::Result<void> RunContext::resolve(const api::types::v1::RunContextConfig &config)
@@ -606,8 +609,11 @@ utils::error::Result<void> RunContext::setupCDIDevices(generator::ContainerCfgBu
     return LINGLONG_OK;
 }
 
-utils::error::Result<void> RunContext::resolveLayer(bool depsExcludeDev,
-                                                    const std::vector<std::string> &appModules)
+utils::error::Result<void>
+RunContext::resolveLayer(bool depsExcludeDev,
+                         const std::vector<std::string> &appModules,
+                         const std::optional<std::vector<std::string>> &baseModules,
+                         const std::optional<std::vector<std::string>> &runtimeModules)
 {
     LINGLONG_TRACE("resolve layers");
 
@@ -615,7 +621,7 @@ utils::error::Result<void> RunContext::resolveLayer(bool depsExcludeDev,
     if (depsExcludeDev) {
         depsExcludeModules = std::vector<std::string>{ "develop" };
     }
-    auto ref = baseLayer->resolveLayer(std::nullopt, depsExcludeModules);
+    auto ref = baseLayer->resolveLayer(baseModules, depsExcludeModules);
     if (!ref.has_value()) {
         return LINGLONG_ERR("failed to resolve base layer", ref);
     }
@@ -632,7 +638,7 @@ utils::error::Result<void> RunContext::resolveLayer(bool depsExcludeDev,
     }
 
     if (runtimeLayer) {
-        auto ref = runtimeLayer->resolveLayer(std::nullopt, depsExcludeModules);
+        auto ref = runtimeLayer->resolveLayer(runtimeModules, depsExcludeModules);
         if (!ref.has_value()) {
             return LINGLONG_ERR("failed to resolve runtime layer", ref);
         }

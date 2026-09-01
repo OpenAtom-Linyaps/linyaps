@@ -431,6 +431,90 @@ TEST_F(RepoTest, moduleMergesUseBinaryInfo)
     EXPECT_EQ(persistentMergedInfo->packageInfoV2Module, "binary");
 }
 
+TEST_F(RepoTest, moduleMergesKeepChannelsSeparate)
+{
+    for (const bool otherChannelHasMainModule : { false, true }) {
+        SCOPED_TRACE(otherChannelHasMainModule);
+        TempDir tempDir;
+        const auto repoRoot = tempDir.path() / "repo-root";
+        ASSERT_TRUE(fs::create_directories(repoRoot));
+        auto repo = OSTreeRepo::create(repoRoot, createRepoConfig());
+        ASSERT_TRUE(repo) << repo.error().message();
+
+        auto importModule = [&](const std::string &channel, const std::string &module) {
+            const auto name = channel + "-" + module;
+            const auto directory = tempDir.path() / name;
+            fs::create_directories(directory / "files");
+            const api::types::v1::PackageInfoV2 info{
+                .arch = { "x86_64" },
+                .channel = channel,
+                .id = "org.test.merge",
+                .kind = "app",
+                .packageInfoV2Module = module,
+                .version = "1.0.0",
+            };
+            std::ofstream(directory / "info.json") << nlohmann::json(info).dump();
+            std::ofstream(directory / "files" / name) << name;
+
+            auto imported = repo->get()->importLayerDir(package::LayerDir(directory));
+            ASSERT_TRUE(imported) << imported.error().message();
+        };
+
+        importModule("main", "binary");
+        importModule("main", "develop");
+        importModule("testing", "locale");
+        if (otherChannelHasMainModule) {
+            importModule("testing", "binary");
+            importModule("testing", "develop");
+        }
+
+        const auto mainRef = package::Reference::parse("main:org.test.merge/1.0.0/x86_64");
+        ASSERT_TRUE(mainRef);
+        fs::path mainMergedPath;
+        for (int merge = 0; merge < 2; ++merge) {
+            SCOPED_TRACE(merge);
+            auto merged = repo->get()->mergeModules();
+            ASSERT_TRUE(merged) << merged.error().message();
+
+            auto mainLayer = repo->get()->getMergedModuleDir(*mainRef, false);
+            ASSERT_TRUE(mainLayer) << mainLayer.error().message();
+            EXPECT_TRUE(fs::exists(mainLayer->path() / "files/main-binary"));
+            EXPECT_TRUE(fs::exists(mainLayer->path() / "files/main-develop"));
+            EXPECT_FALSE(fs::exists(mainLayer->path() / "files/testing-locale"));
+            EXPECT_FALSE(fs::exists(mainLayer->path() / "files/testing-binary"));
+            EXPECT_FALSE(fs::exists(mainLayer->path() / "files/testing-develop"));
+
+            auto mainInfo = mainLayer->info();
+            ASSERT_TRUE(mainInfo) << mainInfo.error().message();
+            EXPECT_EQ(mainInfo->channel, "main");
+            EXPECT_EQ(mainInfo->packageInfoV2Module, "binary");
+            if (merge == 0) {
+                mainMergedPath = mainLayer->path();
+            } else {
+                EXPECT_EQ(mainLayer->path(), mainMergedPath);
+            }
+
+            if (otherChannelHasMainModule) {
+                auto testingRef = package::Reference::parse("testing:org.test.merge/1.0.0/x86_64");
+                ASSERT_TRUE(testingRef);
+                auto testingLayer = repo->get()->getMergedModuleDir(*testingRef, false);
+                ASSERT_TRUE(testingLayer) << testingLayer.error().message();
+                EXPECT_NE(testingLayer->path(), mainLayer->path());
+                EXPECT_TRUE(fs::exists(testingLayer->path() / "files/testing-binary"));
+                EXPECT_TRUE(fs::exists(testingLayer->path() / "files/testing-develop"));
+                EXPECT_TRUE(fs::exists(testingLayer->path() / "files/testing-locale"));
+                EXPECT_FALSE(fs::exists(testingLayer->path() / "files/main-binary"));
+                EXPECT_FALSE(fs::exists(testingLayer->path() / "files/main-develop"));
+
+                auto testingInfo = testingLayer->info();
+                ASSERT_TRUE(testingInfo) << testingInfo.error().message();
+                EXPECT_EQ(testingInfo->channel, "testing");
+                EXPECT_EQ(testingInfo->packageInfoV2Module, "binary");
+            }
+        }
+    }
+}
+
 TEST_F(RepoTest, createPrefersRepoLocalConfigOverFallbackConfig)
 {
     TempDir tempDir;

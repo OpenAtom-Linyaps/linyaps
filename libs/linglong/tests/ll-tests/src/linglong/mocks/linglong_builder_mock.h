@@ -8,11 +8,13 @@
 #include "ocppi/cli/crun/Crun.hpp"
 
 #include <memory>
+#include <utility>
 
 namespace linglong::builder {
 class BuilderMock : public Builder
 {
 public:
+    using Builder::buildStageFetchSource;
     using Builder::layerExportFilename;
     using Builder::uabExportFilename;
 
@@ -22,6 +24,13 @@ public:
 
     explicit BuilderMock(const std::filesystem::path &workingDir)
         : Builder(std::nullopt,
+                  workingDir,
+                  initTempRepo(),
+                  initTempContainerBuilder(),
+                  initBuilderConfig()) { };
+
+    BuilderMock(api::types::v1::BuilderProject project, const std::filesystem::path &workingDir)
+        : Builder(std::optional<api::types::v1::BuilderProject>{ std::move(project) },
                   workingDir,
                   initTempRepo(),
                   initTempContainerBuilder(),

@@ -103,6 +103,12 @@ ll-builder push
 
 ## 理解 ll-builder 工作原理
 
+同一项目工作目录同时只允许一个 `build`、`clean`、`run`、`export`、`push`、`generate-lockfile` 或 `update-lockfile` 命令执行，冲突时立即报错。`run` 持锁到应用退出，因此运行期间不能再次构建或清理该项目。同工作目录下通过 `-f` 选择不同配置仍共用项目锁；从不同工作目录使用同一 YAML 入口目录也会互斥。工作目录和 YAML 入口目录均不重叠时可以并行操作。工作目录和 YAML 入口目录各自的 `.ll-builder.lock` 不应提交到版本控制，也不要在命令执行期间删除它；命令退出后锁自动释放，`clean` 保留该文件。
+
+没有加载 YAML 的命令（例如 `clean`，或目录中没有配置文件时的 `export --ref`）只锁工作目录。
+
+YAML 为文件软链接时，读取链接目标的内容，但资源 lock 写在软链接所在目录，并使用软链接的文件名替换扩展名。例如 `linglong.yaml -> /shared/app.yaml` 对应入口旁的 `linglong.lock`。自动查找与显式 `-f` 使用相同规则；父目录的软链接会先解析为实际目录。
+
 可以把 `ll-builder build` 理解为一条自动化装配线：`linglong.yaml` 是装配说明，源码是待加工的材料，Base 和 Runtime 是统一的工作环境，最终产物则会被整理后存入本地仓库。
 
 一次完整构建会依次经过以下阶段：
@@ -119,6 +125,16 @@ ll-builder push
 
 `ll-builder` 根据 `sources` 下载或展开源码，并把它们准备到 `linglong/sources/`。构建容器中对应的路径是 `/project/linglong/sources/`。下载过的内容可以复用缓存，但每次正常构建都会重新准备源码目录，避免上一次构建修改过的文件影响结果。将获取源码放在单独的步骤而不是放到构建指令中，是为了使得构建过程可重复/可追溯/可审计。
 
+源码的输出名字不能重复，也不能重复声明相同的获取请求，即使 `name` 或 `version` 不同。同一种源码类型中，Git 按 `url`、`commit` 和 `submodules` 判断请求是否相同，其他类型按 `url` 和 `digest` 判断；非 Git 源码的 `commit`、`submodules` 不参与判断。需要在多个目录使用同一资源时，声明一次，再在构建脚本中复制。
+
+首次构建会解析 `sources`、Base 和 Runtime，源码校验及依赖获取成功后，才一次性生成 `linglong.lock`。应将 lock 文件提交到版本控制；后续构建会按 SHA-256 校验文件类源码，并按锁定的 commit 准备 Git 源码。普通构建在资源声明变化时只重新解析变化的资源并更新 lock，未变化的资源继续使用已锁定版本。可用 `ll-builder generate-lockfile` 显式创建 lock；要在声明未变化时主动刷新资源，可使用 `ll-builder update-lockfile`。`ll-builder build --locked` 要求 lock 已存在、完整且与声明一致。
+
+lock 的 `dependencies` 列表为 Base 和 Runtime 记录原始声明、选定的锁定引用以及可用模块名。模块可以是 `binary`、`develop` 或其他名称。普通构建会补齐架构后按完整引用获取声明未变化的依赖，不会主动升级；声明变化时只重新解析相应依赖。`--locked` 构建始终按 lock 获取资源，不会改写 lock。同一声明对应的文件类源码内容若与 lock 中的哈希不符，构建会失败，需要显式运行 `update-lockfile`；Git 源码会按锁定 commit 重新准备，缓存工作区中的修改不会进入构建源码。Git 缓存校验失败时，在线构建会重新获取锁定源码，离线构建会失败。依赖内容的正确性由仓库的其他机制保证。更新会在所有资源准备成功后一次性替换旧文件。`buildext.apt.build_depends` 的 overlay 在实际完整引用（包括架构）或模块列表变化时重置，每次构建都会在该 overlay 上运行 APT。
+
+版本 1 的 lock 包含源码和 `dependencies`；每项依赖通过 `type: base` 或 `type: runtime` 区分。依赖引用锁定 channel、ID 和精确版本，并保留原声明中的显式架构。未指定架构时记录 `unknown`，例如 `main:org.example.Base/1.0.0.0/unknown`，构建时使用当前构建环境架构，与 `package.architecture` 指定的输出目标架构独立。从 Runtime 推导的 Base 同样遵循 Runtime 的 Base 声明。未指定架构的依赖可以在不同构建架构上复用同一份 lock，无需仅因更换构建架构而更新。各架构需使用相同的锁定源码、依赖版本和模块集合；缺少所选架构的锁定依赖时构建报错，不会自动升级或回退。
+
+`--skip-fetch-source` 只跳过获取源码的步骤，原样使用现有的 `linglong/sources/`，适合构建手动修改的源码。项目 lock 的读取、Base 和 Runtime 的解析及锁定仍按普通构建规则处理。它不能与 `--locked` 同时使用；需要只使用本地缓存并按 lock 校验源码时，使用 `--locked --offline`。
+
 随后会准备 `base` 和 `runtime`，用于创建构建环境。
 
 ### 创建隔离的构建环境
@@ -127,7 +143,7 @@ ll-builder push
 
 1. 清理上一次构建的临时目录，比如 `linglong/output/`。需要注意 `linglong` 目录是 ll-builder 内部使用工作目录，用户不应该在此目录存放其他文件。
 2. 将 Base、Runtime、项目目录、源码和输出目录组合成构建环境，并为 Base 和 Runtime 创建临时可写层，避免修改原始依赖。
-3. 处理 `buildext.apt.buildDepends` 等构建期依赖的安装。
+3. 处理 `buildext.apt.build_depends` 等构建期依赖的安装。
 
 这个环境是与宿主机相互隔离的容器，但仍能访问当前项目和已经准备好的源码。容器内会提供两个常用变量：
 
@@ -159,8 +175,9 @@ TRIPLET=<当前 CPU 架构的 GNU triplet>
 | 参数 | 影响阶段 | 对构建过程的影响 |
 | --- | --- | --- |
 | `-f, --file <file>` | 读取配置 | 使用指定配置代替自动查找的 `linglong.<arch>.yaml` 或 `linglong.yaml`。文件必须位于当前项目目录或其子目录中 |
-| `--offline` | 获取源码和依赖 | 不重新获取源码，也不从远程拉取 Base、Runtime；所需源码和依赖必须已经存在于本地。`linglong.yaml` 中的 `offline: true` 作用相同 |
-| `--skip-fetch-source` | 获取源码 | 保留并使用现有的 `linglong/sources/`，不会清理或重新获取 `sources` |
+| `--offline` | 获取源码和依赖 | 仅使用经过 lock 校验的源码缓存，也不从远程拉取 Base、Runtime；所需内容必须已经存在于本地。ll-builder 配置文件（默认 `~/.config/linglong/builder/config.yaml`）中的 `offline: true` 作用相同 |
+| `--locked` | 获取源码和依赖 | 要求项目 lock 已存在且 `sources`、Base、Runtime 声明一致；构建期间不会更新 lock |
+| `--skip-fetch-source` | 获取源码 | 跳过源码获取，原样使用现有的 `linglong/sources/`；项目 lock 和依赖仍按普通构建规则处理，不能与 `--locked` 同时使用 |
 | `--skip-pull-depend` | 获取依赖 | 不从远程拉取新内容，但仍会解析和合并本地已有的 Base、Runtime 模块；本地缺少依赖时构建失败 |
 | `--skip-run-container` | 执行构建 | 仍会完成配置、源码和依赖准备，但不会清理输出、创建构建容器或执行构建脚本；命令随后结束，不再整理和检查输出 |
 | `--skip-commit-output` | 保存产物 | 正常执行容器构建，但不生成模块、桌面集成内容或应用配置，也不保存到本地仓库；随后不执行运行检查 |

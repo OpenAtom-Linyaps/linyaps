@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2024-2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -7,16 +7,23 @@
 #include "configure.h"
 #include "linglong/package/version.h"
 #include "linglong/repo/config.h"
+#include "linglong/utils/filelock.h"
 
 #include <gio/gio.h>
 #include <glib.h>
 #include <ostree.h>
 
+#include <QFile>
+#include <QSaveFile>
+
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <mutex>
 #include <optional>
 #include <unordered_map>
+
+namespace {
 
 struct MigrateRefData
 {
@@ -32,9 +39,23 @@ struct Version
 
     friend bool operator<(const Version &lhs, const Version &rhs) noexcept
     {
-        return lhs.major < rhs.major || lhs.minor < rhs.minor || lhs.patch < rhs.patch;
+        if (lhs.major != rhs.major) {
+            return lhs.major < rhs.major;
+        }
+        if (lhs.minor != rhs.minor) {
+            return lhs.minor < rhs.minor;
+        }
+        return lhs.patch < rhs.patch;
     }
 };
+
+struct RepositoryVersion
+{
+    std::string raw;
+    Version parsed;
+};
+
+std::mutex migrationMutex;
 
 std::optional<Version> parseVersion(std::string_view version)
 try {
@@ -60,6 +81,110 @@ try {
 } catch (std::exception &e) {
     std::cerr << e.what() << " cause an exception" << std::endl;
     return std::nullopt;
+}
+
+std::optional<RepositoryVersion> readRepositoryVersion(const std::filesystem::path &root)
+{
+    std::error_code ec;
+    const auto versionPath = root / ".version";
+    std::optional<std::string> version;
+    if (std::filesystem::exists(versionPath, ec)) {
+        std::ifstream in{ versionPath };
+        if (!in.is_open()) {
+            std::cerr << "couldn't open " << versionPath << std::endl;
+            return std::nullopt;
+        }
+
+        std::stringstream buffer;
+        buffer << in.rdbuf();
+        if (in.bad()) {
+            std::cerr << "couldn't read " << versionPath << std::endl;
+            return std::nullopt;
+        }
+        version = buffer.str();
+    } else if (ec) {
+        std::cerr << "couldn't get status of " << versionPath << std::endl;
+        return std::nullopt;
+    }
+
+    auto raw = version.value_or("1.5.0");
+    auto parsed = parseVersion(raw);
+    if (!parsed) {
+        std::cerr << "failed to parse repo version " << raw << std::endl;
+        return std::nullopt;
+    }
+
+    return RepositoryVersion{ .raw = std::move(raw), .parsed = *parsed };
+}
+
+std::optional<Version> currentVersion()
+{
+    auto current = parseVersion(LINGLONG_VERSION);
+    if (!current) {
+        std::cerr << "failed to parse current version " << LINGLONG_VERSION << std::endl;
+    }
+    return current;
+}
+
+linglong::utils::error::Result<linglong::utils::filelock::FileLock>
+lockMigration(const std::filesystem::path &root)
+{
+    LINGLONG_TRACE("lock repository migration");
+
+    using linglong::utils::filelock::FileLock;
+    using linglong::utils::filelock::LockType;
+
+    auto lock = FileLock::create(root / ".migration.lock", LockType::ReadWrite);
+    if (!lock) {
+        return LINGLONG_ERR(lock);
+    }
+
+    auto result = lock->lock(LockType::Write);
+    if (!result) {
+        return LINGLONG_ERR(result);
+    }
+
+    return std::move(*lock);
+}
+
+bool writeRepositoryVersion(const std::filesystem::path &versionPath)
+{
+    QSaveFile out{ QFile::decodeName(versionPath.c_str()) };
+    out.setDirectWriteFallback(false);
+    if (!out.open(QIODevice::WriteOnly)) {
+        std::cerr << "couldn't open " << versionPath << ": " << out.errorString().toStdString()
+                  << std::endl;
+        return false;
+    }
+
+    constexpr auto versionLength = sizeof(LINGLONG_VERSION) - 1;
+    if (out.write(LINGLONG_VERSION, versionLength) != versionLength) {
+        std::cerr << "couldn't write " << versionPath << ": " << out.errorString().toStdString()
+                  << std::endl;
+        out.cancelWriting();
+        return false;
+    }
+
+    if (!out.commit()) {
+        std::cerr << "couldn't commit " << versionPath << ": " << out.errorString().toStdString()
+                  << std::endl;
+        return false;
+    }
+
+    return true;
+}
+
+linglong::repo::MigrateResult checkCompatibility(const RepositoryVersion &repositoryVersion,
+                                                 const Version &current)
+{
+    if (current < repositoryVersion.parsed) {
+        std::cerr << "repository version " << repositoryVersion.raw
+                  << " is newer than current program version " << LINGLONG_VERSION
+                  << ", refusing to migrate" << std::endl;
+        return linglong::repo::MigrateResult::Incompatible;
+    }
+
+    return linglong::repo::MigrateResult::NoChange;
 }
 
 int migrateRef(OstreeRepo *repo, const MigrateRefData &data)
@@ -214,10 +339,43 @@ int dispatchMigrations(const Version &from,
     return ret;
 }
 
+} // namespace
+
 namespace linglong::repo {
+MigrateResult checkRepoCompatibility(const std::filesystem::path &root) noexcept
+{
+    std::lock_guard processLock{ migrationMutex };
+
+    std::error_code ec;
+    if (!std::filesystem::exists(root, ec)) {
+        if (ec) {
+            std::cerr << "couldn't get status of " << root << std::endl;
+            return MigrateResult::Failed;
+        }
+        return MigrateResult::NoChange;
+    }
+
+    auto migrationLock = lockMigration(root);
+    if (!migrationLock) {
+        std::cerr << "couldn't lock repository " << root << ": " << migrationLock.error().message()
+                  << std::endl;
+        return MigrateResult::Failed;
+    }
+
+    auto repositoryVersion = readRepositoryVersion(root);
+    auto current = currentVersion();
+    if (!repositoryVersion || !current) {
+        return MigrateResult::Failed;
+    }
+
+    return checkCompatibility(*repositoryVersion, *current);
+}
+
 MigrateResult tryMigrate(const std::filesystem::path &root,
                          const linglong::api::types::v1::RepoConfigV2 &cfg) noexcept
 {
+    std::lock_guard processLock{ migrationMutex };
+
     std::error_code ec;
     if (!std::filesystem::exists(root, ec)) {
         if (ec) {
@@ -228,46 +386,38 @@ MigrateResult tryMigrate(const std::filesystem::path &root,
         return MigrateResult::NoChange;
     }
 
-    std::optional<std::string> repoVersion;
-    std::filesystem::path version = std::filesystem::path{ root } / ".version";
-    if (std::filesystem::exists(version, ec)) {
-        std::ifstream in{ version };
-        if (!in.is_open()) {
-            std::cerr << "couldn't open " << version << std::endl;
-            return MigrateResult::Failed;
-        }
-
-        std::stringstream buffer;
-        buffer << in.rdbuf();
-        repoVersion = buffer.str();
-    }
-
-    auto repoVer = repoVersion.value_or("1.5.0");
-    if (repoVer == LINGLONG_VERSION) {
-        return MigrateResult::NoChange;
-    }
-
-    auto from = parseVersion(repoVer);
-    if (!from) {
-        std::cerr << "failed to parse repo version " << repoVer << std::endl;
+    auto migrationLock = lockMigration(root);
+    if (!migrationLock) {
+        std::cerr << "couldn't lock repository " << root << ": " << migrationLock.error().message()
+                  << std::endl;
         return MigrateResult::Failed;
     }
 
-    auto ret = dispatchMigrations(*from, root, cfg);
+    auto repositoryVersion = readRepositoryVersion(root);
+    auto current = currentVersion();
+    if (!repositoryVersion || !current) {
+        return MigrateResult::Failed;
+    }
+
+    if (repositoryVersion->raw == LINGLONG_VERSION) {
+        return MigrateResult::NoChange;
+    }
+
+    auto compatibility = checkCompatibility(*repositoryVersion, *current);
+    if (compatibility == MigrateResult::Incompatible) {
+        return compatibility;
+    }
+
+    auto ret = dispatchMigrations(repositoryVersion->parsed, root, cfg);
     if (ret == -1) {
         return MigrateResult::Failed;
     }
 
     auto result = ret == 0 ? MigrateResult::NoChange : MigrateResult::Success;
 
-    std::ofstream out;
-    out.open(version, std::ios_base::out | std::ios_base::trunc);
-    if (!out.is_open()) {
-        std::cerr << "couldn't open " << version << std::endl;
+    if (!writeRepositoryVersion(root / ".version")) {
         return MigrateResult::Failed;
     }
-    out << LINGLONG_VERSION;
-    out.close();
 
     return result;
 }

@@ -93,11 +93,14 @@ auto createRepoForDaemon(bool migrateRepo)
         return LINGLONG_ERR("failed to create repository directory", std::move(res));
     }
 
-    if (migrateRepo) {
-        auto ret = linglong::repo::tryMigrate(LINGLONG_ROOT, *config);
-        if (ret == linglong::repo::MigrateResult::Failed) {
-            return LINGLONG_ERR("failed to migrate repository");
-        }
+    auto ret = migrateRepo ? linglong::repo::tryMigrate(LINGLONG_ROOT, *config)
+                           : linglong::repo::checkRepoCompatibility(LINGLONG_ROOT);
+    if (ret == linglong::repo::MigrateResult::Incompatible) {
+        return LINGLONG_ERR("repository version is newer than the package manager version");
+    }
+    if (ret == linglong::repo::MigrateResult::Failed) {
+        return LINGLONG_ERR(migrateRepo ? "failed to migrate repository"
+                                        : "failed to check repository compatibility");
     }
 
     auto repo = linglong::repo::OSTreeRepo::create(repoRoot, *config);

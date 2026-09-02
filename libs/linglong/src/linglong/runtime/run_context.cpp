@@ -17,6 +17,7 @@
 #include <fmt/ranges.h>
 
 #include <algorithm>
+#include <array>
 #include <cstdlib>
 #include <utility>
 
@@ -301,6 +302,8 @@ utils::error::Result<void> RunContext::resolve(const linglong::package::Referenc
         return LINGLONG_ERR("failed to resolve network configuration", networkConfRet);
     }
 
+    resolveHostDynamic();
+
     if (opts.cdiDevices) {
         contextCfg.cdiDevices = opts.cdiDevices.value();
     }
@@ -386,6 +389,8 @@ utils::error::Result<void> RunContext::resolve(const api::types::v1::BuilderProj
     if (!networkConfRet) {
         return LINGLONG_ERR("failed to resolve network configuration", networkConfRet);
     }
+
+    resolveHostDynamic();
 
     return resolveLayer(false, {});
 }
@@ -563,6 +568,7 @@ utils::error::Result<void> RunContext::resolve(const api::types::v1::RunContextC
     contextCfg.resolvConf = config.resolvConf;
     contextCfg.timezone = config.timezone;
     contextCfg.instance = config.instance;
+    contextCfg.hostDynamic = config.hostDynamic;
     contextCfg.mounts = config.mounts;
     contextCfg.version = runContextConfigVersion;
 
@@ -836,6 +842,39 @@ utils::error::Result<void> RunContext::resolveTimeZone()
     }
 
     return LINGLONG_OK;
+}
+
+void RunContext::resolveHostDynamic()
+{
+    LINGLONG_TRACE("resolve host dynamic paths");
+
+    constexpr std::array<const char *, 0> paths{};
+
+    std::vector<api::types::v1::Mount> hostDynamic;
+    hostDynamic.reserve(paths.size());
+    for (const auto *rawPath : paths) {
+        hostDynamic.emplace_back(api::types::v1::Mount{
+          .destination = rawPath,
+          .options = std::vector<std::string>{ "rbind", "ro", "rslave" },
+          .source = rawPath,
+          .srcType = std::nullopt,
+          .type = "bind",
+        });
+    }
+
+    ensureMountSrcType(hostDynamic);
+    hostDynamic.erase(std::remove_if(hostDynamic.begin(),
+                                     hostDynamic.end(),
+                                     [](const auto &mount) {
+                                         return !mount.srcType;
+                                     }),
+                      hostDynamic.end());
+
+    if (hostDynamic.empty()) {
+        contextCfg.hostDynamic.reset();
+        return;
+    }
+    contextCfg.hostDynamic = std::move(hostDynamic);
 }
 
 utils::error::Result<void> RunContext::resolveLayerExtensions(

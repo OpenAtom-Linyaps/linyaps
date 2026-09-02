@@ -650,6 +650,9 @@ TEST_F(RunContextTest, resolveFromConfig)
     config.runtime = runtimeRef->toString();
     config.app = appRef->toString();
     config.resolvConf = "/run/systemd/resolve/stub-resolv.conf";
+    config.hostDynamic = std::vector<api::types::v1::Mount>{
+        { .destination = "/etc/hosts", .source = "/etc/hosts", .srcType = "file", .type = "bind" },
+    };
     config.extensions = std::map<std::string, std::vector<std::string>>{
         { appRef->toString(), std::vector<std::string>{ extensionRef->toString() } }
     };
@@ -711,6 +714,10 @@ TEST_F(RunContextTest, resolveFromConfig)
     EXPECT_EQ(retConfig.app.value(), appRef->toString());
     ASSERT_TRUE(retConfig.resolvConf.has_value());
     EXPECT_EQ(*retConfig.resolvConf, "/run/systemd/resolve/stub-resolv.conf");
+    ASSERT_TRUE(retConfig.hostDynamic.has_value());
+    ASSERT_EQ(retConfig.hostDynamic->size(), 1);
+    EXPECT_EQ(retConfig.hostDynamic->front().destination, "/etc/hosts");
+    EXPECT_EQ(retConfig.hostDynamic->front().srcType, "file");
     ASSERT_TRUE(retConfig.extensions.has_value());
     ASSERT_FALSE(retConfig.extensions->empty());
     ASSERT_EQ(retConfig.extensions->size(), 1);

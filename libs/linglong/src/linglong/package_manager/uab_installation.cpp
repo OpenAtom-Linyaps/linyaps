@@ -71,6 +71,10 @@ utils::error::Result<void> UabInstallationAction::checkUABLayersConstrain(
 
     const auto &front = layers.front().info;
     for (const auto &layer : layers) {
+        if (layer.info.arch.empty()) {
+            return LINGLONG_ERR("no architecture in uab layer info");
+        }
+
         auto arch = package::Architecture::parse(layer.info.arch[0]);
         if (!arch) {
             return LINGLONG_ERR(arch);

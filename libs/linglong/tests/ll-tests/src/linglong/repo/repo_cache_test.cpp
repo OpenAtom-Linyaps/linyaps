@@ -280,6 +280,42 @@ TEST_F(RepoCacheTest, QueryUsesRemainingFilters)
     ASSERT_EQ(byId.size(), 1);
 }
 
+TEST_F(RepoCacheTest, queryLayerItemSkipsItemsWithoutArchitectureWhenFiltering)
+{
+    auto cacheFile = tempDir.path() / "states.json";
+    RepoCache cache(cacheFile);
+
+    auto noArch = createLayerItem("c-noarch", "app.noarch", "1.0.0");
+    noArch.info.arch.clear();
+    ASSERT_TRUE(cache.addLayerItem(noArch).has_value());
+    ASSERT_TRUE(cache.addLayerItem(createLayerItem("c-arch", "app.noarch", "2.0.0")).has_value());
+
+    // filtering by architecture must skip entries without architecture instead of
+    // reading past the end of the empty arch vector
+    auto byArch = cache.queryLayerItem(repoCacheQuery{ .architecture = "x86_64" });
+    ASSERT_EQ(byArch.size(), 1);
+    EXPECT_EQ(byArch.front().commit, "c-arch");
+
+    // without the filter, the entry without architecture is still returned
+    auto all = cache.queryLayerItem(repoCacheQuery{ .id = "app.noarch" });
+    ASSERT_EQ(all.size(), 2);
+}
+
+TEST_F(RepoCacheTest, deleteLayerItemMatchesItemsWithoutArchitecture)
+{
+    auto cacheFile = tempDir.path() / "states.json";
+    RepoCache cache(cacheFile);
+
+    auto item = createLayerItem("c-del", "app.del", "1.0.0");
+    item.info.arch.clear();
+    ASSERT_TRUE(cache.addLayerItem(item).has_value());
+
+    // findMatchingItem must compare entries without architecture without
+    // dereferencing the empty arch vector
+    EXPECT_TRUE(cache.deleteLayerItem(item).has_value());
+    EXPECT_TRUE(cache.queryLayerItem(repoCacheQuery{ .id = "app.del" }).empty());
+}
+
 } // namespace
 
 } // namespace linglong::repo::test

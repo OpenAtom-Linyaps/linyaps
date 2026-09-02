@@ -6,6 +6,7 @@
 
 #include "linglong/utils/finally/finally.h"
 #include "linglong/utils/log/log.h"
+#include "linglong/utils/serialize/packageinfo_handler.h"
 
 #include <unistd.h>
 
@@ -71,6 +72,10 @@ utils::error::Result<void> UabInstallationAction::checkUABLayersConstrain(
 
     const auto &front = layers.front().info;
     for (const auto &layer : layers) {
+        if (auto idValid = utils::serialize::validatePackageId(layer.info.id); !idValid) {
+            return LINGLONG_ERR(idValid);
+        }
+
         auto arch = package::Architecture::parse(layer.info.arch[0]);
         if (!arch) {
             return LINGLONG_ERR(arch);

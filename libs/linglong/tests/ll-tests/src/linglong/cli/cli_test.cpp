@@ -71,7 +71,7 @@ public:
     MOCK_METHOD(void, printContent, (const QStringList &filePaths), (override));
     MOCK_METHOD(void, printProgress, (double percentage, const std::string &message), (override));
     MOCK_METHOD(void, printMessage, (const std::string &message), (override));
-    MOCK_METHOD(void, clearLine, (), (override));
+    MOCK_METHOD(void, finishProgress, (), (override));
 };
 
 class MockCli : public cli::Cli
@@ -329,6 +329,8 @@ TEST_F(CliTest, taskEventsDriveProgressAndTextOutput)
                                         .state = api::types::v1::State::Processing,
                                       }))));
 
+    testing::InSequence sequence;
+    EXPECT_CALL(*printer, finishProgress());
     EXPECT_CALL(*printer, printMessage("a standalone message"));
     EXPECT_TRUE(QMetaObject::invokeMethod(
       cli.get(),
@@ -340,7 +342,7 @@ TEST_F(CliTest, taskEventsDriveProgressAndTextOutput)
         QVariantMap({ { QStringLiteral("message"), QStringLiteral("a standalone message") } }))));
 }
 
-TEST_F(CliTest, taskFinishedDrivesFinalOutput)
+TEST_F(CliTest, taskFinishedLeavesOutputToCommandFlow)
 {
     EXPECT_CALL(*printer, printProgress(_, _)).Times(0);
     EXPECT_TRUE(
@@ -355,8 +357,8 @@ TEST_F(CliTest, taskFinishedDrivesFinalOutput)
                                         .state = api::types::v1::State::Succeed,
                                       }))));
 
-    EXPECT_CALL(*printer, clearLine());
-    EXPECT_CALL(*printer, printMessage("installed"));
+    EXPECT_CALL(*printer, finishProgress()).Times(0);
+    EXPECT_CALL(*printer, printMessage(_)).Times(0);
     const auto result = common::serialize::toQVariantMap(api::types::v1::CommonResult{
       .code = 0,
       .message = "installed",

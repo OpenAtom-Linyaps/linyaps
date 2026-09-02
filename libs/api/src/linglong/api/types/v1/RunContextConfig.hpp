@@ -31,6 +31,7 @@ std::optional<std::string> app;
 std::optional<std::string> base;
 std::optional<std::vector<CdiDeviceEntry>> cdiDevices;
 std::optional<std::map<std::string, std::vector<std::string>>> extensions;
+std::optional<std::vector<Mount>> hostDynamic;
 std::optional<std::string> instance;
 std::optional<std::vector<Mount>> mounts;
 std::optional<std::string> overlayfs;

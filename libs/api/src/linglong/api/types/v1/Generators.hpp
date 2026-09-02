@@ -1285,6 +1285,7 @@ x.app = get_stack_optional<std::string>(j, "app");
 x.base = get_stack_optional<std::string>(j, "base");
 x.cdiDevices = get_stack_optional<std::vector<CdiDeviceEntry>>(j, "cdiDevices");
 x.extensions = get_stack_optional<std::map<std::string, std::vector<std::string>>>(j, "extensions");
+x.hostDynamic = get_stack_optional<std::vector<Mount>>(j, "hostDynamic");
 x.instance = get_stack_optional<std::string>(j, "instance");
 x.mounts = get_stack_optional<std::vector<Mount>>(j, "mounts");
 x.overlayfs = get_stack_optional<std::string>(j, "overlayfs");
@@ -1307,6 +1308,9 @@ j["cdiDevices"] = x.cdiDevices;
 }
 if (x.extensions) {
 j["extensions"] = x.extensions;
+}
+if (x.hostDynamic) {
+j["hostDynamic"] = x.hostDynamic;
 }
 if (x.instance) {
 j["instance"] = x.instance;

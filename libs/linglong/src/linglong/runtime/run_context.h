@@ -142,6 +142,7 @@ private:
     resolveOverlayMode(std::optional<std::string> requestedMode = std::nullopt);
     utils::error::Result<void> resolveNetworkConf();
     utils::error::Result<void> resolveTimeZone();
+    void resolveHostDynamic();
 
     repo::OSTreeRepo &repo;
     std::optional<RuntimeLayer> baseLayer;

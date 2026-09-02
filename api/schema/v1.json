@@ -1563,6 +1563,12 @@
           "items": {
             "$ref": "#/$defs/Mount"
           }
+        },
+        "hostDynamic": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Mount"
+          }
         }
       }
     },

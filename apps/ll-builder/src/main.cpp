@@ -10,6 +10,7 @@
 #include "linglong/builder/linglong_builder.h"
 #include "linglong/cli/cli.h"
 #include "linglong/cli/cli_printer.h"
+#include "linglong/common/dir.h"
 #include "linglong/common/global/initialize.h"
 #include "linglong/package/architecture.h"
 #include "linglong/package/version.h"
@@ -858,7 +859,7 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     }
 
     auto canonicalYamlPath = getProjectYAMLPath(cwd, filePath);
-    if (canonicalYamlPath && canonicalYamlPath->string().rfind(cwd.string(), 0) != 0) {
+    if (canonicalYamlPath && !linglong::common::dir::isPathInDirectory(*canonicalYamlPath, cwd)) {
         LogE("the project file {} is not under the current working directory {}",
              canonicalYamlPath->string(),
              cwd.string());

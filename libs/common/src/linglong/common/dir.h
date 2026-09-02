@@ -15,6 +15,12 @@ constexpr auto containerLockPath = "/run/linglong/.lock";
 
 constexpr auto repoLockPath = "/run/linglong/lock";
 
+// Compares normalized paths lexically. Callers that need symlinks resolved must
+// pass canonical paths. Both paths must use the same absolute or relative base.
+// The directory itself is considered to be inside it.
+bool isPathInDirectory(const std::filesystem::path &path,
+                       const std::filesystem::path &directory) noexcept;
+
 std::filesystem::path getRuntimeDir() noexcept;
 
 std::filesystem::path getAppRuntimeDir(const std::string &appId) noexcept;

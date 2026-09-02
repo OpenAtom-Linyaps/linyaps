@@ -489,36 +489,69 @@ auto ContainerBuilder::normalizeContainerRootfs(
         }
     }
 
+    auto ensureMountPoint = [&](const std::string &destination,
+                                const std::string &srcType) -> utils::error::Result<void> {
+        auto destPath = std::filesystem::path(destination);
+        auto dest = rootfs / (destPath.is_absolute() ? destPath.relative_path() : destPath);
+        if (!isPathInRootfs(dest, rootfs)) {
+            return LINGLONG_ERR(
+              fmt::format("mount destination {} is outside rootfs {}", dest, rootfs));
+        }
+
+        std::error_code ec;
+        if (std::filesystem::exists(dest, ec)) {
+            const auto destIsDirectory = std::filesystem::is_directory(dest, ec);
+            if (!ec
+                && ((srcType == "file" && !destIsDirectory)
+                    || (srcType != "file" && destIsDirectory))) {
+                return LINGLONG_OK;
+            }
+
+            ec.clear();
+            std::filesystem::remove_all(dest, ec);
+            if (ec) {
+                LogW("failed to recreate mount point {}: {}", dest, ec.message());
+                return LINGLONG_OK;
+            }
+        }
+        if (srcType == "file") {
+            std::filesystem::create_directories(dest.parent_path(), ec);
+            if (ec) {
+                LogW("failed to create directories for mount point {}: {}",
+                     dest.parent_path(),
+                     ec.message());
+                return LINGLONG_OK;
+            }
+            std::ofstream(dest) << "";
+        } else {
+            std::filesystem::create_directories(dest, ec);
+            if (ec) {
+                LogW("failed to create mount point {}: {}", dest, ec.message());
+            }
+        }
+        return LINGLONG_OK;
+    };
+
     if (config.mounts) {
         for (const auto &m : *config.mounts) {
             if (!m.srcType) {
                 continue;
             }
-            auto destPath = std::filesystem::path(m.destination);
-            auto dest = rootfs / (destPath.is_absolute() ? destPath.relative_path() : destPath);
-            if (!isPathInRootfs(dest, rootfs)) {
-                return LINGLONG_ERR(
-                  fmt::format("mount destination {} is outside rootfs {}", dest, rootfs));
+            auto ret = ensureMountPoint(m.destination, *m.srcType);
+            if (!ret) {
+                return ret;
             }
+        }
+    }
 
-            std::error_code ec;
-            if (std::filesystem::exists(dest, ec)) {
+    if (config.hostDynamic) {
+        for (const auto &state : *config.hostDynamic) {
+            if (!state.srcType) {
                 continue;
             }
-            if (*m.srcType == "file") {
-                std::filesystem::create_directories(dest.parent_path(), ec);
-                if (ec) {
-                    LogW("failed to create directories for mount point {}: {}",
-                         dest.parent_path(),
-                         ec.message());
-                    continue;
-                }
-                std::ofstream(dest) << "";
-            } else {
-                std::filesystem::create_directories(dest, ec);
-                if (ec) {
-                    LogW("failed to create mount point {}: {}", dest, ec.message());
-                }
+            auto ret = ensureMountPoint(state.destination, *state.srcType);
+            if (!ret) {
+                return ret;
             }
         }
     }

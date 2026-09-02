@@ -44,6 +44,14 @@ void ensureMountSrcType(std::vector<api::types::v1::Mount> &mounts)
     }
 }
 
+std::filesystem::path zoneinfoDir()
+{
+    auto *tzdirEnv = std::getenv("TZDIR");
+    return (tzdirEnv != nullptr && tzdirEnv[0] != '\0')
+      ? std::filesystem::path(tzdirEnv)
+      : std::filesystem::path("/usr/share/zoneinfo");
+}
+
 std::optional<std::string> timezoneFromPath(const std::filesystem::path &path,
                                             const std::filesystem::path &zoneinfoRoot)
 {
@@ -559,11 +567,41 @@ utils::error::Result<void> RunContext::resolve(const api::types::v1::RunContextC
         contextCfg.cdiDevices = config.cdiDevices.value();
     }
 
-    contextCfg.overlayfs = config.overlayfs;
-    contextCfg.resolvConf = config.resolvConf;
-    contextCfg.timezone = config.timezone;
+    // the config can come from an untrusted caller, so apply the same validation
+    // the runnable-based resolve path applies to these fields
+    auto overlayRet = resolveOverlayMode(config.overlayfs);
+    if (!overlayRet) {
+        return LINGLONG_ERR("failed to resolve overlayfs mode", overlayRet);
+    }
+
+    if (config.resolvConf) {
+        if (!config.resolvConf->empty()
+            && !std::filesystem::path{ *config.resolvConf }.is_absolute()) {
+            return LINGLONG_ERR(
+              fmt::format("resolv.conf path {} is not an absolute path", *config.resolvConf));
+        }
+        contextCfg.resolvConf = config.resolvConf;
+    }
+
+    if (config.timezone) {
+        if (!config.timezone->empty()) {
+            auto zoneinfoRoot = zoneinfoDir();
+            auto timezone = timezoneFromPath(zoneinfoRoot / *config.timezone, zoneinfoRoot);
+            if (!timezone || *timezone != *config.timezone) {
+                return LINGLONG_ERR(fmt::format("timezone {} is not a zone below the zoneinfo root",
+                                                *config.timezone));
+            }
+            contextCfg.timezone = config.timezone;
+        } else {
+            contextCfg.timezone = config.timezone;
+        }
+    }
+
     contextCfg.instance = config.instance;
-    contextCfg.mounts = config.mounts;
+    if (config.mounts) {
+        contextCfg.mounts = *config.mounts;
+        ensureMountSrcType(*contextCfg.mounts);
+    }
     contextCfg.version = runContextConfigVersion;
 
     return resolveLayer(false, {});
@@ -787,10 +825,7 @@ utils::error::Result<void> RunContext::resolveTimeZone()
 {
     LINGLONG_TRACE("resolve timezone");
 
-    auto *tzdirEnv = std::getenv("TZDIR");
-    auto zoneinfoRoot = (tzdirEnv != nullptr && tzdirEnv[0] != '\0')
-      ? std::filesystem::path(tzdirEnv)
-      : std::filesystem::path("/usr/share/zoneinfo");
+    auto zoneinfoRoot = zoneinfoDir();
 
     auto localtimePath = std::filesystem::path("/etc/localtime");
     std::error_code ec;

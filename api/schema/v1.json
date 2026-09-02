@@ -1127,24 +1127,6 @@
         }
       }
     },
-    "PackageManager1JobInfo": {
-      "type": "object",
-      "description": "Get the job result using an ID",
-      "allOf": [
-        {
-          "$ref": "#/$defs/CommonResult"
-        }
-      ],
-      "required": [
-        "id"
-      ],
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "id of job info"
-        }
-      }
-    },
     "PackageManager1SearchResult": {
       "type": "object",
       "description": "result of package manager search",
@@ -1751,9 +1733,6 @@
     },
     "PackageManager1SearchParameters": {
       "$ref": "#/$defs/PackageManager1SearchParameters"
-    },
-    "PackageManager1JobInfo": {
-      "$ref": "#/$defs/PackageManager1JobInfo"
     },
     "PackageManager1SearchResult": {
       "$ref": "#/$defs/PackageManager1SearchResult"

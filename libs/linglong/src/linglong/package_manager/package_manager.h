@@ -117,10 +117,6 @@ public
     utils::error::Result<void> uninstallRefModule(const package::Reference &ref,
                                                   const std::string &module) noexcept;
 
-Q_SIGNALS:
-    void PruneFinished(QString jobID, QVariantMap result);
-    void InitRunContextFinished(QString jobID, bool success);
-
 private:
     QVariantMap installFromLayer(const QDBusUnixFileDescriptor &fd,
                                  const api::types::v1::CommonOptions &options,
@@ -141,7 +137,7 @@ private:
 
     QVariantMap updateImpl(const QVariantMap &parameters, const CallerContext &ctx) noexcept;
 
-    QVariantMap pruneImpl() noexcept;
+    QVariantMap pruneImpl(const CallerContext &ctx) noexcept;
 
     utils::error::Result<void> setConfigurationImpl(const QVariantMap &parameters) noexcept;
 

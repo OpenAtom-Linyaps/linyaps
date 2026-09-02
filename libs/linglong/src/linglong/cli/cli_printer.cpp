@@ -282,6 +282,7 @@ void CLIPrinter::printContent(const QStringList &filePaths)
 
 void CLIPrinter::printProgress(double percentage, const std::string &message)
 {
+    progressActive = true;
     auto &stdout = std::cout;
     stdout << "\r\33[K"
            << "\033[?25l" << message;
@@ -418,9 +419,15 @@ void CLIPrinter::printMessage(const std::string &message)
     std::cout << message << std::endl;
 }
 
-void CLIPrinter::clearLine()
+void CLIPrinter::finishProgress()
 {
+    if (!progressActive) {
+        return;
+    }
+
+    progressActive = false;
     std::cout << "\r\33[K";
+    std::cout.flush();
 }
 
 } // namespace linglong::cli

@@ -15,7 +15,6 @@
 #include "linglong/api/types/v1/PackageInfoDisplay.hpp"
 #include "linglong/api/types/v1/PackageInfoV2.hpp"
 #include "linglong/api/types/v1/PackageManager1InstallParameters.hpp"
-#include "linglong/api/types/v1/PackageManager1JobInfo.hpp"
 #include "linglong/api/types/v1/PackageManager1Package.hpp"
 #include "linglong/api/types/v1/PackageManager1PackageTaskResult.hpp"
 #include "linglong/api/types/v1/PackageManager1PruneResult.hpp"
@@ -889,7 +888,9 @@ void Cli::onTaskEvent(const QString &event, const QVariantMap &data)
         }
 
         taskState.state = state->state;
-        if (!globalOptions.noProgress && !isTerminalTaskState(state->state)) {
+        // Keep run-context initialization progress off the application's stdout.
+        if (taskState.taskType != TaskType::InitRunContext && !globalOptions.noProgress
+            && !isTerminalTaskState(state->state)) {
             printer.printProgress(std::clamp(state->progress, 0.0, 100.0), state->message);
         }
         return;
@@ -902,7 +903,7 @@ void Cli::onTaskEvent(const QString &event, const QVariantMap &data)
             return;
         }
 
-        printer.clearLine();
+        printer.finishProgress();
         printer.printMessage(message.toString().toStdString());
         return;
     }
@@ -917,12 +918,7 @@ void Cli::onTaskFinished(const QVariantMap &result)
     }
 
     taskFinished = true;
-    printer.clearLine();
-    if (taskState.state == api::types::v1::State::Succeed) {
-        printOnTaskSuccess(result);
-    } else {
-        printOnTaskFailed(result);
-    }
+    taskResult = result;
     Q_EMIT taskDone();
 }
 
@@ -997,102 +993,6 @@ void Cli::interaction(const QString &interactionId,
         this->printer.printErr(
           LINGLONG_ERRV(dbusReply.error().message().toStdString(), dbusReply.error().type()));
     }
-}
-
-void Cli::printOnTaskFailed(const QVariantMap &result)
-{
-    LINGLONG_TRACE("cli handle task failed");
-
-    std::string message;
-    auto errorCode = utils::error::ErrorCode::Unknown;
-    const auto resultType = result.value(QStringLiteral("type")).toString();
-    if (resultType.isEmpty()) {
-        auto parsed = common::serialize::fromQVariantMap<api::types::v1::CommonResult>(result);
-        if (parsed) {
-            errorCode = static_cast<utils::error::ErrorCode>(parsed->code);
-            message = std::move(parsed->message);
-        } else {
-            message = "invalid CommonResult task result";
-        }
-    } else {
-        message = fmt::format("unknown task result type: {}", resultType.toStdString());
-    }
-
-    auto error = LINGLONG_ERRV(message, errorCode);
-
-    switch (taskState.taskType) {
-    case TaskType::Install:
-        handleInstallError(
-          error,
-          std::get<api::types::v1::PackageManager1InstallParameters>(taskState.params));
-        break;
-    case TaskType::InstallFromFile:
-        handleInstallFromFileError(error);
-        break;
-    case TaskType::Uninstall:
-        handleUninstallError(error);
-        break;
-    case TaskType::Upgrade:
-        handleUpgradeError(error);
-        break;
-    default:
-        handleCommonError(error);
-        break;
-    }
-}
-
-void Cli::printOnTaskSuccess(const QVariantMap &result)
-{
-    if (taskState.taskType == TaskType::Search) {
-        auto parsed =
-          common::serialize::fromQVariantMap<api::types::v1::PackageManager1SearchResult>(result);
-        if (!parsed) {
-            taskState.state = api::types::v1::State::Failed;
-            this->printer.printErr(parsed.error());
-            return;
-        }
-
-        auto allPackages =
-          std::move(parsed->packages)
-            .value_or(std::map<std::string, std::vector<api::types::v1::PackageInfoV2>>{});
-        const auto &options = std::get<SearchOptions>(taskState.params);
-        if (!options.showDevel) {
-            for (auto &entry : allPackages) {
-                auto &packages = entry.second;
-                packages.erase(std::remove_if(packages.begin(),
-                                              packages.end(),
-                                              [](const api::types::v1::PackageInfoV2 &package) {
-                                                  return package.packageInfoV2Module == "develop";
-                                              }),
-                               packages.end());
-            }
-        }
-
-        if (!options.type.empty()) {
-            filterPackageInfosByType(allPackages, options.type);
-        }
-        if (!options.showAllVersion) {
-            filterPackageInfosByVersion(allPackages);
-        }
-
-        this->printer.printSearchResult(std::move(allPackages));
-        return;
-    }
-
-    std::string message;
-    const auto resultType = result.value(QStringLiteral("type")).toString();
-    if (resultType.isEmpty()) {
-        auto parsed = common::serialize::fromQVariantMap<api::types::v1::CommonResult>(result);
-        if (parsed) {
-            message = std::move(parsed->message);
-        } else {
-            message = "invalid CommonResult task result";
-        }
-    } else {
-        message = fmt::format("unknown task result type: {}", resultType.toStdString());
-    }
-
-    this->printer.printMessage(message);
 }
 
 Cli::Cli(Printer &printer,
@@ -1833,7 +1733,7 @@ int Cli::run(const RunOptions &options)
 
     auto cacheRes = this->ensureCache(*runContext);
     if (!cacheRes) {
-        this->printer.printErr(LINGLONG_ERRV(cacheRes));
+        handleCommonError(cacheRes.error());
         return -1;
     }
 
@@ -2324,17 +2224,19 @@ int Cli::installFromFile(const QFileInfo &fileInfo,
     auto pendingReply = (*pkgMan)->InstallFromFile(dbusFileDescriptor,
                                                    fileInfo.suffix(),
                                                    common::serialize::toQVariantMap(commonOptions));
-    auto res = waitTaskCreated(pendingReply, TaskType::InstallFromFile);
+    auto res = runTaskSync(pendingReply, TaskType::InstallFromFile);
     if (!res) {
         this->handleInstallFromFileError(res.error());
         return -1;
     }
 
-    waitTaskDone();
+    if (!printCommonResult(*res)) {
+        return -1;
+    }
 
     updateAM();
 
-    return this->taskState.state == linglong::api::types::v1::State::Succeed ? 0 : -1;
+    return 0;
 }
 
 int Cli::install(const InstallOptions &options)
@@ -2413,16 +2315,18 @@ int Cli::install(const InstallOptions &options)
     }
 
     auto pendingReply = (*pkgMan)->Install(common::serialize::toQVariantMap(params));
-    this->taskState.params = params;
-    auto res = waitTaskCreated(pendingReply, TaskType::Install);
+    auto res = runTaskSync(pendingReply, TaskType::Install);
     if (!res) {
         handleInstallError(res.error(), params);
         return -1;
     }
-    waitTaskDone();
+
+    if (!printCommonResult(*res)) {
+        return -1;
+    }
 
     updateAM();
-    return this->taskState.state == linglong::api::types::v1::State::Succeed ? 0 : -1;
+    return 0;
 }
 
 int Cli::upgrade(const UpgradeOptions &options)
@@ -2479,17 +2383,19 @@ int Cli::upgrade(const UpgradeOptions &options)
     }
 
     auto pendingReply = (*pkgMan)->Update(common::serialize::toQVariantMap(params));
-    auto res = waitTaskCreated(pendingReply, TaskType::Upgrade);
+    auto res = runTaskSync(pendingReply, TaskType::Upgrade);
     if (!res) {
         handleUpgradeError(res.error());
         return -1;
     }
 
-    waitTaskDone();
+    if (!printCommonResult(*res)) {
+        return -1;
+    }
 
     updateAM();
 
-    return this->taskState.state == linglong::api::types::v1::State::Succeed ? 0 : -1;
+    return 0;
 }
 
 int Cli::search(const SearchOptions &options)
@@ -2538,66 +2444,47 @@ int Cli::search(const SearchOptions &options)
         return -1;
     }
 
-    this->taskState.params = options;
     auto pendingReply = (*pkgMan)->Search(common::serialize::toQVariantMap(params));
-    auto result = waitTaskCreated(pendingReply, TaskType::Search);
+    auto result = runTaskSync(pendingReply, TaskType::Search);
     if (!result) {
-        this->printer.printErr(result.error());
+        handleCommonError(result.error());
         return -1;
     }
 
-    waitTaskDone();
-
-    return this->taskState.state == api::types::v1::State::Succeed ? 0 : -1;
+    return handleSearchResult(*result, options) ? 0 : -1;
 }
 
 int Cli::prune()
 {
     LINGLONG_TRACE("command prune");
 
-    QEventLoop loop;
-    QString jobIDReply = "";
     auto pkgMan = this->getPkgMan();
     if (!pkgMan) {
         this->printer.printErr(pkgMan.error());
         return -1;
     }
 
-    connect(*pkgMan,
-            &api::dbus::v1::PackageManager::PruneFinished,
-            [this, &loop, &jobIDReply](const QString &jobID, const QVariantMap &data) {
-                LINGLONG_TRACE("process prune result");
-                if (jobIDReply != jobID) {
-                    return;
-                }
-                auto ret =
-                  common::serialize::fromQVariantMap<api::types::v1::PackageManager1PruneResult>(
-                    data);
-                if (!ret) {
-                    this->printer.printErr(ret.error());
-                    loop.exit(-1);
-                    return;
-                }
-
-                if (!ret->packages) {
-                    this->printer.printErr(LINGLONG_ERRV("No packages to prune."));
-                    loop.exit(0);
-                    return;
-                }
-
-                this->printer.printPruneResult(*ret->packages);
-                loop.exit(0);
-            });
-
     auto pendingReply = (*pkgMan)->Prune();
-    auto result = waitDBusReply<api::types::v1::PackageManager1JobInfo>(pendingReply);
+    auto result = runTaskSync(pendingReply, TaskType::Prune);
     if (!result) {
         this->printer.printErr(result.error());
         return -1;
     }
-    jobIDReply = QString::fromStdString(result->id);
 
-    return loop.exec();
+    auto pruneResult =
+      common::serialize::fromQVariantMap<api::types::v1::PackageManager1PruneResult>(*result);
+    if (!pruneResult) {
+        this->printer.printErr(pruneResult.error());
+        return -1;
+    }
+
+    if (!pruneResult->packages) {
+        this->printer.printErr(LINGLONG_ERRV("No packages to prune."));
+        return 0;
+    }
+
+    this->printer.printPruneResult(*pruneResult->packages);
+    return 0;
 }
 
 int Cli::uninstall(const UninstallOptions &options)
@@ -2634,15 +2521,17 @@ int Cli::uninstall(const UninstallOptions &options)
     }
 
     auto pendingReply = (*pkgMan)->Uninstall(common::serialize::toQVariantMap(params));
-    auto res = waitTaskCreated(pendingReply, TaskType::Uninstall);
+    auto res = runTaskSync(pendingReply, TaskType::Uninstall);
     if (!res) {
         this->handleUninstallError(res.error());
         return -1;
     }
 
-    waitTaskDone();
+    if (!printCommonResult(*res)) {
+        return -1;
+    }
 
-    return this->taskState.state == linglong::api::types::v1::State::Succeed ? 0 : -1;
+    return 0;
 }
 
 int Cli::list(const ListOptions &options)
@@ -3389,42 +3278,18 @@ utils::error::Result<std::filesystem::path> Cli::ensureCache(runtime::RunContext
         return LINGLONG_ERR(fmt::format("failed to check {}", runContextConfigFile), ec);
     }
 
-    std::optional<QString> pendingJobID;
-    bool success = false;
-    QEventLoop loop;
     auto pkgMan = this->getPkgMan();
     if (!pkgMan) {
         return LINGLONG_ERR(pkgMan);
     }
 
-    if (QObject::connect(*pkgMan,
-                         &api::dbus::v1::PackageManager::InitRunContextFinished,
-                         &loop,
-                         [&success, &loop, &pendingJobID](const QString &taskID, bool taskSuccess) {
-                             if (!pendingJobID || taskID != pendingJobID) {
-                                 return;
-                             }
-                             success = taskSuccess;
-                             loop.quit();
-                         })
-        == nullptr) {
-        return LINGLONG_ERR("failed to connect InitRunContextFinished signal");
-    }
-
     auto cfgJson = nlohmann::json(context.getConfig()).dump();
-    auto reply = (*pkgMan)->InitRunContext(QString::fromStdString(cfgJson),
-                                           QString::fromStdString(containerID));
-    QDBusPendingReply<QVariantMap> pendingReply = reply;
-    auto resultRet = waitDBusReply<api::types::v1::PackageManager1JobInfo>(pendingReply);
-    if (!resultRet) {
-        return LINGLONG_ERR(resultRet);
-    }
-    pendingJobID = QString::fromStdString(resultRet->id);
-
-    loop.exec();
-
-    if (!success) {
-        return LINGLONG_ERR("InitRunContext failed", utils::error::ErrorCode::Failed);
+    QDBusPendingReply<QVariantMap> pendingReply =
+      (*pkgMan)->InitRunContext(QString::fromStdString(cfgJson),
+                                QString::fromStdString(containerID));
+    auto result = runTaskSync(pendingReply, TaskType::InitRunContext);
+    if (!result) {
+        return LINGLONG_ERR(result);
     }
 
     return appCache;
@@ -3565,6 +3430,7 @@ utils::error::Result<void> Cli::waitTaskCreated(QDBusPendingReply<QVariantMap> &
     this->taskState.state = linglong::api::types::v1::State::Pending;
     this->taskState.taskType = taskType;
     this->taskFinished = false;
+    this->taskResult.clear();
 
     LogD("task object path: {}", this->taskObjectPath.toStdString());
 
@@ -3604,19 +3470,48 @@ utils::error::Result<void> Cli::waitTaskCreated(QDBusPendingReply<QVariantMap> &
     return LINGLONG_OK;
 }
 
-void Cli::waitTaskDone()
+utils::error::Result<QVariantMap> Cli::waitTaskDone()
 {
+    LINGLONG_TRACE("waitTaskDone");
+
     if (!this->taskFinished) {
         QEventLoop loop;
         if (QObject::connect(this, &Cli::taskDone, &loop, &QEventLoop::quit) == nullptr) {
-            LogE("connect taskDone failed");
             task.reset();
-            return;
+            return LINGLONG_ERR("failed to connect taskDone signal");
         }
         loop.exec();
     }
 
     task.reset();
+
+    if (taskState.state == api::types::v1::State::Succeed) {
+        return taskResult;
+    }
+
+    auto result = common::serialize::fromQVariantMap<api::types::v1::CommonResult>(taskResult);
+    if (!result) {
+        return LINGLONG_ERR("failed to parse task result", result);
+    }
+
+    return LINGLONG_ERR(result->message, result->code);
+}
+
+utils::error::Result<QVariantMap> Cli::runTaskSync(QDBusPendingReply<QVariantMap> &reply,
+                                                   TaskType taskType)
+{
+    LINGLONG_TRACE("runTaskSync");
+
+    auto finishProgress = utils::finally::finally([this]() {
+        printer.finishProgress();
+    });
+
+    auto taskCreated = waitTaskCreated(reply, taskType);
+    if (!taskCreated) {
+        return LINGLONG_ERR(taskCreated);
+    }
+
+    return waitTaskDone();
 }
 
 void Cli::handleInstallError(const utils::error::Error &error,
@@ -3774,6 +3669,53 @@ bool Cli::handleCommonError(const utils::error::Error &error)
         return false;
     }
 
+    return true;
+}
+
+bool Cli::handleSearchResult(const QVariantMap &result, const SearchOptions &options)
+{
+    auto searchResult =
+      common::serialize::fromQVariantMap<api::types::v1::PackageManager1SearchResult>(result);
+    if (!searchResult) {
+        this->printer.printErr(searchResult.error());
+        return false;
+    }
+
+    auto allPackages =
+      std::move(searchResult->packages)
+        .value_or(std::map<std::string, std::vector<api::types::v1::PackageInfoV2>>{});
+    if (!options.showDevel) {
+        for (auto &entry : allPackages) {
+            auto &packages = entry.second;
+            packages.erase(std::remove_if(packages.begin(),
+                                          packages.end(),
+                                          [](const api::types::v1::PackageInfoV2 &package) {
+                                              return package.packageInfoV2Module == "develop";
+                                          }),
+                           packages.end());
+        }
+    }
+
+    if (!options.type.empty()) {
+        filterPackageInfosByType(allPackages, options.type);
+    }
+    if (!options.showAllVersion) {
+        filterPackageInfosByVersion(allPackages);
+    }
+
+    this->printer.printSearchResult(std::move(allPackages));
+    return true;
+}
+
+bool Cli::printCommonResult(const QVariantMap &result)
+{
+    auto commonResult = common::serialize::fromQVariantMap<api::types::v1::CommonResult>(result);
+    if (!commonResult) {
+        this->printer.printErr(commonResult.error());
+        return false;
+    }
+
+    this->printer.printMessage(commonResult->message);
     return true;
 }
 

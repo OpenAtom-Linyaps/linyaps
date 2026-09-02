@@ -42,7 +42,6 @@
 #include "linglong/api/types/v1/PackageManager1PackageTaskResult.hpp"
 #include "linglong/api/types/v1/PackageManager1Package.hpp"
 #include "linglong/api/types/v1/PackageManager1ModifyRepoParameters.hpp"
-#include "linglong/api/types/v1/PackageManager1JobInfo.hpp"
 #include "linglong/api/types/v1/PackageManager1InstallParameters.hpp"
 #include "linglong/api/types/v1/PackageManager1InstallParametersPacakge.hpp"
 #include "linglong/api/types/v1/PackageManager1GetRepoInfoResult.hpp"
@@ -201,9 +200,6 @@ void to_json(json & j, const PackageManager1InstallParametersPacakge & x);
 
 void from_json(const json & j, PackageManager1InstallParameters & x);
 void to_json(json & j, const PackageManager1InstallParameters & x);
-
-void from_json(const json & j, PackageManager1JobInfo & x);
-void to_json(json & j, const PackageManager1JobInfo & x);
 
 void from_json(const json & j, PackageManager1ModifyRepoParameters & x);
 void to_json(json & j, const PackageManager1ModifyRepoParameters & x);
@@ -1026,21 +1022,6 @@ j["repo"] = x.repo;
 }
 }
 
-inline void from_json(const json & j, PackageManager1JobInfo& x) {
-x.id = j.at("id").get<std::string>();
-x.code = j.at("code").get<int64_t>();
-x.message = j.at("message").get<std::string>();
-x.type = j.at("type").get<std::string>();
-}
-
-inline void to_json(json & j, const PackageManager1JobInfo & x) {
-j = json::object();
-j["id"] = x.id;
-j["code"] = x.code;
-j["message"] = x.message;
-j["type"] = x.type;
-}
-
 inline void from_json(const json & j, PackageManager1ModifyRepoParameters& x) {
 x.defaultRepo = j.at("defaultRepo").get<std::string>();
 x.repos = j.at("repos").get<std::map<std::string, std::string>>();
@@ -1478,7 +1459,6 @@ x.packageInfoV2 = get_stack_optional<PackageInfoV2>(j, "PackageInfoV2");
 x.packageManager1GetRepoInfoResult = get_stack_optional<PackageManager1GetRepoInfoResult>(j, "PackageManager1GetRepoInfoResult");
 x.packageManager1InstallLayerFDResult = get_stack_optional<CommonResult>(j, "PackageManager1InstallLayerFDResult");
 x.packageManager1InstallParameters = get_stack_optional<PackageManager1InstallParameters>(j, "PackageManager1InstallParameters");
-x.packageManager1JobInfo = get_stack_optional<PackageManager1JobInfo>(j, "PackageManager1JobInfo");
 x.packageManager1ModifyRepoParameters = get_stack_optional<PackageManager1ModifyRepoParameters>(j, "PackageManager1ModifyRepoParameters");
 x.packageManager1ModifyRepoResult = get_stack_optional<CommonResult>(j, "PackageManager1ModifyRepoResult");
 x.packageManager1Package = get_stack_optional<PackageManager1Package>(j, "PackageManager1Package");
@@ -1593,9 +1573,6 @@ j["PackageManager1InstallLayerFDResult"] = x.packageManager1InstallLayerFDResult
 }
 if (x.packageManager1InstallParameters) {
 j["PackageManager1InstallParameters"] = x.packageManager1InstallParameters;
-}
-if (x.packageManager1JobInfo) {
-j["PackageManager1JobInfo"] = x.packageManager1JobInfo;
 }
 if (x.packageManager1ModifyRepoParameters) {
 j["PackageManager1ModifyRepoParameters"] = x.packageManager1ModifyRepoParameters;

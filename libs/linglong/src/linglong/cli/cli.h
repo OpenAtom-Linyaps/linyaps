@@ -163,15 +163,16 @@ enum class TaskType : int {
     Install,
     InstallFromFile,
     Search,
+    Prune,
     Uninstall,
     Upgrade,
+    InitRunContext,
 };
 
 struct PMTaskState
 {
     linglong::api::types::v1::State state{ linglong::api::types::v1::State::Unknown };
     TaskType taskType{ TaskType::None };
-    std::variant<api::types::v1::PackageManager1InstallParameters, SearchOptions> params;
 };
 
 bool operator!=(const PMTaskState &lhs, const PMTaskState &rhs);
@@ -282,7 +283,9 @@ private:
 
     utils::error::Result<void> waitTaskCreated(QDBusPendingReply<QVariantMap> &reply,
                                                TaskType type);
-    void waitTaskDone();
+    utils::error::Result<QVariantMap> waitTaskDone();
+    utils::error::Result<QVariantMap> runTaskSync(QDBusPendingReply<QVariantMap> &reply,
+                                                  TaskType type);
 
     void handleInstallError(const utils::error::Error &error,
                             const api::types::v1::PackageManager1InstallParameters &params);
@@ -290,8 +293,8 @@ private:
     void handleUninstallError(const utils::error::Error &error);
     void handleUpgradeError(const utils::error::Error &error);
     bool handleCommonError(const utils::error::Error &error);
-    void printOnTaskFailed(const QVariantMap &result);
-    void printOnTaskSuccess(const QVariantMap &result);
+    bool handleSearchResult(const QVariantMap &result, const SearchOptions &options);
+    bool printCommonResult(const QVariantMap &result);
 
 private Q_SLOTS:
     void onTaskEvent(const QString &event, const QVariantMap &data);
@@ -315,6 +318,7 @@ private:
     std::unique_ptr<api::dbus::v1::Task1> task;
     PMTaskState taskState;
     bool taskFinished{ false };
+    QVariantMap taskResult;
     GlobalOptions globalOptions;
 };
 

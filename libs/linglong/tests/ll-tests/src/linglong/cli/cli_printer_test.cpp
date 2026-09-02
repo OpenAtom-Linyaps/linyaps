@@ -299,13 +299,20 @@ TEST(CLIPrinter, PrintDepends)
     EXPECT_THAT(out, ::testing::HasSubstr("runtime"));
 }
 
-TEST(CLIPrinter, PrintMessageAndClearLine)
+TEST(CLIPrinter, FinishProgressClearsOnlyAnActiveProgressLine)
 {
     CaptureStdout capture;
     linglong::cli::CLIPrinter printer;
-    printer.printMessage("hello world");
-    printer.clearLine();
-    EXPECT_THAT(capture.str(), ::testing::HasSubstr("hello world"));
+    printer.finishProgress();
+    EXPECT_TRUE(capture.str().empty());
+
+    printer.printProgress(42.5, "downloading");
+    printer.finishProgress();
+    const auto output = capture.str();
+    EXPECT_THAT(output, ::testing::EndsWith("\r\33[K"));
+
+    printer.finishProgress();
+    EXPECT_EQ(capture.str(), output);
 }
 
 // ---------------------------------------------------------------- JSONPrinter

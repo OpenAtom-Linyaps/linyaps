@@ -10,7 +10,6 @@
 #include "linglong/api/types/helper.h"
 #include "linglong/api/types/v1/Generators.hpp" // IWYU pragma: keep
 #include "linglong/api/types/v1/PackageInfoV2.hpp"
-#include "linglong/api/types/v1/PackageManager1JobInfo.hpp"
 #include "linglong/api/types/v1/PackageManager1PruneResult.hpp"
 #include "linglong/api/types/v1/Repo.hpp"
 #include "linglong/api/types/v1/RunContextConfig.hpp"
@@ -1685,47 +1684,50 @@ auto PackageManager::Prune() noexcept -> QVariantMap
                   return;
               }
 
-              auto result = pruneImpl();
+              auto result = pruneImpl(CallerContext{ conn, msg });
               conn.send(msg.createReply(result));
           });
         return {};
     }
 
-    return pruneImpl();
+    return pruneImpl(CallerContext{ connection(), message() });
 }
 
-QVariantMap PackageManager::pruneImpl() noexcept
+QVariantMap PackageManager::pruneImpl(const CallerContext &ctx) noexcept
 {
-    auto task = tasks.addTask([this](Task &task) {
-        std::vector<api::types::v1::PackageInfoV2> pkgs;
-        auto ret = Prune(pkgs);
-        if (!ret.has_value()) {
-            Q_EMIT PruneFinished(QString::fromStdString(task.taskID()), toDBusReply(ret));
-            task.reportError(std::move(ret).error());
-            return;
-        }
+    auto task = tasks.addPackageTask(
+      [this](Task &task) {
+          task.updateState(linglong::api::types::v1::State::Processing, "pruning");
 
-        auto result = api::types::v1::PackageManager1PruneResult{
-            .packages = pkgs,
-            .code = static_cast<int64_t>(utils::error::ErrorCode::Success),
-            .message = "",
-        };
-        Q_EMIT PruneFinished(QString::fromStdString(task.taskID()),
-                             common::serialize::toQVariantMap(result));
-        task.updateState(linglong::api::types::v1::State::Succeed, "prune");
-    });
+          std::vector<api::types::v1::PackageInfoV2> pkgs;
+          auto ret = Prune(pkgs);
+          if (!ret.has_value()) {
+              task.reportError(std::move(ret).error());
+              return;
+          }
+
+          auto &packageTask = dynamic_cast<PackageTask &>(task);
+          packageTask.setResult(
+            common::serialize::toQVariantMap(api::types::v1::PackageManager1PruneResult{
+              .packages = pkgs,
+              .code = static_cast<int64_t>(utils::error::ErrorCode::Success),
+              .message = "",
+              .type = "PackageManager1PruneResult",
+            }));
+          task.updateState(linglong::api::types::v1::State::Succeed, "prune");
+      },
+      ctx);
     if (!task) {
         return toDBusReply(task);
     }
 
     auto &taskRef = task->get();
-    taskRef.updateState(linglong::api::types::v1::State::Queued, "prune");
-    auto result = common::serialize::toQVariantMap(api::types::v1::PackageManager1JobInfo{
-      .id = taskRef.taskID(),
+    taskRef.updateState(linglong::api::types::v1::State::Pending, "waiting to prune");
+    return common::serialize::toQVariantMap(api::types::v1::PackageManager1PackageTaskResult{
+      .taskObjectPath = taskRef.taskObjectPath(),
       .code = 0,
-      .message = "",
+      .message = "prune task is pending",
     });
-    return result;
 }
 
 utils::error::Result<void>
@@ -1909,19 +1911,17 @@ auto PackageManager::InitRunContext(const QString &runContextCfg,
 
           auto namespaceRet = utils::needRunInNamespace();
           if (!namespaceRet) {
-              Q_EMIT InitRunContextFinished(QString::fromStdString(task.taskID()), false);
               task.reportError(std::move(namespaceRet).error());
               return;
           }
 
-          std::optional<utils::error::Error> err;
           auto selfExe = utils::getSelfExe();
           if (!selfExe) {
-              Q_EMIT InitRunContextFinished(QString::fromStdString(task.taskID()), false);
               task.reportError(std::move(selfExe).error());
               return;
           }
 
+          std::optional<utils::error::Error> err;
           if (*namespaceRet) {
               std::vector<std::string> args{ std::move(*selfExe),
                                              "--init-run",
@@ -1950,22 +1950,21 @@ auto PackageManager::InitRunContext(const QString &runContextCfg,
           }
 
           if (err) {
-              Q_EMIT InitRunContextFinished(QString::fromStdString(task.taskID()), false);
               task.reportError(std::move(*err));
               return;
           }
 
-          Q_EMIT InitRunContextFinished(QString::fromStdString(task.taskID()), true);
           task.updateState(linglong::api::types::v1::State::Succeed, "InitRunContext succeed");
-      });
+      },
+      CallerContext{ connection(), message() });
     if (!task) {
         return toDBusReply(task);
     }
 
     auto &taskRef = task->get();
-    taskRef.updateState(linglong::api::types::v1::State::Queued, "InitRunContext");
-    return common::serialize::toQVariantMap(api::types::v1::PackageManager1JobInfo{
-      .id = taskRef.taskID(),
+    taskRef.updateState(linglong::api::types::v1::State::Pending, "InitRunContext");
+    return common::serialize::toQVariantMap(api::types::v1::PackageManager1PackageTaskResult{
+      .taskObjectPath = taskRef.taskObjectPath(),
       .code = 0,
       .message = "InitRunContext queued",
     });

@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 Yanghanrui666
+#
+# SPDX-License-Identifier: LGPL-3.0-or-later
 """RPM 包解析：纯标准库实现（lead + header + cpio newc payload），零外部依赖。
 
 RPM 文件结构：

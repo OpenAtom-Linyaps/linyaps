@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 Yanghanrui666
+#
+# SPDX-License-Identifier: LGPL-3.0-or-later
 """如意玲珑应用迁移助手 - 后端入口。
 
 启动: uvicorn app.main:app --reload --port 8000

@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 Yanghanrui666
+#
+# SPDX-License-Identifier: LGPL-3.0-or-later
 """deb 包解析：纯标准库实现（ar 归档 + tar），零外部依赖。
 
 结构参考 Debian .deb 规范：

@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 Yanghanrui666
+#
+# SPDX-License-Identifier: LGPL-3.0-or-later
 """API 路由：分析、导出、会话缓存。"""
 from __future__ import annotations
 

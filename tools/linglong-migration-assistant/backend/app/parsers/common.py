@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 Yanghanrui666
+#
+# SPDX-License-Identifier: LGPL-3.0-or-later
 """解析层公共结构：统一的解析结果与格式探测。"""
 from __future__ import annotations
 

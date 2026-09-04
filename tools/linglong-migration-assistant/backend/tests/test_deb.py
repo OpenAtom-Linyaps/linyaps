@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 Yanghanrui666
+#
+# SPDX-License-Identifier: LGPL-3.0-or-later
 """deb 解析与依赖分类测试（使用真实样本包）。"""
 import pytest
 

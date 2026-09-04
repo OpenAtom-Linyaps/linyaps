@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 Yanghanrui666
+#
+# SPDX-License-Identifier: LGPL-3.0-or-later
 """包分析器：元信息归一化、依赖归属、迁移检查清单、linglong.yaml 建议字段。"""
 from __future__ import annotations
 

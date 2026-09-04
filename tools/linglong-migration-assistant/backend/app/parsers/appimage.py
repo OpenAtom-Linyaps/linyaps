@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 Yanghanrui666
+#
+# SPDX-License-Identifier: LGPL-3.0-or-later
 """AppImage 解析：尽力而为。
 
 - 定位 ELF + squashfs 魔数（hsqs）

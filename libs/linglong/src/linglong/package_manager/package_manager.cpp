@@ -1397,10 +1397,13 @@ utils::error::Result<void> PackageManager::uninstallRef(
          common::strings::join(modules.value(), ','));
 
     std::optional<utils::error::Error> firstError;
+    std::vector<std::string> failures;
     for (const auto &module : modules.value()) {
         auto res = uninstallRefModule(ref, module);
         if (!res) {
-            LogW(fmt::format("failed to uninstall {}/{}: {}", ref.toString(), module, res.error()));
+            auto message = res.error().message();
+            LogW(fmt::format("failed to uninstall {}/{}: {}", ref.toString(), module, message));
+            failures.emplace_back(fmt::format("{}: {}", module, message));
             if (!firstError) {
                 firstError = std::move(res).error();
             }
@@ -1408,7 +1411,17 @@ utils::error::Result<void> PackageManager::uninstallRef(
         }
     }
     if (firstError) {
-        return LINGLONG_ERR(std::move(*firstError));
+        auto merged = repo->mergeModules();
+        if (!merged) {
+            LogW("failed to merge modules after uninstalling {}: {}",
+                 ref.toString(),
+                 merged.error());
+        }
+
+        return LINGLONG_ERR(fmt::format("failed to uninstall {} modules: {}",
+                                        ref.toString(),
+                                        common::strings::join(failures, '\n')),
+                            std::move(*firstError));
     }
 
     return LINGLONG_OK;

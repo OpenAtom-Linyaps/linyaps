@@ -1,0 +1,7 @@
+fastapi>=0.115
+uvicorn[standard]>=0.30
+python-multipart>=0.0.9
+PyYAML>=6.0
+zstandard>=0.22
+pytest>=8.0
+httpx>=0.27

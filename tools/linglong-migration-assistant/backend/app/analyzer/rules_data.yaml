@@ -1,0 +1,158 @@
+# 依赖归属规则库
+# level 说明：
+#   base    - 大概率由玲珑 base（org.deepin.base/23.1.0）提供，无需处理
+#   runtime - 大概率由玲珑 runtime（org.deepin.runtime.dtk/23.1.0）提供，建议声明 runtime
+#   bundled - 需要随应用自带（生成安装脚本收集进 $PREFIX）
+#
+# 匹配方式：先精确匹配 exact，再按前缀匹配 prefixes。
+# 本规则库为启发式起点，欢迎按实际构建结果扩充。
+
+base:
+  exact:
+    - libc6
+    - libc-bin
+    - libgcc-s1
+    - libstdc++6
+    - zlib1g
+    - libbz2-1.0
+    - liblzma5
+    - libzstd1
+    - libssl3
+    - libssl3t64
+    - libpcre3
+    - libpcre2-8-0
+    - libpcre2-16-0
+    - libpcre2-32-0
+    - libselinux1
+    - libcom-err2
+    - libkrb5-3
+    - libk5crypto3
+    - libkeyutils1
+    - libgssapi-krb5-2
+    - libidn2-0
+    - libunistring2
+    - libudev1
+    - libsystemd0
+    - systemd
+    - util-linux
+    - coreutils
+    - bash
+    - dash
+    - grep
+    - sed
+    - gawk
+    - tar
+    - gzip
+    - xz-utils
+    - bzip2
+    - file
+    - findutils
+    - procps
+    - mount
+    - dpkg
+    - perl-base
+    - lsb-base
+    - init-system-helpers
+    - multiarch-support
+  prefixes:
+    - libc
+    - libgcc
+    - libstdc++
+    - libssl
+    - libcrypto
+    - libzstd
+    - liblzma
+    - libbz2
+    - libpcre
+    - libncurses
+    - libtinfo
+
+runtime:
+  exact:
+    - libqt5core5a
+    - libqt5gui5
+    - libqt5widgets5
+    - libqt5network5
+    - libqt5dbus5
+    - libqt5svg5
+    - libqt5xml5
+    - libqt5concurrent5
+    - libqt5printsupport5
+    - libqt5multimedia5
+    - libqt5multimediawidgets5
+    - libqt5webenginewidgets5
+    - libqt5webchannel5
+    - libqt5positioning5
+    - libqt5quick5
+    - libqt5qml5
+    - libqt5sql5
+    - libqt5test5
+    - libdtkcore5
+    - libdtkgui5
+    - libdtkwidget5
+    - libdtkcore6
+    - libdtkgui6
+    - libdtkwidget6
+    - libqt5xdg3
+    - libqt5xdgiconloader3
+    - libglib2.0-0
+    - libglib2.0-0t64
+    - libgobject-2.0-0
+    - libgio-2.0-0
+    - libgtk-3-0
+    - libgdk-pixbuf-2.0-0
+    - libcairo2
+    - libpango-1.0-0
+    - libpangocairo-1.0-0
+    - libharfbuzz0b
+    - libfreetype6
+    - libfontconfig1
+    - libpng16-16
+    - libjpeg62-turbo
+    - libwebp7
+    - libicu72
+    - libxml2
+    - libx11-6
+    - libxext6
+    - libxcb1
+    - libxrender1
+    - libxrandr2
+    - libxi6
+    - libxcursor1
+    - libxinerama1
+    - libxkbcommon0
+    - libwayland-client0
+    - libwayland-cursor0
+  prefixes:
+    - libqt5
+    - libqt6
+    - libdtk
+    - dtk
+    - dde-
+    - deepin-
+    - libdde
+    - libglib
+    - libgobject
+    - libgio
+    - libgtk
+    - libgdk
+    - libcairo
+    - libpango
+    - libharfbuzz
+    - libfreetype
+    - libfontconfig
+    - libpng
+    - libjpeg
+    - libwebp
+    - libicu
+    - libx11
+    - libxcb
+    - libxkb
+    - libxrender
+    - libxrandr
+    - libxi
+    - libxcursor
+    - libxinerama
+    - libwayland
+    - qtwayland5
+    - qt6-

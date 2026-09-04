@@ -9,6 +9,7 @@
 #include "linglong/package_manager/package_manager.h"
 
 #include <QByteArray>
+#include <QCoreApplication>
 #include <QTimer>
 
 namespace {
@@ -35,6 +36,8 @@ protected:
 
     static int timerIntervalFor(const QByteArray &value)
     {
+        int argc = 0;
+        QCoreApplication app(argc, nullptr);
         qputenv("LINGLONG_DEFERRED_TIMEOUT", value);
         PackageManager manager{ nullptr, nullptr, nullptr };
         manager.initDaemonMode();

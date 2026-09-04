@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
+ * SPDX-FileCopyrightText: 2023-2026 UnionTech Software Technology Co., Ltd.
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
@@ -41,10 +41,16 @@ bool Cmd::exists() noexcept
 
 std::filesystem::path Cmd::getCommandPath()
 {
-    // Check if command is an absolute path
     std::error_code ec;
+    auto isExecutableRegularFile = [&ec](const std::filesystem::path &candidate) {
+        ec.clear();
+        return std::filesystem::is_regular_file(candidate, ec) && !ec
+          && ::access(candidate.c_str(), X_OK) == 0;
+    };
+
+    // Check if command is an absolute path
     std::filesystem::path path{ m_command };
-    if (path.is_absolute() && std::filesystem::exists(path, ec)) {
+    if (path.is_absolute() && isExecutableRegularFile(path)) {
         return path;
     }
 
@@ -60,8 +66,7 @@ std::filesystem::path Cmd::getCommandPath()
 
     for (const auto &pathDir : pathDirs) {
         std::filesystem::path fullPath = std::filesystem::path{ pathDir } / m_command;
-        if (std::filesystem::exists(fullPath, ec)
-            && std::filesystem::is_regular_file(fullPath, ec)) {
+        if (isExecutableRegularFile(fullPath)) {
             return fullPath;
         }
     }

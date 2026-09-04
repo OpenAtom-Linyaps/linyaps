@@ -7,8 +7,10 @@
 # shellcheck shell=sh
 
 # Profile.d script for linglong/linyaps
-# This script sources the XDG_DATA_DIRS generation script and exports
-# the modified XDG_DATA_DIRS environment variable for user sessions.
+# This script sources the XDG_DATA_DIRS generation script, exporting the
+# modified XDG_DATA_DIRS environment variable for user sessions.
+# PATH injection for entries/bin is handled by the systemd environment
+# generator (61-linglong), which covers both X11 and Wayland sessions.
 
 source_script="@CMAKE_INSTALL_PREFIX@/lib/linglong/generate-xdg-data-dirs.sh"
 

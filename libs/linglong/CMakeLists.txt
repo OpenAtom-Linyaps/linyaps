@@ -72,6 +72,8 @@ pfl_add_library(
   src/linglong/package_manager/package_task.h
   src/linglong/package_manager/package_update.cpp
   src/linglong/package_manager/package_update.h
+ src/linglong/package_manager/export_binary_action.cpp
+ src/linglong/package_manager/export_binary_action.h
   src/linglong/package_manager/polkit_authority.cpp
   src/linglong/package_manager/polkit_authority.h
   src/linglong/package_manager/ref_installation.cpp
@@ -93,6 +95,8 @@ pfl_add_library(
   src/linglong/package/versionv1.h
   src/linglong/package/versionv2.cpp
   src/linglong/package/versionv2.h
+  src/linglong/package/utils.cpp
+  src/linglong/package/utils.h
   src/linglong/repo/client_factory.cpp
   src/linglong/repo/client_factory.h
   src/linglong/repo/config.cpp

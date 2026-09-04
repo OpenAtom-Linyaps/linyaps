@@ -184,4 +184,18 @@
 		<description xml:lang="zh_TW">修改套件管理員設定</description>
 		<message xml:lang="zh_TW">修改套件管理員設定需要進行身分驗證</message>
 	</action>
+	<action id="org.deepin.linglong.PackageManager1.export-binary">
+		<description>Export binary aliases</description>
+		<message>Authentication is required to export binary aliases</message>
+		<defaults>
+			<allow_any>auth_admin</allow_any>
+			<allow_inactive>auth_admin</allow_inactive>
+			<allow_active>auth_admin</allow_active>
+		</defaults>
+		<annotate key="org.freedesktop.policykit.owner">unix-user:@LINGLONG_USERNAME@</annotate>
+		<description xml:lang="en_US">Export binary aliases</description>
+		<message xml:lang="en_US">Authentication is required to export binary aliases</message>
+		<description xml:lang="zh_CN">导出二进制别名</description>
+		<message xml:lang="zh_CN">导出二进制别名需要认证</message>
+	</action>
 </policyconfig>

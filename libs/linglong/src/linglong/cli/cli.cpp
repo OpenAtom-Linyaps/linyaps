@@ -237,6 +237,7 @@ linglong::utils::error::Result<linglong::utils::fd::UniqueFd> acceptConsoleFd(in
             auto fd = waitRet->events[i].data.fd;
             if (fd == signalFd) {
                 struct signalfd_siginfo info{};
+
                 const auto n = ::read(signalFd, &info, sizeof(info));
                 if (n == sizeof(info) && info.ssi_signo == SIGCHLD) {
                     return LINGLONG_ERR("runtime child exited before console connection");
@@ -245,6 +246,7 @@ linglong::utils::error::Result<linglong::utils::fd::UniqueFd> acceptConsoleFd(in
             }
 
             struct sockaddr_un clientAddr{};
+
             socklen_t addrLen = sizeof(clientAddr);
             auto client = ::accept4(listenFd,
                                     reinterpret_cast<struct sockaddr *>(&clientAddr),
@@ -264,6 +266,7 @@ linglong::utils::error::Result<linglong::utils::fd::UniqueFd> acceptConsoleFd(in
             }
 
             struct stat buf{};
+
             if (::fstat(data->fd, &buf) != 0 || !S_ISCHR(buf.st_mode)) {
                 return LINGLONG_ERR("received fd is not a character device");
             }
@@ -1373,6 +1376,7 @@ utils::error::Result<int> Cli::reuseContainer(const std::string &id,
         termGuard = std::move(*termRet);
 
         struct winsize ws{};
+
         bool wsSet = false;
         if (::ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == 0 && ws.ws_col > 0 && ws.ws_row > 0) {
             wsSet = ::ioctl(masterIn.get(), TIOCSWINSZ, &ws) == 0;
@@ -3007,6 +3011,37 @@ int Cli::setRepoConfig(const QVariantMap &config)
         this->printer.printErr(err);
         return -1;
     }
+    return 0;
+}
+
+int Cli::alias(const AliasOptions &options)
+{
+    LINGLONG_TRACE("command alias");
+
+    auto pkgMan = this->getPkgMan();
+    if (!pkgMan) {
+        this->printer.printErr(pkgMan.error());
+        return -1;
+    }
+
+    // scriptName is the positional NAME (the script filename to create).
+    // commandName is --command if specified, otherwise NAME (the value to match
+    // against exportedBinaries in info.json).
+    const auto &scriptName = options.name;
+    std::string commandName = options.command.empty() ? options.name : options.command;
+
+    auto reply = (*pkgMan)->ExportBinary(QString::fromStdString(options.from),
+                                         QString::fromStdString(scriptName),
+                                         QString::fromStdString(commandName));
+    reply.waitForFinished();
+    if (reply.isError()) {
+        auto err = LINGLONG_ERRV(reply.error().message().toStdString());
+        this->printer.printErr(err);
+        return -1;
+    }
+
+    this->printer.printMessage(
+      fmt::format("alias '{}' created for app '{}'", scriptName, options.from));
     return 0;
 }
 

@@ -18,6 +18,7 @@
 #include "linglong/package/layer_packager.h"
 #include "linglong/package/reference.h"
 #include "linglong/package/uab_packager.h"
+#include "linglong/package/utils.h"
 #include "linglong/repo/config.h"
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/runtime/container.h"
@@ -446,6 +447,16 @@ utils::error::Result<void> Builder::buildStagePrepare() noexcept
     if (this->project->package.kind == "app") {
         if (project->command.value_or(std::vector<std::string>{}).empty()) {
             return LINGLONG_ERR("command field is required, please specify!");
+        }
+
+        // Validate exportedBinaries names if present
+        if (project->exportedBinaries) {
+            for (const auto &name : *project->exportedBinaries) {
+                auto result = package::validateExecutableName(name);
+                if (!result) {
+                    return LINGLONG_ERR(result);
+                }
+            }
         }
         installPrefix = "/opt/apps/" + this->project->package.id + "/files";
     } else if (this->project->package.kind == "runtime") {
@@ -1281,6 +1292,7 @@ utils::error::Result<void> Builder::commitToLocalRepo() noexcept
         .channel = projectRef->channel,
         .command = project.command,
         .description = project.package.description,
+        .exportedBinaries = project.exportedBinaries,
         .id = project.package.id,
         .kind = project.package.kind,
         .name = project.package.name,

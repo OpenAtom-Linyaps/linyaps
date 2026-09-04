@@ -569,6 +569,27 @@ void addInspectCommand(CLI::App &commandParser,
       ->check(validatorString);
 }
 
+// Function to add the alias subcommand
+void addAliasCommand(CLI::App &commandParser, AliasOptions &aliasOptions, const std::string &group)
+{
+    auto *cliAlias =
+      commandParser
+        .add_subcommand("alias", _("Export a binary script for an installed application"))
+        ->fallthrough()
+        ->group(group);
+    cliAlias->usage(_("Usage: ll-cli alias [OPTIONS] NAME --from=APPID [--command=COMMAND]"));
+    cliAlias->add_option("NAME", aliasOptions.name, _("The binary name to create"))
+      ->required()
+      ->check(validatorString);
+    cliAlias->add_option("--from", aliasOptions.from, _("The source application ID"))
+      ->required()
+      ->check(validatorString);
+    cliAlias
+      ->add_option("--command",
+                   aliasOptions.command,
+                   _("The command name to match in exportedBinaries (defaults to NAME)"))
+      ->check(validatorString);
+}
 } // namespace
 
 int runCliApplication(int argc, char **mainArgv)
@@ -630,6 +651,7 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     ContentOptions contentOptions{};
     linglong::common::cli::RepoOptions repoOptions{};
     InspectOptions inspectOptions{};
+    AliasOptions aliasOptions{};
 
     // groups for subcommands
     auto *CliBuildInGroup = _("Managing installed applications and runtimes");
@@ -657,6 +679,7 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     addContentCommand(commandParser, contentOptions, CliBuildInGroup);
     addPruneCommand(commandParser, CliAppManagingGroup);
     addInspectCommand(commandParser, inspectOptions, CliHiddenGroup);
+    addAliasCommand(commandParser, aliasOptions, CliBuildInGroup);
 
     auto res = transformOldExec(argc, argv);
     CLI11_PARSE(commandParser, std::move(res));
@@ -809,6 +832,8 @@ You can report bugs to the linyaps team under this project: https://github.com/O
         result = cli->inspect(*ret, inspectOptions);
     } else if (name == "repo") {
         result = cli->repo(*ret, repoOptions);
+    } else if (name == "alias") {
+        result = cli->alias(aliasOptions);
     } else {
         // if subcommand name is not found, print help
         std::cout << commandParser.help("", CLI::AppFormatMode::All);

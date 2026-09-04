@@ -23,6 +23,7 @@
 #include "linglong/package/layer_file.h"
 #include "linglong/package/layer_packager.h"
 #include "linglong/package/reference.h"
+#include "linglong/package_manager/export_binary_action.h"
 #include "linglong/package_manager/package_task.h"
 #include "linglong/package_manager/package_update.h"
 #include "linglong/package_manager/polkit_authority.h"
@@ -151,6 +152,7 @@ utils::error::Result<std::filesystem::path> PackageManager::copyToStaging(int so
     });
 
     struct stat sourceStat{};
+
     if (::fstat(sourceFD, &sourceStat) == -1) {
         return LINGLONG_ERR(
           fmt::format("failed to stat source file: {}", common::error::errorString(errno)));
@@ -629,6 +631,67 @@ PackageManager::setConfigurationImpl(const QVariantMap &parameters) noexcept
     }
 
     return LINGLONG_OK;
+}
+
+QVariantMap PackageManager::ExportBinary(const QString &appID,
+                                         const QString &scriptName,
+                                         const QString &commandName) noexcept
+{
+    LogI("Export binary alias {} (command {}) for app {}",
+         scriptName.toStdString(),
+         commandName.toStdString(),
+         appID.toStdString());
+
+    if (!daemonModeInitialized) {
+        return toDBusReply(utils::error::ErrorCode::Failed, "daemon mode not initialized");
+    }
+
+    if (!m_peerMode) {
+        auto msg = message();
+        auto conn = connection();
+        setDelayedReply(true);
+
+        CallerContext ctx{ conn, msg };
+
+        checkPolkitAuthorizationAsync(
+          "org.deepin.linglong.PackageManager1.export-binary",
+          msg.service().toStdString(),
+          [this, appID, scriptName, commandName, ctx](utils::error::Result<void> authResult) {
+              if (!authResult) {
+                  ctx.connection.send(ctx.message.createErrorReply(
+                    QDBusError::AccessDenied,
+                    QString::fromStdString(authResult.error().message())));
+                  return;
+              }
+
+              auto result = exportBinaryImpl(appID, scriptName, commandName, ctx);
+              ctx.connection.send(ctx.message.createReply(result));
+          });
+        return {};
+    }
+
+    return exportBinaryImpl(appID,
+                            scriptName,
+                            commandName,
+                            CallerContext{ connection(), message() });
+}
+
+QVariantMap PackageManager::exportBinaryImpl(const QString &appID,
+                                             const QString &scriptName,
+                                             const QString &commandName,
+                                             const CallerContext &ctx) noexcept
+{
+    auto action = ExportBinaryAction::create(appID.toStdString(),
+                                             scriptName.toStdString(),
+                                             commandName.toStdString(),
+                                             *this,
+                                             *repo);
+    if (!action) {
+        return toDBusReply(utils::error::ErrorCode::Failed,
+                           "failed to create export binary action");
+    }
+
+    return runActionOnTaskQueue(action, ctx);
 }
 
 QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,

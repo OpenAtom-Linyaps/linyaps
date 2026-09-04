@@ -19,6 +19,7 @@
 #include "linglong/package/fuzzy_reference.h"
 #include "linglong/package/layer_dir.h"
 #include "linglong/package/reference.h"
+#include "linglong/package/utils.h"
 #include "linglong/package_manager/package_task.h"
 #include "linglong/repo/config.h"
 #include "linglong/utils/cmd.h"
@@ -47,6 +48,7 @@
 #include <QtGlobal>
 
 #include <algorithm>
+#include <cerrno>
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
@@ -65,6 +67,7 @@
 #include <vector>
 
 #include <fcntl.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 namespace linglong::repo {
@@ -1808,6 +1811,49 @@ OSTreeRepo::unexportAppEntries(const std::filesystem::path &rootEntriesDir,
         }
     }
 
+    // Clean up binary wrapper scripts in entries/bin for each app layer
+    for (const auto &layerPath : layerDirs) {
+        package::LayerDir layerDir(layerPath);
+        auto infoResult = layerDir.info();
+        if (!infoResult) {
+            LogW("Failed to read info from {}: {}",
+                 layerPath.string(),
+                 infoResult.error().message());
+            continue;
+        }
+
+        auto binDir = rootEntriesDir / "bin";
+        // Remove the default appid-named script
+        auto defaultScript = binDir / infoResult->id;
+        std::error_code ec;
+        if (std::filesystem::exists(defaultScript, ec)) {
+            std::filesystem::remove(defaultScript, ec);
+            if (ec) {
+                LogW("Failed to remove {}: {}", defaultScript.string(), ec.message());
+            }
+        }
+
+        // Remove scripts for each exportedBinaries entry
+        if (infoResult->exportedBinaries) {
+            for (const auto &name : *infoResult->exportedBinaries) {
+                auto nameValidation = package::validateExecutableName(name);
+                if (!nameValidation) {
+                    LogW("Skipping invalid executable name '{}' during unexport: {}",
+                         name,
+                         nameValidation.error().message());
+                    continue;
+                }
+                auto scriptPath = binDir / name;
+                if (std::filesystem::exists(scriptPath, ec)) {
+                    std::filesystem::remove(scriptPath, ec);
+                    if (ec) {
+                        LogW("Failed to remove {}: {}", scriptPath.string(), ec.message());
+                    }
+                }
+            }
+        }
+    }
+
     this->updateSharedInfo();
 
     std::function<void(const QString &path)> removeEmptySubdirectories =
@@ -2238,7 +2284,184 @@ OSTreeRepo::exportAppEntries(const std::filesystem::path &rootEntriesDir,
             return ret;
         }
     }
+
+    // Export binary wrapper scripts to entries/bin
+    auto binRet = this->exportAppBinaries(rootEntriesDir, item);
+    if (!binRet) {
+        return binRet;
+    }
     return LINGLONG_OK;
+}
+
+namespace {
+// Create an executable shell script at path using O_EXCL (atomic creation, prevents TOCTOU).
+// Content: #!/bin/sh\nexec ll-cli run <appID> -- <command0> "$@"
+utils::error::Result<void> createBinaryWrapperScript(const std::filesystem::path &path,
+                                                     const std::string &appID,
+                                                     const std::string &command0) noexcept
+{
+    LINGLONG_TRACE(fmt::format("create binary wrapper script {}", path.string()));
+
+    auto dir = path.parent_path();
+    std::error_code ec;
+    std::filesystem::create_directories(dir, ec);
+    if (ec) {
+        return LINGLONG_ERR(
+          fmt::format("create directories for {}: {}", path.string(), ec.message()));
+    }
+
+    // O_EXCL: fail if file already exists — atomic creation prevents TOCTOU
+    int fd = ::open(path.c_str(), O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, 0755);
+    if (fd < 0) {
+        return LINGLONG_ERR(
+          fmt::format("open {} with O_EXCL: {}", path.string(), std::strerror(errno)));
+    }
+
+    std::string content =
+      fmt::format("#!/bin/sh\nexec ll-cli run {} -- '{}' \"$@\"\n", appID, command0);
+
+    // fchmod ensures executable bit regardless of process umask
+    if (::fchmod(fd, 0755) != 0) {
+        ::close(fd);
+        std::error_code rmEc;
+        std::filesystem::remove(path, rmEc);
+        return LINGLONG_ERR(fmt::format("fchmod {}: {}", path.string(), std::strerror(errno)));
+    }
+
+    ssize_t written = ::write(fd, content.data(), content.size());
+    if (written < 0) {
+        ::close(fd);
+        std::error_code rmEc;
+        std::filesystem::remove(path, rmEc);
+        return LINGLONG_ERR(fmt::format("write to {}: {}", path.string(), std::strerror(errno)));
+    }
+    if (static_cast<size_t>(written) != content.size()) {
+        ::close(fd);
+        std::error_code rmEc;
+        std::filesystem::remove(path, rmEc);
+        return LINGLONG_ERR(fmt::format("partial write to {}", path.string()));
+    }
+
+    if (::close(fd) != 0) {
+        std::error_code rmEc;
+        std::filesystem::remove(path, rmEc);
+        return LINGLONG_ERR(fmt::format("close {}: {}", path.string(), std::strerror(errno)));
+    }
+
+    return LINGLONG_OK;
+}
+} // namespace
+
+utils::error::Result<void>
+OSTreeRepo::exportAppBinaries(const std::filesystem::path &rootEntriesDir,
+                              const api::types::v1::RepositoryCacheLayersItem &item) noexcept
+{
+    LINGLONG_TRACE(fmt::format("export app binaries for {}", item.info.id));
+
+    // command[0] is required for app kind; guard defensively
+    const auto &cmd = item.info.command.value_or(std::vector<std::string>{});
+    if (cmd.empty()) {
+        LogW("Skipping binary export for {}: command field is empty", item.info.id);
+        return LINGLONG_OK;
+    }
+    const auto &command0 = cmd[0];
+
+    auto binDir = rootEntriesDir / "bin";
+
+    // Always export a script named after the appid
+    auto defaultScript = binDir / item.info.id;
+    auto ret = createBinaryWrapperScript(defaultScript, item.info.id, command0);
+    if (!ret) {
+        // If file already exists, it may have been exported before; log and continue
+        LogW("Failed to create default binary script for {}: {}",
+             item.info.id,
+             ret.error().message());
+    }
+
+    // Export additional scripts for each name in exportedBinaries
+    if (item.info.exportedBinaries) {
+        for (const auto &name : *item.info.exportedBinaries) {
+            auto nameValidation = package::validateExecutableName(name);
+            if (!nameValidation) {
+                LogW("Skipping invalid executable name '{}' for {}: {}",
+                     name,
+                     item.info.id,
+                     nameValidation.error().message());
+                continue;
+            }
+            auto scriptPath = binDir / name;
+            auto nameRet = createBinaryWrapperScript(scriptPath, item.info.id, command0);
+            if (!nameRet) {
+                LogW("Failed to create binary script {} for {}: {}",
+                     name,
+                     item.info.id,
+                     nameRet.error().message());
+            }
+        }
+    }
+
+    return LINGLONG_OK;
+}
+
+utils::error::Result<void> OSTreeRepo::exportAppBinary(const std::string &appID,
+                                                       const std::string &scriptName,
+                                                       const std::string &commandName) noexcept
+{
+    LINGLONG_TRACE(fmt::format("export binary alias {} for {}", scriptName, appID));
+
+    // Validate the script name (Linux single path component rules)
+    auto scriptNameResult = package::validateExecutableName(scriptName);
+    if (!scriptNameResult) {
+        return LINGLONG_ERR(scriptNameResult);
+    }
+
+    // Validate the command name as well
+    auto commandNameResult = package::validateExecutableName(commandName);
+    if (!commandNameResult) {
+        return LINGLONG_ERR(commandNameResult);
+    }
+
+    // Look up the app's info from the repo cache to find command[0] and verify exportedBinaries
+    auto items = this->cache->queryLayerItem(repoCacheQuery{
+      .id = appID,
+      .deleted = false,
+    });
+    if (items.empty()) {
+        return LINGLONG_ERR(fmt::format("app {} not found in repo cache", appID));
+    }
+
+    const api::types::v1::PackageInfoV2 *info = nullptr;
+    for (const auto &item : items) {
+        if (item.info.kind != "app") {
+            continue;
+        }
+        info = &item.info;
+        break;
+    }
+    if (info == nullptr) {
+        return LINGLONG_ERR(fmt::format("app {} has no app module", appID));
+    }
+
+    // Strict match: commandName must be in exportedBinaries
+    if (!info->exportedBinaries) {
+        return LINGLONG_ERR(fmt::format("app {} has no exportedBinaries", appID));
+    }
+    bool matched =
+      std::find(info->exportedBinaries->cbegin(), info->exportedBinaries->cend(), commandName)
+      != info->exportedBinaries->cend();
+    if (!matched) {
+        return LINGLONG_ERR(
+          fmt::format("command '{}' is not in exportedBinaries of app {}", commandName, appID));
+    }
+
+    const auto cmd = info->command.value_or(std::vector<std::string>{});
+    if (cmd.empty()) {
+        return LINGLONG_ERR(fmt::format("app {} has empty command", appID));
+    }
+
+    auto binDir = this->getEntriesDir() / "bin";
+    auto scriptPath = binDir / scriptName;
+    return createBinaryWrapperScript(scriptPath, appID, cmd[0]);
 }
 
 utils::error::Result<void>

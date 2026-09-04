@@ -6,17 +6,34 @@
 
 # shellcheck shell=sh
 
-# Profile.d script for linglong/linyaps
-# This script sources the XDG_DATA_DIRS generation script and exports
-# the modified XDG_DATA_DIRS environment variable for user sessions.
+# System environment generator for linglong/linyaps
+# This script injects entries/bin into PATH and sources the XDG_DATA_DIRS
+# generation script, printing the modified environment variables to stdout.
+# systemd environment generators run at boot for both X11 and Wayland sessions.
+# https://www.freedesktop.org/software/systemd/man/latest/systemd.environment-generator.html
+
+# Inject entries/bin into PATH so exported binary wrapper scripts are accessible
+# from the user's shell session.
+_linglong_bin_dir="@LINGLONG_ROOT@/entries/bin"
+if [ -n "${_linglong_bin_dir}" ] && [ -d "${_linglong_bin_dir}" ]; then
+    case ":${PATH}:" in
+        *":${_linglong_bin_dir}:"*) ;; # Already in PATH
+        *) PATH="${_linglong_bin_dir}:${PATH}" ;;
+    esac
+fi
+unset _linglong_bin_dir
 
 source_script="@CMAKE_INSTALL_PREFIX@/lib/linglong/generate-xdg-data-dirs.sh"
 
-# Source the script and export XDG_DATA_DIRS if successful
+# Source the script and set XDG_DATA_DIRS if successful
 [ -r "${source_script}" ] && . "${source_script}"
 
-if  [ -n "${XDG_DATA_DIRS}" ]; then
 # !!!systemd requires environment variables to be printed to standard output!!!
 # https://www.freedesktop.org/software/systemd/man/latest/systemd.environment-generator.html
+if [ -n "${XDG_DATA_DIRS}" ]; then
 echo "XDG_DATA_DIRS=${XDG_DATA_DIRS}"
+fi
+
+if [ -n "${PATH}" ]; then
+echo "PATH=${PATH}"
 fi

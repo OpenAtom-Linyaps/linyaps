@@ -474,6 +474,13 @@
             "type": "string"
           }
         },
+        "exportedBinaries": {
+          "type": "array",
+          "description": "command names exported to host entries/bin",
+          "items": {
+            "type": "string"
+          }
+        },
         "strip": {
           "title": "BuilderProjectStripScript",
           "description": "strip script of builder project",
@@ -761,6 +768,13 @@
         "command": {
           "type": "array",
           "description": "command of package info",
+          "items": {
+            "type": "string"
+          }
+        },
+        "exportedBinaries": {
+          "type": "array",
+          "description": "command names exported to host entries/bin",
           "items": {
             "type": "string"
           }

@@ -1396,12 +1396,19 @@ utils::error::Result<void> PackageManager::uninstallRef(
          ref.toString(),
          common::strings::join(modules.value(), ','));
 
+    std::optional<utils::error::Error> firstError;
     for (const auto &module : modules.value()) {
         auto res = uninstallRefModule(ref, module);
         if (!res) {
             LogW(fmt::format("failed to uninstall {}/{}: {}", ref.toString(), module, res.error()));
+            if (!firstError) {
+                firstError = std::move(res).error();
+            }
             continue;
         }
+    }
+    if (firstError) {
+        return LINGLONG_ERR(std::move(*firstError));
     }
 
     return LINGLONG_OK;

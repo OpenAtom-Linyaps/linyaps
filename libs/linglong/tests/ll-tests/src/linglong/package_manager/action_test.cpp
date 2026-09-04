@@ -41,6 +41,11 @@ public:
                 listLocalBy,
                 (const repo::repoCacheQuery &query),
                 (override, const, noexcept));
+
+    MOCK_METHOD(utils::error::Result<api::types::v1::RepositoryCacheLayersItem>,
+                getLayerItem,
+                (const package::Reference &ref, std::string module),
+                (override, const, noexcept));
 };
 
 class MockAction : public service::Action
@@ -122,6 +127,20 @@ TEST_F(ActionTest, InstallNewApp)
     EXPECT_EQ(result->kind, "app");
     EXPECT_EQ(result->oldRef, std::nullopt);
     EXPECT_EQ(result->newRef->reference.toString(), "main:id1/1.0.0/x86_64");
+}
+
+TEST_F(ActionTest, UninstallRefPropagatesModuleRemovalFailure)
+{
+    LINGLONG_TRACE("UninstallRefPropagatesModuleRemovalFailure");
+
+    auto ref = package::Reference::parse("main:id1/1.0.0/x86_64").value();
+    EXPECT_CALL(*repo, getLayerItem(ref, "develop"))
+      .WillOnce(Return(LINGLONG_ERR("remove failed")));
+
+    auto result = pm->uninstallRef(ref, std::vector<std::string>{ "develop" });
+
+    ASSERT_FALSE(result.has_value());
+    EXPECT_EQ(result.error().message(), "remove failed");
 }
 
 TEST_F(ActionTest, OverwriteApp)

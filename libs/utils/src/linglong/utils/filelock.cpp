@@ -208,7 +208,7 @@ utils::error::Result<bool> FileLock::tryLock(LockType type) noexcept
     auto isCompatible = compatibleWith(type);
     if (isLocked()) {
         if (isCompatible) {
-            return LINGLONG_OK;
+            return true;
         }
 
         return LINGLONG_ERR(

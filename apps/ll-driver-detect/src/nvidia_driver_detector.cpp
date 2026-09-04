@@ -93,6 +93,8 @@ utils::error::Result<std::pair<bool, GraphicsDriverInfo>>
 NVIDIADriverDetector::parsePackageSearchResult(const std::string &searchResult,
                                                const std::string &packageName) const
 {
+    LINGLONG_TRACE("Parse NVIDIA driver package search result");
+
     using json = nlohmann::json;
 
     GraphicsDriverInfo driverInfo;

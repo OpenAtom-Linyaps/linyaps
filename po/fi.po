@@ -645,7 +645,7 @@ msgstr "Käyttö: ll-cli inspect SUBCOMMAND [OPTIONS]"
 msgid ""
 "Display the data(bundle) directory of the installed(running) application"
 msgstr ""
-"Näytä asennetun (käynnissä olevan) sovelluksen (paketti) data-hakemisto"
+"Näytä asennetun (käynnissä olevan) sovelluksen (bundle) data-hakemisto"
 
 #: ../apps/ll-cli/src/main.cpp:551
 msgid "Usage: ll-cli inspect dir [OPTIONS] APP"
@@ -653,11 +653,11 @@ msgstr "Käyttö: ll-cli inspect dir [OPTIONS] APP"
 
 #: ../apps/ll-cli/src/main.cpp:555
 msgid "Specify the application ID, and it can also be reference"
-msgstr ""
+msgstr "Määritä sovellus id-tunnus, joka voi olla myös viittaus"
 
 #: ../apps/ll-cli/src/main.cpp:561
 msgid "Specify the directory type (layer or bundle),the default is layer"
-msgstr ""
+msgstr "Määritä hakemiston tyyppi (layer tai bundle), oletus on layer"
 
 #: ../apps/ll-cli/src/main.cpp:568
 msgid ""
@@ -671,6 +671,8 @@ msgid ""
 "linyaps CLI\n"
 "A CLI program to run application and manage application and runtime\n"
 msgstr ""
+"linyaps CLI\n"
+"CLI-ohjelma sovellusten suorittamiseen ja suoritusympäristöjen hallintaan\n"
 
 #: ../apps/ll-cli/src/main.cpp:585 ../apps/ll-builder/src/main.cpp:478
 msgid "Print this help message and exit"

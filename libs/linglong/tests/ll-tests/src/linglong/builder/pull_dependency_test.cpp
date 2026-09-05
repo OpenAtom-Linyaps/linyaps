@@ -434,9 +434,15 @@ TEST_F(PullDependencyTest, pullResolvedRef_cancel_during_pull_reaches_the_task)
       .WillOnce([](service::Task &taskContext,
                    const package::ReferenceWithRepo &,
                    const std::string &) -> utils::error::Result<void> {
-          // Emits OnCancel synchronously. The task must stay reachable
-          // through the cancel connection while it is alive.
-          common::global::GlobalTaskControl::cancel();
+          // Emit the process-wide cancel signal directly: calling
+          // GlobalTaskControl::cancel() would permanently flip the singleton's
+          // canceled flag and break other tests running in the same binary
+          // (GlobalTaskControl.InstanceIsAvailableAndNotInitiallyCanceled).
+          auto *control = const_cast<common::global::GlobalTaskControl *>(
+            common::global::GlobalTaskControl::instance());
+          Q_EMIT control->OnCancel();
+          // The task must stay reachable through the cancel connection while
+          // it is alive.
           EXPECT_TRUE(taskContext.isTaskDone());
           return {};
       });

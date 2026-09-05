@@ -16,6 +16,8 @@
 #include "linglong/utils/error/error.h"
 #include "ocppi/cli/crun/Crun.hpp"
 
+#include "linglong/common/global/initialize.h"
+
 #include <filesystem>
 #include <memory>
 #include <string>
@@ -395,6 +397,30 @@ TEST_F(PullDependencyTest, pullResolvedRef_not_cached_triggers_pull)
     auto result =
       builder::detail::pullResolvedRef(refWithRepo(std::move(*ref), "custom"), *m_repo, "binary");
     EXPECT_TRUE(result.has_value()) << result.error().message();
+}
+
+TEST_F(PullDependencyTest, pullResolvedRef_leaves_no_cancel_connection_behind)
+{
+    LINGLONG_TRACE("pullResolvedRef_leaves_no_cancel_connection_behind");
+
+    auto ref = package::Reference::parse("main:org.example.test/1.0.0.0/x86_64");
+    ASSERT_TRUE(ref.has_value()) << ref.error().message();
+
+    EXPECT_CALL(*m_repo, getLayerDir(_, _)).WillOnce(Return(LINGLONG_ERR("not found")));
+    EXPECT_CALL(*m_repo, pull(_, _, _)).WillOnce(Return(utils::error::Result<void>{}));
+
+    auto *taskControl = common::global::GlobalTaskControl::instance();
+    ASSERT_TRUE(taskControl);
+    // Drop connections registered by other tests so the check below only
+    // observes what pullResolvedRef leaves behind.
+    taskControl->disconnect(SIGNAL(OnCancel()));
+
+    auto result = builder::detail::pullResolvedRef(refWithRepo(std::move(*ref)), *m_repo, "binary");
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+
+    // The connection to the process-wide cancel signal must not outlive the
+    // local task whose member it captures.
+    EXPECT_FALSE(taskControl->disconnect(SIGNAL(OnCancel())));
 }
 
 TEST_F(PullDependencyTest, buildStagePullDependency_continues_when_local_develop_pull_fails)

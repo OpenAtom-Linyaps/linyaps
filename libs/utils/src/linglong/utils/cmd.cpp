@@ -22,6 +22,7 @@
 #include <iostream>
 
 #include <fcntl.h>
+#include <signal.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -188,6 +189,45 @@ utils::error::Result<std::string> Cmd::exec(const std::vector<std::string> &args
     stdoutPipe[1] = -1;
     close(stdinPipe[0]);
     stdinPipe[0] = -1;
+
+    // Block SIGPIPE while writing to the child's stdin: the child may exit
+    // without draining the pipe and the default disposition would terminate
+    // this process instead of surfacing EPIPE from the write in the polling
+    // loop below. Blocked only in the parent after fork so the child keeps
+    // the default disposition after exec.
+    sigset_t sigpipeBlocked, sigpipeOld;
+    sigemptyset(&sigpipeBlocked);
+    sigaddset(&sigpipeBlocked, SIGPIPE);
+    bool sigpipeBlockedHere = false;
+    if (!m_stdinContent.empty()) {
+        sigpipeBlockedHere = pthread_sigmask(SIG_BLOCK, &sigpipeBlocked, &sigpipeOld) == 0;
+        if (!sigpipeBlockedHere) {
+            return LINGLONG_ERR(fmt::format("failed to block SIGPIPE: {}",
+                                            common::error::errorString(errno)));
+        }
+    }
+    auto sigpipeRestorer = utils::finally::finally(
+      [&sigpipeBlocked, &sigpipeOld, sigpipeBlockedHere]() {
+          if (!sigpipeBlockedHere) {
+              return;
+          }
+          // Discard SIGPIPE raised by our own writes before unblocking it.
+          struct timespec timeout
+          {
+              0, 0
+          };
+          while (true) {
+              const auto raised = sigtimedwait(&sigpipeBlocked, nullptr, &timeout);
+              if (raised > 0) {
+                  continue;
+              }
+              if (raised == -1 && errno == EINTR) {
+                  continue;
+              }
+              break;
+          }
+          pthread_sigmask(SIG_SETMASK, &sigpipeOld, nullptr);
+      });
 
     auto setNonBlock = [](int fd) {
         int flags = fcntl(fd, F_GETFL, 0);

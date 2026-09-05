@@ -76,4 +76,18 @@ TEST(command, toStdin)
       << "wc -c should report 1049600 bytes, got: " << *ret4;
 }
 
+TEST(command, toStdinChildExitsEarly_reportsExitCodeInsteadOfDying)
+{
+    // The child exits without draining its stdin while more than a pipe
+    // buffer of input is still pending. Writing to it must surface as an
+    // error result with the child's exit status, not terminate this process
+    // with SIGPIPE.
+    std::string large_data(1024 * 1024, 'x');
+    auto ret = linglong::utils::Cmd("sh").toStdin(large_data).exec({ "-c", "exit 3" });
+
+    EXPECT_FALSE(ret.has_value());
+    EXPECT_TRUE(ret.error().message().find("exit code 3") != std::string::npos)
+      << ret.error().message();
+}
+
 } // namespace

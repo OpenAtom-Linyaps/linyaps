@@ -13,12 +13,13 @@
 #include "linglong/runtime/run_context.h"
 #include "linglong/utils/error/error.h"
 
-#include <QTemporaryDir>
 #include <QDir>
 #include <QFile>
-#include <vector>
+#include <QTemporaryDir>
+
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 namespace linglong::runtime {
 
@@ -78,7 +79,8 @@ TEST_F(ContainerBuilderDeepTest, RunContainerOptionsCapabilitiesDeduplication)
 TEST_F(ContainerBuilderDeepTest, SecurityContextToggleAndDuplicateHandling)
 {
     RunContainerOptions options;
-    options.enableSecurityContext({ SecurityContextType::WAYLAND, SecurityContextType::PULSEAUDIO });
+    options.enableSecurityContext(
+      { SecurityContextType::WAYLAND, SecurityContextType::PULSEAUDIO });
     options.enableSecurityContext({ SecurityContextType::WAYLAND });
 
     const auto &ctxs = options.getSecurityContexts();
@@ -127,12 +129,10 @@ TEST_F(ContainerBuilderDeepTest, OverlayFSDriverMountOptionsConstruction)
 
 TEST_F(ContainerBuilderDeepTest, SecurityContextTypeConversionRoundtrip)
 {
-    std::vector<SecurityContextType> types = {
-        SecurityContextType::WAYLAND,
-        SecurityContextType::PULSEAUDIO,
-        SecurityContextType::X11,
-        SecurityContextType::DBUS
-    };
+    std::vector<SecurityContextType> types = { SecurityContextType::WAYLAND,
+                                               SecurityContextType::PULSEAUDIO,
+                                               SecurityContextType::X11,
+                                               SecurityContextType::DBUS };
 
     for (auto t : types) {
         std::string name = fromType(t);
@@ -182,11 +182,9 @@ TEST_F(ContainerBuilderDeepTest, ComplexEnvVarSpecialCharactersAndEscaping)
 {
     RunContainerOptions options;
     cli::RunOptions cliOpts;
-    cliOpts.envs = {
-        "PATH=/usr/local/bin:/usr/bin:/bin",
-        "JSON_CFG={\"key\": \"val\", \"num\": 123}",
-        "URL=https://example.com/api?query=1&sort=asc"
-    };
+    cliOpts.envs = { "PATH=/usr/local/bin:/usr/bin:/bin",
+                     "JSON_CFG={\"key\": \"val\", \"num\": 123}",
+                     "URL=https://example.com/api?query=1&sort=asc" };
 
     auto res = options.applyCliRunOptions(cliOpts);
     ASSERT_TRUE(res.has_value()) << res.error().message();
@@ -199,13 +197,11 @@ TEST_F(ContainerBuilderDeepTest, ComplexEnvVarSpecialCharactersAndEscaping)
 
 TEST_F(ContainerBuilderDeepTest, SecurityContextAllTypesEnumCheck)
 {
-    std::vector<SecurityContextType> allTypes = {
-        SecurityContextType::UNKNOWN,
-        SecurityContextType::WAYLAND,
-        SecurityContextType::X11,
-        SecurityContextType::PULSEAUDIO,
-        SecurityContextType::DBUS
-    };
+    std::vector<SecurityContextType> allTypes = { SecurityContextType::UNKNOWN,
+                                                  SecurityContextType::WAYLAND,
+                                                  SecurityContextType::X11,
+                                                  SecurityContextType::PULSEAUDIO,
+                                                  SecurityContextType::DBUS };
 
     for (const auto &t : allTypes) {
         std::string s = fromType(t);

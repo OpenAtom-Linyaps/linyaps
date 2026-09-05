@@ -11,10 +11,11 @@
 #include "linglong/runtime/container_builder.h"
 #include "linglong/runtime/run_context.h"
 
-#include <QTemporaryDir>
 #include <QDir>
-#include <vector>
+#include <QTemporaryDir>
+
 #include <string>
+#include <vector>
 
 namespace linglong::runtime {
 

@@ -10,12 +10,12 @@
 #include "linglong/runtime/overlayfs_driver.h"
 #include "linglong/utils/error/error.h"
 
-#include <QTemporaryDir>
 #include <QDir>
 #include <QFile>
+#include <QTemporaryDir>
 
-#include <vector>
 #include <string>
+#include <vector>
 
 namespace linglong::runtime {
 
@@ -67,7 +67,8 @@ TEST_F(OverlayFSDriverDeepTest, OverlayFSMountDirectoryExistenceChecks)
 TEST_F(OverlayFSDriverDeepTest, MountOptionStringEscapingAndColonFormat)
 {
     std::string combinedLower = lower1 + ":" + lower2;
-    std::string expectedOption = "lowerdir=" + combinedLower + ",upperdir=" + upper + ",workdir=" + work;
+    std::string expectedOption =
+      "lowerdir=" + combinedLower + ",upperdir=" + upper + ",workdir=" + work;
     EXPECT_TRUE(expectedOption.find("lowerdir=") != std::string::npos);
     EXPECT_TRUE(expectedOption.find("upperdir=") != std::string::npos);
     EXPECT_TRUE(expectedOption.find("workdir=") != std::string::npos);

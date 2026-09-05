@@ -202,20 +202,17 @@ utils::error::Result<std::string> Cmd::exec(const std::vector<std::string> &args
     if (!m_stdinContent.empty()) {
         sigpipeBlockedHere = pthread_sigmask(SIG_BLOCK, &sigpipeBlocked, &sigpipeOld) == 0;
         if (!sigpipeBlockedHere) {
-            return LINGLONG_ERR(fmt::format("failed to block SIGPIPE: {}",
-                                            common::error::errorString(errno)));
+            return LINGLONG_ERR(
+              fmt::format("failed to block SIGPIPE: {}", common::error::errorString(errno)));
         }
     }
-    auto sigpipeRestorer = utils::finally::finally(
-      [&sigpipeBlocked, &sigpipeOld, sigpipeBlockedHere]() {
+    auto sigpipeRestorer =
+      utils::finally::finally([&sigpipeBlocked, &sigpipeOld, sigpipeBlockedHere]() {
           if (!sigpipeBlockedHere) {
               return;
           }
           // Discard SIGPIPE raised by our own writes before unblocking it.
-          struct timespec timeout
-          {
-              0, 0
-          };
+          struct timespec timeout{ 0, 0 };
           while (true) {
               const auto raised = sigtimedwait(&sigpipeBlocked, nullptr, &timeout);
               if (raised > 0) {

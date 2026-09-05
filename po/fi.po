@@ -23,20 +23,21 @@ msgstr ""
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:448
 msgid "Debug mode is enabled. Attach from another terminal with gdb:"
-msgstr ""
+msgstr "Virheenjäljitystila käytössä. Liitä toisesta terminaalista gdb:llä:"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:468
 msgid "Debug mode is enabled. Attach from another terminal with:"
 msgstr ""
+"Virheenjäljitystila käytössä. Liitä toisesta terminaalista komennolla:"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:471
 msgid "Generated gdb attach script:"
-msgstr ""
+msgstr "Luotu gdb-liiteskripti:"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1949
 #, c++-format
 msgid "Base {} has no develop module installed, installing it now."
-msgstr ""
+msgstr "Kannassa {} ei ole asennettuna kehitysmoduulia, asennetaan se nyt."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2361
 #, c++-format

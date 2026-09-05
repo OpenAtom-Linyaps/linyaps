@@ -13,11 +13,10 @@
 #include "linglong/package/uab_packager.h"
 #include "linglong/utils/cmd.h"
 
+#include <elf.h>
+
 #include <QCryptographicHash>
 #include <QFile>
-
-#include <elf.h>
-#include <fcntl.h>
 
 #include <algorithm>
 #include <filesystem>
@@ -28,6 +27,7 @@
 #include <string_view>
 #include <vector>
 
+#include <fcntl.h>
 #include <unistd.h>
 
 __attribute__((used, section(".note.uab.sig"), aligned(4))) const auto linglongUabSignature =
@@ -404,11 +404,9 @@ TEST_F(UabFileTest, GetMetaInfoRejectsSectionBeyondFileSize)
 
         const auto &shstr = shdrs[ehdr.e_shstrndx];
         std::string shstrtab(shstr.sh_size, '\0');
-        ASSERT_EQ(::pread(fd,
-                          shstrtab.data(),
-                          shstrtab.size(),
-                          static_cast<off_t>(shstr.sh_offset)),
-                  static_cast<ssize_t>(shstrtab.size()));
+        ASSERT_EQ(
+          ::pread(fd, shstrtab.data(), shstrtab.size(), static_cast<off_t>(shstr.sh_offset)),
+          static_cast<ssize_t>(shstrtab.size()));
 
         bool found = false;
         for (std::size_t i = 0; i < shdrs.size(); ++i) {

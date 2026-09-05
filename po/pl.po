@@ -448,9 +448,7 @@ msgstr "Zaktualizuj tylko zależności aplikacji"
 msgid ""
 "Search the applications/runtimes containing the specified text from the "
 "remote repository"
-msgstr ""
-"Szukaj aplikacji/środowisk wykonawczych zawierających wpisany tekst w "
-"zdalnym repozytorium"
+msgstr "Szukaj aplikacji/środowisk wykonawczych w zdalnym repozytorium"
 
 #: ../apps/ll-cli/src/main.cpp:374
 msgid ""

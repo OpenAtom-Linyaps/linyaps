@@ -19,12 +19,14 @@
 
 #include <algorithm>
 #include <array>
+#include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <limits>
 #include <string_view>
 
 #include <fcntl.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 namespace linglong::package {
@@ -116,6 +118,23 @@ utils::error::Result<std::string> UABFile::readSectionData(const QString &sectio
         || size > sectionHeader->sh_size - offset) {
         return LINGLONG_ERR(fmt::format("data exceeds section {}", section));
     }
+
+    // sh_size comes from untrusted file content. A corrupted or malicious
+    // section header can claim far more data than the bundle holds, so the
+    // section content is required to lie within the file before allocating.
+    struct stat fileStat {};
+    if (::fstat(this->fd, &fileStat) == -1) {
+        return LINGLONG_ERR(fmt::format("failed to stat uab file: {}",
+                                        common::error::errorString(errno)));
+    }
+    if (fileStat.st_size < 0
+        || static_cast<std::uintmax_t>(sectionHeader->sh_offset)
+          > static_cast<std::uintmax_t>(fileStat.st_size)
+        || sectionHeader->sh_size
+          > static_cast<std::uintmax_t>(fileStat.st_size) - sectionHeader->sh_offset) {
+        return LINGLONG_ERR(fmt::format("section {} exceeds the uab file size", section));
+    }
+
     std::string data(size, '\0');
     std::size_t totalBytes{ 0 };
     while (totalBytes < size) {

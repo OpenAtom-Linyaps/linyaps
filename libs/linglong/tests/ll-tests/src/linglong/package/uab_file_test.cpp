@@ -16,6 +16,9 @@
 #include <QCryptographicHash>
 #include <QFile>
 
+#include <elf.h>
+#include <fcntl.h>
+
 #include <algorithm>
 #include <filesystem>
 #include <fstream>
@@ -23,6 +26,7 @@
 #include <memory>
 #include <string>
 #include <string_view>
+#include <vector>
 
 #include <unistd.h>
 
@@ -369,6 +373,68 @@ TEST_F(UabFileTest, VerifyRejectsMismatchedBundleDigest)
     auto verifyRet = (*uab)->verify();
     ASSERT_TRUE(verifyRet.has_value()) << verifyRet.error().message();
     EXPECT_FALSE(*verifyRet);
+}
+
+TEST_F(UabFileTest, GetMetaInfoRejectsSectionBeyondFileSize)
+{
+    TempDir modifiedDir{ "linglong-uab-huge-meta-size-" };
+    ASSERT_TRUE(modifiedDir.isValid());
+    const auto modifiedUab = modifiedDir.path() / "huge-meta-size.uab";
+    std::filesystem::copy_file(uabFile,
+                               modifiedUab,
+                               std::filesystem::copy_options::overwrite_existing);
+
+    // Corrupt the linglong.meta section header so that sh_size extends far
+    // beyond the file itself, like a truncated or malicious bundle could.
+    {
+        const int fd = ::open(modifiedUab.c_str(), O_RDWR | O_CLOEXEC);
+        ASSERT_GE(fd, 0);
+
+        Elf64_Ehdr ehdr{};
+        ASSERT_EQ(::pread(fd, &ehdr, sizeof(ehdr), 0), static_cast<ssize_t>(sizeof(ehdr)));
+        ASSERT_EQ(ehdr.e_ident[EI_CLASS], ELFCLASS64);
+
+        std::vector<Elf64_Shdr> shdrs(ehdr.e_shnum);
+        ASSERT_GT(shdrs.size(), std::size_t{ 0 });
+        ASSERT_EQ(::pread(fd,
+                          shdrs.data(),
+                          sizeof(Elf64_Shdr) * shdrs.size(),
+                          static_cast<off_t>(ehdr.e_shoff)),
+                  static_cast<ssize_t>(sizeof(Elf64_Shdr) * shdrs.size()));
+
+        const auto &shstr = shdrs[ehdr.e_shstrndx];
+        std::string shstrtab(shstr.sh_size, '\0');
+        ASSERT_EQ(::pread(fd,
+                          shstrtab.data(),
+                          shstrtab.size(),
+                          static_cast<off_t>(shstr.sh_offset)),
+                  static_cast<ssize_t>(shstrtab.size()));
+
+        bool found = false;
+        for (std::size_t i = 0; i < shdrs.size(); ++i) {
+            if (shdrs[i].sh_name >= shstrtab.size()) {
+                continue;
+            }
+            if (std::string_view{ shstrtab.c_str() + shdrs[i].sh_name } == "linglong.meta") {
+                shdrs[i].sh_size = 0x1000000000000000ULL;
+                ASSERT_EQ(::pwrite(fd,
+                                   &shdrs[i],
+                                   sizeof(shdrs[i]),
+                                   static_cast<off_t>(ehdr.e_shoff + i * sizeof(Elf64_Shdr))),
+                          static_cast<ssize_t>(sizeof(Elf64_Shdr)));
+                found = true;
+                break;
+            }
+        }
+        ::close(fd);
+        ASSERT_TRUE(found) << "linglong.meta section not found in the fixture";
+    }
+
+    auto uab = UABFile::loadFromFile(modifiedUab);
+    ASSERT_TRUE(uab.has_value()) << uab.error().message();
+    auto metaRet = (*uab)->getMetaInfo();
+    EXPECT_FALSE(metaRet.has_value())
+      << "a section extending beyond the file size must be rejected";
 }
 
 TEST_F(UabFileTest, VerifyWithoutBundleSignSection)

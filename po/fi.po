@@ -272,19 +272,19 @@ msgstr "Määritä säilön nimi uudelleenkäyttöä tai tunnistamista varten"
 
 #: ../apps/ll-cli/src/main.cpp:186
 msgid "Run the application under gdbserver"
-msgstr ""
+msgstr "Suorita sovellus gdbserver-palvelimella"
 
 #: ../apps/ll-cli/src/main.cpp:190
 msgid "Specify the gdbserver listen address"
-msgstr ""
+msgstr "Määritä gdbserverin kuunteluosoite"
 
 #: ../apps/ll-cli/src/main.cpp:198
 msgid "Specify debuginfod urls for debugging"
-msgstr ""
+msgstr "Määritä debuginfod-osoitteet virheenkorjausta varten"
 
 #: ../apps/ll-cli/src/main.cpp:205
 msgid "Specify the directory used by gdb to load debug symbols"
-msgstr ""
+msgstr "Määritä hakemisto, jota gdb käyttää debug-symbolien lataamiseen"
 
 #: ../apps/ll-cli/src/main.cpp:209 ../apps/ll-cli/src/main.cpp:241
 msgid "Run commands in a running sandbox"
@@ -296,7 +296,7 @@ msgstr "Luettelo käynnissä olevista sovelluksista"
 
 #: ../apps/ll-cli/src/main.cpp:218
 msgid "Do not truncate container IDs"
-msgstr ""
+msgstr "Älä katkaise säilön id-tunnuksia"
 
 #: ../apps/ll-cli/src/main.cpp:219
 msgid "Usage: ll-cli ps [OPTIONS]"
@@ -309,6 +309,7 @@ msgstr "Anna nimiavaruus, jossa sovellus on käynnissä"
 #: ../apps/ll-cli/src/main.cpp:234
 msgid "Specify the application running instance(you can get it by ps command)"
 msgstr ""
+"Määritä sovelluksen käynnissä oleva instanssi (saat sen ps-komennolla)"
 
 #: ../apps/ll-cli/src/main.cpp:238
 msgid "Specify working directory"

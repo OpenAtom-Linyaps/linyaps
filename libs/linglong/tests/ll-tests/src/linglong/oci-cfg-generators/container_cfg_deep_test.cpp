@@ -326,7 +326,8 @@ TEST_F(ContainerCfgBuilderDeepSuite, BindDevNodesAndPassthroughModes)
       .setContainerId("devnode-test-id")
       .bindDev(true) // passthru
       .bindDevNode([](const std::string &devPath) {
-          return devPath.find("null") != std::string::npos || devPath.find("zero") != std::string::npos;
+          return devPath.find("null") != std::string::npos
+            || devPath.find("zero") != std::string::npos;
       })
       .disablePatch();
 

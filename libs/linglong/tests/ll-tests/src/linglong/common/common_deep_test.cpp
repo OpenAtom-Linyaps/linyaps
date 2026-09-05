@@ -77,7 +77,8 @@ TEST_F(CommonDeepSuiteTest, StringsSplitComplexDelimitersAndFlags)
     EXPECT_EQ(resSkip[1], "banana");
     EXPECT_EQ(resSkip[2], "cherry");
 
-    auto resTrim = split("  x  |  y  || z ", '|', splitOption::TrimWhitespace | splitOption::SkipEmpty);
+    auto resTrim =
+      split("  x  |  y  || z ", '|', splitOption::TrimWhitespace | splitOption::SkipEmpty);
     ASSERT_EQ(resTrim.size(), 3);
     EXPECT_EQ(resTrim[0], "x");
     EXPECT_EQ(resTrim[1], "y");
@@ -258,13 +259,15 @@ FontSize=12
 TEST_F(CommonDeepSuiteTest, XdgRuntimeDirFallbackAndCustomGuards)
 {
     {
-        linglong::utils::EnvironmentVariableGuard env("XDG_RUNTIME_DIR", "/var/run/custom_user_1000");
+        linglong::utils::EnvironmentVariableGuard env("XDG_RUNTIME_DIR",
+                                                      "/var/run/custom_user_1000");
         auto dir = linglong::common::xdg::getXDGRuntimeDir();
         EXPECT_EQ(dir, "/var/run/custom_user_1000");
     }
 
     {
-        linglong::utils::EnvironmentVariableGuard env("XDG_RUNTIME_DIR", "/tmp/non_existent_path_fallback");
+        linglong::utils::EnvironmentVariableGuard env("XDG_RUNTIME_DIR",
+                                                      "/tmp/non_existent_path_fallback");
         auto dir = linglong::common::xdg::getXDGRuntimeDir();
         EXPECT_EQ(dir, "/tmp/non_existent_path_fallback");
     }
@@ -319,7 +322,8 @@ TEST_F(CommonDeepSuiteTest, StringsQuoteBashArgDoubleQuotesAndVariables)
 {
     EXPECT_EQ(quoteBashArg("PATH=$PATH:/opt/bin"), "'PATH=$PATH:/opt/bin'");
     EXPECT_EQ(quoteBashArg("`uname -a`"), "'`uname -a`'");
-    EXPECT_EQ(quoteBashArg("test 'with' embedded 'quotes'"), "'test '\\''with'\\'' embedded '\\''quotes'\\'''");
+    EXPECT_EQ(quoteBashArg("test 'with' embedded 'quotes'"),
+              "'test '\\''with'\\'' embedded '\\''quotes'\\'''");
     EXPECT_EQ(quoteBashArg("\n\t\r"), "'\n\t\r'");
 }
 
@@ -445,7 +449,8 @@ TEST_F(CommonDeepSuiteTest, StringsReplaceMultipleOccurrencesInSequence)
     std::string s = "path/to/nested/directory/structure";
     EXPECT_EQ(replaceSubstring(s, "/", "\\"), "path\\to\\nested\\directory\\structure");
     EXPECT_EQ(replaceSubstring("111111", "11", "2"), "222");
-    EXPECT_EQ(replaceSubstring("hello world world world", "world", "linglong"), "hello linglong linglong linglong");
+    EXPECT_EQ(replaceSubstring("hello world world world", "world", "linglong"),
+              "hello linglong linglong linglong");
 }
 
 TEST_F(CommonDeepSuiteTest, StringsUrlEncodingNumbersAndAlpha)

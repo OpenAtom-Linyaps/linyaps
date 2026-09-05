@@ -9,14 +9,13 @@
 #define private public
 #include "linglong/builder/linglong_builder.h"
 #undef private
+#include "linglong/common/global/initialize.h"
 #include "linglong/package/fuzzy_reference.h"
 #include "linglong/package/reference.h"
 #include "linglong/package_manager/package_task.h"
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/utils/error/error.h"
 #include "ocppi/cli/crun/Crun.hpp"
-
-#include "linglong/common/global/initialize.h"
 
 #include <filesystem>
 #include <memory>

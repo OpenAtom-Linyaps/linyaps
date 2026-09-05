@@ -7,17 +7,18 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "linglong/package_manager/action.h"
-#include "linglong/package_manager/package_task.h"
 #include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/common/serialize/json.h"
+#include "linglong/package_manager/action.h"
+#include "linglong/package_manager/package_task.h"
 #include "linglong/utils/error/error.h"
 
 #include <QCoreApplication>
 #include <QVariantMap>
+
 #include <memory>
-#include <vector>
 #include <string>
+#include <vector>
 
 namespace {
 
@@ -112,14 +113,19 @@ TEST(ActionDeepTest, ActionProgressNotificationAccumulation)
     ASSERT_TRUE(res);
 
     auto &task = res->get();
-    QObject::connect(&task, &PackageTask::TaskEvent, [&](const QString &event, const QVariantMap &data) {
-        if (event == QStringLiteral("state")) {
-            auto state = linglong::common::serialize::fromQVariantMap<linglong::api::types::v1::TaskState>(data);
-            if (state) {
-                progressReported.push_back(state->progress);
-            }
-        }
-    });
+    QObject::connect(
+      &task,
+      &PackageTask::TaskEvent,
+      [&](const QString &event, const QVariantMap &data) {
+          if (event == QStringLiteral("state")) {
+              auto state =
+                linglong::common::serialize::fromQVariantMap<linglong::api::types::v1::TaskState>(
+                  data);
+              if (state) {
+                  progressReported.push_back(state->progress);
+              }
+          }
+      });
 
     bool finished = false;
     QObject::connect(&task, &PackageTask::TaskFinished, [&finished](const QVariantMap &) {

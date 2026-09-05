@@ -9,8 +9,8 @@
 
 #include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/common/serialize/json.h"
-#include "linglong/package_manager/package_task.h"
 #include "linglong/package_manager/action.h"
+#include "linglong/package_manager/package_task.h"
 #include "linglong/utils/log/log.h"
 
 #include <QCoreApplication>
@@ -63,7 +63,8 @@ TEST(PackageTaskDeepTest, MultiTaskConcurrencyAndQueueOrdering)
                 std::lock_guard<std::mutex> lock(orderMutex);
                 executionOrder.push_back(i);
             }
-            task.updateState(linglong::api::types::v1::State::Succeed, "finished task " + std::to_string(i));
+            task.updateState(linglong::api::types::v1::State::Succeed,
+                             "finished task " + std::to_string(i));
         });
         ASSERT_TRUE(res);
     }
@@ -101,24 +102,28 @@ TEST(PackageTaskDeepTest, TaskStateTransitionSequenceValidation)
     ASSERT_TRUE(res);
 
     auto &task = res->get();
-    QObject::connect(&task,
-                     &PackageTask::TaskEvent,
-                     [&observedStates](const QString &event, const QVariantMap &data) {
-                         if (event == QStringLiteral("state")) {
-                             auto st = linglong::common::serialize::fromQVariantMap<
-                               linglong::api::types::v1::TaskState>(data);
-                             if (st) {
-                                 observedStates.push_back(st->state);
-                             }
-                         }
-                     });
+    QObject::connect(
+      &task,
+      &PackageTask::TaskEvent,
+      [&observedStates](const QString &event, const QVariantMap &data) {
+          if (event == QStringLiteral("state")) {
+              auto st =
+                linglong::common::serialize::fromQVariantMap<linglong::api::types::v1::TaskState>(
+                  data);
+              if (st) {
+                  observedStates.push_back(st->state);
+              }
+          }
+      });
 
     bool finished = false;
     QObject::connect(&task, &PackageTask::TaskFinished, [&finished](const QVariantMap &) {
         finished = true;
     });
 
-    ASSERT_TRUE(waitForCondition([&finished]() { return finished; }));
+    ASSERT_TRUE(waitForCondition([&finished]() {
+        return finished;
+    }));
     ASSERT_GE(observedStates.size(), 4U);
     EXPECT_EQ(observedStates.back(), linglong::api::types::v1::State::Succeed);
 }
@@ -174,9 +179,11 @@ TEST(PackageTaskDeepTest, ParallelTaskCancellationResilience)
         }
     }
 
-    ASSERT_TRUE(waitForCondition([&completedCount, &canceledCount]() {
-        return (completedCount + canceledCount) == kTotal;
-    }, std::chrono::seconds(5)));
+    ASSERT_TRUE(waitForCondition(
+      [&completedCount, &canceledCount]() {
+          return (completedCount + canceledCount) == kTotal;
+      },
+      std::chrono::seconds(5)));
 
     EXPECT_EQ(canceledCount.load(), 3);
 }
@@ -217,25 +224,29 @@ TEST(PackageTaskDeepTest, ExtendedProgressMetricsAndMessageFormatting)
     ASSERT_TRUE(res);
 
     auto &task = res->get();
-    QObject::connect(&task,
-                     &PackageTask::TaskEvent,
-                     [&](const QString &event, const QVariantMap &data) {
-                         if (event == QStringLiteral("state")) {
-                             auto st = linglong::common::serialize::fromQVariantMap<
-                               linglong::api::types::v1::TaskState>(data);
-                             if (st) {
-                                 progressTrail.push_back(st->progress);
-                                 messageTrail.push_back(st->message.toStdString());
-                             }
-                         }
-                     });
+    QObject::connect(
+      &task,
+      &PackageTask::TaskEvent,
+      [&](const QString &event, const QVariantMap &data) {
+          if (event == QStringLiteral("state")) {
+              auto st =
+                linglong::common::serialize::fromQVariantMap<linglong::api::types::v1::TaskState>(
+                  data);
+              if (st) {
+                  progressTrail.push_back(st->progress);
+                  messageTrail.push_back(st->message.toStdString());
+              }
+          }
+      });
 
     bool done = false;
     QObject::connect(&task, &PackageTask::TaskFinished, [&](const QVariantMap &) {
         done = true;
     });
 
-    ASSERT_TRUE(waitForCondition([&done]() { return done; }));
+    ASSERT_TRUE(waitForCondition([&done]() {
+        return done;
+    }));
     ASSERT_FALSE(progressTrail.empty());
     EXPECT_DOUBLE_EQ(progressTrail.back(), 100.0);
 }
@@ -257,7 +268,9 @@ TEST(PackageTaskDeepTest, ErrorPropagationAndCodeTranslation)
         finalResult = resMap;
     });
 
-    ASSERT_TRUE(waitForCondition([&finalResult]() { return !finalResult.isEmpty(); }));
+    ASSERT_TRUE(waitForCondition([&finalResult]() {
+        return !finalResult.isEmpty();
+    }));
     EXPECT_EQ(finalResult.value(QStringLiteral("code")).toInt(),
               static_cast<int>(linglong::utils::error::ErrorCode::Failed));
     EXPECT_EQ(finalResult.value(QStringLiteral("message")).toString(),
@@ -288,12 +301,15 @@ TEST(PackageTaskDeepTest, HeavyStressTaskChurnAndLookupConsistency)
         }
     }
 
-    ASSERT_TRUE(waitForCondition([&queue, &taskIDs]() {
-        for (const auto &id : taskIDs) {
-            if (queue.getTask(id)) return false;
-        }
-        return true;
-    }, std::chrono::seconds(5)));
+    ASSERT_TRUE(waitForCondition(
+      [&queue, &taskIDs]() {
+          for (const auto &id : taskIDs) {
+              if (queue.getTask(id))
+                  return false;
+          }
+          return true;
+      },
+      std::chrono::seconds(5)));
 }
 
 } // namespace

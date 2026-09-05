@@ -989,7 +989,7 @@ msgstr "Käyttö: ll-builder list [OPTIONS]"
 
 #: ../apps/ll-builder/src/main.cpp:594
 msgid "Remove built linyaps app"
-msgstr ""
+msgstr "Poista rakennetut Linyaps-sovellukset"
 
 #: ../apps/ll-builder/src/main.cpp:595
 msgid "Usage: ll-builder remove [OPTIONS] [APP...]"
@@ -997,12 +997,12 @@ msgstr "Käyttö: ll-builder remove [OPTIONS] [APP...]"
 
 #: ../apps/ll-builder/src/main.cpp:598
 msgid "Do not clean objects files before remove apps"
-msgstr ""
+msgstr "Älä puhdista objektitiedostoja ennen sovellusten poistamista"
 
 #. build export
 #: ../apps/ll-builder/src/main.cpp:602
 msgid "Export to linyaps layer or UAB"
-msgstr ""
+msgstr "Vie linyaps-kerrokseen tai UAB:iin"
 
 #: ../apps/ll-builder/src/main.cpp:603
 msgid "Usage: ll-builder export [OPTIONS]"
@@ -1010,7 +1010,7 @@ msgstr "Käyttö: ll-builder export [OPTIONS]"
 
 #: ../apps/ll-builder/src/main.cpp:615
 msgid "Uab icon (optional)"
-msgstr ""
+msgstr "UAB-kuvake (valinnainen)"
 
 #: ../apps/ll-builder/src/main.cpp:620
 msgid "Export to linyaps layer file (deprecated)"
@@ -1018,7 +1018,7 @@ msgstr "Vie linyaps tiedosto-kerrokseen (vanhentunut)"
 
 #: ../apps/ll-builder/src/main.cpp:623
 msgid "Export an executable UABX file"
-msgstr ""
+msgstr "Vie suoritettava UABX-tiedosto"
 
 #: ../apps/ll-builder/src/main.cpp:627
 msgid "Use custom loader"
@@ -1050,7 +1050,7 @@ msgstr "Käyttö: ll-builder push [OPTIONS]"
 
 #: ../apps/ll-builder/src/main.cpp:659
 msgid "Remote repo url"
-msgstr ""
+msgstr "Arkiston verkko-osoite"
 
 #: ../apps/ll-builder/src/main.cpp:662
 msgid "Remote repo name"
@@ -1082,7 +1082,7 @@ msgstr "Käyttö: ll-builder import-dir PATH"
 
 #: ../apps/ll-builder/src/main.cpp:681
 msgid "Layer dir path"
-msgstr ""
+msgstr "Layer-kerroksen hakemistopolku"
 
 #. add build extract
 #: ../apps/ll-builder/src/main.cpp:686

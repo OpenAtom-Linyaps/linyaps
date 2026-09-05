@@ -593,6 +593,13 @@ msgid ""
 "# show dependency tree for an installed application\n"
 "ll-cli analyze depends org.deepin.demo\n"
 msgstr ""
+"Käyttö: ll-cli analyze depends [APP]\n"
+"\n"
+"Esimerkki:\n"
+"# näytä asennettujen sovellusten riippuvuuspuu\n"
+"ll-cli analyze depends\n"
+"# näytä asennetun sovelluksen riippuvuuspuu\n"
+"ll-cli analyze depends org.deepin.demo\n"
 
 #: ../apps/ll-cli/src/main.cpp:488 ../apps/ll-cli/src/main.cpp:520
 msgid "Specify the installed application ID"
@@ -638,6 +645,7 @@ msgstr "Käyttö: ll-cli inspect SUBCOMMAND [OPTIONS]"
 msgid ""
 "Display the data(bundle) directory of the installed(running) application"
 msgstr ""
+"Näytä asennetun (käynnissä olevan) sovelluksen (paketti) data-hakemisto"
 
 #: ../apps/ll-cli/src/main.cpp:551
 msgid "Usage: ll-cli inspect dir [OPTIONS] APP"

@@ -827,7 +827,7 @@ msgstr "Uusi"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:368
 msgid "Exclusive"
-msgstr "Ainoa"
+msgstr "Yksinomainen"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:369
 msgid "Shared"
@@ -847,25 +847,27 @@ msgstr "Laskennallinen looginen koko:"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:386
 msgid "Exclusive: "
-msgstr ""
+msgstr "Yksinomainen:"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:386
 msgid "Shared: "
-msgstr ""
+msgstr "Jaettu:"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:388
 msgid "Calculated actual total size: "
-msgstr ""
+msgstr "Laskennallinen todellinen koko:"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:389
 msgid "Repository real size: "
-msgstr ""
+msgstr "Arkiston todellinen koko:"
 
 #: ../apps/ll-builder/src/main.cpp:476
 msgid ""
 "linyaps builder CLI \n"
 "A CLI program to build linyaps application\n"
 msgstr ""
+"Linyaps Builder CLI\n"
+"CLI-ohjelma Linyaps-sovellusten rakentamiseen\n"
 
 #: ../apps/ll-builder/src/main.cpp:481
 msgid "Usage: ll-builder [OPTIONS] [SUBCOMMAND]"
@@ -979,7 +981,7 @@ msgstr "Määritä sovelluksen käyttämä(t) laajennukset"
 
 #: ../apps/ll-builder/src/main.cpp:592
 msgid "List built linyaps app"
-msgstr ""
+msgstr "Lista rakennetuista Linyaps-sovelluksista"
 
 #: ../apps/ll-builder/src/main.cpp:593
 msgid "Usage: ll-builder list [OPTIONS]"

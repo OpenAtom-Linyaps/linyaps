@@ -573,15 +573,15 @@ msgstr "Lajittele nousevasti"
 
 #: ../apps/ll-cli/src/main.cpp:470
 msgid "Analyze installed applications"
-msgstr ""
+msgstr "Analysoi asennettuja sovelluksia"
 
 #: ../apps/ll-cli/src/main.cpp:472
 msgid "Usage: ll-cli analyze SUBCOMMAND [OPTIONS]"
-msgstr ""
+msgstr "Käyttö: ll-cli analyze SUBCOMMAND [OPTIONS]"
 
 #: ../apps/ll-cli/src/main.cpp:478
 msgid "Display installed application dependency tree"
-msgstr ""
+msgstr "Näytä asennetun sovelluksen riippuvuuspuu"
 
 #: ../apps/ll-cli/src/main.cpp:480
 msgid ""

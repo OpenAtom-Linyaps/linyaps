@@ -43,7 +43,8 @@ int runProcess(const std::string &binaryPath,
                 ::dup2(pipes[1], 1);
 
                 ret = execvp(binaryPath.data(), (char **)(cArgs.get()));
-                std::cerr << "execvp failed: " << std::strerror(errno) << std::endl;
+                std::cerr << "execvp failed: " << std::strerror(errno)
+                          << std::endl;
                 // Exceptions cannot cross fork(): unwinding here would run the
                 // caller's cleanup code and continue as a duplicate of the
                 // parent process, so the child must terminate immediately.
@@ -112,7 +113,8 @@ int runProcess(const std::string &binaryPath,
         int ret{ 0 };
         if (childId == 0) {
                 ret = execvp(binaryPath.data(), (char **)(cArgs.get()));
-                std::cerr << "execvp failed: " << std::strerror(errno) << std::endl;
+                std::cerr << "execvp failed: " << std::strerror(errno)
+                          << std::endl;
                 // Exceptions cannot cross fork(): unwinding here would run the
                 // caller's cleanup code and continue as a duplicate of the
                 // parent process, so the child must terminate immediately.

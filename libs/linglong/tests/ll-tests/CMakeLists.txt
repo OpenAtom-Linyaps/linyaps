@@ -25,6 +25,7 @@ pfl_add_executable(
   src/linglong/common/cli/repo_test.cpp
   src/linglong/common/dir_test.cpp
   src/linglong/common/strings_test.cpp
+  src/linglong/common/common_deep_test.cpp
   src/linglong/common/display_test.cpp
   src/linglong/common/socket_test.cpp
   src/linglong/common/xdg_test.cpp

@@ -81,6 +81,24 @@ TEST(CheckUABLayersConstrain, ArchMismatch)
     EXPECT_FALSE(result.has_value());
 }
 
+TEST(CheckUABLayersConstrain, EmptyArchitecture)
+{
+    TempDir tempDir;
+    MockOSTreeRepo mockRepo(tempDir.path());
+    repo::OSTreeRepo &repo = mockRepo;
+    std::vector<api::types::v1::UabLayer> layers;
+    api::types::v1::UabLayer layer;
+    // A layer whose meta info contains an empty architecture array
+    layer.minified = false;
+    layer.info.arch = {};
+    layers.push_back(layer);
+
+    auto result = UabInstallationAction::checkUABLayersConstrain(repo, layers);
+    ASSERT_FALSE(result.has_value());
+    EXPECT_NE(result.error().message().find("missing architecture"), std::string::npos)
+      << result.error().message();
+}
+
 TEST(CheckUABLayersConstrain, DifferentIds)
 {
     TempDir tempDir;

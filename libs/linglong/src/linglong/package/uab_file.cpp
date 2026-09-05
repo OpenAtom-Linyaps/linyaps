@@ -122,10 +122,10 @@ utils::error::Result<std::string> UABFile::readSectionData(const QString &sectio
     // sh_size comes from untrusted file content. A corrupted or malicious
     // section header can claim far more data than the bundle holds, so the
     // section content is required to lie within the file before allocating.
-    struct stat fileStat {};
+    struct stat fileStat{};
     if (::fstat(this->fd, &fileStat) == -1) {
-        return LINGLONG_ERR(fmt::format("failed to stat uab file: {}",
-                                        common::error::errorString(errno)));
+        return LINGLONG_ERR(
+          fmt::format("failed to stat uab file: {}", common::error::errorString(errno)));
     }
     if (fileStat.st_size < 0
         || static_cast<std::uintmax_t>(sectionHeader->sh_offset)

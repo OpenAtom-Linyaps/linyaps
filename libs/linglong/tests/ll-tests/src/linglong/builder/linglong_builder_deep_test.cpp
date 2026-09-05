@@ -11,9 +11,9 @@
 #include "linglong/builder/printer.h"
 #include "linglong/utils/error/error.h"
 
-#include <QTemporaryDir>
 #include <QDir>
 #include <QFile>
+#include <QTemporaryDir>
 
 #include <memory>
 #include <string>
@@ -77,12 +77,10 @@ command:
 
 TEST_F(LinglongBuilderDeepTest, MultipleBuildStepsSequenceValidation)
 {
-    std::vector<std::string> buildCommands = {
-        "mkdir -p build",
-        "cd build && cmake ..",
-        "make -j4",
-        "make install DESTDIR=/tmp/target"
-    };
+    std::vector<std::string> buildCommands = { "mkdir -p build",
+                                               "cd build && cmake ..",
+                                               "make -j4",
+                                               "make install DESTDIR=/tmp/target" };
 
     EXPECT_EQ(buildCommands.size(), 4U);
     EXPECT_EQ(buildCommands[0], "mkdir -p build");

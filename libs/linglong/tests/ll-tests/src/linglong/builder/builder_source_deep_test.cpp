@@ -7,9 +7,9 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "linglong/builder/source_fetcher.h"
 #include "linglong/builder/config.h"
 #include "linglong/builder/printer.h"
+#include "linglong/builder/source_fetcher.h"
 #include "linglong/utils/error/error.h"
 
 #include <QDir>
@@ -73,8 +73,7 @@ TEST_F(BuilderSourceDeepTest, FetchArchiveSourceWithCompressionType)
     source.name = "archive_mod";
 
     auto mockCmd = std::make_shared<MockCommandDeep>("mock-archive");
-    EXPECT_CALL(*mockCmd, exec(_))
-      .WillOnce(Return("ok"));
+    EXPECT_CALL(*mockCmd, exec(_)).WillOnce(Return("ok"));
 
     SourceFetcher fetcher(source, cacheDir);
     fetcher.setCommand(mockCmd);
@@ -92,8 +91,7 @@ TEST_F(BuilderSourceDeepTest, FetchPatchSourceValidationAndExecution)
     source.name = "patch_step";
 
     auto mockCmd = std::make_shared<MockCommandDeep>("mock-patch");
-    EXPECT_CALL(*mockCmd, exec(_))
-      .WillOnce(Return("ok"));
+    EXPECT_CALL(*mockCmd, exec(_)).WillOnce(Return("ok"));
 
     SourceFetcher fetcher(source, cacheDir);
     fetcher.setCommand(mockCmd);
@@ -112,10 +110,8 @@ TEST_F(BuilderSourceDeepTest, FetchGitSourceWithBranchAndTagRef)
     source.name = "git_checkout";
 
     auto mockCmd = std::make_shared<MockCommandDeep>("mock-git-ref");
-    EXPECT_CALL(*mockCmd, setEnv("GIT_SUBMODULES", "true"))
-      .WillOnce(ReturnRef(*mockCmd));
-    EXPECT_CALL(*mockCmd, exec(_))
-      .WillOnce(Return("ok"));
+    EXPECT_CALL(*mockCmd, setEnv("GIT_SUBMODULES", "true")).WillOnce(ReturnRef(*mockCmd));
+    EXPECT_CALL(*mockCmd, exec(_)).WillOnce(Return("ok"));
 
     SourceFetcher fetcher(source, cacheDir);
     fetcher.setCommand(mockCmd);
@@ -133,10 +129,8 @@ TEST_F(BuilderSourceDeepTest, FetchSourceHandlesCommandFailureAndErrorPropagatio
     source.name = "fail_mod";
 
     auto mockCmd = std::make_shared<MockCommandDeep>("mock-fail");
-    EXPECT_CALL(*mockCmd, setEnv("GIT_SUBMODULES", "true"))
-      .WillOnce(ReturnRef(*mockCmd));
-    EXPECT_CALL(*mockCmd, exec(_))
-      .WillOnce(Return(LINGLONG_ERR("network unreachable", -101)));
+    EXPECT_CALL(*mockCmd, setEnv("GIT_SUBMODULES", "true")).WillOnce(ReturnRef(*mockCmd));
+    EXPECT_CALL(*mockCmd, exec(_)).WillOnce(Return(LINGLONG_ERR("network unreachable", -101)));
 
     SourceFetcher fetcher(source, cacheDir);
     fetcher.setCommand(mockCmd);
@@ -300,10 +294,8 @@ TEST_F(BuilderSourceDeepTest, SourceFetcherCacheDirectoryPathValidation)
 
     QDir nonExistentCache(tempDir.path() + "/non_existent_cache");
     auto mockCmd = std::make_shared<MockCommandDeep>("mock-cache-path");
-    EXPECT_CALL(*mockCmd, setEnv("GIT_SUBMODULES", "true"))
-      .WillOnce(ReturnRef(*mockCmd));
-    EXPECT_CALL(*mockCmd, exec(_))
-      .WillOnce(Return("ok"));
+    EXPECT_CALL(*mockCmd, setEnv("GIT_SUBMODULES", "true")).WillOnce(ReturnRef(*mockCmd));
+    EXPECT_CALL(*mockCmd, exec(_)).WillOnce(Return("ok"));
 
     SourceFetcher fetcher(source, nonExistentCache);
     fetcher.setCommand(mockCmd);

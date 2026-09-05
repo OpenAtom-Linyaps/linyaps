@@ -704,15 +704,17 @@ msgid ""
 "Use peer to peer DBus, this is used only in case that DBus daemon is not "
 "available"
 msgstr ""
+"Käytä D-BUS vertaisverkossa; käytetään vain, jos D-Bus-taustapalvelu ei ole "
+"saatavilla"
 
 #. json flag
 #: ../apps/ll-cli/src/main.cpp:605
 msgid "Use json format to output result"
-msgstr ""
+msgstr "Käytä JSON-formaattia tuloksiin"
 
 #: ../apps/ll-cli/src/main.cpp:612
 msgid "Show debug info; repeat to enable backtrace"
-msgstr ""
+msgstr "Näytä virheenjäljitystiedot; ota  takaisinjäljitys käyttöön"
 
 #: ../apps/ll-cli/src/main.cpp:615
 msgid "Don't output progress information"
@@ -797,11 +799,11 @@ msgstr "Kontti-id"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:182
 msgid "Pid"
-msgstr ""
+msgstr "PID"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:250
 msgid "Url"
-msgstr ""
+msgstr "URL"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:251
 msgid "Alias"
@@ -825,19 +827,19 @@ msgstr "Uusi"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:368
 msgid "Exclusive"
-msgstr ""
+msgstr "Ainoa"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:369
 msgid "Shared"
-msgstr ""
+msgstr "Jaettu"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:370
 msgid "Logical"
-msgstr ""
+msgstr "Looginen"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:370
 msgid "Actual"
-msgstr ""
+msgstr "Todellinen"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:385
 msgid "Calculated logical total size: "

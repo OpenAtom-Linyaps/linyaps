@@ -843,7 +843,7 @@ msgstr "Todellinen"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:385
 msgid "Calculated logical total size: "
-msgstr ""
+msgstr "Laskennallinen looginen koko:"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:386
 msgid "Exclusive: "

@@ -9,6 +9,7 @@
 #define private public
 #include "linglong/builder/linglong_builder.h"
 #undef private
+#include "linglong/common/global/initialize.h"
 #include "linglong/package/fuzzy_reference.h"
 #include "linglong/package/reference.h"
 #include "linglong/package_manager/package_task.h"
@@ -394,6 +395,59 @@ TEST_F(PullDependencyTest, pullResolvedRef_not_cached_triggers_pull)
 
     auto result =
       builder::detail::pullResolvedRef(refWithRepo(std::move(*ref), "custom"), *m_repo, "binary");
+    EXPECT_TRUE(result.has_value()) << result.error().message();
+}
+
+TEST_F(PullDependencyTest, pullResolvedRef_leaves_no_cancel_connection_behind)
+{
+    LINGLONG_TRACE("pullResolvedRef_leaves_no_cancel_connection_behind");
+
+    auto ref = package::Reference::parse("main:org.example.test/1.0.0.0/x86_64");
+    ASSERT_TRUE(ref.has_value()) << ref.error().message();
+
+    EXPECT_CALL(*m_repo, getLayerDir(_, _)).WillOnce(Return(LINGLONG_ERR("not found")));
+    EXPECT_CALL(*m_repo, pull(_, _, _)).WillOnce(Return(utils::error::Result<void>{}));
+
+    auto *taskControl = common::global::GlobalTaskControl::instance();
+    ASSERT_TRUE(taskControl);
+    // Drop connections registered by other tests so the check below only
+    // observes what pullResolvedRef leaves behind.
+    taskControl->disconnect(SIGNAL(OnCancel()));
+
+    auto result = builder::detail::pullResolvedRef(refWithRepo(std::move(*ref)), *m_repo, "binary");
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+
+    // The connection to the process-wide cancel signal must not outlive the
+    // local task whose member it captures.
+    EXPECT_FALSE(taskControl->disconnect(SIGNAL(OnCancel())));
+}
+
+TEST_F(PullDependencyTest, pullResolvedRef_cancel_during_pull_reaches_the_task)
+{
+    LINGLONG_TRACE("pullResolvedRef_cancel_during_pull_reaches_the_task");
+
+    auto ref = package::Reference::parse("main:org.example.test/1.0.0.0/x86_64");
+    ASSERT_TRUE(ref.has_value()) << ref.error().message();
+
+    EXPECT_CALL(*m_repo, getLayerDir(_, _)).WillOnce(Return(LINGLONG_ERR("not found")));
+    EXPECT_CALL(*m_repo, pull(_, _, _))
+      .WillOnce([](service::Task &taskContext,
+                   const package::ReferenceWithRepo &,
+                   const std::string &) -> utils::error::Result<void> {
+          // Emit the process-wide cancel signal directly: calling
+          // GlobalTaskControl::cancel() would permanently flip the singleton's
+          // canceled flag and break other tests running in the same binary
+          // (GlobalTaskControl.InstanceIsAvailableAndNotInitiallyCanceled).
+          auto *control = const_cast<common::global::GlobalTaskControl *>(
+            common::global::GlobalTaskControl::instance());
+          Q_EMIT control->OnCancel();
+          // The task must stay reachable through the cancel connection while
+          // it is alive.
+          EXPECT_TRUE(taskContext.isTaskDone());
+          return {};
+      });
+
+    auto result = builder::detail::pullResolvedRef(refWithRepo(std::move(*ref)), *m_repo, "binary");
     EXPECT_TRUE(result.has_value()) << result.error().message();
 }
 

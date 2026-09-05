@@ -5,14 +5,13 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "../../common/tempdir.h"
 #include "application_singleton.h"
 #include "dbus_notifier.h"
 #include "driver_detection_config.h"
 #include "driver_detection_manager.h"
 #include "driver_detector.h"
 #include "nvidia_driver_detector.h"
-
-#include "../../common/tempdir.h"
 
 #include <filesystem>
 #include <fstream>
@@ -81,8 +80,7 @@ TEST_F(DriverDetectionManagerDeepSuite, DetectMultipleHardwareVendorsSuccess)
 
     EXPECT_CALL(*intelDetector, detect())
       .WillOnce(Return(LINGLONG_ERR("No compatible Intel Arc hardware found")));
-    EXPECT_CALL(*intelDetector, getDriverIdentify())
-      .WillOnce(Return("intel"));
+    EXPECT_CALL(*intelDetector, getDriverIdentify()).WillOnce(Return("intel"));
 
     std::vector<std::unique_ptr<DriverDetector>> detectors;
     detectors.push_back(std::move(nvidiaDetector));
@@ -314,7 +312,8 @@ TEST_F(DriverDetectionManagerDeepSuite, NvidiaDetectorBranchesNotInstalledRemote
     }
 
     TestableNvidiaDetector detector(fakeVersionFile.string());
-    std::string expectedPkg = std::string(NVIDIADriverDetector::kNvidiaPackageIdentify) + ".550.54.14";
+    std::string expectedPkg =
+      std::string(NVIDIADriverDetector::kNvidiaPackageIdentify) + ".550.54.14";
 
     GraphicsDriverInfo remoteInfo{
         .identify = NVIDIADriverDetector::kNvidiaPackageIdentify,
@@ -326,8 +325,7 @@ TEST_F(DriverDetectionManagerDeepSuite, NvidiaDetectorBranchesNotInstalledRemote
     EXPECT_CALL(detector, getPackageInfoFromRemoteRepo(expectedPkg))
       .WillOnce(Return(std::make_pair(true, remoteInfo)));
 
-    EXPECT_CALL(detector, checkPackageInstalled(expectedPkg))
-      .WillOnce(Return(false));
+    EXPECT_CALL(detector, checkPackageInstalled(expectedPkg)).WillOnce(Return(false));
 
     auto detectRes = detector.detect();
     ASSERT_TRUE(detectRes.has_value());
@@ -344,7 +342,8 @@ TEST_F(DriverDetectionManagerDeepSuite, NvidiaDetectorBranchesInstalledAndUpgrad
     }
 
     TestableNvidiaDetector detector(fakeVersionFile.string());
-    std::string expectedPkg = std::string(NVIDIADriverDetector::kNvidiaPackageIdentify) + ".550.54.14";
+    std::string expectedPkg =
+      std::string(NVIDIADriverDetector::kNvidiaPackageIdentify) + ".550.54.14";
 
     GraphicsDriverInfo remoteInfo{
         .identify = NVIDIADriverDetector::kNvidiaPackageIdentify,
@@ -356,11 +355,9 @@ TEST_F(DriverDetectionManagerDeepSuite, NvidiaDetectorBranchesInstalledAndUpgrad
     EXPECT_CALL(detector, getPackageInfoFromRemoteRepo(expectedPkg))
       .WillOnce(Return(std::make_pair(true, remoteInfo)));
 
-    EXPECT_CALL(detector, checkPackageInstalled(expectedPkg))
-      .WillOnce(Return(true));
+    EXPECT_CALL(detector, checkPackageInstalled(expectedPkg)).WillOnce(Return(true));
 
-    EXPECT_CALL(detector, checkPackageUpgradable(expectedPkg))
-      .WillOnce(Return(true));
+    EXPECT_CALL(detector, checkPackageUpgradable(expectedPkg)).WillOnce(Return(true));
 
     auto detectRes = detector.detect();
     ASSERT_TRUE(detectRes.has_value());
@@ -376,7 +373,8 @@ TEST_F(DriverDetectionManagerDeepSuite, NvidiaDetectorBranchesInstalledAlreadyLa
     }
 
     TestableNvidiaDetector detector(fakeVersionFile.string());
-    std::string expectedPkg = std::string(NVIDIADriverDetector::kNvidiaPackageIdentify) + ".550.54.14";
+    std::string expectedPkg =
+      std::string(NVIDIADriverDetector::kNvidiaPackageIdentify) + ".550.54.14";
 
     GraphicsDriverInfo remoteInfo{
         .identify = NVIDIADriverDetector::kNvidiaPackageIdentify,
@@ -388,11 +386,9 @@ TEST_F(DriverDetectionManagerDeepSuite, NvidiaDetectorBranchesInstalledAlreadyLa
     EXPECT_CALL(detector, getPackageInfoFromRemoteRepo(expectedPkg))
       .WillOnce(Return(std::make_pair(true, remoteInfo)));
 
-    EXPECT_CALL(detector, checkPackageInstalled(expectedPkg))
-      .WillOnce(Return(true));
+    EXPECT_CALL(detector, checkPackageInstalled(expectedPkg)).WillOnce(Return(true));
 
-    EXPECT_CALL(detector, checkPackageUpgradable(expectedPkg))
-      .WillOnce(Return(false));
+    EXPECT_CALL(detector, checkPackageUpgradable(expectedPkg)).WillOnce(Return(false));
 
     auto detectRes = detector.detect();
     EXPECT_FALSE(detectRes.has_value());
@@ -407,7 +403,8 @@ TEST_F(DriverDetectionManagerDeepSuite, NvidiaDetectorBranchesRemoteLookupFailur
     }
 
     TestableNvidiaDetector detector(fakeVersionFile.string());
-    std::string expectedPkg = std::string(NVIDIADriverDetector::kNvidiaPackageIdentify) + ".550.54.14";
+    std::string expectedPkg =
+      std::string(NVIDIADriverDetector::kNvidiaPackageIdentify) + ".550.54.14";
 
     EXPECT_CALL(detector, getPackageInfoFromRemoteRepo(expectedPkg))
       .WillOnce(Return(LINGLONG_ERR("Remote repository connection timeout")));
@@ -452,8 +449,7 @@ TEST_F(DriverDetectionManagerDeepSuite, MultipleDetectorsMixedResults)
 
     EXPECT_CALL(*detector2, detect())
       .WillOnce(Return(LINGLONG_ERR("Device busy or driver in use")));
-    EXPECT_CALL(*detector2, getDriverIdentify())
-      .WillOnce(Return("generic-gpu"));
+    EXPECT_CALL(*detector2, getDriverIdentify()).WillOnce(Return("generic-gpu"));
 
     EXPECT_CALL(*detector3, detect())
       .WillOnce(Return(linglong::utils::error::Result<GraphicsDriverInfo>(

@@ -42,17 +42,17 @@ msgstr "Kannassa {} ei ole asennettuna kehitysmoduulia, asennetaan se nyt."
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2361
 #, c++-format
 msgid "{} is not a regular file; expected a .layer or .uab file."
-msgstr ""
+msgstr "{} ei ole oikea tiedosto; odotettiin .layer- tai .uab-tiedostoa."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2372
 #, c++-format
 msgid "Unsupported file format {}; expected a .layer or .uab file."
-msgstr ""
+msgstr "Tiedostomuotoa {} ei tueta; odotettiin .layer- tai .uab-tiedostoa."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2385
 #, c++-format
 msgid "Package file {} does not exist."
-msgstr ""
+msgstr "Pakettia {} ei ole olemassa."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2452
 #, c++-format
@@ -79,7 +79,7 @@ msgstr "Moduulia ei löytynyt palvelimelta."
 #: ../libs/linglong/src/linglong/cli/cli.cpp:3640
 #: ../libs/linglong/src/linglong/cli/cli.cpp:3676
 msgid "Application already installed"
-msgstr ""
+msgstr "Sovellus on jo asennettu"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:3644
 #, c++-format
@@ -236,11 +236,11 @@ msgstr ""
 
 #: ../apps/ll-cli/src/main.cpp:149
 msgid "Enable PipeWire socket mount inside the sandbox"
-msgstr ""
+msgstr "Ota PipeWire-asennus käyttöön hiekkalaatikon sisällä"
 
 #: ../apps/ll-cli/src/main.cpp:154
 msgid "Enable AT SPI socket mount inside the sandbox"
-msgstr ""
+msgstr "Ota AT SPI-asennus käyttöön hiekkalaatikon sisällä"
 
 #: ../apps/ll-cli/src/main.cpp:156
 msgid "Run context json string"

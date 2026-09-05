@@ -243,7 +243,9 @@ TEST(CliNotifierDeepSuite, CLIPrinterDependencyForestOutput)
     CLIPrinter printer;
 
     Printer::DependsNode leaf1{ .children = {}, .kind = "runtime", .ref = "lib.runtime.core/1.0" };
-    Printer::DependsNode leaf2{ .children = {}, .kind = "extension", .ref = "ext.plugin.media/1.0" };
+    Printer::DependsNode leaf2{ .children = {},
+                                .kind = "extension",
+                                .ref = "ext.plugin.media/1.0" };
     Printer::DependsNode intermediate{
         .children = { leaf1, leaf2 },
         .kind = "base",
@@ -492,7 +494,8 @@ TEST(CliNotifierDeepSuite, CLIPrinterErrorMessageFormatting)
     CaptureOutputBuffer capture;
     CLIPrinter printer;
 
-    auto err = linglong::utils::error::Error::Err("test_path.cpp", 123, "stack", "fatal error test", 404);
+    auto err =
+      linglong::utils::error::Error::Err("test_path.cpp", 123, "stack", "fatal error test", 404);
     printer.printErr(err);
     auto out = capture.str();
     EXPECT_THAT(out, HasSubstr("404"));
@@ -504,7 +507,8 @@ TEST(CliNotifierDeepSuite, JSONPrinterErrorMessageFormatting)
     CaptureOutputBuffer capture;
     JSONPrinter printer;
 
-    auto err = linglong::utils::error::Error::Err("test_path.cpp", 123, "stack", "json error test", 500);
+    auto err =
+      linglong::utils::error::Error::Err("test_path.cpp", 123, "stack", "json error test", 500);
     printer.printErr(err);
     auto out = capture.str();
     EXPECT_THAT(out, HasSubstr("500"));

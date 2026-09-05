@@ -10,8 +10,8 @@
 #include "linglong/utils/cmd.h"
 #include "linglong/utils/error/error.h"
 
-#include <vector>
 #include <string>
+#include <vector>
 
 namespace linglong::utils {
 namespace {

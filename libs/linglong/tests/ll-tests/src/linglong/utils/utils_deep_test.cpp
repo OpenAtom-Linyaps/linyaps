@@ -7,18 +7,19 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "linglong/utils/transaction.h"
-#include "linglong/utils/filelock.h"
 #include "linglong/utils/bash_command_helper.h"
+#include "linglong/utils/filelock.h"
 #include "linglong/utils/packageinfo_handler.h"
 #include "linglong/utils/sha256.h"
+#include "linglong/utils/transaction.h"
 
-#include <QTemporaryDir>
 #include <QDir>
 #include <QFile>
-#include <vector>
-#include <string>
+#include <QTemporaryDir>
+
 #include <stdexcept>
+#include <string>
+#include <vector>
 
 namespace linglong::utils {
 namespace {
@@ -102,13 +103,11 @@ TEST(UtilsDeepTest, FileLockExclusiveLockingAndRAIIRelease)
 
 TEST(UtilsDeepTest, BashCommandHelperArgEscapingAndConcatenation)
 {
-    std::vector<std::string> args = {
-        "echo",
-        "hello world",
-        "foo'bar",
-        "$(rm -rf /)",
-        "\"quoted\""
-    };
+    std::vector<std::string> args = { "echo",
+                                      "hello world",
+                                      "foo'bar",
+                                      "$(rm -rf /)",
+                                      "\"quoted\"" };
 
     std::string escapedCmd = BashCommandHelper::escapeAndJoin(args);
     EXPECT_FALSE(escapedCmd.empty());
@@ -173,11 +172,7 @@ TEST(UtilsDeepTest, Sha256EmptyInputConsistency)
 
 TEST(UtilsDeepTest, BashCommandHelperSpecialCharacterEscaping)
 {
-    std::vector<std::string> args = {
-        "sh",
-        "-c",
-        "echo $PATH && ls -l | grep txt"
-    };
+    std::vector<std::string> args = { "sh", "-c", "echo $PATH && ls -l | grep txt" };
 
     std::string joined = BashCommandHelper::escapeAndJoin(args);
     EXPECT_FALSE(joined.empty());

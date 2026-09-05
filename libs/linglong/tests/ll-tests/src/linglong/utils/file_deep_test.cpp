@@ -7,16 +7,16 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "linglong/utils/error/error.h"
 #include "linglong/utils/file.h"
 #include "linglong/utils/io.h"
-#include "linglong/utils/error/error.h"
 
-#include <QTemporaryDir>
 #include <QDir>
 #include <QFile>
+#include <QTemporaryDir>
 
-#include <vector>
 #include <string>
+#include <vector>
 
 namespace linglong::utils {
 namespace {

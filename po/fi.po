@@ -488,7 +488,7 @@ msgstr "Määritä hakusanat"
 
 #: ../apps/ll-cli/src/main.cpp:392 ../apps/ll-cli/src/main.cpp:431
 msgid "Filter result with specify type. One of \"runtime\", \"base\", \"app\" or \"all\""
-msgstr ""
+msgstr "Suodata tulos tyypin mukaan. Joko \"runtime\", \"base\", \"app\" tai \"all\""
 
 #: ../apps/ll-cli/src/main.cpp:396
 msgid "Specify the repo"
@@ -496,11 +496,12 @@ msgstr "Määritä arkisto"
 
 #: ../apps/ll-cli/src/main.cpp:401
 msgid "Include develop application in result"
-msgstr ""
+msgstr "Sisällytä kehityssovellus tulokseen"
 
 #: ../apps/ll-cli/src/main.cpp:404
 msgid "Show all versions of an application(s), base(s) or runtime(s)"
 msgstr ""
+"Näytä kaikki versiot (sovelluksita), (alustoista) tai (ajoympäristöistä)"
 
 #: ../apps/ll-cli/src/main.cpp:412
 msgid "List installed application(s), base(s) or runtime(s)"

@@ -67,11 +67,15 @@ pfl_add_executable(
   src/linglong/runtime/run_context_test.cpp
   src/linglong/utils/bash_command_helper_test.cpp
   src/linglong/utils/cmd_test.cpp
+  src/linglong/utils/cmd_deep_test.cpp
   src/linglong/utils/error/error_test.cpp
   src/linglong/utils/file_test.cpp
+  src/linglong/utils/file_deep_test.cpp
   src/linglong/utils/filelock_test.cpp
   src/linglong/utils/hooks_test.cpp
+  src/linglong/utils/hooks_deep_test.cpp
   src/linglong/utils/io_test.cpp
+  src/linglong/utils/io_deep_test.cpp
   src/linglong/utils/log.cpp
   src/linglong/utils/namespce.cpp
   src/linglong/utils/overlayfs_test.cpp
@@ -79,6 +83,7 @@ pfl_add_executable(
   src/linglong/utils/runtime_config_test.cpp
   src/linglong/utils/sha256_test.cpp
   src/linglong/utils/transaction_test.cpp
+  src/linglong/utils/utils_deep_test.cpp
   src/linglong/utils/xdg/directory_test.cpp
   src/linglong/utils/xdp_test.cpp
   src/main.cpp

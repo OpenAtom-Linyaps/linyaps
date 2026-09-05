@@ -28,11 +28,9 @@ TEST(FuzzyReferenceDeepTest, FullRefParsingAndPatternMatching)
 
 TEST(FuzzyReferenceDeepTest, MultipleChannelAndArchitectureMatrix)
 {
-    std::vector<std::string> validRefs = {
-        "com.deepin.browser/6.0.0/x86_64",
-        "com.deepin.browser/6.0.0/aarch64",
-        "com.deepin.browser/6.0.0/loongarch64"
-    };
+    std::vector<std::string> validRefs = { "com.deepin.browser/6.0.0/x86_64",
+                                           "com.deepin.browser/6.0.0/aarch64",
+                                           "com.deepin.browser/6.0.0/loongarch64" };
 
     FuzzyReference fuzzy("com.deepin.browser");
     for (const auto &refStr : validRefs) {

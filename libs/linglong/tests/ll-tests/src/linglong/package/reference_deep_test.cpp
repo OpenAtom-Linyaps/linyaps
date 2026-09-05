@@ -7,8 +7,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "linglong/package/reference.h"
 #include "linglong/package/fuzzy_reference.h"
+#include "linglong/package/reference.h"
 
 #include <string>
 #include <vector>

@@ -7,10 +7,10 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "linglong/package/fallback_version.h"
 #include "linglong/package/version.h"
 #include "linglong/package/versionv1.h"
 #include "linglong/package/versionv2.h"
-#include "linglong/package/fallback_version.h"
 
 #include <string>
 #include <vector>
@@ -52,15 +52,9 @@ TEST(SemverDeepTest, VersionV2SemverSpecConformance)
 
 TEST(SemverDeepTest, VersionV2PrereleasePrecedenceRules)
 {
-    std::vector<std::string> versions = {
-        "1.0.0-alpha",
-        "1.0.0-alpha.1",
-        "1.0.0-alpha.beta",
-        "1.0.0-beta",
-        "1.0.0-beta.2",
-        "1.0.0-rc.1",
-        "1.0.0"
-    };
+    std::vector<std::string> versions = { "1.0.0-alpha", "1.0.0-alpha.1", "1.0.0-alpha.beta",
+                                          "1.0.0-beta",  "1.0.0-beta.2",  "1.0.0-rc.1",
+                                          "1.0.0" };
 
     for (size_t i = 0; i < versions.size() - 1; ++i) {
         auto va = VersionV2::parse(versions[i]);
@@ -72,12 +66,7 @@ TEST(SemverDeepTest, VersionV2PrereleasePrecedenceRules)
 
 TEST(SemverDeepTest, InvalidVersionStringsRejection)
 {
-    std::vector<std::string> badVersions = {
-        "invalid_version",
-        "1.2.3.4.5.6",
-        "a.b.c",
-        "-1.0.0"
-    };
+    std::vector<std::string> badVersions = { "invalid_version", "1.2.3.4.5.6", "a.b.c", "-1.0.0" };
 
     for (const auto &str : badVersions) {
         auto v1Res = VersionV1::parse(str);

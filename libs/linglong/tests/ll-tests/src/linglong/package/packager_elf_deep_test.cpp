@@ -9,18 +9,18 @@
 
 #include "common/tempdir.h"
 #include "linglong/api/types/v1/Generators.hpp"
-#include "linglong/package/uab_packager.h"
-#include "linglong/package/layer_packager.h"
-#include "linglong/package/layer_dir.h"
-#include "linglong/package/elf_handler.h"
-#include "linglong/package/version.h"
-#include "linglong/package/fallback_version.h"
 #include "linglong/package/architecture.h"
+#include "linglong/package/elf_handler.h"
+#include "linglong/package/fallback_version.h"
+#include "linglong/package/layer_dir.h"
+#include "linglong/package/layer_packager.h"
+#include "linglong/package/uab_packager.h"
+#include "linglong/package/version.h"
 
 #include <filesystem>
 #include <fstream>
-#include <vector>
 #include <string>
+#include <vector>
 
 namespace linglong::package {
 namespace {
@@ -28,10 +28,7 @@ namespace {
 class PackagerElfDeepTest : public ::testing::Test
 {
 protected:
-    void SetUp() override
-    {
-        ASSERT_TRUE(tempDir.isValid());
-    }
+    void SetUp() override { ASSERT_TRUE(tempDir.isValid()); }
 
     TempDir tempDir{ "packager-elf-deep-test-" };
 };

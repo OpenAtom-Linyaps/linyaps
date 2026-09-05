@@ -422,6 +422,29 @@ TEST_F(PullDependencyTest, pullResolvedRef_leaves_no_cancel_connection_behind)
     EXPECT_FALSE(taskControl->disconnect(SIGNAL(OnCancel())));
 }
 
+TEST_F(PullDependencyTest, pullResolvedRef_cancel_during_pull_reaches_the_task)
+{
+    LINGLONG_TRACE("pullResolvedRef_cancel_during_pull_reaches_the_task");
+
+    auto ref = package::Reference::parse("main:org.example.test/1.0.0.0/x86_64");
+    ASSERT_TRUE(ref.has_value()) << ref.error().message();
+
+    EXPECT_CALL(*m_repo, getLayerDir(_, _)).WillOnce(Return(LINGLONG_ERR("not found")));
+    EXPECT_CALL(*m_repo, pull(_, _, _))
+      .WillOnce([](service::Task &taskContext,
+                   const package::ReferenceWithRepo &,
+                   const std::string &) -> utils::error::Result<void> {
+          // Emits OnCancel synchronously. The task must stay reachable
+          // through the cancel connection while it is alive.
+          common::global::GlobalTaskControl::cancel();
+          EXPECT_TRUE(taskContext.isTaskDone());
+          return {};
+      });
+
+    auto result = builder::detail::pullResolvedRef(refWithRepo(std::move(*ref)), *m_repo, "binary");
+    EXPECT_TRUE(result.has_value()) << result.error().message();
+}
+
 TEST_F(PullDependencyTest, buildStagePullDependency_continues_when_local_develop_pull_fails)
 {
     LINGLONG_TRACE("buildStagePullDependency_continues_when_local_develop_pull_fails");

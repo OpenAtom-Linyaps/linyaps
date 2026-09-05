@@ -505,7 +505,7 @@ msgstr ""
 
 #: ../apps/ll-cli/src/main.cpp:412
 msgid "List installed application(s), base(s) or runtime(s)"
-msgstr ""
+msgstr "Luettele asennetut sovellukse(t), alusta(t) tai ajoympäristö(t)"
 
 #: ../apps/ll-cli/src/main.cpp:415
 msgid ""
@@ -538,10 +538,12 @@ msgid ""
 "Show the list of latest version of the currently installed application(s), "
 "base(s) or runtime(s)"
 msgstr ""
+"Näytä luettelo asennettujen uusimmista versioista. Sovellukse(t), alusta(t) "
+"tai ajoympäristö(t)"
 
 #: ../apps/ll-cli/src/main.cpp:445
 msgid "Show installed module sizes and repository real size"
-msgstr ""
+msgstr "Näytä asennettujen moduulien koot ja todellinen koko repossa"
 
 #: ../apps/ll-cli/src/main.cpp:447
 msgid ""
@@ -551,16 +553,23 @@ msgid ""
 "# show installed module sizes\n"
 "ll-cli analyze size\n"
 msgstr ""
+"Käyttö: ll-cli analyze size [OPTIONS]\n"
+"\n"
+"Esimerkki:\n"
+"# näytä asennettujen moduulien koot\n"
+"ll-cli analyze size\n"
 
 #: ../apps/ll-cli/src/main.cpp:457
 msgid ""
 "Sort result by specify field. One of \"actual\", \"logical\", \"exclusive\","
 " \"shared\" or \"id\""
 msgstr ""
+"Suodata tulos tyypin mukaan. Joko \"actual\", \"logical\", \"exclusive\", "
+"\"shared\" tai \"id\""
 
 #: ../apps/ll-cli/src/main.cpp:461
 msgid "Sort in ascending order"
-msgstr ""
+msgstr "Lajittele nousevasti"
 
 #: ../apps/ll-cli/src/main.cpp:470
 msgid "Analyze installed applications"

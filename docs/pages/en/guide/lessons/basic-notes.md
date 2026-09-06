@@ -175,7 +175,7 @@ Then when starting the Linyaps application build project, it will default to usi
 
 According to the Linyaps application build project source file type, Linyaps application build projects can be divided into `local file builds` and `git source repository pull builds`. Different types require filling in different `linglong.yaml` content.
 The Linyaps application build project source file type `sources` mainly supports these types: `git` `local` `file` `archive`
-Complete description reference: [Build Configuration File Introduction](https://linyaps.org.cn/guide/ll-builder/manifests.html)
+Complete description reference: [Build Configuration File Introduction](https://linyaps.org.cn/guide/building/manifests.html)
 
 #### Git Pull Source Code Compilation Mode
 
@@ -187,12 +187,12 @@ At this time, you need to write the `sources` and `build` modules according to s
 ```yaml
 sources:
   - kind: git
-    url: https://githubfast.com/qbittorrent/qBittorrent.git
+    url: https://github.com/qbittorrent/qBittorrent.git
     version: release-4.6.7
     commit: 839bc696d066aca34ebd994ee1673c4b2d5afd7b
 
   - kind: git
-    url: https://githubfast.com/arvidn/libtorrent.git
+    url: https://github.com/arvidn/libtorrent.git
     version: v2.0.9
     commit: 4b4003d0fdc09a257a0841ad965b22533ed87a0d
 ```

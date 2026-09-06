@@ -24,7 +24,7 @@ The build environment for converting deb packages to Linglong packages.
 runtime:
   version: 23.0.1
   base_version: 23.0.0
-  source: https://community-packages.deepin.com/beige/
+  source: https://community-packages.deepin.com/deepin/beige/
   distro_version: beige
   arch: amd64
 ```

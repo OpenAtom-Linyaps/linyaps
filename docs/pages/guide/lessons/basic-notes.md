@@ -174,7 +174,7 @@ base: org.deepin.foundation/23.0.0
 
 根据玲珑应用构建工程源文件类型，又可将玲珑应用构建工程划分为 `本地文件构建` `git 源码仓库拉取构建`，不同类型则需要填写不同的 `linglong.yaml`
 玲珑应用构建工程源文件类型 `sources` 主要支持这几种类型：`git` `local` `file` `archive`
-完整说明参考: [构建配置文件简介](https://linyaps.org.cn/guide/ll-builder/manifests.html)
+完整说明参考: [构建配置文件简介](https://linyaps.org.cn/guide/building/manifests.html)
 
 #### git拉取源码编译模式
 
@@ -186,12 +186,12 @@ base: org.deepin.foundation/23.0.0
 ```yaml
 sources:
   - kind: git
-    url: https://githubfast.com/qbittorrent/qBittorrent.git
+    url: https://github.com/qbittorrent/qBittorrent.git
     version: release-4.6.7
     commit: 839bc696d066aca34ebd994ee1673c4b2d5afd7b
 
   - kind: git
-    url: https://githubfast.com/arvidn/libtorrent.git
+    url: https://github.com/arvidn/libtorrent.git
     version: v2.0.9
     commit: 4b4003d0fdc09a257a0841ad965b22533ed87a0d
 ```

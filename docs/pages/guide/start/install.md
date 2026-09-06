@@ -77,23 +77,23 @@ sudo apt install linglong-bin linglong-installer
 ### deepin 23
 
 ```sh
-echo "deb [trusted=yes] https://ci.deepin.com/repo/obs/linglong:/CI:/release/Deepin_23/ ./" | sudo tee /etc/apt/sources.list.d/linglong.list
+echo "deb [trusted=yes] https://ci.deepin.com/repo/obs/linglong:/CI:/release/Deepin_23.1/ ./" | sudo tee /etc/apt/sources.list.d/linglong.list
 sudo apt update
 sudo apt install linglong-bin linglong-installer
 ```
 
-### Fedora 41
+### Fedora 43
 
 ```sh
-sudo dnf config-manager addrepo --from-repofile "https://ci.deepin.com/repo/obs/linglong:/CI:/release/Fedora_41/linglong%3ACI%3Arelease.repo"
+sudo dnf config-manager addrepo --from-repofile "https://ci.deepin.com/repo/obs/linglong:/CI:/release/Fedora_43/linglong%3ACI%3Arelease.repo"
 sudo dnf update
 sudo dnf install linglong-bin linyaps-web-store-installer
 ```
 
-### Fedora 42
+### Fedora 44
 
 ```sh
-sudo dnf config-manager addrepo --from-repofile "https://ci.deepin.com/repo/obs/linglong:/CI:/release/Fedora_42/linglong%3ACI%3Arelease.repo"
+sudo dnf config-manager addrepo --from-repofile "https://ci.deepin.com/repo/obs/linglong:/CI:/release/Fedora_44/linglong%3ACI%3Arelease.repo"
 sudo dnf update
 sudo dnf install linglong-bin linyaps-web-store-installer
 ```
@@ -122,10 +122,10 @@ sudo apt update
 sudo apt install linglong-bin linglong-installer
 ```
 
-### openEuler 23.09
+### openEuler 25.03
 
 ```sh
-sudo dnf config-manager --add-repo "https://ci.deepin.com/repo/obs/linglong:/CI:/release/openEuler_23.09/linglong%3ACI%3Arelease.repo"
+sudo dnf config-manager --add-repo "https://ci.deepin.com/repo/obs/linglong:/CI:/release/openEuler_25.03/linglong%3ACI%3Arelease.repo"
 sudo sh -c "echo gpgcheck=0 >> /etc/yum.repos.d/linglong%3ACI%3Arelease.repo"
 sudo dnf update
 sudo dnf install linglong-bin linyaps-web-store-installer
@@ -148,10 +148,10 @@ sudo apt update
 sudo apt install linglong-bin linglong-installer
 ```
 
-### AnolisOS 8
+### AnolisOS 23.3
 
 ```sh
-sudo dnf config-manager addrepo --from-repofile "https://ci.deepin.com/repo/obs/linglong:/CI:/release/AnolisOS_8/linglong%3ACI%3Arelease.repo"
+sudo dnf config-manager addrepo --from-repofile "https://ci.deepin.com/repo/obs/linglong:/CI:/release/Anolis_23.3/linglong%3ACI%3Arelease.repo"
 sudo dnf update
 sudo dnf install linglong-bin linyaps-web-store-installer
 ```

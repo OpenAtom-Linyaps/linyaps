@@ -129,8 +129,15 @@ sudo dnf install linglong-bin linyaps-web-store-installer
 
 ### Ubuntu 24.04
 
+Ubuntu 24.04 can also use the DEB822 source format. Create a `.sources` file with the same repository entry:
+
 ```sh
-echo "deb [trusted=yes] https://ci.deepin.com/repo/obs/linglong:/CI:/release/xUbuntu_24.04/ ./" | sudo tee /etc/apt/sources.list.d/linglong.list
+sudo tee /etc/apt/sources.list.d/linglong.sources > /dev/null <<'EOF'
+Types: deb
+URIs: https://ci.deepin.com/repo/obs/linglong:/CI:/release/xUbuntu_24.04/
+Suites: ./
+Trusted: yes
+EOF
 sudo apt update
 sudo apt install linglong-bin linglong-installer
 ```

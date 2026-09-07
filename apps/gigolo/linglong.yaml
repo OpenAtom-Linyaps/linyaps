@@ -1,0 +1,47 @@
+version: "1"
+
+package:
+  id: de.www.uvena.gigolo
+  name: Gigolo
+  version: 0.5.4.0
+  kind: app
+  description: |
+    Gigolo is a frontend to easily manage connections to remote filesystems
+    using GIO/GVfs. It allows you to quickly connect/mount a remote filesystem
+    and manage bookmarks of such.
+
+command: [/opt/apps/de.www.uvena.gigolo/files/bin/gigolo]
+
+base: org.deepin.base/25.2.0
+
+sources:
+  - kind: archive
+    url: https://share.cicd.getdeepin.org/ziggy-pool/linyaps-apps-packaging-CI/25M8.top500-init.stage-1.sysRepo/gigolo_0.5.4.orig.tar.bz2
+    digest: 29951a16ca48c5350fa862417a253bc45c2762106027c216bb7a56eabdd7f0f6
+    name: gigolo
+
+build: |
+  cd /project/linglong/sources/gigolo/gigolo-0.5.4
+
+  ./configure --prefix=${PREFIX}
+  make -j$(nproc)
+  make install
+
+  # Rename desktop file to use ll_id
+  sed -i 's#Exec=gigolo#Exec=/opt/apps/de.www.uvena.gigolo/files/bin/gigolo#' \
+    ${PREFIX}/share/applications/gigolo.desktop
+  mv ${PREFIX}/share/applications/gigolo.desktop \
+    ${PREFIX}/share/applications/de.www.uvena.gigolo.desktop
+
+buildext:
+  apt:
+    build_depends:
+      - gettext
+      - libgtk-3-dev
+      - pkgconf
+      - xfce4-dev-tools
+    depends:
+      - libgtk-3-0
+      - libglib2.0-0
+      - gvfs-backends
+      - libglib2.0-bin

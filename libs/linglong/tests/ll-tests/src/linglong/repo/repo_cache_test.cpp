@@ -168,6 +168,175 @@ TEST_F(RepoCacheTest, PersistedFilesUsePackageManagerUmask)
               common::shared_file_permissions);
 }
 
+TEST_F(RepoCacheTest, QueryUsesEachFilter)
+{
+    auto cacheFile = tempDir.path() / "states.json";
+    RepoCache cache(cacheFile);
+
+    EXPECT_TRUE(cache.addLayerItem(createLayerItem("c1", "app.a", "1.0.0")).has_value());
+    EXPECT_TRUE(cache.addLayerItem(createLayerItem("c2", "app.a", "2.0.0")).has_value());
+    EXPECT_TRUE(cache.addLayerItem(createLayerItem("c3", "app.b", "1.0.0")).has_value());
+
+    // filter by id
+    auto byId = cache.queryLayerItem(repoCacheQuery{ .id = "app.a" });
+    ASSERT_EQ(byId.size(), 2);
+
+    // filter by version
+    auto byVersion = cache.queryLayerItem(repoCacheQuery{ .id = "app.a", .version = "2.0.0" });
+    ASSERT_EQ(byVersion.size(), 1);
+    EXPECT_EQ(byVersion.front().commit, "c2");
+
+    // filter by module (none has "runtime" module)
+    auto byModule = cache.queryLayerItem(repoCacheQuery{ .id = "app.a", .module = "runtime" });
+    EXPECT_TRUE(byModule.empty());
+
+    // filter by deleted flag
+    EXPECT_TRUE(cache.addLayerItem(createLayerItem("c4", "app.c", "1.0.0", true)).has_value());
+    auto deleted = cache.queryLayerItem(repoCacheQuery{ .deleted = true });
+    ASSERT_EQ(deleted.size(), 1);
+    EXPECT_EQ(deleted.front().commit, "c4");
+    auto notDeleted = cache.queryLayerItem(repoCacheQuery{ .deleted = false });
+    EXPECT_EQ(notDeleted.size(), 3);
+}
+
+TEST_F(RepoCacheTest, UpdateMergedItemsPersists)
+{
+    auto cacheFile = tempDir.path() / "states.json";
+    RepoCache cache(cacheFile);
+
+    std::vector<api::types::v1::RepositoryCacheMergedItem> items = {
+        api::types::v1::RepositoryCacheMergedItem{
+          .commits = std::vector<std::string>{ "commit-1" },
+          .id = "app.merged",
+          .modules = std::vector<std::string>{ "binary" },
+        },
+    };
+    ASSERT_TRUE(cache.updateMergedItems(items).has_value());
+
+    RepoCache reloaded(cacheFile);
+    ASSERT_TRUE(reloaded.load().has_value());
+    auto merged = reloaded.queryMergedItems();
+    ASSERT_TRUE(merged.has_value());
+    ASSERT_EQ(merged->size(), 1);
+    EXPECT_EQ(merged->at(0).id, "app.merged");
+}
+
+TEST_F(RepoCacheTest, UpdateConfigPreservesLayerAndMergedState)
+{
+    auto cacheFile = tempDir.path() / "states.json";
+    RepoCache cache(cacheFile);
+    ASSERT_TRUE(cache.updateConfig(createRepoConfig()).has_value());
+    ASSERT_TRUE(cache.addLayerItem(createLayerItem("live", "app.live", "1.0.0")).has_value());
+    ASSERT_TRUE(
+      cache.addLayerItem(createLayerItem("deleted", "app.deleted", "1.0.0", true)).has_value());
+    std::vector<api::types::v1::RepositoryCacheMergedItem> merged = {
+        api::types::v1::RepositoryCacheMergedItem{
+          .commits = { "live" },
+          .id = "merged",
+          .modules = { "binary" },
+        },
+    };
+    ASSERT_TRUE(cache.updateMergedItems(merged).has_value());
+
+    std::ifstream before(cacheFile);
+    auto expected = nlohmann::json::parse(before);
+    auto config = createRepoConfig();
+    config.repos.front().url = "https://example.com/updated";
+    expected["config"] = config;
+
+    ASSERT_TRUE(cache.updateConfig(config).has_value());
+    RepoCache reloaded(cacheFile);
+    ASSERT_TRUE(reloaded.load().has_value());
+    ASSERT_TRUE(reloaded.writeToDisk().has_value());
+    std::ifstream after(cacheFile);
+    EXPECT_EQ(nlohmann::json::parse(after), expected);
+    EXPECT_EQ(reloaded.queryExistingLayerItem().size(), 1);
+    EXPECT_EQ(reloaded.queryLayerItem(repoCacheQuery{ .deleted = true }).size(), 1);
+}
+
+TEST_F(RepoCacheTest, UpdateConfigRestoresConfigWhenWriteFails)
+{
+    auto cacheFile = tempDir.path() / "states.json";
+    RepoCache cache(cacheFile);
+    ASSERT_TRUE(cache.updateConfig(createRepoConfig()).has_value());
+    ASSERT_TRUE(cache.addLayerItem(createLayerItem("live", "app.live", "1.0.0")).has_value());
+    std::ifstream before(cacheFile);
+    auto expected = nlohmann::json::parse(before);
+
+    // A directory at the temporary file path prevents writing even when running as root.
+    auto temporaryFile = tempDir.path() / "temp-states.json";
+    ASSERT_TRUE(fs::create_directory(temporaryFile));
+    auto config = createRepoConfig();
+    config.repos.front().url = "https://example.com/updated";
+    EXPECT_FALSE(cache.updateConfig(config).has_value());
+    std::ifstream failed(cacheFile);
+    EXPECT_EQ(nlohmann::json::parse(failed), expected);
+
+    ASSERT_TRUE(fs::remove(temporaryFile));
+    ASSERT_TRUE(cache.writeToDisk().has_value());
+    std::ifstream after(cacheFile);
+    EXPECT_EQ(nlohmann::json::parse(after), expected);
+}
+
+TEST_F(RepoCacheTest, AddItemFailsWhenParentMissing)
+{
+    RepoCache cache(tempDir.path() / "missing" / "states.json");
+    auto item = createLayerItem("c1", "app.a", "1.0.0");
+    auto result = cache.addLayerItem(item);
+    EXPECT_FALSE(result.has_value());
+}
+
+TEST_F(RepoCacheTest, AddDuplicateItemFails)
+{
+    auto cacheFile = tempDir.path() / "states.json";
+    RepoCache cache(cacheFile);
+    auto item = createLayerItem("c1", "app.a", "1.0.0");
+    ASSERT_TRUE(cache.addLayerItem(item).has_value());
+    EXPECT_FALSE(cache.addLayerItem(item).has_value());
+}
+
+TEST_F(RepoCacheTest, LoadCorruptFileFails)
+{
+    auto cacheFile = tempDir.path() / "states.json";
+    std::ofstream(cacheFile) << "{ not valid json !";
+    RepoCache cache(cacheFile);
+    EXPECT_FALSE(cache.load().has_value());
+}
+
+TEST_F(RepoCacheTest, QueryUsesRemainingFilters)
+{
+    auto cacheFile = tempDir.path() / "states.json";
+    RepoCache cache(cacheFile);
+
+    auto item = createLayerItem("c1", "app.filter", "3.4.5");
+    item.repo = "alpha";
+    item.info.channel = "edge";
+    item.info.arch = { "aarch64" };
+    ASSERT_TRUE(cache.addLayerItem(item).has_value());
+
+    // filter by repo
+    auto byRepo = cache.queryLayerItem(repoCacheQuery{ .repo = "alpha" });
+    ASSERT_EQ(byRepo.size(), 1);
+    EXPECT_EQ(byRepo.front().commit, "c1");
+    EXPECT_TRUE(cache.queryLayerItem(repoCacheQuery{ .repo = "nightly" }).empty());
+
+    // filter by channel
+    auto byChannel = cache.queryLayerItem(repoCacheQuery{ .channel = "edge" });
+    ASSERT_EQ(byChannel.size(), 1);
+    EXPECT_EQ(byChannel.front().commit, "c1");
+    EXPECT_TRUE(cache.queryLayerItem(repoCacheQuery{ .channel = "stable" }).empty());
+
+    // filter by architecture
+    auto byArch = cache.queryLayerItem(repoCacheQuery{ .architecture = "aarch64" });
+    ASSERT_EQ(byArch.size(), 1);
+    EXPECT_EQ(byArch.front().commit, "c1");
+    EXPECT_TRUE(cache.queryLayerItem(repoCacheQuery{ .architecture = "x86_64" }).empty());
+
+    // queryLayerItem returns the highest version first
+    auto byId = cache.queryLayerItem(repoCacheQuery{ .id = "app.filter" });
+    ASSERT_EQ(byId.size(), 1);
+}
+
 } // namespace
 
 } // namespace linglong::repo::test

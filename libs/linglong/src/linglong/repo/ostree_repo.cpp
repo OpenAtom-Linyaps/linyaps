@@ -775,35 +775,6 @@ OSTreeRepo::getRepoByAlias(const std::string &alias) const noexcept
     return *it;
 }
 
-utils::error::Result<void>
-OSTreeRepo::updateConfig(const api::types::v1::RepoConfigV2 &newCfg) noexcept
-{
-    LINGLONG_TRACE("update underlying config")
-
-    auto result = saveConfig(newCfg, configFilePath());
-    if (!result) {
-        return LINGLONG_ERR(result);
-    }
-
-    utils::Transaction transaction;
-    result = updateOstreeRepoConfig(this->ostreeRepo.get(), newCfg);
-    transaction.addRollBack([this]() noexcept {
-        auto result = updateOstreeRepoConfig(this->ostreeRepo.get(), this->cfg);
-        if (!result) {
-            LogE("{}", result.error());
-        }
-    });
-    if (!result) {
-        return LINGLONG_ERR(result);
-    }
-
-    transaction.commit();
-
-    this->cfg = newCfg;
-
-    return LINGLONG_OK;
-}
-
 utils::error::Result<void> OSTreeRepo::setConfig(const api::types::v1::RepoConfigV2 &cfg) noexcept
 {
     LINGLONG_TRACE("set config");
@@ -833,8 +804,8 @@ utils::error::Result<void> OSTreeRepo::setConfig(const api::types::v1::RepoConfi
             LogE("{}", result.error());
         }
     });
-    LogI("rebuild repo cache");
-    if (auto ret = this->cache->rebuild(cfg, *(this->ostreeRepo)); !ret) {
+    LogI("update repo cache config");
+    if (auto ret = this->cache->updateConfig(cfg); !ret) {
         return LINGLONG_ERR(ret);
     }
 

@@ -219,7 +219,6 @@ private:
     std::filesystem::path repoDir;
     std::unique_ptr<linglong::repo::RepoCache> cache{ nullptr };
 
-    utils::error::Result<void> updateConfig(const api::types::v1::RepoConfigV2 &newCfg) noexcept;
     std::filesystem::path ostreeRepoDir() const noexcept;
     std::filesystem::path cacheFilePath() const noexcept;
     std::filesystem::path configFilePath() const noexcept;

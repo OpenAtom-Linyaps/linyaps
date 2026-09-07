@@ -221,6 +221,63 @@ TEST_F(RepoCacheTest, UpdateMergedItemsPersists)
     EXPECT_EQ(merged->at(0).id, "app.merged");
 }
 
+TEST_F(RepoCacheTest, UpdateConfigPreservesLayerAndMergedState)
+{
+    auto cacheFile = tempDir.path() / "states.json";
+    RepoCache cache(cacheFile);
+    ASSERT_TRUE(cache.updateConfig(createRepoConfig()).has_value());
+    ASSERT_TRUE(cache.addLayerItem(createLayerItem("live", "app.live", "1.0.0")).has_value());
+    ASSERT_TRUE(
+      cache.addLayerItem(createLayerItem("deleted", "app.deleted", "1.0.0", true)).has_value());
+    std::vector<api::types::v1::RepositoryCacheMergedItem> merged = {
+        api::types::v1::RepositoryCacheMergedItem{
+          .commits = { "live" },
+          .id = "merged",
+          .modules = { "binary" },
+        },
+    };
+    ASSERT_TRUE(cache.updateMergedItems(merged).has_value());
+
+    std::ifstream before(cacheFile);
+    auto expected = nlohmann::json::parse(before);
+    auto config = createRepoConfig();
+    config.repos.front().url = "https://example.com/updated";
+    expected["config"] = config;
+
+    ASSERT_TRUE(cache.updateConfig(config).has_value());
+    RepoCache reloaded(cacheFile);
+    ASSERT_TRUE(reloaded.load().has_value());
+    ASSERT_TRUE(reloaded.writeToDisk().has_value());
+    std::ifstream after(cacheFile);
+    EXPECT_EQ(nlohmann::json::parse(after), expected);
+    EXPECT_EQ(reloaded.queryExistingLayerItem().size(), 1);
+    EXPECT_EQ(reloaded.queryLayerItem(repoCacheQuery{ .deleted = true }).size(), 1);
+}
+
+TEST_F(RepoCacheTest, UpdateConfigRestoresConfigWhenWriteFails)
+{
+    auto cacheFile = tempDir.path() / "states.json";
+    RepoCache cache(cacheFile);
+    ASSERT_TRUE(cache.updateConfig(createRepoConfig()).has_value());
+    ASSERT_TRUE(cache.addLayerItem(createLayerItem("live", "app.live", "1.0.0")).has_value());
+    std::ifstream before(cacheFile);
+    auto expected = nlohmann::json::parse(before);
+
+    // A directory at the temporary file path prevents writing even when running as root.
+    auto temporaryFile = tempDir.path() / "temp-states.json";
+    ASSERT_TRUE(fs::create_directory(temporaryFile));
+    auto config = createRepoConfig();
+    config.repos.front().url = "https://example.com/updated";
+    EXPECT_FALSE(cache.updateConfig(config).has_value());
+    std::ifstream failed(cacheFile);
+    EXPECT_EQ(nlohmann::json::parse(failed), expected);
+
+    ASSERT_TRUE(fs::remove(temporaryFile));
+    ASSERT_TRUE(cache.writeToDisk().has_value());
+    std::ifstream after(cacheFile);
+    EXPECT_EQ(nlohmann::json::parse(after), expected);
+}
+
 TEST_F(RepoCacheTest, AddItemFailsWhenParentMissing)
 {
     RepoCache cache(tempDir.path() / "missing" / "states.json");

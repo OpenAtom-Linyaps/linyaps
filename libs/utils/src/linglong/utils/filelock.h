@@ -73,6 +73,8 @@ public:
     [[nodiscard]] pid_t pid() const noexcept;
 
 private:
+    void release() noexcept;
+
     [[nodiscard]] utils::error::Result<void> lockCheck() const noexcept;
 
     [[nodiscard]] bool compatibleWith(LockType type) const noexcept

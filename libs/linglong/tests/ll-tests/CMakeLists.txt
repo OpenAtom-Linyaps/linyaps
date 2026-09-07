@@ -95,6 +95,7 @@ pfl_add_executable(
   src/apps/ll-driver-detect/driver_detection_config_test.cpp
   src/apps/ll-driver-detect/application_singleton_test.cpp
   src/apps/ll-driver-detect/driver_detection_manager_test.cpp
+  src/apps/ll-driver-detect/driver_detection_deep_test.cpp
   src/apps/ll-driver-detect/dbus_notifier_test.cpp
   COMPILE_FEATURES
   PUBLIC

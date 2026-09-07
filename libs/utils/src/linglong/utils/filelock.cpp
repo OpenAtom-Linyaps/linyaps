@@ -79,6 +79,11 @@ utils::error::Result<FileLock> FileLock::create(std::filesystem::path path,
 
 FileLock::~FileLock() noexcept
 {
+    release();
+}
+
+void FileLock::release() noexcept
+{
     if (isLocked()) {
         auto ret = unlock();
         if (!ret) {
@@ -86,15 +91,17 @@ FileLock::~FileLock() noexcept
         }
     }
 
-    if (fd > 0 && ::close(fd) < 0) {
+    if (fd >= 0 && ::close(fd) < 0) {
         LogW("close file failed: {}", common::error::errorString(errno));
     }
 
     fd = -1;
+    locked.store(false, std::memory_order_relaxed);
     auto it = process_locked_paths.second.find(path);
     if (it != process_locked_paths.second.end()) {
         process_locked_paths.second.erase(it);
     }
+    path.clear();
 }
 
 FileLock::FileLock(int fd, std::filesystem::path path, LockType type) noexcept
@@ -127,6 +134,8 @@ FileLock &FileLock::operator=(FileLock &&other) noexcept
     if (other.pid_ != pid()) {
         LogF("move lock to different process");
     }
+
+    release();
 
     fd = other.fd;
     path = std::move(other.path);

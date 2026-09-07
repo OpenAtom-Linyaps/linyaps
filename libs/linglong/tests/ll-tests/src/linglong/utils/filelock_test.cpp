@@ -344,8 +344,7 @@ TEST_F(FileLockTest, MoveAssignment)
     auto lock1 = std::move(result1).value();
     EXPECT_TRUE(lock1.lock(LockType::Write));
 
-    const std::filesystem::path other_path =
-      std::filesystem::temp_directory_path() / ("other_" + std::to_string(::getpid()) + ".lock");
+    const auto other_path = temp_dir.path() / "other.lock";
     auto result2 = FileLock::create(other_path, LockType::Write, true);
     ASSERT_TRUE(result2);
     auto lock2 = std::move(result2).value();
@@ -354,6 +353,9 @@ TEST_F(FileLockTest, MoveAssignment)
     EXPECT_TRUE(lock2.isLocked());
     EXPECT_EQ(lock2.type(), LockType::Write);
     EXPECT_FALSE(lock1.isLocked());
+
+    auto reopened = FileLock::create(other_path, LockType::Write, false);
+    ASSERT_TRUE(reopened) << reopened.error();
 }
 
 // Test tryLock when already locked same type

@@ -1942,7 +1942,8 @@ void OSTreeRepo::unexportLayerSignData(
 // 递归源目录所有文件，并在目标目录创建软链接，max_depth 控制递归深度以避免环形链接导致的无限递归
 utils::error::Result<void> OSTreeRepo::exportDir(const std::string &appID,
                                                  const std::filesystem::path &source,
-                                                 const std::filesystem::path &destination,
+                                                 const std::filesystem::path &rootEntriesDir,
+                                                 const std::filesystem::path &relativeDestination,
                                                  const int &max_depth)
 {
     LINGLONG_TRACE(fmt::format("export {}", source.string()));
@@ -1950,6 +1951,13 @@ utils::error::Result<void> OSTreeRepo::exportDir(const std::string &appID,
         LogW("max depth reached, skipping export for {}", source.c_str());
         return LINGLONG_OK;
     }
+
+    const auto normalizedDestination = relativeDestination.lexically_normal();
+    if (normalizedDestination.is_absolute()
+        || (!normalizedDestination.empty() && *normalizedDestination.begin() == "..")) {
+        return LINGLONG_ERR("export destination must be relative to the entries root");
+    }
+    const auto destination = rootEntriesDir / normalizedDestination;
 
     std::error_code ec;
     // 检查源目录是否存在
@@ -1979,7 +1987,8 @@ utils::error::Result<void> OSTreeRepo::exportDir(const std::string &appID,
             return LINGLONG_ERR("failed to check file status: " + source_path.string(), ec);
         }
 
-        const auto &target_path = destination / source_path.filename();
+        const auto relativeTarget = normalizedDestination / source_path.filename();
+        const auto target_path = rootEntriesDir / relativeTarget;
         // 如果是文件，创建符号链接
         if (std::filesystem::is_regular_file(status)) {
             // linyaps.original结尾的文件是重写之前的备份文件，不应该被导出
@@ -2040,48 +2049,39 @@ utils::error::Result<void> OSTreeRepo::exportDir(const std::string &appID,
                     return LINGLONG_ERR("rename new path", ec);
                 }
             }
-            auto oldAppDir = this->getDefaultSharedDir() / "applications";
-            auto newAppDir = this->getOverlayShareDir() / "applications";
-            LogD("oldAppDir: {}, newAppDir: {}, target: {}",
-                 oldAppDir,
-                 newAppDir,
-                 target_path.string());
-            // 如果配置了overlay并且是applications中的desktop文件，执行特殊的逻辑
-            if (oldAppDir != newAppDir
-                && common::strings::starts_with(target_path.string(), oldAppDir.string())
-                && common::strings::ends_with(target_path.string(), ".desktop")) {
-                auto desktopExists = false;
-                // 如果要导出的desktop已存在，则覆盖导出（无论是在default还是overlay中），避免桌面和任务栏的快捷方式失效
-                const std::array<std::string, 2> appDirs{ oldAppDir, newAppDir };
-                for (const auto &appDir : appDirs) {
-                    // 如果目标文件存在，删除再导出
-                    const std::filesystem::path linkpath =
-                      target_path.string().replace(0, oldAppDir.string().length(), appDir);
-                    std::ignore = std::filesystem::symlink_status(linkpath, ec);
-                    if (!ec) {
-                        desktopExists = true;
-                        auto target = source_path.lexically_relative(linkpath.parent_path());
-                        auto res = utils::relinkFileTo(linkpath, target);
-                        if (!res) {
-                            LogE("failed to link {} to {}", linkpath.string(), target.string());
-                        }
+            const auto oldAppDir = this->getDefaultSharedDir() / "applications";
+            const auto newAppDir = this->getOverlayShareDir() / "applications";
+            const auto relativePath = relativeTarget.lexically_relative("share/applications");
+            // Read the existing layout from the live entries tree, but write all links
+            // into this export's root (which may be a temporary tree during a rebuild).
+            if (oldAppDir != newAppDir && !relativePath.empty() && *relativePath.begin() != ".."
+                && !relativePath.is_absolute() && target_path.extension() == ".desktop") {
+                std::vector<std::filesystem::path> exportPaths;
+                for (const auto &appDir : { oldAppDir, newAppDir }) {
+                    const auto status = std::filesystem::symlink_status(appDir / relativePath, ec);
+                    if (ec && ec != std::errc::no_such_file_or_directory) {
+                        return LINGLONG_ERR("check existing desktop entry", ec);
+                    }
+                    if (std::filesystem::exists(status)) {
+                        exportPaths.push_back(appDir.lexically_relative(this->getEntriesDir())
+                                              / relativePath);
                     }
                 }
-                // 如果desktop在两个目录都不存在，则优先导出到overlay目录
-                if (!desktopExists) {
-                    std::filesystem::path linkpath =
-                      target_path.string().replace(0, oldAppDir.string().length(), newAppDir);
-                    LogD("create parent directories for {}", linkpath);
+                if (exportPaths.empty()) {
+                    exportPaths.push_back(newAppDir.lexically_relative(this->getEntriesDir())
+                                          / relativePath);
+                }
+                for (const auto &path : exportPaths) {
+                    const auto linkpath = rootEntriesDir / path;
                     auto ret = utils::ensureDirectory(linkpath.parent_path());
-                    if (!ret.has_value()) {
+                    if (!ret) {
                         return LINGLONG_ERR("create parent dir", ret);
                     }
-                    std::filesystem::create_symlink(
-                      source_path.lexically_relative(linkpath.parent_path()),
-                      linkpath,
-                      ec);
-                    if (ec) {
-                        return LINGLONG_ERR("create symlink failed: " + linkpath.string(), ec);
+                    auto result =
+                      utils::relinkFileTo(linkpath,
+                                          source_path.lexically_relative(linkpath.parent_path()));
+                    if (!result) {
+                        return LINGLONG_ERR("export desktop entry", result);
                     }
                 }
                 continue;
@@ -2099,7 +2099,8 @@ utils::error::Result<void> OSTreeRepo::exportDir(const std::string &appID,
         }
 
         if (std::filesystem::is_directory(status)) {
-            auto ret = this->exportDir(appID, source_path, target_path, max_depth - 1);
+            auto ret =
+              this->exportDir(appID, source_path, rootEntriesDir, relativeTarget, max_depth - 1);
             if (!ret.has_value()) {
                 return ret;
             }
@@ -2190,10 +2191,10 @@ OSTreeRepo::exportAppEntries(const std::filesystem::path &rootEntriesDir,
         }
 
         auto source = appEntriesDir / path;
-        auto destination = rootEntriesDir / path;
+        std::filesystem::path relativeDestination = path;
         // 将 share/systemd 目录下的文件导出到 lib/systemd 目录下
         if (path == "share/systemd/user") {
-            destination = rootEntriesDir / "lib/systemd/user";
+            relativeDestination = "lib/systemd/user";
         }
 
         // 检查源目录是否存在，跳过不存在的目录
@@ -2204,7 +2205,7 @@ OSTreeRepo::exportAppEntries(const std::filesystem::path &rootEntriesDir,
         if (!exists) {
             continue;
         }
-        auto ret = this->exportDir(item.info.id, source, destination, 10);
+        auto ret = this->exportDir(item.info.id, source, rootEntriesDir, relativeDestination, 10);
         if (!ret.has_value()) {
             return ret;
         }
@@ -2241,8 +2242,8 @@ OSTreeRepo::exportLayerSignData(const std::filesystem::path &rootEntriesDir,
         return LINGLONG_OK;
     }
 
-    auto destination = rootEntriesDir / elfVerifyPath / item.commit;
-    return this->exportDir(item.info.id, source, destination, 10);
+    auto relativeDestination = std::filesystem::path(elfVerifyPath) / item.commit;
+    return this->exportDir(item.info.id, source, rootEntriesDir, relativeDestination, 10);
 }
 
 utils::error::Result<bool> OSTreeRepo::shouldExportSignData() const noexcept

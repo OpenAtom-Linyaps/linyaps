@@ -22,14 +22,7 @@ public:
     {
     }
 
-    // 公开exportDir以便测试
-    utils::error::Result<void> exportDir(const std::string &appID,
-                                         const std::filesystem::path &source,
-                                         const std::filesystem::path &destination,
-                                         const int &max_depth)
-    {
-        return this->OSTreeRepo::exportDir(appID, source, destination, max_depth);
-    }
+    using OSTreeRepo::exportDir;
 
     utils::error::Result<void>
     exportLayerEntries(const std::filesystem::path &destination,

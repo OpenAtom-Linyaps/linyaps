@@ -271,7 +271,8 @@ protected:
     virtual std::filesystem::path getOverlayShareDir() const noexcept;
     utils::error::Result<void> exportDir(const std::string &appID,
                                          const std::filesystem::path &source,
-                                         const std::filesystem::path &destination,
+                                         const std::filesystem::path &rootEntriesDir,
+                                         const std::filesystem::path &relativeDestination,
                                          const int &max_depth);
     utils::error::Result<void> exportLayerEntries(
       const std::filesystem::path &, const api::types::v1::RepositoryCacheLayersItem &) noexcept;

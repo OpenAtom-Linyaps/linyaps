@@ -464,6 +464,86 @@ TEST_F(RepoTest, loadFromPathFailsWhenCacheIsMissingButCreateCanRepairIt)
     EXPECT_TRUE(fs::exists(repoRoot / "states.json"));
 }
 
+TEST_F(RepoTest, exportDirRejectsDestinationsOutsideRoot)
+{
+    TempDir tempDir("repo_export_path_");
+    ASSERT_TRUE(tempDir.isValid());
+    const auto root = tempDir.path();
+    const auto source = root / "src";
+    const auto entries = root / "entries";
+    fs::create_directories(source);
+    const auto config =
+      api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 };
+    MockOstreeRepo repo(root, config);
+    for (const auto &destination :
+         { root / "outside", fs::path("../outside"), fs::path("share/../../outside") }) {
+        SCOPED_TRACE(destination.string());
+        EXPECT_FALSE(repo.exportDir("appID", source, entries, destination, 10).has_value());
+    }
+    EXPECT_FALSE(fs::exists(entries));
+    EXPECT_FALSE(fs::exists(root / "outside"));
+}
+
+TEST_F(RepoTest, exportDirPreservesDesktopLocationsDuringRebuild)
+{
+    for (const bool overlayEnabled : { false, true }) {
+        for (const int existingLocations : { 0, 1, 2, 3 }) {
+            SCOPED_TRACE(existingLocations);
+            SCOPED_TRACE(overlayEnabled);
+            TempDir tempDir("repo_export_rebuild_");
+            ASSERT_TRUE(tempDir.isValid());
+            const auto root = tempDir.path();
+            const auto live = root / "entries";
+            const auto staging = root / "entries_new_test";
+            const fs::path defaultPath = "share/applications/nested/test.desktop";
+            const fs::path overlayPath =
+              overlayEnabled ? "apps/share/applications/nested/test.desktop" : defaultPath;
+            const auto source = root / "src/share/applications";
+            fs::create_directories(source / "nested");
+            std::ofstream(source / "nested/test.desktop") << "[Desktop Entry]\nName=Test\n";
+            fs::create_directories((live / defaultPath).parent_path());
+            fs::create_directories((live / overlayPath).parent_path());
+            // Broken links must still count as existing desktop locations.
+            if (existingLocations & 1) {
+                fs::create_symlink("missing-default", live / defaultPath);
+            }
+            if ((existingLocations & 2) && (overlayEnabled || !(existingLocations & 1))) {
+                fs::create_symlink("missing-overlay", live / overlayPath);
+            }
+            const auto config =
+              api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 };
+            MockOstreeRepo repo(root, config);
+            repo.wrapGetOverlayShareDirFunc = [live, overlayEnabled]() {
+                return live / (overlayEnabled ? "apps/share" : "share");
+            };
+            for (int pass = 0; pass < 2; ++pass) {
+                auto result = repo.exportDir("appID", source, staging, "share/applications", 10);
+                ASSERT_TRUE(result.has_value()) << result.error().message();
+            }
+            const bool expectDefault = !overlayEnabled || (existingLocations & 1);
+            const bool expectOverlay =
+              !overlayEnabled || (existingLocations & 2) || existingLocations == 0;
+            EXPECT_EQ(fs::is_symlink(staging / defaultPath), expectDefault);
+            EXPECT_EQ(fs::is_symlink(staging / overlayPath), expectOverlay);
+            // Exporting to staging must not modify the live tree.
+            if (existingLocations & 1) {
+                EXPECT_EQ(fs::read_symlink(live / defaultPath), "missing-default");
+            }
+            if ((existingLocations & 2) && overlayEnabled) {
+                EXPECT_EQ(fs::read_symlink(live / overlayPath), "missing-overlay");
+            }
+            fs::rename(live, root / "entries_old_test");
+            fs::rename(staging, live);
+            if (expectDefault) {
+                EXPECT_TRUE(fs::equivalent(live / defaultPath, source / "nested/test.desktop"));
+            }
+            if (expectOverlay) {
+                EXPECT_TRUE(fs::equivalent(live / overlayPath, source / "nested/test.desktop"));
+            }
+        }
+    }
+}
+
 TEST_F(RepoTest, exportDir)
 {
     // 准备测试环境
@@ -553,7 +633,7 @@ TEST_F(RepoTest, exportDir)
         EXPECT_TRUE(fs::exists(destDirPath / "share" / "applications"))
           << "Destination applications directory not created";
         std::ofstream(destDirPath / "share" / "applications" / "test").close();
-        auto result = ostreeRepo->exportDir("appID", srcDirPath.string(), destDirPath.string(), 10);
+        auto result = ostreeRepo->exportDir("appID", srcDirPath.string(), destDirPath, "", 10);
         EXPECT_TRUE(result.has_value()) << "exportDir failed: " << result.error().message();
         auto status = fs::status(destDirPath / "share" / "applications" / "test", ec);
         EXPECT_FALSE(ec) << "Unexpected error code: " << ec.message();
@@ -577,7 +657,7 @@ TEST_F(RepoTest, exportDir)
         EXPECT_TRUE(fs::exists(destDirPath / "share" / "dbus-1" / "services" / "org.test.service"));
         EXPECT_TRUE(fs::exists(destDirPath / "lib" / "systemd" / "system" / "test.service"));
         // 测试重复导出
-        result = ostreeRepo->exportDir("appID", srcDirPath.string(), destDirPath.string(), 10);
+        result = ostreeRepo->exportDir("appID", srcDirPath.string(), destDirPath, "", 10);
         EXPECT_TRUE(result.has_value()) << "exportDir failed: " << result.error().message();
         EXPECT_FALSE(ec) << "Unexpected error code: " << ec.message();
     }
@@ -586,39 +666,39 @@ TEST_F(RepoTest, exportDir)
     };
     // 如果defaultShareDir已存在desktop, 则优先导出到defaultShareDir目录
     {
-        auto result = ostreeRepo->exportDir("appID", srcDirPath.string(), destDirPath.string(), 10);
+        auto result = ostreeRepo->exportDir("appID", srcDirPath.string(), destDirPath, "", 10);
         EXPECT_TRUE(result.has_value()) << "exportDir failed: " << result.error().message();
         EXPECT_FALSE(ec) << "Unexpected error code: " << ec.message();
         EXPECT_TRUE(fs::exists(destDirPath / "share/applications/test/test.desktop"));
         EXPECT_TRUE(!fs::exists(destDirPath / "app/share/applications/test/test.desktop"));
         // 测试重复导出
-        result = ostreeRepo->exportDir("appID", srcDirPath.string(), destDirPath.string(), 10);
+        result = ostreeRepo->exportDir("appID", srcDirPath.string(), destDirPath, "", 10);
         EXPECT_TRUE(result.has_value()) << "exportDir failed: " << result.error().message();
         EXPECT_FALSE(ec) << "Unexpected error code: " << ec.message();
     }
     // 如果defaultShareDir不存在desktop, 则导出到overlayShareDir目录
     fs::remove_all(destDirPath);
     {
-        auto result = ostreeRepo->exportDir("appID", srcDirPath.string(), destDirPath.string(), 10);
+        auto result = ostreeRepo->exportDir("appID", srcDirPath.string(), destDirPath, "", 10);
         EXPECT_TRUE(result.has_value()) << "exportDir failed: " << result.error().message();
         EXPECT_TRUE(!fs::exists(destDirPath / "share/applications/test/test.desktop"));
         EXPECT_TRUE(fs::exists(destDirPath / "apps/share/applications/test/test.desktop"));
         // 测试重复导出
-        result = ostreeRepo->exportDir("appID", srcDirPath.string(), destDirPath.string(), 10);
+        result = ostreeRepo->exportDir("appID", srcDirPath.string(), destDirPath, "", 10);
         EXPECT_TRUE(result.has_value()) << "exportDir failed: " << result.error().message();
     }
     // 如果两个目录都有desktop，则导出到两个目录
     {
         std::ofstream(destDirPath / "share/applications/test/test.desktop").close();
         EXPECT_TRUE(!fs::is_symlink(destDirPath / "share/applications/test/test.desktop"));
-        auto result = ostreeRepo->exportDir("appID", srcDirPath.string(), destDirPath.string(), 10);
+        auto result = ostreeRepo->exportDir("appID", srcDirPath.string(), destDirPath, "", 10);
         EXPECT_TRUE(result.has_value()) << "exportDir failed: " << result.error().message();
         EXPECT_TRUE(fs::exists(destDirPath / "share/applications/test/test.desktop"));
         EXPECT_TRUE(fs::exists(destDirPath / "apps/share/applications/test/test.desktop"));
         EXPECT_TRUE(fs::is_symlink(destDirPath / "share/applications/test/test.desktop"));
         EXPECT_TRUE(fs::is_symlink(destDirPath / "apps/share/applications/test/test.desktop"));
         // 测试重复导出
-        result = ostreeRepo->exportDir("appID", srcDirPath.string(), destDirPath.string(), 10);
+        result = ostreeRepo->exportDir("appID", srcDirPath.string(), destDirPath, "", 10);
         EXPECT_TRUE(result.has_value()) << "exportDir failed: " << result.error().message();
     }
 
@@ -629,7 +709,7 @@ TEST_F(RepoTest, exportDir)
     EXPECT_FALSE(ec) << "Error creating empty directory: " << ec.message();
     EXPECT_TRUE(fs::exists(emptyDirPath)) << "Empty directory not created";
     fs::path emptyDestPath = tempDir.path() / "empty_dest";
-    auto result = ostreeRepo->exportDir("appID", emptyDirPath.string(), emptyDestPath.string(), 10);
+    auto result = ostreeRepo->exportDir("appID", emptyDirPath.string(), emptyDestPath, "", 10);
     EXPECT_TRUE(result.has_value()) << "exportDir failed: " << result.error().message();
     EXPECT_FALSE(ec) << "Unexpected error code: " << ec.message();
     EXPECT_TRUE(fs::exists(emptyDestPath));

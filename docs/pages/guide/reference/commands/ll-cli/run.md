@@ -49,6 +49,9 @@ ll\-cli\-run - 运行应用程序
 **--enable-pipewire**
 : 将 PipeWire 套接字挂载到沙盒中
 
+**--enable-atspi**
+: 将 AT SPI 套接字挂载到沙盒中
+
 **--cdi-spec-dir** _DIR_...
 : 指定 CDI 规范目录，默认为 `/etc/cdi,/var/run/cdi`，多个目录用逗号分隔
 

@@ -1902,6 +1902,36 @@ auto PackageManager::InitRunContext(const QString &runContextCfg,
         return toDBusReply(utils::error::ErrorCode::Failed, "daemon mode not initialized");
     }
 
+    if (!m_peerMode) {
+        auto msg = message();
+        auto conn = connection();
+        setDelayedReply(true);
+
+        CallerContext ctx{ conn, msg };
+
+        checkPolkitAuthorizationAsync(
+          "org.deepin.linglong.PackageManager1.init-run-context",
+          msg.service().toStdString(),
+          [this, runContextCfg, containerID, ctx](utils::error::Result<void> authResult) {
+              if (!authResult) {
+                  ctx.connection.send(ctx.message.createErrorReply(
+                    QDBusError::AccessDenied,
+                    QString::fromStdString(authResult.error().message())));
+                  return;
+              }
+
+              auto reply = queueInitRunContext(runContextCfg, containerID);
+              ctx.connection.send(ctx.message.createReply(reply));
+          });
+        return {};
+    }
+
+    return queueInitRunContext(runContextCfg, containerID);
+}
+
+QVariantMap PackageManager::queueInitRunContext(const QString &runContextCfg,
+                                                const QString &containerID)
+{
     auto task = m_init_run_context_queue.addPackageTask(
       [this, runContextCfg = runContextCfg.toStdString(), containerID = containerID.toStdString()](
         Task &task) {

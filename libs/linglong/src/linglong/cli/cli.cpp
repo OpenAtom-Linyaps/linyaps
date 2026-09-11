@@ -2100,10 +2100,7 @@ int Cli::enter(const EnterOptions &options)
         commands = utils::BashCommandHelper::generateDefaultBashCommand();
     }
 
-    auto opt = ocppi::runtime::ExecOption{
-        .uid = ::getuid(),
-        .gid = ::getgid(),
-    };
+    auto opt = ocppi::runtime::ExecOption{ .tty = true, .uid = ::getuid(), .gid = ::getgid() };
 
     auto result =
       this->ociCLI.exec(containerID, commands[0], { commands.begin() + 1, commands.end() }, opt);

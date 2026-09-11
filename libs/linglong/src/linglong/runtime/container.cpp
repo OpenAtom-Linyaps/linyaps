@@ -312,7 +312,7 @@ utils::error::Result<void> Container::run(const ocppi::runtime::config::types::P
           ocppi::runtime::config::types::User{ .gid = ::getgid(), .uid = ::getuid() };
     }
 
-    if (isatty(fileno(stdin)) != 0) {
+    if (isatty(STDOUT_FILENO) == 1 || isatty(STDERR_FILENO) == 1) {
         this->cfg.process->terminal = true;
     }
 

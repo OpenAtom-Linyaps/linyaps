@@ -191,4 +191,73 @@ TEST(MigrateTest, RealOstreeRepoMigratesUnprefixedRefs)
     EXPECT_TRUE(std::filesystem::is_symlink(link));
 }
 
+TEST(MigrateTest, AlreadyMigratedRefsAreNotOverwritten)
+{
+    TempDir dir;
+    std::ofstream{ dir.path() / ".version" } << "1.5.0";
+
+    auto repoPath = dir.path() / "repo";
+    g_autoptr(GError) gErr = nullptr;
+    g_autoptr(GFile) gf = g_file_new_for_path(repoPath.c_str());
+    g_autoptr(OstreeRepo) repo = ostree_repo_new(gf);
+    ASSERT_NE(repo, nullptr);
+    ASSERT_TRUE(ostree_repo_create(repo, OSTREE_REPO_MODE_BARE, nullptr, &gErr))
+      << (gErr ? gErr->message : "ostree_repo_create failed");
+
+    // Three legacy unprefixed refs, each of which already has a "stable:"
+    // counterpart. Two of the prefixed refs intentionally keep a different
+    // checksum: if migration re-applies an already-migrated ref it would
+    // overwrite those checksums.
+    const char *checksumA = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    const char *checksumB = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+    const char *checksumC = "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc";
+    const char *oldChecksumB = "1111111111111111111111111111111111111111111111111111111111111111";
+    const char *oldChecksumC = "2222222222222222222222222222222222222222222222222222222222222222";
+
+    ASSERT_TRUE(ostree_repo_prepare_transaction(repo, nullptr, nullptr, &gErr));
+    ostree_repo_transaction_set_ref(repo, nullptr, "org.test.aaa/main", checksumA);
+    ostree_repo_transaction_set_ref(repo, nullptr, "org.test.bbb/main", checksumB);
+    ostree_repo_transaction_set_ref(repo, nullptr, "org.test.ccc/main", checksumC);
+    ostree_repo_transaction_set_ref(repo, "stable", "org.test.aaa/main", checksumA);
+    ostree_repo_transaction_set_ref(repo, "stable", "org.test.bbb/main", oldChecksumB);
+    ostree_repo_transaction_set_ref(repo, "stable", "org.test.ccc/main", oldChecksumC);
+    ASSERT_NE(ostree_repo_commit_transaction(repo, nullptr, nullptr, &gErr), 0)
+      << (gErr ? gErr->message : "commit transaction failed");
+
+    // No layer directories: the migration still rewrites refs even when the
+    // legacy layer path is missing (it just skips the symlink step).
+    auto result = tryMigrate(dir.path(), makeConfig());
+    EXPECT_EQ(result, MigrateResult::NoChange);
+
+    g_autoptr(GHashTable) refs = nullptr;
+    ASSERT_TRUE(ostree_repo_list_refs(repo, nullptr, &refs, nullptr, &gErr));
+
+    struct Checksums
+    {
+        std::string b;
+        std::string c;
+    } seen;
+
+    g_hash_table_foreach(
+      refs,
+      [](gpointer key, gpointer value, gpointer data) {
+          auto *d = static_cast<Checksums *>(data);
+          std::string_view ref{ static_cast<const char *>(key) };
+          std::string_view checksum{ static_cast<const char *>(value) };
+          if (ref == "stable:org.test.bbb/main") {
+              d->b = std::string{ checksum };
+          }
+          if (ref == "stable:org.test.ccc/main") {
+              d->c = std::string{ checksum };
+          }
+      },
+      &seen);
+
+    // Already-migrated refs must keep their existing checksums. The previous
+    // refPrefix.append() bug only checked the first candidate correctly and
+    // re-applied the rest, overwriting these values.
+    EXPECT_EQ(seen.b, oldChecksumB) << "stable:org.test.bbb/main was overwritten";
+    EXPECT_EQ(seen.c, oldChecksumC) << "stable:org.test.ccc/main was overwritten";
+}
+
 } // namespace

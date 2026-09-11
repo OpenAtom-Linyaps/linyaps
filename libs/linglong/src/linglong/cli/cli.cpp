@@ -995,8 +995,8 @@ void Cli::interaction(const QString &interactionId,
     dbusReply.waitForFinished();
     if (dbusReply.isError()) {
         auto code = dbusReply.error().type() == QDBusError::AccessDenied
-                      ? utils::error::ErrorCode::PermissionDenied
-                      : static_cast<utils::error::ErrorCode>(dbusReply.error().type());
+          ? utils::error::ErrorCode::PermissionDenied
+          : static_cast<utils::error::ErrorCode>(dbusReply.error().type());
         this->printer.printErr(LINGLONG_ERRV(dbusReply.error().message().toStdString(), code));
     }
 }

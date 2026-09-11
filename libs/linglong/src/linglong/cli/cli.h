@@ -271,8 +271,8 @@ private:
             // Map QDBusError::AccessDenied to PermissionDenied so CLI does not
             // print the raw Qt enum value 9.
             auto code = reply.error().type() == QDBusError::AccessDenied
-                          ? utils::error::ErrorCode::PermissionDenied
-                          : static_cast<utils::error::ErrorCode>(reply.error().type());
+              ? utils::error::ErrorCode::PermissionDenied
+              : static_cast<utils::error::ErrorCode>(reply.error().type());
             return LINGLONG_ERR(reply.error().message().toStdString(), code);
         }
 

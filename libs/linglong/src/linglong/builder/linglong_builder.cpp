@@ -1673,6 +1673,9 @@ utils::error::Result<void> Builder::exportLayer(const ExportOption &option)
 {
     LINGLONG_TRACE("export layer file");
 
+    if (!this->project) {
+        return LINGLONG_ERR("not under project");
+    }
     auto &project = *this->project;
     auto ref = currentReference(project);
     if (!ref) {

@@ -40,8 +40,11 @@ The `ll-builder repo` command is used to display and manage Linyaps repositories
 **set-priority** _alias_ _priority_
 : Set repository priority
 
-**enable-mirror** _alias_
+**enable-mirror** _alias_ [*options*]
 : Enable repository mirror
+
+  **--region** _REGION_
+  : Region code for mirror selection, e.g. CN, US. When set, it is appended to the mirrorlist URL as a query parameter
 
 **disable-mirror** _alias_
 : Disable repository mirror
@@ -94,6 +97,12 @@ Enable repository mirror:
 
 ```bash
 ll-builder repo enable-mirror myalias
+```
+
+Enable repository mirror with a region:
+
+```bash
+ll-builder repo enable-mirror myalias --region CN
 ```
 
 Disable repository mirror:

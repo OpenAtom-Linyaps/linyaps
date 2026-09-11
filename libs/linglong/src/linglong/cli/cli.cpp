@@ -994,8 +994,10 @@ void Cli::interaction(const QString &interactionId,
       task->ReplyInteraction(interactionId, common::serialize::toQVariantMap(reply));
     dbusReply.waitForFinished();
     if (dbusReply.isError()) {
-        this->printer.printErr(
-          LINGLONG_ERRV(dbusReply.error().message().toStdString(), dbusReply.error().type()));
+        auto code = dbusReply.error().type() == QDBusError::AccessDenied
+                      ? utils::error::ErrorCode::PermissionDenied
+                      : static_cast<utils::error::ErrorCode>(dbusReply.error().type());
+        this->printer.printErr(LINGLONG_ERRV(dbusReply.error().message().toStdString(), code));
     }
 }
 

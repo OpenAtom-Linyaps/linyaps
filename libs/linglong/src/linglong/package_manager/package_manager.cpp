@@ -103,7 +103,8 @@ void checkPolkitAuthorizationAsync(const std::string &actionId,
           }
 
           if (!(*authResult)) {
-              callback(LINGLONG_ERR("not authorized", utils::error::ErrorCode::PermissionDenied));
+              callback(LINGLONG_ERR("not authorized by polkit; check that an authentication agent is running and review journalctl -u polkit / PAM logs",
+                             utils::error::ErrorCode::PermissionDenied));
               return;
           }
 

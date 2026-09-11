@@ -22,17 +22,17 @@
 2. version, 即需要抓取仓库的某一个具体版本号, 一般为 `Tags` 标签
 3. 需要应用的仓库commit编号, 此处填入commit对应的值, 将会应用该仓库截止本commit的所有变更. 此字段优先级高于 `version`, 请勿填入 `version` 合并时间之后的任何 `commit`
 
-结合第二节课程中的编译笔记, 我们收集到了 `qBittorrent.git` 和 `libtorrent.git` 两个仓库的信息, 为了降低网络问题导致的构建进度阻塞, 我这里选用了镜像地址:
+结合第二节课程中的编译笔记, 我们收集到了 `qBittorrent.git` 和 `libtorrent.git` 两个仓库的信息, `url` 使用官方仓库地址, 如遇网络问题也可以替换为可用的镜像地址:
 
 ```yaml
 sources:
   - kind: git
-    url: https://githubfast.com/qbittorrent/qBittorrent.git
+    url: https://github.com/qbittorrent/qBittorrent.git
     version: release-4.6.7
     commit: 839bc696d066aca34ebd994ee1673c4b2d5afd7b
 
   - kind: git
-    url: https://githubfast.com/arvidn/libtorrent.git
+    url: https://github.com/arvidn/libtorrent.git
     version: v2.0.9
     commit: 4b4003d0fdc09a257a0841ad965b22533ed87a0d
 ```
@@ -97,8 +97,8 @@ https://github.com/qbittorrent/qBittorrent/pull/21364
 
 ```zsh
 ❯ git remote -v
-origin  https://ghp.ci/https://github.com/qbittorrent/qBittorrent.git (fetch)
-origin  https://ghp.ci/https://github.com/qbittorrent/qBittorrent.git (push)
+origin  https://github.com/qbittorrent/qBittorrent.git (fetch)
+origin  https://github.com/qbittorrent/qBittorrent.git (push)
 ```
 
 可见, 执行指令后可以返回远程仓库的信息, 此目录满足要求

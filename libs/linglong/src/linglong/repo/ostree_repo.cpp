@@ -130,8 +130,9 @@ void progress_changed(OstreeAsyncProgress *progress, gpointer user_data)
 
 std::string ostreeRefFromLayerItem(const api::types::v1::RepositoryCacheLayersItem &layer)
 {
+    const auto arch = layer.info.arch.empty() ? std::string{} : layer.info.arch.front();
     std::string refspec = layer.info.channel + "/" + layer.info.id + "/" + layer.info.version + "/"
-      + layer.info.arch.front() + "/" + layer.info.packageInfoV2Module;
+      + arch + "/" + layer.info.packageInfoV2Module;
 
     return refspec;
 }
@@ -365,6 +366,10 @@ utils::error::Result<bool> semanticMatch(const package::FuzzyReference &fuzzy,
     auto version = package::Version::parse(record.version);
     if (!version) {
         return LINGLONG_ERR(version);
+    }
+
+    if (record.arch.empty()) {
+        return LINGLONG_ERR("no architecture in package info");
     }
 
     auto arch = package::Architecture::parse(record.arch[0]);

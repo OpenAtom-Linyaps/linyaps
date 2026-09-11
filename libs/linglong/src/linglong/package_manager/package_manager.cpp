@@ -655,6 +655,11 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
 
     const auto &packageInfo = *packageInfoRet;
 
+    if (packageInfo.arch.empty()) {
+        return toDBusReply(utils::error::ErrorCode::Failed,
+                           "no architecture in layer package info");
+    }
+
     auto architectureRet = package::Architecture::parse(packageInfo.arch[0]);
     if (!architectureRet) {
         return toDBusReply(architectureRet);

@@ -127,8 +127,7 @@ public:
     // retry without channel and filter candidates to the requested channel.
     // See https://github.com/OpenAtom-Linyaps/linyaps/issues/1961
     utils::error::Result<std::vector<api::types::v1::PackageInfoV2>> virtual searchRemoteForUpgrade(
-      const package::FuzzyReference &fuzzyRef,
-      const api::types::v1::Repo &repo) const noexcept;
+      const package::FuzzyReference &fuzzyRef, const api::types::v1::Repo &repo) const noexcept;
     utils::error::Result<repo::RemotePackages> virtual matchRemoteByPriority(
       const package::FuzzyReference &fuzzyRef,
       const std::optional<api::types::v1::Repo> &repo = std::nullopt) const noexcept;

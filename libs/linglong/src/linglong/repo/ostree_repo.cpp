@@ -1636,18 +1636,17 @@ OSTreeRepo::searchRemote(const package::FuzzyReference &fuzzyRef,
         auto packageInfo = api::types::v1::PackageInfoV2{
             .arch = { item->arch != nullptr ? std::string(item->arch) : arch },
             .base = { item->base != nullptr ? std::string(item->base) : std::string{} },
-            .channel = item->channel != nullptr
-              ? std::string(item->channel)
-              : fuzzyRef.channel.value_or("main"),
-            .description = item->description != nullptr ? std::string(item->description)
-                                                        : std::string{},
+            .channel = item->channel != nullptr ? std::string(item->channel)
+                                                : fuzzyRef.channel.value_or("main"),
+            .description =
+              item->description != nullptr ? std::string(item->description) : std::string{},
             .id = item->app_id != nullptr ? std::string(item->app_id) : std::string{},
             .kind = item->kind != nullptr ? std::string(item->kind) : std::string{},
-            .packageInfoV2Module = item->module != nullptr ? std::string(item->module)
-                                                           : std::string{},
+            .packageInfoV2Module =
+              item->module != nullptr ? std::string(item->module) : std::string{},
             .name = item->name != nullptr ? std::string(item->name) : std::string{},
-            .runtime = item->runtime != nullptr ? std::optional<std::string>(item->runtime)
-                                                : std::nullopt,
+            .runtime =
+              item->runtime != nullptr ? std::optional<std::string>(item->runtime) : std::nullopt,
             .size = item->size,
             .version = item->version != nullptr ? std::string(item->version) : std::string{},
         };
@@ -1680,9 +1679,8 @@ namespace {
 // the same app is visible without a channel filter (see issue #1961). Retry
 // once without channel, then keep only packages that still belong to the
 // requested channel so we never upgrade across channels.
-std::vector<api::types::v1::PackageInfoV2>
-filterPackagesByChannel(std::vector<api::types::v1::PackageInfoV2> packages,
-                        const std::string &channel)
+std::vector<api::types::v1::PackageInfoV2> filterPackagesByChannel(
+  std::vector<api::types::v1::PackageInfoV2> packages, const std::string &channel)
 {
     std::vector<api::types::v1::PackageInfoV2> filtered;
     filtered.reserve(packages.size());
@@ -1703,9 +1701,8 @@ filterPackagesByChannel(std::vector<api::types::v1::PackageInfoV2> packages,
 
 } // namespace
 
-utils::error::Result<std::vector<api::types::v1::PackageInfoV2>>
-OSTreeRepo::searchRemoteForUpgrade(const package::FuzzyReference &fuzzyRef,
-                                   const api::types::v1::Repo &repo) const noexcept
+utils::error::Result<std::vector<api::types::v1::PackageInfoV2>> OSTreeRepo::searchRemoteForUpgrade(
+  const package::FuzzyReference &fuzzyRef, const api::types::v1::Repo &repo) const noexcept
 {
     LINGLONG_TRACE("search remote packages for upgrade");
 

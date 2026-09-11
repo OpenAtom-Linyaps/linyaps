@@ -1226,9 +1226,7 @@ TEST(OSTreeRepoTest, searchRemoteForUpgrade_RetriesWithoutChannelWhenEmpty)
         api::types::v1::PackageInfoV2{ .channel = "dev",
                                        .id = "com.example.app",
                                        .version = "9.9.9" },
-        api::types::v1::PackageInfoV2{ .channel = "",
-                                       .id = "com.example.app",
-                                       .version = "2.5.0" },
+        api::types::v1::PackageInfoV2{ .channel = "", .id = "com.example.app", .version = "2.5.0" },
       }));
 
     auto result = repo.searchRemoteForUpgrade(*fuzzyRef, repoConfig);

@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2024 - 2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -17,6 +17,7 @@
 namespace linglong::utils::serialize {
 
 api::types::v1::PackageInfoV2 toPackageInfoV2(const api::types::v1::PackageInfo &oldInfo);
+error::Result<void> validatePackageId(const std::string &id);
 error::Result<api::types::v1::PackageInfoV2>
 parsePackageInfoFile(const std::filesystem::path &path);
 
@@ -27,6 +28,10 @@ error::Result<api::types::v1::PackageInfoV2> parsePackageInfo(const T &contents)
 
     auto pkgInfo = serialize::LoadJSON<api::types::v1::PackageInfoV2>(contents);
     if (pkgInfo) {
+        auto idValid = validatePackageId(pkgInfo->id);
+        if (!idValid) {
+            return LINGLONG_ERR(idValid);
+        }
         return pkgInfo;
     }
 
@@ -36,7 +41,12 @@ error::Result<api::types::v1::PackageInfoV2> parsePackageInfo(const T &contents)
         return LINGLONG_ERR(oldPkgInfo.error());
     }
 
-    return toPackageInfoV2(*oldPkgInfo);
+    auto convertedInfo = toPackageInfoV2(*oldPkgInfo);
+    auto idValid = validatePackageId(convertedInfo.id);
+    if (!idValid) {
+        return LINGLONG_ERR(idValid);
+    }
+    return convertedInfo;
 }
 
 } // namespace linglong::utils::serialize

@@ -44,6 +44,39 @@ protected:
     TempDir runtimeDir{ "ll-cfg-runtime-" };
 };
 
+// set an environment variable for the duration of the test and restore it afterwards
+class ScopedEnvVar
+{
+public:
+    ScopedEnvVar(std::string name, const char *value)
+        : name(std::move(name))
+    {
+        const char *previous = ::getenv(this->name.c_str());
+        existed = previous != nullptr;
+        if (existed) {
+            oldValue = previous;
+        }
+        ::setenv(this->name.c_str(), value, 1);
+    }
+
+    ~ScopedEnvVar()
+    {
+        if (existed) {
+            ::setenv(this->name.c_str(), oldValue.c_str(), 1);
+        } else {
+            ::unsetenv(this->name.c_str());
+        }
+    }
+
+    ScopedEnvVar(const ScopedEnvVar &) = delete;
+    ScopedEnvVar &operator=(const ScopedEnvVar &) = delete;
+
+private:
+    std::string name;
+    bool existed{ false };
+    std::string oldValue;
+};
+
 TEST_F(ContainerCfgBuilderTest, BuildWithRequiredFields)
 {
     ContainerCfgBuilder builder;
@@ -1191,6 +1224,52 @@ TEST_F(ContainerCfgBuilderTest, EnableIPCMountNoValidSocket)
     ASSERT_TRUE(builder.getConfig().mounts.has_value());
     for (const auto &m : *builder.getConfig().mounts) {
         EXPECT_NE(m.destination, (runtime / "bus").string());
+    }
+}
+
+TEST_F(ContainerCfgBuilderTest, BindHomeTreatsEmptyXDGOverridesAsUnset)
+{
+    auto home = baseDir.path() / "home";
+    ASSERT_TRUE(std::filesystem::create_directories(home));
+
+    // XDG base directory spec: empty overrides are invalid and must fall back to
+    // the defaults instead of producing a mount that cannot be created
+    ScopedEnvVar dataGuard{ "XDG_DATA_HOME", "" };
+    ScopedEnvVar configGuard{ "XDG_CONFIG_HOME", "" };
+    ScopedEnvVar cacheGuard{ "XDG_CACHE_HOME", "" };
+    ScopedEnvVar stateGuard{ "XDG_STATE_HOME", "" };
+
+    ContainerCfgBuilder builder;
+    builder.setAppId("org.deepin.demo")
+      .setBasePath(baseDir.path())
+      .setBundlePath(bundleDir.path())
+      .bindHome(home);
+
+    auto result = builder.build();
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+}
+
+TEST_F(ContainerCfgBuilderTest, BindHomeIgnoresRelativeXDGConfigOverride)
+{
+    auto home = baseDir.path() / "home";
+    ASSERT_TRUE(std::filesystem::create_directories(home));
+
+    ScopedEnvVar configGuard{ "XDG_CONFIG_HOME", "relative-config" };
+
+    ContainerCfgBuilder builder;
+    builder.setAppId("org.deepin.demo")
+      .setBasePath(baseDir.path())
+      .setBundlePath(bundleDir.path())
+      .bindHome(home);
+
+    auto result = builder.build();
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+
+    // a relative XDG override must never become a mount source
+    ASSERT_TRUE(builder.getConfig().mounts.has_value());
+    for (const auto &m : *builder.getConfig().mounts) {
+        EXPECT_FALSE(m.source.has_value() && *m.source == "relative-config")
+          << "relative XDG_CONFIG_HOME leaked into a mount source";
     }
 }
 

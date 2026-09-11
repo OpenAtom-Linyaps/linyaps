@@ -1194,4 +1194,20 @@ TEST_F(ContainerCfgBuilderTest, EnableIPCMountNoValidSocket)
     }
 }
 
+TEST_F(ContainerCfgBuilderTest, AppendEnvRejectsInvalidVariableNames)
+{
+    ContainerCfgBuilder builder;
+    builder.setAppId("org.deepin.demo")
+      .setBasePath(baseDir.path())
+      .setBundlePath(bundleDir.path())
+      .appendEnv("BAD;KEY", "value");
+
+    // 00env.sh exports entries unquoted, so a key that is not a plain POSIX
+    // identifier would corrupt or inject into the generated profile script
+    auto result = builder.build();
+    ASSERT_FALSE(result.has_value());
+    EXPECT_THAT(result.error().message(),
+                ::testing::HasSubstr("invalid environment variable name"));
+}
+
 } // namespace

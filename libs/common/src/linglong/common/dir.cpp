@@ -9,6 +9,22 @@
 
 namespace linglong::common::dir {
 
+bool isPathInDirectory(const std::filesystem::path &path,
+                       const std::filesystem::path &directory) noexcept
+{
+    if (path.empty() || directory.empty()) {
+        return false;
+    }
+
+    const auto relative = path.lexically_normal().lexically_relative(directory.lexically_normal());
+    if (relative.empty()) {
+        return false;
+    }
+
+    const auto first = relative.begin();
+    return first == relative.end() || *first != "..";
+}
+
 std::filesystem::path getRuntimeDir() noexcept
 {
     return xdg::getXDGRuntimeDir() / "linglong";

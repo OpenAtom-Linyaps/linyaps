@@ -8,6 +8,7 @@
 #include "common/tempdir.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/filelock.h"
+#include "linglong/utils/log/formatter.h"
 
 #include <chrono>
 #include <filesystem>
@@ -355,7 +356,7 @@ TEST_F(FileLockTest, MoveAssignment)
     EXPECT_FALSE(lock1.isLocked());
 
     auto reopened = FileLock::create(other_path, LockType::Write, false);
-    ASSERT_TRUE(reopened) << reopened.error();
+    ASSERT_TRUE(reopened) << fmt::format("{}", reopened.error());
 }
 
 // Test tryLock when already locked same type

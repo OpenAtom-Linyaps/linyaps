@@ -9,23 +9,23 @@
 #set -x
 
 __ll_cli_get_container_list() {
-    ll-cli ps 2>/dev/null | awk 'NR>1 {print $1}'
+    ll-cli ps 2> /dev/null | awk 'NR>1 {print $1}'
 }
 
 __ll_cli_get_installed_app_list() {
-    ll-cli list --type=app 2>/dev/null | awk 'NR>1 {print $1}'
+    ll-cli list --type=app 2> /dev/null | awk 'NR>1 {print $1}'
 }
 
 __ll_cli_get_installed_list() {
-    ll-cli list 2>/dev/null | awk 'NR>1 {print $1}'
+    ll-cli list 2> /dev/null | awk 'NR>1 {print $1}'
 }
 
 __ll_cli_get_layer_list() {
-    ls -- "${1:-}"*.layer 2>/dev/null | tr '\n' ' '
+    ls -- "${1:-}"*.layer 2> /dev/null | tr '\n' ' '
 }
 
 __ll_cli_get_repo_alias_list() {
-    ll-cli repo show 2>/dev/null | awk 'NR>2 {print $3}'
+    ll-cli repo show 2> /dev/null | awk 'NR>2 {print $3}'
 }
 
 __filter_exist_options() {
@@ -47,14 +47,14 @@ __filter_exist_options() {
 
 _ll_cli_completion() {
     local cur prev words cword
-    _get_comp_words_by_ref -n : cur prev words cword 2>/dev/null || {
+    _get_comp_words_by_ref -n : cur prev words cword 2> /dev/null || {
         cur="${COMP_WORDS[COMP_CWORD]}"
         prev="${COMP_WORDS[COMP_CWORD - 1]}"
         words=("${COMP_WORDS[@]}")
         cword=$COMP_CWORD
     }
 
-    local subcommands="run ps enter kill install uninstall upgrade search list analyze repo info content prune"
+    local subcommands="run ps enter kill install uninstall upgrade search list analyze repo info content prune alias"
     local global_opts="--help --help-all --json --verbose -v --no-progress"
 
     COMPREPLY=()
@@ -80,99 +80,108 @@ _ll_cli_completion() {
 
     local opts=""
     case "$subcmd" in
-    run)
-        if [[ "$prev" == "run" && "$cur" != -* ]]; then
-            opts="$(__ll_cli_get_installed_app_list)"
-        else
-            opts="--file --url --env --base --runtime --extensions --workdir"
-            opts+=" --enable-xdp --disable-xdp --enable-pipewire --enable-atspi"
-            opts+=" --cdi-spec-dir --device --device-mode --instance"
-            opts+=" --debug --debug-listen --debug-debuginfod --debug-symbol-dir"
-        fi
-        ;;
-    ps)
-        opts="--no-truncated"
-        ;;
-    enter)
-        if [[ "$prev" == "enter" && "$cur" != -* ]]; then
-            opts="$(__ll_cli_get_container_list)"
-        else
-            opts="--working-directory"
-        fi
-        ;;
-    kill)
-        if [[ "$prev" == "-s" || "$prev" == "--signal" ]]; then
-            opts="SIGTERM SIGKILL SIGINT SIGHUP"
-        elif [[ "$prev" == "kill" && "$cur" != -* ]]; then
-            opts="$(__ll_cli_get_container_list)"
-        else
-            opts="--signal -s"
-        fi
-        ;;
-    install)
-        opts="--module --repo --force -y --no-auto-prune"
-
-        if [[ "$cur" != -* ]]; then
-            _filedir '@(layer|uab)'
-
-            if [[ ${#COMPREPLY[@]} -gt 0 ]]; then
-                local filtered_opts=$(__filter_exist_options "$opts $global_opts")
-                COMPREPLY+=($(compgen -W "$filtered_opts" -- "$cur"))
-                return 0
+        run)
+            if [[ "$prev" == "run" && "$cur" != -* ]]; then
+                opts="$(__ll_cli_get_installed_app_list)"
+            else
+                opts="--file --url --env --base --runtime --extensions --workdir"
+                opts+=" --enable-xdp --disable-xdp --enable-pipewire --enable-atspi"
+                opts+=" --cdi-spec-dir --device --device-mode --instance"
+                opts+=" --debug --debug-listen --debug-debuginfod --debug-symbol-dir"
             fi
-        fi
-        ;;
-    upgrade)
-        if [[ "$cur" == -* ]]; then
-            opts="--deps-only --no-auto-prune"
-        else
-            opts="$(__ll_cli_get_installed_app_list)"
-        fi
-        ;;
-    uninstall)
-        if [[ "$prev" == "uninstall" && "$cur" != -* ]]; then
-            opts="$(__ll_cli_get_installed_app_list)"
-        else
-            opts="--module --force --no-auto-prune"
-        fi
-        ;;
-    analyze)
-        local analyze_subs="size depends"
-        if [[ "$prev" == "analyze" ]]; then
-            opts="$analyze_subs"
-        elif [[ "$prev" == "size" || "$prev" == "--sort" ]]; then
-            [[ "$prev" == "size" ]] && opts="--sort --asc"
-            [[ "$prev" == "--sort" ]] && opts="actual logical exclusive shared id"
-        elif [[ "$prev" == "depends" ]]; then
+            ;;
+        ps)
+            opts="--no-truncated"
+            ;;
+        enter)
+            if [[ "$prev" == "enter" && "$cur" != -* ]]; then
+                opts="$(__ll_cli_get_container_list)"
+            else
+                opts="--working-directory"
+            fi
+            ;;
+        kill)
+            if [[ "$prev" == "-s" || "$prev" == "--signal" ]]; then
+                opts="SIGTERM SIGKILL SIGINT SIGHUP"
+            elif [[ "$prev" == "kill" && "$cur" != -* ]]; then
+                opts="$(__ll_cli_get_container_list)"
+            else
+                opts="--signal -s"
+            fi
+            ;;
+        install)
+            opts="--module --repo --force -y --no-auto-prune"
+
+            if [[ "$cur" != -* ]]; then
+                _filedir '@(layer|uab)'
+
+                if [[ ${#COMPREPLY[@]} -gt 0 ]]; then
+                    local filtered_opts=$(__filter_exist_options "$opts $global_opts")
+                    COMPREPLY+=($(compgen -W "$filtered_opts" -- "$cur"))
+                    return 0
+                fi
+            fi
+            ;;
+        upgrade)
+            if [[ "$cur" == -* ]]; then
+                opts="--deps-only --no-auto-prune"
+            else
+                opts="$(__ll_cli_get_installed_app_list)"
+            fi
+            ;;
+        uninstall)
+            if [[ "$prev" == "uninstall" && "$cur" != -* ]]; then
+                opts="$(__ll_cli_get_installed_app_list)"
+            else
+                opts="--module --force --no-auto-prune"
+            fi
+            ;;
+        analyze)
+            local analyze_subs="size depends"
+            if [[ "$prev" == "analyze" ]]; then
+                opts="$analyze_subs"
+            elif [[ "$prev" == "size" || "$prev" == "--sort" ]]; then
+                [[ "$prev" == "size" ]] && opts="--sort --asc"
+                [[ "$prev" == "--sort" ]] && opts="actual logical exclusive shared id"
+            elif [[ "$prev" == "depends" ]]; then
+                opts="$(__ll_cli_get_installed_list)"
+            fi
+            ;;
+        search | list)
+            if [[ "$prev" == "--type" ]]; then
+                opts="runtime base app all"
+            else
+                [[ "$subcmd" == "search" ]] && opts="--type --repo --dev --show-all-version"
+                [[ "$subcmd" == "list" ]] && opts="--type --upgradable"
+            fi
+            ;;
+        repo)
+            local repo_subs="add remove update set-default show set-priority enable-mirror disable-mirror"
+            if [[ "$prev" == "repo" ]]; then
+                opts="$repo_subs"
+            elif [[ " ${words[*]} " =~ " enable-mirror " ]]; then
+                opts="--region"
+            elif [[ " remove update set-default set-priority enable-mirror disable-mirror " =~ " $prev " ]]; then
+                opts="$(__ll_cli_get_repo_alias_list)"
+            elif [[ " ${words[*]} " =~ " add " ]]; then
+                opts="--alias"
+            fi
+            ;;
+        info)
+            opts="$(__ll_cli_get_installed_list) $(__ll_cli_get_layer_list ${cur})"
+            ;;
+        content)
             opts="$(__ll_cli_get_installed_list)"
-        fi
-        ;;
-    search | list)
-        if [[ "$prev" == "--type" ]]; then
-            opts="runtime base app all"
-        else
-            [[ "$subcmd" == "search" ]] && opts="--type --repo --dev --show-all-version"
-            [[ "$subcmd" == "list" ]] && opts="--type --upgradable"
-        fi
-        ;;
-    repo)
-        local repo_subs="add remove update set-default show set-priority enable-mirror disable-mirror"
-        if [[ "$prev" == "repo" ]]; then
-            opts="$repo_subs"
-        elif [[ " ${words[*]} " =~ " enable-mirror " ]]; then
-            opts="--region"
-        elif [[ " remove update set-default set-priority enable-mirror disable-mirror " =~ " $prev " ]]; then
-            opts="$(__ll_cli_get_repo_alias_list)"
-        elif [[ " ${words[*]} " =~ " add " ]]; then
-            opts="--alias"
-        fi
-        ;;
-    info)
-        opts="$(__ll_cli_get_installed_list) $(__ll_cli_get_layer_list ${cur})"
-        ;;
-    content)
-        opts="$(__ll_cli_get_installed_list)"
-        ;;
+            ;;
+        alias)
+            if [[ "$prev" == "--name" ]]; then
+                opts=""
+            elif [[ "$cur" == -* ]]; then
+                opts="--name --force"
+            else
+                opts="$(__ll_cli_get_installed_app_list)"
+            fi
+            ;;
     esac
 
     local total_candidates="$opts $global_opts"

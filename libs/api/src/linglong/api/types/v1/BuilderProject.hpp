@@ -60,6 +60,10 @@ std::optional<std::vector<std::string>> command;
 */
 std::optional<std::vector<std::string>> exclude;
 /**
+* command names exported to host entries/bin
+*/
+std::optional<std::vector<std::string>> exportedBinaries;
+/**
 * include files during exporting UAB. For example, the packer can declare a file/directory
 * (e.g. /usr/share/locale/zh_CN) in the excluded directory (e.g. /usr/share/locale)  to
 * exclude all files in /usr/share/locale except /usr/share/locale/zh_CN.

@@ -569,6 +569,27 @@ void addInspectCommand(CLI::App &commandParser,
       ->check(validatorString);
 }
 
+// Function to add the alias subcommand
+void addAliasCommand(CLI::App &commandParser, AliasOptions &aliasOptions, const std::string &group)
+{
+    auto *cliAlias =
+      commandParser
+        .add_subcommand("alias", _("Export a binary script for an installed application"))
+        ->fallthrough()
+        ->group(group);
+    cliAlias->usage(_("Usage: ll-cli alias APPID [--name=NAME] [-- bin args...] [-f]"));
+    // APPID is a required positional argument
+    cliAlias
+      ->add_option("APPID", aliasOptions.appid, _("The application ID to create an alias for"))
+      ->required()
+      ->check(validatorString);
+    // --name is optional; defaults to appid (or "bin" when command args are given)
+    cliAlias->add_option("--name", aliasOptions.name, _("The binary name to create"))
+      ->check(validatorString);
+    // Allow extra positional args after "--" to form the custom command
+    cliAlias->allow_extras(true);
+    cliAlias->add_flag("-f,--force", aliasOptions.force, _("Overwrite existing script"));
+}
 } // namespace
 
 int runCliApplication(int argc, char **mainArgv)
@@ -630,6 +651,7 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     ContentOptions contentOptions{};
     linglong::common::cli::RepoOptions repoOptions{};
     InspectOptions inspectOptions{};
+    AliasOptions aliasOptions{};
 
     // groups for subcommands
     auto *CliBuildInGroup = _("Managing installed applications and runtimes");
@@ -657,6 +679,7 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     addContentCommand(commandParser, contentOptions, CliBuildInGroup);
     addPruneCommand(commandParser, CliAppManagingGroup);
     addInspectCommand(commandParser, inspectOptions, CliHiddenGroup);
+    addAliasCommand(commandParser, aliasOptions, CliBuildInGroup);
 
     auto res = transformOldExec(argc, argv);
     CLI11_PARSE(commandParser, std::move(res));
@@ -809,6 +832,13 @@ You can report bugs to the linyaps team under this project: https://github.com/O
         result = cli->inspect(*ret, inspectOptions);
     } else if (name == "repo") {
         result = cli->repo(*ret, repoOptions);
+    } else if (name == "alias") {
+        // Collect extra args (after "--") as custom command arguments
+        auto *aliasSub = commandParser.get_subcommand("alias");
+        if (aliasSub != nullptr) {
+            aliasOptions.commandArgs = aliasSub->remaining();
+        }
+        result = cli->alias(aliasOptions);
     } else {
         // if subcommand name is not found, print help
         std::cout << commandParser.help("", CLI::AppFormatMode::All);

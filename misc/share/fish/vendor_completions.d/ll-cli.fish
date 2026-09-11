@@ -34,7 +34,7 @@ for opt in $global_short_opts
 end
 
 # --- 一级子命令定义 ---
-set -l subcommands run ps enter kill install uninstall upgrade search list analyze repo info content prune
+set -l subcommands run ps enter kill install uninstall upgrade search list analyze repo info content prune alias
 complete -c ll-cli -n "__fish_use_subcommand" -a "$subcommands"
 
 # --- 子命令参数补全逻辑 ---
@@ -79,3 +79,8 @@ complete -c ll-cli -n "__fish_seen_subcommand_from info content" -a "(__fish_ll_
 
 # info 额外支持补全当前目录下的 .layer 文件 (核心修复)
 complete -c ll-cli -n "__fish_seen_subcommand_from info" -k -a "(__fish_complete_suffix .layer)"
+
+# alias
+complete -c ll-cli -n "__fish_seen_subcommand_from alias" -a "(__fish_ll_cli_get_installed_apps)" -d "Application ID"
+complete -c ll-cli -n "__fish_seen_subcommand_from alias" -l name -d "Binary name (defaults to appid or 'bin')"
+complete -c ll-cli -n "__fish_seen_subcommand_from alias" -s f -l force -d "Overwrite existing script"

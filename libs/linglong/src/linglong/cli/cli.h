@@ -21,6 +21,10 @@
 
 #include <CLI/CLI.hpp>
 
+#include <optional>
+#include <string>
+#include <vector>
+
 namespace linglong::runtime {
 class RunContext;
 }
@@ -151,6 +155,14 @@ struct ContentOptions
     std::string appid;
 };
 
+struct AliasOptions
+{
+    std::string appid;               // positional: the application ID
+    std::optional<std::string> name; // --name: optional script name (defaults to appid or "bin")
+    std::vector<std::string> commandArgs; // extra args after "--" forming the custom command
+    bool force{ false };                  // -f/--force: overwrite existing script
+};
+
 struct InspectOptions
 {
     std::string appid;
@@ -208,6 +220,7 @@ public:
     int repo(CLI::App *subcommand, const common::cli::RepoOptions &options);
     int info(const InfoOptions &options);
     int content(const ContentOptions &options);
+    int alias(const AliasOptions &options);
     int prune();
     int inspect(CLI::App *subcommand, const InspectOptions &options);
 

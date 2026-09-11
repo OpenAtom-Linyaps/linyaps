@@ -237,6 +237,7 @@ linglong::utils::error::Result<linglong::utils::fd::UniqueFd> acceptConsoleFd(in
             auto fd = waitRet->events[i].data.fd;
             if (fd == signalFd) {
                 struct signalfd_siginfo info{};
+
                 const auto n = ::read(signalFd, &info, sizeof(info));
                 if (n == sizeof(info) && info.ssi_signo == SIGCHLD) {
                     return LINGLONG_ERR("runtime child exited before console connection");
@@ -245,6 +246,7 @@ linglong::utils::error::Result<linglong::utils::fd::UniqueFd> acceptConsoleFd(in
             }
 
             struct sockaddr_un clientAddr{};
+
             socklen_t addrLen = sizeof(clientAddr);
             auto client = ::accept4(listenFd,
                                     reinterpret_cast<struct sockaddr *>(&clientAddr),
@@ -264,6 +266,7 @@ linglong::utils::error::Result<linglong::utils::fd::UniqueFd> acceptConsoleFd(in
             }
 
             struct stat buf{};
+
             if (::fstat(data->fd, &buf) != 0 || !S_ISCHR(buf.st_mode)) {
                 return LINGLONG_ERR("received fd is not a character device");
             }
@@ -1373,6 +1376,7 @@ utils::error::Result<int> Cli::reuseContainer(const std::string &id,
         termGuard = std::move(*termRet);
 
         struct winsize ws{};
+
         bool wsSet = false;
         if (::ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == 0 && ws.ws_col > 0 && ws.ws_row > 0) {
             wsSet = ::ioctl(masterIn.get(), TIOCSWINSZ, &ws) == 0;
@@ -3008,6 +3012,52 @@ int Cli::setRepoConfig(const QVariantMap &config)
         return -1;
     }
     return 0;
+}
+
+int Cli::alias(const AliasOptions &options)
+{
+    LINGLONG_TRACE("command alias");
+
+    auto pkgMan = this->getPkgMan();
+    if (!pkgMan) {
+        this->printer.printErr(pkgMan.error());
+        return -1;
+    }
+
+    // Determine script name: explicit --name, else appid (or "bin" when
+    // command args are provided).
+    std::string scriptName;
+    if (options.name) {
+        scriptName = *options.name;
+    } else if (options.commandArgs.empty()) {
+        scriptName = options.appid;
+    } else {
+        scriptName = "bin";
+    }
+
+    // Build customCommand from commandArgs: quote each arg and space-join.
+    // When commandArgs is empty, customCommand is empty, and exportAppBinary
+    // defaults to the app's full command array from info.json.
+    std::string customCommand;
+    for (const auto &arg : options.commandArgs) {
+        if (!customCommand.empty()) {
+            customCommand += ' ';
+        }
+        customCommand += common::strings::quoteBashArg(arg);
+    }
+
+    auto pendingReply = (*pkgMan)->ExportBinary(QString::fromStdString(options.appid),
+                                                QString::fromStdString(scriptName),
+                                                options.force,
+                                                QString::fromStdString(customCommand));
+    auto res = waitTaskCreated(pendingReply, TaskType::None);
+    if (!res) {
+        this->printer.printErr(res.error());
+        return -1;
+    }
+    waitTaskDone();
+
+    return this->taskState.state == linglong::api::types::v1::State::Succeed ? 0 : -1;
 }
 
 int Cli::info(const InfoOptions &options)

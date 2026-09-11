@@ -23,7 +23,6 @@ using ::testing::_;
 using ::testing::ElementsAre;
 using ::testing::HasSubstr;
 using ::testing::InSequence;
-using ::testing::Invoke;
 using ::testing::IsEmpty;
 using ::testing::Return;
 
@@ -165,9 +164,9 @@ protected:
                                                              std::move(notifier),
                                                              nullptr);
         ON_CALL(*cli, getRepo(testing::_))
-          .WillByDefault(Invoke([this](bool) -> utils::error::Result<repo::OSTreeRepo *> {
+          .WillByDefault([this](bool) -> utils::error::Result<repo::OSTreeRepo *> {
               return repo.get();
-          }));
+          });
     }
 
     void TearDown() override
@@ -228,12 +227,11 @@ TEST_F(CliTest, installRejectsMissingExplicitLocalPath)
     const auto packagePath = tempDir->path() / "net.example_1.0_x86_64_binary";
 
     EXPECT_CALL(*cli, getPkgMan()).Times(0);
-    EXPECT_CALL(*printer, printErr(_))
-      .WillOnce(Invoke([&packagePath](const utils::error::Error &error) {
-          EXPECT_EQ(error.code(), static_cast<int>(utils::error::ErrorCode::Failed));
-          EXPECT_THAT(error.message(), HasSubstr(packagePath.string()));
-          EXPECT_THAT(error.message(), HasSubstr("does not exist"));
-      }));
+    EXPECT_CALL(*printer, printErr(_)).WillOnce([&packagePath](const utils::error::Error &error) {
+        EXPECT_EQ(error.code(), static_cast<int>(utils::error::ErrorCode::Failed));
+        EXPECT_THAT(error.message(), HasSubstr(packagePath.string()));
+        EXPECT_THAT(error.message(), HasSubstr("does not exist"));
+    });
 
     EXPECT_EQ(cli->install(cli::InstallOptions{ .appid = packagePath.string() }), -1);
 }
@@ -244,13 +242,12 @@ TEST_F(CliTest, installRejectsLocalDirectoryBeforeParsingReference)
     ASSERT_TRUE(std::filesystem::create_directory(packagePath));
 
     EXPECT_CALL(*cli, getPkgMan()).Times(0);
-    EXPECT_CALL(*printer, printErr(_))
-      .WillOnce(Invoke([&packagePath](const utils::error::Error &error) {
-          EXPECT_EQ(error.code(),
-                    static_cast<int>(utils::error::ErrorCode::AppInstallUnsupportedFileFormat));
-          EXPECT_THAT(error.message(), HasSubstr(packagePath.string()));
-          EXPECT_THAT(error.message(), HasSubstr("not a regular file"));
-      }));
+    EXPECT_CALL(*printer, printErr(_)).WillOnce([&packagePath](const utils::error::Error &error) {
+        EXPECT_EQ(error.code(),
+                  static_cast<int>(utils::error::ErrorCode::AppInstallUnsupportedFileFormat));
+        EXPECT_THAT(error.message(), HasSubstr(packagePath.string()));
+        EXPECT_THAT(error.message(), HasSubstr("not a regular file"));
+    });
 
     EXPECT_EQ(cli->install(cli::InstallOptions{ .appid = packagePath.string() }), -1);
 }
@@ -261,13 +258,12 @@ TEST_F(CliTest, installRejectsUnsupportedLocalFileBeforeContactingPackageManager
     std::ofstream(packagePath) << "not a package";
 
     EXPECT_CALL(*cli, getPkgMan()).Times(0);
-    EXPECT_CALL(*printer, printErr(_))
-      .WillOnce(Invoke([&packagePath](const utils::error::Error &error) {
-          EXPECT_EQ(error.code(),
-                    static_cast<int>(utils::error::ErrorCode::AppInstallUnsupportedFileFormat));
-          EXPECT_THAT(error.message(), HasSubstr(packagePath.string()));
-          EXPECT_THAT(error.message(), HasSubstr("Unsupported file format"));
-      }));
+    EXPECT_CALL(*printer, printErr(_)).WillOnce([&packagePath](const utils::error::Error &error) {
+        EXPECT_EQ(error.code(),
+                  static_cast<int>(utils::error::ErrorCode::AppInstallUnsupportedFileFormat));
+        EXPECT_THAT(error.message(), HasSubstr(packagePath.string()));
+        EXPECT_THAT(error.message(), HasSubstr("Unsupported file format"));
+    });
 
     EXPECT_EQ(cli->install(cli::InstallOptions{ .appid = packagePath.string() }), -1);
 }
@@ -275,12 +271,12 @@ TEST_F(CliTest, installRejectsUnsupportedLocalFileBeforeContactingPackageManager
 TEST_F(CliTest, installKeepsRemoteVersionReference)
 {
     EXPECT_CALL(*cli, getPkgMan())
-      .WillOnce(Invoke([]() -> utils::error::Result<api::dbus::v1::PackageManager *> {
+      .WillOnce([]() -> utils::error::Result<api::dbus::v1::PackageManager *> {
           return makePackageManagerError("package manager unavailable");
-      }));
-    EXPECT_CALL(*printer, printErr(_)).WillOnce(Invoke([](const utils::error::Error &error) {
+      });
+    EXPECT_CALL(*printer, printErr(_)).WillOnce([](const utils::error::Error &error) {
         EXPECT_THAT(error.message(), HasSubstr("package manager unavailable"));
-    }));
+    });
 
     EXPECT_EQ(cli->install(cli::InstallOptions{ .appid = "org.example.App/1.0.0" }), -1);
 }
@@ -289,9 +285,9 @@ TEST_F(CliTest, installKeepsRemoteReferencesEndingWithPackageFileSuffix)
 {
     EXPECT_CALL(*cli, getPkgMan())
       .Times(2)
-      .WillRepeatedly(Invoke([]() -> utils::error::Result<api::dbus::v1::PackageManager *> {
+      .WillRepeatedly([]() -> utils::error::Result<api::dbus::v1::PackageManager *> {
           return makePackageManagerError("package manager unavailable");
-      }));
+      });
     EXPECT_CALL(*printer, printErr(_)).Times(2);
 
     EXPECT_EQ(cli->install(cli::InstallOptions{ .appid = "org.example.layer" }), -1);
@@ -304,12 +300,12 @@ TEST_F(CliTest, installRecognizesExistingLayerFile)
     std::ofstream(packagePath) << "layer placeholder";
 
     EXPECT_CALL(*cli, getPkgMan())
-      .WillOnce(Invoke([]() -> utils::error::Result<api::dbus::v1::PackageManager *> {
+      .WillOnce([]() -> utils::error::Result<api::dbus::v1::PackageManager *> {
           return makePackageManagerError("package manager unavailable");
-      }));
-    EXPECT_CALL(*printer, printErr(_)).WillOnce(Invoke([](const utils::error::Error &error) {
+      });
+    EXPECT_CALL(*printer, printErr(_)).WillOnce([](const utils::error::Error &error) {
         EXPECT_THAT(error.message(), HasSubstr("package manager unavailable"));
-    }));
+    });
 
     EXPECT_EQ(cli->install(cli::InstallOptions{ .appid = packagePath.string() }), -1);
 }
@@ -388,12 +384,12 @@ TEST_F(CliRepoAndPackageManagerTest, getRepoCachesLoadedRepository)
     repo::OSTreeRepo *loadedRepo = nullptr;
 
     EXPECT_CALL(*cli, loadRepoFromPath(_))
-      .WillOnce(Invoke([&](const std::filesystem::path &path)
-                         -> utils::error::Result<std::unique_ptr<repo::OSTreeRepo>> {
+      .WillOnce([&](const std::filesystem::path &path)
+                  -> utils::error::Result<std::unique_ptr<repo::OSTreeRepo>> {
           auto repo = makeRepo(path);
           loadedRepo = repo.get();
           return repo;
-      }));
+      });
     EXPECT_CALL(*cli, initializeRepo()).Times(0);
 
     auto first = cli->callGetRepo();
@@ -411,18 +407,18 @@ TEST_F(CliRepoAndPackageManagerTest, getRepoForceReloadReloadsRepository)
     repo::OSTreeRepo *secondRepo = nullptr;
 
     EXPECT_CALL(*cli, loadRepoFromPath(_))
-      .WillOnce(Invoke([&](const std::filesystem::path &path)
-                         -> utils::error::Result<std::unique_ptr<repo::OSTreeRepo>> {
+      .WillOnce([&](const std::filesystem::path &path)
+                  -> utils::error::Result<std::unique_ptr<repo::OSTreeRepo>> {
           auto repo = makeRepo(path);
           firstRepo = repo.get();
           return repo;
-      }))
-      .WillOnce(Invoke([&](const std::filesystem::path &path)
-                         -> utils::error::Result<std::unique_ptr<repo::OSTreeRepo>> {
+      })
+      .WillOnce([&](const std::filesystem::path &path)
+                  -> utils::error::Result<std::unique_ptr<repo::OSTreeRepo>> {
           auto repo = makeRepo(path);
           secondRepo = repo.get();
           return repo;
-      }));
+      });
     EXPECT_CALL(*cli, initializeRepo()).Times(0);
 
     auto first = cli->callGetRepo();
@@ -440,18 +436,18 @@ TEST_F(CliRepoAndPackageManagerTest, getRepoInitializesAndReloadsWhenInitialLoad
     InSequence seq;
 
     EXPECT_CALL(*cli, loadRepoFromPath(_))
-      .WillOnce(Invoke([](const std::filesystem::path &)
-                         -> utils::error::Result<std::unique_ptr<repo::OSTreeRepo>> {
+      .WillOnce([](const std::filesystem::path &)
+                  -> utils::error::Result<std::unique_ptr<repo::OSTreeRepo>> {
           return makeLoadRepoError("load failed");
-      }));
+      });
     EXPECT_CALL(*cli, initializeRepo()).WillOnce(Return(utils::error::Result<void>{}));
     EXPECT_CALL(*cli, loadRepoFromPath(_))
-      .WillOnce(Invoke([&](const std::filesystem::path &path)
-                         -> utils::error::Result<std::unique_ptr<repo::OSTreeRepo>> {
+      .WillOnce([&](const std::filesystem::path &path)
+                  -> utils::error::Result<std::unique_ptr<repo::OSTreeRepo>> {
           auto repo = makeRepo(path);
           loadedRepo = repo.get();
           return repo;
-      }));
+      });
 
     auto result = cli->callGetRepo();
 
@@ -462,13 +458,13 @@ TEST_F(CliRepoAndPackageManagerTest, getRepoInitializesAndReloadsWhenInitialLoad
 TEST_F(CliRepoAndPackageManagerTest, getRepoReturnsInitializationErrorWhenInitializationFails)
 {
     EXPECT_CALL(*cli, loadRepoFromPath(_))
-      .WillOnce(Invoke([](const std::filesystem::path &)
-                         -> utils::error::Result<std::unique_ptr<repo::OSTreeRepo>> {
+      .WillOnce([](const std::filesystem::path &)
+                  -> utils::error::Result<std::unique_ptr<repo::OSTreeRepo>> {
           return makeLoadRepoError("load failed");
-      }));
-    EXPECT_CALL(*cli, initializeRepo()).WillOnce(Invoke([]() -> utils::error::Result<void> {
+      });
+    EXPECT_CALL(*cli, initializeRepo()).WillOnce([]() -> utils::error::Result<void> {
         return makeVoidError("init failed");
-    }));
+    });
 
     auto result = cli->callGetRepo();
 
@@ -480,16 +476,16 @@ TEST_F(CliRepoAndPackageManagerTest, getRepoReturnsReloadErrorAfterInitializatio
     InSequence seq;
 
     EXPECT_CALL(*cli, loadRepoFromPath(_))
-      .WillOnce(Invoke([](const std::filesystem::path &)
-                         -> utils::error::Result<std::unique_ptr<repo::OSTreeRepo>> {
+      .WillOnce([](const std::filesystem::path &)
+                  -> utils::error::Result<std::unique_ptr<repo::OSTreeRepo>> {
           return makeLoadRepoError("load failed");
-      }));
+      });
     EXPECT_CALL(*cli, initializeRepo()).WillOnce(Return(utils::error::Result<void>{}));
     EXPECT_CALL(*cli, loadRepoFromPath(_))
-      .WillOnce(Invoke([](const std::filesystem::path &)
-                         -> utils::error::Result<std::unique_ptr<repo::OSTreeRepo>> {
+      .WillOnce([](const std::filesystem::path &)
+                  -> utils::error::Result<std::unique_ptr<repo::OSTreeRepo>> {
           return makeLoadRepoError("reload failed");
-      }));
+      });
 
     auto result = cli->callGetRepo();
 
@@ -508,9 +504,9 @@ TEST_F(CliRepoAndPackageManagerTest, initializeRepoSucceedsWhenPackageManagerIsA
 
 TEST_F(CliRepoAndPackageManagerTest, initializeRepoReturnsErrorWhenPackageManagerCannotStart)
 {
-    EXPECT_CALL(*cli, getPkgMan()).WillOnce(Invoke([]() {
+    EXPECT_CALL(*cli, getPkgMan()).WillOnce([]() {
         return makePackageManagerError("start package manager failed");
-    }));
+    });
 
     auto result = cli->callInitializeRepo();
 
@@ -522,9 +518,9 @@ TEST_F(CliRepoAndPackageManagerTest, getPkgManUsesDBusPackageManagerWhenPeerMode
     auto cli = makeCli(false);
 
     EXPECT_CALL(*cli, initializePeerModePackageManager()).Times(0);
-    EXPECT_CALL(*cli, initializeDBusPackageManager()).WillOnce(Invoke([]() {
+    EXPECT_CALL(*cli, initializeDBusPackageManager()).WillOnce([]() {
         return makePackageManagerInitializationError("dbus package manager failed");
-    }));
+    });
 
     auto result = cli->callGetPkgMan();
 
@@ -536,9 +532,9 @@ TEST_F(CliRepoAndPackageManagerTest, getPkgManUsesPeerModePackageManagerWhenPeer
     auto cli = makeCli(true);
 
     EXPECT_CALL(*cli, initializeDBusPackageManager()).Times(0);
-    EXPECT_CALL(*cli, initializePeerModePackageManager()).WillOnce(Invoke([]() {
+    EXPECT_CALL(*cli, initializePeerModePackageManager()).WillOnce([]() {
         return makePackageManagerInitializationError("peer package manager failed");
-    }));
+    });
 
     auto result = cli->callGetPkgMan();
 
@@ -901,6 +897,51 @@ TEST_F(CliTest, contentPrefersLibSystemdUserOverLegacySharePath)
       .WillOnce(Return());
 
     EXPECT_EQ(cli->content(cli::ContentOptions{ .appid = "org.example.app" }), 0);
+}
+
+TEST_F(CliTest, aliasFailsWhenPackageManagerUnavailable)
+{
+    EXPECT_CALL(*cli, getPkgMan())
+      .WillOnce([]() -> utils::error::Result<api::dbus::v1::PackageManager *> {
+          return makePackageManagerError("package manager unavailable");
+      });
+    EXPECT_CALL(*printer, printErr(_)).WillOnce([](const utils::error::Error &error) {
+        EXPECT_THAT(error.message(), HasSubstr("package manager unavailable"));
+    });
+
+    EXPECT_EQ(
+      cli->alias(cli::AliasOptions{ .appid = "org.example.app", .name = "ls", .force = false }),
+      -1);
+}
+
+TEST_F(CliTest, aliasDefaultsScriptNameToAppidWhenNoCommandArgs)
+{
+    // When no --name and no command args, script name defaults to appid.
+    EXPECT_CALL(*cli, getPkgMan())
+      .WillOnce([]() -> utils::error::Result<api::dbus::v1::PackageManager *> {
+          return makePackageManagerError("package manager unavailable");
+      });
+    EXPECT_CALL(*printer, printErr(_)).WillOnce([](const utils::error::Error &error) {
+        EXPECT_THAT(error.message(), HasSubstr("package manager unavailable"));
+    });
+
+    EXPECT_EQ(cli->alias(cli::AliasOptions{ .appid = "org.example.app" }), -1);
+}
+
+TEST_F(CliTest, aliasDefaultsScriptNameToBinWhenCommandArgsGiven)
+{
+    // When command args are given but no --name, script name defaults to "bin".
+    EXPECT_CALL(*cli, getPkgMan())
+      .WillOnce([]() -> utils::error::Result<api::dbus::v1::PackageManager *> {
+          return makePackageManagerError("package manager unavailable");
+      });
+    EXPECT_CALL(*printer, printErr(_)).WillOnce([](const utils::error::Error &error) {
+        EXPECT_THAT(error.message(), HasSubstr("package manager unavailable"));
+    });
+
+    EXPECT_EQ(cli->alias(cli::AliasOptions{ .appid = "org.example.app",
+                                            .commandArgs = { "ls", "--color=auto" } }),
+              -1);
 }
 
 } // namespace

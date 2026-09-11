@@ -48,6 +48,7 @@ _ll_cli() {
             subcmds=(
                 'run' 'ps' 'enter' 'kill' 'install' 'uninstall'
                 'upgrade' 'search' 'list' 'analyze' 'repo' 'info' 'content' 'prune'
+                'alias'
             )
             _values 'subcommand' $subcmds
             ;;
@@ -145,6 +146,14 @@ _ll_cli() {
                     ;;
                 prune)
                     _arguments -S -s $global_opts
+                    ;;
+                alias)
+                    _arguments -S -s $global_opts \
+                        '1:app ID:__ll_cli_get_installed_apps' \
+                        '--name:binary name:' \
+                        '-f[overwrite existing script]' \
+                        '--force[overwrite existing script]' \
+                        '*:command args:'
                     ;;
             esac
             ;;

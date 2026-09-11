@@ -153,6 +153,16 @@ if(NOT LINGLONG_EXPORT_PATH MATCHES ".*share$")
   set(LINGLONG_EXPORT_PATH "share")
 endif()
 
+# systemd only searches for user environment generators under /usr and /usr/local.
+# Abort early if the install prefix is elsewhere so the generator is not silently lost.
+if(NOT CMAKE_INSTALL_PREFIX STREQUAL "/usr" AND NOT CMAKE_INSTALL_PREFIX STREQUAL "/usr/local")
+  message(
+    FATAL_ERROR
+      "CMAKE_INSTALL_PREFIX '${CMAKE_INSTALL_PREFIX}' is not /usr or /usr/local. "
+      "systemd user environment generators will not be discovered. "
+      "Set CMAKE_INSTALL_PREFIX to /usr or /usr/local.")
+endif()
+
 set(LINGLONG_ENABLE_WAYLAND_SEC_CTX_SUPPORT
     OFF
     CACHE BOOL "enable linglong wayland security context support")

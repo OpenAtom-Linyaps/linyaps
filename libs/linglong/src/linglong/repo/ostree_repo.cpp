@@ -15,10 +15,12 @@
 #include "linglong/api/types/v1/RepositoryCacheMergedItem.hpp"
 #include "linglong/common/formatter.h"
 #include "linglong/common/gkeyfile_wrapper.h"
+#include "linglong/common/error.h"
 #include "linglong/common/strings.h"
 #include "linglong/package/fuzzy_reference.h"
 #include "linglong/package/layer_dir.h"
 #include "linglong/package/reference.h"
+#include "linglong/package/utils.h"
 #include "linglong/package_manager/package_task.h"
 #include "linglong/repo/config.h"
 #include "linglong/utils/cmd.h"
@@ -47,12 +49,13 @@
 #include <QtGlobal>
 
 #include <algorithm>
+#include <cerrno>
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
-#include <cstring>
 #include <filesystem>
+#include <fstream>
 #include <map>
 #include <memory>
 #include <optional>
@@ -65,6 +68,7 @@
 #include <vector>
 
 #include <fcntl.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 namespace linglong::repo {
@@ -1779,6 +1783,53 @@ OSTreeRepo::unexportAppEntries(const std::filesystem::path &rootEntriesDir,
         }
     }
 
+    // Clean up binary wrapper scripts and symlinks in entries/bin for each app layer
+    for (const auto &layerPath : layerDirs) {
+        package::LayerDir layerDir(layerPath);
+        auto infoResult = layerDir.info();
+        if (!infoResult) {
+            LogW("Failed to read info from {}: {}",
+                 layerPath.string(),
+                 infoResult.error().message());
+            continue;
+        }
+
+        auto appID = infoResult->id;
+        auto binDir = rootEntriesDir / "bin";
+        std::error_code ec;
+
+        // 1. Remove symlinks in entries/bin/ that point to apps/APPID/
+        if (std::filesystem::exists(binDir, ec)) {
+            for (auto &entry : std::filesystem::directory_iterator(binDir, ec)) {
+                if (!entry.is_symlink()) {
+                    continue;
+                }
+                auto target = std::filesystem::read_symlink(entry.path(), ec);
+                if (ec) {
+                    continue;
+                }
+                auto targetStr = target.string();
+                // Check if target starts with apps/APPID/
+                auto prefix = std::string("apps/") + appID + "/";
+                if (targetStr.find(prefix) == 0) {
+                    std::filesystem::remove(entry.path(), ec);
+                    if (ec) {
+                        LogW("Failed to remove symlink {}: {}",
+                             entry.path().string(),
+                             ec.message());
+                    }
+                }
+            }
+        }
+
+        // 2. Remove the entire apps/APPID/ directory
+        auto appBinDir = binDir / "apps" / appID;
+        std::filesystem::remove_all(appBinDir, ec);
+        if (ec) {
+            LogW("Failed to remove {}: {}", appBinDir.string(), ec.message());
+        }
+    }
+
     this->updateSharedInfo();
 
     std::function<void(const QString &path)> removeEmptySubdirectories =
@@ -2210,6 +2261,282 @@ OSTreeRepo::exportAppEntries(const std::filesystem::path &rootEntriesDir,
             return ret;
         }
     }
+
+    // Export binary wrapper scripts to entries/bin
+    auto binRet = this->exportAppBinaries(rootEntriesDir, item);
+    if (!binRet) {
+        return binRet;
+    }
+    return LINGLONG_OK;
+}
+
+namespace {
+
+// Build the script content for a wrapper script.
+// When customCommand is non-empty, it is embedded directly (user-provided shell string).
+// Otherwise, each element of command is single-quoted for shell safety.
+std::string buildWrapperScriptContent(const std::string &appID,
+                                      const std::vector<std::string> &command,
+                                      const std::string &customCommand)
+{
+    auto quotedAppID = common::strings::quoteBashArg(appID);
+    if (!customCommand.empty()) {
+        return fmt::format("#!/usr/bin/env sh\nexec ll-cli run {} -- {} \"$@\"\n",
+                           quotedAppID,
+                           customCommand);
+    }
+    std::string cmdArgs;
+    for (const auto &arg : command) {
+        if (!cmdArgs.empty()) {
+            cmdArgs += ' ';
+        }
+        cmdArgs += common::strings::quoteBashArg(arg);
+    }
+    return fmt::format("#!/usr/bin/env sh\nexec ll-cli run {} -- {} \"$@\"\n",
+                       quotedAppID,
+                       cmdArgs);
+}
+
+// Content: #!/usr/bin/env sh\nexec ll-cli run <appID> -- <command...> "$@"
+// When force is true, overwrites existing file; otherwise uses O_EXCL.
+// When customCommand is non-empty, embeds it directly instead of the command vector.
+utils::error::Result<void> createBinaryWrapperScript(const std::filesystem::path &path,
+                                                     const std::string &appID,
+                                                     const std::vector<std::string> &command,
+                                                     bool force = false,
+                                                     const std::string &customCommand = "") noexcept
+{
+    LINGLONG_TRACE(fmt::format("create binary wrapper script {}", path.string()));
+
+    auto dir = path.parent_path();
+    std::error_code ec;
+    std::filesystem::create_directories(dir, ec);
+    if (ec) {
+        return LINGLONG_ERR(
+          fmt::format("create directories for {}: {}", path.string(), ec.message()));
+    }
+
+    // When force is true, use O_TRUNC to overwrite; otherwise O_EXCL for atomic creation
+    int openFlags = O_WRONLY | O_CREAT | O_CLOEXEC;
+    openFlags |= force ? O_TRUNC : O_EXCL;
+    int fd = ::open(path.c_str(), openFlags, 0755);
+    if (fd < 0) {
+        return LINGLONG_ERR(fmt::format("open {}: {}", path.string(), common::error::errorString(errno)));
+    }
+
+    std::string content = buildWrapperScriptContent(appID, command, customCommand);
+
+    // fchmod ensures executable bit regardless of process umask
+    if (::fchmod(fd, 0755) != 0) {
+        ::close(fd);
+        std::error_code rmEc;
+        std::filesystem::remove(path, rmEc);
+        return LINGLONG_ERR(fmt::format("fchmod {}: {}", path.string(), common::error::errorString(errno)));
+    }
+
+    ssize_t written = ::write(fd, content.data(), content.size());
+    if (written < 0) {
+        ::close(fd);
+        std::error_code rmEc;
+        std::filesystem::remove(path, rmEc);
+        return LINGLONG_ERR(fmt::format("write to {}: {}", path.string(), common::error::errorString(errno)));
+    }
+    if (static_cast<size_t>(written) != content.size()) {
+        ::close(fd);
+        std::error_code rmEc;
+        std::filesystem::remove(path, rmEc);
+        return LINGLONG_ERR(fmt::format("partial write to {}", path.string()));
+    }
+
+    if (::close(fd) != 0) {
+        std::error_code rmEc;
+        std::filesystem::remove(path, rmEc);
+        return LINGLONG_ERR(fmt::format("close {}: {}", path.string(), common::error::errorString(errno)));
+    }
+
+    return LINGLONG_OK;
+}
+} // namespace
+
+utils::error::Result<void>
+OSTreeRepo::exportAppBinaries(const std::filesystem::path &rootEntriesDir,
+                              const api::types::v1::RepositoryCacheLayersItem &item) noexcept
+{
+    LINGLONG_TRACE(fmt::format("export app binaries for {}", item.info.id));
+
+    // command is required for app kind; guard defensively
+    const auto &cmd = item.info.command.value_or(std::vector<std::string>{});
+    if (cmd.empty()) {
+        LogW("Skipping binary export for {}: command field is empty", item.info.id);
+        return LINGLONG_OK;
+    }
+
+    auto binDir = rootEntriesDir / "bin";
+    // Actual scripts live under entries/bin/apps/APPID/bin/
+    auto appBinDir = binDir / "apps" / item.info.id / "bin";
+
+    // Helper: create a wrapper script and a symlink in entries/bin/ pointing to it
+    auto exportOne = [&](const std::string &name,
+                         const std::vector<std::string> &command) -> void {
+        auto realScript = appBinDir / name;
+        auto ret = createBinaryWrapperScript(realScript, item.info.id, command);
+        if (!ret) {
+            LogW("Failed to create binary script {} for {}: {}",
+                 name,
+                 item.info.id,
+                 ret.error().message());
+            return;
+        }
+        // Create relative symlink: entries/bin/<name> → apps/APPID/bin/<name>
+        auto linkPath = binDir / name;
+        auto target = std::filesystem::path("apps") / item.info.id / "bin" / name;
+        std::error_code ec;
+        if (std::filesystem::exists(linkPath, ec) || std::filesystem::is_symlink(linkPath, ec)) {
+            // Already exists (e.g. upgrade); remove old link before creating new one
+            std::filesystem::remove(linkPath, ec);
+        }
+        std::filesystem::create_symlink(target, linkPath, ec);
+        if (ec) {
+            LogW("Failed to create symlink {} → {} for {}: {}",
+                 linkPath.string(),
+                 target.string(),
+                 item.info.id,
+                 ec.message());
+        }
+    };
+
+    // Always export a script named after the appid, using the full command array
+    exportOne(item.info.id, cmd);
+
+    // Export additional scripts for each name in exportedBinaries
+    if (item.info.exportedBinaries) {
+        for (const auto &name : *item.info.exportedBinaries) {
+            auto nameValidation = package::validateExecutableName(name);
+            if (!nameValidation) {
+                LogW("Skipping invalid executable name '{}' for {}: {}",
+                     name,
+                     item.info.id,
+                     nameValidation.error().message());
+                continue;
+            }
+            exportOne(name, { name });
+        }
+    }
+
+    return LINGLONG_OK;
+}
+
+utils::error::Result<void> OSTreeRepo::exportAppBinary(const std::string &appID,
+                                                       const std::string &scriptName,
+                                                       bool force,
+                                                       const std::string &customCommand) noexcept
+{
+    LINGLONG_TRACE(fmt::format("export binary alias {} for {}", scriptName, appID));
+
+    // Validate the script name (Linux single path component rules)
+    auto scriptNameResult = package::validateExecutableName(scriptName);
+    if (!scriptNameResult) {
+        return LINGLONG_ERR(scriptNameResult);
+    }
+
+    // Look up the app's info from the repo cache to find command array
+    auto items = this->cache->queryLayerItem(repoCacheQuery{
+      .id = appID,
+      .deleted = false,
+    });
+    if (items.empty()) {
+        return LINGLONG_ERR(fmt::format("app {} not found in repo cache", appID));
+    }
+
+    const api::types::v1::PackageInfoV2 *info = nullptr;
+    for (const auto &item : items) {
+        if (item.info.kind != "app") {
+            continue;
+        }
+        info = &item.info;
+        break;
+    }
+    if (info == nullptr) {
+        return LINGLONG_ERR(fmt::format("app {} has no app module", appID));
+    }
+
+    const auto cmd = info->command.value_or(std::vector<std::string>{});
+    if (cmd.empty()) {
+        return LINGLONG_ERR(fmt::format("app {} has empty command", appID));
+    }
+
+    // When customCommand is non-empty, validate it with bash -n (syntax check).
+    // The user is responsible for providing a shell-compliant command string.
+    if (!customCommand.empty()) {
+        auto scriptContent = buildWrapperScriptContent(appID, {}, customCommand);
+
+        // Use mkstemp for a unique, race-free temp file (prevents symlink attacks)
+        char tempTemplate[] = "/tmp/linglong-alias-XXXXXX";
+        int tempFd = ::mkstemp(tempTemplate);
+        if (tempFd < 0) {
+            return LINGLONG_ERR(fmt::format("failed to create temp file for bash validation: {}",
+                                            common::error::errorString(errno)));
+        }
+        std::string tempPath(tempTemplate);
+        ssize_t written = ::write(tempFd, scriptContent.data(), scriptContent.size());
+        ::close(tempFd);
+        if (written < 0 || static_cast<size_t>(written) != scriptContent.size()) {
+            std::error_code rmEc;
+            std::filesystem::remove(tempPath, rmEc);
+            return LINGLONG_ERR(fmt::format("failed to write temp file for bash validation"));
+        }
+
+        // Run bash -n to check syntax
+        std::string checkCmd = fmt::format("bash -n '{}'", tempPath);
+        int rc = std::system(checkCmd.c_str());
+        std::error_code ec;
+        std::filesystem::remove(tempPath, ec);
+        if (rc != 0) {
+            return LINGLONG_ERR(
+              fmt::format("custom command '{}' failed bash syntax check", customCommand));
+        }
+    }
+
+    // New directory structure: scripts in entries/bin/apps/APPID/bin/,
+    // symlinks in entries/bin/ pointing to them
+    auto binDir = this->getEntriesDir() / "bin";
+    auto appBinDir = binDir / "apps" / appID / "bin";
+    auto realScriptPath = appBinDir / scriptName;
+    auto linkPath = binDir / scriptName;
+
+    // Create the wrapper script (with force support)
+    auto ret = createBinaryWrapperScript(realScriptPath, appID, cmd, force, customCommand);
+    if (!ret) {
+        return LINGLONG_ERR(ret);
+    }
+    // Create or update symlink: entries/bin/<scriptName> → apps/APPID/bin/<scriptName>
+    auto target = std::filesystem::path("apps") / appID / "bin" / scriptName;
+    std::error_code ec;
+    if (std::filesystem::exists(linkPath, ec) || std::filesystem::is_symlink(linkPath, ec)) {
+        if (!force) {
+            // Check if the existing symlink already points to this app's script
+            auto existingTarget = std::filesystem::read_symlink(linkPath, ec);
+            if (ec || existingTarget != target) {
+                return LINGLONG_ERR(fmt::format(
+                  "symlink {} already exists and points to a different target; use --force to overwrite",
+                  linkPath.string()));
+            }
+            // Symlink already points to the correct target; nothing to do
+        } else {
+            std::filesystem::remove(linkPath, ec);
+        }
+    }
+    if (force || !std::filesystem::exists(linkPath, ec)) {
+        std::filesystem::create_symlink(target, linkPath, ec);
+        if (ec) {
+            LogW("Failed to create symlink {} → {} for {}: {}",
+                 linkPath.string(),
+                 target.string(),
+                 appID,
+                 ec.message());
+        }
+    }
+
     return LINGLONG_OK;
 }
 

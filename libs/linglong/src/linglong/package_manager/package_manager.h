@@ -59,6 +59,16 @@ public
     auto Update(const QVariantMap &parameters) noexcept -> QVariantMap;
     auto Search(const QVariantMap &parameters) noexcept -> QVariantMap;
     auto Prune() noexcept -> QVariantMap;
+    auto ExportBinary(const QString &appID,
+                      const QString &scriptName,
+                      bool force,
+                      const QString &customCommand) noexcept -> QVariantMap;
+
+    QVariantMap exportBinaryImpl(const QString &appID,
+                                 const QString &scriptName,
+                                 bool force,
+                                 const QString &customCommand,
+                                 const CallerContext &ctx) noexcept;
 
     auto InitRunContext(const QString &runContextCfg, const QString &containerID) noexcept
       -> QVariantMap;

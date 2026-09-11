@@ -74,26 +74,40 @@ TEST(Repo, ConventToV2)
     cfg.repos = { { "repo1", "http://example.com/repo1" } };
 
     auto configV2 = convertToV2(cfg);
+    ASSERT_TRUE(configV2.has_value()) << configV2.error().message();
 
-    EXPECT_EQ(configV2.defaultRepo, "repo1");
-    EXPECT_EQ(configV2.repos.size(), 1);
-    EXPECT_EQ(configV2.repos[0].name, "repo1");
-    EXPECT_EQ(configV2.repos[0].url, "http://example.com/repo1");
-    EXPECT_EQ(configV2.repos[0].priority, 0);
+    EXPECT_EQ(configV2->defaultRepo, "repo1");
+    EXPECT_EQ(configV2->repos.size(), 1);
+    EXPECT_EQ(configV2->repos[0].name, "repo1");
+    EXPECT_EQ(configV2->repos[0].url, "http://example.com/repo1");
+    EXPECT_EQ(configV2->repos[0].priority, 0);
 
     cfg.defaultRepo = "repo2";
     cfg.repos = { { "repo1", "http://example.com/repo1" },
                   { "repo2", "http://example.com/repo2" } };
     configV2 = convertToV2(cfg);
+    ASSERT_TRUE(configV2.has_value()) << configV2.error().message();
 
-    EXPECT_EQ(configV2.defaultRepo, "repo2");
-    EXPECT_EQ(configV2.repos.size(), 2);
-    EXPECT_EQ(configV2.repos[0].name, "repo2");
-    EXPECT_EQ(configV2.repos[0].url, "http://example.com/repo2");
-    EXPECT_EQ(configV2.repos[0].priority, 0);
-    EXPECT_EQ(configV2.repos[1].name, "repo1");
-    EXPECT_EQ(configV2.repos[1].url, "http://example.com/repo1");
-    EXPECT_EQ(configV2.repos[1].priority, -100);
+    EXPECT_EQ(configV2->defaultRepo, "repo2");
+    EXPECT_EQ(configV2->repos.size(), 2);
+    EXPECT_EQ(configV2->repos[0].name, "repo2");
+    EXPECT_EQ(configV2->repos[0].url, "http://example.com/repo2");
+    EXPECT_EQ(configV2->repos[0].priority, 0);
+    EXPECT_EQ(configV2->repos[1].name, "repo1");
+    EXPECT_EQ(configV2->repos[1].url, "http://example.com/repo1");
+    EXPECT_EQ(configV2->repos[1].priority, -100);
+}
+
+TEST(Repo, ConventToV2MissingDefaultRepoFails)
+{
+    RepoConfig cfg;
+    cfg.defaultRepo = "missing";
+    cfg.repos = { { "repo1", "http://example.com/repo1" } };
+
+    auto configV2 = convertToV2(cfg);
+    EXPECT_FALSE(configV2.has_value());
+    EXPECT_NE(configV2.error().message().find("not found in repos"), std::string::npos)
+      << configV2.error().message();
 }
 
 TEST(Repo, GetPrioritySortedRepos)
@@ -168,6 +182,42 @@ TEST(Repo, LoadConfigMissingFileFails)
     TempDir dir;
     auto cfg = loadConfig(dir.path() / "nope.yaml");
     EXPECT_FALSE(cfg.has_value());
+}
+
+TEST(Repo, LoadConfigV2YamlMissingDefaultRepoFails)
+{
+    TempDir dir;
+    auto file = dir.path() / "config.yaml";
+    std::ofstream(file) << R"(
+defaultRepo: missing
+repos:
+  - name: stable
+    priority: 0
+    url: https://example.com/repo
+version: 2
+)";
+
+    auto cfg = loadConfig(file);
+    ASSERT_FALSE(cfg.has_value());
+    EXPECT_NE(cfg.error().message().find("not found in repos"), std::string::npos)
+      << cfg.error().message();
+}
+
+TEST(Repo, LoadConfigV1YamlMissingDefaultRepoFails)
+{
+    TempDir dir;
+    auto file = dir.path() / "config.yaml";
+    std::ofstream(file) << R"(
+defaultRepo: missing
+repos:
+  stable: https://example.com/repo
+version: 1
+)";
+
+    auto cfg = loadConfig(file);
+    ASSERT_FALSE(cfg.has_value());
+    EXPECT_NE(cfg.error().message().find("not found in repos"), std::string::npos)
+      << cfg.error().message();
 }
 
 TEST(Repo, LoadConfigFromVectorTriesUntilSuccess)

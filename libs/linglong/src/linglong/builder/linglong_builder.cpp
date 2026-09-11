@@ -143,6 +143,7 @@ utils::error::Result<void> pullResolvedRef(const package::ReferenceWithRepo &ref
       2);
     QObject::connect(common::global::GlobalTaskControl::instance(),
                      &common::global::GlobalTaskControl::OnCancel,
+                     &tmpTask,
                      [&tmpTask]() {
                          tmpTask.Cancel();
                      });

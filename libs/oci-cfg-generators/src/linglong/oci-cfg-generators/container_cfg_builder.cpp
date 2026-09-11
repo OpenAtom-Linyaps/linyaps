@@ -2066,6 +2066,9 @@ bool ContainerCfgBuilder::shouldFix(int node, std::filesystem::path &fixPath) no
 
     auto isCopySymlink = [this](int node) {
         const auto &mount = mounts[mountpoints[node].mount_idx];
+        if (!mount.options) {
+            return false;
+        }
         auto find = std::find_if(mount.options->begin(), mount.options->end(), [](const auto &opt) {
             return opt == "copy-symlink";
         });

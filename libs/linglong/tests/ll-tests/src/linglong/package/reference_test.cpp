@@ -40,6 +40,8 @@ TEST(Package, Reference)
         "main:2222/1.0.0.0/unknown",
         ":1.0.0.1-beta/arm64",
         ":com.example.App/1.0.0.0/x86_64",
+        // Bug fix: trailing path segments should be rejected
+        "main:com.example.App/1.0.0.0/x86_64/extra",
     };
 
     for (const auto &invalidCase : invalidReferences) {

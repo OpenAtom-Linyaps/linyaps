@@ -260,7 +260,6 @@ TEST(MigrateTest, AlreadyMigratedRefsAreNotOverwritten)
     EXPECT_EQ(seen.c, oldChecksumC) << "stable:org.test.ccc/main was overwritten";
 }
 
-
 TEST(MigrateTest, RefsNeedingMigrationAreMigrated)
 {
     TempDir dir;
@@ -284,6 +283,13 @@ TEST(MigrateTest, RefsNeedingMigrationAreMigrated)
     ostree_repo_transaction_set_ref(repo, nullptr, "org.test.bbb/main", checksumB);
     ASSERT_NE(ostree_repo_commit_transaction(repo, nullptr, nullptr, &gErr), 0)
       << (gErr ? gErr->message : "commit transaction failed");
+
+    // Provide both legacy layer paths so migrateRef can finish after adding
+    // the prefixed refs instead of reporting a missing layers directory.
+    std::filesystem::create_directories(dir.path() / "layers/org.test.aaa");
+    std::filesystem::create_directories(dir.path() / "layers/org.test.bbb");
+    std::ofstream{ dir.path() / "layers/org.test.aaa/main" } << "";
+    std::ofstream{ dir.path() / "layers/org.test.bbb/main" } << "";
 
     auto result = tryMigrate(dir.path(), makeConfig());
     EXPECT_EQ(result, MigrateResult::Success);

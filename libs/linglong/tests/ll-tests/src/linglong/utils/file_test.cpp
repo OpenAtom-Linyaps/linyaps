@@ -236,6 +236,22 @@ TEST_F(FileTest, MoveFiles_MatcherFileInUnmatchedDir)
     EXPECT_TRUE(fs::is_directory(src_dir / "subdir1" / "subdir2"));
 }
 
+TEST_F(FileTest, MoveFiles_ReturnsErrorWhenCreateDirectoriesFails)
+{
+    // Place a regular file where a parent directory is required for
+    // src/subdir1/file2.txt -> dest/subdir1/file2.txt.
+    std::ofstream(dest_dir / "subdir1") << "blocks-parent";
+
+    auto matcher = [](const fs::path &path) {
+        return path.filename() != "ignored.txt";
+    };
+
+    auto result = linglong::utils::moveFiles(src_dir, dest_dir, matcher);
+    ASSERT_FALSE(result.has_value());
+    EXPECT_NE(result.error().message().find("failed to create directory"), std::string::npos);
+    EXPECT_TRUE(fs::exists(src_dir / "subdir1" / "file2.txt"));
+}
+
 TEST_F(FileTest, MoveFiles_ReturnsErrorWhenRenameFails)
 {
     // rename(file, non-empty-directory) fails with ENOTEMPTY. This injects a

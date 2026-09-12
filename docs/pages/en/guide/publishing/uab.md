@@ -137,6 +137,6 @@ ll-cli uninstall your-app-id
 
 If you encounter problems during the UAB application publishing process, you can:
 
-1. View the official documentation: [Linyaps Documentation](https://linglong.dev)
+1. View the official documentation: [Linyaps Documentation](https://linyaps.org.cn)
 2. Submit an Issue: [GitHub Issues](https://github.com/OpenAtom-Linyaps/linyaps/issues)
 3. Community Support: Join the Linyaps community for discussion

@@ -110,6 +110,45 @@ TEST_F(SocketFdTest, InvalidFileDescriptor)
     EXPECT_EQ(res.error(), "Invalid file descriptor");
 }
 
+TEST_F(SocketFdTest, EmptyPayloadTransferDoesNotLeakReceivedFileDescriptor)
+{
+    const auto child = fork();
+    ASSERT_NE(child, -1);
+
+    if (child == 0) {
+        close(sv[0]);
+        const auto descriptorsBefore = countOpenFileDescriptors();
+        const auto result = recvFdWithPayload(sv[1]);
+        if (!result.has_value()) {
+            _exit(1);
+        }
+        if (!result->payload.empty()) {
+            close(result->fd);
+            _exit(2);
+        }
+        if (countOpenFileDescriptors() != descriptorsBefore + 1) {
+            close(result->fd);
+            _exit(3);
+        }
+
+        close(result->fd);
+        if (countOpenFileDescriptors() != descriptorsBefore) {
+            _exit(4);
+        }
+
+        _exit(EXIT_SUCCESS);
+    }
+
+    close(sv[1]);
+    const auto result = sendFdWithPayload(sv[0], STDOUT_FILENO, {});
+    ASSERT_TRUE(result.has_value()) << result.error();
+
+    int status{ 0 };
+    ASSERT_EQ(waitpid(child, &status, 0), child);
+    ASSERT_TRUE(WIFEXITED(status));
+    EXPECT_EQ(WEXITSTATUS(status), EXIT_SUCCESS);
+}
+
 TEST_F(SocketFdTest, FionreadFailureDoesNotLeakReceivedFileDescriptor)
 {
     const std::string payload{ "full" };

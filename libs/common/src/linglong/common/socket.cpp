@@ -51,10 +51,6 @@ tl::expected<SocketData, std::string> recvFdWithPayload(int socketFd, std::size_
         return tl::make_unexpected("recvmsg failed: " + error::errorString(errno));
     }
 
-    if (n == 0) {
-        return tl::make_unexpected("Connection closed");
-    }
-
     int received_fd{ -1 };
     struct cmsghdr *cmsg = CMSG_FIRSTHDR(&msg);
 
@@ -69,6 +65,10 @@ tl::expected<SocketData, std::string> recvFdWithPayload(int socketFd, std::size_
     }
 
     if (received_fd == -1) {
+        if (n == 0) {
+            return tl::make_unexpected("Connection closed");
+        }
+
         return tl::make_unexpected("No file descriptor received");
     }
 

@@ -5,6 +5,7 @@
 #include "linglong/common/socket.h"
 
 #include "linglong/common/error.h"
+#include "linglong/utils/unique_fd.h"
 
 #include <sys/ioctl.h>
 
@@ -61,11 +62,9 @@ tl::expected<SocketData, std::string> recvFdWithPayload(int socketFd, std::size_
         std::memcpy(&received_fd, CMSG_DATA(cmsg), sizeof(int));
     }
 
-    if ((static_cast<std::size_t>(msg.msg_flags) & MSG_CTRUNC) != 0) {
-        if (received_fd != -1) {
-            ::close(received_fd);
-        }
+    linglong::utils::fd::UniqueFd receivedFdGuard{ received_fd };
 
+    if ((static_cast<std::size_t>(msg.msg_flags) & MSG_CTRUNC) != 0) {
         return tl::make_unexpected("Control data truncated");
     }
 
@@ -88,7 +87,7 @@ tl::expected<SocketData, std::string> recvFdWithPayload(int socketFd, std::size_
     }
 
     buffer.resize(n);
-    return SocketData{ isTruncated, received_fd, std::move(buffer) };
+    return SocketData{ isTruncated, receivedFdGuard.release(), std::move(buffer) };
 }
 
 tl::expected<void, std::string> sendFdWithPayload(int socketFd, int fd, const std::string &payload)

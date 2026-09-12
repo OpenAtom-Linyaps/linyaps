@@ -12,6 +12,10 @@ namespace linglong::common::display {
 tl::expected<std::filesystem::path, std::string>
 getWaylandDisplay(std::string_view display) noexcept
 {
+    if (display.empty()) {
+        return tl::unexpected{ std::string{ "empty WAYLAND_DISPLAY" } };
+    }
+
     auto xdgRuntimeDir = xdg::getXDGRuntimeDir();
     std::filesystem::path waylandSocketPath;
     if (display[0] == '/') {
@@ -21,13 +25,19 @@ getWaylandDisplay(std::string_view display) noexcept
     }
 
     std::error_code ec;
-    if (!std::filesystem::exists(waylandSocketPath, ec)) {
-        if (ec) {
-            return tl::unexpected{ "Failed to check Wayland socket path "
-                                   + waylandSocketPath.string() + ": " + ec.message() };
-        }
+    auto status = std::filesystem::status(waylandSocketPath, ec);
+    if (ec) {
+        return tl::unexpected{ "Failed to check Wayland socket path " + waylandSocketPath.string()
+                               + ": " + ec.message() };
+    }
 
+    if (!std::filesystem::exists(status)) {
         return tl::unexpected{ "Wayland socket path not found at " + waylandSocketPath.string() };
+    }
+
+    if (status.type() != std::filesystem::file_type::socket) {
+        return tl::unexpected{ "Wayland display path is not a socket: "
+                               + waylandSocketPath.string() };
     }
 
     return waylandSocketPath;

@@ -260,4 +260,57 @@ TEST(MigrateTest, AlreadyMigratedRefsAreNotOverwritten)
     EXPECT_EQ(seen.c, oldChecksumC) << "stable:org.test.ccc/main was overwritten";
 }
 
+
+TEST(MigrateTest, RefsNeedingMigrationAreMigrated)
+{
+    TempDir dir;
+    std::ofstream{ dir.path() / ".version" } << "1.5.0";
+
+    auto repoPath = dir.path() / "repo";
+    g_autoptr(GError) gErr = nullptr;
+    g_autoptr(GFile) gf = g_file_new_for_path(repoPath.c_str());
+    g_autoptr(OstreeRepo) repo = ostree_repo_new(gf);
+    ASSERT_NE(repo, nullptr);
+    ASSERT_TRUE(ostree_repo_create(repo, OSTREE_REPO_MODE_BARE, nullptr, &gErr))
+      << (gErr ? gErr->message : "ostree_repo_create failed");
+
+    const char *checksumA = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    const char *checksumB = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+
+    ASSERT_TRUE(ostree_repo_prepare_transaction(repo, nullptr, nullptr, &gErr));
+    // Unprefixed legacy refs with no stable: counterpart must be migrated.
+    // Both candidates exercise the non-mutating refPrefix + name lookup.
+    ostree_repo_transaction_set_ref(repo, nullptr, "org.test.aaa/main", checksumA);
+    ostree_repo_transaction_set_ref(repo, nullptr, "org.test.bbb/main", checksumB);
+    ASSERT_NE(ostree_repo_commit_transaction(repo, nullptr, nullptr, &gErr), 0)
+      << (gErr ? gErr->message : "commit transaction failed");
+
+    auto result = tryMigrate(dir.path(), makeConfig());
+    EXPECT_EQ(result, MigrateResult::Success);
+
+    g_autoptr(GHashTable) refs = nullptr;
+    ASSERT_TRUE(ostree_repo_list_refs(repo, nullptr, &refs, nullptr, &gErr));
+
+    struct Flags
+    {
+        bool a = false;
+        bool b = false;
+    } flags;
+    g_hash_table_foreach(
+      refs,
+      [](gpointer key, gpointer, gpointer data) {
+          auto *f = static_cast<Flags *>(data);
+          std::string_view ref{ static_cast<const char *>(key) };
+          if (ref == "stable:org.test.aaa/main") {
+              f->a = true;
+          }
+          if (ref == "stable:org.test.bbb/main") {
+              f->b = true;
+          }
+      },
+      &flags);
+    EXPECT_TRUE(flags.a) << "stable:org.test.aaa/main was not created";
+    EXPECT_TRUE(flags.b) << "stable:org.test.bbb/main was not created";
+}
+
 } // namespace

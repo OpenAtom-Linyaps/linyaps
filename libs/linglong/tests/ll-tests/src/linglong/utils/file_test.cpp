@@ -242,8 +242,10 @@ TEST_F(FileTest, MoveFiles_ReturnsErrorWhenCreateDirectoriesFails)
     // src/subdir1/file2.txt -> dest/subdir1/file2.txt.
     std::ofstream(dest_dir / "subdir1") << "blocks-parent";
 
+    // Match only the nested file. Matching the parent directory first would
+    // exercise rename(directory, file) instead of create_directories().
     auto matcher = [](const fs::path &path) {
-        return path.filename() != "ignored.txt";
+        return path == fs::path{ "subdir1/file2.txt" };
     };
 
     auto result = linglong::utils::moveFiles(src_dir, dest_dir, matcher);

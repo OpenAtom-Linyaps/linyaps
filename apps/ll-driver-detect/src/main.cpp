@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2025-2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -194,6 +194,7 @@ int main(int argc, char *argv[])
             LogW("Failed to install driver package {}: {}",
                  options.packageName,
                  installResult.error().message());
+            return 1;
         }
 
         std::cout << "Successfully installed driver package" << std::endl;

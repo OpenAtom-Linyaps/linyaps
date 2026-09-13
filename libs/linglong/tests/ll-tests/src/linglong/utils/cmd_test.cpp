@@ -1,10 +1,15 @@
-// SPDX-FileCopyrightText: 2024 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2024-2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 #include <gtest/gtest.h>
 
+#include "common/tempdir.h"
 #include "linglong/utils/cmd.h"
+#include "linglong/utils/env.h"
+
+#include <filesystem>
+#include <fstream>
 
 namespace {
 
@@ -27,6 +32,30 @@ TEST(command, Exec)
     // 测试exec出错时
     auto ret4 = linglong::utils::Cmd("ls").exec({ "/linglong/nonexistent" });
     EXPECT_FALSE(ret4.has_value());
+}
+
+TEST(command, ExistsRequiresExecutableRegularFile)
+{
+    TempDir tempDir;
+    ASSERT_TRUE(tempDir.isValid());
+
+    const auto nonExecutable = tempDir.path() / "non-executable-command";
+    std::ofstream(nonExecutable) << "#!/bin/sh\n";
+    std::filesystem::permissions(nonExecutable,
+                                 std::filesystem::perms::owner_read
+                                   | std::filesystem::perms::owner_write,
+                                 std::filesystem::perm_options::replace);
+
+    linglong::utils::EnvironmentVariableGuard pathGuard("PATH", tempDir.path().string());
+    EXPECT_FALSE(linglong::utils::Cmd(nonExecutable.filename().string()).exists());
+    EXPECT_FALSE(linglong::utils::Cmd(nonExecutable.string()).exists());
+    EXPECT_FALSE(linglong::utils::Cmd(tempDir.path().string()).exists());
+
+    std::filesystem::permissions(nonExecutable,
+                                 std::filesystem::perms::owner_exec,
+                                 std::filesystem::perm_options::add);
+    EXPECT_TRUE(linglong::utils::Cmd(nonExecutable.filename().string()).exists());
+    EXPECT_TRUE(linglong::utils::Cmd(nonExecutable.string()).exists());
 }
 
 TEST(command, setEnv)

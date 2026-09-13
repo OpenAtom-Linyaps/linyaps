@@ -1,4 +1,4 @@
-#!/bin/env bash
+#!/usr/bin/env bash
 
 # SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
 #

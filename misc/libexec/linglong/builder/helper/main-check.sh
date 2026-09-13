@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
+# SPDX-FileCopyrightText: 2023-2026 UnionTech Software Technology Co., Ltd.
 #
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -59,6 +59,9 @@ if [[ $skip_config -eq 0 ]]; then
     echo "start application configure check"
     if ! @CMAKE_INSTALL_FULL_LIBEXECDIR@/linglong/builder/helper/config-check.sh; then
             echo "Warning: application configure check failed."
+            if [ $check_level -eq 1 ]; then
+                    exit 1
+            fi
     fi
 else
     echo "Skipping application configure check."

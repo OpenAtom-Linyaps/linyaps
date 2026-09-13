@@ -51,6 +51,7 @@ When a YAML file is a symbolic link, its contents are read from the target, but 
 | push    | [ll-builder-push(1)](./push.md)       | Push Linyaps application to remote repository |
 | import  | [ll-builder-import(1)](./import.md)   | Import Linyaps layer file to build repository |
 | extract | [ll-builder-extract(1)](./extract.md) | Extract Linyaps layer file to directory       |
+| clean   | [ll-builder-clean(1)](./clean.md)     | Clean build artifacts                         |
 | repo    | [ll-builder-repo(1)](./repo.md)       | Display and manage repository                 |
 
 ## SEE ALSO

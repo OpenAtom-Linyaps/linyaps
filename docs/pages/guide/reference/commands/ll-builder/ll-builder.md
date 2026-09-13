@@ -51,6 +51,7 @@ YAML 为文件软链接时，读取链接目标的内容，但资源 lock 写在
 | push    | [ll-builder-push(1)](./push.md)       | 推送如意玲珑应用到远程仓库        |
 | import  | [ll-builder-import(1)](./import.md)   | 导入如意玲珑 layer 文件到构建仓库 |
 | extract | [ll-builder-extract(1)](./extract.md) | 将如意玲珑 layer 文件解压到目录   |
+| clean   | [ll-builder-clean(1)](./clean.md)     | 清理构建产物                      |
 | repo    | [ll-builder-repo(1)](./repo.md)       | 显示和管理仓库                    |
 
 ## SEE ALSO

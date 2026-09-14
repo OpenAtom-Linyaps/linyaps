@@ -302,6 +302,7 @@ TEST(MigrateTest, RefsNeedingMigrationAreMigrated)
         bool a = false;
         bool b = false;
     } flags;
+
     g_hash_table_foreach(
       refs,
       [](gpointer key, gpointer, gpointer data) {

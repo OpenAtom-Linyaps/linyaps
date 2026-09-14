@@ -214,8 +214,8 @@ void PackageManager::initDaemonMode(bool peerMode) noexcept
             auto seconds = std::stol(deferredTimeOutEnv, &parsed);
             // QTimer intervals are int milliseconds; reject trailing junk,
             // non-positive values, and anything that would overflow setInterval.
-            if (parsed != std::string_view{ deferredTimeOutEnv }.size()
-                || seconds <= 0 || seconds > std::numeric_limits<int>::max() / 1000) {
+            if (parsed != std::string_view{ deferredTimeOutEnv }.size() || seconds <= 0
+                || seconds > std::numeric_limits<int>::max() / 1000) {
                 LogW("invalid LINGLONG_DEFERRED_TIMEOUT[{}], using default {}s",
                      deferredTimeOutEnv,
                      deferredTimeOut.count());

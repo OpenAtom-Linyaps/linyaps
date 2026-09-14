@@ -6,8 +6,11 @@
 
 #include "linglong/utils/log/log.h"
 
+#include <systemd/sd-login.h>
+
 #include <QDBusArgument>
 #include <QDBusConnection>
+#include <QDBusConnectionInterface>
 #include <QDBusMessage>
 #include <QDBusMetaType>
 #include <QDBusPendingCallWatcher>
@@ -16,7 +19,10 @@
 #include <QString>
 #include <QVariant>
 
+#include <cstdlib>
+#include <memory>
 #include <mutex>
+#include <optional>
 
 namespace {
 
@@ -79,6 +85,57 @@ constexpr const char *POLKIT_SERVICE = "org.freedesktop.PolicyKit1";
 constexpr const char *POLKIT_PATH = "/org/freedesktop/PolicyKit1/Authority";
 constexpr const char *POLKIT_INTERFACE = "org.freedesktop.PolicyKit1.Authority";
 
+std::optional<QString> resolveSessionId(const QDBusConnection &bus, const QString &systemBusName)
+{
+    auto *interface = bus.interface();
+    if (interface == nullptr) {
+        LogW("failed to access the system bus interface");
+        return std::nullopt;
+    }
+
+    const auto pidReply = interface->servicePid(systemBusName);
+    if (!pidReply.isValid()) {
+        LogW("failed to resolve PID for {}: {}",
+             systemBusName.toStdString(),
+             pidReply.error().message().toStdString());
+        return std::nullopt;
+    }
+
+    char *rawSessionId = nullptr;
+    const auto result = sd_pid_get_session(static_cast<pid_t>(pidReply.value()), &rawSessionId);
+    std::unique_ptr<char, decltype(&std::free)> sessionId(rawSessionId, &std::free);
+    if (result < 0) {
+        LogD("failed to resolve login session for {}: {}", systemBusName.toStdString(), result);
+        return std::nullopt;
+    }
+
+    // 唯一总线名不会被复用；再次核对 PID，避免调用方退出后发生 PID 复用竞态。
+    const auto currentPidReply = interface->servicePid(systemBusName);
+    if (!currentPidReply.isValid() || currentPidReply.value() != pidReply.value()) {
+        LogW("caller {} disappeared while resolving its login session",
+             systemBusName.toStdString());
+        return std::nullopt;
+    }
+
+    return QString::fromUtf8(sessionId.get());
+}
+
+PolkitSubject makeSubject(const QDBusConnection &bus, const QString &systemBusName)
+{
+    PolkitSubject subject;
+    if (const auto sessionId = resolveSessionId(bus, systemBusName); sessionId.has_value()) {
+        // 会话级 subject 让 polkit 的 auth_admin_keep 缓存可在同一登录会话的新进程间复用。
+        subject.kind = QStringLiteral("unix-session");
+        subject.details.insert(QStringLiteral("session-id"), QVariant::fromValue(*sessionId));
+        return subject;
+    }
+
+    // 系统服务等调用方可能不属于登录会话，保留原有的逐进程授权行为。
+    subject.kind = QStringLiteral("system-bus-name");
+    subject.details.insert(QStringLiteral("name"), QVariant::fromValue(systemBusName));
+    return subject;
+}
+
 } // namespace
 
 Q_DECLARE_METATYPE(PolkitSubject)
@@ -103,10 +160,7 @@ void PolkitAuthority::checkAuthorizationAsync(
                                               QString::fromLatin1(POLKIT_INTERFACE),
                                               QStringLiteral("CheckAuthorization"));
 
-    PolkitSubject subject;
-    subject.kind = QStringLiteral("system-bus-name");
-    subject.details.insert(QStringLiteral("name"),
-                           QVariant::fromValue(QString::fromStdString(systemBusName)));
+    const auto subject = makeSubject(bus, QString::fromStdString(systemBusName));
 
     msg << QVariant::fromValue(subject) << QString::fromStdString(actionId)
         << QVariant::fromValue(QMap<QString, QString>())

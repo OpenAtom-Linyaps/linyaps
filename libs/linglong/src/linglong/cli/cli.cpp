@@ -263,12 +263,13 @@ linglong::utils::error::Result<linglong::utils::fd::UniqueFd> acceptConsoleFd(in
                 return LINGLONG_ERR(data.error());
             }
 
+            linglong::utils::fd::UniqueFd receivedFd{ data->fd };
             struct stat buf{};
-            if (::fstat(data->fd, &buf) != 0 || !S_ISCHR(buf.st_mode)) {
+            if (::fstat(receivedFd.get(), &buf) != 0 || !S_ISCHR(buf.st_mode)) {
                 return LINGLONG_ERR("received fd is not a character device");
             }
 
-            return linglong::utils::fd::UniqueFd{ data->fd };
+            return receivedFd;
         }
     }
 }

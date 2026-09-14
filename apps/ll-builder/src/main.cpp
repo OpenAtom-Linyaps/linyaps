@@ -70,7 +70,7 @@ parseProjectConfig(const std::filesystem::path &filename)
                 return module.name == "binary";
             })) {
             return LINGLONG_ERR("configuration of binary modules is not allowed. see "
-                                "https://linglong.space/guide/ll-builder/modules.html");
+                                "https://linyaps.org.cn/guide/building/modules.html");
         }
     }
     if (project->package.kind == "app" && !project->command.has_value()) {

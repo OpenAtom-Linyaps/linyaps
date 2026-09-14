@@ -80,7 +80,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 18. UAB offline package format cannot use input method under Debian and Ubuntu?
 
-    It is recommended to install the `fictx` input method for better experience.
+    It is recommended to install the `fcitx` input method for better experience.
 
 19. How to know which packages are installed in the container environment?
 

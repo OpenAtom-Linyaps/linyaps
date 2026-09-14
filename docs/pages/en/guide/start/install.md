@@ -101,10 +101,10 @@ sudo apt update
 sudo apt install linglong-bin linglong-installer
 ```
 
-### deepin 23
+### deepin 23.1
 
 ```sh
-echo "deb [trusted=yes] https://ci.deepin.com/repo/obs/linglong:/CI:/release/Deepin_23/ ./" | sudo tee /etc/apt/sources.list.d/linglong.list
+echo "deb [trusted=yes] https://ci.deepin.com/repo/obs/linglong:/CI:/release/Deepin_23.1/ ./" | sudo tee /etc/apt/sources.list.d/linglong.list
 sudo apt update
 sudo apt install linglong-bin linglong-installer
 ```

@@ -1,4 +1,4 @@
-#!/bin/bash
+﻿#!/bin/bash
 
 # SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
 #
@@ -51,10 +51,12 @@ fi
 
 for filePath in $(echo -e "$results"); do
         fileName=${filePath##*/}
-        ret=$(echo "$fileName" | grep "^${LINGLONG_APPID}")
-        if [ "$ret" == "" ]; then
-                invalidList+="$filePath\n"
-        fi
+        case "$fileName" in
+                "$LINGLONG_APPID"*) ;;
+                *)
+                        invalidList+="$filePath\n"
+                        ;;
+        esac
 done
 
 if [ "$invalidList" != "" ]; then

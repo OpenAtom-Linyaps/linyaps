@@ -29,6 +29,12 @@ public:
         return compareVersions(candidate, current);
     }
 
+    linglong::utils::error::Result<std::pair<bool, GraphicsDriverInfo>>
+    parseSearchResult(const std::string &searchResult, const std::string &packageName) const
+    {
+        return parsePackageSearchResult(searchResult, packageName);
+    }
+
     MOCK_METHOD((linglong::utils::error::Result<std::pair<bool, GraphicsDriverInfo>>),
                 getPackageInfoFromRemoteRepo,
                 (const std::string &packageName),
@@ -63,6 +69,32 @@ TEST_F(NvidiaDriverDetectorTest, CompareVersionsUsesSemanticOrdering)
 
     EXPECT_TRUE(detector.isVersionNewer("510.100.0", "510.99.0"));
     EXPECT_FALSE(detector.isVersionNewer("510.99.0", "510.100.0"));
+}
+
+TEST_F(NvidiaDriverDetectorTest, SearchResultOnlyUsesExactPackageID)
+{
+    TestableNVIDIADriverDetector detector("unused-version-file");
+    const std::string packageName = "org.deepin.driver.display.nvidia.510-85-02";
+    const auto searchResult = R"({
+        "repo-a": [
+            {"id": "org.deepin.driver.display.nvidia.510-85-02.legacy", "version": "999.0.0"},
+            "not-an-object",
+            {"version": "1000.0.0"},
+            {"id": 42, "version": "1001.0.0"},
+            {"id": "org.deepin.driver.display.nvidia.510-85-02", "version": "510.99.0"}
+        ],
+        "repo-b": [
+            {"id": "org.deepin.driver.display.nvidia.510-85-02", "version": "510.100.0"}
+        ]
+    })";
+
+    auto result = detector.parseSearchResult(searchResult, packageName);
+
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+    ASSERT_TRUE(result->first);
+    EXPECT_EQ(result->second.packageName, packageName);
+    EXPECT_EQ(result->second.packageVersion, "510.100.0");
+    EXPECT_EQ(result->second.repoName, "repo-b");
 }
 
 TEST_F(NvidiaDriverDetectorTest, Detect_Success_PackageNotInstalled)

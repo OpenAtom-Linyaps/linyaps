@@ -35,6 +35,7 @@ pfl_add_executable(
   SOURCES
   ./src/main.cpp
   ./src/light_elf.h
+  ./src/uab_uuid.h
   ./src/utils.h
   OUTPUT_NAME
   uab-header

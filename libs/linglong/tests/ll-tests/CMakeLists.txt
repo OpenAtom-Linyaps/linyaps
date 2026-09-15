@@ -42,6 +42,7 @@ pfl_add_executable(
   src/linglong/package_manager/data_monitor_test.cpp
   src/linglong/package_manager/task_test.cpp
   src/linglong/package_manager/task_queue_test.cpp
+  src/linglong/package_manager/need_to_upgrade_test.cpp
   src/linglong/package_manager/package_update_test.cpp
   src/linglong/package_manager/ref_installation_test.cpp
   src/linglong/package_manager/uab_installation_test.cpp

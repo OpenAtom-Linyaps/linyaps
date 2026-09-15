@@ -236,6 +236,45 @@ TEST_F(FileTest, MoveFiles_MatcherFileInUnmatchedDir)
     EXPECT_TRUE(fs::is_directory(src_dir / "subdir1" / "subdir2"));
 }
 
+TEST_F(FileTest, MoveFiles_ReturnsErrorWhenCreateDirectoriesFails)
+{
+    // Place a regular file where a parent directory is required for
+    // src/subdir1/file2.txt -> dest/subdir1/file2.txt.
+    std::ofstream(dest_dir / "subdir1") << "blocks-parent";
+
+    // Match only the nested file. Matching the parent directory first would
+    // exercise rename(directory, file) instead of create_directories().
+    auto matcher = [](const fs::path &path) {
+        return path == fs::path{ "subdir1/file2.txt" };
+    };
+
+    auto result = linglong::utils::moveFiles(src_dir, dest_dir, matcher);
+    ASSERT_FALSE(result.has_value());
+    EXPECT_NE(result.error().message().find("failed to create directory"), std::string::npos);
+    EXPECT_TRUE(fs::exists(src_dir / "subdir1" / "file2.txt"));
+}
+
+TEST_F(FileTest, MoveFiles_ReturnsErrorWhenRenameFails)
+{
+    // rename(file, non-empty-directory) fails with ENOTEMPTY. This injects a
+    // rename failure without depending on process privileges.
+    fs::create_directories(dest_dir / "file1.txt" / "nested");
+    std::ofstream(dest_dir / "file1.txt" / "nested" / "keep.txt") << "keep";
+
+    auto matcher = [](const fs::path &path) {
+        return path.filename() != "ignored.txt";
+    };
+
+    auto result = linglong::utils::moveFiles(src_dir, dest_dir, matcher);
+    ASSERT_FALSE(result.has_value());
+
+    // The blocked source file must still be present.
+    EXPECT_TRUE(fs::exists(src_dir / "file1.txt"));
+    // The blocking destination directory must not be replaced.
+    EXPECT_TRUE(fs::is_directory(dest_dir / "file1.txt"));
+    EXPECT_TRUE(fs::exists(dest_dir / "file1.txt" / "nested" / "keep.txt"));
+}
+
 TEST_F(FileTest, GetFiles)
 {
     auto result = linglong::utils::getFiles(src_dir);

@@ -1,0 +1,10 @@
+{
+  "tools": [
+    {
+      "deviceId": "nvidia",
+      "packages": [
+        "nvidia-container-toolkit-base"
+      ]
+    }
+  ]
+}

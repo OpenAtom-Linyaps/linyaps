@@ -1688,18 +1688,7 @@ int Cli::run(const RunOptions &options)
         opts.instance = makeDebugInstanceID();
     }
 
-    bool nvidiaCdiFound = false;
-    if (opts.cdiDevices) {
-        nvidiaCdiFound = std::any_of(opts.cdiDevices->begin(),
-                                     opts.cdiDevices->end(),
-                                     [](const api::types::v1::CdiDeviceEntry &device) {
-                                         return device.kind == "nvidia.com/gpu";
-                                     });
-    }
-
-    if (!nvidiaCdiFound) {
-        detectDrivers();
-    }
+    detectContainerTools();
 
     auto runContext = std::make_unique<runtime::RunContext>(**repo);
     auto res = runContext->resolve(*curAppRef, opts);
@@ -3777,10 +3766,10 @@ bool Cli::handleCommonError(const utils::error::Error &error)
     return true;
 }
 
-void Cli::detectDrivers()
+void Cli::detectContainerTools()
 {
     QProcess process;
-    process.setProgram(QString(LINGLONG_LIBEXEC_DIR "/ll-driver-detect"));
+    process.setProgram(QString(LINGLONG_LIBEXEC_DIR "/ll-ctk-detect"));
     // 禁用标准输入 (stdin)
     process.setStandardInputFile("/dev/null");
     // 禁用标准输出 (stdout)

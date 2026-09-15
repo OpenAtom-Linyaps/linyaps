@@ -110,6 +110,10 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/lib/linglong/container/README.md
 install(FILES ${CMAKE_CURRENT_LIST_DIR}/share/linglong/config.yaml
         DESTINATION ${CMAKE_INSTALL_PREFIX}/share/linglong)
 
+# ll-ctk-detect default config
+install(FILES ${CMAKE_CURRENT_LIST_DIR}/etc/linglong/ll-ctk-detect.json
+        DESTINATION ${CMAKE_INSTALL_FULL_SYSCONFDIR}/linglong)
+
 # builder export dirs
 install(FILES ${CMAKE_CURRENT_LIST_DIR}/share/linglong/export-dirs.json
         DESTINATION ${CMAKE_INSTALL_PREFIX}/share/linglong)

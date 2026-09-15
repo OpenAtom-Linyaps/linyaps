@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025-2026 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -8,11 +8,10 @@
 
 #include <filesystem>
 
-namespace linglong::driver::detect {
+namespace linglong::ctk::detect {
 
 ApplicationSingleton::ApplicationSingleton(const std::string &lockFilePath)
     : lockFilePath_(lockFilePath)
-    , lockHeld_(false)
 {
 }
 
@@ -23,13 +22,12 @@ ApplicationSingleton::~ApplicationSingleton()
 
 utils::error::Result<bool> ApplicationSingleton::tryAcquireLock()
 {
-    LINGLONG_TRACE("Try acquire lock")
+    LINGLONG_TRACE("try acquire singleton lock")
 
     if (lockHeld_) {
         return true;
     }
 
-    // Create directory if it doesn't exist
     std::filesystem::path lockPath(lockFilePath_);
     std::filesystem::path lockDir = lockPath.parent_path();
 
@@ -37,11 +35,10 @@ utils::error::Result<bool> ApplicationSingleton::tryAcquireLock()
         std::error_code ec;
         std::filesystem::create_directories(lockDir, ec);
         if (ec) {
-            return LINGLONG_ERR("Failed to create lock directory: " + ec.message());
+            return LINGLONG_ERR("failed to create lock directory: " + ec.message());
         }
     }
 
-    // Try to create file lock
     auto fileLock =
       linglong::utils::filelock::FileLock::create(lockFilePath_,
                                                   linglong::utils::filelock::LockType::Write,
@@ -50,7 +47,6 @@ utils::error::Result<bool> ApplicationSingleton::tryAcquireLock()
         return LINGLONG_ERR(fileLock);
     }
 
-    // Try to acquire write lock (exclusive)
     auto lockResult = fileLock->tryLock(linglong::utils::filelock::LockType::Write);
     if (!lockResult) {
         return LINGLONG_ERR(lockResult);
@@ -62,7 +58,6 @@ utils::error::Result<bool> ApplicationSingleton::tryAcquireLock()
         return true;
     }
 
-    // Another instance is already running
     return false;
 }
 
@@ -71,12 +66,11 @@ void ApplicationSingleton::releaseLock()
     if (lockHeld_ && fileLock_) {
         auto result = fileLock_->unlock();
         if (!result) {
-            // Log error but don't throw - we're in destructor
-            LogF("Failed to release file lock: {}", result.error().message());
+            LogF("failed to release file lock: {}", result.error().message());
         }
         fileLock_.reset();
         lockHeld_ = false;
     }
 }
 
-} // namespace linglong::driver::detect
+} // namespace linglong::ctk::detect

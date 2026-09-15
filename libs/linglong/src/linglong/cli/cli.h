@@ -256,7 +256,7 @@ private:
     utils::error::Result<void> ensureBaseDevelopModule(runtime::RunContext &runContext);
     int getLayerDir(const InspectOptions &options);
     int getBundleDir(const InspectOptions &options);
-    void detectDrivers();
+    void detectContainerTools();
     int runResolvedContext(runtime::RunContext &runContext,
                            const RunOptions &options,
                            std::optional<api::types::v1::RuntimeConfigure> runtimeConfig);

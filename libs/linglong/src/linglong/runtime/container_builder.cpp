@@ -738,8 +738,11 @@ auto ContainerBuilder::configureRunContainer(PreparedContainer &prepared,
         return LINGLONG_ERR(applyRes);
     }
 
-    const auto &mounts = runContext.getConfig().mounts;
-    if (mounts) {
+    auto addExtraMounts = [&prepared](const auto &mounts) {
+        if (!mounts) {
+            return;
+        }
+
         for (const auto &m : *mounts) {
             ocppi::runtime::config::types::Mount ociMount{
                 .destination = m.destination,
@@ -751,7 +754,11 @@ auto ContainerBuilder::configureRunContainer(PreparedContainer &prepared,
             };
             prepared.cfgBuilder.addExtraMount(ociMount);
         }
-    }
+    };
+
+    const auto &config = runContext.getConfig();
+    addExtraMounts(config.hostDynamic);
+    addExtraMounts(config.mounts);
 
     return LINGLONG_OK;
 }

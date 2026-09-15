@@ -132,3 +132,22 @@ ll-cli run --help-all
 - [通过 CLI 管理 Runtime](./manage-runtimes-with-cli.md)介绍依赖分析、磁盘占用分析、无效 Runtime 清理和强制操作。
 - [常见问题](../tips-and-faq/faq.md)汇总运行、数据目录、桌面集成和依赖相关问题。
 - 排查问题时，可在命令后增加 `--verbose` 获取详细日志，并将完整命令、日志、系统版本和 `ll-cli --version` 的结果一并提供给社区。
+
+## 权限与 polkit 排查
+
+自 1.14 起，`ll-package-manager` 通过 polkit 校验安装、卸载等操作。非 deepin 发行版需要：
+
+1. 系统中运行可用的 polkit 认证代理（authentication agent）。
+2. 当前用户具备管理员权限（通常为 `wheel` 或 `sudo` 组），或已有对应的 polkit 规则允许免密。
+
+如果 CLI 提示 `PermissionDenied` 或认证窗口一闪而过、没有密码输入框，请按下列顺序排查：
+
+1. 确认认证代理已启动（例如桌面环境自带的 polkit agent）。
+2. 查看系统日志：
+
+```bash
+journalctl -u polkit -b
+```
+
+3. 检查 PAM 栈中是否有模块向 stdout 输出额外文本、干扰 polkit agent/helper 协议。
+4. 临时验证：使用 `sudo ll-cli install ...` 可绕过 polkit（root 直接放行）。

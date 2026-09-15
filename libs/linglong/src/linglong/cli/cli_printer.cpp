@@ -35,7 +35,18 @@ std::wstring subwstr(std::wstring wstr, int width)
 
 void CLIPrinter::printErr(const utils::error::Error &err)
 {
-    std::cerr << "Error " << err.code() << ": " << err.message() << std::endl;
+    std::string codeText = std::to_string(err.code());
+    switch (static_cast<utils::error::ErrorCode>(err.code())) {
+    case utils::error::ErrorCode::PermissionDenied:
+        codeText = "PermissionDenied";
+        break;
+    case utils::error::ErrorCode::Canceled:
+        codeText = "Canceled";
+        break;
+    default:
+        break;
+    }
+    std::cerr << "Error " << codeText << ": " << err.message() << std::endl;
 }
 
 void CLIPrinter::printPruneResult(const std::vector<api::types::v1::PackageInfoV2> &list)

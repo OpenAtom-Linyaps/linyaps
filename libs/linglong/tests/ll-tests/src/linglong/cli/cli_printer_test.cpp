@@ -76,6 +76,39 @@ TEST(CLIPrinter, PrintErr)
     EXPECT_THAT(out, ::testing::HasSubstr("boom"));
 }
 
+TEST(CLIPrinter, PrintErrPermissionDeniedUsesSemanticCode)
+{
+    auto err =
+      linglong::utils::error::Error::Err("file.cpp",
+                                         42,
+                                         "trace",
+                                         "not authorized by polkit",
+                                         linglong::utils::error::ErrorCode::PermissionDenied);
+    CaptureStdout capture;
+    linglong::cli::CLIPrinter printer;
+    printer.printErr(err);
+    auto out = capture.str();
+    EXPECT_THAT(out, ::testing::HasSubstr("Error PermissionDenied"));
+    EXPECT_THAT(out, ::testing::HasSubstr("not authorized by polkit"));
+    EXPECT_THAT(out, ::testing::Not(::testing::HasSubstr("Error 2:")));
+}
+
+TEST(CLIPrinter, PrintErrCanceledUsesSemanticCode)
+{
+    auto err = linglong::utils::error::Error::Err("file.cpp",
+                                                  42,
+                                                  "trace",
+                                                  "canceled by user",
+                                                  linglong::utils::error::ErrorCode::Canceled);
+    CaptureStdout capture;
+    linglong::cli::CLIPrinter printer;
+    printer.printErr(err);
+    auto out = capture.str();
+    EXPECT_THAT(out, ::testing::HasSubstr("Error Canceled"));
+    EXPECT_THAT(out, ::testing::HasSubstr("canceled by user"));
+    EXPECT_THAT(out, ::testing::Not(::testing::HasSubstr("Error 1:")));
+}
+
 TEST(CLIPrinter, PrintPackage)
 {
     auto pkg = makePackage("org.deepin.demo", "Demo", "1.0.0", "stable", "binary", "a demo app");

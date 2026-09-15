@@ -1,5 +1,5 @@
 /*
- ; SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+ ; SPDX-FileCopyrightText: 2025 - 2026 UnionTech Software Technology Co., Ltd.
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
@@ -195,4 +195,25 @@ TEST(FallbackVersionTest, compare)
     EXPECT_TRUE(FallbackVersion::parse("1.2.3-日本語").has_value());
     EXPECT_TRUE(FallbackVersion::parse("1.2.3-한국어").has_value());
     EXPECT_TRUE(FallbackVersion::parse("1.2.3-русский").has_value());
+}
+
+// Numeric components that differ only by leading zeros must form one
+// total-order equivalence class: exactly one of <, ==, > holds.
+TEST(FallbackVersionTest, leadingZeroComponentsAreOrderEqual)
+{
+    const auto padded = FallbackVersion::parse("1.01.2").value();
+    const auto plain = FallbackVersion::parse("1.1.2").value();
+
+    EXPECT_EQ(padded, plain);
+    EXPECT_FALSE(padded != plain);
+    EXPECT_FALSE(padded < plain);
+    EXPECT_FALSE(padded > plain);
+    EXPECT_TRUE(padded <= plain);
+    EXPECT_TRUE(padded >= plain);
+
+    const auto zeroPad = FallbackVersion::parse("1.0").value();
+    const auto zeroPadMore = FallbackVersion::parse("1.00").value();
+    EXPECT_EQ(zeroPad, zeroPadMore);
+    EXPECT_TRUE(zeroPad <= zeroPadMore);
+    EXPECT_TRUE(zeroPad >= zeroPadMore);
 }

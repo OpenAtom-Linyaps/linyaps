@@ -7,6 +7,7 @@
 #include "linglong/api/types/v1/UabMetaInfo.hpp"
 #include "linglong/common/uab_signature.h"
 #include "linglong/utils/sha256.h"
+#include "uab_uuid.h"
 
 #include <gelf.h>
 #include <getopt.h>
@@ -43,6 +44,7 @@ namespace {
 std::atomic_bool mountFlag{ false };  // NOLINT
 std::atomic_bool createFlag{ false }; // NOLINT
 std::filesystem::path mountPoint;     // NOLINT
+std::filesystem::path createdMountPointRoot; // NOLINT
 constexpr std::size_t default_page_size = 4096;
 
 constexpr auto usage = u8R"(Linglong Universal Application Bundle
@@ -309,6 +311,10 @@ getVerifiedMetaInfo(const lightElf::native_elf &elf) noexcept
         std::cerr << "failed to parse verified meta section: " << e.what() << std::endl;
         return std::nullopt;
     }
+    if (!linglong::uab::isUabUuidV4(meta->uuid)) {
+        std::cerr << "linglong.meta contains an invalid UAB UUID" << std::endl;
+        return std::nullopt;
+    }
     if (!linglong::common::uab::isDigest(meta->digest)) {
         std::cerr << "linglong.meta contains an invalid bundle digest" << std::endl;
         return std::nullopt;
@@ -433,6 +439,12 @@ void cleanResource() noexcept
         return;
     }
 
+    if (createdMountPointRoot.empty() || mountPoint.parent_path() != createdMountPointRoot
+        || !linglong::uab::isUabUuidV4(mountPoint.filename().string())) {
+        std::cerr << "refusing to remove an invalid UAB mount point" << std::endl;
+        return;
+    }
+
     // try to remove mount point
     std::error_code ec;
     if (std::filesystem::remove_all(mountPoint, ec) == static_cast<std::uintmax_t>(-1) && ec) {
@@ -479,6 +491,11 @@ int createMountPoint(std::string_view uuid) noexcept
         return 0;
     }
 
+    if (!linglong::uab::isUabUuidV4(uuid)) {
+        std::cerr << "invalid UAB UUID" << std::endl;
+        return -1;
+    }
+
     const char *runtimeDirPtr{ nullptr };
     runtimeDirPtr = ::getenv("XDG_RUNTIME_DIR");
     if (runtimeDirPtr == nullptr) {
@@ -490,7 +507,8 @@ int createMountPoint(std::string_view uuid) noexcept
     if (runtimeDir.empty()) {
         return -1;
     }
-    auto mountPointPath = std::filesystem::path{ runtimeDir } / "linglong" / "UAB" / uuid;
+    const auto mountPointRoot = std::filesystem::path{ runtimeDir } / "linglong" / "UAB";
+    auto mountPointPath = mountPointRoot / uuid;
 
     std::error_code ec;
     if (!std::filesystem::create_directories(mountPointPath, ec) && ec) {
@@ -500,6 +518,7 @@ int createMountPoint(std::string_view uuid) noexcept
     }
 
     mountPoint = std::move(mountPointPath);
+    createdMountPointRoot = mountPointRoot;
     createFlag.store(true, std::memory_order_relaxed);
 
     return 0;

@@ -12,7 +12,8 @@
 
 #include <fmt/format.h>
 
-#include <charconv>
+#include <algorithm>
+#include <cctype>
 
 #if QT_VERSION < QT_VERSION_CHECK(5, 14, 0)
 namespace Qt {
@@ -21,10 +22,20 @@ static auto SkipEmptyParts = QString::SkipEmptyParts;
 #endif
 
 namespace {
-bool parse_int_strict(const std::string &s, int &out)
+std::optional<std::string_view> normalizeUnsignedInteger(std::string_view value) noexcept
 {
-    auto [ptr, ec] = std::from_chars(s.data(), s.data() + s.size(), out);
-    return ec == std::errc() && ptr == s.data() + s.size();
+    if (value.empty() || !std::all_of(value.begin(), value.end(), [](unsigned char ch) {
+            return std::isdigit(ch);
+        })) {
+        return std::nullopt;
+    }
+
+    auto firstNonZero = value.find_first_not_of('0');
+    if (firstNonZero == std::string_view::npos) {
+        return value.substr(value.size() - 1);
+    }
+
+    return value.substr(firstNonZero);
 }
 
 } // namespace
@@ -59,7 +70,7 @@ bool FallbackVersion::semanticMatch(const std::string &versionStr) const noexcep
 
 bool FallbackVersion::operator==(const FallbackVersion &that) const
 {
-    return this->list == that.list;
+    return compare(that) == 0;
 }
 
 bool FallbackVersion::operator!=(const FallbackVersion &that) const
@@ -93,15 +104,16 @@ int FallbackVersion::compare(const FallbackVersion &other) const noexcept
     auto otherPart = other.list.cbegin();
 
     while (thisPart != this->list.cend() && otherPart != other.list.cend()) {
-        int thisNumber{ -1 };
-        int otherNumber{ -1 };
-        const bool thisIsNum = parse_int_strict(*thisPart, thisNumber);
-        const bool otherIsNum = parse_int_strict(*otherPart, otherNumber);
+        auto thisNumber = normalizeUnsignedInteger(*thisPart);
+        auto otherNumber = normalizeUnsignedInteger(*otherPart);
 
         // all numbers
-        if (thisIsNum && otherIsNum) {
-            if (thisNumber != otherNumber) {
-                return (thisNumber < otherNumber) ? -1 : 1;
+        if (thisNumber && otherNumber) {
+            if (thisNumber->size() != otherNumber->size()) {
+                return thisNumber->size() < otherNumber->size() ? -1 : 1;
+            }
+            if (*thisNumber != *otherNumber) {
+                return thisNumber->compare(*otherNumber);
             }
         } else {
             // if the one of them is not a number

@@ -1628,18 +1628,27 @@ OSTreeRepo::searchRemote(const package::FuzzyReference &fuzzyRef,
     pkgInfos.reserve(response->data->count);
     for (auto *entry = response->data->firstEntry; entry != nullptr; entry = entry->nextListEntry) {
         auto *item = (request_register_struct_t *)entry->data;
+        // Some repository responses omit channel/arch string fields (JSON null).
+        // Constructing std::string from nullptr is undefined; semanticMatch would
+        // then drop every candidate and upgrade fails with "packages is empty".
+        // Fall back to the requested channel (or the default "main") and the
+        // architecture already used for the request.
         auto packageInfo = api::types::v1::PackageInfoV2{
-            .arch = { item->arch },
-            .base = { item->base },
-            .channel = item->channel,
-            .description = item->description,
-            .id = item->app_id,
-            .kind = item->kind,
-            .packageInfoV2Module = item->module,
-            .name = item->name,
-            .runtime = item->runtime,
+            .arch = { item->arch != nullptr ? std::string(item->arch) : arch },
+            .base = { item->base != nullptr ? std::string(item->base) : std::string{} },
+            .channel = item->channel != nullptr ? std::string(item->channel)
+                                                : fuzzyRef.channel.value_or("main"),
+            .description =
+              item->description != nullptr ? std::string(item->description) : std::string{},
+            .id = item->app_id != nullptr ? std::string(item->app_id) : std::string{},
+            .kind = item->kind != nullptr ? std::string(item->kind) : std::string{},
+            .packageInfoV2Module =
+              item->module != nullptr ? std::string(item->module) : std::string{},
+            .name = item->name != nullptr ? std::string(item->name) : std::string{},
+            .runtime =
+              item->runtime != nullptr ? std::optional<std::string>(item->runtime) : std::nullopt,
             .size = item->size,
-            .version = item->version,
+            .version = item->version != nullptr ? std::string(item->version) : std::string{},
         };
 
         // apply semantic matching to search results to correctly filter:
@@ -1648,7 +1657,7 @@ OSTreeRepo::searchRemote(const package::FuzzyReference &fuzzyRef,
         if (semanticMatching) {
             auto matched = semanticMatch(fuzzyRef, packageInfo);
             if (!matched) {
-                LogE("invalid packageInfo", matched.error());
+                LogE("invalid packageInfo from remote: {}", matched.error());
                 continue;
             }
 
@@ -1663,6 +1672,68 @@ OSTreeRepo::searchRemote(const package::FuzzyReference &fuzzyRef,
     return pkgInfos;
 }
 
+namespace {
+
+// Upgrade queries send the installed channel (e.g. "main"). Some repository
+// responses return data:null / empty candidates for that request even though
+// the same app is visible without a channel filter (see issue #1961). Retry
+// once without channel, then keep only packages that still belong to the
+// requested channel so we never upgrade across channels.
+std::vector<api::types::v1::PackageInfoV2> filterPackagesByChannel(
+  std::vector<api::types::v1::PackageInfoV2> packages, const std::string &channel)
+{
+    std::vector<api::types::v1::PackageInfoV2> filtered;
+    filtered.reserve(packages.size());
+    for (auto &package : packages) {
+        if (package.channel == channel) {
+            filtered.emplace_back(std::move(package));
+            continue;
+        }
+        // Server may omit channel on the default channel; treat empty as main
+        // only when the caller asked for main.
+        if (package.channel.empty() && channel == "main") {
+            package.channel = channel;
+            filtered.emplace_back(std::move(package));
+        }
+    }
+    return filtered;
+}
+
+} // namespace
+
+utils::error::Result<std::vector<api::types::v1::PackageInfoV2>> OSTreeRepo::searchRemoteForUpgrade(
+  const package::FuzzyReference &fuzzyRef, const api::types::v1::Repo &repo) const noexcept
+{
+    LINGLONG_TRACE("search remote packages for upgrade");
+
+    auto list = this->searchRemote(fuzzyRef, repo, true);
+    if (!list) {
+        return list;
+    }
+
+    if (!list->empty() || !fuzzyRef.channel) {
+        return list;
+    }
+
+    LogW("channel-filtered remote search from {} returned empty for {}, retrying without channel",
+         repo.name,
+         fuzzyRef.toString());
+
+    auto relaxed =
+      package::FuzzyReference::create(std::nullopt, fuzzyRef.id, fuzzyRef.version, fuzzyRef.arch);
+    if (!relaxed) {
+        return list;
+    }
+
+    auto fallbackList = this->searchRemote(*relaxed, repo, true);
+    if (!fallbackList) {
+        // Keep the original empty success result; network errors already reported.
+        return list;
+    }
+
+    return filterPackagesByChannel(std::move(fallbackList).value(), *fuzzyRef.channel);
+}
+
 utils::error::Result<repo::RemotePackages>
 OSTreeRepo::matchRemoteByPriority(const package::FuzzyReference &fuzzyRef,
                                   const std::optional<api::types::v1::Repo> &repo) const noexcept
@@ -1672,7 +1743,7 @@ OSTreeRepo::matchRemoteByPriority(const package::FuzzyReference &fuzzyRef,
     repo::RemotePackages remotePackages;
 
     if (repo) {
-        auto list = this->searchRemote(fuzzyRef, *repo, true);
+        auto list = this->searchRemoteForUpgrade(fuzzyRef, *repo);
         if (!list) {
             return LINGLONG_ERR(fmt::format("failed to search remote packages from {}", repo->name),
                                 utils::error::ErrorCode::NetworkError);
@@ -1686,7 +1757,7 @@ OSTreeRepo::matchRemoteByPriority(const package::FuzzyReference &fuzzyRef,
         auto repos = this->getPriorityGroupedRepos();
         for (const auto &repoGroup : repos) {
             for (const auto &repo : repoGroup) {
-                auto list = this->searchRemote(fuzzyRef, repo, true);
+                auto list = this->searchRemoteForUpgrade(fuzzyRef, repo);
                 if (!list) {
                     LogW("failed to search remote packages from {}: {}", repo.name, list.error());
                     continue;

@@ -46,13 +46,17 @@ pfl_add_executable(
   src/linglong/package_manager/ref_installation_test.cpp
   src/linglong/package_manager/uab_installation_test.cpp
   src/linglong/package/reference_test.cpp
+  src/linglong/package/reference_deep_test.cpp
+  src/linglong/package/fuzzy_reference_deep_test.cpp
   src/linglong/package/semver_compare_test.cpp
   src/linglong/package/semver_increment_test.cpp
   src/linglong/package/semver_prerelease_test.cpp
   src/linglong/package/semver_serialization_test.cpp
   src/linglong/package/semver_version_test.cpp
+  src/linglong/package/semver_deep_test.cpp
   src/linglong/package/uab_file_test.cpp
   src/linglong/package/uab_packager_test.cpp
+  src/linglong/package/packager_elf_deep_test.cpp
   src/linglong/package/version_extra_test.cpp
   src/linglong/package/version_test.cpp
   src/linglong/package/versionv2_test.cpp

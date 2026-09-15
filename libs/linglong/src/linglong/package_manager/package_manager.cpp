@@ -56,6 +56,8 @@
 #include <chrono>
 #include <cstdint>
 #include <functional>
+#include <limits>
+#include <string_view>
 #include <unordered_map>
 #include <utility>
 
@@ -208,10 +210,19 @@ void PackageManager::initDaemonMode(bool peerMode) noexcept
     auto *deferredTimeOutEnv = ::getenv("LINGLONG_DEFERRED_TIMEOUT");
     if (deferredTimeOutEnv != nullptr) {
         try {
-            deferredTimeOut = std::stoi(deferredTimeOutEnv) * 1s;
-        } catch (std::invalid_argument &e) {
-            LogW("failed to parse LINGLONG_DEFERRED_TIMEOUT[{}]: {}", deferredTimeOutEnv, e.what());
-        } catch (std::out_of_range &e) {
+            std::size_t parsed = 0;
+            auto seconds = std::stol(deferredTimeOutEnv, &parsed);
+            // QTimer intervals are int milliseconds; reject trailing junk,
+            // non-positive values, and anything that would overflow setInterval.
+            if (parsed != std::string_view{ deferredTimeOutEnv }.size() || seconds <= 0
+                || seconds > std::numeric_limits<int>::max() / 1000) {
+                LogW("invalid LINGLONG_DEFERRED_TIMEOUT[{}], using default {}s",
+                     deferredTimeOutEnv,
+                     deferredTimeOut.count());
+            } else {
+                deferredTimeOut = std::chrono::seconds{ seconds };
+            }
+        } catch (const std::exception &e) {
             LogW("failed to parse LINGLONG_DEFERRED_TIMEOUT[{}]: {}", deferredTimeOutEnv, e.what());
         }
     }

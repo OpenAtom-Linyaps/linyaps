@@ -21,15 +21,23 @@ namespace {
 
 using namespace linglong;
 
+class TimeoutTestRepo : public repo::OSTreeRepo
+{
+public:
+    explicit TimeoutTestRepo(const std::filesystem::path &path)
+        : repo::OSTreeRepo(
+            path, api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 })
+    {
+    }
+};
+
 class DeferredTimeoutTest : public ::testing::Test
 {
 protected:
     void SetUp() override
     {
         tempDir = std::make_unique<TempDir>();
-        auto repoOwner = std::make_unique<repo::OSTreeRepo>(
-          tempDir->path(),
-          api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 });
+        auto repoOwner = std::make_unique<TimeoutTestRepo>(tempDir->path());
         cli = ocppi::cli::crun::Crun::New(tempDir->path()).value();
         auto containerBuilderOwner = std::make_unique<runtime::ContainerBuilder>(*cli);
         pm = std::make_unique<service::PackageManager>(std::move(repoOwner),

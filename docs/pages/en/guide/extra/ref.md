@@ -38,7 +38,7 @@ Where:
 | channel | Lowercase letters + underscore                                                                                  |
 | id      | Reverse domain name                                                                                             |
 | version | 4 digits separated by `.`. Pad with 0 if less than 4 digits, append subsequent numeric strings to the 4th digit |
-| arch    | Architecture description string, currently supports x86_64/arm/loongarch                                        |
+| arch    | Architecture description string, currently supports x86_64/arm64/loongarch64/loong64/sw64/mips64/riscv64 |
 
 ## Usage
 

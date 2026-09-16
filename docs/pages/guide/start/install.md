@@ -122,10 +122,10 @@ sudo apt update
 sudo apt install linglong-bin linglong-installer
 ```
 
-### openEuler 23.09
+### openEuler 25.09
 
 ```sh
-sudo dnf config-manager --add-repo "https://ci.deepin.com/repo/obs/linglong:/CI:/release/openEuler_23.09/linglong%3ACI%3Arelease.repo"
+sudo dnf config-manager --add-repo "https://ci.deepin.com/repo/obs/linglong:/CI:/release/openEuler_25.09/linglong%3ACI%3Arelease.repo"
 sudo sh -c "echo gpgcheck=0 >> /etc/yum.repos.d/linglong%3ACI%3Arelease.repo"
 sudo dnf update
 sudo dnf install linglong-bin linyaps-web-store-installer

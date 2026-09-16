@@ -312,7 +312,7 @@ utils::error::Result<void> RepoCache::writeToDisk()
         if (ec) {
             LogE("get status of directory {} error: {}", parent_path.string(), ec.message());
         }
-        return LINGLONG_ERR("failed to update cache");
+        return LINGLONG_ERR(fmt::format("failed to update cache: cannot open {}", tmpFile));
     }
 
     auto data = nlohmann::json(this->cache).dump();
@@ -320,7 +320,7 @@ utils::error::Result<void> RepoCache::writeToDisk()
     ofs.close();
     if (!ofs) {
         std::filesystem::remove(tmpFile, ec);
-        return LINGLONG_ERR("failed to write cache");
+        return LINGLONG_ERR(fmt::format("failed to write cache to {}", tmpFile));
     }
 
     std::filesystem::rename(tmpFile, this->cacheFile, ec);

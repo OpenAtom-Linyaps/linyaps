@@ -109,10 +109,10 @@ sudo apt update
 sudo apt install linglong-bin linglong-installer
 ```
 
-### Fedora 42
+### Fedora 44
 
 ```sh
-sudo dnf config-manager addrepo --from-repofile "https://ci.deepin.com/repo/obs/linglong:/CI:/release/Fedora_42/linglong%3ACI%3Arelease.repo"
+sudo dnf config-manager addrepo --from-repofile "https://ci.deepin.com/repo/obs/linglong:/CI:/release/Fedora_44/linglong%3ACI%3Arelease.repo"
 sudo sh -c "printf '\ngpgcheck=0\n' >> '/etc/yum.repos.d/linglong%3ACI%3Arelease.repo'"
 sudo dnf makecache --refresh
 sudo dnf install linglong-bin linyaps-web-store-installer

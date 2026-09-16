@@ -82,7 +82,7 @@ linglong::utils::error::Result<void> writeFile(const std::filesystem::path &file
     out.close();
     if (!out) {
         return LINGLONG_ERR(
-          fmt::format("failed to write file {}", common::error::errorString(errno)));
+          fmt::format("failed to write file {}: {}", filepath, common::error::errorString(errno)));
     }
     return LINGLONG_OK;
 }
@@ -310,12 +310,12 @@ linglong::utils::error::Result<void> ensureDirectory(const std::filesystem::path
 
         std::filesystem::remove(dir, ec);
         if (ec) {
-            return LINGLONG_ERR("failed to remove directory", ec);
+            return LINGLONG_ERR(fmt::format("failed to remove directory {}", dir), ec);
         }
     }
 
     if (!std::filesystem::create_directories(dir, ec) && ec) {
-        return LINGLONG_ERR("failed to create directory", ec);
+        return LINGLONG_ERR(fmt::format("failed to create directory {}", dir), ec);
     }
 
     return LINGLONG_OK;
@@ -420,7 +420,9 @@ linglong::utils::error::Result<void> relinkFileTo(const std::filesystem::path &l
 
     std::filesystem::create_symlink(target, tmpPath, ec);
     if (ec) {
-        return LINGLONG_ERR("failed to create symlink", ec);
+        return LINGLONG_ERR(
+          fmt::format("failed to create symlink {} -> {}", tmpPath, target.string()),
+          ec);
     }
 
     std::filesystem::rename(tmpPath, link, ec);

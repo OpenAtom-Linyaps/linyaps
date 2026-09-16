@@ -16,7 +16,7 @@ This sharing is based on the `deepin 23` distribution, so before performing any 
 
 2. Since we need to connect to the network to obtain the runtime libraries of the Linyaps container and possibly needed third-party libraries during the build process, we need to ensure smooth network connection throughout the entire operation process
 
-3. Before compiling through the Linyaps container, you had better successfully compiled `qBittorrent` in `deepin 23` which is relatively close to this build container to ensure you have some understanding of the source code compilation
+3. Before compiling through the Linyaps container, you had better first successfully compile `qBittorrent` in `deepin 23` which is relatively close to this build container to ensure you have some understanding of the source code compilation
 
 4. Combine the [Linyaps Application Build Project `linglong.yaml` Specification] in the previous section and simply write a Linyaps build project configuration file `linglong.yaml` according to the following template to generate a container that meets the requirements
 

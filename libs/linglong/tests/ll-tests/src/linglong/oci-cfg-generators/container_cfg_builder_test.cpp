@@ -14,6 +14,7 @@
 
 #include <filesystem>
 #include <fstream>
+#include <system_error>
 #include <vector>
 
 using namespace linglong::generator;
@@ -1194,4 +1195,26 @@ TEST_F(ContainerCfgBuilderTest, EnableIPCMountNoValidSocket)
     }
 }
 
+
+
+TEST_F(ContainerCfgBuilderTest, PrivateDirCreationFailureIncludesFilesystemCause)
+{
+    const auto homeDir = baseDir.path() / "home";
+    std::filesystem::create_directories(homeDir);
+    std::ofstream(homeDir / ".linglong").close();
+
+    ContainerCfgBuilder builder;
+    builder.setAppId("org.deepin.demo")
+      .setBasePath(baseDir.path())
+      .setBundlePath(bundleDir.path())
+      .bindHome(homeDir)
+      .enablePrivateDir()
+      .disablePatch();
+
+    auto result = builder.build();
+    ASSERT_FALSE(result.has_value());
+    EXPECT_THAT(result.error().message(),
+                ::testing::HasSubstr(
+                  std::make_error_code(std::errc::not_a_directory).message()));
+}
 } // namespace

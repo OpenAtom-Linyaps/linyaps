@@ -60,7 +60,7 @@ build: |
 2. 在完成准备 `linglong.yaml`编辑后, 我们就可以开始生成容器了, 执行有限的操作以直接进入玲珑容器:
 
 ```
-szbt@szbt-linyaps23:/media/szbt/Data/ll-build/QT/qBittorrent-git$ ll-builder build --exec bash
+szbt@szbt-linyaps23:/media/szbt/Data/ll-build/QT/qBittorrent-git$ ll-builder build -- bash
 ```
 
 路径发生类似以下变化时, 即意味着我们已经进入玲珑容器中了

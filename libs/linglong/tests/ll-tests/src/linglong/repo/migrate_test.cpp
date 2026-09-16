@@ -191,4 +191,67 @@ TEST(MigrateTest, RealOstreeRepoMigratesUnprefixedRefs)
     EXPECT_TRUE(std::filesystem::is_symlink(link));
 }
 
+TEST(MigrateTest, MajorNewerDoesNotTriggerLegacyRefMigration)
+{
+    // 2.0.0 is not older than 1.7.0. The previous Version::operator< ORed
+    // major/minor/patch, so 2.0.0 < 1.7.0 was true (0 < 7) and the 1.7.0
+    // ref-migration gate ran on repos that never needed it.
+    TempDir dir;
+    std::ofstream{ dir.path() / ".version" } << "2.0.0";
+
+    auto repoPath = dir.path() / "repo";
+    g_autoptr(GError) gErr = nullptr;
+    g_autoptr(GFile) gf = g_file_new_for_path(repoPath.c_str());
+    g_autoptr(OstreeRepo) repo = ostree_repo_new(gf);
+    ASSERT_NE(repo, nullptr);
+    ASSERT_TRUE(ostree_repo_create(repo, OSTREE_REPO_MODE_BARE, nullptr, &gErr))
+      << (gErr ? gErr->message : "ostree_repo_create failed");
+
+    auto result = tryMigrate(dir.path(), makeConfig());
+    // Skipping migrateRef leaves dispatchMigrations at INT_MAX -> Success.
+    // The buggy comparator entered migrateRef on the empty repo -> NoChange.
+    EXPECT_EQ(result, MigrateResult::Success);
+
+    std::ifstream in{ dir.path() / ".version" };
+    std::string content((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+    EXPECT_EQ(content, LINGLONG_VERSION);
+}
+
+TEST(MigrateTest, MultiDigitMinorVersionDoesNotTriggerLegacyRefMigration)
+{
+    // 1.10.0 must parse as minor=10 and must not be treated as < 1.7.0.
+    TempDir dir;
+    std::ofstream{ dir.path() / ".version" } << "1.10.0";
+
+    auto repoPath = dir.path() / "repo";
+    g_autoptr(GError) gErr = nullptr;
+    g_autoptr(GFile) gf = g_file_new_for_path(repoPath.c_str());
+    g_autoptr(OstreeRepo) repo = ostree_repo_new(gf);
+    ASSERT_NE(repo, nullptr);
+    ASSERT_TRUE(ostree_repo_create(repo, OSTREE_REPO_MODE_BARE, nullptr, &gErr))
+      << (gErr ? gErr->message : "ostree_repo_create failed");
+
+    auto result = tryMigrate(dir.path(), makeConfig());
+    EXPECT_EQ(result, MigrateResult::Success);
+}
+
+TEST(MigrateTest, MinorOlderStillTriggersLegacyRefMigration)
+{
+    // 1.6.0 < 1.7.0, so the 1.7.0 gate still runs. An empty repo yields
+    // NoChange after migrateRef finds nothing to migrate.
+    TempDir dir;
+    std::ofstream{ dir.path() / ".version" } << "1.6.0";
+
+    auto repoPath = dir.path() / "repo";
+    g_autoptr(GError) gErr = nullptr;
+    g_autoptr(GFile) gf = g_file_new_for_path(repoPath.c_str());
+    g_autoptr(OstreeRepo) repo = ostree_repo_new(gf);
+    ASSERT_NE(repo, nullptr);
+    ASSERT_TRUE(ostree_repo_create(repo, OSTREE_REPO_MODE_BARE, nullptr, &gErr))
+      << (gErr ? gErr->message : "ostree_repo_create failed");
+
+    auto result = tryMigrate(dir.path(), makeConfig());
+    EXPECT_EQ(result, MigrateResult::NoChange);
+}
+
 } // namespace

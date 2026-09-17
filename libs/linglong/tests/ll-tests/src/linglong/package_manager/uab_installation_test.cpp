@@ -238,6 +238,22 @@ TEST(CheckUABLayersConstrain, ExtraModuleWithBinary)
     EXPECT_TRUE(result.has_value());
 }
 
+TEST(UABLayerModuleValidation, AcceptsSinglePathComponents)
+{
+    for (const auto *module : { "binary", "runtime", "develop", "extra.module" }) {
+        auto result = UabInstallationAction::validateUABLayerModule(module);
+        EXPECT_TRUE(result.has_value()) << "module was rejected: " << module;
+    }
+}
+
+TEST(UABLayerModuleValidation, RejectsUnsafePathValues)
+{
+    for (const auto *module : { "", ".", "..", "../x", "module/subdir", "/tmp/layer", "a\\b" }) {
+        auto result = UabInstallationAction::validateUABLayerModule(module);
+        EXPECT_FALSE(result.has_value()) << "module was accepted: " << module;
+    }
+}
+
 // checkDistributionModeUABLayers tests
 TEST(CheckDistributionModeUABLayers, NoLayers)
 {

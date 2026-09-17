@@ -1,7 +1,7 @@
 %global debug_package %{nil}
 Name:           linglong
 Version:        1.13.8
-Release:        1
+Release:        2
 Summary:        Linglong Package FrameWork
 License:        LGPLv3
 URL:            https://github.com/linuxdeepin/%{name}
@@ -10,7 +10,7 @@ Source0:        %{url}/archive/%{version}/linglong-%{version}.tar
 BuildRequires:  cmake gcc-c++
 BuildRequires:  qt5-qtbase-devel qt5-qtbase-private-devel
 BuildRequires:  glib2-devel nlohmann-json-devel ostree-devel yaml-cpp-devel
-BuildRequires:  systemd-devel gtest-devel elfutils-libelf-devel
+BuildRequires:  systemd-devel systemd-rpm-macros gtest-devel elfutils-libelf-devel
 BuildRequires:  glibc-static libstdc++-static
 BuildRequires:  libcurl-devel openssl-devel
 BuildRequires:  gtest-devel gmock-devel erofs-utils
@@ -26,6 +26,7 @@ Summary:        Linglong package manager
 Requires:       linglong-box
 Requires:       polkit erofs-utils
 Recommends:     erofsfuse
+%{?systemd_requires}
 %description    -n linglong-bin
 Linglong package management command line tool.
 
@@ -61,6 +62,7 @@ cd build
 
 %post -n linglong-bin
 %systemd_post org.deepin.linglong.PackageManager.service
+systemctl start org.deepin.linglong.PackageManager.service 2>/dev/null || :
 
 %preun -n linglong-bin
 %systemd_preun org.deepin.linglong.PackageManager.service
@@ -122,6 +124,9 @@ cd build
 %{_datadir}/%{name}/builder/uab/*
 
 %changelog
+* Wed Sep 17 2026 dengbo <dengbo@deepin.org> - 1.13.8-2
+- fix(rpm): ensure package-manager service starts immediately after installation
+
 * Thu Jul 16 2026 dengbo <dengbo@deepin.org> - 1.13.8-1
 - fix: avoid missing task state if task is removed quickly
 - feat: embed prerelease and build metadata in version string

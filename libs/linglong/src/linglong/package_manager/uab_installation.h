@@ -15,6 +15,7 @@
 #include "linglong/utils/transaction.h"
 
 #include <optional>
+#include <string_view>
 #include <vector>
 
 namespace linglong::service {
@@ -33,6 +34,7 @@ public:
       repo::OSTreeRepo &repo, const std::vector<linglong::api::types::v1::UabLayer> &layers);
     static utils::error::Result<void> checkUABLayersConstrain(
       repo::OSTreeRepo &repo, const std::vector<api::types::v1::UabLayer> &layers);
+    static utils::error::Result<void> validateUABLayerModule(std::string_view module);
     static bool extraModuleOnly(const std::vector<api::types::v1::UabLayer> &layers);
 
     virtual ~UabInstallationAction();

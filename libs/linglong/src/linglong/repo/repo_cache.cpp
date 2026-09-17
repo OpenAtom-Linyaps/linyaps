@@ -30,6 +30,8 @@ utils::error::Result<void> RepoCache::load()
 {
     LINGLONG_TRACE("load repo cache");
 
+    std::unique_lock lock{ cacheMutex };
+
     std::error_code ec;
     if (!std::filesystem::exists(this->cacheFile, ec)) {
         if (ec) {
@@ -58,9 +60,11 @@ utils::error::Result<void> RepoCache::updateConfig(const api::types::v1::RepoCon
 {
     LINGLONG_TRACE("update repo cache config");
 
+    std::unique_lock lock{ cacheMutex };
+
     auto originalConfig = cache.config;
     cache.config = config;
-    auto result = writeToDisk();
+    auto result = writeToDiskUnlocked();
     if (!result) {
         cache.config = std::move(originalConfig);
         return LINGLONG_ERR(result);
@@ -73,6 +77,8 @@ utils::error::Result<void> RepoCache::rebuild(const api::types::v1::RepoConfigV2
                                               OstreeRepo &repo) noexcept
 {
     LINGLONG_TRACE("rebuild repo cache");
+
+    std::unique_lock lock{ cacheMutex };
 
     this->cache.config = repoConfig;
     this->cache.layers.clear();
@@ -133,7 +139,7 @@ utils::error::Result<void> RepoCache::rebuild(const api::types::v1::RepoConfigV2
         this->cache.layers.emplace_back(std::move(item));
     }
 
-    auto ret = writeToDisk();
+    auto ret = writeToDiskUnlocked();
     if (!ret) {
         return LINGLONG_ERR(ret);
     }
@@ -146,13 +152,15 @@ RepoCache::addLayerItem(const api::types::v1::RepositoryCacheLayersItem &item)
 {
     LINGLONG_TRACE("add layer item");
 
+    std::unique_lock lock{ cacheMutex };
+
     auto it = findMatchingItem(item);
     if (it) {
         return LINGLONG_ERR("item already exist");
     }
 
     cache.layers.emplace_back(item);
-    auto ret = writeToDisk();
+    auto ret = writeToDiskUnlocked();
     if (!ret) {
         return LINGLONG_ERR(ret);
     }
@@ -187,13 +195,15 @@ RepoCache::deleteLayerItem(const api::types::v1::RepositoryCacheLayersItem &item
 {
     LINGLONG_TRACE("delete layer item");
 
+    std::unique_lock lock{ cacheMutex };
+
     auto it = findMatchingItem(item);
     if (!it) {
         return LINGLONG_ERR(it);
     }
 
     cache.layers.erase(*it);
-    auto ret = writeToDisk();
+    auto ret = writeToDiskUnlocked();
     if (!ret) {
         return LINGLONG_ERR(ret);
     }
@@ -204,7 +214,11 @@ RepoCache::deleteLayerItem(const api::types::v1::RepositoryCacheLayersItem &item
 std::vector<api::types::v1::RepositoryCacheLayersItem>
 RepoCache::queryExistingLayerItem() const noexcept
 {
-    auto layers = this->cache.layers;
+    std::vector<api::types::v1::RepositoryCacheLayersItem> layers;
+    {
+        std::shared_lock lock{ cacheMutex };
+        layers = this->cache.layers;
+    }
     auto it = std::remove_if(layers.begin(),
                              layers.end(),
                              [](const api::types::v1::RepositoryCacheLayersItem &item) {
@@ -218,73 +232,131 @@ RepoCache::queryExistingLayerItem() const noexcept
 std::vector<api::types::v1::RepositoryCacheLayersItem>
 RepoCache::queryLayerItem(const repoCacheQuery &query) const noexcept
 {
-    using itemRef = std::reference_wrapper<const api::types::v1::RepositoryCacheLayersItem>;
-    std::vector<itemRef> layers_view;
-    for (const auto &layer : cache.layers) {
-        if (query.id && query.id.value() != layer.info.id) {
-            continue;
-        }
-
-        if (query.repo && query.repo.value() != layer.repo) {
-            continue;
-        }
-
-        if (query.channel && query.channel.value() != layer.info.channel) {
-            continue;
-        }
-
-        if (query.version && query.version.value() != layer.info.version) {
-            continue;
-        }
-
-        if (query.module && query.module.value() != layer.info.packageInfoV2Module) {
-            continue;
-        }
-
-        if (query.architecture && query.architecture.value() != layer.info.arch.front()) {
-            continue;
-        }
-
-        if (query.deleted) {
-            auto layerDeleted = layer.deleted.value_or(false);
-            if (query.deleted.value() != layerDeleted) {
+    std::vector<api::types::v1::RepositoryCacheLayersItem> layers;
+    {
+        std::shared_lock lock{ cacheMutex };
+        for (const auto &layer : cache.layers) {
+            if (query.id && query.id.value() != layer.info.id) {
                 continue;
             }
-        }
 
-        layers_view.emplace_back(layer);
+            if (query.repo && query.repo.value() != layer.repo) {
+                continue;
+            }
+
+            if (query.channel && query.channel.value() != layer.info.channel) {
+                continue;
+            }
+
+            if (query.version && query.version.value() != layer.info.version) {
+                continue;
+            }
+
+            if (query.module && query.module.value() != layer.info.packageInfoV2Module) {
+                continue;
+            }
+
+            if (query.architecture && query.architecture.value() != layer.info.arch.front()) {
+                continue;
+            }
+
+            if (query.deleted) {
+                auto layerDeleted = layer.deleted.value_or(false);
+                if (query.deleted.value() != layerDeleted) {
+                    continue;
+                }
+            }
+
+            layers.emplace_back(layer);
+        }
     }
 
-    std::sort(layers_view.begin(), layers_view.end(), [](itemRef lhs, itemRef rhs) {
-        auto lhsVersion = linglong::package::Version::parse(lhs.get().info.version.c_str());
+    std::sort(layers.begin(), layers.end(), [](const auto &lhs, const auto &rhs) {
+        auto lhsVersion = linglong::package::Version::parse(lhs.info.version.c_str());
         if (!lhsVersion) {
-            LogE("Failed to parse lhs version: {}", lhs.get().info.version);
+            LogE("Failed to parse lhs version: {}", lhs.info.version);
             return false;
         }
-        auto rhsVersion = linglong::package::Version::parse(rhs.get().info.version.c_str());
+        auto rhsVersion = linglong::package::Version::parse(rhs.info.version.c_str());
         if (!rhsVersion) {
-            LogE("Failed to parse rhs version: {}", rhs.get().info.version);
+            LogE("Failed to parse rhs version: {}", rhs.info.version);
             return false;
         }
         return *lhsVersion > *rhsVersion;
     });
 
-    return { layers_view.cbegin(), layers_view.cend() };
+    return layers;
 }
 
 utils::error::Result<void> RepoCache::updateMergedItems(
   const std::vector<api::types::v1::RepositoryCacheMergedItem> &items) noexcept
 {
     LINGLONG_TRACE("update merged items");
+
+    std::unique_lock lock{ cacheMutex };
+
     cache.merged = items;
-    auto ret = writeToDisk();
+    auto ret = writeToDiskUnlocked();
     if (!ret) {
         return LINGLONG_ERR(ret);
     }
     return LINGLONG_OK;
 };
 
+std::optional<std::vector<api::types::v1::RepositoryCacheMergedItem>>
+RepoCache::queryMergedItems() const noexcept
+{
+    std::shared_lock lock{ cacheMutex };
+    return cache.merged;
+}
+
+bool RepoCache::isLayerItemDeleted(const api::types::v1::RepositoryCacheLayersItem &item) const noexcept
+{
+    std::shared_lock lock{ cacheMutex };
+    const auto it = std::find_if(
+      cache.layers.cbegin(),
+      cache.layers.cend(),
+      [&item](const api::types::v1::RepositoryCacheLayersItem &val) {
+          return !(item.commit != val.commit || item.repo != val.repo
+                   || item.info.channel != val.info.channel || item.info.id != val.info.id
+                   || item.info.version != val.info.version
+                   || item.info.arch.front() != val.info.arch.front()
+                   || item.info.packageInfoV2Module != val.info.packageInfoV2Module);
+      });
+    return it != cache.layers.cend() && it->deleted.value_or(false);
+}
+
+utils::error::Result<void>
+RepoCache::setLayerItemDeleted(const api::types::v1::RepositoryCacheLayersItem &item,
+                               bool deleted) noexcept
+{
+    LINGLONG_TRACE("set layer item deleted");
+
+    std::unique_lock lock{ cacheMutex };
+
+    auto it = findMatchingItem(item);
+    if (!it) {
+        return LINGLONG_ERR(it);
+    }
+
+    auto originalValue = (*it)->deleted;
+    (*it)->deleted = deleted ? std::optional<bool>(true) : std::nullopt;
+    auto result = writeToDiskUnlocked();
+    if (!result) {
+        (*it)->deleted = std::move(originalValue);
+        return LINGLONG_ERR(result);
+    }
+
+    return LINGLONG_OK;
+}
+
 utils::error::Result<void> RepoCache::writeToDisk()
+{
+    std::shared_lock lock{ cacheMutex };
+    return writeToDiskUnlocked();
+}
+
+utils::error::Result<void> RepoCache::writeToDiskUnlocked()
 {
     LINGLONG_TRACE("save repo cache");
 

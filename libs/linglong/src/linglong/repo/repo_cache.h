@@ -15,6 +15,8 @@
 #include <ostree.h>
 
 #include <filesystem>
+#include <mutex>
+#include <shared_mutex>
 
 namespace linglong::repo {
 
@@ -73,18 +75,22 @@ public:
     utils::error::Result<void>
     updateMergedItems(const std::vector<api::types::v1::RepositoryCacheMergedItem> &items) noexcept;
 
-    [[nodiscard]] const std::optional<std::vector<api::types::v1::RepositoryCacheMergedItem>> &
-    queryMergedItems() const noexcept
-    {
-        return this->cache.merged;
-    }
+    [[nodiscard]] std::optional<std::vector<api::types::v1::RepositoryCacheMergedItem>>
+    queryMergedItems() const noexcept;
 
-    utils::error::Result<std::vector<api::types::v1::RepositoryCacheLayersItem>::iterator>
-    findMatchingItem(const api::types::v1::RepositoryCacheLayersItem &item) noexcept;
+    [[nodiscard]] bool
+    isLayerItemDeleted(const api::types::v1::RepositoryCacheLayersItem &item) const noexcept;
+    utils::error::Result<void>
+    setLayerItemDeleted(const api::types::v1::RepositoryCacheLayersItem &item, bool deleted) noexcept;
     utils::error::Result<void> writeToDisk();
 
 private:
+    utils::error::Result<std::vector<api::types::v1::RepositoryCacheLayersItem>::iterator>
+    findMatchingItem(const api::types::v1::RepositoryCacheLayersItem &item) noexcept;
+    utils::error::Result<void> writeToDiskUnlocked();
+
     static constexpr auto cacheFileVersion = "2";
+    mutable std::shared_mutex cacheMutex;
     api::types::v1::RepositoryCache cache;
     std::filesystem::path cacheFile;
 };

@@ -16,8 +16,10 @@
 #include "linglong/common/constants.h"
 #include "linglong/repo/repo_cache.h"
 
+#include <atomic>
 #include <filesystem>
 #include <fstream>
+#include <thread>
 
 namespace linglong::repo::test {
 
@@ -335,6 +337,47 @@ TEST_F(RepoCacheTest, QueryUsesRemainingFilters)
     // queryLayerItem returns the highest version first
     auto byId = cache.queryLayerItem(repoCacheQuery{ .id = "app.filter" });
     ASSERT_EQ(byId.size(), 1);
+}
+
+TEST_F(RepoCacheTest, ConcurrentReadAndWrite)
+{
+    auto cacheFile = tempDir.path() / "states.json";
+    RepoCache cache(cacheFile);
+    ASSERT_TRUE(cache.addLayerItem(createLayerItem("commit-0", "app.0", "1.0.0")).has_value());
+
+    std::atomic<bool> start{ false };
+    std::atomic<bool> done{ false };
+    std::atomic<bool> writeFailed{ false };
+    std::thread writer([&] {
+        while (!start.load(std::memory_order_acquire)) {
+        }
+        for (int i = 1; i <= 64; ++i) {
+            if (!cache.addLayerItem(
+                   createLayerItem("commit-" + std::to_string(i),
+                                   "app." + std::to_string(i),
+                                   "1.0.0"))
+                   .has_value()) {
+                writeFailed.store(true, std::memory_order_release);
+                break;
+            }
+        }
+        done.store(true, std::memory_order_release);
+    });
+    std::thread reader([&] {
+        while (!start.load(std::memory_order_acquire)) {
+        }
+        while (!done.load(std::memory_order_acquire)) {
+            (void)cache.queryLayerItem({});
+            (void)cache.queryExistingLayerItem();
+        }
+    });
+
+    start.store(true, std::memory_order_release);
+    writer.join();
+    reader.join();
+
+    EXPECT_FALSE(writeFailed.load(std::memory_order_acquire));
+    EXPECT_EQ(cache.queryExistingLayerItem().size(), 65);
 }
 
 } // namespace

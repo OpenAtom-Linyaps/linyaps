@@ -11,14 +11,14 @@ namespace linglong::uab {
 
 inline bool isUabUuidV4(std::string_view uuid) noexcept
 {
-    if (uuid.size() != 36 || uuid[8] != '-' || uuid[13] != '-' || uuid[18] != '-'
-        || uuid[23] != '-' || uuid[14] != '4') {
+    if (uuid.size() != 36 || uuid[8] != '-' || uuid[13] != '-' || uuid[18] != '-' || uuid[23] != '-'
+        || uuid[14] != '4') {
         return false;
     }
 
     const auto isHexDigit = [](char character) {
         return (character >= '0' && character <= '9') || (character >= 'a' && character <= 'f')
-               || (character >= 'A' && character <= 'F');
+          || (character >= 'A' && character <= 'F');
     };
 
     for (std::size_t i = 0; i < uuid.size(); ++i) {
@@ -32,7 +32,7 @@ inline bool isUabUuidV4(std::string_view uuid) noexcept
 
     const auto variant = uuid[19];
     return variant == '8' || variant == '9' || variant == 'a' || variant == 'b' || variant == 'A'
-           || variant == 'B';
+      || variant == 'B';
 }
 
 } // namespace linglong::uab

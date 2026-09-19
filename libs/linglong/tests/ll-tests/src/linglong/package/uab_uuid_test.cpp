@@ -2,9 +2,9 @@
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
-#include "uab_uuid.h"
-
 #include <gtest/gtest.h>
+
+#include "uab_uuid.h"
 
 #include <array>
 #include <string_view>

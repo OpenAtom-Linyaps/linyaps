@@ -41,9 +41,9 @@ __attribute__((used, section(".text.uab.sig"), aligned(4))) const auto linglongU
 
 namespace {
 
-std::atomic_bool mountFlag{ false };  // NOLINT
-std::atomic_bool createFlag{ false }; // NOLINT
-std::filesystem::path mountPoint;     // NOLINT
+std::atomic_bool mountFlag{ false };         // NOLINT
+std::atomic_bool createFlag{ false };        // NOLINT
+std::filesystem::path mountPoint;            // NOLINT
 std::filesystem::path createdMountPointRoot; // NOLINT
 constexpr std::size_t default_page_size = 4096;
 

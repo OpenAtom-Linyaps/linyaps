@@ -280,6 +280,54 @@ TEST_F(FileTest, EnsureDirectory)
     EXPECT_TRUE(fs::is_directory(multiple_dir));
 }
 
+// ensureDirectory must name the directory it failed to remove. A single linglong
+// run can touch many packages and layers, and a message without the path cannot
+// be attributed to any of them during support.
+TEST_F(FileTest, EnsureDirectoryRemoveErrorReportsPath)
+{
+    // The removal branch is only reached for an entry that exists but is not a
+    // directory. Removing such an entry fails when its parent directory is not
+    // writable, so drop the write permission from the parent for this test.
+    if (geteuid() == 0) {
+        GTEST_SKIP() << "root removes entries regardless of the parent permissions";
+    }
+
+    const fs::path protectedDir = dest_dir / "protected-dir";
+    const fs::path entry = protectedDir / "entry";
+    ASSERT_TRUE(fs::create_directories(protectedDir));
+    std::ofstream(entry) << "content";
+    fs::permissions(protectedDir,
+                    fs::perms::owner_read | fs::perms::owner_exec,
+                    fs::perm_options::replace);
+
+    auto result = linglong::utils::ensureDirectory(entry);
+
+    // Restore the permissions before the assertions so that the temporary
+    // directory is always removable during cleanup.
+    fs::permissions(protectedDir, fs::perms::owner_all, fs::perm_options::replace);
+
+    ASSERT_FALSE(result.has_value());
+    EXPECT_NE(result.error().message().find(entry.string()), std::string::npos)
+      << result.error().message();
+}
+
+// ensureDirectory must name the directory it failed to create, in the same way
+// that it already names the directory it failed to check.
+TEST_F(FileTest, EnsureDirectoryCreateErrorReportsPath)
+{
+    // A regular file used as a path component makes create_directories fail with
+    // ENOTDIR for every user, so no privileges are required here.
+    const fs::path file = dest_dir / "plain-file";
+    std::ofstream(file) << "content";
+
+    const fs::path directory = file / "child";
+    auto result = linglong::utils::ensureDirectory(directory);
+
+    ASSERT_FALSE(result.has_value());
+    EXPECT_NE(result.error().message().find(directory.string()), std::string::npos)
+      << result.error().message();
+}
+
 TEST_F(FileTest, EnsureDirectoryWithPermissionsIgnoresUmask)
 {
     constexpr auto permissions = fs::perms::owner_all | fs::perms::group_read
@@ -406,6 +454,46 @@ TEST_F(FileTest, RelinkFile)
     }
 }
 
+// relinkFileTo creates the replacement link through a temporary path, so the
+// failure message has to carry both the temporary path and the target.
+TEST_F(FileTest, RelinkFileToCreateSymlinkErrorReportsPath)
+{
+    const fs::path target = dest_dir / "target";
+    std::ofstream(target) << "content";
+
+    // The parent directory of the link does not exist, which makes
+    // create_symlink fail with ENOENT for every user.
+    const fs::path link = dest_dir / "missing-dir" / "link";
+    const std::string tmpPath = link.string() + ".linyaps.tmp";
+
+    auto result = linglong::utils::relinkFileTo(link, target);
+
+    ASSERT_FALSE(result.has_value());
+    EXPECT_NE(result.error().message().find(tmpPath), std::string::npos)
+      << result.error().message();
+    EXPECT_NE(result.error().message().find(target.string()), std::string::npos)
+      << result.error().message();
+}
+
+// A leftover temporary link that is a non-empty directory cannot be removed by
+// relinkFileTo, so create_symlink fails with EEXIST and the message still has to
+// point at the path that was being created.
+TEST_F(FileTest, RelinkFileToCreateSymlinkErrorReportsExistingPath)
+{
+    const fs::path target = dest_dir / "target";
+    std::ofstream(target) << "content";
+
+    const fs::path link = dest_dir / "existing-tmp-link";
+    const std::string tmpPath = link.string() + ".linyaps.tmp";
+    fs::create_directories(fs::path(tmpPath) / "child");
+
+    auto result = linglong::utils::relinkFileTo(link, target);
+
+    ASSERT_FALSE(result.has_value());
+    EXPECT_NE(result.error().message().find(tmpPath), std::string::npos)
+      << result.error().message();
+}
+
 TEST_F(FileTest, WriteFile)
 {
     // Test writing to a new file
@@ -446,7 +534,47 @@ TEST_F(FileTest, WriteFile)
     // Test writing to a file in a subdirectory that doesn't exist
     fs::path subdir_file = dest_dir / "subdir" / "subfile.txt";
     result = linglong::utils::writeFile(subdir_file.string(), "subdir content");
-    EXPECT_FALSE(result.has_value()); // Should fail because parent directory doesn't exist
+    ASSERT_FALSE(result.has_value()); // Should fail because parent directory doesn't exist
+    // The failing path has to be part of the message so that the caller can tell
+    // which file could not be opened when it writes many of them in one run.
+    EXPECT_NE(result.error().message().find(subdir_file.string()), std::string::npos)
+      << result.error().message();
+}
+
+// The write error branch has to report the path as well, otherwise a failed
+// write cannot be attributed to a single file of a batch.
+TEST_F(FileTest, WriteFileWriteErrorReportsPath)
+{
+    // /dev/full accepts open() but returns ENOSPC for every write(), which is the
+    // standard way to exercise this branch without mocking the file system.
+    const fs::path full = "/dev/full";
+    if (!fs::exists(full)) {
+        GTEST_SKIP() << "/dev/full is not available";
+    }
+
+    auto result = linglong::utils::writeFile(full, "content");
+
+    ASSERT_FALSE(result.has_value());
+    EXPECT_NE(result.error().message().find(full.string()), std::string::npos)
+      << result.error().message();
+    EXPECT_NE(result.error().message().find("failed to write file"), std::string::npos)
+      << result.error().message();
+}
+
+// The permissions overload delegates to the plain write, so it has to keep the
+// path in the propagated message as well.
+TEST_F(FileTest, WriteFileWithPermissionsWriteErrorReportsPath)
+{
+    const fs::path full = "/dev/full";
+    if (!fs::exists(full)) {
+        GTEST_SKIP() << "/dev/full is not available";
+    }
+
+    auto result = linglong::utils::writeFile(full, "content", fs::perms::owner_read);
+
+    ASSERT_FALSE(result.has_value());
+    EXPECT_NE(result.error().message().find(full.string()), std::string::npos)
+      << result.error().message();
 }
 
 TEST_F(FileTest, ReadFile)
@@ -492,6 +620,63 @@ TEST_F(FileTest, ReadFile)
     auto result_subdir = linglong::utils::readFile(subdir_file.string());
     ASSERT_TRUE(result_subdir.has_value()) << result_subdir.error().message();
     EXPECT_EQ(*result_subdir, subdir_content);
+}
+
+// readFile must report which file it could not find or open, for the same reason
+// the other helpers in this file do.
+TEST_F(FileTest, ReadFileNotFoundErrorReportsPath)
+{
+    const fs::path missing = dest_dir / "missing.txt";
+
+    auto result = linglong::utils::readFile(missing);
+
+    ASSERT_FALSE(result.has_value());
+    EXPECT_NE(result.error().message().find(missing.string()), std::string::npos)
+      << result.error().message();
+}
+
+// The status check error also has to carry the path, otherwise the message
+// cannot tell which file of a batch could not be inspected.
+TEST_F(FileTest, ReadFileCheckErrorReportsPath)
+{
+    if (geteuid() == 0) {
+        GTEST_SKIP() << "root can access directories regardless of the permission bits";
+    }
+
+    const fs::path blockedDir = dest_dir / "blocked-dir";
+    ASSERT_TRUE(fs::create_directories(blockedDir));
+    const fs::path file = blockedDir / "file.txt";
+    std::ofstream(file) << "content";
+    fs::permissions(blockedDir, fs::perms::none, fs::perm_options::replace);
+
+    auto result = linglong::utils::readFile(file);
+
+    // Restore the permissions first so that the temporary directory can be
+    // cleaned up even when the assertions below fail.
+    fs::permissions(blockedDir, fs::perms::owner_all, fs::perm_options::replace);
+
+    ASSERT_FALSE(result.has_value());
+    EXPECT_NE(result.error().message().find(file.string()), std::string::npos)
+      << result.error().message();
+}
+
+// The open error branch is exercised with a file that exists but that the
+// current user is not allowed to read; root bypasses the permission check.
+TEST_F(FileTest, ReadFileOpenErrorReportsPath)
+{
+    if (geteuid() == 0) {
+        GTEST_SKIP() << "root can read files regardless of the permission bits";
+    }
+
+    const fs::path file = dest_dir / "unreadable.txt";
+    std::ofstream(file) << "content";
+    fs::permissions(file, fs::perms::none, fs::perm_options::replace);
+
+    auto result = linglong::utils::readFile(file);
+
+    ASSERT_FALSE(result.has_value());
+    EXPECT_NE(result.error().message().find(file.string()), std::string::npos)
+      << result.error().message();
 }
 
 TEST_F(FileTest, WriteFileAndReadFile)

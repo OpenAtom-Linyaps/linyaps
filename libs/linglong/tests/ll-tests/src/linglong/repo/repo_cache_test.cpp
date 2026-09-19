@@ -349,13 +349,12 @@ TEST_F(RepoCacheTest, ConcurrentReadAndWrite)
     std::atomic<bool> done{ false };
     std::atomic<bool> writeFailed{ false };
     std::thread writer([&] {
-        while (!start.load(std::memory_order_acquire)) {
-        }
+        while (!start.load(std::memory_order_acquire)) { }
         for (int i = 1; i <= 64; ++i) {
-            if (!cache.addLayerItem(
-                   createLayerItem("commit-" + std::to_string(i),
-                                   "app." + std::to_string(i),
-                                   "1.0.0"))
+            if (!cache
+                   .addLayerItem(createLayerItem("commit-" + std::to_string(i),
+                                                 "app." + std::to_string(i),
+                                                 "1.0.0"))
                    .has_value()) {
                 writeFailed.store(true, std::memory_order_release);
                 break;
@@ -364,8 +363,7 @@ TEST_F(RepoCacheTest, ConcurrentReadAndWrite)
         done.store(true, std::memory_order_release);
     });
     std::thread reader([&] {
-        while (!start.load(std::memory_order_acquire)) {
-        }
+        while (!start.load(std::memory_order_acquire)) { }
         while (!done.load(std::memory_order_acquire)) {
             (void)cache.queryLayerItem({});
             (void)cache.queryExistingLayerItem();

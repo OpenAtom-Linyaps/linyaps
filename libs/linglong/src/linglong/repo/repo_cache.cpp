@@ -310,7 +310,8 @@ RepoCache::queryMergedItems() const noexcept
     return cache.merged;
 }
 
-bool RepoCache::isLayerItemDeleted(const api::types::v1::RepositoryCacheLayersItem &item) const noexcept
+bool RepoCache::isLayerItemDeleted(
+  const api::types::v1::RepositoryCacheLayersItem &item) const noexcept
 {
     std::shared_lock lock{ cacheMutex };
     const auto it = std::find_if(
@@ -326,9 +327,8 @@ bool RepoCache::isLayerItemDeleted(const api::types::v1::RepositoryCacheLayersIt
     return it != cache.layers.cend() && it->deleted.value_or(false);
 }
 
-utils::error::Result<void>
-RepoCache::setLayerItemDeleted(const api::types::v1::RepositoryCacheLayersItem &item,
-                               bool deleted) noexcept
+utils::error::Result<void> RepoCache::setLayerItemDeleted(
+  const api::types::v1::RepositoryCacheLayersItem &item, bool deleted) noexcept
 {
     LINGLONG_TRACE("set layer item deleted");
 

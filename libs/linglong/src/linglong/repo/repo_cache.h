@@ -80,8 +80,8 @@ public:
 
     [[nodiscard]] bool
     isLayerItemDeleted(const api::types::v1::RepositoryCacheLayersItem &item) const noexcept;
-    utils::error::Result<void>
-    setLayerItemDeleted(const api::types::v1::RepositoryCacheLayersItem &item, bool deleted) noexcept;
+    utils::error::Result<void> setLayerItemDeleted(
+      const api::types::v1::RepositoryCacheLayersItem &item, bool deleted) noexcept;
     utils::error::Result<void> writeToDisk();
 
 private:

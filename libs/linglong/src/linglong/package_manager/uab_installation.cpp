@@ -377,7 +377,8 @@ UabInstallationAction::installUabLayer(const std::vector<api::types::v1::UabLaye
 
     for (const auto &layer : layers) {
         std::error_code ec;
-        if (auto moduleValid = validateUABLayerModule(layer.info.packageInfoV2Module); !moduleValid) {
+        if (auto moduleValid = validateUABLayerModule(layer.info.packageInfoV2Module);
+            !moduleValid) {
             return LINGLONG_ERR(moduleValid);
         }
         auto layerDirPath =

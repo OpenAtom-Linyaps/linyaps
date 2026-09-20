@@ -152,3 +152,36 @@ TEST_F(LayerDirTest, InfoWithEmptyJson)
 
     EXPECT_FALSE(result.has_value());
 }
+
+TEST_F(LayerDirTest, TempLayerDirMoveAssignmentTransfersOwnerShipAndRemovesOldPath)
+{
+    auto oldPath = testDir->path() / "old_path";
+    auto newPath = testDir->path() / "new_path";
+    std::filesystem::create_directories(oldPath);
+    std::filesystem::create_directories(newPath);
+
+    {
+        TempLayerDir oldDir(oldPath);
+        TempLayerDir newDir(newPath);
+
+        newDir = std::move(oldDir);
+
+        // The old path held by newDir is removed by move assignment.
+        EXPECT_FALSE(std::filesystem::exists(newPath));
+        EXPECT_TRUE(std::filesystem::exists(oldPath));
+    }
+
+    // The transferred path is removed when the owning object dies.
+    EXPECT_FALSE(std::filesystem::exists(oldPath));
+}
+
+TEST_F(LayerDirTest, TempLayerDirSelfMoveAssignmentIsSafe)
+{
+    auto layerPath = testDir->path() / "self_path";
+    std::filesystem::create_directories(layerPath);
+
+    TempLayerDir dir(layerPath);
+    dir = std::move(dir);
+
+    EXPECT_TRUE(std::filesystem::exists(layerPath));
+}

@@ -410,6 +410,51 @@ TEST_F(RealRepoTest, UpgradableAppsDetectsNewerRemote)
     EXPECT_EQ(upgradeList->at(0).second.reference.version.toString(), "2.0.0");
 }
 
+TEST(RefMetaDataTest, GetPackageInfoWhenEmptyReturnsError)
+{
+    linglong::repo::RefMetaData meta{ "rev" };
+
+    auto result = meta.getPackageInfo();
+
+    EXPECT_FALSE(result.has_value());
+    EXPECT_THAT(result.error().message(), ::testing::HasSubstr("package info is not provided"));
+}
+
+TEST(RefMetaDataTest, GetPackageInfoParsesValidV2Json)
+{
+    const std::string content = R"({
+        "arch": ["x86_64"],
+        "base": "org.deepin.base",
+        "channel": "main",
+        "command": ["testapp"],
+        "description": "Test application",
+        "id": "com.example.testapp",
+        "kind": "app",
+        "module": "binary",
+        "name": "TestApp",
+        "schema_version": "1.0",
+        "size": 1024,
+        "version": "1.0.0"
+    })";
+    linglong::repo::RefMetaData meta{ "rev", content };
+
+    auto result = meta.getPackageInfo();
+
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+    EXPECT_EQ(result->id, "com.example.testapp");
+    EXPECT_EQ(result->version, "1.0.0");
+    EXPECT_EQ(result->packageInfoV2Module, "binary");
+}
+
+TEST(RefMetaDataTest, GetPackageInfoRejectsInvalidContent)
+{
+    linglong::repo::RefMetaData meta{ "rev", "this is not valid json" };
+
+    auto result = meta.getPackageInfo();
+
+    EXPECT_FALSE(result.has_value());
+}
+
 } // namespace
 
 } // namespace linglong::repo::test

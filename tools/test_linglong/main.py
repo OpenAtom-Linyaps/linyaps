@@ -288,15 +288,36 @@ class SmokeTest:
         """
         return sorted(ln.strip() for ln in text.splitlines() if ln.strip())
 
+    def _read_root_file(self, path) -> str:
+        """读一个通常需要 root 的文件，返回【干净】的内容。
+
+        ⚠️ 不要直接拿 `sudo -A cat` 的 stdout 当文件内容：sudo 在需要
+        认证时会把 "验证成功" 这类 PAM 消息打到 stdout 上（时间戳还有
+        效时又不打），于是同一份文件两次读出来会凭空多一行 —— 拿它做
+        精确比较或回写就会出错。实测就是这么误报了一次"配置没还原"。
+
+        这些文件实际是 644，普通用户就能读，所以先直接读；万一以后权限
+        收紧，退回 `sudo cp` 到临时文件、再【不带 sudo】读临时文件，
+        这样 sudo 的杂音只落在被丢弃的 cp stdout 上。
+        """
+        r = self._run_cmd(["cat", str(path)], check=False)
+        if r.returncode == 0:
+            return r.stdout
+        tmpdir = Path(tempfile.mkdtemp(prefix="ll-rootfile-"))
+        try:
+            tmp = tmpdir / "content"
+            r = self._run_cmd(["cp", str(path), str(tmp)], sudo=True,
+                              check=False)
+            if r.returncode != 0:
+                raise RuntimeError(
+                    f"读取 {path} 失败: rc={r.returncode} {r.stderr[:200]}")
+            return tmp.read_text()
+        finally:
+            shutil.rmtree(tmpdir, ignore_errors=True)
+
     def _snapshot_repo_config(self) -> str:
         """读出仓库配置原文，供用完后还原。"""
-        r = self._run_cmd(["cat", str(REPO_CONFIG_PATH)], sudo=True,
-                          check=False)
-        if r.returncode != 0:
-            raise RuntimeError(
-                f"读取 {REPO_CONFIG_PATH} 失败: rc={r.returncode} "
-                f"{r.stderr[:200]}")
-        return r.stdout
+        return self._read_root_file(REPO_CONFIG_PATH)
 
     def _restore_repo_config(self, snapshot: str) -> None:
         """把仓库配置写回快照内容；已经一致就跳过。
@@ -4474,8 +4495,9 @@ class SmokeTest:
         if not version_file.exists():
             raise AssertionError(f"{version_file} 不存在，无法构造场景")
 
-        original = self._run_cmd(["cat", str(version_file)], sudo=True,
-                                 check=False).stdout.strip()
+        # ⚠️ 走 _read_root_file 而不是 sudo cat：这个值下面会被【回写】，
+        #    sudo 的 "验证成功" 杂音混进来就会把文件写成垃圾。
+        original = self._read_root_file(version_file).strip()
 
         # 重导出期间不能有容器在跑
         self._cleanup_containers(CALENDAR_APP_ID, timeout=60)

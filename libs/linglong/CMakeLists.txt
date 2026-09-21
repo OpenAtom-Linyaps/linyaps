@@ -46,6 +46,8 @@ pfl_add_library(
   src/linglong/common/global/initialize.h
   src/linglong/common/serialize/json.cpp
   src/linglong/common/serialize/json.h
+  src/linglong/common/version.cpp.in
+  src/linglong/common/version.h
   src/linglong/extension/extension.cpp
   src/linglong/extension/extension.h
   src/linglong/package/architecture.cpp

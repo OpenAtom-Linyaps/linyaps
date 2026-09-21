@@ -7,6 +7,7 @@
 #include "ostree_repo.h"
 
 #include "api/ClientAPI.h"
+#include "configure.h"
 #include "linglong/api/types/v1/ExportDirs.hpp"
 #include "linglong/api/types/v1/Generators.hpp" // IWYU pragma: keep
 #include "linglong/api/types/v1/PackageInfoV2.hpp"
@@ -16,6 +17,7 @@
 #include "linglong/common/formatter.h"
 #include "linglong/common/gkeyfile_wrapper.h"
 #include "linglong/common/strings.h"
+#include "linglong/common/version.h"
 #include "linglong/package/fuzzy_reference.h"
 #include "linglong/package/layer_dir.h"
 #include "linglong/package/reference.h"
@@ -1345,7 +1347,7 @@ GVariantBuilder OSTreeRepo::initOStreePullOptions(const std::string &ref) noexce
     std::array<const char *, 2> refs{ ref.c_str(), nullptr };
     GVariantBuilder builder;
     g_variant_builder_init(&builder, G_VARIANT_TYPE("a{sv}"));
-    std::string userAgent = "linglong/" LINGLONG_VERSION_FULL;
+    std::string userAgent = "linglong/" + std::string{ common::versionFull() };
     g_variant_builder_add(&builder,
                           "{s@v}",
                           "append-user-agent",

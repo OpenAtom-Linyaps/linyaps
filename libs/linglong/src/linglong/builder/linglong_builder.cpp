@@ -12,6 +12,7 @@
 #include "linglong/builder/printer.h"
 #include "linglong/common/global/initialize.h"
 #include "linglong/common/strings.h"
+#include "linglong/common/version.h"
 #include "linglong/package/architecture.h"
 #include "linglong/package/fuzzy_reference.h"
 #include "linglong/package/layer_dir.h"
@@ -2173,7 +2174,7 @@ void Builder::takeTerminalForeground()
 void Builder::printBasicInfo()
 {
     printMessage("[Builder info]");
-    printMessage(std::string("Linglong Builder Version: ") + LINGLONG_VERSION_FULL, 2);
+    printMessage(std::string("Linglong Builder Version: ") + common::versionFull(), 2);
     printMessage("[Build Target]");
     const auto &project = *this->project;
     printMessage(project.package.id, 2);

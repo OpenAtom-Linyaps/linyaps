@@ -108,7 +108,6 @@ TEST_F(RepoTest, resolveEntryExportPathSkipsLegacySystemdUserWhenLibPathPreferre
 TEST_F(RepoTest, createPersistsConfigAndBootstrapsRepoArtifacts)
 {
     TempDir tempDir;
-    ASSERT_TRUE(tempDir.isValid());
 
     auto repoRoot = tempDir.path() / "repo-root";
     ASSERT_TRUE(fs::create_directories(repoRoot));
@@ -330,9 +329,6 @@ TEST_F(RepoTest, moduleMergesUseBinaryInfo)
     TempDir tempDir;
     TempDir developDir;
     TempDir binaryDir;
-    ASSERT_TRUE(tempDir.isValid());
-    ASSERT_TRUE(developDir.isValid());
-    ASSERT_TRUE(binaryDir.isValid());
 
     auto repoRoot = tempDir.path() / "repo-root";
     ASSERT_TRUE(fs::create_directories(repoRoot));
@@ -403,7 +399,6 @@ TEST_F(RepoTest, moduleMergesUseBinaryInfo)
 TEST_F(RepoTest, createPrefersRepoLocalConfigOverFallbackConfig)
 {
     TempDir tempDir;
-    ASSERT_TRUE(tempDir.isValid());
 
     auto repoRoot = tempDir.path() / "repo-root";
     ASSERT_TRUE(fs::create_directories(repoRoot));
@@ -426,7 +421,6 @@ TEST_F(RepoTest, createPrefersRepoLocalConfigOverFallbackConfig)
 TEST_F(RepoTest, createFailsWhenRepoLocalConfigIsInvalid)
 {
     TempDir tempDir;
-    ASSERT_TRUE(tempDir.isValid());
 
     auto repoRoot = tempDir.path() / "repo-root";
     ASSERT_TRUE(fs::create_directories(repoRoot));
@@ -442,7 +436,6 @@ TEST_F(RepoTest, createFailsWhenRepoLocalConfigIsInvalid)
 TEST_F(RepoTest, loadFromPathFailsWhenCacheIsMissingButCreateCanRepairIt)
 {
     TempDir tempDir;
-    ASSERT_TRUE(tempDir.isValid());
 
     auto repoRoot = tempDir.path() / "repo-root";
     ASSERT_TRUE(fs::create_directories(repoRoot));
@@ -467,7 +460,6 @@ TEST_F(RepoTest, loadFromPathFailsWhenCacheIsMissingButCreateCanRepairIt)
 TEST_F(RepoTest, exportDirRejectsDestinationsOutsideRoot)
 {
     TempDir tempDir("repo_export_path_");
-    ASSERT_TRUE(tempDir.isValid());
     const auto root = tempDir.path();
     const auto source = root / "src";
     const auto entries = root / "entries";
@@ -491,7 +483,6 @@ TEST_F(RepoTest, exportDirPreservesDesktopLocationsDuringRebuild)
             SCOPED_TRACE(existingLocations);
             SCOPED_TRACE(overlayEnabled);
             TempDir tempDir("repo_export_rebuild_");
-            ASSERT_TRUE(tempDir.isValid());
             const auto root = tempDir.path();
             const auto live = root / "entries";
             const auto staging = root / "entries_new_test";
@@ -548,7 +539,6 @@ TEST_F(RepoTest, exportDir)
 {
     // 准备测试环境
     TempDir tempDir("repo_test_");
-    ASSERT_TRUE(tempDir.isValid()) << "Failed to create temporary directory";
     std::error_code ec;
     bool created = fs::create_directories(tempDir.path(), ec);
     EXPECT_FALSE(ec) << "Error creating directory: " << ec.message();

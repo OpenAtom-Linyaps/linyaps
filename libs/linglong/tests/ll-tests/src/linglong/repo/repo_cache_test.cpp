@@ -76,7 +76,6 @@ protected:
 
 TEST_F(RepoCacheTest, loadFailsWhenCacheFileIsMissing)
 {
-    ASSERT_TRUE(tempDir.isValid());
 
     RepoCache cache(tempDir.path() / "states.json");
     auto result = cache.load();
@@ -86,7 +85,6 @@ TEST_F(RepoCacheTest, loadFailsWhenCacheFileIsMissing)
 
 TEST_F(RepoCacheTest, loadRejectsVersionMismatch)
 {
-    ASSERT_TRUE(tempDir.isValid());
 
     auto cacheFile = tempDir.path() / "states.json";
     writeCacheFile(cacheFile,
@@ -106,7 +104,6 @@ TEST_F(RepoCacheTest, loadRejectsVersionMismatch)
 
 TEST_F(RepoCacheTest, queryExistingLayerItemSkipsDeletedEntriesAfterLoad)
 {
-    ASSERT_TRUE(tempDir.isValid());
 
     auto cacheFile = tempDir.path() / "states.json";
     writeCacheFile(cacheFile,
@@ -130,7 +127,6 @@ TEST_F(RepoCacheTest, queryExistingLayerItemSkipsDeletedEntriesAfterLoad)
 
 TEST_F(RepoCacheTest, addAndDeleteLayerItemPersistAcrossReload)
 {
-    ASSERT_TRUE(tempDir.isValid());
 
     auto cacheFile = tempDir.path() / "states.json";
     RepoCache cache(cacheFile);
@@ -153,7 +149,6 @@ TEST_F(RepoCacheTest, addAndDeleteLayerItemPersistAcrossReload)
 
 TEST_F(RepoCacheTest, PersistedFilesUsePackageManagerUmask)
 {
-    ASSERT_TRUE(tempDir.isValid());
 
     auto cacheFile = tempDir.path() / "states.json";
     RepoCache cache(cacheFile);

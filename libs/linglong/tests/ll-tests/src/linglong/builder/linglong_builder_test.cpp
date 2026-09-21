@@ -19,9 +19,7 @@
 TEST(LinglongBuilder, installModule)
 {
     TempDir buildOutput;
-    ASSERT_TRUE(buildOutput.isValid());
     TempDir moduleOutput;
-    ASSERT_TRUE(moduleOutput.isValid());
 
     // Create test files and directories
     const auto &buildPath = buildOutput.path();
@@ -101,11 +99,8 @@ TEST(LinglongBuilder, installModule)
 TEST(LinglongBuilder, mergeOutput)
 {
     TempDir srcDir1;
-    ASSERT_TRUE(srcDir1.isValid());
     TempDir srcDir2;
-    ASSERT_TRUE(srcDir2.isValid());
     TempDir destDir;
-    ASSERT_TRUE(destDir.isValid());
 
     // Create test files and directories
     const auto &srcPath1 = srcDir1.path();
@@ -176,7 +171,6 @@ TEST(LinglongBuilder, LayerExportFilename)
 TEST(LinglongBuilder, CleanNoBuildDir)
 {
     TempDir workingDir;
-    ASSERT_TRUE(workingDir.isValid());
 
     linglong::builder::BuilderMock builder(workingDir.path());
     auto result = builder.cleanBuildArtifacts();
@@ -187,7 +181,6 @@ TEST(LinglongBuilder, CleanNoBuildDir)
 TEST(LinglongBuilder, CleanNormal)
 {
     TempDir workingDir;
-    ASSERT_TRUE(workingDir.isValid());
 
     linglong::builder::BuilderMock builder(workingDir.path());
 
@@ -211,7 +204,6 @@ TEST(LinglongBuilder, CleanWithPermissionIssue)
     }
 
     TempDir workingDir;
-    ASSERT_TRUE(workingDir.isValid());
 
     linglong::builder::BuilderMock builder(workingDir.path());
 

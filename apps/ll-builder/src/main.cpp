@@ -11,6 +11,7 @@
 #include "linglong/cli/cli.h"
 #include "linglong/cli/cli_printer.h"
 #include "linglong/common/global/initialize.h"
+#include "linglong/common/version.h"
 #include "linglong/package/architecture.h"
 #include "linglong/package/version.h"
 #include "linglong/repo/client_factory.h"
@@ -707,7 +708,8 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     CLI11_PARSE(commandParser, argc, argv);
 
     if (versionFlag) {
-        std::cout << _("linyaps build tool version ") << LINGLONG_VERSION_FULL << std::endl;
+        std::cout << _("linyaps build tool version ") << linglong::common::versionFull()
+                  << std::endl;
         return 0;
     }
 

@@ -10,8 +10,6 @@ extern "C" {
 #include "api/ClientAPI.h"
 }
 
-#include "configure.h"
-
 #include <QEventLoop>
 
 #include <memory>
@@ -25,13 +23,9 @@ namespace linglong::repo {
 class ClientAPIWrapper
 {
 public:
-    explicit ClientAPIWrapper(apiClient_t *client)
-        : client(client)
-    {
-        client->userAgent = m_user_agent.c_str();
-    }
+    explicit ClientAPIWrapper(apiClient_t *client);
 
-    virtual ~ClientAPIWrapper() { apiClient_free(client); }
+    virtual ~ClientAPIWrapper();
 
     template <typename R, typename D, typename T, typename... Args>
     auto syncRun(T func, D deleter, Args... args) -> std::unique_ptr<R, D>
@@ -87,7 +81,7 @@ public:
 
 private:
     apiClient_t *client;
-    std::string m_user_agent = "linglong/" LINGLONG_VERSION_FULL;
+    std::string m_user_agent;
 };
 
 class ClientFactory

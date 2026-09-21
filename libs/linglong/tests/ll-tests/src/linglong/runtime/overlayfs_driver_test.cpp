@@ -2,6 +2,7 @@
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "common/tempdir.h"
@@ -178,4 +179,22 @@ TEST_F(OverlayFSDriverTest, OverlayFSUtilsRefusesToMountInAutoMode)
     EXPECT_FALSE(overlay->mount());
     EXPECT_FALSE(overlay->isMounted());
     overlay->unmount();
+}
+
+TEST(OverlayFSDriverStatic, ResolveOverlayModeUnknownModeFails)
+{
+    auto result = linglong::runtime::OverlayFSDriver::resolveOverlayMode(
+      static_cast<linglong::utils::OverlayMode>(42));
+
+    EXPECT_FALSE(result.has_value());
+    EXPECT_THAT(result.error().message(), ::testing::HasSubstr("unknown overlayfs mode"));
+}
+
+TEST(OverlayFSDriverStatic, CreateUnknownModeFallsBackToFuse)
+{
+    auto driver =
+      linglong::runtime::OverlayFSDriver::create(static_cast<linglong::utils::OverlayMode>(42));
+
+    ASSERT_NE(driver, nullptr);
+    EXPECT_EQ(driver->mode(), linglong::utils::OverlayMode::FUSE);
 }

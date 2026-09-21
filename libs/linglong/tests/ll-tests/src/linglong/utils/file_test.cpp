@@ -24,11 +24,9 @@ protected:
     void SetUp() override
     {
         srcTempDir = std::make_unique<TempDir>("linglong-file-test-src-");
-        ASSERT_TRUE(srcTempDir->isValid());
         src_dir = srcTempDir->path();
 
         destTempDir = std::make_unique<TempDir>("linglong-file-test-dest-");
-        ASSERT_TRUE(destTempDir->isValid());
         dest_dir = destTempDir->path();
 
         fs::create_directories(src_dir / "subdir1" / "subdir2");

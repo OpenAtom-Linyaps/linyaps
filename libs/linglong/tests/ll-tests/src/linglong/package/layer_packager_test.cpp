@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024-2026 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2024 - 2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -31,7 +31,6 @@ public:
     {
         auto layerTempDir =
           std::make_unique<TempDir>("linglong-layer-packager-test-SetUpTestSuite-");
-        ASSERT_TRUE(layerTempDir->isValid()) << "Failed to create temporary directory";
         const auto &layerDirPath = layerTempDir->path();
         // 创建临时文件，用于之后打包测试
         std::filesystem::create_directories(layerDirPath / "files");
@@ -56,7 +55,6 @@ public:
         // 创建临时目录，用于存放打包后的layer文件
         layerFileDir = std::make_unique<TempDir>("linglong-test-");
         layerFilePath = layerFileDir->path() / "hello.layer";
-        ASSERT_TRUE(layerFileDir->isValid()) << "Failed to create temporary directory";
         package::LayerPackager packager;
         packager.setCompressor("lz4");
         // 生成空文件，测试文件已存在的场景
@@ -171,7 +169,6 @@ TEST_F(LayerPackagerTest, LayerPackagerUnpackFsck)
 TEST_F(LayerPackagerTest, InitWorkDir)
 {
     TempDir tmpDir("linglong-layer-");
-    ASSERT_TRUE(tmpDir.isValid()) << "Failed to create temporary directory";
     MockLayerPackager packager;
     // 测试创建workdir失败时, initWorkDir 应该使用临时目录
     packager.wrapMkdirDirFunc = [](const std::string &path) -> utils::error::Result<void> {

@@ -27,10 +27,6 @@ class ContainerCfgBuilderTest : public ::testing::Test
 protected:
     void SetUp() override
     {
-        ASSERT_TRUE(baseDir.isValid());
-        ASSERT_TRUE(bundleDir.isValid());
-        ASSERT_TRUE(appDir.isValid());
-        ASSERT_TRUE(runtimeDir.isValid());
         // mkdtemp already created the directories
         ASSERT_TRUE(std::filesystem::is_directory(baseDir.path()));
         ASSERT_TRUE(std::filesystem::is_directory(bundleDir.path()));

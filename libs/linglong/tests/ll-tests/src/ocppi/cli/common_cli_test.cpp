@@ -19,7 +19,6 @@
 TEST(CommonCLITest, ListForcesJsonOutput)
 {
     TempDir tempDir("ocppi-common-cli-");
-    ASSERT_TRUE(tempDir.isValid());
 
     const auto runtimePath = tempDir.path() / "runtime";
     {

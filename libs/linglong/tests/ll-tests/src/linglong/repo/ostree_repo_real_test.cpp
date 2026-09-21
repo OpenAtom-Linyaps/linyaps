@@ -46,7 +46,6 @@ protected:
     void SetUp() override
     {
         tempDir = std::make_unique<TempDir>();
-        ASSERT_TRUE(tempDir->isValid());
         repoRoot = tempDir->path() / "repo-root";
         ASSERT_TRUE(fs::create_directories(repoRoot));
 

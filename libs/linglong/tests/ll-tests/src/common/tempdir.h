@@ -1,36 +1,23 @@
-// SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2025 - 2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 #pragma once
 
-#include <filesystem>
-#include <string>
-#include <vector>
+#include "linglong/utils/temporary_directory.h"
 
-// A RAII wrapper for a temporary directory created with mkdtemp.
+#include <filesystem>
+#include <stdexcept>
+#include <string>
+#include <utility>
+
+// A test-friendly wrapper around the production temporary directory utility.
 class TempDir
 {
 public:
     TempDir(const std::string &prefix = "linglong-test-")
+        : directory_(create(prefix))
     {
-        std::string tmppath_template =
-          (std::filesystem::temp_directory_path() / (prefix + "XXXXXX")).string();
-        std::vector<char> tmppath_c(tmppath_template.begin(), tmppath_template.end());
-        tmppath_c.push_back('\0');
-
-        char *result = mkdtemp(tmppath_c.data());
-        if (result != nullptr) {
-            _path = result;
-        }
-    }
-
-    ~TempDir()
-    {
-        if (!_path.empty()) {
-            std::error_code ec;
-            std::filesystem::remove_all(_path, ec);
-        }
     }
 
     TempDir(const TempDir &) = delete;
@@ -38,10 +25,19 @@ public:
     TempDir(TempDir &&) = delete;
     TempDir &operator=(TempDir &&) = delete;
 
-    const std::filesystem::path &path() const { return _path; }
-
-    bool isValid() const { return !_path.empty(); }
+    const std::filesystem::path &path() const { return directory_.path(); }
 
 private:
-    std::filesystem::path _path;
+    static linglong::utils::TemporaryDirectory create(const std::string &prefix)
+    {
+        auto directory = linglong::utils::TemporaryDirectory::create(prefix);
+        if (!directory) {
+            throw std::runtime_error("failed to create test temporary directory: "
+                                     + directory.error().message());
+        }
+
+        return std::move(*directory);
+    }
+
+    linglong::utils::TemporaryDirectory directory_;
 };

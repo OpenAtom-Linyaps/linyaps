@@ -163,11 +163,24 @@ public:
         SectionHeader shdr;
         auto offset = header.e_shoff;
         const auto *data = rawSectionNames.data();
+        const auto namesSize = rawSectionNames.size();
 
         for (auto index = 0; index < header.e_shnum; ++index) {
-            if (::pread(fd, &shdr, header.e_shentsize, offset) == -1) {
+            // Read exactly one section header entry. The file's e_shentsize is
+            // attacker-controlled and may exceed sizeof(shdr), so always read only
+            // section_size bytes, as the constructor does.
+            auto bytesRead = ::pread(fd, &shdr, section_size, offset);
+            if (bytesRead == -1) {
                 throw std::runtime_error("failed to read section header of" + name + ": "
                                          + ::strerror(errno));
+            }
+            if (bytesRead != section_size) {
+                break; // reached the end of the section header table
+            }
+
+            if (shdr.sh_name >= namesSize) {
+                throw std::runtime_error("section name offset " + std::to_string(shdr.sh_name)
+                                         + " is out of range");
             }
 
             auto curName = std::string_view(data + shdr.sh_name);

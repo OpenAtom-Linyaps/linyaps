@@ -29,6 +29,7 @@
 #include "linglong/utils/log/log.h"
 #include "linglong/utils/serialize/json.h"
 #include "linglong/utils/serialize/packageinfo_handler.h"
+#include "linglong/utils/temporary_directory.h"
 #include "linglong/utils/transaction.h"
 
 #include <gio/gio.h>
@@ -2713,13 +2714,13 @@ utils::error::Result<package::TempLayerDir> OSTreeRepo::createTempMergedModuleDi
     }
     // 合并layer，生成临时merged目录
     const QString mergeID = hash.result().toHex();
-    auto mergePattern = (mergedDir / ("tmp_" + mergeID + "_XXXXXX").toStdString()).string();
-    auto *temporaryDirectory = ::mkdtemp(mergePattern.data());
-    if (temporaryDirectory == nullptr) {
-        return LINGLONG_ERR("failed to create temporary merged module directory", errno);
+    auto temporaryDirectory =
+      utils::TemporaryDirectory::create("tmp_" + mergeID.toStdString() + "_", mergedDir);
+    if (!temporaryDirectory) {
+        return LINGLONG_ERR("failed to create temporary merged module directory",
+                            temporaryDirectory);
     }
-    auto mergeTmp = std::filesystem::path{ temporaryDirectory };
-    package::TempLayerDir tempLayerDir{ mergeTmp };
+    const auto mergeTmp = temporaryDirectory->path();
     for (const auto &commit : commits) {
         int root = open("/", O_DIRECTORY);
         auto _ = utils::finally::finally([root]() {
@@ -2741,7 +2742,7 @@ utils::error::Result<package::TempLayerDir> OSTreeRepo::createTempMergedModuleDi
         }
     }
 
-    return tempLayerDir;
+    return package::TempLayerDir{ std::move(*temporaryDirectory) };
 }
 
 utils::error::Result<void> OSTreeRepo::mergeModules() const noexcept

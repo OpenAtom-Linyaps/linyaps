@@ -8,6 +8,7 @@
 
 #include "linglong/api/types/v1/PackageInfoV2.hpp"
 #include "linglong/utils/error/error.h"
+#include "linglong/utils/temporary_directory.h"
 
 #include <filesystem>
 
@@ -34,26 +35,21 @@ private:
 class TempLayerDir
 {
 public:
-    explicit TempLayerDir(std::filesystem::path path)
-        : layerDir_(std::move(path))
-    {
-    }
+    explicit TempLayerDir(utils::TemporaryDirectory directory);
 
     TempLayerDir(const TempLayerDir &) = delete;
     TempLayerDir &operator=(const TempLayerDir &) = delete;
     TempLayerDir(TempLayerDir &&other) noexcept;
     TempLayerDir &operator=(TempLayerDir &&other) noexcept;
-    ~TempLayerDir() noexcept;
+    ~TempLayerDir() noexcept = default;
 
     [[nodiscard]] const LayerDir &layerDir() const noexcept { return layerDir_; }
 
-    [[nodiscard]] std::filesystem::path path() const noexcept { return layerDir_.path(); }
+    [[nodiscard]] std::filesystem::path path() const noexcept { return temporaryDirectory_.path(); }
 
 private:
-    void remove() noexcept;
-
+    utils::TemporaryDirectory temporaryDirectory_;
     LayerDir layerDir_;
-    bool ownsPath_{ true };
 };
 
 } // namespace linglong::package

@@ -5,8 +5,14 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "../../common/tempdir.h"
 #include "linglong/cli/cli.h"
+#include "linglong/common/dir.h"
 #include "linglong/runtime/container_builder.h"
+#include "linglong/utils/env.h"
+
+#include <filesystem>
+#include <fstream>
 
 using namespace linglong;
 
@@ -255,4 +261,60 @@ TEST(SecurityContextTest, GetManagerReturnsNullForUnknownType)
 {
     auto mgr = runtime::getSecurityContextManager(runtime::SecurityContextType::UNKNOWN);
     EXPECT_EQ(mgr, nullptr);
+}
+
+TEST(ContainerBuilderUtil, MakeBundleDirCreatesBundleDirectory)
+{
+    TempDir tempDir;
+    ASSERT_TRUE(tempDir.isValid());
+
+    linglong::utils::EnvironmentVariableGuard env("XDG_RUNTIME_DIR", tempDir.path().string());
+
+    auto bundle = linglong::runtime::makeBundleDir("test-container");
+    ASSERT_TRUE(bundle.has_value()) << bundle.error().message();
+
+    EXPECT_EQ(*bundle, tempDir.path() / "linglong" / "test-container");
+    EXPECT_TRUE(std::filesystem::is_directory(*bundle));
+}
+
+TEST(ContainerBuilderUtil, MakeBundleDirAppendsSuffix)
+{
+    TempDir tempDir;
+    ASSERT_TRUE(tempDir.isValid());
+
+    linglong::utils::EnvironmentVariableGuard env("XDG_RUNTIME_DIR", tempDir.path().string());
+
+    auto bundle = linglong::runtime::makeBundleDir("test-container", "-build");
+    ASSERT_TRUE(bundle.has_value()) << bundle.error().message();
+
+    EXPECT_EQ(*bundle, tempDir.path() / "linglong" / "test-container-build");
+}
+
+TEST(ContainerBuilderUtil, MakeBundleDirRemovesExistingContent)
+{
+    TempDir tempDir;
+    ASSERT_TRUE(tempDir.isValid());
+
+    linglong::utils::EnvironmentVariableGuard env("XDG_RUNTIME_DIR", tempDir.path().string());
+
+    auto first = linglong::runtime::makeBundleDir("test-container");
+    ASSERT_TRUE(first.has_value()) << first.error().message();
+    std::ofstream{ *first / "stale.txt" } << "stale content";
+    ASSERT_TRUE(std::filesystem::exists(*first / "stale.txt"));
+
+    auto bundle = linglong::runtime::makeBundleDir("test-container");
+    ASSERT_TRUE(bundle.has_value()) << bundle.error().message();
+
+    EXPECT_TRUE(std::filesystem::is_directory(*bundle));
+    EXPECT_FALSE(std::filesystem::exists(*bundle / "stale.txt"));
+}
+
+TEST(SecurityContextTest, DefaultSecurityContextsAreRecognizedAndRoundTrip)
+{
+    auto &ctxs = runtime::getDefaultSecurityContexts();
+
+    for (const auto ctx : ctxs) {
+        EXPECT_NE(ctx, runtime::SecurityContextType::UNKNOWN) << "default context is unknown";
+        EXPECT_EQ(runtime::toType(runtime::fromType(ctx)), ctx) << "context does not round trip";
+    }
 }

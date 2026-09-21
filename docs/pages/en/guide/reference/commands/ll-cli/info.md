@@ -57,6 +57,12 @@ ll-cli info org.dde.calendar
 }
 ```
 
+## ERRORS
+
+See the [ERRORS](./ll-cli.md#errors) section of `ll-cli(1)` for the error codes
+shared by the lookup commands. When the application is not installed locally this
+command prints `Cannot find such application.` and exits with a non-zero status.
+
 ## SEE ALSO
 
 **[ll-cli(1)](./ll-cli.md)**, **[ll-cli-list(1)](list.md)**, **[ll-cli-content(1)](content.md)**

@@ -54,6 +54,24 @@ ll-cli is a package manager frontend for managing Linyaps application installati
 | search    | [ll-cli-search(1)](./search.md)       | Search for applications/runtimes containing specified keywords from remote repositories |
 | repo      | [ll-cli-repo(1)](./repo.md)           | Display or modify current repository information                                        |
 
+## ERRORS
+
+Commands that look up an application print `Error <code>: <message>` on failure.
+The lookup failures share the same wording so that scripts can match on it:
+
+**1002 - AppNotFoundFromLocal**
+: The application is not installed in the local repository, and the command
+  prints `Cannot find such application.`. Install the application first, or
+  pass an identifier that matches an installed package.
+
+**4001 - InvalidFuzzyReference**
+: The identifier cannot be parsed. Accepted forms are `app`, `app/version`,
+  `app/version/arch` and `channel:app/version/arch`.
+
+`ll-cli inspect dir` reports the same not-found message when the application
+cannot be found in the local repository, and prints `Cannot find the running
+application.` when no container of the requested application is running.
+
 ## SEE ALSO
 
 **[ll-cli-run(1)](./run.md)**, **[ll-cli-ps(1)](./ps.md)**, **[ll-cli-enter(1)](./enter.md)**, **[ll-cli-kill(1)](./kill.md)**, **[ll-cli-prune(1)](./prune.md)**, **[ll-cli-install(1)](./install.md)**, **[ll-cli-uninstall(1)](./uninstall.md)**, **[ll-cli-upgrade(1)](./upgrade.md)**, **[ll-cli-list(1)](./list.md)**, **[ll-cli-analyze(1)](./analyze.md)**, **[ll-cli-info(1)](./info.md)**, **[ll-cli-content(1)](./content.md)**, **[ll-cli-search(1)](./search.md)**, **[ll-cli-repo(1)](./repo.md)**

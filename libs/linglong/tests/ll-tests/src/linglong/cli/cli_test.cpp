@@ -25,6 +25,7 @@ using ::testing::HasSubstr;
 using ::testing::InSequence;
 using ::testing::Invoke;
 using ::testing::IsEmpty;
+using ::testing::Not;
 using ::testing::Return;
 
 namespace {
@@ -143,6 +144,26 @@ utils::error::Result<std::unique_ptr<api::dbus::v1::PackageManager>>
 makePackageManagerInitializationError(const std::string &message)
 {
     LINGLONG_TRACE("make package manager initialization error");
+
+    return LINGLONG_ERR(message);
+}
+
+// Reproduces the error returned by OSTreeRepo::clearReferenceLocal() when the
+// fuzzy reference cannot be resolved against the local repository, which is the
+// situation the CLI has to report as "application not found".
+utils::error::Result<package::Reference> makeLocalLookupFailure(const std::string &appid)
+{
+    LINGLONG_TRACE("make local lookup failure");
+
+    return LINGLONG_ERR("package not found:" + appid,
+                        utils::error::ErrorCode::AppNotFoundFromLocal);
+}
+
+// Reproduces a failure to load the local repository, which the CLI must forward
+// untouched instead of reporting it as a missing application.
+utils::error::Result<repo::OSTreeRepo *> makeRepositoryFailure(const std::string &message)
+{
+    LINGLONG_TRACE("make repository failure");
 
     return LINGLONG_ERR(message);
 }
@@ -901,6 +922,146 @@ TEST_F(CliTest, contentPrefersLibSystemdUserOverLegacySharePath)
       .WillOnce(Return());
 
     EXPECT_EQ(cli->content(cli::ContentOptions{ .appid = "org.example.app" }), 0);
+}
+
+// The application lookup failures are shared by several subcommands. The tests
+// below pin down their user visible contract: an identifier that cannot be
+// resolved against the local repository is always reported as
+// "Cannot find such application." together with ErrorCode::AppNotFoundFromLocal,
+// while failures that describe a different problem (an unparsable identifier or
+// a repository that cannot be loaded) are forwarded unchanged.
+TEST_F(CliTest, contentReportsCanonicalApplicationNotFoundError)
+{
+    EXPECT_CALL(*repo, clearReferenceLocal(_, _))
+      .WillOnce(Invoke([](const package::FuzzyReference &, bool)
+                         -> utils::error::Result<package::Reference> {
+          return makeLocalLookupFailure("org.example.app");
+      }));
+    EXPECT_CALL(*printer, printErr(_)).WillOnce(Invoke([](const utils::error::Error &error) {
+        EXPECT_EQ(error.code(), static_cast<int>(utils::error::ErrorCode::AppNotFoundFromLocal));
+        EXPECT_THAT(error.message(), HasSubstr("Cannot find such application."));
+        EXPECT_THAT(error.message(), Not(HasSubstr("Can not")));
+    }));
+
+    EXPECT_EQ(cli->content(cli::ContentOptions{ .appid = "org.example.app" }), -1);
+}
+
+TEST_F(CliTest, infoReportsCanonicalApplicationNotFoundError)
+{
+    EXPECT_CALL(*repo, clearReferenceLocal(_, _))
+      .WillOnce(Invoke([](const package::FuzzyReference &, bool)
+                         -> utils::error::Result<package::Reference> {
+          return makeLocalLookupFailure("org.example.app");
+      }));
+    EXPECT_CALL(*printer, printErr(_)).WillOnce(Invoke([](const utils::error::Error &error) {
+        EXPECT_EQ(error.code(), static_cast<int>(utils::error::ErrorCode::AppNotFoundFromLocal));
+        EXPECT_THAT(error.message(), HasSubstr("Cannot find such application."));
+        EXPECT_THAT(error.message(), Not(HasSubstr("Can not")));
+    }));
+
+    EXPECT_EQ(cli->info(cli::InfoOptions{ .appid = "org.example.app" }), -1);
+}
+
+TEST_F(CliTest, contentReportsCanonicalNotFoundForEveryReferenceShape)
+{
+    const std::vector<std::string> appids = {
+        "org.example.app",
+        "org.example.app/1.0.0",
+        "org.example.app/1.0.0/x86_64",
+        "main:org.example.app/1.0.0/x86_64",
+    };
+
+    for (const auto &appid : appids) {
+        EXPECT_CALL(*repo, clearReferenceLocal(_, _))
+          .WillOnce(Invoke([&appid](const package::FuzzyReference &, bool)
+                             -> utils::error::Result<package::Reference> {
+              return makeLocalLookupFailure(appid);
+          }));
+        EXPECT_CALL(*printer, printErr(_)).WillOnce(Invoke([](const utils::error::Error &error) {
+            EXPECT_EQ(error.code(),
+                      static_cast<int>(utils::error::ErrorCode::AppNotFoundFromLocal));
+            EXPECT_THAT(error.message(), HasSubstr("Cannot find such application."));
+        }));
+
+        EXPECT_EQ(cli->content(cli::ContentOptions{ .appid = appid }), -1);
+    }
+}
+
+TEST_F(CliTest, infoReportsCanonicalNotFoundForEveryReferenceShape)
+{
+    const std::vector<std::string> appids = {
+        "org.example.app",
+        "org.example.app/1.0.0",
+        "org.example.app/1.0.0/x86_64",
+        "main:org.example.app/1.0.0/x86_64",
+    };
+
+    for (const auto &appid : appids) {
+        EXPECT_CALL(*repo, clearReferenceLocal(_, _))
+          .WillOnce(Invoke([&appid](const package::FuzzyReference &, bool)
+                             -> utils::error::Result<package::Reference> {
+              return makeLocalLookupFailure(appid);
+          }));
+        EXPECT_CALL(*printer, printErr(_)).WillOnce(Invoke([](const utils::error::Error &error) {
+            EXPECT_EQ(error.code(),
+                      static_cast<int>(utils::error::ErrorCode::AppNotFoundFromLocal));
+            EXPECT_THAT(error.message(), HasSubstr("Cannot find such application."));
+        }));
+
+        EXPECT_EQ(cli->info(cli::InfoOptions{ .appid = appid }), -1);
+    }
+}
+
+TEST_F(CliTest, contentForwardsInvalidReferenceError)
+{
+    EXPECT_CALL(*repo, clearReferenceLocal(_, _)).Times(0);
+    EXPECT_CALL(*printer, printErr(_)).WillOnce(Invoke([](const utils::error::Error &error) {
+        EXPECT_EQ(error.code(),
+                  static_cast<int>(utils::error::ErrorCode::InvalidFuzzyReference));
+    }));
+
+    const std::string appid = "org.example.app/1.0.0/x86_64/extra";
+    EXPECT_EQ(cli->content(cli::ContentOptions{ .appid = appid }), -1);
+}
+
+TEST_F(CliTest, infoForwardsInvalidReferenceError)
+{
+    EXPECT_CALL(*repo, clearReferenceLocal(_, _)).Times(0);
+    EXPECT_CALL(*printer, printErr(_)).WillOnce(Invoke([](const utils::error::Error &error) {
+        EXPECT_EQ(error.code(),
+                  static_cast<int>(utils::error::ErrorCode::InvalidFuzzyReference));
+    }));
+
+    const std::string appid = "org.example.app/1.0.0/x86_64/extra";
+    EXPECT_EQ(cli->info(cli::InfoOptions{ .appid = appid }), -1);
+}
+
+TEST_F(CliTest, contentForwardsRepositoryFailure)
+{
+    EXPECT_CALL(*cli, getRepo(testing::_))
+      .WillOnce(Invoke([](bool) -> utils::error::Result<repo::OSTreeRepo *> {
+          return makeRepositoryFailure("repository unavailable");
+      }));
+    EXPECT_CALL(*repo, clearReferenceLocal(_, _)).Times(0);
+    EXPECT_CALL(*printer, printErr(_)).WillOnce(Invoke([](const utils::error::Error &error) {
+        EXPECT_THAT(error.message(), HasSubstr("repository unavailable"));
+    }));
+
+    EXPECT_EQ(cli->content(cli::ContentOptions{ .appid = "org.example.app" }), -1);
+}
+
+TEST_F(CliTest, infoForwardsRepositoryFailure)
+{
+    EXPECT_CALL(*cli, getRepo(testing::_))
+      .WillOnce(Invoke([](bool) -> utils::error::Result<repo::OSTreeRepo *> {
+          return makeRepositoryFailure("repository unavailable");
+      }));
+    EXPECT_CALL(*repo, clearReferenceLocal(_, _)).Times(0);
+    EXPECT_CALL(*printer, printErr(_)).WillOnce(Invoke([](const utils::error::Error &error) {
+        EXPECT_THAT(error.message(), HasSubstr("repository unavailable"));
+    }));
+
+    EXPECT_EQ(cli->info(cli::InfoOptions{ .appid = "org.example.app" }), -1);
 }
 
 } // namespace

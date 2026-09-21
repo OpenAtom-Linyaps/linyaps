@@ -11,11 +11,14 @@
 #include "linglong/package/fuzzy_reference.h"
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/runtime/run_context.h"
+#include "linglong/utils/temporary_directory.h"
 
 #include <QCryptographicHash>
 #include <QFile>
 
 #include <fstream>
+#include <string_view>
+#include <utility>
 
 using namespace linglong;
 using ::testing::AtLeast;
@@ -25,6 +28,19 @@ namespace {
 
 using RuntimeLayer = linglong::runtime::RuntimeLayer;
 using ResolveOptions = linglong::runtime::ResolveOptions;
+
+auto makeTempLayerDir(const std::filesystem::path &parent, std::string_view prefix)
+  -> utils::error::Result<package::TempLayerDir>
+{
+    LINGLONG_TRACE("create temporary layer directory for test");
+
+    auto directory = utils::TemporaryDirectory::create(prefix, parent);
+    if (!directory) {
+        return LINGLONG_ERR(directory);
+    }
+
+    return package::TempLayerDir{ std::move(*directory) };
+}
 
 class TestRunContext final : public linglong::runtime::RunContext
 {
@@ -212,12 +228,12 @@ TEST_F(RunContextTest, resolveMultiModules)
       .WillOnce(Return(std::vector<std::string>{ "binary", "debug", "develop" }));
 
     // Mock successful merged module directory retrieval for multiple modules
-    const auto mockLayerPath = tempDir->path() / "merged";
+    const auto temporaryParent = tempDir->path();
     EXPECT_CALL(
       *repo,
       createTempMergedModuleDir(testing::_, std::vector<std::string>{ "binary", "debug" }))
-      .WillOnce([mockLayerPath](const auto &, const auto &) {
-          return package::TempLayerDir{ mockLayerPath };
+      .WillOnce([temporaryParent](const auto &, const auto &) {
+          return makeTempLayerDir(temporaryParent, "merged-");
       });
 
     // Create runtime layer
@@ -250,12 +266,12 @@ TEST_F(RunContextTest, resolveExcludeModules)
     EXPECT_CALL(*repo, getModuleList(*ref))
       .WillOnce(Return(std::vector<std::string>{ "binary", "develop", "lang_zh" }));
 
-    const auto mockLayerPath = tempDir->path() / "exclude-develop";
+    const auto temporaryParent = tempDir->path();
     EXPECT_CALL(
       *repo,
       createTempMergedModuleDir(testing::_, std::vector<std::string>{ "binary", "lang_zh" }))
-      .WillOnce([mockLayerPath](const auto &, const auto &) {
-          return package::TempLayerDir{ mockLayerPath };
+      .WillOnce([temporaryParent](const auto &, const auto &) {
+          return makeTempLayerDir(temporaryParent, "exclude-develop-");
       });
 
     RunContext context(*this->repo);

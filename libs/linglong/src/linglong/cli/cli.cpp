@@ -45,6 +45,7 @@
 #include "linglong/utils/namespace.h"
 #include "linglong/utils/runtime_config.h"
 #include "linglong/utils/signal/signal_blocker.h"
+#include "linglong/utils/temporary_directory.h"
 #include "linglong/utils/terminal/terminal_guard.h"
 #include "linglong/utils/unique_fd.h"
 #include "linglong/utils/xdp.h"
@@ -474,39 +475,26 @@ void printDebugAttachHint(const linglong::cli::RunOptions &options)
     std::cout << "============================================================" << std::endl;
 }
 
-Result<std::filesystem::path> preparePeerSocketDir() noexcept
+Result<linglong::utils::TemporaryDirectory> preparePeerSocketDir() noexcept
 {
     LINGLONG_TRACE("prepare peer socket directory");
 
-    auto peerSocketDirPattern = std::string{ "/tmp/linglong-package-manager-XXXXXX" };
-    auto *path = ::mkdtemp(peerSocketDirPattern.data());
-    if (path == nullptr) {
-        return LINGLONG_ERR("failed to create peer socket directory", errno);
+    auto peerSocketDir =
+      linglong::utils::TemporaryDirectory::create("linglong-package-manager-", "/tmp");
+    if (!peerSocketDir) {
+        return LINGLONG_ERR("failed to create peer socket directory", peerSocketDir);
     }
-
-    auto peerSocketDir = std::filesystem::path{ path };
-    auto removePeerSocketDir = [&peerSocketDir] {
-        std::error_code ec;
-        std::filesystem::remove_all(peerSocketDir, ec);
-        if (ec) {
-            LogW("failed to remove peer socket directory {}: {}",
-                 peerSocketDir.string(),
-                 ec.message());
-        }
-    };
 
     auto *pw = ::getpwnam(LINGLONG_USERNAME);
     if (pw == nullptr) {
-        removePeerSocketDir();
         return LINGLONG_ERR(fmt::format("failed to get user info for {}", LINGLONG_USERNAME));
     }
 
-    if (::chown(peerSocketDir.c_str(), pw->pw_uid, pw->pw_gid) != 0) {
-        removePeerSocketDir();
+    if (::chown(peerSocketDir->path().c_str(), pw->pw_uid, pw->pw_gid) != 0) {
         return LINGLONG_ERR("failed to change peer socket directory owner", errno);
     }
 
-    return peerSocketDir;
+    return std::move(*peerSocketDir);
 }
 
 Result<void> waitForDBusPeerReady(const QString &service,
@@ -1092,16 +1080,8 @@ Cli::initializePeerModePackageManager()
         return LINGLONG_ERR("failed to prepare peer socket directory", std::move(socketDirRet));
     }
 
-    const auto socketDir = std::move(socketDirRet).value();
-    auto removePeerSocketDir = linglong::utils::finally::finally([&socketDir] {
-        std::error_code ec;
-        std::filesystem::remove_all(socketDir, ec);
-        if (ec) {
-            LogW("failed to remove peer socket directory {}: {}", socketDir.string(), ec.message());
-        }
-    });
-
-    const auto socketPath = socketDir / "package-manager.socket";
+    auto socketDir = std::move(*socketDirRet);
+    const auto socketPath = socketDir.path() / "package-manager.socket";
     const auto socketPathString = socketPath.string();
     const auto pkgManAddressString = "unix:path=" + socketPathString;
     auto started = QProcess::startDetached("sudo",

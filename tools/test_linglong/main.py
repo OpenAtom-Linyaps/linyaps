@@ -57,6 +57,29 @@ SEMVER_OLD_VERSION = "1.0.0.0"
 TESTSUITE_BASELINE_APP_ID = "cn.org.linyaps.testsuite.baseline"
 TESTSUITE_BASELINE_TIMEOUT = 300
 
+# ── 非 TTY 的交互确认通知 ──
+#
+# ll-cli 需要用户确认时走 InteractiveNotifier：TTY 下直接问，非 TTY 下用
+# cli/dbus_notifier.cpp 发桌面通知、等用户点按钮。而 sudo 会剥掉
+# DBUS_SESSION_BUS_ADDRESS（本机没有 sudoers 的 env_keep），ll-cli 于是
+# 退回 DummyNotifier —— 动作 "dummy" 被 Cli::interaction 当成 yes，
+# dbus_notifier.cpp 一行都跑不到。
+#
+# 这里自己起一条 root 私有会话总线 + 桩通知服务（notif_stub.py），再用
+# `sudo -A env DBUS_SESSION_BUS_ADDRESS=... ll-cli` 把地址显式传进去。
+NOTIF_APP_ID = CALENDAR_APP_ID
+NOTIF_BUS_DIR = "/tmp/linglong-smoke-notif-bus"
+NOTIF_BUS_SOCKET = NOTIF_BUS_DIR + "/bus"
+NOTIF_BUS_PID = NOTIF_BUS_DIR + "/daemon.pid"
+NOTIF_STUB_LOG = NOTIF_BUS_DIR + "/notifications.jsonl"
+NOTIF_STUB_OUT = NOTIF_BUS_DIR + "/stub.out"
+NOTIF_STUB_PID = NOTIF_BUS_DIR + "/stub.pid"
+NOTIF_INSTALL_TIMEOUT = 900
+
+# ── 图形驱动检测 ──
+LIBEXEC_DIR = "/usr/libexec/linglong"
+DRIVER_DETECT_BINARY = "/usr/libexec/linglong/ll-driver-detect"
+
 # ── tools ──
 LL_CLI = "ll-cli"
 LL_BUILDER = "ll-builder"
@@ -70,7 +93,7 @@ REPO_CONFIG_PATH = Path("/var/lib/linglong/config.yaml")
 RESULTS_FILE = os.path.join(os.getcwd(), "test-results.json")
 from .executor import SUDO_FLAGS, CommandExecutor
 from .reporter import generate_report
-from .models import RepoState, StepResult
+from .models import RepoState, StepResult, StepSkipped
 
 class SmokeTest:
 
@@ -266,11 +289,21 @@ class SmokeTest:
     # 把机器上原本 mirror_enabled: true 的 stable 关掉了；它还会
     # repo update stable <url> 改地址。这些都不会自己回去。
     #
+    # 又踩过一次：test_no_dbus_peer_mode 也会
+    # enable-mirror / disable-mirror stable（为了走 peer 模式的写权限
+    # 分支），当时没列进来，于是整轮跑完 stable 的镜像开关又被关掉了。
+    #
     # 与其在每个用例里手写 try/finally（容易漏），不如在这里声明一次，
-    # run_step 会在执行前后自动快照 / 还原，用例里忘了也不会出事。
+    # run_step 会在执行前后自动快照 / 还原，用例里忘了也不会出事；
+    # cleanup() 里还有一道兜底还原 + 校验。
     REPO_CONFIG_STEPS = frozenset({
         "test_repo_mirror_management",
         "test_repo_alias_and_mirror",
+        "test_no_dbus_peer_mode",
+        "test_repo_config_v1_migration",
+        "test_repo_cache_rebuild",
+        "test_cache_write_failure",
+        "test_ostree_readonly_install",
     })
 
     # 整轮开始前的仓库配置快照，供 cleanup() 校验"改了要还原"。
@@ -319,12 +352,47 @@ class SmokeTest:
         """读出仓库配置原文，供用完后还原。"""
         return self._read_root_file(REPO_CONFIG_PATH)
 
+    def _restart_package_manager(self, timeout: int = 90) -> None:
+        """重启 PackageManager 服务，并等它真的回到 active。
+
+        ⚠️ systemctl restart 是异步的：返回时单元可能还在 activating，
+        所以必须轮询等待，不能立刻判定。
+        """
+        svc = "org.deepin.linglong.PackageManager.service"
+        if not shutil.which("systemctl"):
+            return
+        self._run_cmd(["systemctl", "reset-failed", svc], sudo=True,
+                      check=False)
+        self._run_cmd(["systemctl", "restart", svc], sudo=True, check=False,
+                      timeout=300)
+        deadline = time.time() + timeout
+        state = ""
+        while time.time() < deadline:
+            r = self._run_cmd(["systemctl", "is-active", svc], check=False)
+            state = r.stdout.strip()
+            if state == "active":
+                return
+            time.sleep(2)
+        raise RuntimeError(f"重启后 PackageManager 服务未回到 active: {state!r}")
+
     def _restore_repo_config(self, snapshot: str) -> None:
         """把仓库配置写回快照内容；已经一致就跳过。
 
         ⚠️ 不能靠 `repo enable-mirror` / `disable-mirror` 之类的命令拼回原状：
         disable-mirror 并不会清掉 region，优先级顺序也被改动过，
         用命令是拼不回来的。直接写回原文最忠实。
+
+        ⚠️⚠️ 但【光写文件不够】：PackageManager 服务把仓库配置缓存在内存里，
+        之后任何走服务的配置写入（repo add / remove / set-priority …）都会
+        按它内存里的旧状态重写整个文件，把这里的还原直接冲掉。
+        实测（2026-09，冒烟机）：
+            repo disable-mirror stable   -> 文件 mirror_enabled: false
+            把文件改回 true（模拟还原）
+            repo add <临时仓库>           -> 文件又变回 false
+        这就是"整轮跑完 stable 的 mirror_enabled 被关掉"的真正原因 ——
+        之前只在用例前后写回文件，看着还原了，后面随便一条服务端写命令
+        又把它冲掉了。
+        所以写完文件必须让服务重新加载（重启），否则还原等于没做。
         """
         if self._snapshot_repo_config() == snapshot:
             return
@@ -343,6 +411,12 @@ class SmokeTest:
             shutil.rmtree(tmpdir, ignore_errors=True)
         if self._snapshot_repo_config() != snapshot:
             raise RuntimeError(f"写回后 {REPO_CONFIG_PATH} 与快照仍不一致")
+        # 让服务丢掉内存里的旧配置，重新从文件加载
+        self._restart_package_manager()
+        if self._snapshot_repo_config() != snapshot:
+            raise RuntimeError(
+                f"重启服务后 {REPO_CONFIG_PATH} 又和快照不一致了"
+                "（说明还有别的进程在按旧配置回写）")
 
     def _verify_repo_config_restored(self) -> bool:
         """整轮结束后，仓库配置必须和开始前语义一致。
@@ -435,6 +509,25 @@ class SmokeTest:
             )
             self._print_step_result(title, "PASS")
         except Exception as e:
+            # 前置条件不满足（比如仓库里的测试包被清理掉了）：记 SKIPPED，
+            # 但【不】fail-fast。否则一个测试包消失就会让后面几十个用例
+            # 全变成 SKIPPED，把真正的问题淹没。
+            # ⚠️ 只有确实不是被测代码的问题才允许走这条路（见 StepSkipped）。
+            if isinstance(e, StepSkipped) and restore_error is None:
+                elapsed = (time.time_ns() - start) // 1_000_000
+                self.results.append(
+                    StepResult(
+                        index=step_index + 1,
+                        title=title,
+                        status="SKIPPED",
+                        duration_ms=elapsed,
+                        error_message=str(e),
+                        category=category,
+                    )
+                )
+                print(f"  跳过原因: {e}", file=sys.stderr)
+                self._print_step_result(title, "SKIPPED")
+                return
             elapsed = (time.time_ns() - start) // 1_000_000
             self.results.append(
                 StepResult(
@@ -2611,6 +2704,49 @@ class SmokeTest:
     # 与 _run_in_pty 的区别：这里用非阻塞读 + 硬超时 + 超时强杀，
     # 因为 `ll-cli run` 有可能一直等不到 EOF（应用不退出），
     # 阻塞式 read 会把整个冒烟挂死。
+    # ── 安装状态快照 / 完整还原 ──
+    #
+    # ⚠️ 血的教训（整轮 run45 暴露）：镜像里同一个应用的"最新版"可能和
+    # 机器上装着的不一样 —— 日历实测 6.5.42.1 被换成了 5.14.5.1，重装
+    # 还会顺带拉来旧 base 23.1.0.3。所以"卸载再装回来"会【静默换版本】，
+    # 凡是动过安装状态的用例，都必须按快照里的【确切 id/版本/模块】还原。
+    _REF_ROW = re.compile(r"^(\S+)\s+\S+\s+(\d[\d.]*)\s+(\S+)\s+(\S+)\s",
+                          re.M)
+
+    def _installed_refs(self):
+        out = self._ll_cli("list", check=False).stdout or ""
+        return {f"{i}/{v}/{m}" for i, v, c, m in self._REF_ROW.findall(out)}
+
+    def _restore_installed_refs(self, snapshot):
+        """把安装状态还原成 snapshot（多退少补，带确切版本）。
+
+        ⚠️ 必须能接受 2 段（id/版本）和 3 段（id/版本/模块）两种快照：
+        整轮 run46 就是因为我传了 2 段快照进来，导致集合相减把【所有】
+        应用都算成"多余的"并全部卸载，把机器清空了。
+        """
+        snapshot = {r if r.count("/") == 2 else f"{r}/binary"
+                    for r in snapshot}
+        if not snapshot:
+            raise AssertionError(
+                "拒绝用空快照还原安装状态（那会把机器上的应用全卸掉）")
+        now = self._installed_refs()
+        for ref in sorted(now - snapshot):
+            i, v, m = ref.split("/")
+            argv = ["uninstall", "--force", f"{i}/{v}"]
+            if m and m != "binary":
+                argv += ["--module", m]
+            self._sudo_ll_cli(*argv, timeout=300, check=False)
+        for ref in sorted(snapshot - now):
+            i, v, m = ref.split("/")
+            argv = ["install", f"{i}/{v}"]
+            if m and m != "binary":
+                argv += ["--module", m]
+            self._sudo_ll_cli(*argv, timeout=900, check=False)
+        after = self._installed_refs()
+        if after != snapshot:
+            raise AssertionError(
+                f"安装状态没还原干净: {sorted(snapshot)} -> {sorted(after)}")
+
     def _pty_ll_cli(self, *args: str, timeout: int = 60, env: dict | None = None,
                     stop_when: str | None = None, grace: int = 10,
                     input_text: str | None = None, sudo: bool = False):
@@ -3136,6 +3272,97 @@ class SmokeTest:
                 "伪造的 NVIDIA 版本文件没被读到，namespace 覆盖失败: "
                 f"{(r.stdout + r.stderr)[:200]}")
 
+    # ── Test: ll-driver-detect 的交互通知 ──
+    #
+    # 上面那条只跑到 --check-only；真正会发通知的那段（main.cpp 的
+    # "Handle user notifications" 以及 apps/ll-driver-detect/src/
+    # dbus_notifier.cpp 的 init / sendInteractiveNotification）需要
+    # 一个能应答的 org.freedesktop.Notifications。这里复用桩通知服务：
+    #
+    #   not_remind -> 必须把 neverRemind 写进
+    #                 $XDG_CONFIG_HOME/linglong/driver_detection.json
+    #   不应答      -> 25 秒超时后什么都不做，配置文件不能被创建
+    #
+    # ⚠️ 绝不回 install_now：那条路会真的去装 1.6GB 的
+    #    org.deepin.driver.display.nvidia.<版本> 驱动包。
+    #
+    # 用独立的 XDG_CONFIG_HOME（临时目录）跑，既不碰真实配置，也避开
+    # ll-driver-detect 的单实例锁文件（锁在同一个目录下）。
+    def test_driver_detect_notification(self):
+        if not os.path.exists(DRIVER_DETECT_BINARY):
+            raise AssertionError(f"找不到 {DRIVER_DETECT_BINARY}")
+
+        for action, expect_never_remind in (("not_remind", True), ("none", False)):
+            cfg_home = Path(tempfile.mkdtemp(prefix="ll-drvcfg-"))
+            cfg = cfg_home / "linglong" / "driver_detection.json"
+            try:
+                bus = self._start_notification_stub(action)
+                try:
+                    started = time.time()
+                    r = self._run_driver_detect(bus, cfg_home)
+                    elapsed = time.time() - started
+
+                    notes = self._notification_log()
+                    if not notes:
+                        # 驱动检测要先查远端仓库里有没有对应的驱动包。镜像抖一下
+                        # （实测报 "Failed to get package info from remote repo:
+                        # Failed to parse search result"）或者仓库里暂时没有
+                        # 这个包，工具就会自己报 Driver detection failed，
+                        # 根本走不到通知分支 —— 那是环境问题，不是被测功能的
+                        # 问题，所以明确跳过并写清原因。
+                        combined = r.stdout + r.stderr
+                        if "Driver detection failed" in combined:
+                            raise StepSkipped(
+                                f"[{action}] ll-driver-detect 没能走到通知分支"
+                                f"（仓库/镜像问题）："
+                                f"{combined.strip().splitlines()[-1][:200]}")
+                        raise AssertionError(
+                            f"[{action}] 桩没收到通知，说明没走到通知分支: "
+                            f"rc={r.returncode} {(r.stdout + r.stderr)[:200]}")
+                    actions = notes[-1].get("actions") or []
+                    if "install_now" not in actions or "not_remind" not in actions:
+                        raise AssertionError(
+                            f"[{action}] 通知按钮不是驱动安装的两个动作: {actions!r}")
+
+                    cfg_text = cfg.read_text() if cfg.exists() else ""
+                    if expect_never_remind:
+                        if r.returncode != 0:
+                            raise AssertionError(
+                                f"[{action}] ll-driver-detect 退出码 {r.returncode}: "
+                                f"{(r.stdout + r.stderr)[:200]}")
+                        if '"neverRemind": true' not in cfg_text:
+                            raise AssertionError(
+                                f"[{action}] 选了不再提醒，配置里却没有 neverRemind: "
+                                f"{cfg_text!r}")
+                    else:
+                        # 没应答 -> 25 秒超时 -> 什么都不做
+                        if cfg_text:
+                            raise AssertionError(
+                                f"[{action}] 没人应答却写了配置: {cfg_text!r}")
+                        if elapsed < 20:
+                            raise AssertionError(
+                                f"[{action}] 只用了 {elapsed:.1f}s，没等通知超时，"
+                                "说明通知没发出去就返回了")
+                finally:
+                    self._stop_notification_stub()
+            finally:
+                shutil.rmtree(cfg_home, ignore_errors=True)
+
+    def _run_driver_detect(self, bus_address: str, cfg_home: Path):
+        """在私有 mount namespace 里伪造 NVIDIA 版本后跑 ll-driver-detect。"""
+        script = (
+            "mount -t tmpfs tmpfs /sys/module 2>/dev/null || exit 0\n"
+            "mkdir -p /sys/module/nvidia\n"
+            "echo '580.119.02' > /sys/module/nvidia/version\n"
+            "chmod 755 /sys/module/nvidia\n"
+            "chmod 644 /sys/module/nvidia/version\n"
+            f"XDG_CONFIG_HOME={cfg_home} {DRIVER_DETECT_BINARY} 2>&1 "
+            "| grep -v 'profiling:' | tail -6\n"
+        )
+        return self._sudo_on_bus(
+            bus_address, "unshare", "-m", "bash", "-c", script,
+            timeout=180, check=False)
+
     # ── Test: 显示/时区/网络的环境分支 ──
     #
     # 对应 run_context.cpp 的 detectDisplaySystem / resolveTimeZone /
@@ -3615,12 +3842,23 @@ class SmokeTest:
         plan = (
             ("/var/tmp/linglong-cov-user", f"{me}:{me}"),
             ("/var/tmp/linglong-cov-svc", "deepin-linglong:deepin-linglong"),
+            # root 前缀：sudo 命令（root）和 peer 模式的服务端
+            # （sudo --user deepin-linglong，见 test_no_dbus_peer_mode）
+            # 都会往这里写。这里【不 chown】（里面已经有 root 写的文件），
+            # 但必须让所有身份都能写：实测 prefix 里已存在的 gcda 若是
+            # root:root 0644，uid 993 的 gcov 覆盖不了它，写入静默失败，
+            # peer 分支的覆盖率就永远统计不到。
+            # 修前/修后（删掉旧 gcda + 放开权限后重跑一次 peer）：
+            #   apps/ll-package-manager/src/main.cpp 未覆盖 57 -> 39 行，
+            #   总体 75.00% -> 75.10%。
+            ("/var/tmp/linglong-cov-root", None),
         )
         for prefix, owner in plan:
             # 目录不存在时先建出来（chown -R 对不存在的路径会报错）
             self._run_cmd(["mkdir", "-p", prefix], sudo=True, check=False)
-            self._run_cmd(["chown", "-R", owner, prefix], sudo=True,
-                          check=False)
+            if owner is not None:
+                self._run_cmd(["chown", "-R", owner, prefix], sudo=True,
+                              check=False)
             # a+rwX：目录可进入、文件可写；X 只作用于目录和已有可执行位，
             # 不会把普通文件误设成可执行。
             self._run_cmd(["chmod", "-R", "a+rwX", prefix], sudo=True,
@@ -3685,6 +3923,18 @@ class SmokeTest:
             self.has_failed = True
         # 逐项核对整个仓库配置（镜像开关 / region / 地址 / 优先级…）
         if not self._verify_repo_config_restored():
+            # 有步骤漏了还原：这里用整轮开始前的快照【兜底还原】一次，
+            # 保证机器不会留在被污染的状态；但这一轮仍然判 FAIL ——
+            # "改了配置没还原"是脚本的 bug，必须暴露出来而不是被兜底掩盖。
+            print("  Error: 有步骤没还原仓库配置，尝试用开始前的快照兜底还原",
+                  file=sys.stderr)
+            try:
+                self._restore_repo_config(self._repo_config_at_start)
+                if self._verify_repo_config_restored():
+                    print("  兜底还原成功，机器配置已回到开始前的样子",
+                          file=sys.stderr)
+            except Exception as exc:  # noqa: BLE001
+                print(f"  Error: 兜底还原也失败了: {exc}", file=sys.stderr)
             self.has_failed = True
 
         # 最后再把服务端计数落盘一次：上面这些卸载/仓库重置同样发生在
@@ -3780,6 +4030,231 @@ class SmokeTest:
             if v not in seen:
                 seen.append(v)
         return seen
+
+    def _require_repo_versions(self, app_id: str, least: int = 1,
+                               why: str = "") -> list[str]:
+        """确认仓库里还有这个测试包，否则【明确跳过】而不是判失败。
+
+        这些包只用于测试，实测会随镜像同步时有时无。包一没了用例必然
+        失败，但那是环境问题：直接跳过并写清原因，比 fail-fast 把后面
+        几十个用例全变成 SKIPPED 更有利于定位问题。
+        """
+        versions = self._available_versions(app_id)
+        if len(versions) < least:
+            raise StepSkipped(
+                f"仓库里已经没有 {app_id}（需要至少 {least} 个版本，"
+                f"实际找到 {len(versions)} 个）"
+                + (f"：{why}" if why else "")
+                + "。这属于环境问题（仓库/镜像里暂时没有这个包），"
+                  "不是被测代码的问题")
+        return versions
+
+    # ── 桩通知服务（非 TTY 的交互确认）──
+    def _try_read_root_file(self, path) -> str:
+        """读 root 文件，读不到就当空串（用于"文件可能还没生成"的轮询）。"""
+        try:
+            return self._read_root_file(path)
+        except RuntimeError:
+            return ""
+
+    def _sudo_ll_cli_on_bus(self, bus_address: str, *args: str, **kwargs):
+        """在指定会话总线上跑 ll-cli。
+
+        ⚠️ 不能用 executor 的 env= 参数：那是 sudo【之前】的环境变量，
+           sudo 会把它剥掉。必须在 sudo 之后用 env 显式设置。
+        """
+        return self._sudo_on_bus(bus_address, LL_CLI, *args, **kwargs)
+
+    def _sudo_on_bus(self, bus_address: str, *cmd: str, **kwargs):
+        """以 root 在指定会话总线上跑一条命令。"""
+        return self._run_cmd(
+            ["env", f"DBUS_SESSION_BUS_ADDRESS={bus_address}", *cmd],
+            sudo=True,
+            **kwargs,
+        )
+
+    def _installed_app_version(self, app_id: str):
+        r = self._ll_cli("list", timeout=180, check=False)
+        for line in r.stdout.splitlines():
+            if app_id in line:
+                m = re.search(r"\b(\d+\.\d+\.\d+\.\d+)\b", line)
+                if m:
+                    return m.group(1)
+        return None
+
+    def _start_notification_stub(self, action: str) -> str:
+        """起 root 私有会话总线 + 桩通知服务，返回总线地址。"""
+        stub = Path(__file__).resolve().parent / "notif_stub.py"
+        if not stub.exists():
+            raise AssertionError(f"找不到桩通知服务脚本: {stub}")
+
+        probe = self._run_cmd(
+            ["python3", "-c",
+             "import dbus, dbus.service; from gi.repository import GLib"],
+            check=False,
+        )
+        if probe.returncode != 0:
+            raise AssertionError(
+                "缺少 python3-dbus / python3-gi，无法起桩通知服务: "
+                + (probe.stderr or "").strip()[:200])
+
+        self._stop_notification_stub()
+        self._run_cmd(["mkdir", "-p", NOTIF_BUS_DIR], sudo=True, check=False)
+
+        # --fork 让 dbus-daemon 后台化；--print-pid 拿到 PID —— 收尾按 PID 杀，
+        # 不用 pkill -f（那条路的模式串会命中 sudo 自己，踩过）
+        #
+        # ⚠️ --print-address / --print-pid 都要显式写 =1（stdout）：
+        #    不写的话前者会把后一个选项当成自己的 fd 参数，
+        #    报 Invalid file descriptor: "--print-pid"。
+        r = self._run_cmd(
+            ["dbus-daemon", "--session",
+             f"--address=unix:path={NOTIF_BUS_SOCKET}",
+             "--fork", "--print-address=1", "--print-pid=1"],
+            sudo=True, check=False,
+        )
+        address, bus_pid = "", ""
+        for line in (r.stdout + r.stderr).splitlines():
+            line = line.strip()
+            if line.startswith("unix:path="):
+                address = line
+            elif line.isdigit():
+                bus_pid = line
+        if r.returncode != 0 or not address or not bus_pid:
+            raise AssertionError(
+                f"私有会话总线启动失败: rc={r.returncode} "
+                f"{(r.stdout + r.stderr)[:300]}")
+        self._run_cmd(["bash", "-c", f"echo {bus_pid} > {NOTIF_BUS_PID}"],
+                      sudo=True, check=False)
+
+        self._run_cmd(["rm", "-f", NOTIF_STUB_LOG], sudo=True, check=False)
+        cmd = (f"DBUS_SESSION_BUS_ADDRESS={address} nohup python3 {stub} "
+               f"{action} {NOTIF_STUB_LOG} > {NOTIF_STUB_OUT} 2>&1 & "
+               f"echo $! > {NOTIF_STUB_PID}")
+        self._run_cmd(["bash", "-c", cmd], sudo=True, check=False)
+
+        # 等桩把 org.freedesktop.Notifications 抢到手（打印 stub ready）
+        deadline = time.time() + 15
+        out = ""
+        while time.time() < deadline:
+            out = self._try_read_root_file(NOTIF_STUB_OUT)
+            if "stub ready" in out:
+                return address
+            if "Traceback" in out or "缺少" in out:
+                break
+            time.sleep(0.5)
+        self._stop_notification_stub()
+        raise AssertionError(f"桩通知服务没起来: {out[:300]}")
+
+    def _stop_notification_stub(self):
+        """按 PID 收掉桩和私有总线（幂等）。"""
+        for pid_file in (NOTIF_STUB_PID, NOTIF_BUS_PID):
+            r = self._run_cmd(["cat", pid_file], check=False)
+            pid = (r.stdout or "").strip()
+            if r.returncode == 0 and pid.isdigit():
+                self._run_cmd(["kill", pid], sudo=True, check=False)
+            self._run_cmd(["rm", "-f", pid_file], sudo=True, check=False)
+        self._run_cmd(["rm", "-rf", NOTIF_BUS_DIR], sudo=True, check=False)
+
+    def _notification_log(self) -> list:
+        """桩收到的通知，按时间顺序。"""
+        notes = []
+        for line in self._try_read_root_file(NOTIF_STUB_LOG).splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                notes.append(json.loads(line))
+            except json.JSONDecodeError:
+                pass
+        return notes
+
+    # ── Test: 非 TTY 的通知交互（cli/dbus_notifier.cpp）──
+    #
+    # 触发条件同 test_upgrade_interaction（已装旧版时再装更新的版本 ->
+    # ref_installation.cpp 的 Policy::Upgrade -> TaskInteraction）。区别在于
+    # 这里给 ll-cli 一条【真的能连上的会话总线 + 桩通知服务】，于是它走
+    # cli/dbus_notifier.cpp 的 GetCapabilities/Notify/等信号，而不是
+    # sudo 下的 DummyNotifier。
+    #
+    # 桩分别回 yes / no，两轮都断言"功能真的按回答走了"：
+    #   yes -> 版本必须升上去；no -> 必须报"操作已取消"且版本停在旧版。
+    # 并核对通知正文里同时出现新旧两个 ref —— 只"执行到"不算数。
+    def test_install_interaction_notification(self):
+        app = NOTIF_APP_ID
+        versions = self._available_versions(app)
+        if len(versions) < 2:
+            raise AssertionError(
+                f"{app} 可用版本不足两个，无法构造升级场景: {versions}")
+        newest, older = versions[0], versions[1]
+
+        try:
+            for action, expect_upgrade in (("Y", True), ("N", False)):
+                self._run_interaction_round(action, expect_upgrade,
+                                            app, newest, older)
+        finally:
+            self._stop_notification_stub()
+            # 还原成最新版：后面的用例（PTY / 容器）还要用日历应用
+            self._sudo_ll_cli("uninstall", app, timeout=300, check=False)
+            self._sudo_ll_cli("install", f"{app}/{newest}",
+                              timeout=NOTIF_INSTALL_TIMEOUT, check=False)
+
+    def _run_interaction_round(self, action: str, expect_upgrade: bool,
+                               app: str, newest: str, older: str):
+        bus = self._start_notification_stub(action)
+        try:
+            self._sudo_ll_cli("uninstall", app, timeout=300, check=False)
+            r = self._sudo_ll_cli("install", f"{app}/{older}",
+                                  timeout=NOTIF_INSTALL_TIMEOUT, check=False)
+            if r.returncode != 0:
+                raise AssertionError(
+                    f"[{action}] 安装旧版本 {older} 失败: "
+                    f"{(r.stdout + r.stderr)[:300]}")
+            got = self._installed_app_version(app)
+            if got != older:
+                raise AssertionError(
+                    f"[{action}] 装旧版后期望 {older}，实际 {got}")
+
+            # 关键一步：装更新的版本 -> Policy::Upgrade -> TaskInteraction
+            # -> Cli::interaction -> notifier->request() -> 桩收到通知
+            r = self._sudo_ll_cli_on_bus(
+                bus, "install", f"{app}/{newest}",
+                timeout=NOTIF_INSTALL_TIMEOUT, check=False)
+            got = self._installed_app_version(app)
+
+            notes = self._notification_log()
+            if not notes:
+                raise AssertionError(
+                    f"[{action}] 桩没收到通知，说明没走到 dbus_notifier: "
+                    f"rc={r.returncode} {(r.stdout + r.stderr)[:200]}")
+            note = notes[-1]
+            if note.get("summary") != "Package Manager needs to confirm request.":
+                raise AssertionError(
+                    f"[{action}] 通知标题不对: {note.get('summary')!r}")
+            if note.get("actions") != ["yes", "Yes", "no", "No"]:
+                raise AssertionError(
+                    f"[{action}] 通知按钮不对: {note.get('actions')!r}")
+            body = note.get("body", "")
+            if older not in body or newest not in body:
+                raise AssertionError(
+                    f"[{action}] 通知正文没同时提到新旧版本: {body!r}")
+
+            if expect_upgrade:
+                if r.returncode != 0:
+                    raise AssertionError(
+                        f"[{action}] 回答 yes 却失败了: "
+                        f"{(r.stdout + r.stderr)[:300]}")
+                if got != newest:
+                    raise AssertionError(
+                        f"[{action}] 回答 yes 后期望 {newest}，实际 {got}")
+            else:
+                if r.returncode == 0:
+                    raise AssertionError(f"[{action}] 回答 no 却装成功了")
+                if got != older:
+                    raise AssertionError(
+                        f"[{action}] 回答 no 后期望仍是 {older}，实际 {got}")
+        finally:
+            self._stop_notification_stub()
 
     # ── Test: 项目源码拉取（sources）──
     #

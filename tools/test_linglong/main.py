@@ -136,11 +136,29 @@ class SmokeTest:
         ("search 筛选选项", "test_search_options", "命令覆盖"),
         ("inspect 目录查询", "test_inspect_commands", "命令覆盖"),
         ("扩展运行（--extensions）", "test_run_with_extensions", "运行时覆盖"),
+        ("扩展层的解析、env 注入与挂载", "test_extension_layer_env_and_mount", "运行时覆盖"),
+        ("运行配置 env 注入", "test_runtime_config_env_injection", "运行时覆盖"),
+        ("架构字符串解析", "test_architecture_parsing", "应用管理"),
+        ("旧版仓库配置迁移", "test_repo_config_v1_migration", "仓库管理"),
+        ("仓库缓存重建", "test_repo_cache_rebuild", "仓库管理"),
+        ("重复安装与强制重装", "test_install_force_and_duplicate", "应用管理"),
+        ("缓存写失败时的行为", "test_cache_write_failure", "仓库管理"),
+        ("锁目录不可写时的行为", "test_filelock_dir_unwritable", "运行时覆盖"),
+        ("容器运行时不可用时的行为", "test_runtime_binary_unusable", "运行时覆盖"),
+        ("--json 输出一致性", "test_json_output_variants", "CLI 输出"),
+        ("运行配置嵌套挂载", "test_runtime_config_mounts", "运行时覆盖"),
+        ("TTY 透传与信号转发", "test_tty_and_signal_forwarding", "运行时覆盖"),
+        ("从终端复用运行中的实例", "test_reuse_instance_with_tty", "运行时覆盖"),
+        ("客户端在任务进行中断开", "test_client_disconnect_during_task", "服务管理"),
+        ("仓库不可写时的安装失败", "test_ostree_readonly_install", "仓库管理"),
+        ("错误路径必须给出清晰报错", "test_error_paths_report_clearly", "CLI 输出"),
+        ("应用 permissions 的 binds/innerBinds", "test_run_app_permissions_binds", "运行时覆盖"),
         ("安装/升级错误路径", "test_install_error_paths", "命令覆盖"),
         ("安装、升级并运行日历应用", "test_calendar_install_upgrade_run", "应用管理"),
         ("验证日历模块生命周期", "test_calendar_module_lifecycle", "应用管理"),
         ("验证 versionV1 到 versionV2 升降级", "test_semver_upgrade_flow", "应用管理"),
         ("安装并运行 baseline 测试套件", "test_testsuite_baseline", "应用管理"),
+        ("版本号解析边界", "test_version_parsing_edge_cases", "应用管理"),
         ("查询只读子命令（ps/list/repo）", "test_readonly_query_commands", "命令覆盖"),
         ("检查已安装应用（info/content）", "test_installed_app_inspection", "命令覆盖"),
         ("验证错误路径处理", "test_error_paths", "命令覆盖"),
@@ -173,6 +191,10 @@ class SmokeTest:
         # ── 覆盖率补强用例（第五批）──
         # driver-detect 是独立程序，不依赖应用；放在 PTY 用例之后。
         ("图形驱动检测工具", "test_driver_detect", "命令覆盖"),
+        # 上面那条只跑 --check-only；这条用桩通知服务把"发通知问用户装不装"
+        # 这段跑起来：回 not_remind 必须写 neverRemind，不应答必须 25 秒
+        # 超时且什么都不做。不碰 install_now（会下载 1.6GB 驱动）。
+        ("驱动检测的交互通知", "test_driver_detect_notification", "命令覆盖"),
         # entries 重写需要独立构建并安装一个项目，放在最后、
         # 已安装应用都验证完之后（它自己会卸载并清理）。
         ("entries 文件重写", "test_entry_file_rewrite", "应用构建"),
@@ -188,6 +210,14 @@ class SmokeTest:
         # 必须出现提问且升级被取消；带 -y 必须完全不提问且真的升上去。
         # 依赖日历应用可用，排在上面那条之后。
         ("install -y 跳过交互", "test_install_yes_option", "应用管理"),
+        # 非 TTY 的通知交互：同样的升级场景，但把一条 root 私有会话总线 +
+        # 桩通知服务（notif_stub.py）交给 ll-cli，让它走
+        # cli/dbus_notifier.cpp 的 GetCapabilities/Notify/等信号，而不是
+        # sudo 下退化的 DummyNotifier。桩分别回 yes / no，断言
+        # "真的升上去" / "真的被取消"，并核对通知正文里的新旧两个 ref。
+        # 自己还原成最新版（后面的 PTY / 容器用例还要用日历应用）。
+        ("通知交互：yes 升级 / no 取消", "test_install_interaction_notification",
+         "应用管理"),
         # 源码拉取：linglong.yaml 的 sources 字段，走 fetchSources +
         # SourceFetcher + fetch-<kind>-source 脚本，此前整块未覆盖。
         # 自己起本地 HTTP 服务供 wget 下载，不依赖外网。

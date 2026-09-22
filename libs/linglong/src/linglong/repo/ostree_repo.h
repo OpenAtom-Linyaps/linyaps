@@ -283,6 +283,10 @@ protected:
     virtual utils::error::Result<bool> shouldExportSignData() const noexcept;
     utils::error::Result<void> exportAppEntries(
       const std::filesystem::path &, const api::types::v1::RepositoryCacheLayersItem &) noexcept;
+    // Export a single wrapper script named after the appid to entries/bin
+    utils::error::Result<void>
+    exportAppBinaries(const std::filesystem::path &rootEntriesDir,
+                      const api::types::v1::RepositoryCacheLayersItem &item) noexcept;
     utils::error::Result<void> unexportLayerSignData(
       const std::filesystem::path &, const api::types::v1::RepositoryCacheLayersItem &) noexcept;
     utils::error::Result<void> unexportAppEntries(

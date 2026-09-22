@@ -13,6 +13,7 @@
 #include "linglong/api/types/v1/Repo.hpp"
 #include "linglong/api/types/v1/RepositoryCacheLayersItem.hpp"
 #include "linglong/api/types/v1/RepositoryCacheMergedItem.hpp"
+#include "linglong/common/error.h"
 #include "linglong/common/formatter.h"
 #include "linglong/common/gkeyfile_wrapper.h"
 #include "linglong/common/strings.h"
@@ -48,12 +49,13 @@
 #include <QtGlobal>
 
 #include <algorithm>
+#include <cerrno>
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
-#include <cstring>
 #include <filesystem>
+#include <fstream>
 #include <map>
 #include <memory>
 #include <optional>
@@ -66,6 +68,7 @@
 #include <vector>
 
 #include <fcntl.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 namespace linglong::repo {
@@ -1771,7 +1774,9 @@ OSTreeRepo::unexportAppEntries(const std::filesystem::path &rootEntriesDir,
             // specify a directory. these files do not belong to the applications and should not be
             // printed in the log.
             if (info.absoluteFilePath().contains("share/mime")
-                || info.absoluteFilePath().contains("share/applications")) {
+                || info.absoluteFilePath().contains("share/applications")
+                || info.absoluteFilePath().contains("/bin/")) {
+                // entries/bin holds regular wrapper script files that are not symlinks.
                 continue;
             }
 
@@ -1800,6 +1805,63 @@ OSTreeRepo::unexportAppEntries(const std::filesystem::path &rootEntriesDir,
 
         if (!entriesDir.remove(it.filePath())) {
             LogE("Failed to remove {}", it.filePath().toStdString());
+        }
+    }
+
+    // Clean up binary wrapper scripts in entries/bin at the appID level: the wrapper is
+    // removed only when no other undeleted layer with the same app id remains outside this
+    // unexport batch. This keeps the wrapper alive across upgrades and module-level
+    // uninstalls and removes it when the last layer of the app is uninstalled.
+    std::vector<std::string> handledAppIDs;
+    for (const auto &layerPath : layerDirs) {
+        package::LayerDir layerDir(layerPath);
+        auto infoResult = layerDir.info();
+        if (!infoResult) {
+            LogW("Failed to read info from {}: {}",
+                 layerPath.string(),
+                 infoResult.error().message());
+            continue;
+        }
+
+        auto appID = infoResult->id;
+        if (std::find(handledAppIDs.cbegin(), handledAppIDs.cend(), appID)
+            != handledAppIDs.cend()) {
+            continue;
+        }
+        handledAppIDs.emplace_back(appID);
+
+        // Is there still an undeleted layer with the same app id that is not part of this
+        // unexport batch?
+        auto remaining =
+          this->cache->queryLayerItem(repoCacheQuery{ .id = appID, .deleted = false });
+        auto hasOtherLayer =
+          std::any_of(remaining.cbegin(), remaining.cend(), [&](const auto &item) {
+              auto itemPath = this->layerPath(item.commit).lexically_normal();
+              return std::none_of(layerDirs.cbegin(), layerDirs.cend(), [&](const auto &p) {
+                  return p.lexically_normal() == itemPath;
+              });
+          });
+
+        auto binDir = rootEntriesDir / "bin";
+        if (hasOtherLayer) {
+            // Upgrade or module-level uninstall: another version/module of the app remains.
+            LogI("Keep binary wrapper for {}: another layer still exists", appID);
+            continue;
+        }
+
+        // The last layer of this app is being removed: delete the wrapper contents.
+        std::error_code ec;
+        std::filesystem::remove(binDir / appID, ec);
+        if (ec) {
+            LogW("Failed to remove binary wrapper {} for {}: {}",
+                 (binDir / appID).string(),
+                 appID,
+                 ec.message());
+        }
+        auto appBinDir = binDir / "apps" / appID;
+        std::filesystem::remove_all(appBinDir, ec);
+        if (ec) {
+            LogW("Failed to remove {}: {}", appBinDir.string(), ec.message());
         }
     }
 
@@ -2161,6 +2223,14 @@ OSTreeRepo::exportAppEntries(const std::filesystem::path &rootEntriesDir,
 {
     LINGLONG_TRACE(fmt::format("export app entries for {}", item.info.id));
 
+    // Binary wrapper scripts are exported regardless of the white-listed app entries:
+    // the appid-named wrapper is generated even when the layer has no entries directory
+    // or the host lacks the export-dirs.json whitelist, so the script is always created.
+    auto binRet = this->exportAppBinaries(rootEntriesDir, item);
+    if (!binRet) {
+        return binRet;
+    }
+
     auto layerDir = getLayerDir(item);
     if (!layerDir.has_value()) {
         return LINGLONG_ERR("get layer dir", layerDir);
@@ -2234,6 +2304,157 @@ OSTreeRepo::exportAppEntries(const std::filesystem::path &rootEntriesDir,
             return ret;
         }
     }
+
+    return LINGLONG_OK;
+}
+
+namespace {
+
+// Build the script content for a wrapper script: each element of command is
+// single-quoted for shell safety.
+std::string buildWrapperScriptContent(const std::string &appID,
+                                      const std::vector<std::string> &command)
+{
+    auto quotedAppID = common::strings::quoteBashArg(appID);
+
+    std::string cmdArgs;
+    for (const auto &arg : command) {
+        if (!cmdArgs.empty()) {
+            cmdArgs += ' ';
+        }
+        cmdArgs += common::strings::quoteBashArg(arg);
+    }
+    return fmt::format("#!/usr/bin/env sh\nexec ll-cli run {} -- {} \"$@\"\n",
+                       quotedAppID,
+                       cmdArgs);
+}
+
+// Content: #!/usr/bin/env sh\nexec ll-cli run <appID> -- <command...> "$@"
+// The wrapper is created atomically with O_EXCL. If the file already exists (e.g. a
+// previous version was installed), the creation is idempotent: identical content is a
+// no-op and different content is overwritten, so the script always tracks the latest command.
+utils::error::Result<void>
+createBinaryWrapperScript(const std::filesystem::path &path,
+                          const std::string &appID,
+                          const std::vector<std::string> &command) noexcept
+{
+    LINGLONG_TRACE(fmt::format("create binary wrapper script {}", path.string()));
+
+    auto dir = path.parent_path();
+    std::error_code ec;
+    std::filesystem::create_directories(dir, ec);
+    if (ec) {
+        return LINGLONG_ERR(
+          fmt::format("create directories for {}: {}", path.string(), ec.message()));
+    }
+
+    const std::string content = buildWrapperScriptContent(appID, command);
+
+    int fd = ::open(path.c_str(), O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, 0755);
+    if (fd < 0) {
+        if (errno != EEXIST) {
+            return LINGLONG_ERR(
+              fmt::format("open {}: {}", path.string(), common::error::errorString(errno)));
+        }
+
+        // The wrapper already exists. Keep it untouched when the content matches, otherwise
+        // overwrite so the exported command always reflects the latest version.
+        auto existing = linglong::utils::readFile(path);
+        if (existing && *existing == content) {
+            return LINGLONG_OK;
+        }
+        fd = ::open(path.c_str(), O_WRONLY | O_TRUNC | O_CLOEXEC);
+        if (fd < 0) {
+            return LINGLONG_ERR(fmt::format("open {} for overwrite: {}",
+                                            path.string(),
+                                            common::error::errorString(errno)));
+        }
+    }
+
+    // fchmod ensures executable bit regardless of process umask
+    if (::fchmod(fd, 0755) != 0) {
+        ::close(fd);
+        std::error_code rmEc;
+        std::filesystem::remove(path, rmEc);
+        return LINGLONG_ERR(
+          fmt::format("fchmod {}: {}", path.string(), common::error::errorString(errno)));
+    }
+
+    ssize_t written = ::write(fd, content.data(), content.size());
+    if (written < 0) {
+        ::close(fd);
+        std::error_code rmEc;
+        std::filesystem::remove(path, rmEc);
+        return LINGLONG_ERR(
+          fmt::format("write to {}: {}", path.string(), common::error::errorString(errno)));
+    }
+    if (static_cast<size_t>(written) != content.size()) {
+        ::close(fd);
+        std::error_code rmEc;
+        std::filesystem::remove(path, rmEc);
+        return LINGLONG_ERR(fmt::format("partial write to {}", path.string()));
+    }
+
+    if (::close(fd) != 0) {
+        std::error_code rmEc;
+        std::filesystem::remove(path, rmEc);
+        return LINGLONG_ERR(
+          fmt::format("close {}: {}", path.string(), common::error::errorString(errno)));
+    }
+
+    return LINGLONG_OK;
+}
+} // namespace
+
+utils::error::Result<void>
+OSTreeRepo::exportAppBinaries(const std::filesystem::path &rootEntriesDir,
+                              const api::types::v1::RepositoryCacheLayersItem &item) noexcept
+{
+    LINGLONG_TRACE(fmt::format("export app binaries for {}", item.info.id));
+
+    // command is required for app kind; guard defensively
+    const auto &cmd = item.info.command.value_or(std::vector<std::string>{});
+    if (cmd.empty()) {
+        LogW("Skipping binary export for {}: command field is empty", item.info.id);
+        return LINGLONG_OK;
+    }
+
+    auto binDir = rootEntriesDir / "bin";
+    // Actual scripts live under entries/bin/apps/APPID/bin/
+    auto appBinDir = binDir / "apps" / item.info.id / "bin";
+
+    // Helper: create a wrapper script and a symlink in entries/bin/ pointing to it
+    auto exportOne = [&](const std::string &name, const std::vector<std::string> &command) -> void {
+        auto realScript = appBinDir / name;
+        auto ret = createBinaryWrapperScript(realScript, item.info.id, command);
+        if (!ret) {
+            LogW("Failed to create binary script {} for {}: {}",
+                 name,
+                 item.info.id,
+                 ret.error().message());
+            return;
+        }
+        // Create relative symlink: entries/bin/<name> → apps/APPID/bin/<name>
+        auto linkPath = binDir / name;
+        auto target = std::filesystem::path("apps") / item.info.id / "bin" / name;
+        std::error_code ec;
+        if (std::filesystem::exists(linkPath, ec) || std::filesystem::is_symlink(linkPath, ec)) {
+            // Already exists (e.g. upgrade); remove old link before creating new one
+            std::filesystem::remove(linkPath, ec);
+        }
+        std::filesystem::create_symlink(target, linkPath, ec);
+        if (ec) {
+            LogW("Failed to create symlink {} → {} for {}: {}",
+                 linkPath.string(),
+                 target.string(),
+                 item.info.id,
+                 ec.message());
+        }
+    };
+
+    // Always export a single script named after the appid, using the full command array
+    exportOne(item.info.id, cmd);
+
     return LINGLONG_OK;
 }
 

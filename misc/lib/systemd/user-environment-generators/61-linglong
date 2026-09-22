@@ -1,0 +1,39 @@
+#!/usr/bin/env sh
+
+# SPDX-FileCopyrightText: 2023-2026 UnionTech Software Technology Co., Ltd.
+#
+# SPDX-License-Identifier: LGPL-3.0-or-later
+
+# shellcheck shell=sh
+
+# User environment generator for linglong/linyaps
+# This script injects entries/bin into PATH and sources the XDG_DATA_DIRS
+# generation script, printing the modified environment variables to stdout.
+# systemd user environment generators run at user session start for both X11 and Wayland sessions.
+# https://www.freedesktop.org/software/systemd/man/latest/systemd.environment-generator.html
+
+# Inject entries/bin into PATH (append, not prepend, to avoid shadowing
+# system commands like git/python with wrapper scripts).
+_linglong_bin_dir="@LINGLONG_ROOT@/entries/bin"
+if [ -n "${_linglong_bin_dir}" ] && [ -d "${_linglong_bin_dir}" ]; then
+    case ":${PATH}:" in
+        *":${_linglong_bin_dir}:"*) ;; # Already in PATH
+        *) PATH="${PATH:+${PATH}:}${_linglong_bin_dir}" ;;
+    esac
+fi
+unset _linglong_bin_dir
+
+source_script="@CMAKE_INSTALL_PREFIX@/lib/linglong/generate-xdg-data-dirs.sh"
+
+# Source the script and set XDG_DATA_DIRS if successful
+[ -r "${source_script}" ] && . "${source_script}"
+
+# !!!systemd requires environment variables to be printed to standard output!!!
+# https://www.freedesktop.org/software/systemd/man/latest/systemd.environment-generator.html
+if [ -n "${XDG_DATA_DIRS}" ]; then
+echo "XDG_DATA_DIRS=${XDG_DATA_DIRS}"
+fi
+
+if [ -n "${PATH}" ]; then
+echo "PATH=${PATH}"
+fi

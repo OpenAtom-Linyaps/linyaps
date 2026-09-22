@@ -26,7 +26,7 @@ configure_files(
   libexec/linglong/ld-cache-generator
   lib/linglong/container/README.md
   lib/linglong/generate-xdg-data-dirs.sh
-  lib/systemd/system-environment-generators/61-linglong
+  lib/systemd/user-environment-generators/61-linglong
   lib/systemd/system/org.deepin.linglong.PackageManager.service
   lib/systemd/system-preset/91-linglong.preset
   lib/systemd/user-generators/linglong-user-systemd-generator
@@ -130,13 +130,13 @@ set(SYSTEMD_SYSTEM_UNIT_PATH ${CMAKE_INSTALL_PREFIX}/lib/systemd)
 install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib/systemd/system
         DESTINATION ${SYSTEMD_SYSTEM_UNIT_PATH})
 
-set(SYSTEMD_SYSTEM_GENERATOR_PATH
-    ${CMAKE_INSTALL_PREFIX}/lib/systemd/system-environment-generators)
+set(SYSTEMD_USER_GENERATOR_PATH
+    ${CMAKE_INSTALL_PREFIX}/lib/systemd/user-environment-generators)
 
 install(
   PROGRAMS
-    ${CMAKE_CURRENT_BINARY_DIR}/lib/systemd/system-environment-generators/61-linglong
-  DESTINATION ${SYSTEMD_SYSTEM_GENERATOR_PATH})
+    ${CMAKE_CURRENT_BINARY_DIR}/lib/systemd/user-environment-generators/61-linglong
+  DESTINATION ${SYSTEMD_USER_GENERATOR_PATH})
 
 install(
   PROGRAMS
@@ -165,6 +165,9 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/share/icons/linyaps.svg
 # set linglong XDG_DATA_DIRS environment
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/script/linglong.sh
         DESTINATION ${CMAKE_INSTALL_FULL_SYSCONFDIR}/profile.d)
+# Note: X11/Xsession.d is Debian-specific. Other distributions use different
+# mechanisms for X session initialization and should rely on the systemd
+# user environment generator or profile.d script instead.
 
 install(
   FILES ${CMAKE_CURRENT_BINARY_DIR}/script/linglong.sh

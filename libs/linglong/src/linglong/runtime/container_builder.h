@@ -30,6 +30,16 @@ struct RunOptions;
 
 namespace linglong::runtime {
 
+namespace detail {
+
+// Resolves a container destination to a strict rootfs descendant, following parent symlinks only.
+// Callers must replace or otherwise validate a final symlink before dereferencing the result.
+[[nodiscard]] auto resolveRootfsPath(const std::filesystem::path &destination,
+                                     const std::filesystem::path &rootfs) noexcept
+  -> std::optional<std::filesystem::path>;
+
+} // namespace detail
+
 class RunContext;
 
 // Used to obtain a clean container bundle directory.

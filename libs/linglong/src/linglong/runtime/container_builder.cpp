@@ -37,18 +37,6 @@ const std::vector<std::string> buildContainerCaps = {
     "CAP_SETPCAP", "CAP_SETUID",           "CAP_SYS_CHROOT",
 };
 
-auto isPathInRootfs(const std::filesystem::path &path, const std::filesystem::path &rootfs) noexcept
-  -> bool
-{
-    auto relative = path.lexically_normal().lexically_relative(rootfs.lexically_normal());
-    if (relative.empty()) {
-        return false;
-    }
-
-    auto it = relative.begin();
-    return it == relative.end() || *it != "..";
-}
-
 auto getXDPDocumentsMountPoint() noexcept -> utils::error::Result<std::filesystem::path>
 {
     LINGLONG_TRACE("get XDP Documents mount point");
@@ -92,6 +80,49 @@ auto getXDPDocumentsMountPoint() noexcept -> utils::error::Result<std::filesyste
 }
 
 } // namespace
+
+auto detail::resolveRootfsPath(const std::filesystem::path &destination,
+                               const std::filesystem::path &rootfs) noexcept
+  -> std::optional<std::filesystem::path>
+{
+    // Reject traversal before lexical normalization can hide a symlink followed by "..".
+    if (std::any_of(destination.begin(), destination.end(), [](const auto &component) {
+            return component == "..";
+        })) {
+        return std::nullopt;
+    }
+
+    auto relative = destination.relative_path().lexically_normal();
+    // A trailing separator would make filesystem operations follow a final directory symlink.
+    while (!relative.empty() && relative.filename().empty()) {
+        relative = relative.parent_path();
+    }
+    if (relative.empty() || relative == ".") {
+        return std::nullopt;
+    }
+
+    std::error_code ec;
+    const auto canonicalRootfs = std::filesystem::canonical(rootfs, ec);
+    if (ec) {
+        return std::nullopt;
+    }
+    const auto parent =
+      std::filesystem::weakly_canonical(canonicalRootfs / relative.parent_path(), ec);
+    if (ec) {
+        return std::nullopt;
+    }
+
+    const auto parentRelative = parent.lexically_relative(canonicalRootfs);
+    if (parentRelative.empty()
+        || std::any_of(parentRelative.begin(), parentRelative.end(), [](const auto &component) {
+               return component == "..";
+           })) {
+        return std::nullopt;
+    }
+
+    // Use the checked parent for subsequent operations; leave the final entry unresolved.
+    return parent / relative.filename();
+}
 
 utils::error::Result<std::filesystem::path> makeBundleDir(const std::string &containerID,
                                                           const std::string &bundleSuffix)
@@ -472,8 +503,17 @@ auto ContainerBuilder::normalizeContainerRootfs(
 
     for (const auto &r : remove) {
         std::error_code ec;
-        auto target = rootfs / (r.is_absolute() ? r.relative_path() : r);
-        if (std::filesystem::exists(target, ec)) {
+        auto resolved = detail::resolveRootfsPath(r, rootfs);
+        if (!resolved) {
+            return LINGLONG_ERR(
+              fmt::format("normalization target {} escapes rootfs {}", r, rootfs));
+        }
+        const auto &target = *resolved;
+        const auto targetStatus = std::filesystem::symlink_status(target, ec);
+        if (ec == std::errc::no_such_file_or_directory || ec == std::errc::not_a_directory) {
+            ec.clear();
+        }
+        if (!ec && std::filesystem::exists(targetStatus)) {
             std::filesystem::remove(target, ec);
             if (ec) {
                 LogW("failed to remove {}: {}", target, ec.message());
@@ -483,7 +523,12 @@ auto ContainerBuilder::normalizeContainerRootfs(
 
     // create symlink for timezone
     if (config.timezone && !config.timezone->empty()) {
-        auto localtimePath = rootfs / "etc/localtime";
+        auto resolved = detail::resolveRootfsPath("/etc/localtime", rootfs);
+        if (!resolved) {
+            return LINGLONG_ERR(
+              fmt::format("timezone path /etc/localtime escapes rootfs {}", rootfs));
+        }
+        const auto &localtimePath = *resolved;
         auto timezonePath = generator::ContainerCfgBuilder::zoneinfoMountPoint / *config.timezone;
         std::error_code ec;
         std::filesystem::create_symlink(timezonePath, localtimePath, ec);
@@ -496,15 +541,41 @@ auto ContainerBuilder::normalizeContainerRootfs(
 
     auto ensureMountPoint = [&](const std::string &destination,
                                 const std::string &srcType) -> utils::error::Result<void> {
-        auto destPath = std::filesystem::path(destination);
-        auto dest = rootfs / (destPath.is_absolute() ? destPath.relative_path() : destPath);
-        if (!isPathInRootfs(dest, rootfs)) {
+        auto resolved = detail::resolveRootfsPath(destination, rootfs);
+        if (!resolved) {
             return LINGLONG_ERR(
-              fmt::format("mount destination {} is outside rootfs {}", dest, rootfs));
+              fmt::format("mount destination {} is outside rootfs {}", destination, rootfs));
         }
+        const auto &dest = *resolved;
 
         std::error_code ec;
-        if (std::filesystem::exists(dest, ec)) {
+        const auto destStatus = std::filesystem::symlink_status(dest, ec);
+        const auto destIsSymlink = !ec && std::filesystem::is_symlink(destStatus);
+        if (ec == std::errc::no_such_file_or_directory || ec == std::errc::not_a_directory) {
+            ec.clear();
+        }
+        if (ec) {
+            LogW("failed to inspect mount point {}: {}", dest, ec.message());
+            return LINGLONG_OK;
+        }
+
+        // Mount targets must be real entries under rootfs. Even a valid symlink can redirect
+        // the eventual mount operation outside the rootfs, so replace the leaf link itself.
+        if (destIsSymlink) {
+            std::filesystem::remove(dest, ec);
+            if (ec) {
+                return LINGLONG_ERR(fmt::format("failed to remove mount point symlink {}", dest),
+                                    ec);
+            }
+        }
+
+        const auto destExists = std::filesystem::exists(dest, ec);
+        if (ec) {
+            LogW("failed to inspect mount point {}: {}", dest, ec.message());
+            return LINGLONG_OK;
+        }
+
+        if (destExists) {
             const auto destIsDirectory = std::filesystem::is_directory(dest, ec);
             if (!ec
                 && ((srcType == "file" && !destIsDirectory)

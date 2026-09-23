@@ -137,6 +137,44 @@ TEST_F(RunContextTest, layerExist)
     ASSERT_TRUE(layer.has_value()) << "Failed to create runtime layer: " << layer.error().message();
 }
 
+TEST(RunContextUtil, ResolveInnerBindSourcePathConstrainsSourcesToRootfs)
+{
+    TempDir tempDir("inner-bind-source-");
+    ASSERT_TRUE(tempDir.isValid());
+
+    const auto rootfs = tempDir.path() / "rootfs";
+    std::filesystem::create_directories(rootfs / "usr/share");
+    std::ofstream{ rootfs / "usr/share/data" } << "container data";
+    std::filesystem::create_directory_symlink("usr/share", rootfs / "share");
+
+    auto resolved = runtime::detail::resolveInnerBindSourcePath(rootfs, "/usr/share/data");
+    ASSERT_TRUE(resolved.has_value()) << resolved.error().message();
+    EXPECT_EQ(*resolved, rootfs / "usr/share/data");
+    auto internalLink = runtime::detail::resolveInnerBindSourcePath(rootfs, "share/data");
+    ASSERT_TRUE(internalLink.has_value()) << internalLink.error().message();
+    EXPECT_EQ(*internalLink, rootfs / "usr/share/data");
+
+    EXPECT_FALSE(runtime::detail::resolveInnerBindSourcePath(rootfs, "../../outside").has_value());
+    EXPECT_FALSE(runtime::detail::resolveInnerBindSourcePath(rootfs, "/").has_value());
+}
+
+TEST(RunContextUtil, ResolveInnerBindSourcePathRejectsSymlinksOutsideRootfs)
+{
+    TempDir tempDir("inner-bind-symlink-");
+    ASSERT_TRUE(tempDir.isValid());
+
+    const auto rootfs = tempDir.path() / "rootfs";
+    const auto outside = tempDir.path() / "outside";
+    std::filesystem::create_directories(rootfs);
+    std::filesystem::create_directories(outside);
+    std::ofstream{ outside / "secret" } << "host data";
+    std::filesystem::create_directory_symlink(outside, rootfs / "escape");
+    std::filesystem::create_symlink(outside / "secret", rootfs / "leaf");
+
+    EXPECT_FALSE(runtime::detail::resolveInnerBindSourcePath(rootfs, "escape/secret").has_value());
+    EXPECT_FALSE(runtime::detail::resolveInnerBindSourcePath(rootfs, "leaf").has_value());
+}
+
 TEST_F(RunContextTest, layerNotExist)
 {
     LINGLONG_TRACE("layerNotExist");

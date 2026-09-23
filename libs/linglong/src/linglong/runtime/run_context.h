@@ -31,6 +31,14 @@ class ContainerCfgBuilder;
 
 namespace linglong::runtime {
 
+namespace detail {
+
+[[nodiscard]] auto resolveInnerBindSourcePath(const std::filesystem::path &rootfs,
+                                              const std::filesystem::path &source) noexcept
+  -> utils::error::Result<std::filesystem::path>;
+
+} // namespace detail
+
 struct ResolveOptions
 {
     bool depsExcludeDev{ false };

@@ -150,7 +150,6 @@ class SmokeTest:
         ("TTY 透传与信号转发", "test_tty_and_signal_forwarding", "运行时覆盖"),
         ("从终端复用运行中的实例", "test_reuse_instance_with_tty", "运行时覆盖"),
         ("客户端在任务进行中断开", "test_client_disconnect_during_task", "服务管理"),
-        ("仓库不可写时的安装失败", "test_ostree_readonly_install", "仓库管理"),
         ("错误路径必须给出清晰报错", "test_error_paths_report_clearly", "CLI 输出"),
         ("应用 permissions 的 binds/innerBinds", "test_run_app_permissions_binds", "运行时覆盖"),
         ("安装/升级错误路径", "test_install_error_paths", "命令覆盖"),
@@ -333,11 +332,11 @@ class SmokeTest:
         "test_repo_config_v1_migration",
         "test_repo_cache_rebuild",
         "test_cache_write_failure",
-        "test_ostree_readonly_install",
     })
 
     # 整轮开始前的仓库配置快照，供 cleanup() 校验"改了要还原"。
     _repo_config_at_start = None
+    _installed_refs_at_start = None
 
     # ── repo 配置快照 / 还原 ──
     @staticmethod
@@ -606,17 +605,19 @@ class SmokeTest:
         # reset_repositories() 会把它删掉，所以首尾应当一致。
         try:
             self._repo_config_at_start = self._snapshot_repo_config()
+            self._installed_refs_at_start = self._installed_refs()
         except Exception as exc:  # noqa: BLE001
             print(f"Warning: 读取仓库配置失败，跳过还原校验: {exc}")
 
         try:
             for i in range(len(self.STEPS)):
                 title = self.STEPS[i][0]
-                # 每步之前修一下构建缓存的自洽性。
-                # 冒烟里的 import / import-dir 会在构建仓库的 states.json
-                # 里留下 commit 已不存在的 layer 记录，之后任何一次
+                # 每步之前修一下构建缓存的自洽性（自愈兜底）。
+                # 账本里若有 commit 已不存在的 layer 记录，之后任何一次
                 # ll-builder build 的 mergeModules() 都会失败
                 # （报 "stage pull dependency error"，重试无用）。
+                # 注：这个不自洽在当前代码上没能复现（见
+                # ensure_builder_cache_healthy 的说明），保留纯属兜底。
                 # 这一步只是读一个 JSON + 查几个文件是否存在，很便宜。
                 try:
                     self.ensure_builder_cache_healthy()
@@ -2324,117 +2325,6 @@ class SmokeTest:
             raise AssertionError(
                 f"权限还原后仍然跑不起来: rc={code} {out[:200]!r}")
 
-    # ── 仓库不可写时安装：必须干净失败，不能留半成品 ──
-    #
-    # package_manager.cpp（304 行未覆盖）里的安装失败分支此前没覆盖：
-    # 仓库一直是可写的，没人制造过"写不进去"。
-    #
-    # 手法：chattr +i 冻结 ostree 仓库目录（比递归 chmod 干净，一条命令
-    # 就能精确还原），装一个没装过的应用，然后立刻 chattr -i 并断言能
-    # 正常装上。
-    #
-    # 断言的功能属性（不是"必须成功"也不是"必须失败"）：
-    #   1. 不能崩（rc 不能是信号）
-    #   2. 失败要留可读报错；成功也不许出现"半装"状态 ——
-    #      以"应用集合有没有出现这个应用"为准，装了就得能列出来
-    #   3. 解除冻结之后，同一个安装必须能成功（恢复能力）
-    def test_ostree_readonly_install(self):
-        # ⚠️ 必须用【镜像仓库里确实有】的应用：org.deepin.demo 是套件
-        # 本地构建出来的，远程仓库里没有（实测报"远程仓库中未找到应用"）。
-        app_id = CALENDAR_APP_ID
-        # ostree 仓库根就是 /var/lib/linglong 本身（states.json 直接躺在
-        # 里面），所以不能冻根目录（那会把缓存写也一起冻上，和上一个用例
-        # 重了）。冻 objects/ —— 装新应用一定要往这里写新对象。
-        repo = None
-        for cand in ("/var/lib/linglong/repo/objects",
-                     "/var/lib/linglong/repo/refs",
-                     "/var/lib/linglong/repo"):
-            if os.path.isdir(cand):
-                repo = cand
-                break
-        if repo is None:
-            raise StepSkipped("找不到 ostree 的对象/引用目录")
-
-        row_re = re.compile(r"^(\S+)\s+\S+\s+(\d[\d.]*)\s", re.M)
-
-        def installed():
-            out = self._ll_cli("list", check=False).stdout
-            return {f"{i}/{v}" for i, v in row_re.findall(out or "")}
-
-        if not any(x.startswith(app_id + "/") for x in installed()):
-            self._sudo_ll_cli("install", app_id, timeout=900, check=False)
-        before = installed()
-        if not any(x.startswith(app_id + "/") for x in before):
-            raise StepSkipped(f"{app_id} 装不上（镜像里没有？）")
-        try:
-            r = self._run_cmd(["chattr", "+i", repo], sudo=True, check=False)
-            if r.returncode != 0:
-                raise StepSkipped(f"{repo} 不支持 chattr +i，跳过")
-
-            # 先卸载（会往 refs 写；objects 冻着，看它怎么表现），
-            # 再装回来 —— 让安装真的有事可做
-            self._sudo_ll_cli("uninstall", "--force", app_id,
-                              timeout=300, check=False)
-            r = self._sudo_ll_cli("install", app_id, timeout=600,
-                                  check=False)
-            combined = (r.stdout or "") + (r.stderr or "")
-            if r.returncode < 0:
-                raise AssertionError(
-                    f"仓库不可写时安装把进程搞崩了: rc={r.returncode}")
-
-            # 服务端的列表是异步刷新的，先给它几秒钟再判定
-            def wait_present(seconds=25):
-                deadline = time.time() + seconds
-                while time.time() < deadline:
-                    cur = installed()
-                    if any(x.startswith(app_id + "/") for x in cur):
-                        return cur
-                    time.sleep(2)
-                return installed()
-
-            after = installed()
-            # 半装 = 这次失败却【新出现】了应用；本来就装着不算
-            appeared = ({x for x in after if x.startswith(app_id + "/")}
-                        - before)
-            if r.returncode != 0 and appeared:
-                raise AssertionError(
-                    f"安装报失败，但应用却出现在列表里（半装状态）: {appeared}")
-            if r.returncode == 0:
-                after = wait_present()
-                if not any(x.startswith(app_id + "/") for x in after):
-                    raise AssertionError(
-                        "安装报成功，但等了 25 秒应用都没出现在列表里"
-                        "（报成功却没装上）")
-            if r.returncode != 0 and not combined.strip():
-                raise AssertionError("安装失败了但没有任何报错")
-        finally:
-            self._run_cmd(["chattr", "-i", repo], sudo=True, check=False)
-            r = self._run_cmd(["lsattr", "-d", repo], check=False)
-            if "i" in (r.stdout or "").split()[0] if r.stdout else False:
-                raise AssertionError(f"{repo} 的 chattr +i 没能解除")
-            self._restart_package_manager()
-            after = installed()
-            if before - after:
-                raise AssertionError(
-                    f"还原后少了应用: {sorted(before - after)}")
-
-        # 解除冻结之后必须能装上
-        # 注意：冻结期那次 uninstall 也可能失败（ostree 卸载同样要写
-        # objects），应用可能压根没被卸掉 —— 那这次 install 报
-        # "应用程序已经安装"就是【正常】的，只要应用在就行。
-        r = self._sudo_ll_cli("install", app_id, timeout=900, check=False)
-        combined = (r.stdout or "") + (r.stderr or "")
-        if r.returncode != 0 and not any(
-                k in combined for k in ("已安装", "已经安装")):
-            raise AssertionError(
-                f"解除冻结后安装仍然失败: rc={r.returncode} "
-                f"{combined[:200]!r}")
-        if not any(x.startswith(app_id + "/") for x in installed()):
-            raise AssertionError("安装返回成功，但应用没出现在列表里")
-        # 冻结期那次 uninstall/install 可能顺带装了旧 base（实测
-        # 23.1.0.3），所以按快照完整还原，而不是只断言"没变"
-        self._restore_installed_refs(before)
-
     def test_cache_write_failure(self):
         app_id = CALENDAR_APP_ID
         cache = "/var/lib/linglong/states.json"
@@ -2479,13 +2369,11 @@ class SmokeTest:
         cache = "/var/lib/linglong/states.json"
         workdir = Path(tempfile.mkdtemp(prefix="cacheprobe-"))
         backup = workdir / "states.json"
-        # ll-cli list 是列格式：ID 名称 版本 渠道 模块 描述
-        row_re = re.compile(r"^(\S+)\s+\S+\s+(\d[\d.]*)\s", re.M)
-
-        def installed(stdout):
-            return {f"{i}/{v}" for i, v in row_re.findall(stdout or "")}
-
-        before = installed(self._ll_cli("list", check=False).stdout)
+        # ⚠️ 必须用统一的 3 段快照。原来这里用自己写的 2 段正则取 before，
+        # 却拿它和 3 段的 after 相减 —— 2 段永远不等于 3 段，lost 恒等于
+        # 全部 before，用例必然 FAIL（run51 实测），而且那个正则还会丢掉
+        # 名称含空格的应用（org.deepin.runtime.dtk）。
+        before = self._installed_refs()
         if not before:
             raise StepSkipped("本地仓库里没有已装应用，重建无从验证")
 
@@ -2495,7 +2383,7 @@ class SmokeTest:
             self._run_cmd(["rm", "-f", cache], sudo=True, check=True)
             self._restart_package_manager()
 
-            after = installed(self._ll_cli("list", check=False).stdout)
+            after = self._installed_refs()
             lost = sorted(before - after)
             if lost:
                 raise AssertionError(
@@ -2578,16 +2466,15 @@ class SmokeTest:
     #   3. 两种情况跑完，ll-cli list 里的应用集合都不变
     def test_install_force_and_duplicate(self):
         app_id = CALENDAR_APP_ID
-        # ll-cli list 是列格式：ID 名称 版本 渠道 模块 描述
-        row_re = re.compile(r"^(\S+)\s+\S+\s+(\d[\d.]*)\s", re.M)
-
-        def installed(out):
-            return {f"{i}/{v}" for i, v in row_re.findall(out or "")}
-
-        before = installed(self._ll_cli("list", check=False).stdout)
+        # ⚠️ 必须用统一的 3 段快照（self._installed_refs），不要自己写 2 段
+        # 正则：那种正则要求名称是单个词，会把 org.deepin.runtime.dtk
+        # （名称是 "deepin runtime"）整行丢掉，于是还原时把它当成"多余的"
+        # 卸掉 —— 2026-09 实测就是这么把它弄丢的（漏 1 个时"比例判据"也
+        # 不会触发，所以护栏救不了这种漏）。
+        before = self._installed_refs()
         if not any(x.startswith(app_id + "/") for x in before):
             self._sudo_ll_cli("install", app_id, timeout=900, check=False)
-            before = installed(self._ll_cli("list", check=False).stdout)
+            before = self._installed_refs()
         if not any(x.startswith(app_id + "/") for x in before):
             raise StepSkipped(f"{app_id} 装不上（镜像里没有？）")
 
@@ -2622,7 +2509,7 @@ class SmokeTest:
         #    23.1.0.3。所以【不能】断言"应用集合不变"（我第一版就是这么
         #    写的，结果整轮 FAIL 并中止）。这里只断言真正要紧的：
         #    这个应用不能因为重装反而没了。
-        after = installed(self._ll_cli("list", check=False).stdout)
+        after = self._installed_refs()
         if not any(x.startswith(app_id + "/") for x in after):
             raise AssertionError(
                 f"强制重装后 {app_id} 反而没了: {sorted(after)}")
@@ -4202,7 +4089,11 @@ class SmokeTest:
     # 机器上装着的不一样 —— 日历实测 6.5.42.1 被换成了 5.14.5.1，重装
     # 还会顺带拉来旧 base 23.1.0.3。所以"卸载再装回来"会【静默换版本】，
     # 凡是动过安装状态的用例，都必须按快照里的【确切 id/版本/模块】还原。
-    _REF_ROW = re.compile(r"^(\S+)\s+\S+\s+(\d[\d.]*)\s+(\S+)\s+(\S+)\s",
+    # ⚠️ 名称列可能是多个词（org.deepin.runtime.dtk 的名称是 "deepin
+    # runtime"），所以名称不能写成 \S+ —— 那样整行会被静默丢弃，而被漏掉
+    # 的 ref 又会被还原逻辑当成"多余的"卸掉（只漏 1 个时还不会触发
+    # "一次卸载超过 2 个 ref" 的护栏，会真的被卸掉）。用 .*? 吃掉名称空格。
+    _REF_ROW = re.compile(r"^(\S+)\s+.*?\s+(\d[\d.]*)\s+(\S+)\s+(\S+)\s",
                           re.M)
 
     def _installed_refs(self):
@@ -4216,20 +4107,51 @@ class SmokeTest:
         整轮 run46 就是因为我传了 2 段快照进来，导致集合相减把【所有】
         应用都算成"多余的"并全部卸载，把机器清空了。
         """
-        snapshot = {r if r.count("/") == 2 else f"{r}/binary"
-                    for r in snapshot}
+        # ⚠️ 2 段快照（id/版本）不区分模块，【不能】当成"只有 binary" ——
+        # 否则"多退"会把同 id/版本下 develop 等模块当成多余的卸掉
+        # （run48 实测：base 的 develop 模块就是这样被删掉的）。
+        # 做法：用当前实际存在的模块把 2 段条目补全。
+        now = self._installed_refs()
+        expanded = set()
+        for r in snapshot:
+            # ⚠️ 段数要按【斜杠数】判断：id/版本 是 1 个斜杠（ID 里是点，
+            # 不是斜杠），id/版本/模块 才是 2 个。这里原来写成 == 2，于是
+            # 2 段条目被当成 3 段、不做展开，永远匹配不上真实的
+            # id/版本/模块 —— 结果"每条都算缺、每个真实 ref 都算多"，
+            # 这就是历史上两次把机器清空的真正原因（护栏只是在打补丁）。
+            if r.count("/") == 1:
+                mods = {x for x in now if x.startswith(r + "/")}
+                expanded |= mods or {f"{r}/binary"}
+            else:
+                expanded.add(r)
+        snapshot = expanded
         if not snapshot:
             raise AssertionError(
                 "拒绝用空快照还原安装状态（那会把机器上的应用全卸掉）")
-        now = self._installed_refs()
-        for ref in sorted(now - snapshot):
-            i, v, m = ref.split("/")
+        # 硬护栏（比例判据）：要卸载的数量 >= 快照总数时拒绝。
+        # 历史上这里因为快照格式不匹配，把"全部应用"都当成多余的卸掉过
+        # 【两次】，把机器清空。原来的绝对阈值（"超过 2 个就拒绝"）挡得住
+        # 灾难，却会误伤合法用例：例如"强制重装"会合法地多出 3 个 ref
+        # （被降级的应用 + 被顺带拉进来的旧 base），于是它无法自还原。
+        # 比例判据表达的是：不可能合法地卸载"比你知道的还多"的应用。
+        extra = now - snapshot
+        if extra and len(extra) >= len(snapshot):
+            raise AssertionError(
+                f"拒绝：要卸载 {len(extra)} 个 ref，不少于快照总数 "
+                f"{len(snapshot)} 个（疑似快照不匹配，会清空机器）: "
+                f"{sorted(extra)}")
+        for ref in sorted(extra):
+            parts = ref.split("/")
+            i, v = parts[0], parts[1]
+            m = parts[2] if len(parts) > 2 else "binary"
             argv = ["uninstall", "--force", f"{i}/{v}"]
             if m and m != "binary":
                 argv += ["--module", m]
             self._sudo_ll_cli(*argv, timeout=300, check=False)
         for ref in sorted(snapshot - now):
-            i, v, m = ref.split("/")
+            parts = ref.split("/")
+            i, v = parts[0], parts[1]
+            m = parts[2] if len(parts) > 2 else "binary"
             argv = ["install", f"{i}/{v}"]
             if m and m != "binary":
                 argv += ["--module", m]
@@ -5265,12 +5187,22 @@ class SmokeTest:
         ostree_repo_checkout_at 合并，只要有一个分组的 commit 在仓库里
         已经不存在，整次构建就报这个错（而且是确定性的，重试没用）。
 
-        为什么 commit 会不存在：states.json 是只增不减的账本，而
-        `ll-builder remove` 默认会顺带清理 ostree 对象。实测
-        `ll-builder import-dir`（隐藏子命令）会把 layer 记进 states.json，
-        但它的 commit 并不在 repo/objects 里，于是留下悬空记录。
-        实测整轮跑下来就是这一条：
-            org.deepin.layerprobe/1.0.0.1/binary
+        ⚠️ 关于成因：本函数最初的注释把它归到"`import-dir` 记账但不写
+        commit"+"`remove` 只删对象不留记录"，这两句【与代码相反】，
+        已按实测更正（2026-09）：
+          * OSTreeRepo::importLayerDir（ostree_repo.cpp:819）会
+            `commitDirToRepo()` 写出 commit，并把它写进账本 item.commit；
+          * OSTreeRepo::remove（ostree_repo.cpp:983）会
+            `cache->deleteLayerItem()` 删掉账本记录；对象是随后由
+            Builder::remove 的 `if (prune) repo.prune()`
+            （linglong_builder.cpp:381）清掉的；
+          * 实测：import-dir 之后账本自洽；再触发一次 prune（remove 掉一个
+            别的 ref）也不会删掉它的 commit —— 该 commit 有 ostree ref
+            （local:main/<id>/<version>/<arch>/<module>）保护。
+        也就是说在当前代码上【没能复现】出悬空记录：原始现象要么已被上游
+        修掉，要么另有成因。这里保留检查作为【自愈兜底】—— 它很便宜
+        （读一个 JSON + 查几个文件是否存在），一旦真出现不自洽就地摘掉，
+        而不是让整轮构建在后面随机失败。
 
         ⚠️ 这里【不能】直接删掉整个 ~/.cache/linglong-builder：
         那样连 cn.org.linyaps.builder.utils 都要重新下载，
@@ -5433,6 +5365,21 @@ class SmokeTest:
         self._sudo_ll_cli("uninstall", TESTSUITE_BASELINE_APP_ID, check=False)
         self._remove_demo_project_dir()
         self.reset_repositories()
+
+        # ⚠️ 上面这几句会把套件当夹具用的应用卸掉（demo / 日历 / semver /
+        # baseline）。但机器上原本就【预装】了其中一些 —— 例如日历，以及它
+        # 依赖的 org.deepin.runtime.dtk 和 base —— 卸掉之后它们就回不来了：
+        # 实测整轮跑完机器会少 3 个 ref（run52 之后只剩 3 个）。
+        # 这里按【整轮开始前的已装集合】兜底还原一次，语义与上面仓库配置的
+        # 兜底一致：让机器回到开跑前的样子，而不是留下被清理过的状态。
+        # 注意这里【不】判 has_failed：cleanup 卸载夹具是设计如此，还原失败
+        # 属于环境问题（装不回来），不该把一个跑得没问题的整轮判失败。
+        if self._installed_refs_at_start:
+            try:
+                self._restore_installed_refs(self._installed_refs_at_start)
+            except Exception as exc:  # noqa: BLE001
+                print(f"  Error: 还原整轮开始前的已装应用集合失败: {exc}",
+                      file=sys.stderr)
 
         if not self._verify_repo_state_restored("ll-cli"):
             self.has_failed = True

@@ -21,12 +21,6 @@
 
 namespace linglong::package {
 
-namespace {
-
-constexpr quint32 maxLayerMetaInfoLength = 16U * 1024U * 1024U;
-
-} // namespace
-
 using nlohmann::json;
 
 LayerFile::~LayerFile()

@@ -30,12 +30,9 @@ namespace linglong::package {
 
 namespace {
 
-// Keep untrusted ELF metadata sections from causing large allocations before JSON parsing.
-constexpr GElf_Xword maxMetaInfoSize = 16U * 1024U * 1024U;
-
 auto validateMetaInfoSize(const GElf_Shdr &section) -> utils::error::Result<void>
 {
-    if (section.sh_size > maxMetaInfoSize) {
+    if (section.sh_size > maxUabMetaInfoSize) {
         return LINGLONG_ERR("linglong.meta is too large");
     }
     return LINGLONG_OK;

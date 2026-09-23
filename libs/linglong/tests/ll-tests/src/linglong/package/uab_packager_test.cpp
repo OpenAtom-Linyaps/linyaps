@@ -7,6 +7,7 @@
 
 #include "common/tempdir.h"
 #include "linglong/api/types/v1/Generators.hpp"
+#include "linglong/package/uab_file.h"
 #include "linglong/package/uab_packager.h"
 
 #include <filesystem>
@@ -285,6 +286,45 @@ TEST(UABPackagerTest, PackEndToEndWithValidLayers)
 
     EXPECT_TRUE(std::filesystem::exists(outPath));
     EXPECT_GT(std::filesystem::file_size(outPath), 0);
+}
+
+TEST(UABPackagerTest, RejectsMetadataAboveUabFormatLimit)
+{
+    TempDir headerDir("uab-header-");
+    ASSERT_TRUE(headerDir.isValid());
+    const auto header = headerDir.path() / "header.elf";
+    std::filesystem::copy_file("/proc/self/exe", header);
+
+    TempDir layerDir("uab-large-layer-");
+    ASSERT_TRUE(layerDir.isValid());
+    std::filesystem::create_directories(layerDir.path() / "files");
+    api::types::v1::PackageInfoV2 info;
+    info.id = "com.example.large";
+    info.name = "Large metadata";
+    info.version = "1";
+    info.arch = { "x86_64" };
+    info.channel = "main";
+    info.kind = "app";
+    info.packageInfoV2Module = "binary";
+    info.description = std::string(static_cast<std::size_t>(maxUabMetaInfoSize) + 1, 'x');
+    std::ofstream{ layerDir.path() / "info.json" } << nlohmann::json(info).dump();
+
+    TempDir buildDir("uab-large-build-");
+    ASSERT_TRUE(buildDir.isValid());
+    UABPackager packager(buildDir.path());
+    packager.setDefaultHeader(header);
+    packager.setBundleCB(
+      [](const std::filesystem::path &bundleFile,
+         [[maybe_unused]] const std::filesystem::path &bundleDir) -> utils::error::Result<void> {
+          std::ofstream{ bundleFile } << "test bundle";
+          return LINGLONG_OK;
+      });
+    ASSERT_TRUE(packager.appendLayer(LayerDir(layerDir.path())).has_value());
+
+    auto result = packager.pack(buildDir.path() / "large.uab", UABPackagerMode::Distribution);
+
+    ASSERT_FALSE(result.has_value());
+    EXPECT_THAT(result.error().message(), ::testing::HasSubstr("metadata exceeds limit"));
 }
 
 } // namespace

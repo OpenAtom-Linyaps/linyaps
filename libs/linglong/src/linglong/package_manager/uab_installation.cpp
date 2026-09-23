@@ -372,6 +372,12 @@ UabInstallationAction::installUabLayer(const std::vector<api::types::v1::UabLaye
             return LINGLONG_ERR(msg);
         }
 
+        package::LayerDir layerDir{ layerDirPath };
+        auto info = layerDir.readInfoIfMatches(layer.info);
+        if (!info) {
+            return LINGLONG_ERR(info);
+        }
+
         std::vector<std::filesystem::path> overlays;
         auto signPath = uabFile->extractSignData(uabMountPoint.parent_path() / "sign-data");
         if (!signPath) {
@@ -381,12 +387,12 @@ UabInstallationAction::installUabLayer(const std::vector<api::types::v1::UabLaye
             overlays.emplace_back(std::move(signPath).value());
         }
 
-        auto ref = package::Reference::fromPackageInfo(layer.info);
+        auto ref = package::Reference::fromPackageInfo(*info);
         if (!ref) {
             return LINGLONG_ERR(ref);
         }
 
-        auto ret = this->repo.importLayerDir(package::LayerDir{ layerDirPath }, overlays);
+        auto ret = this->repo.importLayerDir(layerDir, overlays);
         if (!ret) {
             return LINGLONG_ERR(ret);
         }
@@ -401,7 +407,7 @@ UabInstallationAction::installUabLayer(const std::vector<api::types::v1::UabLaye
         });
 
         transaction.addRollBack(
-          [this, ref = std::move(ref).value(), module = layer.info.packageInfoV2Module]() noexcept {
+          [this, ref = std::move(ref).value(), module = info->packageInfoV2Module]() noexcept {
               auto ret = this->repo.remove(ref, module);
               if (!ret) {
                   LogE("rollback importLayerDir failed: {}", ret.error());

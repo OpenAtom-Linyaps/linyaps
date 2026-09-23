@@ -241,10 +241,10 @@ utils::error::Result<package::Reference> pullDependency(const std::string &fuzzy
     return std::move(refRepo->reference);
 }
 
-void mergeOutput(const std::vector<std::filesystem::path> &src,
-                 const std::filesystem::path &dest,
-                 const std::vector<std::string> &targets,
-                 const std::vector<std::string> &excludes)
+utils::error::Result<void> mergeOutput(const std::vector<std::filesystem::path> &src,
+                                       const std::filesystem::path &dest,
+                                       const std::vector<std::string> &targets,
+                                       const std::vector<std::string> &excludes)
 {
     for (const auto &dir : src) {
         LogD("merge {} to {}", dir, dest);
@@ -275,8 +275,14 @@ void mergeOutput(const std::vector<std::filesystem::path> &src,
             return false;
         };
 
-        utils::copyDirectory(dir, dest, matcher);
+        auto result = utils::copyDirectory(dir, dest, matcher);
+        if (!result) {
+            return LINGLONG_ERR(fmt::format("failed to merge output from {} to {}", dir, dest),
+                                result);
+        }
     }
+
+    return LINGLONG_OK;
 }
 
 } // namespace detail
@@ -1052,10 +1058,13 @@ utils::error::Result<void> Builder::buildStagePreCommit() noexcept
             src.push_back(*runtimeOverlay->upperDirPath());
         }
     }
-    detail::mergeOutput(src,
-                        buildOutput,
-                        { "bin/", "sbin/", "lib/" },
-                        { "lib/systemd", "share/systemd" });
+    auto mergeResult = detail::mergeOutput(src,
+                                           buildOutput,
+                                           { "bin/", "sbin/", "lib/" },
+                                           { "lib/systemd", "share/systemd" });
+    if (!mergeResult) {
+        return LINGLONG_ERR("failed to merge dependency output", mergeResult);
+    }
 
     return LINGLONG_OK;
 }
@@ -1105,7 +1114,11 @@ utils::error::Result<void> Builder::installFiles() noexcept
                  2);
     // 保存全量的develop, runtime需要对旧的ll-builder保持兼容
     if (this->buildOptions.fullDevelop) {
-        utils::copyDirectory(buildOutput, internalDir / "output" / "develop" / "files");
+        auto copyResult =
+          utils::copyDirectory(buildOutput, internalDir / "output" / "develop" / "files");
+        if (!copyResult) {
+            return LINGLONG_ERR("failed to copy develop output", copyResult);
+        }
     }
 
     std::vector<api::types::v1::BuilderProjectModules> projectModules;
@@ -1242,13 +1255,20 @@ utils::error::Result<void> Builder::generateEntries() noexcept
         }
         // appdata是旧版本的metainfo
         if (path == "share/appdata") {
-            utils::copyDirectory(binaryFiles.absoluteFilePath(path).toStdString(),
-                                 binaryEntries.filePath("share/metainfo").toStdString());
+            auto copyResult =
+              utils::copyDirectory(binaryFiles.absoluteFilePath(path).toStdString(),
+                                   binaryEntries.filePath("share/metainfo").toStdString());
+            if (!copyResult) {
+                return LINGLONG_ERR("failed to export legacy appdata", copyResult);
+            }
             continue;
         }
 
-        utils::copyDirectory(binaryFiles.absoluteFilePath(path).toStdString(),
-                             binaryEntries.absoluteFilePath(path).toStdString());
+        auto copyResult = utils::copyDirectory(binaryFiles.absoluteFilePath(path).toStdString(),
+                                               binaryEntries.absoluteFilePath(path).toStdString());
+        if (!copyResult) {
+            return LINGLONG_ERR(fmt::format("failed to export {}", exportPath), copyResult);
+        }
     }
 
     if (binaryFiles.exists("lib/systemd/user")) {
@@ -1262,8 +1282,12 @@ utils::error::Result<void> Builder::generateEntries() noexcept
             LogW("mkpath files/lib/systemd/user: failed");
         }
 
-        utils::copyDirectory(binaryFiles.filePath("lib/systemd/user").toStdString(),
-                             binaryEntries.absoluteFilePath("lib/systemd/user").toStdString());
+        auto copyResult =
+          utils::copyDirectory(binaryFiles.filePath("lib/systemd/user").toStdString(),
+                               binaryEntries.absoluteFilePath("lib/systemd/user").toStdString());
+        if (!copyResult) {
+            return LINGLONG_ERR("failed to export systemd user files", copyResult);
+        }
     }
 
     return LINGLONG_OK;

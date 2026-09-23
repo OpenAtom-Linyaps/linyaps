@@ -6,6 +6,7 @@
 
 #include "linglong/package/layer_dir.h"
 
+#include "linglong/api/types/v1/Generators.hpp" // IWYU pragma: keep
 #include "linglong/utils/log/log.h"
 #include "linglong/utils/serialize/packageinfo_handler.h"
 
@@ -23,6 +24,22 @@ utils::error::Result<api::types::v1::PackageInfoV2> LayerDir::info() const
     }
 
     return info;
+}
+
+utils::error::Result<api::types::v1::PackageInfoV2>
+LayerDir::readInfoIfMatches(const api::types::v1::PackageInfoV2 &expected) const
+{
+    auto actual = info();
+    if (!actual) {
+        return LINGLONG_ERR(actual);
+    }
+
+    if (nlohmann::json(*actual) != nlohmann::json(expected)) {
+        return LINGLONG_ERR(
+          fmt::format("layer metadata does not match info.json in {}", this->path_.string()));
+    }
+
+    return actual;
 }
 
 std::filesystem::path LayerDir::filesDirPath() const noexcept

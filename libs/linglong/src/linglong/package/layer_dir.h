@@ -22,6 +22,8 @@ public:
     }
 
     [[nodiscard]] utils::error::Result<api::types::v1::PackageInfoV2> info() const;
+    [[nodiscard]] utils::error::Result<api::types::v1::PackageInfoV2>
+    readInfoIfMatches(const api::types::v1::PackageInfoV2 &expected) const;
     [[nodiscard]] std::filesystem::path filesDirPath() const noexcept;
     [[nodiscard]] bool valid() const noexcept;
 

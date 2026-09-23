@@ -278,6 +278,46 @@ TEST(ContainerBuilderUtil, GenContainerIDIsDeterministic)
     EXPECT_NE(runtime::genContainerID(cfg), runtime::genContainerID(different));
 }
 
+TEST(ContainerBuilderUtil, RootfsBoundaryResolvesEscapingSymlinks)
+{
+    TempDir tempDir("linglong-rootfs-boundary-");
+    const auto rootfs = tempDir.path() / "rootfs";
+    const auto outside = tempDir.path() / "outside";
+    std::filesystem::create_directories(rootfs);
+    std::filesystem::create_directories(outside);
+    std::filesystem::create_directory_symlink(outside, rootfs / "etc");
+
+    EXPECT_FALSE(runtime::detail::resolveRootfsPath("/etc/resolv.conf", rootfs));
+    EXPECT_FALSE(runtime::detail::resolveRootfsPath("/../outside/file", rootfs));
+    EXPECT_FALSE(runtime::detail::resolveRootfsPath("/", rootfs));
+}
+
+TEST(ContainerBuilderUtil, RootfsBoundaryAllowsInternalSymlinks)
+{
+    TempDir tempDir("linglong-rootfs-internal-link-");
+    const auto rootfs = tempDir.path() / "rootfs";
+    std::filesystem::create_directories(rootfs / "usr/etc");
+    std::filesystem::create_directory_symlink("usr/etc", rootfs / "etc");
+
+    const auto resolved = runtime::detail::resolveRootfsPath("/etc/localtime", rootfs);
+    ASSERT_TRUE(resolved);
+    EXPECT_EQ(*resolved, rootfs / "usr/etc/localtime");
+}
+
+TEST(ContainerBuilderUtil, RootfsBoundaryAllowsFinalSymlinksToBeReplaced)
+{
+    TempDir tempDir("linglong-rootfs-leaf-link-");
+    const auto rootfs = tempDir.path() / "rootfs";
+    const auto outside = tempDir.path() / "outside";
+    std::filesystem::create_directories(rootfs);
+    std::filesystem::create_directories(outside);
+    std::filesystem::create_symlink(outside, rootfs / "localtime");
+
+    const auto resolved = runtime::detail::resolveRootfsPath("/localtime/", rootfs);
+    ASSERT_TRUE(resolved);
+    EXPECT_EQ(*resolved, rootfs / "localtime");
+}
+
 TEST(SecurityContextTest, FromAndToType)
 {
     EXPECT_EQ(runtime::fromType(runtime::SecurityContextType::WAYLAND), "wayland");
@@ -475,6 +515,11 @@ protected:
     std::unique_ptr<runtime::ContainerBuilder> builder;
 };
 
+class ContainerBuilderInvalidMountTest : public ContainerBuilderCreateTest,
+                                         public ::testing::WithParamInterface<const char *>
+{
+};
+
 } // namespace
 
 TEST_F(ContainerBuilderCreateTest, CreateBuildContainerNormalizesTimezoneAndMountPoints)
@@ -561,6 +606,108 @@ TEST_F(ContainerBuilderCreateTest, CreateBuildContainerRejectsMountOutsideRootfs
     ASSERT_FALSE(container);
     EXPECT_THAT(container.error().message(), testing::HasSubstr("outside rootfs"));
     EXPECT_FALSE(std::filesystem::exists(tempDir->path() / "escaped"));
+}
+
+TEST_P(ContainerBuilderInvalidMountTest, RejectsUnsafeDestinationWithoutChangingFiles)
+{
+    const auto baseRef = addBaseLayer("30.0.0");
+    runtime::RunContext context(*repo);
+    api::types::v1::RunContextConfig config;
+    config.version = "1";
+    config.base = baseRef.toString();
+    config.mounts = std::vector<api::types::v1::Mount>{
+        { .destination = GetParam(), .source = "/host/file", .srcType = "file", .type = "bind" },
+    };
+    auto resolved = context.resolve(config);
+    ASSERT_TRUE(resolved) << resolved.error().message();
+
+    const auto rootfs = tempDir->path() / "rootfs";
+    const auto outside = tempDir->path() / "outside";
+    std::filesystem::create_directories(rootfs / "etc");
+    std::filesystem::create_directories(outside / "child");
+    std::filesystem::create_directory_symlink(outside / "child", rootfs / "link");
+    std::ofstream{ rootfs / "sentinel" } << "keep rootfs";
+    std::ofstream{ outside / "sentinel" } << "keep outside";
+
+    runtime::BuilderContainerOptions options;
+    options.basePath = rootfs;
+    options.common.containerCachePath = tempDir->path() / "cache";
+    auto container = builder->createBuildContainer(context, options);
+    ASSERT_FALSE(container);
+    EXPECT_THAT(container.error().message(), testing::HasSubstr("outside rootfs"));
+    std::ifstream rootfsSentinel(rootfs / "sentinel");
+    EXPECT_EQ(std::string(std::istreambuf_iterator<char>(rootfsSentinel), {}), "keep rootfs");
+    std::ifstream outsideSentinel(outside / "sentinel");
+    EXPECT_EQ(std::string(std::istreambuf_iterator<char>(outsideSentinel), {}), "keep outside");
+    EXPECT_FALSE(std::filesystem::exists(outside / "escaped"));
+    EXPECT_FALSE(std::filesystem::exists(outside / "child/escaped"));
+}
+
+INSTANTIATE_TEST_SUITE_P(
+  UnsafeDestinations,
+  ContainerBuilderInvalidMountTest,
+  ::testing::Values(
+    "", "/", "/.", ".", "./", "/link/..", "/link/../escaped", "/link/escaped", "/../escaped"));
+
+TEST_F(ContainerBuilderCreateTest, CreateBuildContainerReplacesLeafLinksAndResolvesInternalParents)
+{
+    const auto baseRef = addBaseLayer("30.0.0");
+    runtime::RunContext context(*repo);
+    api::types::v1::RunContextConfig config;
+    config.version = "1";
+    config.base = baseRef.toString();
+    config.timezone = "Asia/Shanghai";
+    config.mounts = std::vector<api::types::v1::Mount>{
+        { .destination = "/file-link", .source = "/host/file", .srcType = "file", .type = "bind" },
+        { .destination = "/dangling-link",
+          .source = "/host/file",
+          .srcType = "file",
+          .type = "bind" },
+        { .destination = "/dir-link/", .source = "/host/dir", .srcType = "dir", .type = "bind" },
+        { .destination = "/internal/new-file",
+          .source = "/host/file",
+          .srcType = "file",
+          .type = "bind" },
+    };
+    auto resolved = context.resolve(config);
+    ASSERT_TRUE(resolved) << resolved.error().message();
+
+    const auto rootfs = tempDir->path() / "rootfs";
+    const auto outside = tempDir->path() / "outside";
+    std::filesystem::create_directories(rootfs / "etc");
+    std::filesystem::create_directories(rootfs / "usr/data");
+    std::filesystem::create_directories(outside / "child");
+    std::ofstream{ outside / "sentinel" } << "keep outside";
+    std::filesystem::create_symlink(outside / "sentinel", rootfs / "file-link");
+    std::filesystem::create_symlink(outside / "missing", rootfs / "dangling-link");
+    std::filesystem::create_directory_symlink(outside / "child", rootfs / "dir-link");
+    std::filesystem::create_directory_symlink("usr/data", rootfs / "internal");
+    std::filesystem::create_symlink(outside / "missing-timezone", rootfs / "etc/localtime");
+    std::filesystem::create_symlink(outside / "missing-dns", rootfs / "etc/resolv.conf");
+
+    runtime::BuilderContainerOptions options;
+    options.basePath = rootfs;
+    options.common.containerCachePath = tempDir->path() / "cache";
+    auto container = builder->createBuildContainer(context, options);
+    ASSERT_TRUE(container) << container.error().message();
+
+    EXPECT_TRUE(std::filesystem::is_regular_file(rootfs / "file-link"));
+    EXPECT_FALSE(std::filesystem::is_symlink(rootfs / "file-link"));
+    EXPECT_TRUE(std::filesystem::is_regular_file(rootfs / "dangling-link"));
+    EXPECT_FALSE(std::filesystem::is_symlink(rootfs / "dangling-link"));
+    EXPECT_TRUE(std::filesystem::is_directory(rootfs / "dir-link"));
+    EXPECT_FALSE(std::filesystem::is_symlink(rootfs / "dir-link"));
+    EXPECT_TRUE(std::filesystem::is_symlink(rootfs / "internal"));
+    EXPECT_TRUE(std::filesystem::is_regular_file(rootfs / "usr/data/new-file"));
+    EXPECT_EQ(std::filesystem::read_symlink(rootfs / "etc/localtime"),
+              generator::ContainerCfgBuilder::zoneinfoMountPoint / "Asia/Shanghai");
+    EXPECT_FALSE(std::filesystem::is_symlink(rootfs / "etc/resolv.conf"));
+    std::ifstream outsideSentinel(outside / "sentinel");
+    EXPECT_EQ(std::string(std::istreambuf_iterator<char>(outsideSentinel), {}), "keep outside");
+    EXPECT_TRUE(std::filesystem::is_empty(outside / "child"));
+    EXPECT_FALSE(std::filesystem::exists(outside / "missing"));
+    EXPECT_FALSE(std::filesystem::exists(outside / "missing-timezone"));
+    EXPECT_FALSE(std::filesystem::exists(outside / "missing-dns"));
 }
 
 TEST_F(ContainerBuilderCreateTest, CreateRunContainerBuildsBundleAndRunsRuntime)

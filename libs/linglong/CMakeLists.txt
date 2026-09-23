@@ -8,12 +8,13 @@ pfl_add_library(
   LIBRARY_TYPE
   STATIC
   SOURCES
-  src/linglong/builder/builder_releases.qrc
   # find -regex '\./src/.+\.[ch]\(pp\)?\(\.in\)?' -type f -printf '%P\n'| sort
   src/linglong/adaptors/package_manager/package_manager1.cpp
   src/linglong/adaptors/package_manager/package_manager1.h
   src/linglong/adaptors/task/task1.cpp
   src/linglong/adaptors/task/task1.h
+  src/linglong/builder/builder_script.cpp
+  src/linglong/builder/builder_script.h
   src/linglong/builder/config.cpp
   src/linglong/builder/config.h
   src/linglong/builder/linglong_builder.cpp

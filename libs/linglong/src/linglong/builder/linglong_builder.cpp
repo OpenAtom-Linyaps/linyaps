@@ -9,6 +9,7 @@
 #include "configure.h"
 #include "linglong/api/types/v1/ExportDirs.hpp"
 #include "linglong/api/types/v1/Generators.hpp"
+#include "linglong/builder/builder_script.h"
 #include "linglong/builder/printer.h"
 #include "linglong/common/global/initialize.h"
 #include "linglong/common/strings.h"
@@ -38,7 +39,6 @@
 
 #include <QDir>
 #include <QRegularExpression>
-#include <QTemporaryDir>
 
 #include <algorithm>
 #include <cstdlib>
@@ -1071,19 +1071,12 @@ utils::error::Result<void> Builder::generateAppConf() noexcept
     }
 
     // generate application's configure file
-    auto scriptFile = QString(LINGLONG_LIBEXEC_DIR) + "/app-conf-generator";
-    auto useInstalledFile = common::global::linglongInstalled() && QFile(scriptFile).exists();
-    QScopedPointer<QTemporaryDir> dir;
-    if (!useInstalledFile) {
-        LogD("Dumping app-conf-generator from qrc...");
-        dir.reset(new QTemporaryDir);
-        // 便于在执行失败时进行调试
-        dir->setAutoRemove(false);
-        scriptFile = dir->filePath("app-conf-generator");
-        QFile::copy(":/scripts/app-conf-generator", scriptFile);
+    auto scriptFile = findBuilderScript("app-conf-generator");
+    if (!scriptFile) {
+        return LINGLONG_ERR(scriptFile);
     }
     auto output = utils::Cmd("bash").exec(
-      { "-e", scriptFile.toStdString(), project.package.id, buildOutput.string() });
+      { "-e", scriptFile->string(), project.package.id, buildOutput.string() });
     if (!output) {
         return LINGLONG_ERR(output);
     }

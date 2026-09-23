@@ -6,6 +6,7 @@
 
 #include "command_options.h"
 #include "configure.h"
+#include "linglong/builder/builder_script.h"
 #include "linglong/builder/config.h"
 #include "linglong/builder/linglong_builder.h"
 #include "linglong/cli/cli.h"
@@ -30,6 +31,7 @@
 #include <QCoreApplication>
 #include <QStringList>
 
+#include <filesystem>
 #include <iostream>
 #include <list>
 #include <optional>
@@ -156,59 +158,53 @@ int handleCreate(const CreateCommandOptions &options)
 {
     LogI("Handling create for project: {}", options.projectName);
 
-    auto name = QString::fromStdString(options.projectName);
-    QDir projectDir = QDir::current().absoluteFilePath(name);
-    if (projectDir.exists()) {
+    std::error_code ec;
+    const auto currentDir = std::filesystem::current_path(ec);
+    if (ec) {
+        LogE("Failed to get current directory: {}", ec.message());
+        return -1;
+    }
+    const auto projectDir = currentDir / options.projectName;
+    if (std::filesystem::exists(projectDir, ec)) {
         LogE("{} project dir already exists", options.projectName);
         return -1;
     }
-
-    auto ret = projectDir.mkpath(".");
-    if (!ret) {
-        LogE("create project dir failed: {}", projectDir.absolutePath().toStdString());
+    if (ec) {
+        LogE("Failed to check project directory {}: {}", projectDir.string(), ec.message());
+        return -1;
+    }
+    if (!std::filesystem::create_directories(projectDir, ec)) {
+        LogE("Failed to create project directory {}: {}", projectDir.string(), ec.message());
         return -1;
     }
 
-    auto configFilePath = projectDir.absoluteFilePath("linglong.yaml");
-    const auto *templateFilePath = LINGLONG_DATA_DIR "/builder/templates/example.yaml";
-
-    if (!QFileInfo::exists(templateFilePath)) {
-        templateFilePath = ":/example.yaml"; // Use Qt resource fallback
-        LogI("Using template file from Qt resources: {}", templateFilePath);
-    } else {
-        LogI("Using template file from system path: {}", templateFilePath);
-    }
-
-    QFile templateFile(templateFilePath);
-    QFile configFile(configFilePath);
-
-    if (!templateFile.open(QIODevice::ReadOnly)) {
-        LogE("Failed to open template file {}: {}",
-             templateFilePath,
-             templateFile.errorString().toStdString());
+    const auto configFilePath = projectDir / "linglong.yaml";
+    auto templateFilePath = linglong::builder::findBuilderTemplate();
+    if (!templateFilePath) {
+        LogE("Failed to find project template: {}", templateFilePath.error());
         return -1;
     }
 
-    if (!configFile.open(QIODevice::WriteOnly)) {
-        LogE("Failed to open config file {} for writing: {}",
-             configFilePath.toStdString(),
-             configFile.errorString().toStdString());
+    auto rawData = linglong::utils::readFile(*templateFilePath);
+    if (!rawData) {
+        LogE("Failed to read template file {}: {}", templateFilePath->string(), rawData.error());
         return -1;
     }
 
-    auto rawData = templateFile.readAll();
-    rawData.replace("@ID@", name.toUtf8());
+    const auto &id = options.projectName;
+    constexpr std::string_view placeholder = "@ID@";
+    for (auto position = rawData->find(placeholder); position != std::string::npos;
+         position = rawData->find(placeholder, position + id.size())) {
+        rawData->replace(position, placeholder.size(), id);
+    }
 
-    if (configFile.write(rawData) <= 0) {
-        LogE("Failed to write config file {}: {}",
-             configFilePath.toStdString(),
-             configFile.errorString().toStdString());
+    auto written = linglong::utils::writeFile(configFilePath, *rawData);
+    if (!written) {
+        LogE("Failed to write config file {}: {}", configFilePath.string(), written.error());
         return -1;
     }
 
-    LogI("Project {} created successfully at {}",
-         options.projectName,
-         projectDir.absolutePath().toStdString());
+    LogI("Project {} created successfully at {}", options.projectName, projectDir.string());
     return 0;
 }
 
@@ -468,8 +464,6 @@ int main(int argc, char **argv)
     bindtextdomain(PACKAGE_LOCALE_DOMAIN, PACKAGE_LOCALE_DIR);
     textdomain(PACKAGE_LOCALE_DOMAIN);
     QCoreApplication app(argc, argv);
-    // 初始化 qt qrc
-    Q_INIT_RESOURCE(builder_releases);
     // 初始化应用，builder在非tty环境也输出日志
     linglong::common::global::applicationInitialize();
     linglong::common::global::initLinyapsLogSystem(linglong::utils::log::LogBackend::Console);

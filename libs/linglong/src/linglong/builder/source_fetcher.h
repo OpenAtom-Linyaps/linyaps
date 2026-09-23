@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
+ * SPDX-FileCopyrightText: 2022 - 2026 UnionTech Software Technology Co., Ltd.
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
@@ -12,7 +12,6 @@
 #include "linglong/utils/error/error.h"
 
 #include <QDir>
-#include <QFileInfo>
 #include <QObject>
 #include <QUrl>
 

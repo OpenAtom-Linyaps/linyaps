@@ -42,13 +42,15 @@ configure_files(
   share/dbus-1/system.d/org.deepin.linglong.PackageManager1.conf
   share/dbus-1/system-services/org.deepin.linglong.PackageManager1.service
   share/linglong/export-dirs.json
-  share/linglong/builder/templates/example.yaml
   share/linglong/builder/uab/blacklist
   share/linglong/config.yaml
   share/mime/packages/vnd.linyaps.uab.xml
   share/polkit-1/actions/org.deepin.linglong.PackageManager1.policy
   share/icons/linyaps.svg
   share/applications/linyaps.desktop)
+
+configure_file(share/linglong/builder/templates/example.yaml
+               share/linglong/builder/templates/example.yaml COPYONLY)
 
 # bash-completion
 set(BASH_COMPLETIONS_DIR ${CMAKE_INSTALL_DATADIR}/bash-completion)
@@ -115,8 +117,8 @@ install(FILES ${CMAKE_CURRENT_LIST_DIR}/share/linglong/export-dirs.json
         DESTINATION ${CMAKE_INSTALL_PREFIX}/share/linglong)
 
 # builder templates
-install(DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/share/linglong/builder/templates/
-        DESTINATION ${CMAKE_INSTALL_PREFIX}/share/linglong/builder/templates)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/share/linglong/builder/templates/example.yaml
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/linglong/builder/templates)
 install(DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/share/linglong/builder/uab/
         DESTINATION ${CMAKE_INSTALL_PREFIX}/share/linglong/builder/uab)
 

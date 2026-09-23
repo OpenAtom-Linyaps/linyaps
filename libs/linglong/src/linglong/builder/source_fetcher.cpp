@@ -1,19 +1,17 @@
 /*
- * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
+ * SPDX-FileCopyrightText: 2022 - 2026 UnionTech Software Technology Co., Ltd.
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
 #include "source_fetcher.h"
 
-#include "configure.h"
+#include "linglong/builder/builder_script.h"
 #include "linglong/common/formatter.h"
-#include "linglong/common/global/initialize.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/log/log.h"
 
 #include <QDir>
-#include <QTemporaryDir>
 
 namespace linglong::builder {
 
@@ -43,24 +41,15 @@ auto SourceFetcher::fetch(QDir destination) noexcept -> utils::error::Result<voi
         }
     }
 
-    auto scriptName = QString("fetch-%1-source").arg(source.kind.c_str());
-    // 如果二进制安装在系统目录中，优先使用系统中安装的脚本文件（便于用户更改），否则使用二进制内嵌的脚本（便于开发调试）
-    auto scriptFile = QDir(LINGLONG_LIBEXEC_DIR).filePath(scriptName);
-    auto useInstalledFile = common::global::linglongInstalled() && QFile(scriptFile).exists();
-    QScopedPointer<QTemporaryDir> dir;
-    if (!useInstalledFile) {
-        dir.reset(new QTemporaryDir);
-        // 便于在执行失败时进行调试
-        dir->setAutoRemove(false);
-        scriptFile = dir->filePath(scriptName);
-        LogD("Dumping {} from qrc to {}", scriptName.toStdString(), scriptFile.toStdString());
-        QFile::copy(":/scripts/" + scriptName, scriptFile);
+    auto scriptFile = findBuilderScript("fetch-" + source.kind + "-source");
+    if (!scriptFile) {
+        return LINGLONG_ERR(scriptFile);
     }
     if (source.kind == "git") {
         m_cmd->setEnv("GIT_SUBMODULES", source.submodules.value_or(true) ? "true" : "");
     }
     auto output = m_cmd->exec(
-      std::vector<std::string>{ scriptFile.toStdString(),
+      std::vector<std::string>{ scriptFile->string(),
                                 destination.absoluteFilePath(getSourceName()).toStdString(),
                                 *source.url,
                                 source.kind == "git" ? *source.commit : *source.digest,
@@ -70,9 +59,6 @@ auto SourceFetcher::fetch(QDir destination) noexcept -> utils::error::Result<voi
         return LINGLONG_ERR("stderr:", output);
     }
 
-    if (!dir.isNull()) {
-        dir->remove();
-    }
     return LINGLONG_OK;
 }
 

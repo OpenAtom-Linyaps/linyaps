@@ -722,6 +722,7 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
       [this,
        fdDup = fd, // keep file descriptor don't close by the destructor of QDBusUnixFileDescriptor
        packageRef,
+       expectedInfo = packageInfo,
        layerFile = *layerFileRet,
        module = packageInfo.packageInfoV2Module,
        options,
@@ -750,7 +751,7 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
               return;
           }
 
-          auto info = (*layerDir).info();
+          auto info = layerDir->readInfoIfMatches(expectedInfo);
           if (!info) {
               taskRef.reportError(std::move(info).error());
               return;

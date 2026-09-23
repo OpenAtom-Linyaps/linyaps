@@ -4,6 +4,7 @@
 
 #include <gtest/gtest.h>
 
+#include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/package/layer_dir.h"
 
 #include <common/tempdir.h>
@@ -19,6 +20,29 @@ protected:
     void SetUp() override { testDir = std::make_unique<TempDir>("layer_dir_test"); }
 
     void TearDown() override { }
+
+    static linglong::api::types::v1::PackageInfoV2 packageInfo()
+    {
+        return {
+            .arch = { "x86_64" },
+            .base = "base",
+            .channel = "main",
+            .id = "com.example.TestApp",
+            .kind = "app",
+            .packageInfoV2Module = "binary",
+            .name = "TestApp",
+            .schemaVersion = "1",
+            .size = 100,
+            .version = "1.0.0",
+        };
+    }
+
+    static void writePackageInfo(const std::filesystem::path &path,
+                                 const linglong::api::types::v1::PackageInfoV2 &info)
+    {
+        std::ofstream infoFile(path / "info.json");
+        infoFile << nlohmann::json(info).dump();
+    }
 
     std::unique_ptr<TempDir> testDir;
 };
@@ -149,6 +173,35 @@ TEST_F(LayerDirTest, InfoWithEmptyJson)
 
     LayerDir layerDir(layerPath);
     auto result = layerDir.info();
+
+    EXPECT_FALSE(result.has_value());
+}
+
+TEST_F(LayerDirTest, EnsureInfoMatchesAcceptsIdenticalMetadata)
+{
+    const auto layerPath = testDir->path() / "matching_layer";
+    std::filesystem::create_directories(layerPath);
+
+    const auto expected = packageInfo();
+    writePackageInfo(layerPath, expected);
+
+    auto result = LayerDir(layerPath).readInfoIfMatches(expected);
+
+    EXPECT_TRUE(result.has_value()) << result.error().message();
+    EXPECT_EQ(result->id, expected.id);
+}
+
+TEST_F(LayerDirTest, EnsureInfoMatchesRejectsDifferentPackageIdentity)
+{
+    const auto layerPath = testDir->path() / "mismatching_layer";
+    std::filesystem::create_directories(layerPath);
+
+    const auto expected = packageInfo();
+    auto actual = expected;
+    actual.id = "com.example.OtherApp";
+    writePackageInfo(layerPath, actual);
+
+    auto result = LayerDir(layerPath).readInfoIfMatches(expected);
 
     EXPECT_FALSE(result.has_value());
 }

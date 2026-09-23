@@ -40,6 +40,7 @@
 #include <QTemporaryDir>
 
 #include <algorithm>
+#include <array>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
@@ -1449,11 +1450,24 @@ utils::error::Result<void> Builder::exportUAB(const ExportOption &option,
 {
     LINGLONG_TRACE("export uab file");
 
-    auto exportWorkingDir = this->workingDir / ".uabBuild";
-    auto res = utils::ensureDirectory(exportWorkingDir);
-    if (!res) {
-        return LINGLONG_ERR("failed to ensure export working directory", res);
+    uuid_t uuid;
+    uuid_generate_random(uuid);
+    std::array<char, 37> uuidString{};
+    uuid_unparse_lower(uuid, uuidString.data());
+
+    const auto exportWorkingDirName = fmt::format(".uabBuild-{}", uuidString.data());
+    const auto exportWorkingDir = this->workingDir / exportWorkingDirName;
+    std::error_code ec;
+    if (!std::filesystem::create_directory(exportWorkingDir, ec)) {
+        if (ec) {
+            return LINGLONG_ERR(
+              fmt::format("failed to create export working directory {}", exportWorkingDir),
+              ec);
+        }
+        return LINGLONG_ERR(
+          fmt::format("export working directory already exists: {}", exportWorkingDir));
     }
+
     auto removeWorkingDir = utils::finally::finally([&exportWorkingDir]() {
         std::error_code ec;
         auto *env = ::getenv("LINGLONG_UAB_DEBUG");
@@ -1520,7 +1534,8 @@ utils::error::Result<void> Builder::exportUAB(const ExportOption &option,
         std::vector<std::string> args{
             "/opt/apps/cn.org.linyaps.builder.utils/files/bin/ll-builder-export",
             "--get-header",
-            "/project/.uabBuild/uab-header",
+            (std::filesystem::path{ "/project" } / exportWorkingDir.filename() / "uab-header")
+              .string(),
         };
 
         auto utilsResult = runFromRepo(*utilsRef, args);

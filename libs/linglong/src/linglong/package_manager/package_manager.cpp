@@ -149,6 +149,18 @@ utils::error::Result<std::filesystem::path> PackageManager::copyToStaging(int so
         }
     });
 
+    bool keepStagedFile{ false };
+    auto removeIncompleteCopy = utils::finally::finally([&pathTemplate, &keepStagedFile] {
+        if (keepStagedFile) {
+            return;
+        }
+        std::error_code ec;
+        std::filesystem::remove(pathTemplate, ec);
+        if (ec) {
+            LogW("failed to remove incomplete staged package {}: {}", pathTemplate, ec.message());
+        }
+    });
+
     struct stat sourceStat{};
     if (::fstat(sourceFD, &sourceStat) == -1) {
         return LINGLONG_ERR(
@@ -176,19 +188,64 @@ utils::error::Result<std::filesystem::path> PackageManager::copyToStaging(int so
         }
     }
 
+    keepStagedFile = true;
     return std::filesystem::path(pathTemplate);
 }
 
-utils::error::Result<void> PackageManager::cleanStaging() noexcept
+utils::error::Result<void>
+PackageManager::cleanStaging(const std::filesystem::path &stagedFile) noexcept
 {
-    LINGLONG_TRACE("clean staging directory");
+    LINGLONG_TRACE("clean staged package artifact");
 
     const auto stagingDir = common::dir::getStagingDir();
+    if (stagedFile.empty()) {
+        return LINGLONG_OK;
+    }
+    return detail::cleanStagingArtifact(stagingDir, stagedFile);
+}
+
+utils::error::Result<void> detail::cleanStagingArtifact(
+  const std::filesystem::path &stagingDir, const std::filesystem::path &stagedFile) noexcept
+{
+    if (!stagingDir.is_absolute() || !stagedFile.is_absolute()) {
+        return LINGLONG_ERR("staging paths must be absolute");
+    }
+
+    const auto normalizedStagedFile = stagedFile.lexically_normal();
+    const auto stagedFileName = normalizedStagedFile.filename().string();
     std::error_code ec;
-    std::filesystem::remove_all(stagingDir, ec);
+    const auto canonicalStagingDir = std::filesystem::weakly_canonical(stagingDir, ec);
     if (ec) {
         return LINGLONG_ERR(
-          fmt::format("failed to remove staging directory {}: {}", stagingDir, ec.message()));
+          fmt::format("failed to resolve staging directory {}: {}", stagingDir, ec.message()));
+    }
+    ec.clear();
+    const auto canonicalStagedParent =
+      std::filesystem::weakly_canonical(normalizedStagedFile.parent_path(), ec);
+    if (ec) {
+        return LINGLONG_ERR(fmt::format("failed to resolve staged package parent {}: {}",
+                                        normalizedStagedFile.parent_path(),
+                                        ec.message()));
+    }
+    if (canonicalStagedParent != canonicalStagingDir
+        || !common::strings::starts_with(stagedFileName, "install-")) {
+        return LINGLONG_ERR(
+          fmt::format("refusing to clean unexpected staging path {}", stagedFile));
+    }
+
+    auto canonicalStagedFile = canonicalStagingDir / stagedFileName;
+    auto unpackDir = canonicalStagedFile;
+    unpackDir += ".unpack";
+    std::filesystem::remove_all(unpackDir, ec);
+    if (ec) {
+        return LINGLONG_ERR(
+          fmt::format("failed to remove staged unpack directory {}: {}", unpackDir, ec.message()));
+    }
+
+    std::filesystem::remove(canonicalStagedFile, ec);
+    if (ec) {
+        return LINGLONG_ERR(
+          fmt::format("failed to remove staged package {}: {}", canonicalStagedFile, ec.message()));
     }
 
     return LINGLONG_OK;

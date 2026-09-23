@@ -63,6 +63,7 @@ private:
     bool installingExtraModulesOnly{ false };
     std::string taskName;
     CheckedLayers checkedLayers;
+    std::filesystem::path stagedFilePath;
     std::unique_ptr<package::UABFile> uabFile;
     utils::Transaction transaction;
     std::filesystem::path uabMountPoint;

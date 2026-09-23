@@ -15,3 +15,13 @@ else()
     message(STATUS "build ll-build-export")
     install(FILES ll-builder-export TYPE BIN PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_WRITE WORLD_READ WORLD_EXECUTE)
 endif()
+
+if(ENABLE_TESTING)
+    find_program(BASH_EXECUTABLE bash REQUIRED)
+    add_test(
+        NAME ll-builder-export-paths
+        COMMAND ${BASH_EXECUTABLE}
+            ${CMAKE_CURRENT_SOURCE_DIR}/tests/ll-builder-export-paths.sh
+            ${CMAKE_CURRENT_SOURCE_DIR}/ll-builder-export
+    )
+endif()

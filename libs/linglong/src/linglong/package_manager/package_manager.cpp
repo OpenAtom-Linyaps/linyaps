@@ -132,7 +132,7 @@ utils::error::Result<std::filesystem::path> PackageManager::copyToStaging(int so
     const auto stagingDir = common::dir::getStagingDir();
     auto ret = utils::ensureDirectory(stagingDir);
     if (!ret) {
-        return LINGLONG_ERR("failed to create staging directory", ret);
+        return LINGLONG_ERR(fmt::format("failed to create staging directory {}", stagingDir), ret);
     }
 
     auto pathTemplate = (stagingDir / "install-XXXXXX").string();

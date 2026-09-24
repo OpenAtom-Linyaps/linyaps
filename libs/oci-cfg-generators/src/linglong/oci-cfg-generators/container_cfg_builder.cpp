@@ -1128,7 +1128,7 @@ utils::error::Result<void> ContainerCfgBuilder::buildPrivateDir() noexcept
     privateAppDir = privatePath / appId;
     std::error_code ec;
     if (!std::filesystem::create_directories(privateAppDir, ec) && ec) {
-        return LINGLONG_ERR(fmt::format("{} can't be created", privateAppDir));
+        return LINGLONG_ERR(fmt::format("{} can't be created", privateAppDir), ec);
     }
 
     // hide private directory

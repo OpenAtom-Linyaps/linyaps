@@ -9,6 +9,9 @@ libs/linglong/src/linglong/cli/cli_printer.cpp
 # ll-builder source files
 apps/ll-builder/src/main.cpp
 
+# ll-dialog
+apps/ll-dialog/src/permissionDialog.cpp
+
 # ll-driver_detection
 apps/ll-driver-detect/src/main.cpp
 

@@ -1610,7 +1610,9 @@ PackageManager::needToUpgrade(const package::FuzzyReference &fuzzyRef,
             }
         }
         if (installModules.empty()) {
-            return LINGLONG_ERR(fmt::format("no modules found to upgrade {}", local->toString()),
+            // local is empty when installing a missing package; do not dereference it.
+            const auto targetDesc = local ? local->toString() : remoteRef->toString();
+            return LINGLONG_ERR(fmt::format("no modules found for {}", targetDesc),
                                 utils::error::ErrorCode::AppUpgradeFailed);
         }
 

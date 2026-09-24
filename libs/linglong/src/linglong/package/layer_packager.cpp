@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
+ * SPDX-FileCopyrightText: 2022-2026 UnionTech Software Technology Co., Ltd.
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
@@ -18,6 +18,7 @@
 #include <filesystem>
 #include <fstream>
 #include <string>
+#include <system_error>
 
 #include <unistd.h>
 
@@ -89,8 +90,12 @@ LayerPackager::~LayerPackager()
                  (this->workDir / "unpack").string());
         }
     }
-    if (!std::filesystem::remove_all(this->workDir)) {
-        LogE("failed to remove {}", this->workDir);
+    // remove_all returns the number of entries removed, not a success flag.
+    // An empty workDir legitimately removes zero entries.
+    std::error_code ec;
+    std::filesystem::remove_all(this->workDir, ec);
+    if (ec) {
+        LogE("failed to remove {}: {}", this->workDir, ec.message());
     }
 }
 

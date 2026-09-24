@@ -371,6 +371,24 @@ TEST_F(FileLockTest, TryLockAlreadyLockedSameType)
 
     auto try_result = lock.tryLock(LockType::Read);
     ASSERT_TRUE(try_result);
+    EXPECT_TRUE(*try_result);
+    EXPECT_TRUE(lock.isLocked());
+}
+
+// Test tryLockFor when already holding a compatible lock
+TEST_F(FileLockTest, TryLockForAlreadyLockedSameType)
+{
+    TempDir temp_dir;
+    auto temp_path = temp_dir.path() / "test_filelock.lock";
+    auto result = FileLock::create(temp_path, LockType::Read, true);
+    ASSERT_TRUE(result);
+    auto lock = std::move(result).value();
+    EXPECT_TRUE(lock.lock(LockType::Read));
+
+    auto try_for_result = lock.tryLockFor(LockType::Read, std::chrono::milliseconds(100));
+    ASSERT_TRUE(try_for_result);
+    EXPECT_TRUE(*try_for_result);
+    EXPECT_TRUE(lock.isLocked());
 }
 
 // Test lock when already locked different type

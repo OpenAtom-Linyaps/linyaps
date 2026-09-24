@@ -2150,7 +2150,7 @@ OSTreeRepo::exportAppEntries(const std::filesystem::path &rootEntriesDir,
         return LINGLONG_ERR("check appEntriesDir exists", ec);
     }
     if (!exists) {
-        LogE("Failed to export {}: {} not exists", item.info.id, appEntriesDir.string());
+        LogE("Failed to export {}: {} does not exist", item.info.id, appEntriesDir.string());
         return LINGLONG_OK;
     }
 
@@ -2642,7 +2642,7 @@ utils::error::Result<package::LayerDir> OSTreeRepo::getMergedModuleDir(
     auto items = this->cache->queryMergedItems();
     // 如果没有merged记录，尝试使用layer
     if (!items.has_value()) {
-        LogD("not exists merged items");
+        LogD("merged items do not exist");
         if (fallbackLayerDir) {
             return getLayerDir(layer);
         }
@@ -2657,7 +2657,7 @@ utils::error::Result<package::LayerDir> OSTreeRepo::getMergedModuleDir(
                 return dir;
             }
 
-            LogW("not exists merged dir {}", dir);
+            LogW("merged dir {} does not exist", dir);
         }
     }
 
@@ -2989,7 +2989,7 @@ QString buildDesktopExec(QString origin, const QString &appID) noexcept
             return newExec;
         }
         default: {
-            LogD("no need to mapping {}", next->toLatin1());
+            LogD("no need to map {}", next->toLatin1());
         } break;
         }
 

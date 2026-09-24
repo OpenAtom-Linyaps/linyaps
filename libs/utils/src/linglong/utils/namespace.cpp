@@ -443,16 +443,16 @@ runInNamespace(int argc, char **argv, std::optional<uid_t> uid, std::optional<gi
 
     auto res = detail::mappingTool(pid, true, uid.value_or(0), !uid.has_value());
     if (!res) {
-        return LINGLONG_ERR("failed to mapping uid", res.error());
+        return LINGLONG_ERR("failed to map uid", res.error());
     }
 
     res = detail::mappingTool(pid, false, gid.value_or(0), !gid.has_value());
     if (!res) {
-        return LINGLONG_ERR("failed to mapping gid", res.error());
+        return LINGLONG_ERR("failed to map gid", res.error());
     }
 
     if (write(pair[0], "1", 1) == -1) {
-        return LINGLONG_ERR("write failed");
+        return LINGLONG_ERR(fmt::format("write failed: {}", common::error::errorString(errno)));
     }
     close(pair[0]);
     pair[0] = -1;

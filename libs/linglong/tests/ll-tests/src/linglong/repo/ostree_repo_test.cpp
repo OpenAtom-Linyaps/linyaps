@@ -1193,6 +1193,66 @@ TEST(OSTreeRepoTest, matchRemoteByPriority_UseHighestPriority)
     EXPECT_EQ(repoPackages.back().second[0].version, "3.0.0");
 }
 
+// Upgrade issues a channel-filtered query. Some repository responses return
+// empty for that request while the same app is visible without channel
+// (https://github.com/OpenAtom-Linyaps/linyaps/issues/1961). searchRemoteForUpgrade
+// must retry without channel and keep only the requested channel.
+TEST(OSTreeRepoTest, searchRemoteForUpgrade_RetriesWithoutChannelWhenEmpty)
+{
+    TempDir tempDir;
+    OSTreeRepoMock mockRepo(tempDir.path());
+    repo::OSTreeRepo &repo = mockRepo;
+
+    auto fuzzyRef = package::FuzzyReference::parse("main:com.example.app");
+    ASSERT_TRUE(fuzzyRef);
+    auto repoConfig = api::types::v1::Repo{ .name = "stable", .url = "http://localhost:8080" };
+
+    EXPECT_CALL(mockRepo, searchRemote(_, _, true))
+      .WillOnce(Return(std::vector<api::types::v1::PackageInfoV2>{}))
+      .WillOnce(Return(std::vector<api::types::v1::PackageInfoV2>{
+        api::types::v1::PackageInfoV2{ .channel = "main",
+                                       .id = "com.example.app",
+                                       .version = "2.4.4.1" },
+        api::types::v1::PackageInfoV2{ .channel = "dev",
+                                       .id = "com.example.app",
+                                       .version = "9.9.9" },
+        api::types::v1::PackageInfoV2{ .channel = "", .id = "com.example.app", .version = "2.5.0" },
+      }));
+
+    auto result = repo.searchRemoteForUpgrade(*fuzzyRef, repoConfig);
+
+    ASSERT_TRUE(result.has_value());
+    ASSERT_EQ(result->size(), 2);
+    EXPECT_EQ(result->at(0).channel, "main");
+    EXPECT_EQ(result->at(0).version, "2.4.4.1");
+    EXPECT_EQ(result->at(1).channel, "main");
+    EXPECT_EQ(result->at(1).version, "2.5.0");
+}
+
+TEST(OSTreeRepoTest, searchRemoteForUpgrade_KeepsChannelFilteredResult)
+{
+    TempDir tempDir;
+    OSTreeRepoMock mockRepo(tempDir.path());
+    repo::OSTreeRepo &repo = mockRepo;
+
+    auto fuzzyRef = package::FuzzyReference::parse("main:com.example.app");
+    ASSERT_TRUE(fuzzyRef);
+    auto repoConfig = api::types::v1::Repo{ .name = "stable", .url = "http://localhost:8080" };
+
+    EXPECT_CALL(mockRepo, searchRemote(_, _, true))
+      .WillOnce(Return(std::vector<api::types::v1::PackageInfoV2>{
+        api::types::v1::PackageInfoV2{ .channel = "main",
+                                       .id = "com.example.app",
+                                       .version = "2.4.4.1" },
+      }));
+
+    auto result = repo.searchRemoteForUpgrade(*fuzzyRef, repoConfig);
+
+    ASSERT_TRUE(result.has_value());
+    ASSERT_EQ(result->size(), 1);
+    EXPECT_EQ(result->at(0).version, "2.4.4.1");
+}
+
 } // namespace
 
 } // namespace

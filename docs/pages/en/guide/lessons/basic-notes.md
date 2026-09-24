@@ -129,7 +129,7 @@ Terminal=false
 
 ## Linyaps Application Build Project `linglong.yaml` Specification
 
-Like other traditional package management suites, manually creating a Linyaps application build project requires setting up a build rule file `linglong.yaml`. In the build rules, it is divided into `global fields` and `custom fields` according to usage. \* In the case, all space symbols and placeholders in the `linglong.yaml` body are valid characters. Please do not delete or change the format
+Like other traditional package management suites, manually creating a Linyaps application build project requires setting up a build rule file `linglong.yaml`. In the build rules, it is divided into `global fields` and `custom fields` according to usage. \* In this case, all space symbols and placeholders in the `linglong.yaml` body are valid characters. Please do not delete or change the format
 
 ### Global Field Specification
 

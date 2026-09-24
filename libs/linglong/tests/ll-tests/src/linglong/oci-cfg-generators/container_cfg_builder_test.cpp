@@ -54,19 +54,24 @@ TEST_F(ContainerCfgBuilderTest, BuildWithRequiredFields)
 
     const auto &config = builder.getConfig();
     EXPECT_EQ(config.ociVersion, "1.0.1");
-    EXPECT_EQ(config.hostname, "linglong");
+    EXPECT_FALSE(config.hostname.has_value());
     ASSERT_TRUE(config.root.has_value());
     EXPECT_EQ(config.root->path, baseDir.path());
     EXPECT_EQ(builder.getContainerId(), "fake-container-id");
 
     ASSERT_TRUE(config.linux_.has_value());
     ASSERT_TRUE(config.linux_->namespaces.has_value());
+    bool hasUtsNs = false;
     bool hasUserNs = false;
     for (const auto &ns : *config.linux_->namespaces) {
+        if (ns.type == ocppi::runtime::config::types::NamespaceType::Uts) {
+            hasUtsNs = true;
+        }
         if (ns.type == ocppi::runtime::config::types::NamespaceType::User) {
             hasUserNs = true;
         }
     }
+    EXPECT_FALSE(hasUtsNs);
     EXPECT_TRUE(hasUserNs);
 }
 

@@ -844,14 +844,12 @@ utils::error::Result<void> ContainerCfgBuilder::prepare() noexcept
     LINGLONG_TRACE("prepare container configuration");
 
     config.ociVersion = "1.0.1";
-    config.hostname = "linglong";
 
     auto linux_ = ocppi::runtime::config::types::Linux{};
     linux_.rootfsPropagation = RootfsPropagation::Slave;
     linux_.namespaces = std::vector<NamespaceReference>{
         NamespaceReference{ .type = NamespaceType::Pid },
         NamespaceReference{ .type = NamespaceType::Mount },
-        NamespaceReference{ .type = NamespaceType::Uts },
     };
     if (!disableUserNamespaceEnabled) {
         linux_.namespaces->push_back(NamespaceReference{ .type = NamespaceType::User });

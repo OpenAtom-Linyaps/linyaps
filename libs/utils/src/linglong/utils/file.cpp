@@ -49,21 +49,21 @@ linglong::utils::error::Result<std::string> readFile(const std::filesystem::path
     std::error_code ec;
     auto exists = std::filesystem::exists(filepath, ec);
     if (ec) {
-        return LINGLONG_ERR("check file", ec);
+        return LINGLONG_ERR(fmt::format("failed to check file {}", filepath), ec);
     }
     if (!exists) {
-        return LINGLONG_ERR("file not found");
+        return LINGLONG_ERR(fmt::format("file not found: {}", filepath));
     }
     std::ifstream in{ filepath };
     if (!in.is_open()) {
-        auto msg = std::string("open file:") + common::error::errorString(errno);
-        return LINGLONG_ERR(msg.c_str());
+        return LINGLONG_ERR(
+          fmt::format("failed to open file {}: {}", filepath, common::error::errorString(errno)));
     }
     std::stringstream buffer;
     buffer << in.rdbuf();
     if (buffer.bad()) {
-        auto msg = std::string("read file: ") + common::error::errorString(errno);
-        return LINGLONG_ERR(msg.c_str());
+        return LINGLONG_ERR(
+          fmt::format("failed to read file {}: {}", filepath, common::error::errorString(errno)));
     }
     return buffer.str();
 }
@@ -78,11 +78,14 @@ linglong::utils::error::Result<void> writeFile(const std::filesystem::path &file
         return LINGLONG_ERR(
           fmt::format("failed to open file {}: {}", filepath, common::error::errorString(errno)));
     }
+    // The failing path has to be part of the message itself: message() only
+    // renders the LINGLONG_TRACE context when LINYAPS_BACKTRACE is enabled, so
+    // a bare errno cannot be attributed when several packages are handled.
     out << content;
     out.close();
     if (!out) {
         return LINGLONG_ERR(
-          fmt::format("failed to write file {}", common::error::errorString(errno)));
+          fmt::format("failed to write file {}: {}", filepath, common::error::errorString(errno)));
     }
     return LINGLONG_OK;
 }
@@ -310,12 +313,12 @@ linglong::utils::error::Result<void> ensureDirectory(const std::filesystem::path
 
         std::filesystem::remove(dir, ec);
         if (ec) {
-            return LINGLONG_ERR("failed to remove directory", ec);
+            return LINGLONG_ERR(fmt::format("failed to remove directory {}", dir), ec);
         }
     }
 
     if (!std::filesystem::create_directories(dir, ec) && ec) {
-        return LINGLONG_ERR("failed to create directory", ec);
+        return LINGLONG_ERR(fmt::format("failed to create directory {}", dir), ec);
     }
 
     return LINGLONG_OK;
@@ -420,7 +423,8 @@ linglong::utils::error::Result<void> relinkFileTo(const std::filesystem::path &l
 
     std::filesystem::create_symlink(target, tmpPath, ec);
     if (ec) {
-        return LINGLONG_ERR("failed to create symlink", ec);
+        return LINGLONG_ERR(
+          fmt::format("failed to create symlink {} to {}", tmpPath, target.string()), ec);
     }
 
     std::filesystem::rename(tmpPath, link, ec);

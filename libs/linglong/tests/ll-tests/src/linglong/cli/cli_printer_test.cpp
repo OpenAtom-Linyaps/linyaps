@@ -76,6 +76,22 @@ TEST(CLIPrinter, PrintErr)
     EXPECT_THAT(out, ::testing::HasSubstr("boom"));
 }
 
+TEST(CLIPrinter, PrintErrFormatsCanonicalLookupFailure)
+{
+    const auto code = linglong::utils::error::ErrorCode::AppNotFoundFromLocal;
+    auto err = linglong::utils::error::Error::Err("cli.cpp",
+                                                  3042,
+                                                  "lookup",
+                                                  "Cannot find such application.",
+                                                  code);
+    CaptureStdout capture;
+    linglong::cli::CLIPrinter printer;
+    printer.printErr(err);
+    auto out = capture.str();
+    EXPECT_THAT(out, ::testing::HasSubstr("Error 1002"));
+    EXPECT_THAT(out, ::testing::HasSubstr("Cannot find such application."));
+}
+
 TEST(CLIPrinter, PrintPackage)
 {
     auto pkg = makePackage("org.deepin.demo", "Demo", "1.0.0", "stable", "binary", "a demo app");

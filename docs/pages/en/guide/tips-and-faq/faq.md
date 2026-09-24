@@ -84,7 +84,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 19. How to know which packages are installed in the container environment?
 
-    Use `ll-builder run --exec bash` to enter the container environment, and use the command `cat /var/lib/dpkg/status | grep "^Package: "` to view pre-installed packages. Additionally, libraries compiled from source can be viewed using `cat /runtime/packages.list`.
+    Use `ll-builder run /bin/bash` to enter the container environment, and use the command `cat /var/lib/dpkg/status | grep "^Package: "` to view pre-installed packages. Additionally, libraries compiled from source can be viewed using `cat /runtime/packages.list`.
 
 20. Why doesn't the application tray display after the application starts?
 

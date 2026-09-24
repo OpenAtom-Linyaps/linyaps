@@ -12,7 +12,7 @@ ll\-pica\-flatpak - Convert Flatpak applications to Linyaps applications
 
 The ll-pica-flatpak command is used to convert Flatpak applications to Linyaps applications. This tool uses the ostree command to pull Flatpak application data, generates the corresponding Linyaps base environment based on the runtime defined in the metadata, and generates the linglong.yaml file needed to build Linyaps applications.
 
-Note: The conversion tool is only an auxiliary tool and cannot guarantee that the converted application will definitely run. The installation path of the software's dependent libraries or other configuration paths may not be consistent with the internal paths of Linyaps, resulting in the inability to run. You need to use the `ll-builder run --exec bash` command to enter the container for debugging.
+Note: The conversion tool is only an auxiliary tool and cannot guarantee that the converted application will definitely run. The installation path of the software's dependent libraries or other configuration paths may not be consistent with the internal paths of Linyaps, resulting in the inability to run. You need to use the `ll-builder run -- bash` command to enter the container for debugging.
 
 ## COMMANDS
 

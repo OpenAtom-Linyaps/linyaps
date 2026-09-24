@@ -61,7 +61,7 @@ Everything is ready, we can start compiling
 2. After completing the preparation of `linglong.yaml` editing, we can start generating the container. Execute limited operations to directly enter the Linyaps container:
 
 ```
-szbt@szbt-linyaps23:/media/szbt/Data/ll-build/QT/qBittorrent-git$ ll-builder build --exec bash
+szbt@szbt-linyaps23:/media/szbt/Data/ll-build/QT/qBittorrent-git$ ll-builder build -- bash
 ```
 
 When the path changes similar to the following, it means we have entered the Linyaps container:

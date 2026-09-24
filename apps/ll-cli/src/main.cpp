@@ -17,6 +17,7 @@
 #include "linglong/utils/gettext.h"
 #include "linglong/utils/log/log.h"
 #include "ocppi/cli/crun/Crun.hpp"
+#include "transform_old_exec.h"
 
 #include <CLI/CLI.hpp>
 #include <sys/file.h>
@@ -33,7 +34,6 @@
 #include <functional>
 #include <map>
 #include <memory>
-#include <string_view>
 #include <thread>
 
 #include <fcntl.h>
@@ -46,21 +46,6 @@ using namespace linglong::package;
 using namespace linglong::cli;
 
 namespace {
-
-std::vector<std::string> transformOldExec(int argc, char **argv) noexcept
-{
-    std::vector<std::string> res;
-
-    for (int i = argc - 1; i > 0; --i) {
-        if (std::string_view(argv[i]) == "--exec") {
-            res.emplace_back("--");
-        } else {
-            res.emplace_back(argv[i]);
-        }
-    }
-
-    return res;
-}
 
 // Validator for string inputs
 CLI::Validator validatorString{

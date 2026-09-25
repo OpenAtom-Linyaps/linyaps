@@ -4,7 +4,15 @@
 
 #include <gtest/gtest.h>
 
+#include "common/tempdir.h"
 #include "linglong/common/display.h"
+#include "linglong/utils/unique_fd.h"
+
+#include <cerrno>
+#include <cstring>
+
+#include <sys/socket.h>
+#include <sys/un.h>
 
 namespace linglong::common::display {
 
@@ -197,6 +205,47 @@ TEST(DisplayTest, GetXOrgDisplay_NoDisplayNo)
 {
     auto result = getXOrgDisplay("test:");
     ASSERT_FALSE(result.has_value());
+}
+
+TEST(DisplayTest, GetXOrgDisplay_TrailingGarbageAfterDisplayNo)
+{
+    auto result = getXOrgDisplay("localhost:0junk");
+    ASSERT_FALSE(result.has_value())
+      << "trailing non-numeric characters after display number should be rejected";
+}
+
+TEST(DisplayTest, GetXOrgDisplay_TrailingGarbageAfterScreenNo)
+{
+    auto result = getXOrgDisplay("localhost:0.1junk");
+    ASSERT_FALSE(result.has_value())
+      << "trailing non-numeric characters after screen number should be rejected";
+}
+
+TEST(DisplayTest, GetXOrgDisplay_ExtraDotSegment)
+{
+    auto result = getXOrgDisplay("localhost:0.1.2");
+    ASSERT_FALSE(result.has_value())
+      << "extra dot-separated segment after screen number should be rejected";
+}
+
+TEST(DisplayTest, GetXOrgDisplay_TrailingGarbageAfterAbsolutePathScreenNo)
+{
+    TempDir tempDir;
+    ASSERT_TRUE(tempDir.isValid());
+    const auto socketPath = tempDir.path() / "x11-socket";
+    linglong::utils::fd::UniqueFd socket{ ::socket(AF_UNIX, SOCK_STREAM, 0) };
+    ASSERT_TRUE(socket) << std::strerror(errno);
+
+    struct sockaddr_un addr{};
+    addr.sun_family = AF_UNIX;
+    ASSERT_LT(socketPath.native().size(), sizeof(addr.sun_path));
+    std::strncpy(addr.sun_path, socketPath.c_str(), sizeof(addr.sun_path) - 1);
+    ASSERT_EQ(::bind(socket.get(), reinterpret_cast<struct sockaddr *>(&addr), sizeof(addr)), 0)
+      << std::strerror(errno);
+
+    auto result = getXOrgDisplay(socketPath.string() + ".1junk");
+    EXPECT_FALSE(result.has_value())
+      << "trailing characters after an absolute-path screen number should be rejected";
 }
 
 } // namespace linglong::common::display

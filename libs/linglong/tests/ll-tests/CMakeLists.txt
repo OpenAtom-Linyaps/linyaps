@@ -62,6 +62,7 @@ pfl_add_executable(
   src/linglong/repo/ostree_repo_test.cpp
   src/linglong/repo/ostree_repo_real_test.cpp
   src/linglong/repo/repo_cache_test.cpp
+  src/linglong/repo/repo_deep_test.cpp
   src/linglong/runtime/container_builder_test.cpp
   src/linglong/runtime/overlayfs_driver_test.cpp
   src/linglong/runtime/run_context_test.cpp

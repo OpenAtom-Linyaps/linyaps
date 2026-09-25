@@ -65,7 +65,24 @@ parseProjectConfig(const std::filesystem::path &filename)
                             "'MAJOR.MINOR.PATCH.TWEAK'");
     }
 
+    // package.id becomes path components on the host and inside the package
+    // (/opt/apps/<id>/files, export file names), module names become build
+    // output directories, so neither may escape their intended directory
+    auto isUsableDirName = [](const std::string &name) {
+        return !name.empty() && name != "." && name != ".." && name.find('/') == std::string::npos
+          && name.find('\\') == std::string::npos && name.find('\0') == std::string::npos;
+    };
+    if (!isUsableDirName(project->package.id)) {
+        return LINGLONG_ERR(fmt::format("invalid package.id: {}", project->package.id));
+    }
+
     if (project->modules.has_value()) {
+        for (const auto &module : project->modules.value()) {
+            if (!isUsableDirName(module.name)) {
+                return LINGLONG_ERR(fmt::format("invalid module name: {}", module.name));
+            }
+        }
+
         if (std::any_of(project->modules->begin(), project->modules->end(), [](const auto &module) {
                 return module.name == "binary";
             })) {

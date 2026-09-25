@@ -175,6 +175,23 @@ if(SYSTEM_PROC_LOWER MATCHES "^mips")
   add_compile_options(-mxgot)
 endif()
 
+option(ENABLE_BUILD_TRACE
+       "Generate Clang -ftime-trace files for build-time analysis (Clang only)"
+       OFF)
+
+if(ENABLE_BUILD_TRACE)
+  if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    message(
+      WARNING
+        "ENABLE_BUILD_TRACE requires Clang (-ftime-trace), but the current "
+        "compiler is '${CMAKE_CXX_COMPILER_ID}'; the option is ignored.")
+    set(ENABLE_BUILD_TRACE OFF)
+  else()
+    message(STATUS "Build tracing enabled (-ftime-trace)")
+    add_compile_options(-ftime-trace)
+  endif()
+endif()
+
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 include(PFL)
 

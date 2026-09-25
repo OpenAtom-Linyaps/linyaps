@@ -153,6 +153,24 @@ if(NOT LINGLONG_EXPORT_PATH MATCHES ".*share$")
   set(LINGLONG_EXPORT_PATH "share")
 endif()
 
+set(LINGLONG_ALLOW_CUSTOM_INSTALL_PREFIX
+    OFF
+    CACHE BOOL
+          "Allow CMAKE_INSTALL_PREFIX outside /usr or /usr/local. systemd user environment generators are not discovered there.")
+
+# systemd only searches for user environment generators under /usr and /usr/local.
+# Warn (do not abort) when the install prefix is elsewhere so custom-prefix builds
+# are not broken; the generator may simply not be picked up by systemd sessions.
+if(NOT LINGLONG_ALLOW_CUSTOM_INSTALL_PREFIX AND NOT CMAKE_INSTALL_PREFIX STREQUAL "/usr"
+   AND NOT CMAKE_INSTALL_PREFIX STREQUAL "/usr/local")
+  message(
+    WARNING
+      "CMAKE_INSTALL_PREFIX '${CMAKE_INSTALL_PREFIX}' is not /usr or /usr/local. "
+      "The systemd user environment generator 61-linglong will not be discovered, so "
+      "entries/bin PATH injection may be missing in systemd-managed sessions. Set "
+      "LINGLONG_ALLOW_CUSTOM_INSTALL_PREFIX=ON if this is expected.")
+endif()
+
 set(LINGLONG_ENABLE_WAYLAND_SEC_CTX_SUPPORT
     OFF
     CACHE BOOL "enable linglong wayland security context support")

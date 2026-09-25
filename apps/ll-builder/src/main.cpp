@@ -887,6 +887,10 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     }
 
     if (buildPush->parsed()) {
+        if (!project) {
+            LogE("the project file is not found");
+            return -1;
+        }
         if (!pushModule.empty()) {
             pushOpts.pushModules = { pushModule };
         } else {

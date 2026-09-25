@@ -1447,54 +1447,10 @@ utils::error::Result<int> Cli::reuseContainer(const std::string &id,
                 continue;
             }
 
-            if ((ev.events & EPOLLIN) != 0) {
-                if (fd == STDIN_FILENO && inFwd) {
-                    inFwd->drive();
+            for (auto *forwarder : { &inFwd, &outFwd, &errFwd }) {
+                if (*forwarder) {
+                    (*forwarder)->onEvent(fd, ev.events);
                 }
-                if (outFwd && fd == outFwd->srcFd()) {
-                    outFwd->drive();
-                }
-                if (errFwd && fd == errFwd->srcFd()) {
-                    errFwd->drive();
-                }
-            }
-
-            if ((ev.events & (EPOLLERR | EPOLLHUP)) != 0) {
-                auto markFdError = [&](auto &fwd) noexcept {
-                    if (!fwd.has_value()) {
-                        return;
-                    }
-                    if (fd == fwd->srcFd()) {
-                        fwd->markSrcEof();
-                    }
-                    if (fd == fwd->dstFd()) {
-                        fwd->markDstFailed();
-                    }
-                };
-                if (inFwd) {
-                    if (fd == STDIN_FILENO) {
-                        inFwd->markSrcEof();
-                    }
-                    if (fd == masterOut.get()) {
-                        inFwd->markDstFailed();
-                    }
-                }
-                markFdError(outFwd);
-                markFdError(errFwd);
-            }
-
-            if ((ev.events & EPOLLOUT) != 0) {
-                auto handleDstWritable = [&](auto &fwd) noexcept {
-                    if (!fwd.has_value()) {
-                        return;
-                    }
-                    if (fd == fwd->dstFd() && fwd->needsWriteWatch()) {
-                        fwd->onDstWritable();
-                    }
-                };
-                handleDstWritable(inFwd);
-                handleDstWritable(outFwd);
-                handleDstWritable(errFwd);
             }
         }
 

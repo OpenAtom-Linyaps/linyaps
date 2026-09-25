@@ -63,7 +63,7 @@ struct RunContainerOptions
     std::string lockName;
     bool disableXdp{ false };
     bool enablePipewireSocketMount{ false };
-    bool enableAtSpiSocketMount{ false };
+    bool enableAtSpiSocketMount{ true };
     bool privileged{ false };
     bool devicePassthru{ false };
     std::map<std::string, std::string> env;

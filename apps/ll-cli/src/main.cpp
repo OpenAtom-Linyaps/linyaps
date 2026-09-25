@@ -149,9 +149,9 @@ ll-cli run org.deepin.demo -- bash -x /path/to/bash/script)"));
                  _("Enable PipeWire socket mount inside the sandbox"))
       ->take_last();
     cliRun
-      ->add_flag("--enable-atspi",
+      ->add_flag("--enable-atspi{false},!--disable-atspi{true}",
                  runOptions.enableAtSpiSocketMount,
-                 _("Enable AT SPI socket mount inside the sandbox"))
+                 _("Enable (default) or disable AT SPI socket mount inside the sandbox"))
       ->take_last();
     cliRun->add_option("--run-context", runOptions.runContext, _("Run context json string"))
       ->group("");

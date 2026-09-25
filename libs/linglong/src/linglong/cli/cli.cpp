@@ -49,6 +49,7 @@
 #include "linglong/utils/terminal/terminal_guard.h"
 #include "linglong/utils/unique_fd.h"
 #include "linglong/utils/xdp.h"
+#include "ocppi/cli/CommandFailedError.hpp"
 #include "ocppi/runtime/ExecOption.hpp"
 #include "ocppi/runtime/RunOption.hpp" // IWYU pragma: keep
 #include "ocppi/types/ContainerListItem.hpp"
@@ -1210,10 +1211,15 @@ utils::error::Result<int> Cli::reuseContainer(const std::string &id,
         auto result =
           ociCLI.exec(id, "/run/linglong/container-init", reuseCommand, ioSetup->option);
         if (!result) {
-            // TODO: modify ocppi to expose CommandFailedError::exitStatus()
-            // so that non-zero exit codes from reused commands are preserved
-            // instead of collapsed to EXIT_FAILURE.
+            const auto failure = result.error();
             LogE("failed to exec container: {}", LINGLONG_ERRV(result));
+            try {
+                std::rethrow_exception(failure);
+            } catch (const ocppi::cli::CommandFailedError &error) {
+                _exit(error.exitStatus());
+            } catch (...) {
+                // Startup errors do not carry a completed command's status.
+            }
             _exit(EXIT_FAILURE);
         }
 

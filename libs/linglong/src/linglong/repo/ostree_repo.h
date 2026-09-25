@@ -12,7 +12,7 @@
 #include "linglong/package/fuzzy_reference.h"
 #include "linglong/package/layer_dir.h"
 #include "linglong/package/reference.h"
-#include "linglong/package_manager/package_task.h"
+namespace linglong::service { class Task; }
 #include "linglong/repo/client_factory.h"
 #include "linglong/repo/config.h"
 #include "linglong/repo/remote_packages.h"

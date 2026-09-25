@@ -6,6 +6,8 @@
 
 #include "linglong/common/strings.h"
 
+#include <string_view>
+
 namespace linglong::common::strings {
 
 TEST(StringsTest, StringEqual)
@@ -21,6 +23,8 @@ TEST(StringsTest, StringEqual)
     EXPECT_FALSE(stringEqual("hello", "", true));
     EXPECT_FALSE(stringEqual("", "hello", false));
     EXPECT_FALSE(stringEqual("hello", "hello world", true));
+    EXPECT_TRUE(stringEqual("hello", "Hello"));
+    EXPECT_FALSE(stringEqual("hello", "world"));
 }
 
 TEST(StringsTest, Trim)
@@ -35,6 +39,8 @@ TEST(StringsTest, Trim)
     EXPECT_EQ(trim("abchelloabc", "abc"), "hello");
     EXPECT_EQ(trim("xxxyhelloxyx", "xy"), "hello");
     EXPECT_EQ(trim("  hello  ", "."), "  hello  ");
+    EXPECT_EQ(trim("....", "."), "");
+    EXPECT_EQ(trim("  hello  ", ""), "  hello  ");
 }
 
 TEST(StringsTest, TrimLeft)
@@ -45,6 +51,8 @@ TEST(StringsTest, TrimLeft)
     EXPECT_EQ(trim_left("", " "), "");
     EXPECT_EQ(trim_left("...hello...", "."), "hello...");
     EXPECT_EQ(trim_left("\t hello", " \t"), "hello");
+    EXPECT_EQ(trim_left("....", "."), "");
+    EXPECT_EQ(trim_left("  hello  ", ""), "  hello  ");
 }
 
 TEST(StringsTest, TrimRight)
@@ -55,6 +63,21 @@ TEST(StringsTest, TrimRight)
     EXPECT_EQ(trim_right("", " "), "");
     EXPECT_EQ(trim_right("...hello...", "."), "...hello");
     EXPECT_EQ(trim_right("hello \t", " \t"), "hello");
+    EXPECT_EQ(trim_right("....", "."), "");
+    EXPECT_EQ(trim_right("  hello  ", ""), "  hello  ");
+}
+
+TEST(StringsTest, SplitOptionBitwise)
+{
+    EXPECT_EQ(splitOption::None | splitOption::TrimWhitespace, splitOption::TrimWhitespace);
+    EXPECT_EQ(splitOption::None | splitOption::SkipEmpty, splitOption::SkipEmpty);
+    EXPECT_EQ(splitOption::TrimWhitespace | splitOption::None, splitOption::TrimWhitespace);
+
+    const auto combined = splitOption::TrimWhitespace | splitOption::SkipEmpty;
+    EXPECT_EQ(combined & splitOption::TrimWhitespace, splitOption::TrimWhitespace);
+    EXPECT_EQ(combined & splitOption::SkipEmpty, splitOption::SkipEmpty);
+    EXPECT_EQ(combined & splitOption::None, splitOption::None);
+    EXPECT_EQ(splitOption::None & splitOption::TrimWhitespace, splitOption::None);
 }
 
 TEST(StringsTest, Split)
@@ -85,6 +108,9 @@ TEST(StringsTest, Join)
     EXPECT_EQ(join({ "a" }, ','), "a");
     EXPECT_EQ(join({}, ','), "");
     EXPECT_EQ(join({ "", "", "" }, ','), ",,");
+    EXPECT_EQ(join({ "hello", "world" }), "hello world");
+    EXPECT_EQ(join({ "single" }), "single");
+    EXPECT_EQ(join({}), "");
 }
 
 TEST(StringsTest, ReplaceSubstring)
@@ -95,6 +121,10 @@ TEST(StringsTest, ReplaceSubstring)
     EXPECT_EQ(replaceSubstring("hello world", "world", ""), "hello ");
     EXPECT_EQ(replaceSubstring("hello", "", "linglong"), "hello");
     EXPECT_EQ(replaceSubstring("", "a", "b"), "");
+    EXPECT_EQ(replaceSubstring("banana", "a", "o"), "bonono");
+    EXPECT_EQ(replaceSubstring("a-b-c", "-", "::"), "a::b::c");
+    EXPECT_EQ(replaceSubstring("test", "test", "sample"), "sample");
+    EXPECT_EQ(replaceSubstring("", "", "abc"), "");
 }
 
 TEST(StringsTest, StartsWith)
@@ -138,6 +168,36 @@ TEST(StringsTest, QuoteBashArg)
     EXPECT_EQ(quoteBashArg("test'"), "'test'\\'''");
     EXPECT_EQ(quoteBashArg("'"), "''\\'''");
     EXPECT_EQ(quoteBashArg("hello $world"), "'hello $world'");
+    EXPECT_EQ(quoteBashArg("foo\nbar"), "'foo\nbar'");
+    EXPECT_EQ(quoteBashArg("foo\"bar"), "'foo\"bar'");
+}
+
+TEST(StringsTest, GenerateRandomString)
+{
+    EXPECT_TRUE(generateRandomString(0).empty());
+
+    const auto str1 = generateRandomString(1);
+    EXPECT_EQ(str1.size(), 1);
+
+    const auto str16 = generateRandomString(16);
+    EXPECT_EQ(str16.size(), 16);
+
+    const auto str64 = generateRandomString(64);
+    EXPECT_EQ(str64.size(), 64);
+
+    const auto str256 = generateRandomString(256);
+    EXPECT_EQ(str256.size(), 256);
+
+    static constexpr std::string_view charset = "0123456789"
+                                                "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                                                "abcdefghijklmnopqrstuvwxyz";
+    for (char ch : str256) {
+        EXPECT_NE(charset.find(ch), std::string_view::npos);
+    }
+
+    const auto randA = generateRandomString(32);
+    const auto randB = generateRandomString(32);
+    EXPECT_NE(randA, randB);
 }
 
 TEST(StringsTest, EncodeUrl)

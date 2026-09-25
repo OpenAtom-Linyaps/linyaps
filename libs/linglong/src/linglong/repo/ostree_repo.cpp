@@ -2456,12 +2456,7 @@ bool OSTreeRepo::isMarkedDeleted(const package::Reference &ref,
         return false;
     }
 
-    auto it = this->cache->findMatchingItem(*item);
-    if (!it) {
-        return false;
-    }
-
-    return (*it)->deleted.has_value() && *item->deleted;
+    return this->cache->isLayerItemDeleted(*item);
 }
 
 utils::error::Result<void> OSTreeRepo::markDeleted(const package::Reference &ref,
@@ -2475,28 +2470,7 @@ utils::error::Result<void> OSTreeRepo::markDeleted(const package::Reference &ref
         return LINGLONG_ERR(item);
     }
 
-    auto it = this->cache->findMatchingItem(*item);
-    if (!it) {
-        return LINGLONG_ERR(it);
-    }
-
-    auto originalValue = (*it)->deleted;
-    std::optional<bool> deletedOpt = deleted ? std::optional<bool>(true) : std::nullopt;
-
-    utils::Transaction transaction;
-    (*it)->deleted = deletedOpt;
-    transaction.addRollBack([iterator = *it, originalValue]() noexcept {
-        iterator->deleted = originalValue;
-    });
-
-    auto result = this->cache->writeToDisk();
-    if (!result) {
-        return LINGLONG_ERR(result);
-    }
-
-    transaction.commit();
-
-    return LINGLONG_OK;
+    return this->cache->setLayerItemDeleted(*item, deleted);
 }
 
 utils::error::Result<api::types::v1::RepositoryCacheLayersItem>

@@ -1574,9 +1574,9 @@ utils::error::Result<void> Builder::exportUAB(const ExportOption &option,
             std::vector<std::string> args{
                 "/opt/apps/cn.org.linyaps.builder.utils/files/bin/ll-builder-export",
                 "--packdir",
-                fmt::format("{}:{}",
-                            std::filesystem::path{ "/project" } / relativeBundleDir,
-                            std::filesystem::path{ "/project" } / relativeBundleFile),
+                (std::filesystem::path{ "/project" } / relativeBundleDir).string(),
+                "--output",
+                (std::filesystem::path{ "/project" } / relativeBundleFile).string(),
                 "-z",
                 exportOpts.compressor,
             };

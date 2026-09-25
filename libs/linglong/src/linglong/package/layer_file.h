@@ -14,6 +14,9 @@
 
 namespace linglong::package {
 
+// Keep the packer and installer on one format limit so locally built layers remain installable.
+inline constexpr quint32 maxLayerMetaInfoLength = 16U * 1024U * 1024U;
+
 inline const QByteArray &magicNumber()
 {
     static auto magicNumber =

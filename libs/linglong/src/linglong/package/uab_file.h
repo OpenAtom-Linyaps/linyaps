@@ -21,6 +21,9 @@
 
 namespace linglong::package {
 
+// Keep the packer and installer on one format limit so locally built UABs remain installable.
+inline constexpr GElf_Xword maxUabMetaInfoSize = 16U * 1024U * 1024U;
+
 class UABFile
 {
 

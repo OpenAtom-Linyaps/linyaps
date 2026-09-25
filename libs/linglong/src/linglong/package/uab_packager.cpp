@@ -10,6 +10,7 @@
 #include "linglong/api/types/v1/Version.hpp"
 #include "linglong/common/strings.h"
 #include "linglong/common/uab_signature.h"
+#include "linglong/package/uab_file.h"
 #include "linglong/utils/cmd.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/file.h"
@@ -512,7 +513,11 @@ utils::error::Result<void> UABPackager::packMetaInfo() noexcept
     LINGLONG_TRACE("add metaInfo to uab")
 
     auto metaFilePath = buildDir / "metaInfo.json";
-    if (auto ret = utils::writeFile(metaFilePath, nlohmann::json(meta).dump()); !ret) {
+    auto metaData = nlohmann::json(meta).dump();
+    if (metaData.size() > maxUabMetaInfoSize) {
+        return LINGLONG_ERR("UAB metadata exceeds limit");
+    }
+    if (auto ret = utils::writeFile(metaFilePath, metaData); !ret) {
         return LINGLONG_ERR(fmt::format("failed to write meta file {}", metaFilePath), ret);
     }
 

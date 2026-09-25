@@ -165,6 +165,49 @@ TEST_F(UabFileTest, UnpackFuseOffset)
       << "'info.json' not found in unpack dir" << unpackPath / "info.json";
 }
 
+TEST_F(UabFileTest, RejectsOversizedMetaInfoBeforeReading)
+{
+    constexpr std::size_t maxMetaInfoSize = 16U * 1024U * 1024U;
+    const auto metadataPath = testDir->path() / "oversized-meta.json";
+    {
+        std::ofstream metadata(metadataPath, std::ios::binary);
+        ASSERT_TRUE(metadata.is_open());
+        metadata.seekp(static_cast<std::streamoff>(maxMetaInfoSize));
+        metadata.put('\0');
+        ASSERT_TRUE(metadata.good());
+    }
+
+    const auto oversizedUabPath = testDir->path() / "oversized-meta.uab";
+    std::filesystem::copy_file("/proc/self/exe", oversizedUabPath);
+    auto elf = ElfHandler::create(oversizedUabPath);
+    ASSERT_TRUE(elf.has_value()) << elf.error().message();
+    auto addMeta = (*elf)->addSection("linglong.meta", metadataPath);
+    ASSERT_TRUE(addMeta.has_value()) << addMeta.error().message();
+
+    QFile metadataFile(QString::fromStdString(metadataPath.string()));
+    ASSERT_TRUE(metadataFile.open(QIODevice::ReadOnly));
+    QCryptographicHash cryptor{ QCryptographicHash::Sha256 };
+    ASSERT_TRUE(cryptor.addData(&metadataFile));
+    const auto digest = cryptor.result().toHex().toStdString();
+    auto writeDigest = (*elf)->writeSectionData(std::string{ common::uab::signatureSection },
+                                                common::uab::digestOffset,
+                                                digest.data(),
+                                                digest.size());
+    ASSERT_TRUE(writeDigest.has_value()) << writeDigest.error().message();
+    elf->reset();
+
+    auto uab = UABFile::loadFromFile(oversizedUabPath);
+    ASSERT_TRUE(uab.has_value()) << uab.error().message();
+
+    auto verifyResult = (*uab)->verify();
+    ASSERT_FALSE(verifyResult.has_value());
+    EXPECT_THAT(verifyResult.error().message(), ::testing::HasSubstr("too large"));
+
+    auto metaInfo = (*uab)->getMetaInfo();
+    ASSERT_FALSE(metaInfo.has_value());
+    EXPECT_THAT(metaInfo.error().message(), ::testing::HasSubstr("too large"));
+}
+
 TEST_F(UabFileTest, UnpackFuse)
 {
     if (!std::filesystem::exists("/dev/fuse")) {

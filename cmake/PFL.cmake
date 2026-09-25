@@ -499,6 +499,14 @@ macro(_pfl_add_target_common)
     target_compile_options(${TARGET} ${PFL_ARG_COMPILE_OPTIONS})
   endif()
 
+  if(ENABLE_PCH)
+    get_target_property(_pfl_target_type "${TARGET}" TYPE)
+    if(NOT "${_pfl_target_type}" STREQUAL "INTERFACE_LIBRARY")
+      target_precompile_headers(
+        "${TARGET}" PRIVATE ${CMAKE_SOURCE_DIR}/cmake/linglong_pch.h)
+    endif()
+  endif()
+
   if(DEFINED PFL_ARG_DEPENDENCIES)
     foreach(DEPENDENCY ${PFL_ARG_DEPENDENCIES})
       if("${DEPENDENCY}" STREQUAL "PUBLIC" OR "${DEPENDENCY}" STREQUAL

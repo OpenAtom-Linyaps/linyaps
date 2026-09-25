@@ -543,7 +543,7 @@ sources:
     url: # app source url
     commit: # commit hash
   # The following comments are generated and used by the plugin, retrieving libical-dev from repository to analyze its dependencies, automatically generating sources below the comments
-  # linglong:gen_deb_source sources amd64 https://ci.deepin.com/repo/deepin/deepin-community/backup/rc2 beige main
+  # linglong:gen_deb_source sources amd64 https://community-packages.deepin.com/deepin/beige/ beige main
   # linglong:gen_deb_source install libical-dev
 ```
 

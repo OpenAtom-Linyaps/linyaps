@@ -175,6 +175,26 @@ if(SYSTEM_PROC_LOWER MATCHES "^mips")
   add_compile_options(-mxgot)
 endif()
 
+# Speed up incremental and repeated builds by enabling ccache automatically
+# when it is available. Pass -DCMAKE_CXX_COMPILER_LAUNCHER=<launcher> to use a
+# different launcher, or -DENABLE_CCACHE=OFF to disable this auto-detection.
+option(ENABLE_CCACHE "Use ccache as the compiler launcher when available" ON)
+if(ENABLE_CCACHE)
+  foreach(_linglong_lang IN ITEMS CXX C)
+    if(NOT CMAKE_${_linglong_lang}_COMPILER_LAUNCHER)
+      find_program(_LINGLONG_CCACHE_PROGRAM ccache)
+      if(_LINGLONG_CCACHE_PROGRAM)
+        set(CMAKE_${_linglong_lang}_COMPILER_LAUNCHER
+            "${_LINGLONG_CCACHE_PROGRAM}"
+            CACHE STRING "Compiler launcher for ${_linglong_lang}")
+      endif()
+    endif()
+  endforeach()
+  if(CMAKE_CXX_COMPILER_LAUNCHER)
+    message(STATUS "Compiler launcher: ${CMAKE_CXX_COMPILER_LAUNCHER}")
+  endif()
+endif()
+
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 include(PFL)
 

@@ -876,6 +876,15 @@ You can report bugs to the linyaps team under this project: https://github.com/O
         project = std::move(projectRet).value();
     }
 
+    // Snapshot the modules to push while `project` is still intact. It is moved
+    // into `builder` on the next lines, so reading `*project` in the push branch
+    // below would observe a moved-from optional and silently drop the modules
+    // declared in linglong.yaml (falling back to only "binary" and "develop").
+    std::vector<std::string> projectPushModules;
+    if (buildPush->parsed() && project) {
+        projectPushModules = getProjectModule(*project);
+    }
+
     linglong::builder::Builder builder(std::move(project),
                                        cwd,
                                        **repo,
@@ -890,7 +899,7 @@ You can report bugs to the linyaps team under this project: https://github.com/O
         if (!pushModule.empty()) {
             pushOpts.pushModules = { pushModule };
         } else {
-            pushOpts.pushModules = getProjectModule(*project);
+            pushOpts.pushModules = projectPushModules;
         }
         return handlePush(builder, pushOpts);
     }

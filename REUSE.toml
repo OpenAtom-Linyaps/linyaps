@@ -212,3 +212,15 @@ path = "libs/cdi/src/linglong/cdi/types/**"
 precedence = "aggregate"
 SPDX-FileCopyrightText = "None"
 SPDX-License-Identifier = "CC0-1.0"
+
+[[annotations]]
+path = "tools/linglong-migration-assistant/**.json"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 Yanghanrui666"
+SPDX-License-Identifier = "LGPL-3.0-or-later"
+
+[[annotations]]
+path = "tools/linglong-migration-assistant/.gitignore"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 Yanghanrui666"
+SPDX-License-Identifier = "LGPL-3.0-or-later"

@@ -1,0 +1,28 @@
+# Python / venv
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Node
+node_modules/
+frontend/dist/
+
+# Build artifacts
+backend/tests/fixtures/*.deb
+backend/tests/fixtures/*.rpm
+backend/tests/fixtures/*.AppImage
+
+# Local env / logs
+*.log
+.env
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Trae working documents (internal, not for public repo)
+.trae/

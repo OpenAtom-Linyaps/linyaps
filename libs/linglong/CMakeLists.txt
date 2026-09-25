@@ -22,6 +22,7 @@ pfl_add_library(
   src/linglong/builder/source_fetcher.cpp
   src/linglong/builder/source_fetcher.h
   src/linglong/cli/cli.cpp
+  src/linglong/cli/doctor.cpp
   src/linglong/cli/cli.h
   src/linglong/cli/cli_printer.cpp
   src/linglong/cli/cli_printer.h

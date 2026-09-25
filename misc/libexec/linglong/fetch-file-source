@@ -11,23 +11,27 @@ digest=$3
 cachedir=$4
 
 # Check command tools
-if ! command -v wget
-then
+if ! command -v wget; then
     echo "wget not found, please install wget first"
-    exit 1;
+    exit 1
 fi
 # Check cache
 if [ -f "$cachedir/file_$digest" ]; then
-    # Using hard links is faster
-    cp --remove-destination --link "$cachedir/file_$digest" "$outputfile" || cp "$cachedir/file_$digest" "$outputfile"
-    exit;
+    # Older versions hard-linked the output, so build steps may have changed the cache.
+    actual_hash=$(sha256sum "$cachedir/file_$digest" | awk '{print $1}')
+    if [ "X$actual_hash" = "X$digest" ]; then
+        cp --remove-destination --reflink=auto "$cachedir/file_$digest" "$outputfile"
+        exit
+    fi
+    rm "$cachedir/file_$digest"
 fi
 # Download file
 wget "$url" -O "$cachedir/tmp_$digest"
 actual_hash=$(sha256sum "$cachedir/tmp_$digest" | awk '{print $1}')
 if [ "X$actual_hash" != "X$digest" ]; then
     echo "File SHA256 digest is $actual_hash, expected $digest"
-    exit 1;
+    exit 1
 fi
 mv "$cachedir/tmp_$digest" "$cachedir/file_$digest"
-cp --remove-destination --link "$cachedir/file_$digest" "$outputfile" || cp "$cachedir/file_$digest" "$outputfile"
+# Reflinks keep copies cheap where supported, without sharing subsequent writes.
+cp --remove-destination --reflink=auto "$cachedir/file_$digest" "$outputfile"

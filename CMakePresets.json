@@ -12,7 +12,9 @@
             "description": "Configure linglong for installing from source.",
             "binaryDir": "${sourceDir}/build-release",
             "cacheVariables": {
-                "CMAKE_CXX_FLAGS": "-Wall -Wextra -Wpedantic -Wno-c++20-extensions -Wno-pessimizing-move -O2"
+                "CMAKE_BUILD_TYPE": "Release",
+                "CMAKE_CXX_FLAGS": "-Wall -Wextra -Wpedantic -Wno-c++20-extensions -Wno-pessimizing-move",
+                "CMAKE_CXX_FLAGS_RELEASE": "-O2 -DNDEBUG"
             }
         },
         {
@@ -21,7 +23,9 @@
             "description": "Configure linglong for development and debugging.",
             "binaryDir": "${sourceDir}/build",
             "cacheVariables": {
-                "CMAKE_CXX_FLAGS": "-Wall -Wextra -Wpedantic -Wno-c++20-extensions -Wno-pessimizing-move -Og -g -fsanitize=undefined",
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_CXX_FLAGS": "-Wall -Wextra -Wpedantic -Wno-c++20-extensions -Wno-pessimizing-move",
+                "CMAKE_CXX_FLAGS_DEBUG": "-Og -g -fsanitize=undefined",
                 "CMAKE_EXPORT_COMPILE_COMMANDS": true,
                 "ENABLE_TESTING": true,
                 "CMAKE_INSTALL_PREFIX": "/usr"

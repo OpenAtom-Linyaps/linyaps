@@ -50,7 +50,8 @@ generate() {
         output_path="$1"
 
         if [[ ! -f "$schema" ]]; then
-                echo "$schema not found" || exit 255
+                echo "$schema not found" >&2
+                exit 255
         fi
 
         filename="/dev/null"

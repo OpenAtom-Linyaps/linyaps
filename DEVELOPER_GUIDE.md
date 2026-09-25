@@ -79,6 +79,16 @@ See [CPM.cmake] README for more information.
 
 [CPM.cmake]: https://github.com/cpm-cmake/CPM.cmake
 
+## Application configuration generator tests
+
+The application configuration generator regression runs through CTest when
+`ENABLE_TESTING` is enabled. It can also run directly without building the C++
+tools (requires CMake, Bash and sed):
+
+```bash
+cmake -P misc/tests/app_conf_generator_test.cmake
+```
+
 ## Code Style & Pre-commit
 
 Linglong uses [clang-format] for C/C++ code style; the rules live in

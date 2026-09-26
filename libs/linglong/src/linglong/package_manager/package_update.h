@@ -75,7 +75,6 @@ private:
     bool noAutoPrune;
 
     std::string taskName;
-    std::string taskMessage;
     utils::Transaction transaction;
     bool prepared = false;
     std::vector<api::types::v1::PackageInfoV2> appsToUpgrade;

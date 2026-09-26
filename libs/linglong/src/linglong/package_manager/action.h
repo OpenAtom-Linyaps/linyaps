@@ -7,6 +7,9 @@
 #include "linglong/api/types/v1/CommonOptions.hpp"
 #include "linglong/package/reference.h"
 
+#include <mutex>
+#include <utility>
+
 namespace linglong::repo {
 class OSTreeRepo;
 }
@@ -50,12 +53,29 @@ public:
     virtual std::string getTaskName() const = 0;
 
 protected:
+    // Download monitors read the message on a background thread while the action changes modules.
+    void setTaskMessage(std::string message)
+    {
+        std::lock_guard<std::mutex> lock(taskMessageMutex);
+        taskMessage = std::move(message);
+    }
+
+    std::string getTaskMessage() const
+    {
+        std::lock_guard<std::mutex> lock(taskMessageMutex);
+        return taskMessage;
+    }
+
     utils::error::Result<ActionOperation>
     getActionOperation(const api::types::v1::PackageInfoV2 &target, bool extraModuleOnly);
 
     PackageManager &pm;
     repo::OSTreeRepo &repo;
     api::types::v1::CommonOptions options;
+
+private:
+    mutable std::mutex taskMessageMutex;
+    std::string taskMessage;
 };
 
 } // namespace linglong::service

@@ -57,7 +57,6 @@ private:
 
     ActionOperation operation;
     std::string taskName;
-    std::string taskMessage;
     utils::Transaction transaction;
     std::optional<api::types::v1::Repo> usedRepo;
     repo::RemotePackages candidates;

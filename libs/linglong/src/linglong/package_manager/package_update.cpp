@@ -120,7 +120,7 @@ utils::error::Result<void> PackageUpdateAction::update(PackageTask &task)
 
     DataMonitor monitor(5, 1, [this, &task](DataMonitor &m) {
         task.updateStateMessage(
-          fmt::format("{} {:>9}", taskMessage, fmt::format("[{}]", m.getHumanSpeed())));
+          fmt::format("{} {:>9}", getTaskMessage(), fmt::format("[{}]", m.getHumanSpeed())));
     });
 
     QObject::connect(&task,
@@ -186,8 +186,9 @@ utils::error::Result<void> PackageUpdateAction::updateApp(Task &task,
     taskNeededSize = 0;
     taskFetchedSize = 0;
 
-    taskMessage = fmt::format("Checking for updates {}", app.id);
-    task.resetProgress(taskMessage);
+    auto message = fmt::format("Checking for updates {}", app.id);
+    setTaskMessage(message);
+    task.resetProgress(message);
 
     auto localRef = package::Reference::fromPackageInfo(app);
     if (!localRef) {
@@ -251,8 +252,9 @@ utils::error::Result<void> PackageUpdateAction::updateApp(Task &task,
     }
     for (const auto &[refRepo, modules] : refsToInstall) {
         for (const auto &[module, meta] : modules) {
-            taskMessage = fmt::format("Updating {}/{}", refRepo.reference.toString(), module);
-            task.updateStateMessage(taskMessage);
+            auto message = fmt::format("Updating {}/{}", refRepo.reference.toString(), module);
+            setTaskMessage(message);
+            task.updateStateMessage(message);
             auto res = pm.installRefModule(task, refRepo, module);
             if (!res) {
                 return LINGLONG_ERR(res);

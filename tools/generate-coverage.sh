@@ -41,6 +41,7 @@ mkdir -p "$builddir"/report || exit 255
 
 gcovr \
     --filter "apps/.*" \
+    --filter "libs/cdi/.*" \
     --filter "libs/common/.*" \
     --filter "libs/oci-cfg-generators/.*" \
     --filter "libs/utils/.*" \

@@ -434,6 +434,13 @@ TEST(UabSignatureTest, ParseRejectsWrongName)
 
 TEST_F(UabFileTest, ExtractSignData)
 {
+    if (!std::filesystem::exists("/dev/fuse")) {
+        GTEST_SKIP() << "fuse device is not available";
+    }
+    if (!utils::Cmd("erofsfuse").exists()) {
+        GTEST_SKIP() << "erofsfuse is not available";
+    }
+
     auto uab = MockUabFile(uabFile);
     auto ret = uab.unpack(testDir->path() / "unpack-sign");
     ASSERT_TRUE(ret.has_value()) << "Failed to unpack uab file " << ret.error().message();

@@ -11,6 +11,7 @@
 
 #include <filesystem>
 #include <fstream>
+#include <vector>
 
 namespace linglong::package {
 namespace {
@@ -273,6 +274,103 @@ TEST(UABPackagerTest, PackEndToEndWithValidLayers)
 
     EXPECT_TRUE(std::filesystem::exists(outPath));
     EXPECT_GT(std::filesystem::file_size(outPath), 0);
+}
+
+TEST(UABPackagerTest, PackReplacesStaleBundleDirectory)
+{
+    // /proc/self/exe serves as a valid ELF header.
+    TempDir headerDir("uab-header-");
+    auto header = headerDir.path() / "header.elf";
+    std::filesystem::copy_file("/proc/self/exe", header);
+
+    // Build a base layer (kind=base).
+    TempDir baseDir("uab-base-");
+    std::filesystem::create_directories(baseDir.path() / "files" / "usr" / "lib");
+    std::ofstream{ baseDir.path() / "files" / "usr" / "lib" / "libbase.so" } << "base";
+    {
+        api::types::v1::PackageInfoV2 baseInfo;
+        baseInfo.id = "org.deepin.base";
+        baseInfo.version = "1";
+        baseInfo.arch = { "x86_64" };
+        baseInfo.kind = "base";
+        baseInfo.packageInfoV2Module = "binary";
+        baseInfo.channel = "main";
+        nlohmann::json j = baseInfo;
+        std::ofstream{ baseDir.path() / "info.json" } << j.dump();
+    }
+
+    // Build an app layer (kind=app).
+    TempDir appDir("uab-app-");
+    std::filesystem::create_directories(appDir.path() / "files" / "usr" / "bin");
+    std::ofstream{ appDir.path() / "files" / "usr" / "bin" / "hello" } << "hello world";
+    {
+        api::types::v1::PackageInfoV2 appInfo;
+        appInfo.id = "com.example.app";
+        appInfo.version = "1.0.0";
+        appInfo.arch = { "x86_64" };
+        appInfo.kind = "app";
+        appInfo.packageInfoV2Module = "binary";
+        appInfo.channel = "main";
+        nlohmann::json j = appInfo;
+        std::ofstream{ appDir.path() / "info.json" } << j.dump();
+    }
+
+    LayerDir baseLayer(baseDir.path());
+    ASSERT_TRUE(baseLayer.valid());
+
+    LayerDir appLayer(appDir.path());
+    ASSERT_TRUE(appLayer.valid());
+
+    TempDir buildDir("uab-build-");
+    auto loaderFile = buildDir.path() / "uab-loader-dummy";
+    std::ofstream{ loaderFile } << "dummy loader";
+
+    // Simulate the leftovers of an interrupted export: a stale bundle directory
+    // holding a layer which is not part of this export.
+    const auto staleLayerDir = buildDir.path() / "bundle" / "layers" / "org.stale.app" / "binary";
+    std::filesystem::create_directories(staleLayerDir);
+    std::ofstream{ staleLayerDir / "info.json" } << "{}";
+
+    std::vector<std::filesystem::path> packedPaths;
+    auto bundleCB =
+      [&packedPaths](const std::filesystem::path &bundleFile,
+                     const std::filesystem::path &bundleDir) -> utils::error::Result<void> {
+        for (const auto &entry : std::filesystem::recursive_directory_iterator(bundleDir)) {
+            packedPaths.emplace_back(entry.path());
+        }
+        std::ofstream{ bundleFile } << "bundle";
+        return LINGLONG_OK;
+    };
+
+    auto packInto = [&](const std::filesystem::path &outPath) {
+        UABPackager packager(buildDir.path());
+        packager.setDefaultHeader(header);
+        packager.setCompressor("lz4");
+        packager.setLoader(loaderFile);
+        packager.setBundleCB(bundleCB);
+        EXPECT_TRUE(packager.appendLayer(baseLayer).has_value());
+        EXPECT_TRUE(packager.appendLayer(appLayer).has_value());
+        return packager.pack(outPath, UABPackagerMode::Distribution);
+    };
+
+    // The first export must tolerate the leftover bundle directory and must not
+    // pack its stale content into the new bundle.
+    auto first = packInto(buildDir.path() / "first.uab");
+    ASSERT_TRUE(first.has_value()) << first.error().message();
+    EXPECT_TRUE(std::filesystem::exists(buildDir.path() / "first.uab"));
+    EXPECT_GT(std::filesystem::file_size(buildDir.path() / "first.uab"), 0);
+    EXPECT_FALSE(std::filesystem::exists(staleLayerDir));
+    for (const auto &path : packedPaths) {
+        EXPECT_EQ(path.string().find("org.stale.app"), std::string::npos)
+          << "stale layer leaked into the bundle: " << path;
+    }
+
+    // The second export into the same working directory must succeed as well:
+    // the previous export left its own bundle directory behind.
+    auto second = packInto(buildDir.path() / "second.uab");
+    ASSERT_TRUE(second.has_value()) << second.error().message();
+    EXPECT_TRUE(std::filesystem::exists(buildDir.path() / "second.uab"));
+    EXPECT_GT(std::filesystem::file_size(buildDir.path() / "second.uab"), 0);
 }
 
 } // namespace

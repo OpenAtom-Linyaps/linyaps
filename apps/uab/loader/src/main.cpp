@@ -31,6 +31,8 @@ namespace {
 
 std::filesystem::path containerBundle;
 
+volatile sig_atomic_t signalReceived{ 0 };
+
 std::string genRandomString() noexcept
 {
     std::random_device rd;
@@ -86,7 +88,7 @@ void handleSig() noexcept
     struct sigaction sa{};
 
     sa.sa_handler = [](int sig) -> void {
-        cleanAndExit(128 + sig);
+        signalReceived = sig;
     };
     sa.sa_mask = blocking_mask;
     sa.sa_flags = 0;
@@ -94,6 +96,11 @@ void handleSig() noexcept
     for (auto sig : quitSignals) {
         sigaction(sig, &sa, nullptr);
     }
+
+    // Block the signals so they are not delivered until we explicitly check.
+    // This prevents race conditions where a signal arrives between checking
+    // signalReceived and a blocking call.
+    sigprocmask(SIG_BLOCK, &blocking_mask, nullptr);
 }
 
 std::optional<linglong::api::types::v1::PackageInfoV2>
@@ -593,6 +600,10 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv) // NOLINT
         std::cout << json.dump(4) << std::endl;
     }
 
+    if (signalReceived != 0) {
+        cleanAndExit(128 + signalReceived);
+    }
+
     auto bundleArg = "--bundle=" + containerBundle.string();
     auto pid = fork();
     if (pid < 0) {
@@ -613,6 +624,9 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv) // NOLINT
 
     int wstatus{ 0 };
     if (auto ret = ::waitpid(pid, &wstatus, 0); ret == -1) {
+        if (signalReceived != 0) {
+            cleanAndExit(128 + signalReceived);
+        }
         std::cerr << "waitpid() err:" << ::strerror(errno) << std::endl;
         return -1;
     }

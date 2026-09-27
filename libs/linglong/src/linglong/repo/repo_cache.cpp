@@ -255,8 +255,7 @@ RepoCache::queryLayerItem(const repoCacheQuery &query) const noexcept
         }
 
         if (query.architecture
-            && (layer.info.arch.empty()
-                || query.architecture.value() != layer.info.arch.front())) {
+            && (layer.info.arch.empty() || query.architecture.value() != layer.info.arch.front())) {
             continue;
         }
 

@@ -18,8 +18,9 @@ output=../external/http
 onlyFirstTag=KEEP_ONLY_FIRST_TAG_IN_OPERATION=true
 # 服务端使用自定义的@X-Role生成接口权限文档，openapi-generator-cli无法识别，所以跳过验证
 skipValidate=--skip-validate-spec
-# 清理输出目录
-rm -r $output || true
+# Generate separately so failures preserve the existing client.
+staging=$(mktemp -d "../external/http-generate.XXXXXX")
+trap 'rm -rf "$staging"' EXIT
 
 openapi-generator-cli() {
         if [ -z "$OPENAPI_GENERATOR_CLI" ]; then
@@ -30,10 +31,12 @@ openapi-generator-cli() {
         fi
 }
 
-openapi-generator-cli generate -g c -o "$output" \
+openapi-generator-cli generate -g c -o "$staging/http" \
         -i ../api/http/client_swagger.json \
         $skipValidate \
         --openapi-normalizer $onlyFirstTag \
         --template-dir "$repoRoot/tools/openapi-c-libcurl-client"
 
-rm -r $output/docs
+rm -r "$staging/http/docs"
+rm -rf "$output"
+mv "$staging/http" "$output"

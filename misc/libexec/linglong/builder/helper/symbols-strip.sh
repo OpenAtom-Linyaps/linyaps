@@ -1,12 +1,15 @@
 #!/bin/bash
 
-# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
+# SPDX-FileCopyrightText: 2023 - 2026 UnionTech Software Technology Co., Ltd.
 #
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
-prefix="$PREFIX"
+set -euo pipefail
+
+prefix="${PREFIX:?PREFIX is required}"
 
 tmpFile=$(mktemp)
+trap 'rm -f "$tmpFile"' EXIT
 
 find "$prefix" -type f >"$tmpFile"
 
@@ -21,13 +24,18 @@ while read -r filepath; do
                 continue
         fi
         # https://sourceware.org/gdb/current/onlinedocs/gdb.html/Separate-Debug-Files.html
-        buildID=$(readelf -n "$filepath" | grep 'Build ID' | awk '{print $NF}')
+        # awk exits 0 when no line matches, so a missing Build ID yields an empty string.
+        buildID=$(readelf -n "$filepath" 2>/dev/null | awk '/Build ID/ {print $NF}')
+        if [[ -z "${buildID}" ]]; then
+                echo "skip $filepath: no Build ID found"
+                continue
+        fi
         debugIDFile="$prefix/lib/debug/.build-id/${buildID:0:2}/${buildID:2}.debug"
         mkdir -p "$(dirname "$debugIDFile")"
         eu-strip "$filepath" -f "$debugIDFile"
-        echo "striped $filepath to $debugIDFile"
+        echo "stripped $filepath to $debugIDFile"
 
         debugFile="$prefix/lib/debug/$filepath.debug"
         mkdir -p "$(dirname "$debugFile")"
-        ln -s "$debugIDFile" "$debugFile"
+        ln -sfn "$debugIDFile" "$debugFile"
 done <"$tmpFile"

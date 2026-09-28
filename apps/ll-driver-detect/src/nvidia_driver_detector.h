@@ -36,6 +36,8 @@ public:
 
 protected:
     bool compareVersions(std::string_view v1, std::string_view v2) const noexcept;
+    utils::error::Result<std::pair<bool, GraphicsDriverInfo>>
+    parsePackageSearchResult(const std::string &searchResult, const std::string &packageName) const;
 
 private:
     // Get driver version from the specified file path

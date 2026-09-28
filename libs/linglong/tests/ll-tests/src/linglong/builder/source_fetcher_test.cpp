@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2024 - 2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 #include <gmock/gmock.h>
@@ -247,6 +247,52 @@ TEST_F(SourceFetcherTest, FetchNoSetName)
     fetcher.setCommand(mockCmd);
     auto ret = fetcher.fetch(QDir("/tmp/dest"));
     EXPECT_TRUE(ret.has_value());
+}
+
+// 测试非法source name被拒绝
+// 场景：name包含路径分隔符、".."、"."、绝对路径，或来自无文件名的URL
+// 预期：在运行fetch脚本前返回错误
+TEST_F(SourceFetcherTest, RejectUnsafeSourceName)
+{
+    const std::vector<std::string> badNames = {
+        "..", ".", "../escape", "nested/name", "/absolute", "..\\escape", "nested\\name", "",
+    };
+
+    for (const auto &badName : badNames) {
+        api::types::v1::BuilderProjectSource source;
+        source.kind = "file";
+        source.url = "https://example.com/repo.git";
+        source.digest = "digest";
+        source.name = badName;
+
+        QDir cacheDir("/tmp/cache");
+        auto mockCmd = std::make_shared<MockCommand>("mock");
+        // exec must not be called for an invalid name
+        EXPECT_CALL(*mockCmd, exec(_)).Times(0);
+        SourceFetcher fetcher(source, cacheDir);
+        fetcher.setCommand(mockCmd);
+        auto ret = fetcher.fetch(QDir("/tmp/dest"));
+        EXPECT_FALSE(ret.has_value()) << "name should be rejected: " << badName;
+    }
+}
+
+// 测试URL没有文件名时拒绝
+// 场景：url以"/"结尾且未设置name，fileName()为空
+// 预期：返回错误，不调用fetch脚本
+TEST_F(SourceFetcherTest, RejectUrlWithoutFileName)
+{
+    api::types::v1::BuilderProjectSource source;
+    source.kind = "file";
+    source.url = "https://example.com/dir/";
+    source.digest = "digest";
+
+    QDir cacheDir("/tmp/cache");
+    auto mockCmd = std::make_shared<MockCommand>("mock");
+    EXPECT_CALL(*mockCmd, exec(_)).Times(0);
+    SourceFetcher fetcher(source, cacheDir);
+    fetcher.setCommand(mockCmd);
+    auto ret = fetcher.fetch(QDir("/tmp/dest"));
+    EXPECT_FALSE(ret.has_value());
 }
 
 } // namespace linglong::builder

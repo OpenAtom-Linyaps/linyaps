@@ -31,12 +31,12 @@ openapi-generator-cli() {
         fi
 }
 
-openapi-generator-cli generate -g c -o "$staging" \
+openapi-generator-cli generate -g c -o "$staging/http" \
         -i ../api/http/client_swagger.json \
         $skipValidate \
         --openapi-normalizer $onlyFirstTag \
         --template-dir "$repoRoot/tools/openapi-c-libcurl-client"
 
-rm -r "$staging/docs"
+rm -r "$staging/http/docs"
 rm -rf "$output"
-mv "$staging" "$output"
+mv "$staging/http" "$output"

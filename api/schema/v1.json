@@ -1096,7 +1096,7 @@
         },
         "repos": {
           "type": "object",
-          "description": "repos of of package manager modify repo",
+          "description": "repos of package manager modify repo",
           "additionalProperties": {
             "type": "string"
           }

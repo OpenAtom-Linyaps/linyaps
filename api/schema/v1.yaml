@@ -836,7 +836,7 @@ $defs:
         description: default repo of package manager modify repo parameters
       repos:
         type: object
-        description: repos of of package manager modify repo
+        description: repos of package manager modify repo
         additionalProperties:
           type: string
   PackageManager1ModifyRepoResult:

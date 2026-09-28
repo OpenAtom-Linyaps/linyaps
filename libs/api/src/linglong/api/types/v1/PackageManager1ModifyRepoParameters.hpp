@@ -29,7 +29,7 @@ struct PackageManager1ModifyRepoParameters {
 */
 std::string defaultRepo;
 /**
-* repos of of package manager modify repo
+* repos of package manager modify repo
 */
 std::map<std::string, std::string> repos;
 };

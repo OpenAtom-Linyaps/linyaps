@@ -17,6 +17,9 @@
 #include <fstream>
 #include <iostream>
 
+#include <fcntl.h>
+#include <unistd.h>
+
 namespace linglong::repo {
 
 RepoCache::RepoCache(std::filesystem::path cacheFile)
@@ -338,6 +341,22 @@ utils::error::Result<void> RepoCache::writeToDisk()
         return LINGLONG_ERR("failed to write cache");
     }
 
+    // Make sure the new content reaches the disk before it replaces the live
+    // cache file: a power failure between the rename below and the write back
+    // would otherwise leave a truncated or empty states.json behind, and the
+    // repository would lose the list of the installed layers.
+    auto syncFd = ::open(tmpFile.c_str(), O_RDONLY | O_CLOEXEC);
+    if (syncFd == -1) {
+        std::filesystem::remove(tmpFile, ec);
+        return LINGLONG_ERR("failed to open the cache file to sync it");
+    }
+    if (::fsync(syncFd) == -1) {
+        ::close(syncFd);
+        std::filesystem::remove(tmpFile, ec);
+        return LINGLONG_ERR("failed to sync the cache file");
+    }
+    ::close(syncFd);
+
     std::filesystem::rename(tmpFile, this->cacheFile, ec);
     if (ec) {
         LogE("failed to rename from {} to {}: {}",
@@ -363,6 +382,16 @@ utils::error::Result<void> RepoCache::writeToDisk()
         }
 
         return LINGLONG_ERR("failed to update cache");
+    }
+
+    // The rename above only becomes durable once the directory entry has been
+    // synced, so flush the parent directory before the new cache file is used.
+    auto dirFd = ::open(parent_path.c_str(), O_RDONLY | O_DIRECTORY | O_CLOEXEC);
+    if (dirFd != -1) {
+        if (::fsync(dirFd) == -1) {
+            LogW("failed to sync the cache directory {}", parent_path.string());
+        }
+        ::close(dirFd);
     }
 
     auto versionTag = parent_path / ".version";

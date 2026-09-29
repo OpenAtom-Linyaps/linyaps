@@ -881,8 +881,16 @@ utils::error::Result<api::types::v1::RepositoryCacheLayersItem> OSTreeRepo::impo
 [[nodiscard]] utils::error::Result<void> OSTreeRepo::push(const package::Reference &reference,
                                                           const std::string &module) const noexcept
 {
-    const auto &defaultRepo = getDefaultRepo();
-    return pushToRemote(defaultRepo.name, defaultRepo.url, reference, module);
+    LINGLONG_TRACE(fmt::format("push {}", reference.toString()));
+
+    // A missing default repository is a normal configuration error, not a
+    // reason to abort: resolve it first and propagate the failure to the caller.
+    auto defaultRepo = getDefaultRepo();
+    if (!defaultRepo) {
+        return LINGLONG_ERR("failed to get default repo", defaultRepo);
+    }
+
+    return pushToRemote(defaultRepo->name, defaultRepo->url, reference, module);
 }
 
 utils::error::Result<void> OSTreeRepo::pushToRemote(const std::string &remoteRepo,

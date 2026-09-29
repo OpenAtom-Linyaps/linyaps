@@ -195,7 +195,7 @@ public:
         return ClientFactory(url).createClientV2();
     }
 
-    const api::types::v1::Repo &getDefaultRepo() const
+    [[nodiscard]] utils::error::Result<api::types::v1::Repo> getDefaultRepo() const noexcept
     {
         return linglong::repo::getDefaultRepo(cfg);
     }

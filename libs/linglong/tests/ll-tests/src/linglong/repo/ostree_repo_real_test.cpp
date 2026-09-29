@@ -410,6 +410,121 @@ TEST_F(RealRepoTest, UpgradableAppsDetectsNewerRemote)
     EXPECT_EQ(upgradeList->at(0).second.reference.version.toString(), "2.0.0");
 }
 
+// A power failure during an install or an upgrade can leave a deployed layer
+// directory that is missing or only partially written, while the repository
+// cache keeps claiming that the layer is installed. Opening the repository for
+// writing has to repair such a layer from its ostree commit instead of leaving
+// the application unusable.
+TEST_F(RealRepoTest, RepairRedeploysVanishedLayer)
+{
+    auto item = repo->getLayerItem(*appRef, "binary");
+    ASSERT_TRUE(item.has_value()) << item.error().message();
+
+    std::error_code ec;
+    const auto layerDir = repoRoot / "layers" / item->commit;
+    ASSERT_TRUE(fs::exists(layerDir / "info.json"));
+    fs::remove_all(layerDir, ec);
+    ASSERT_FALSE(ec) << ec.message();
+    ASSERT_FALSE(fs::exists(layerDir));
+
+    repo.reset();
+    auto reopened = OSTreeRepo::create(repoRoot, makeRepoConfig());
+    ASSERT_TRUE(reopened.has_value()) << reopened.error().message();
+    repo = std::move(*reopened);
+
+    EXPECT_TRUE(fs::exists(layerDir / "info.json"));
+    EXPECT_TRUE(fs::exists(layerDir / "files" / "usr" / "bin" / "hello"));
+    EXPECT_TRUE(
+      fs::exists(layerDir / "files" / "share" / "applications" / "com.example.app.desktop"));
+
+    auto restored = repo->getLayerDir(*appRef, "binary");
+    ASSERT_TRUE(restored.has_value()) << restored.error().message();
+    auto info = restored->info();
+    ASSERT_TRUE(info.has_value()) << info.error().message();
+    EXPECT_EQ(info->id, "com.example.app");
+    EXPECT_EQ(info->version, "1.0.0");
+}
+
+// A directory that was already created but never filled in completely (the
+// process died before the deployment finished) is recognised by its missing
+// info.json and deployed again.
+TEST_F(RealRepoTest, RepairRedeploysLayerWithoutInfoFile)
+{
+    auto item = repo->getLayerItem(*runtimeRef, "binary");
+    ASSERT_TRUE(item.has_value()) << item.error().message();
+
+    std::error_code ec;
+    const auto layerDir = repoRoot / "layers" / item->commit;
+    ASSERT_TRUE(fs::exists(layerDir / "info.json"));
+    ASSERT_TRUE(fs::remove(layerDir / "info.json", ec));
+    ASSERT_FALSE(ec) << ec.message();
+
+    repo.reset();
+    auto reopened = OSTreeRepo::create(repoRoot, makeRepoConfig());
+    ASSERT_TRUE(reopened.has_value()) << reopened.error().message();
+    repo = std::move(*reopened);
+
+    EXPECT_TRUE(fs::exists(layerDir / "info.json"));
+    auto restored = repo->getLayerDir(*runtimeRef, "binary");
+    ASSERT_TRUE(restored.has_value()) << restored.error().message();
+    auto info = restored->info();
+    ASSERT_TRUE(info.has_value()) << info.error().message();
+    EXPECT_EQ(info->id, "org.deepin.runtime");
+    EXPECT_TRUE(fs::exists(layerDir / "files" / "usr" / "lib" / "libruntime.so"));
+}
+
+// The temporary directories of the deployment must not pile up, and the layers
+// that are deployed correctly must be kept.
+TEST_F(RealRepoTest, RepairRemovesStaleDeploymentDirectories)
+{
+    std::error_code ec;
+    const auto layersDir = repoRoot / "layers";
+    const auto staging = layersDir / ".tmp-deadbeef-00000000000000000000000000000000";
+    const auto backup = layersDir / ".old-deadbeef-00000000000000000000000000000000";
+    ASSERT_TRUE(fs::create_directories(staging / "files", ec));
+    ASSERT_FALSE(ec) << ec.message();
+    ASSERT_TRUE(fs::create_directories(backup, ec));
+    ASSERT_FALSE(ec) << ec.message();
+
+    repo.reset();
+    auto reopened = OSTreeRepo::create(repoRoot, makeRepoConfig());
+    ASSERT_TRUE(reopened.has_value()) << reopened.error().message();
+    repo = std::move(*reopened);
+
+    EXPECT_FALSE(fs::exists(staging));
+    EXPECT_FALSE(fs::exists(backup));
+
+    // The deployed layers are left untouched by the cleanup.
+    for (const auto &ref : { *appRef, *runtimeRef }) {
+        auto item = repo->getLayerItem(ref, "binary");
+        ASSERT_TRUE(item.has_value()) << item.error().message();
+        EXPECT_TRUE(fs::exists(layersDir / item->commit / "info.json"));
+    }
+}
+
+// Importing a layer publishes it completely and does not leave any of the
+// temporary directories used while deploying behind.
+TEST_F(RealRepoTest, ImportLeavesNoDeploymentLeftovers)
+{
+    std::error_code ec;
+    const auto layersDir = repoRoot / "layers";
+    auto items = repo->listLayerItem();
+    ASSERT_TRUE(items.has_value()) << items.error().message();
+    ASSERT_FALSE(items->empty());
+
+    for (const auto &entry : fs::directory_iterator(layersDir, ec)) {
+        const auto name = entry.path().filename().string();
+        EXPECT_EQ(name.rfind(".tmp-", 0), std::string::npos) << name;
+        EXPECT_EQ(name.rfind(".old-", 0), std::string::npos) << name;
+    }
+    ASSERT_FALSE(ec) << ec.message();
+
+    for (const auto &item : *items) {
+        EXPECT_TRUE(fs::is_directory(layersDir / item.commit));
+        EXPECT_TRUE(fs::exists(layersDir / item.commit / "info.json"));
+    }
+}
+
 } // namespace
 
 } // namespace linglong::repo::test

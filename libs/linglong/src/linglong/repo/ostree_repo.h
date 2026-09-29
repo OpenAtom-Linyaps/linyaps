@@ -226,6 +226,17 @@ private:
     ensureEmptyLayerDir(const std::string &commit) const noexcept;
     utils::error::Result<void> handleRepositoryUpdate(
       QDir layerDir, const api::types::v1::RepositoryCacheLayersItem &layer) noexcept;
+    // Resolve an ostree ref such as "main/org.deepin.demo/1.0.0/x86_64/binary" to the commit
+    // it currently points at.
+    [[nodiscard]] utils::error::Result<std::string>
+    resolveRefspecCommit(const std::string &refspec) noexcept;
+    // Deploy a commit into `target` through a temporary directory so that the target is never
+    // visible in a partially populated state when the machine is interrupted.
+    [[nodiscard]] utils::error::Result<void>
+    deployLayer(const std::string &commit, const std::filesystem::path &target) noexcept;
+    // Repair the layers deployed by a previous install or upgrade that was interrupted, for
+    // example by an unexpected power failure.
+    [[nodiscard]] utils::error::Result<void> repairLayers() noexcept;
     utils::error::Result<void> removeOstreeRef(const std::string &remote,
                                                const std::string &ref,
                                                const std::string &commit) noexcept;

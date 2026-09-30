@@ -239,6 +239,60 @@ TEST(CLIPrinter, PrintUpgradeList)
     EXPECT_THAT(out, ::testing::HasSubstr("2.0.0"));
 }
 
+TEST(CLIPrinter, PrintUpgradeListColumnWidthIndependentOfItemCount)
+{
+    UpgradeListResult item;
+    item.id = "org.deepin.app";
+    item.oldVersion = "1.0.0";
+    item.newVersion = "2.0.0";
+
+    // the old version must always start right after the id column:
+    // max id width plus the two-space column padding
+    const std::size_t expectedOffset = item.id.size() + 2;
+
+    linglong::cli::CLIPrinter printer;
+
+    auto oldVersionOffsets = [&expectedOffset, &item](const std::string &out) {
+        std::vector<std::size_t> offsets;
+        std::istringstream lines(out);
+        std::string line;
+        while (std::getline(lines, line)) {
+            if (line.empty() || line.find('\033') != std::string::npos) {
+                continue; // skip the colored header line
+            }
+            offsets.push_back(line.find(item.oldVersion));
+        }
+        return offsets;
+    };
+
+    std::vector<UpgradeListResult> hundred(100, item);
+    std::string hundredOut;
+    {
+        CaptureStdout capture;
+        printer.printUpgradeList(hundred);
+        hundredOut = capture.str();
+    }
+
+    std::vector<UpgradeListResult> single{ item };
+    std::string singleOut;
+    {
+        CaptureStdout capture;
+        printer.printUpgradeList(single);
+        singleOut = capture.str();
+    }
+
+    const auto hundredOffsets = oldVersionOffsets(hundredOut);
+    ASSERT_EQ(hundredOffsets.size(), std::size_t{ 100 });
+    for (const auto offset : hundredOffsets) {
+        EXPECT_EQ(offset, expectedOffset);
+    }
+
+    const auto singleOffsets = oldVersionOffsets(singleOut);
+    ASSERT_EQ(singleOffsets.size(), std::size_t{ 1 });
+    // the column offset must not depend on the number of listed packages
+    EXPECT_EQ(singleOffsets.front(), expectedOffset);
+}
+
 TEST(CLIPrinter, PrintInspect)
 {
     InspectResult result;

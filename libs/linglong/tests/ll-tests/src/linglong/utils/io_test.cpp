@@ -176,6 +176,22 @@ TEST(PipeSet, CreateProducesThreePipes)
     EXPECT_TRUE(set->stderrPipe.has_value());
 }
 
+TEST(PipeSet, CloseParentEndsKeepsChildEndsOpen)
+{
+    auto pipes = PipeSet::create();
+    ASSERT_TRUE(pipes.has_value());
+
+    pipes->closeParentEnds();
+
+    // child-facing ends stay open, parent-facing ends are closed
+    EXPECT_NE(::fcntl(pipes->stdinPipe->readEnd(), F_GETFD), -1);
+    EXPECT_NE(::fcntl(pipes->stdoutPipe->writeEnd(), F_GETFD), -1);
+    EXPECT_NE(::fcntl(pipes->stderrPipe->writeEnd(), F_GETFD), -1);
+    EXPECT_EQ(::fcntl(pipes->stdinPipe->writeEnd(), F_GETFD), -1);
+    EXPECT_EQ(::fcntl(pipes->stdoutPipe->readEnd(), F_GETFD), -1);
+    EXPECT_EQ(::fcntl(pipes->stderrPipe->readEnd(), F_GETFD), -1);
+}
+
 TEST(RingBuffer, CreateRejectsZeroCapacity)
 {
     EXPECT_FALSE(RingBuffer::create(0).has_value());

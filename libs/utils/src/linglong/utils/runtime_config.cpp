@@ -10,6 +10,8 @@
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/serialize/json.h"
 
+#include <fmt/format.h>
+
 #include <algorithm>
 #include <filesystem>
 #include <fstream>
@@ -38,7 +40,10 @@ loadRuntimeConfigFromDir(const std::filesystem::path &configDir, const std::stri
     std::vector<RuntimeConfigure> configs;
     auto configPath = configBaseDir / "config.json";
     std::error_code ec;
-    if (std::filesystem::exists(configPath, ec)) {
+    if (auto exists = std::filesystem::exists(configPath, ec); ec) {
+        return LINGLONG_ERR(
+          fmt::format("failed to check runtime config {}: {}", configPath.string(), ec.message()));
+    } else if (exists) {
         auto config = linglong::utils::loadRuntimeConfig(configPath);
         if (!config) {
             return LINGLONG_ERR(config);
@@ -47,7 +52,11 @@ loadRuntimeConfigFromDir(const std::filesystem::path &configDir, const std::stri
     }
 
     auto configDPath = configBaseDir / "config.d";
-    if (std::filesystem::is_directory(configDPath, ec)) {
+    if (auto isDir = std::filesystem::is_directory(configDPath, ec); ec) {
+        return LINGLONG_ERR(fmt::format("failed to check runtime config drop-in dir {}: {}",
+                                        configDPath.string(),
+                                        ec.message()));
+    } else if (isDir) {
         std::vector<std::filesystem::path> paths;
         for (const auto &entry : std::filesystem::directory_iterator(
                configDPath,

@@ -128,6 +128,51 @@ TEST(CLIPrinter, PrintSearchResultSorts)
     EXPECT_LT(out.find("2.0.0"), out.find("1.0.0"));
 }
 
+TEST(CLIPrinter, PrintSearchResultSortsInvalidVersionsLast)
+{
+    // Only versions which are empty or consist of dots alone fail
+    // package::Version::parse; any other string is accepted by the fallback
+    // parser, so use "" and "..." to exercise the unparsable path.
+    const std::map<std::string, std::vector<PackageInfoV2>> searchResult{
+        { "repo1",
+          { makePackage("org.deepin.sort", "ver1", "1.0.0", "stable", "binary", "sorted"),
+            makePackage("org.deepin.sort", "bad1", "", "stable", "binary", "sorted"),
+            makePackage("org.deepin.sort", "ver3", "3.0.0", "stable", "binary", "sorted"),
+            makePackage("org.deepin.sort", "ver2", "2.0.0", "stable", "binary", "sorted"),
+            makePackage("org.deepin.sort", "bad2", "...", "stable", "binary", "sorted") } }
+    };
+
+    std::string cliOut;
+    {
+        CaptureStdout capture;
+        linglong::cli::CLIPrinter printer;
+        printer.printSearchResult(searchResult);
+        cliOut = capture.str();
+    }
+
+    std::string jsonOut;
+    {
+        CaptureStdout capture;
+        linglong::cli::JSONPrinter printer;
+        printer.printSearchResult(searchResult);
+        jsonOut = capture.str();
+    }
+
+    // records with a parsable version come first, highest to lowest; the
+    // unparsable ones come last, ordered by raw version string ("..." > "")
+    auto assertSearchOrder = [](const std::string &out) {
+        const std::vector<std::string> expectedOrder{ "ver3", "ver2", "ver1", "bad2", "bad1" };
+        for (const auto &marker : expectedOrder) {
+            EXPECT_THAT(out, ::testing::HasSubstr(marker));
+        }
+        for (std::size_t i = 1; i < expectedOrder.size(); ++i) {
+            EXPECT_LT(out.find(expectedOrder[i - 1]), out.find(expectedOrder[i]));
+        }
+    };
+    assertSearchOrder(cliOut);
+    assertSearchOrder(jsonOut);
+}
+
 TEST(CLIPrinter, PrintPruneResultEmpty)
 {
     CaptureStdout capture;

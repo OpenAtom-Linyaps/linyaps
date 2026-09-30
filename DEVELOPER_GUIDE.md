@@ -69,11 +69,16 @@ ctest --preset debug
 
 Linglong uses [CPM.cmake] to download missing dependencies locally.
 
-To disable this feature:
+To build strictly against locally installed dependencies, configure with the
+`ENABLE_CPM` option disabled so CPM.cmake does not fetch packages:
 
 ```bash
-export CPM_USE_LOCAL_PACKAGES=1
+cmake --preset release -DENABLE_CPM=OFF
 ```
+
+Setting `CPM_USE_LOCAL_PACKAGES=1` only makes CPM.cmake prefer locally
+installed packages; it does not disable downloads when a dependency is
+missing locally.
 
 See [CPM.cmake] README for more information.
 

@@ -115,13 +115,13 @@ struct PipeSet
     void closeParentEnds() noexcept
     {
         if (stdinPipe) {
-            stdinPipe->closeReadEnd();
+            stdinPipe->closeWriteEnd();
         }
         if (stdoutPipe) {
-            stdoutPipe->closeWriteEnd();
+            stdoutPipe->closeReadEnd();
         }
         if (stderrPipe) {
-            stderrPipe->closeWriteEnd();
+            stderrPipe->closeReadEnd();
         }
     }
 };

@@ -197,8 +197,10 @@ make linyaps_zh_CN.po  # Update specific language
 
 ```bash
 git add po/linyaps.pot po/en_US.po
-git push $(REMOTE) $(BRANCH)
+git push origin your-branch
 ```
+
+Replace `your-branch` with the branch you are working on.
 
 2. Upload translation files to Transifex:
 

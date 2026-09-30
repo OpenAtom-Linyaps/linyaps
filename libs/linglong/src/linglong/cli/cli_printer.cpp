@@ -309,9 +309,11 @@ void CLIPrinter::printUpgradeList(std::vector<api::types::v1::UpgradeListResult>
     std::size_t idLen{ 0 }, installedLen{ 0 };
 
     std::for_each(list.cbegin(), list.cend(), [&idLen, &installedLen](const auto &info) {
-        idLen = std::max(idLen, info.id.size()) + 2;
-        installedLen = std::max(installedLen, info.oldVersion.size()) + 2;
+        idLen = std::max(idLen, info.id.size());
+        installedLen = std::max(installedLen, info.oldVersion.size());
     });
+    idLen += 2;
+    installedLen += 2;
 
     std::cout << "\033[38;5;214m" << std::left << std::setw(idLen)
               << adjustDisplayWidth(qUtf8Printable(_("ID")), idLen) << std::setw(installedLen)

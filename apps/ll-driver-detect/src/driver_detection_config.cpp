@@ -64,6 +64,11 @@ bool DriverDetectionConfigManager::saveConfig()
     file << jsonConfig.dump(4); // Pretty print with 4 spaces
     file.close();
 
+    if (!file.good()) {
+        LogW("failed to write driver detection config to {}", configFilePath);
+        return false;
+    }
+
     return true;
 }
 

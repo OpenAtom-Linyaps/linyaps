@@ -15,6 +15,8 @@
 #include "linglong/utils/unique_fd.h"
 
 #include <array>
+#include <climits>
+#include <cstddef>
 #include <cstring>
 #include <string>
 
@@ -257,6 +259,14 @@ TEST(RingBuffer, ClearResetsState)
     buf->clear();
     EXPECT_TRUE(buf->empty());
     EXPECT_EQ(buf->size(), 0);
+}
+
+TEST(RingBuffer, CreateRejectsOversizedCapacity)
+{
+    // A power-of-two capacity beyond vector::max_size() must be reported via
+    // the empty optional instead of escaping the noexcept boundary.
+    auto oversized = std::size_t{ 1 } << (sizeof(std::size_t) * CHAR_BIT - 1);
+    EXPECT_FALSE(RingBuffer::create(oversized).has_value());
 }
 
 TEST(EventLoop, CreateAndWaitTimeout)

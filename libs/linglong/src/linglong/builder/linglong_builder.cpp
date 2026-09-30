@@ -2231,7 +2231,13 @@ utils::error::Result<void> Builder::cleanBuildArtifacts() noexcept
     LINGLONG_TRACE("clean build artifacts");
 
     std::error_code ec;
-    if (!std::filesystem::exists(this->internalDir, ec)) {
+    auto exists = std::filesystem::exists(this->internalDir, ec);
+    if (ec) {
+        return LINGLONG_ERR(fmt::format("failed to check build artifacts directory {}: {}",
+                                        this->internalDir.string(),
+                                        ec.message()));
+    }
+    if (!exists) {
         return LINGLONG_OK;
     }
 

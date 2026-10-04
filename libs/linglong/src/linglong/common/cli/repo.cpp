@@ -210,7 +210,7 @@ utils::error::Result<void> handleRepoCommand(CLI::App *app,
       });
 
     if (existingRepo == cfgRef.repos.end()) {
-        return LINGLONG_ERR("the operated repo " + name + " doesn't exist");
+        return LINGLONG_ERR("the operated repo " + alias + " doesn't exist");
     }
 
     if (argsParsed("remove")) {

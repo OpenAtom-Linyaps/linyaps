@@ -965,7 +965,7 @@ void Cli::interaction(const QString &interactionId,
         LogE("internal error: notify failed");
         action = "no";
     } else {
-        action = notifyReply->action.value();
+        action = notifyReply->action.value_or(std::string{ "no" });
     }
 
     // FIXME: if the notifier is a DummyNotifier, treat the action as yes.(for deepin-app-store)

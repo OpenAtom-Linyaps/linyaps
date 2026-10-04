@@ -396,6 +396,63 @@ TEST_F(RepoTest, moduleMergesUseBinaryInfo)
     EXPECT_EQ(persistentMergedInfo->packageInfoV2Module, "binary");
 }
 
+TEST_F(RepoTest, moduleMergesKeepBinaryCommitWhenRuntimeModuleExists)
+{
+    TempDir tempDir;
+    TempDir runtimeDir;
+    TempDir developDir;
+    TempDir binaryDir;
+
+    auto repoRoot = tempDir.path() / "repo-root";
+    ASSERT_TRUE(fs::create_directories(repoRoot));
+    auto repo = OSTreeRepo::create(repoRoot, createRepoConfig());
+    ASSERT_TRUE(repo.has_value()) << repo.error().message();
+
+    auto makeInfo = [](std::string module) {
+        return api::types::v1::PackageInfoV2{
+            .arch = std::vector<std::string>{ "x86_64" },
+            .channel = "main",
+            .id = "org.test.merge",
+            .kind = "app",
+            .packageInfoV2Module = std::move(module),
+            .version = "1.0.0",
+        };
+    };
+    const auto runtimeInfo = makeInfo("runtime");
+    const auto developInfo = makeInfo("develop");
+    const auto binaryInfo = makeInfo("binary");
+
+    std::ofstream(runtimeDir.path() / "info.json") << nlohmann::json(runtimeInfo).dump();
+    std::ofstream(developDir.path() / "info.json") << nlohmann::json(developInfo).dump();
+    std::ofstream(binaryDir.path() / "info.json") << nlohmann::json(binaryInfo).dump();
+
+    // A package may ship both the binary module and the (legacy) runtime module.
+    const std::vector<std::pair<std::string, std::filesystem::path>> modulesToImport{
+        { "runtime", runtimeDir.path() },
+        { "develop", developDir.path() },
+        { "binary", binaryDir.path() },
+    };
+    for (const auto &[name, dir] : modulesToImport) {
+        auto imported = repo->get()->importLayerDir(package::LayerDir{ dir });
+        ASSERT_TRUE(imported.has_value()) << name << ": " << imported.error().message();
+        EXPECT_EQ(imported->info.packageInfoV2Module, name);
+    }
+
+    auto ref = package::Reference::fromPackageInfo(binaryInfo);
+    ASSERT_TRUE(ref.has_value()) << ref.error().message();
+
+    auto mergeModulesResult = repo->get()->mergeModules();
+    ASSERT_TRUE(mergeModulesResult.has_value()) << mergeModulesResult.error().message();
+
+    // The merged record must be keyed by the binary module's commit, otherwise
+    // getMergedModuleDir() can never match the binary layer item of this package.
+    auto persistentMerged = repo->get()->getMergedModuleDir(*ref, false);
+    ASSERT_TRUE(persistentMerged.has_value()) << persistentMerged.error().message();
+    auto persistentMergedInfo = persistentMerged->info();
+    ASSERT_TRUE(persistentMergedInfo.has_value()) << persistentMergedInfo.error().message();
+    EXPECT_EQ(persistentMergedInfo->packageInfoV2Module, "binary");
+}
+
 TEST_F(RepoTest, createPrefersRepoLocalConfigOverFallbackConfig)
 {
     TempDir tempDir;

@@ -396,6 +396,102 @@ TEST_F(RepoTest, moduleMergesUseBinaryInfo)
     EXPECT_EQ(persistentMergedInfo->packageInfoV2Module, "binary");
 }
 
+TEST_F(RepoTest, removeCleansUpEmptyLegacySymlinkLayout)
+{
+    TempDir tempDir;
+    TempDir binaryDir;
+
+    auto repoRoot = tempDir.path() / "repo-root";
+    ASSERT_TRUE(fs::create_directories(repoRoot));
+    auto repo = OSTreeRepo::create(repoRoot, createRepoConfig());
+    ASSERT_TRUE(repo.has_value()) << repo.error().message();
+
+    const auto info = api::types::v1::PackageInfoV2{
+        .arch = std::vector<std::string>{ "x86_64" },
+        .channel = "main",
+        .id = "org.test.legacy",
+        .kind = "app",
+        .packageInfoV2Module = "binary",
+        .version = "1.0.0",
+    };
+    std::ofstream(binaryDir.path() / "info.json") << nlohmann::json(info).dump();
+    auto imported = repo->get()->importLayerDir(package::LayerDir{ binaryDir.path() });
+    ASSERT_TRUE(imported.has_value()) << imported.error().message();
+
+    auto ref = package::Reference::fromPackageInfo(info);
+    ASSERT_TRUE(ref.has_value()) << ref.error().message();
+
+    // Simulate the legacy layout: layers/<commit> is a symlink pointing to
+    // layers/<appid>/<version>/<arch>.
+    const auto layersDir = repoRoot / "layers";
+    const auto legacyArch = layersDir / info.id / info.version / "x86_64";
+    ASSERT_TRUE(fs::create_directories(legacyArch));
+    const auto deployedPath = layersDir / imported->commit;
+    std::error_code ec;
+    fs::remove_all(deployedPath, ec);
+    ASSERT_FALSE(ec) << ec.message();
+    fs::create_directory_symlink(legacyArch, deployedPath, ec);
+    ASSERT_FALSE(ec) << ec.message();
+
+    auto removed = repo->get()->remove(*ref, "binary");
+    ASSERT_TRUE(removed.has_value()) << removed.error().message();
+
+    // the legacy symlink is gone and the empty legacy directories are cleaned up
+    EXPECT_FALSE(fs::exists(deployedPath, ec));
+    ASSERT_FALSE(ec) << ec.message();
+    EXPECT_FALSE(fs::exists(legacyArch, ec));
+    ASSERT_FALSE(ec) << ec.message();
+    EXPECT_FALSE(fs::exists(layersDir / info.id, ec));
+    ASSERT_FALSE(ec) << ec.message();
+}
+
+TEST_F(RepoTest, removeKeepsNonEmptyLegacySymlinkTarget)
+{
+    TempDir tempDir;
+    TempDir binaryDir;
+
+    auto repoRoot = tempDir.path() / "repo-root";
+    ASSERT_TRUE(fs::create_directories(repoRoot));
+    auto repo = OSTreeRepo::create(repoRoot, createRepoConfig());
+    ASSERT_TRUE(repo.has_value()) << repo.error().message();
+
+    const auto info = api::types::v1::PackageInfoV2{
+        .arch = std::vector<std::string>{ "x86_64" },
+        .channel = "main",
+        .id = "org.test.legacy-files",
+        .kind = "app",
+        .packageInfoV2Module = "binary",
+        .version = "1.0.0",
+    };
+    std::ofstream(binaryDir.path() / "info.json") << nlohmann::json(info).dump();
+    auto imported = repo->get()->importLayerDir(package::LayerDir{ binaryDir.path() });
+    ASSERT_TRUE(imported.has_value()) << imported.error().message();
+
+    auto ref = package::Reference::fromPackageInfo(info);
+    ASSERT_TRUE(ref.has_value()) << ref.error().message();
+
+    const auto layersDir = repoRoot / "layers";
+    const auto legacyArch = layersDir / info.id / info.version / "x86_64";
+    ASSERT_TRUE(fs::create_directories(legacyArch));
+    std::ofstream(legacyArch / "leftover") << "data";
+
+    const auto deployedPath = layersDir / imported->commit;
+    std::error_code ec;
+    fs::remove_all(deployedPath, ec);
+    ASSERT_FALSE(ec) << ec.message();
+    fs::create_directory_symlink(legacyArch, deployedPath, ec);
+    ASSERT_FALSE(ec) << ec.message();
+
+    auto removed = repo->get()->remove(*ref, "binary");
+    ASSERT_TRUE(removed.has_value()) << removed.error().message();
+
+    // the legacy symlink is gone but files below the legacy target are kept
+    EXPECT_FALSE(fs::exists(deployedPath, ec));
+    ASSERT_FALSE(ec) << ec.message();
+    EXPECT_TRUE(fs::exists(legacyArch / "leftover", ec));
+    ASSERT_FALSE(ec) << ec.message();
+}
+
 TEST_F(RepoTest, createPrefersRepoLocalConfigOverFallbackConfig)
 {
     TempDir tempDir;

@@ -1041,25 +1041,37 @@ utils::error::Result<void> OSTreeRepo::undeployedLayer(const std::string &commit
     }
 
     std::error_code ec;
+    // In older versions, LINGLONG_ROOT/layers/<commit> could be a symlink pointing to
+    // LINGLONG_ROOT/layers/<appid>/<version>/<arch>.
+    // The symlink status and its target have to be captured before remove_all() deletes
+    // the link itself, otherwise the compatibility cleanup below never runs.
+    QFileInfo dirInfo{ layerDir->path().c_str() };
+    const bool isLegacySymlink = dirInfo.isSymLink();
+    const QString legacyTarget = isLegacySymlink ? dirInfo.symLinkTarget() : QString{};
+
     std::filesystem::remove_all(layerDir->path(), ec);
     if (ec) {
         return LINGLONG_ERR(fmt::format("failed to remove layer dir {}", layerDir->path()), ec);
     }
 
-    // In older versions, LINGLONG_ROOT/layers/<commit> could be a symlink pointing to
-    // LINGLONG_ROOT/layers/<appid>/<version>/<arch>.
-    // This code attempts to clean up any empty parent directories up to `LINGLONG_ROOT/layers/
-    // for compatibility,
-    QFileInfo dirInfo{ layerDir->path().c_str() };
-    if (!dirInfo.isSymLink()) {
+    if (!isLegacySymlink) {
         return LINGLONG_OK;
     }
 
-    QDir target = dirInfo.symLinkTarget();
+    // This code attempts to clean up any empty parent directories up to
+    // LINGLONG_ROOT/layers/ for compatibility.
     QDir topLevel = dirInfo.absoluteDir().absolutePath();
-    target.cdUp();
+    QDir target{ legacyTarget };
     while (topLevel.relativeFilePath(target.absolutePath()) != ".") {
-        if (target.isEmpty() && !QFile::remove(target.absolutePath())) {
+        const auto relative = topLevel.relativeFilePath(target.absolutePath());
+        if (relative.startsWith("..") || QDir::isAbsolutePath(relative)) {
+            // never follow a legacy link outside of the layers directory
+            break;
+        }
+
+        // QDir::rmdir() only removes empty directories, so leftover files of the
+        // legacy layout are never deleted here.
+        if (target.exists() && target.isEmpty() && !QDir().rmdir(target.absolutePath())) {
             LogW("failed to remove {}", target.absolutePath().toStdString());
         }
 
@@ -1069,7 +1081,6 @@ utils::error::Result<void> OSTreeRepo::undeployedLayer(const std::string &commit
         }
     }
 
-    QFile::remove(layerDir->path().c_str());
     return LINGLONG_OK;
 }
 

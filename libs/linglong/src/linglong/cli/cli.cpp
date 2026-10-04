@@ -954,7 +954,11 @@ void Cli::interaction(const QString &interactionId,
         LogE("internal error: notify failed");
         action = "no";
     } else {
-        action = notifyReply->action.value();
+        // A notifier may legitimately answer without an action, for example the terminal
+        // notifier for requests without actions. Treat a missing action like an explicit
+        // rejection instead of throwing std::bad_optional_access out of this slot, which
+        // would terminate ll-cli while the D-Bus signal is being dispatched.
+        action = notifyReply->action.value_or(std::string{ "no" });
     }
 
     // FIXME: if the notifier is a DummyNotifier, treat the action as yes.(for deepin-app-store)

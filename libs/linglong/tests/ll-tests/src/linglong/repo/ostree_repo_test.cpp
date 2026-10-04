@@ -396,6 +396,54 @@ TEST_F(RepoTest, moduleMergesUseBinaryInfo)
     EXPECT_EQ(persistentMergedInfo->packageInfoV2Module, "binary");
 }
 
+TEST_F(RepoTest, cleanDropsCacheEntriesOfStrippedRefs)
+{
+    TempDir tempDir;
+    TempDir binaryDir;
+    TempDir developDir;
+
+    auto repoRoot = tempDir.path() / "repo-root";
+    ASSERT_TRUE(fs::create_directories(repoRoot));
+    auto repo = OSTreeRepo::create(repoRoot, createRepoConfig());
+    ASSERT_TRUE(repo.has_value()) << repo.error().message();
+
+    auto makeInfo = [](std::string module) {
+        return api::types::v1::PackageInfoV2{
+            .arch = std::vector<std::string>{ "x86_64" },
+            .channel = "main",
+            .id = "org.test.orphan",
+            .kind = "app",
+            .packageInfoV2Module = std::move(module),
+            .version = "1.0.0",
+        };
+    };
+    const auto binaryInfo = makeInfo("binary");
+    const auto developInfo = makeInfo("develop");
+    std::ofstream(binaryDir.path() / "info.json") << nlohmann::json(binaryInfo).dump();
+    std::ofstream(developDir.path() / "info.json") << nlohmann::json(developInfo).dump();
+
+    auto importedBinary = repo->get()->importLayerDir(package::LayerDir{ binaryDir.path() });
+    ASSERT_TRUE(importedBinary.has_value()) << importedBinary.error().message();
+    auto importedDevelop = repo->get()->importLayerDir(package::LayerDir{ developDir.path() });
+    ASSERT_TRUE(importedDevelop.has_value()) << importedDevelop.error().message();
+
+    auto ref = package::Reference::fromPackageInfo(binaryInfo);
+    ASSERT_TRUE(ref.has_value()) << ref.error().message();
+
+    // Simulate an interrupted uninstall: the binary module is already removed while the
+    // develop module is still tracked by the repository.
+    auto removed = repo->get()->remove(*ref, "binary");
+    ASSERT_TRUE(removed.has_value()) << removed.error().message();
+
+    auto cleaned = repo->get()->clean({});
+    ASSERT_TRUE(cleaned.has_value()) << cleaned.error().message();
+
+    // the cache entry of the stripped develop ref is dropped as well
+    auto leftover = repo->get()->listLayerItem();
+    ASSERT_TRUE(leftover.has_value()) << leftover.error().message();
+    EXPECT_TRUE(leftover->empty());
+}
+
 TEST_F(RepoTest, createPrefersRepoLocalConfigOverFallbackConfig)
 {
     TempDir tempDir;

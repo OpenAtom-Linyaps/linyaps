@@ -1,6 +1,4 @@
 #!/usr/bin/env bash
-# SPDX-FileCopyrightText: None
-# SPDX-License-Identifier: CC0-1.0
 # SPDX-FileCopyrightText: 2026 Hanabi9249
 # SPDX-License-Identifier: LGPL-3.0-or-later
 set -eo pipefail

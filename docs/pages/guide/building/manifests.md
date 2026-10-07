@@ -105,6 +105,8 @@ runtime: org.deepin.runtime.dtk/23.1.0
 
 描述项目所需的源码信息。`sources` 是一个列表，可以包含多个源码项。获取后的源码默认存放在 `linglong.yaml` 同级路径的 `linglong/sources` 目录下。
 
+`file`、`archive` 和 `dsc` 类型的源码必须提供 `digest`。其值为下载文件的 SHA-256 哈希，使用 64 位小写十六进制字符串，不带 `sha256:` 前缀。例如，运行 `sha256sum ./some-file.dat`，只复制第一列的哈希值。`archive` 类型应计算压缩包文件的哈希，`dsc` 类型应计算 `.dsc` 文件的哈希。
+
 #### git 类型
 
 ```yaml
@@ -128,7 +130,7 @@ sources:
 sources:
   - kind: file
     url: https://example.com/some-file.dat
-    digest: sha256:... # 建议提供 sha256 哈希值
+    digest: "<sha256-hex>" # 必填：替换为文件的 SHA-256 哈希值
     name: my-data.dat # 可选，指定下载后的文件名
 ```
 
@@ -136,7 +138,7 @@ sources:
 | ------ | ------------------------------------------------------ | ------------------- |
 | kind   | `file`，表示直接下载文件。                             | 是                  |
 | url    | 文件下载地址                                           | 是                  |
-| digest | 可选，文件的 sha256 哈希值，用于校验。                 | 否                  |
+| digest | 文件的 SHA-256 哈希值，用于校验。                     | 是                  |
 | name   | 可选，指定下载后在 `linglong/sources` 目录下的文件名。 | 否                  |
 
 #### archive 类型
@@ -145,7 +147,7 @@ sources:
 sources:
   - kind: archive
     url: https://github.com/linuxdeepin/deepin-calculator/archive/refs/tags/6.5.4.tar.gz
-    digest: 9675e27395891da9d9ee0a6094841410e344027fd81265ab75f83704174bb3a8 # 建议提供 sha256 哈希值
+    digest: 9675e27395891da9d9ee0a6094841410e344027fd81265ab75f83704174bb3a8 # 必填的 SHA-256 哈希值
     name: deepin-calculator-6.5.4 # 可选，指定解压后的目录名
 ```
 
@@ -153,7 +155,7 @@ sources:
 | ------ | ------------------------------------------------------ | ------------------- |
 | kind   | `archive`，下载压缩包并自动解压。支持常见的压缩格式。  | 是                  |
 | url    | 压缩包下载地址                                         | 是                  |
-| digest | 可选，压缩包文件的 sha256 哈希值，用于校验。           | 否                  |
+| digest | 压缩包文件的 SHA-256 哈希值，用于校验。               | 是                  |
 | name   | 可选，指定解压后在 `linglong/sources` 目录下的目录名。 | 否                  |
 
 #### dsc 类型
@@ -162,7 +164,7 @@ sources:
 sources:
   - kind: dsc
     url: https://cdn-community-packages.deepin.com/deepin/beige/pool/main/d/deepin-calculator/deepin-calculator_6.0.1.dsc
-    digest: ce47ed04a427a887a52e3cc098534bba53188ee0f38f59713f4f176374ea2141 # 建议提供 sha256 哈希值
+    digest: ce47ed04a427a887a52e3cc098534bba53188ee0f38f59713f4f176374ea2141 # 必填的 SHA-256 哈希值
     name: deepin-calculator-dsc # 可选，指定下载和解压后的目录名
 ```
 
@@ -170,7 +172,7 @@ sources:
 | ------ | ------------------------------------------------------------ | ------------------- |
 | kind   | `dsc`，处理 Debian 源码包描述文件及其关联文件。              | 是                  |
 | url    | `.dsc` 文件下载地址                                          | 是                  |
-| digest | 可选，`.dsc` 文件的 sha256 哈希值，用于校验。                | 否                  |
+| digest | `.dsc` 文件的 SHA-256 哈希值，用于校验。                    | 是                  |
 | name   | 可选，指定下载和解压后在 `linglong/sources` 目录下的目录名。 | 否                  |
 
 ### 导出裁剪规则 (`exclude`/`include`)

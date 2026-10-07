@@ -104,6 +104,12 @@ class CommandExecutor:
                     f"  [ERROR] Command timed out after {timeout}s: {cmd_str}",
                     file=sys.stderr,
                 )
+                if e.stderr:
+                    stderr = e.stderr
+                    if isinstance(stderr, bytes):
+                        stderr = stderr.decode(errors="replace")
+                    for line in stderr.strip().splitlines():
+                        print(f"    {line}", file=sys.stderr)
             raise RuntimeError(f"Command timed out after {timeout}s: {cmd_str}") from e
         else:
             # check=False 时，非零退出码也会进入此分支

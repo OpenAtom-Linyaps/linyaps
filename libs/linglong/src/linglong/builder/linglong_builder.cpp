@@ -460,7 +460,7 @@ utils::error::Result<void> Builder::buildStagePrepare() noexcept
 
     if (!checkDeprecatedInstallFile()) {
         return LINGLONG_ERR("$appid.install is deprecated, please use modules instead. see "
-                            "https://linglong.space/guide/ll-builder/modules.html");
+                            "https://linyaps.org.cn/guide/building/modules.html");
     }
 
     printBasicInfo();

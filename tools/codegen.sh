@@ -103,6 +103,9 @@ generate() {
                 --no-boost \
                 --hide-null-optional)
 
+        # Process substitution does not propagate the generator's exit status.
+        wait "$!"
+
         {
                 echo ""
                 echo "// clang-format on"

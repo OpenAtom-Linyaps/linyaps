@@ -544,7 +544,7 @@ sources:
     url: # app source url
     commit: # commit hash
   # 以下注释由插件生成并使用，从仓库中检索 libical-dev 分析其依赖，自动生成sources到注释的下面
-  # linglong:gen_deb_source sources amd64 https://ci.deepin.com/repo/deepin/deepin-community/backup/rc2 beige main
+  # linglong:gen_deb_source sources amd64 https://community-packages.deepin.com/deepin/beige/ beige main
   # linglong:gen_deb_source install libical-dev
 ```
 

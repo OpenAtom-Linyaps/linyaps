@@ -176,3 +176,9 @@ install(
   FILES
     ${CMAKE_CURRENT_BINARY_DIR}/share/polkit-1/actions/org.deepin.linglong.PackageManager1.policy
   DESTINATION ${CMAKE_INSTALL_DATADIR}/polkit-1/actions)
+
+if(ENABLE_TESTING)
+  add_test(NAME app-conf-generator
+           COMMAND ${CMAKE_COMMAND} -P
+                   ${CMAKE_CURRENT_SOURCE_DIR}/tests/app_conf_generator_test.cmake)
+endif()

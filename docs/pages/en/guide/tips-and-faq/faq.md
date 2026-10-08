@@ -89,3 +89,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 20. Why doesn't the application tray display after the application starts?
 
     This may be because the application registered the tray using the same service name. According to the KDE/freedesktop StatusNotifierItem specification, applications should register service names as org.kde.StatusNotifierItem-`<process id>`-`<instance number>`. In Linyaps applications, the pid during application runtime is 19. You can check whether a service has been registered using the following command: `dbus-send --session --print-reply --dest=org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus.NameHasOwner string:org.kde.StatusNotifierItem-19-1`. If `boolean true` exists, it means the service has been registered.
+
+21. Why is the password sometimes requested only once when installing or uninstalling an application?
+
+    Package manager operations are authorized through polkit, and the policies of installing, updating and uninstalling use `auth_admin_keep`, which keeps a successful authentication for a short period of time (five minutes). The result is remembered by `ll-package-manager` per user and login session, so running `ll-cli install`, `ll-cli uninstall` and similar commands several times in the same session does not ask for the password again. Once the keep window elapsed, or in another login session, authentication is requested again. Operations whose policy is `auth_admin`, such as `ll-cli prune` and changing the repository configuration, still require authentication on every call.

@@ -6,6 +6,9 @@
 
 #include <array>
 #include <cstddef>
+#include <cstdlib>
+#include <cstring>
+#include <iostream>
 #include <memory>
 #include <string>
 #include <system_error>
@@ -40,8 +43,12 @@ int runProcess(const std::string &binaryPath,
                 ::dup2(pipes[1], 1);
 
                 ret = execvp(binaryPath.data(), (char **)(cArgs.get()));
-                throw std::system_error(errno, std::generic_category(),
-                                        "execvp");
+                std::cerr << "execvp failed: " << std::strerror(errno)
+                          << std::endl;
+                // Exceptions cannot cross fork(): unwinding here would run the
+                // caller's cleanup code and continue as a duplicate of the
+                // parent process, so the child must terminate immediately.
+                ::_exit(EXIT_FAILURE);
         }
 
         ::close(pipes[1]);
@@ -106,8 +113,12 @@ int runProcess(const std::string &binaryPath,
         int ret{ 0 };
         if (childId == 0) {
                 ret = execvp(binaryPath.data(), (char **)(cArgs.get()));
-                throw std::system_error(errno, std::generic_category(),
-                                        "execvp");
+                std::cerr << "execvp failed: " << std::strerror(errno)
+                          << std::endl;
+                // Exceptions cannot cross fork(): unwinding here would run the
+                // caller's cleanup code and continue as a duplicate of the
+                // parent process, so the child must terminate immediately.
+                ::_exit(EXIT_FAILURE);
         }
 
         int interruptTimes = 0;

@@ -4,6 +4,10 @@
 
 include(GNUInstallDirs)
 
+if(ENABLE_TESTING)
+  add_subdirectory(tests)
+endif()
+
 function(configure_files)
   foreach(input ${ARGV})
     configure_file(${input} ${input} @ONLY)

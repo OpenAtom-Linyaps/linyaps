@@ -79,6 +79,16 @@ See [CPM.cmake] README for more information.
 
 [CPM.cmake]: https://github.com/cpm-cmake/CPM.cmake
 
+## Systemd user generator tests
+
+The systemd user generator regression runs through CTest when `ENABLE_TESTING` is
+enabled. It can also run directly on Linux without building the C++ tools
+(requires CMake and the standard sh, cp and ln utilities):
+
+```bash
+cmake -P misc/tests/systemd_user_generator_test.cmake
+```
+
 ## Code Style & Pre-commit
 
 Linglong uses [clang-format] for C/C++ code style; the rules live in

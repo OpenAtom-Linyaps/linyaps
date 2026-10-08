@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <cstdint>
 #include <optional>
 
 #include <errno.h>
@@ -55,6 +56,8 @@ public:
     [[nodiscard]] bool needsWriteWatch() const noexcept { return writeWatched_; }
 
     void onDstWritable() noexcept;
+
+    void onEvent(int fd, uint32_t events) noexcept;
 
 private:
     void registerDstWrite() noexcept;

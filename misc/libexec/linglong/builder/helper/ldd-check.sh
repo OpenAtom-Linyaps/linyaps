@@ -98,7 +98,7 @@ collectDependsLibs() {
                 local has_start
                 # We can't find executable binaries just by mimeType. Some elf files are of type “shared object file” or otherwise
                 # and it also can be executed. Therefore, try to find the executable binary with the symbol “__libc_start_main”
-                has_start="$(nm -D ${filePath} /dev/null 2>&1 | grep "__libc_start_main" || true)"
+                has_start="$(nm -D "${filePath}" /dev/null 2>&1 | grep "__libc_start_main" || true)"
                 if [[ -n ${has_start} ]]; then
                         recordPath=$(mktemp)
                         processExecBin "${filePath}" "${recordPath}"

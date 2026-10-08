@@ -83,15 +83,23 @@ processExecBin() {
 }
 
 collectDependsLibs() {
-        #support multiple path, split by ':'
-        declare paths
-        paths=$(echo "$1" | tr ':' ' ')
+        # 使用数组传递冒号分隔的多个路径，避免 find 将其视为一个路径。
+        local -a paths=()
+        local -a searchPaths=()
+        local path
+        IFS=':' read -r -a paths <<<"$1"
+        for path in "${paths[@]}"; do
+                # 忽略首尾或连续冒号产生的空字段，避免空路径被解释为当前目录。
+                if [[ -n ${path} ]]; then
+                        searchPaths+=("${path}")
+                fi
+        done
 
-        if [[ -z ${paths} ]]; then
+        if [[ ${#searchPaths[@]} -eq 0 ]]; then
                 logErr "No paths provided"
         fi
 
-        filePaths=$(find "${paths}" -type f)
+        filePaths=$(find "${searchPaths[@]}" -type f)
 
         IFS=$'\n'
         for filePath in ${filePaths}; do

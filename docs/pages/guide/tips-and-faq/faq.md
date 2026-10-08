@@ -89,3 +89,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 20. 应用启动后，为什么不显示应用托盘？
 
     这可能是由应用注册托盘使用了相同的服务名，按照 KDE/freedesktop StatusNotifierItem 规范应用注册服务名为 org.kdeStatusNotifierItem-`<process id>`-`<instance number>`，在如意玲珑应用中，应用运行时的 pid 为19，可以通过以下命令查看是否有注册过的服务，`dbus-send --session --print-reply --dest=org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus.NameHasOwner string:org.kde.StatusNotifierItem-19-1`，如果存在 `boolean true` 说明服务被注册过。
+
+21. 安装、卸载应用时需要输入密码，为什么同一会话内有时不会再次提示？
+
+    如意玲珑的包管理操作通过 polkit 鉴权。安装、更新、卸载等策略使用 `auth_admin_keep`；polkit 可在短时间内为调用者的登录会话保留认证，并自行处理过期和撤销。同一会话内再次执行 `ll-cli` 时可能复用该授权；没有登录会话的调用者仍按其 D-Bus 连接单独校验。`ll-cli prune`、修改仓库配置等策略为 `auth_admin` 的操作，每次仍需要认证。

@@ -105,6 +105,8 @@ runtime: org.deepin.runtime.dtk/23.1.0
 
 Describes source code information required by the project. `sources` is a list that can contain multiple source items. Fetched source code is stored by default in the `linglong/sources` directory at the same level as `linglong.yaml`.
 
+For `file`, `archive`, and `dsc` sources, `digest` is required. Use the 64-character lowercase hexadecimal SHA-256 hash of the downloaded file, without a `sha256:` prefix. For example, run `sha256sum ./some-file.dat` and copy only the hash (the first column). For `archive` sources, hash the compressed file; for `dsc` sources, hash the `.dsc` file.
+
 #### git Type
 
 ```yaml
@@ -128,7 +130,7 @@ sources:
 sources:
   - kind: file
     url: https://example.com/some-file.dat
-    digest: sha256:... # Recommend providing sha256 hash value
+    digest: "<sha256-hex>" # Required: replace with the file's SHA-256 hash
     name: my-data.dat # Optional, specify the filename after download
 ```
 
@@ -136,7 +138,7 @@ sources:
 | ------ | ------------------------------------------------------------------------------ | ------------------------------- |
 | kind   | `file`, indicating direct file download.                                       | Yes                             |
 | url    | File download address                                                          | Yes                             |
-| digest | Optional, sha256 hash value of the file, used for verification.                | No                              |
+| digest | SHA-256 hash value of the file, used for verification.                        | Yes                             |
 | name   | Optional, specify the filename in `linglong/sources` directory after download. | No                              |
 
 #### archive Type
@@ -145,7 +147,7 @@ sources:
 sources:
   - kind: archive
     url: https://github.com/linuxdeepin/deepin-calculator/archive/refs/tags/6.5.4.tar.gz
-    digest: 9675e27395891da9d9ee0a6094841410e344027fd81265ab75f83704174bb3a8 # Recommend providing sha256 hash value
+    digest: 9675e27395891da9d9ee0a6094841410e344027fd81265ab75f83704174bb3a8 # Required SHA-256 hash value
     name: deepin-calculator-6.5.4 # Optional, specify the directory name after extraction
 ```
 
@@ -153,7 +155,7 @@ sources:
 | ------ | ----------------------------------------------------------------------------------------------------- | ------------------------------- |
 | kind   | `archive`, download compressed package and automatically extract. Supports common compressed formats. | Yes                             |
 | url    | Compressed package download address                                                                   | Yes                             |
-| digest | Optional, sha256 hash value of the compressed package file, used for verification.                    | No                              |
+| digest | SHA-256 hash value of the compressed package file, used for verification.                              | Yes                             |
 | name   | Optional, specify the directory name in `linglong/sources` directory after extraction.                | No                              |
 
 #### dsc Type
@@ -162,7 +164,7 @@ sources:
 sources:
   - kind: dsc
     url: https://cdn-community-packages.deepin.com/deepin/beige/pool/main/d/deepin-calculator/deepin-calculator_6.0.1.dsc
-    digest: ce47ed04a427a887a52e3cc098534bba53188ee0f38f59713f4f176374ea2141 # Recommend providing sha256 hash value
+    digest: ce47ed04a427a887a52e3cc098534bba53188ee0f38f59713f4f176374ea2141 # Required SHA-256 hash value
     name: deepin-calculator-dsc # Optional, specify the directory name after download and extraction
 ```
 
@@ -170,7 +172,7 @@ sources:
 | ------ | --------------------------------------------------------------------------------------------------- | ------------------------------- |
 | kind   | `dsc`, handle Debian source package description files and their associated files.                   | Yes                             |
 | url    | `.dsc` file download address                                                                        | Yes                             |
-| digest | Optional, sha256 hash value of the `.dsc` file, used for verification.                              | No                              |
+| digest | SHA-256 hash value of the `.dsc` file, used for verification.                                        | Yes                             |
 | name   | Optional, specify the directory name in `linglong/sources` directory after download and extraction. | No                              |
 
 ### Export Trimming Rules (`exclude`/`include`)

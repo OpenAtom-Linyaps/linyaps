@@ -84,6 +84,7 @@ pfl_add_executable(
   src/linglong/utils/xdp_test.cpp
   src/main.cpp
   src/ocppi/cli/common_cli_test.cpp
+  src/ocppi/cli/process_test.cpp
 
 
   # ll-driver-detect tests
@@ -117,3 +118,5 @@ target_include_directories(${tests}
                            PUBLIC ${PROJECT_SOURCE_DIR}/apps/uab/header/src)
 target_include_directories(${tests}
                            PUBLIC ${PROJECT_SOURCE_DIR}/apps/ll-driver-detect/src)
+target_include_directories(${tests}
+                           PUBLIC ${PROJECT_SOURCE_DIR}/libs/ocppi/src)

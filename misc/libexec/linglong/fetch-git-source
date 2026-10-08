@@ -35,6 +35,8 @@ git reset --hard FETCH_HEAD
 
 # Fetch submodule
 if [ -n "$GIT_SUBMODULES" ]; then
+    # .git/config keeps the previous submodule URL; update does not reread .gitmodules.
+    git submodule sync --recursive
     git submodule update --init --recursive --depth 1
     git submodule foreach git reset --hard HEAD
 fi

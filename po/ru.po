@@ -24,34 +24,35 @@ msgstr ""
 #: ../libs/linglong/src/linglong/cli/cli.cpp:448
 msgid "Debug mode is enabled. Attach from another terminal with gdb:"
 msgstr ""
+"Режим отладки включён. Подключитесь из другого терминала с помощью gdb:"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:468
 msgid "Debug mode is enabled. Attach from another terminal with:"
-msgstr ""
+msgstr "Режим отладки включён. Подключитесь из другого терминала с помощью:"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:471
 msgid "Generated gdb attach script:"
-msgstr ""
+msgstr "Создан скрипт подключения gdb:"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:1949
 #, c++-format
 msgid "Base {} has no develop module installed, installing it now."
-msgstr ""
+msgstr "У базы {} не установлен модуль develop, выполняется его установка."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2361
 #, c++-format
 msgid "{} is not a regular file; expected a .layer or .uab file."
-msgstr ""
+msgstr "{} не является обычным файлом; ожидается файл .layer или .uab."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2372
 #, c++-format
 msgid "Unsupported file format {}; expected a .layer or .uab file."
-msgstr ""
+msgstr "Неподдерживаемый формат файла {}; ожидается файл .layer или .uab."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2385
 #, c++-format
 msgid "Package file {} does not exist."
-msgstr ""
+msgstr "Файл пакета {} не существует."
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:2452
 #, c++-format
@@ -78,7 +79,7 @@ msgstr "Модуль не удалось найти в удаленном реп
 #: ../libs/linglong/src/linglong/cli/cli.cpp:3640
 #: ../libs/linglong/src/linglong/cli/cli.cpp:3676
 msgid "Application already installed"
-msgstr ""
+msgstr "Приложение уже установлено"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:3644
 #, c++-format
@@ -201,7 +202,7 @@ msgstr "Передать файл приложениям, запущенным �
 
 #: ../apps/ll-cli/src/main.cpp:103
 msgid "Pass url to applications running in a sandbox"
-msgstr "Передать URL приложениям, запущенным в песочнице"
+msgstr "Передать URL-адрес приложениям, запущенным в песочнице"
 
 #: ../apps/ll-cli/src/main.cpp:106
 msgid "Set environment variables for the application"
@@ -236,11 +237,11 @@ msgstr ""
 
 #: ../apps/ll-cli/src/main.cpp:149
 msgid "Enable PipeWire socket mount inside the sandbox"
-msgstr ""
+msgstr "Включить монтирование сокета PipeWire внутри песочницы"
 
 #: ../apps/ll-cli/src/main.cpp:154
 msgid "Enable AT SPI socket mount inside the sandbox"
-msgstr ""
+msgstr "Включить монтирование сокета AT SPI внутри песочницы"
 
 #: ../apps/ll-cli/src/main.cpp:156
 msgid "Run context json string"
@@ -274,19 +275,19 @@ msgstr ""
 
 #: ../apps/ll-cli/src/main.cpp:186
 msgid "Run the application under gdbserver"
-msgstr ""
+msgstr "Запустить приложение под gdbserver"
 
 #: ../apps/ll-cli/src/main.cpp:190
 msgid "Specify the gdbserver listen address"
-msgstr ""
+msgstr "Укажите адрес прослушивания gdbserver"
 
 #: ../apps/ll-cli/src/main.cpp:198
 msgid "Specify debuginfod urls for debugging"
-msgstr ""
+msgstr "Укажите URL-адреса debuginfod для отладки"
 
 #: ../apps/ll-cli/src/main.cpp:205
 msgid "Specify the directory used by gdb to load debug symbols"
-msgstr ""
+msgstr "Укажите каталог, используемый gdb для загрузки отладочных символов"
 
 #: ../apps/ll-cli/src/main.cpp:209 ../apps/ll-cli/src/main.cpp:241
 msgid "Run commands in a running sandbox"
@@ -298,7 +299,7 @@ msgstr "Список запущенных приложений"
 
 #: ../apps/ll-cli/src/main.cpp:218
 msgid "Do not truncate container IDs"
-msgstr ""
+msgstr "Не обрезать идентификаторы контейнеров"
 
 #: ../apps/ll-cli/src/main.cpp:219
 msgid "Usage: ll-cli ps [OPTIONS]"
@@ -311,6 +312,7 @@ msgstr "Войти в пространство имен, где запущено
 #: ../apps/ll-cli/src/main.cpp:234
 msgid "Specify the application running instance(you can get it by ps command)"
 msgstr ""
+"Укажите запущенный экземпляр приложения (его можно получить командой ps)"
 
 #: ../apps/ll-cli/src/main.cpp:238
 msgid "Specify working directory"
@@ -355,6 +357,22 @@ msgid ""
 "ll-cli install stable:org.deepin.demo/0.0.0.1/x86_64\n"
 "    "
 msgstr ""
+"Использование: ll-cli install [ПАРАМЕТРЫ] ПРИЛОЖЕНИЕ\n"
+"\n"
+"Пример:\n"
+"# установить приложение по appid\n"
+"ll-cli install org.deepin.demo\n"
+"# установить приложение из слоя linyaps\n"
+"ll-cli install ./demo_0.0.0.1_x86_64_binary.layer\n"
+"# установить приложение из linyaps uab\n"
+"ll-cli install ./demo_x86_64_0.0.0.1_main.uab\n"
+"# установить указанный модуль appid\n"
+"ll-cli install org.deepin.demo --module=binary\n"
+"# установить указанную версию appid\n"
+"ll-cli install org.deepin.demo/0.0.0.1\n"
+"# установить приложение по подробной ссылке\n"
+"ll-cli install stable:org.deepin.demo/0.0.0.1/x86_64\n"
+"    "
 
 #: ../apps/ll-cli/src/main.cpp:289
 msgid "Specify the application ID, and it can also be a .uab or .layer file"
@@ -363,7 +381,7 @@ msgstr ""
 
 #: ../apps/ll-cli/src/main.cpp:292
 msgid "Install a specify module"
-msgstr ""
+msgstr "Установить указанный модуль"
 
 #: ../apps/ll-cli/src/main.cpp:295
 msgid "Install from a specific repo"
@@ -380,7 +398,7 @@ msgstr "Автоматически отвечать «да» на все воп�
 #: ../apps/ll-cli/src/main.cpp:304 ../apps/ll-cli/src/main.cpp:328
 #: ../apps/ll-cli/src/main.cpp:360
 msgid "Do not automatically remove unused dependencies"
-msgstr ""
+msgstr "Не удалять автоматически неиспользуемые зависимости"
 
 #: ../apps/ll-cli/src/main.cpp:313
 msgid "Uninstall the application or runtimes"
@@ -392,11 +410,11 @@ msgstr "Использование: ll-cli uninstall [ПАРАМЕТРЫ] ПРИ
 
 #: ../apps/ll-cli/src/main.cpp:317
 msgid "Specify the applications ID"
-msgstr ""
+msgstr "Укажите идентификатор приложения"
 
 #: ../apps/ll-cli/src/main.cpp:320
 msgid "Uninstall a specify module"
-msgstr ""
+msgstr "Удалить указанный модуль"
 
 #: ../apps/ll-cli/src/main.cpp:325
 msgid "Force uninstall base or runtime"
@@ -424,6 +442,8 @@ msgid ""
 "Specify the application ID. If it not be specified, all applications will be"
 " upgraded"
 msgstr ""
+"Укажите идентификатор приложения. Если он не указан, будут обновлены все "
+"приложения"
 
 #: ../apps/ll-cli/src/main.cpp:357
 msgid "Only upgrade dependencies of application"
@@ -465,11 +485,13 @@ msgstr ""
 
 #: ../apps/ll-cli/src/main.cpp:385
 msgid "Specify the Keywords"
-msgstr ""
+msgstr "Укажите ключевые слова"
 
 #: ../apps/ll-cli/src/main.cpp:392 ../apps/ll-cli/src/main.cpp:431
 msgid "Filter result with specify type. One of \"runtime\", \"base\", \"app\" or \"all\""
 msgstr ""
+"Фильтровать результат по указанному типу. Один из «runtime», «base», «app» "
+"или «all»"
 
 #: ../apps/ll-cli/src/main.cpp:396
 msgid "Specify the repo"
@@ -477,15 +499,15 @@ msgstr "Укажите репозиторий"
 
 #: ../apps/ll-cli/src/main.cpp:401
 msgid "Include develop application in result"
-msgstr ""
+msgstr "Включить приложение develop в результат"
 
 #: ../apps/ll-cli/src/main.cpp:404
 msgid "Show all versions of an application(s), base(s) or runtime(s)"
-msgstr ""
+msgstr "Показать все версии приложения(й), базы(з) или среды(сред) выполнения"
 
 #: ../apps/ll-cli/src/main.cpp:412
 msgid "List installed application(s), base(s) or runtime(s)"
-msgstr ""
+msgstr "Список установленных приложений, баз или сред выполнения"
 
 #: ../apps/ll-cli/src/main.cpp:415
 msgid ""
@@ -518,10 +540,12 @@ msgid ""
 "Show the list of latest version of the currently installed application(s), "
 "base(s) or runtime(s)"
 msgstr ""
+"Показать список последних версий текущих установленных приложений, баз или "
+"сред выполнения"
 
 #: ../apps/ll-cli/src/main.cpp:445
 msgid "Show installed module sizes and repository real size"
-msgstr ""
+msgstr "Показать размеры установленных модулей и реальный размер репозитория"
 
 #: ../apps/ll-cli/src/main.cpp:447
 msgid ""
@@ -531,28 +555,35 @@ msgid ""
 "# show installed module sizes\n"
 "ll-cli analyze size\n"
 msgstr ""
+"Использование: ll-cli analyze size [ПАРАМЕТРЫ]\n"
+"\n"
+"Пример:\n"
+"# показать размеры установленных модулей\n"
+"ll-cli analyze size\n"
 
 #: ../apps/ll-cli/src/main.cpp:457
 msgid ""
 "Sort result by specify field. One of \"actual\", \"logical\", \"exclusive\","
 " \"shared\" or \"id\""
 msgstr ""
+"Сортировать результат по указанному полю. Один из «actual», «logical», "
+"«exclusive», «shared» или «id»"
 
 #: ../apps/ll-cli/src/main.cpp:461
 msgid "Sort in ascending order"
-msgstr ""
+msgstr "Сортировать по возрастанию"
 
 #: ../apps/ll-cli/src/main.cpp:470
 msgid "Analyze installed applications"
-msgstr ""
+msgstr "Анализ установленных приложений"
 
 #: ../apps/ll-cli/src/main.cpp:472
 msgid "Usage: ll-cli analyze SUBCOMMAND [OPTIONS]"
-msgstr ""
+msgstr "Использование: ll-cli analyze ПОДКОМАНДА [ПАРАМЕТРЫ]"
 
 #: ../apps/ll-cli/src/main.cpp:478
 msgid "Display installed application dependency tree"
-msgstr ""
+msgstr "Показать дерево зависимостей установленных приложений"
 
 #: ../apps/ll-cli/src/main.cpp:480
 msgid ""
@@ -564,6 +595,13 @@ msgid ""
 "# show dependency tree for an installed application\n"
 "ll-cli analyze depends org.deepin.demo\n"
 msgstr ""
+"Использование: ll-cli analyze depends [ПРИЛОЖЕНИЕ]\n"
+"\n"
+"Пример:\n"
+"# показать дерево зависимостей для всех установленных приложений\n"
+"ll-cli analyze depends\n"
+"# показать дерево зависимостей для установленного приложения\n"
+"ll-cli analyze depends org.deepin.demo\n"
 
 #: ../apps/ll-cli/src/main.cpp:488 ../apps/ll-cli/src/main.cpp:520
 msgid "Specify the installed application ID"
@@ -610,6 +648,7 @@ msgstr "Использование: ll-cli inspect ПОДКОМАНДА [ПАР�
 msgid ""
 "Display the data(bundle) directory of the installed(running) application"
 msgstr ""
+"Показать каталог данных (bundle) установленного (запущенного) приложения"
 
 #: ../apps/ll-cli/src/main.cpp:551
 msgid "Usage: ll-cli inspect dir [OPTIONS] APP"
@@ -617,11 +656,11 @@ msgstr "Использование: ll-cli inspect dir [ПАРАМЕТРЫ] ПР
 
 #: ../apps/ll-cli/src/main.cpp:555
 msgid "Specify the application ID, and it can also be reference"
-msgstr ""
+msgstr "Укажите идентификатор приложения, это также может быть ссылка"
 
 #: ../apps/ll-cli/src/main.cpp:561
 msgid "Specify the directory type (layer or bundle),the default is layer"
-msgstr ""
+msgstr "Укажите тип каталога (layer или bundle), по умолчанию — layer"
 
 #: ../apps/ll-cli/src/main.cpp:568
 msgid ""
@@ -634,6 +673,8 @@ msgid ""
 "linyaps CLI\n"
 "A CLI program to run application and manage application and runtime\n"
 msgstr ""
+"linyaps CLI\n"
+"Программа CLI для запуска приложений и управления приложениями и средами выполнения\n"
 
 #: ../apps/ll-cli/src/main.cpp:585 ../apps/ll-builder/src/main.cpp:478
 msgid "Print this help message and exit"
@@ -665,15 +706,17 @@ msgid ""
 "Use peer to peer DBus, this is used only in case that DBus daemon is not "
 "available"
 msgstr ""
+"Использовать peer-to-peer DBus, применяется только в случае, когда демон "
+"DBus недоступен"
 
 #. json flag
 #: ../apps/ll-cli/src/main.cpp:605
 msgid "Use json format to output result"
-msgstr ""
+msgstr "Использовать формат json для вывода результата"
 
 #: ../apps/ll-cli/src/main.cpp:612
 msgid "Show debug info; repeat to enable backtrace"
-msgstr ""
+msgstr "Показать отладочную информацию; повторите для включения трассировки"
 
 #: ../apps/ll-cli/src/main.cpp:615
 msgid "Don't output progress information"
@@ -758,11 +801,11 @@ msgstr "ИД контейнера"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:182
 msgid "Pid"
-msgstr ""
+msgstr "PID"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:250
 msgid "Url"
-msgstr ""
+msgstr "URL"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:251
 msgid "Alias"
@@ -786,45 +829,47 @@ msgstr "Новое"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:368
 msgid "Exclusive"
-msgstr ""
+msgstr "Эксклюзивный"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:369
 msgid "Shared"
-msgstr ""
+msgstr "Общий"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:370
 msgid "Logical"
-msgstr ""
+msgstr "Логический"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:370
 msgid "Actual"
-msgstr ""
+msgstr "Фактический"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:385
 msgid "Calculated logical total size: "
-msgstr ""
+msgstr "Вычисленный логический общий размер: "
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:386
 msgid "Exclusive: "
-msgstr ""
+msgstr "Эксклюзивный: "
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:386
 msgid "Shared: "
-msgstr ""
+msgstr "Общий: "
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:388
 msgid "Calculated actual total size: "
-msgstr ""
+msgstr "Вычисленный фактический общий размер: "
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:389
 msgid "Repository real size: "
-msgstr ""
+msgstr "Реальный размер репозитория: "
 
 #: ../apps/ll-builder/src/main.cpp:476
 msgid ""
 "linyaps builder CLI \n"
 "A CLI program to build linyaps application\n"
 msgstr ""
+"linyaps builder CLI \n"
+"Программа CLI для сборки приложений linyaps\n"
 
 #: ../apps/ll-builder/src/main.cpp:481
 msgid "Usage: ll-builder [OPTIONS] [SUBCOMMAND]"
@@ -936,7 +981,7 @@ msgstr "Укажите расширение(я), используемое(ые) 
 
 #: ../apps/ll-builder/src/main.cpp:592
 msgid "List built linyaps app"
-msgstr ""
+msgstr "Список собранных приложений linyaps"
 
 #: ../apps/ll-builder/src/main.cpp:593
 msgid "Usage: ll-builder list [OPTIONS]"
@@ -944,7 +989,7 @@ msgstr "Использование: ll-builder list [ПАРАМЕТРЫ]"
 
 #: ../apps/ll-builder/src/main.cpp:594
 msgid "Remove built linyaps app"
-msgstr ""
+msgstr "Удалить собранное приложение linyaps"
 
 #: ../apps/ll-builder/src/main.cpp:595
 msgid "Usage: ll-builder remove [OPTIONS] [APP...]"
@@ -952,12 +997,12 @@ msgstr "Использование: ll-builder remove [ПАРАМЕТРЫ] [ПР
 
 #: ../apps/ll-builder/src/main.cpp:598
 msgid "Do not clean objects files before remove apps"
-msgstr ""
+msgstr "Не очищать объектные файлы перед удалением приложений"
 
 #. build export
 #: ../apps/ll-builder/src/main.cpp:602
 msgid "Export to linyaps layer or UAB"
-msgstr ""
+msgstr "Экспортировать в слой linyaps или UAB"
 
 #: ../apps/ll-builder/src/main.cpp:603
 msgid "Usage: ll-builder export [OPTIONS]"
@@ -965,7 +1010,7 @@ msgstr "Использование: ll-builder export [ПАРАМЕТРЫ]"
 
 #: ../apps/ll-builder/src/main.cpp:615
 msgid "Uab icon (optional)"
-msgstr ""
+msgstr "Значок Uab (необязательно)"
 
 #: ../apps/ll-builder/src/main.cpp:620
 msgid "Export to linyaps layer file (deprecated)"
@@ -973,7 +1018,7 @@ msgstr "Экспортировать в файл слоя linyaps (устаре�
 
 #: ../apps/ll-builder/src/main.cpp:623
 msgid "Export an executable UABX file"
-msgstr ""
+msgstr "Экспортировать исполняемый файл UABX"
 
 #: ../apps/ll-builder/src/main.cpp:627
 msgid "Use custom loader"
@@ -1005,7 +1050,7 @@ msgstr "Использование: ll-builder push [ПАРАМЕТРЫ]"
 
 #: ../apps/ll-builder/src/main.cpp:659
 msgid "Remote repo url"
-msgstr ""
+msgstr "URL удаленного репозитория"
 
 #: ../apps/ll-builder/src/main.cpp:662
 msgid "Remote repo name"
@@ -1037,12 +1082,12 @@ msgstr "Использование: ll-builder import-dir ПУТЬ"
 
 #: ../apps/ll-builder/src/main.cpp:681
 msgid "Layer dir path"
-msgstr ""
+msgstr "Путь к каталогу слоя"
 
 #. add build extract
 #: ../apps/ll-builder/src/main.cpp:686
 msgid "Extract linyaps layer to dir"
-msgstr ""
+msgstr "Извлечь слой linyaps в каталог"
 
 #: ../apps/ll-builder/src/main.cpp:687
 msgid "Usage: ll-builder extract [OPTIONS] LAYER DIR"
@@ -1055,11 +1100,11 @@ msgstr "Целевой каталог"
 #. add builder clean
 #: ../apps/ll-builder/src/main.cpp:695
 msgid "Clean build artifacts"
-msgstr ""
+msgstr "Очистить артефакты сборки"
 
 #: ../apps/ll-builder/src/main.cpp:696
 msgid "Usage: ll-builder clean"
-msgstr ""
+msgstr "Использование: ll-builder clean"
 
 #: ../apps/ll-builder/src/main.cpp:710
 msgid "linyaps build tool version "
@@ -1117,6 +1162,7 @@ msgstr "Использование: "
 #: ../libs/linglong/src/linglong/common/cli/repo.cpp:50
 msgid "Display or modify information of the repository currently using"
 msgstr ""
+"Показать или изменить информацию об используемом в данный момент репозитории"
 
 #: ../libs/linglong/src/linglong/common/cli/repo.cpp:55
 msgid "Add a new repository"
@@ -1131,7 +1177,7 @@ msgstr "Укажите имя репозитория"
 #: ../libs/linglong/src/linglong/common/cli/repo.cpp:71
 #: ../libs/linglong/src/linglong/common/cli/repo.cpp:86
 msgid "Url of the repository"
-msgstr ""
+msgstr "URL репозитория"
 
 #: ../libs/linglong/src/linglong/common/cli/repo.cpp:63
 #: ../libs/linglong/src/linglong/common/cli/repo.cpp:77
@@ -1177,7 +1223,7 @@ msgstr "Включить зеркало для репозитория"
 
 #: ../libs/linglong/src/linglong/common/cli/repo.cpp:119
 msgid "Region code for mirror selection, e.g. CN, US"
-msgstr ""
+msgstr "Код региона для выбора зеркала, например CN, US"
 
 #: ../libs/linglong/src/linglong/common/cli/repo.cpp:124
 msgid "Disable mirror for the repo"

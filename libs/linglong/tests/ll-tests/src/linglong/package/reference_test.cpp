@@ -6,11 +6,16 @@
 
 #include <gtest/gtest.h>
 
+#include "linglong/api/types/v1/BuilderProject.hpp"
 #include "linglong/api/types/v1/PackageInfoV2.hpp"
+#include "linglong/package/architecture.h"
 #include "linglong/package/fuzzy_reference.h"
 #include "linglong/package/reference.h"
+#include "linglong/package/version.h"
 
 using namespace linglong::package;
+
+#include <unordered_map>
 
 TEST(Package, Reference)
 {
@@ -103,4 +108,114 @@ TEST(Package, FromPackageInfoRejectsEmptyArchitecture)
     ASSERT_FALSE(result.has_value())
       << "fromPackageInfo should reject empty arch array instead of crashing";
     EXPECT_NE(result.error().message().find("architecture"), std::string::npos);
+}
+
+TEST(Package, ReferenceCreateRejectsEmptyChannelAndId)
+{
+    const auto version = Version::parse("1.0.0");
+    ASSERT_TRUE(version.has_value());
+    const auto arch = Architecture::parse("x86_64");
+    ASSERT_TRUE(arch.has_value());
+
+    auto noChannel = Reference::create("", "com.example.App", *version, *arch);
+    ASSERT_FALSE(noChannel.has_value());
+
+    auto noId = Reference::create("main", "", *version, *arch);
+    ASSERT_FALSE(noId.has_value());
+}
+
+TEST(Package, FromBuilderProjectUsesDefaults)
+{
+    linglong::api::types::v1::BuilderProject project;
+    project.package.version = "1.0.0";
+    project.package.id = "com.example.App";
+
+    auto reference = Reference::fromBuilderProject(project);
+    ASSERT_TRUE(reference.has_value()) << reference.error().message();
+
+    EXPECT_EQ(reference->channel, "main");
+    EXPECT_EQ(reference->id, "com.example.App");
+    EXPECT_EQ(reference->toString(),
+              "main:com.example.App/1.0.0/" + Architecture::currentCPUArchitecture().toString());
+}
+
+TEST(Package, FromBuilderProjectUsesExplicitArchitectureAndChannel)
+{
+    linglong::api::types::v1::BuilderProject project;
+    project.package.version = "1.0.0";
+    project.package.id = "com.example.App";
+    project.package.architecture = "arm64";
+    project.package.channel = "stable";
+
+    auto reference = Reference::fromBuilderProject(project);
+    ASSERT_TRUE(reference.has_value()) << reference.error().message();
+
+    EXPECT_EQ(reference->channel, "stable");
+    EXPECT_EQ(reference->arch.toString(), "arm64");
+    EXPECT_EQ(reference->toString(), "stable:com.example.App/1.0.0/arm64");
+}
+
+TEST(Package, FromBuilderProjectRejectsInvalidVersion)
+{
+    linglong::api::types::v1::BuilderProject project;
+    project.package.version = "...";
+    project.package.id = "com.example.App";
+
+    auto reference = Reference::fromBuilderProject(project);
+    ASSERT_FALSE(reference.has_value());
+}
+
+TEST(Package, FromBuilderProjectRejectsInvalidArchitecture)
+{
+    linglong::api::types::v1::BuilderProject project;
+    project.package.version = "1.0.0";
+    project.package.id = "com.example.App";
+    project.package.architecture = "unknown_arch";
+
+    auto reference = Reference::fromBuilderProject(project);
+    ASSERT_FALSE(reference.has_value());
+    EXPECT_TRUE(reference.error().message().find("unknown architecture") != std::string::npos);
+}
+
+TEST(Package, FromPackageInfoRejectsInvalidVersion)
+{
+    linglong::api::types::v1::PackageInfoV2 info{};
+    info.channel = "main";
+    info.id = "com.example.App";
+    info.version = "...";
+    info.arch = { "x86_64" };
+
+    auto result = Reference::fromPackageInfo(info);
+    ASSERT_FALSE(result.has_value());
+}
+
+TEST(Package, FromPackageInfoRejectsInvalidArchitectureString)
+{
+    linglong::api::types::v1::PackageInfoV2 info{};
+    info.channel = "main";
+    info.id = "com.example.App";
+    info.version = "1.0.0";
+    info.arch = { "not-an-arch" };
+
+    auto result = Reference::fromPackageInfo(info);
+    ASSERT_FALSE(result.has_value());
+}
+
+TEST(Package, ReferenceHashWorksInUnorderedMap)
+{
+    const auto reference = Reference::parse("main:com.example.App/1.0.0.0/x86_64");
+    ASSERT_TRUE(reference.has_value());
+
+    const auto other = Reference::parse("main:com.example.App/1.0.0.0/arm64");
+    ASSERT_TRUE(other.has_value());
+
+    std::unordered_map<Reference, int> refs;
+    refs.emplace(*reference, 10);
+    refs.emplace(*other, 20);
+
+    EXPECT_EQ(refs.size(), 2u);
+    auto it = refs.find(*reference);
+    ASSERT_NE(it, refs.end());
+    EXPECT_EQ(it->second, 10);
+    EXPECT_EQ(refs.at(*other), 20);
 }

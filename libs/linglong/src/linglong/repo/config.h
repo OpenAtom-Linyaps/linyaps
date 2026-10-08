@@ -28,6 +28,7 @@ std::vector<api::types::v1::Repo> getPrioritySortedRepos(api::types::v1::RepoCon
 std::vector<std::vector<api::types::v1::Repo>>
 getPriorityGroupedRepos(api::types::v1::RepoConfigV2 cfg) noexcept;
 
-api::types::v1::RepoConfigV2 convertToV2(const api::types::v1::RepoConfig &cfg) noexcept;
+utils::error::Result<api::types::v1::RepoConfigV2>
+convertToV2(const api::types::v1::RepoConfig &cfg) noexcept;
 
 } // namespace linglong::repo

@@ -40,6 +40,19 @@ loadConfig(const std::filesystem::path &file) noexcept
 
             // 将旧版本配置转换为新版本
             config = convertToV2(*configV1);
+            if (!config) {
+                return LINGLONG_ERR(config);
+            }
+        }
+
+        if (std::find_if(config->repos.begin(),
+                         config->repos.end(),
+                         [&config](const auto &repo) {
+                             return repo.alias.value_or(repo.name) == config->defaultRepo;
+                         })
+            == config->repos.end()) {
+            return LINGLONG_ERR(
+              fmt::format("default repository {} not found in repos", config->defaultRepo));
         }
 
         return config;
@@ -136,17 +149,24 @@ getPriorityGroupedRepos(api::types::v1::RepoConfigV2 cfg) noexcept
     return groupedRepos;
 }
 
-api::types::v1::RepoConfigV2 convertToV2(const api::types::v1::RepoConfig &cfg) noexcept
+utils::error::Result<api::types::v1::RepoConfigV2>
+convertToV2(const api::types::v1::RepoConfig &cfg) noexcept
 {
+    LINGLONG_TRACE("convert repo config to v2");
+
+    const auto defaultRepo =
+      std::find_if(cfg.repos.begin(), cfg.repos.end(), [&cfg](const auto &repo) {
+          return repo.first == cfg.defaultRepo;
+      });
+    if (defaultRepo == cfg.repos.end()) {
+        return LINGLONG_ERR(
+          fmt::format("default repository {} not found in repos", cfg.defaultRepo));
+    }
+
     api::types::v1::RepoConfigV2 configV2;
     configV2.version = 2;
     configV2.defaultRepo = cfg.defaultRepo;
     int64_t priority = 0;
-
-    const auto &defaultRepo =
-      std::find_if(cfg.repos.begin(), cfg.repos.end(), [&cfg](const auto &repo) {
-          return repo.first == cfg.defaultRepo;
-      });
 
     api::types::v1::Repo repoV2{
         .name = defaultRepo->first,

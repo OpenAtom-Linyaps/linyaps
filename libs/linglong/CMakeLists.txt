@@ -76,6 +76,8 @@ pfl_add_library(
   src/linglong/package_manager/package_update.h
   src/linglong/package_manager/polkit_authority.cpp
   src/linglong/package_manager/polkit_authority.h
+  src/linglong/package_manager/polkit_authorization_cache.cpp
+  src/linglong/package_manager/polkit_authorization_cache.h
   src/linglong/package_manager/ref_installation.cpp
   src/linglong/package_manager/ref_installation.h
   src/linglong/package_manager/task.cpp

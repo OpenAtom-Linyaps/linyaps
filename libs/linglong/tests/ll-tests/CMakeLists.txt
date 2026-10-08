@@ -43,6 +43,7 @@ pfl_add_executable(
   src/linglong/package_manager/task_test.cpp
   src/linglong/package_manager/task_queue_test.cpp
   src/linglong/package_manager/package_update_test.cpp
+  src/linglong/package_manager/polkit_authorization_cache_test.cpp
   src/linglong/package_manager/ref_installation_test.cpp
   src/linglong/package_manager/uab_installation_test.cpp
   src/linglong/package/reference_test.cpp
@@ -111,6 +112,16 @@ pfl_add_executable(
 include(GoogleTest)
 get_real_target_name(tests linglong::linglong::ll-tests)
 gtest_discover_tests(${tests} WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+# The policy of the package manager is the source of truth for the actions whose
+# authorization may be remembered, so the unit test that compares it with the
+# list compiled into the daemon has to read it from the source tree. The escaped
+# quotes are part of the compiler argument, they make it a string literal.
+target_compile_definitions(
+  ${tests}
+  PRIVATE
+  "LINGLONG_POLKIT_POLICY_FILE=\"${PROJECT_SOURCE_DIR}/misc/share/polkit-1/actions/org.deepin.linglong.PackageManager1.policy\""
+)
 
 # FIXME: we should'n include header directly
 target_include_directories(${tests}

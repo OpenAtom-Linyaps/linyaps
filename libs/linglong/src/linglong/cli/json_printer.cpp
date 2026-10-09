@@ -175,7 +175,7 @@ void JSONPrinter::printDepends(const std::vector<DependsNode> &trees)
 
 void JSONPrinter::printMessage(const std::string &message)
 {
-    std::cout << nlohmann::json{ { "message", message } }.dump() << std::endl;
+    std::cerr << nlohmann::json{ { "message", message } }.dump() << std::endl;
 }
 
 } // namespace linglong::cli

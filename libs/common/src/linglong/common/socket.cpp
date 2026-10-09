@@ -168,7 +168,23 @@ tl::expected<int, std::string> createUnixSocket(std::string_view path)
             return tl::make_unexpected("Path too long");
         }
 
-        std::filesystem::remove(path);
+        std::error_code ec;
+        auto status = std::filesystem::symlink_status(path, ec);
+        if (ec && ec != std::errc::no_such_file_or_directory) {
+            return tl::make_unexpected("Failed to inspect existing socket path: " + ec.message());
+        }
+
+        if (std::filesystem::exists(status)) {
+            if (status.type() != std::filesystem::file_type::socket) {
+                return tl::make_unexpected("Existing socket path is not a socket");
+            }
+
+            std::filesystem::remove(path, ec);
+            if (ec) {
+                return tl::make_unexpected("Failed to remove stale socket: " + ec.message());
+            }
+        }
+
         std::copy(path.cbegin(), path.cend(), addr.sun_path);
         addr.sun_path[path.size()] = '\0';
 

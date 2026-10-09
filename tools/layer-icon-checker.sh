@@ -53,11 +53,10 @@ getDesktopIcons() {
 	path=$1
 	declare desktopIcons
 
-	desktopList=$(find $path -name "*.desktop")
-	for desktop in ${desktopList}; do
-		desktopIcons+=$(sed -n 's/^Icon=\(.*\)/\1/p' ${desktop})
+	while IFS= read -r -d '' desktop; do
+		desktopIcons+=$(sed -n 's/^Icon=\(.*\)/\1/p' "${desktop}")
 		desktopIcons+="\n"
-	done
+	done < <(find "${path}" -name "*.desktop" -print0)
 	echo -e "${desktopIcons}"
 }
 

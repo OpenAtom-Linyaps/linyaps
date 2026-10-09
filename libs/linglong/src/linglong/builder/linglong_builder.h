@@ -134,6 +134,7 @@ protected:
     std::string uabExportFilename(const linglong::package::Reference &ref, ExportMode mode);
     std::string layerExportFilename(const linglong::package::Reference &ref,
                                     const std::string &module);
+    auto generateEntryScript() noexcept -> utils::error::Result<void>;
 
 private:
     auto buildStagePrepare() noexcept -> utils::error::Result<void>;
@@ -154,7 +155,6 @@ private:
     void fixLocaltimeInOverlay(std::unique_ptr<utils::OverlayFS> &base);
     utils::error::Result<package::Reference>
     ensureUtils(const std::string &id, const package::Architecture &arch) noexcept;
-    auto generateEntryScript() noexcept -> utils::error::Result<void>;
     auto generateBuildDependsScript() noexcept -> utils::error::Result<bool>;
     auto generateDependsScript() noexcept -> utils::error::Result<bool>;
     void takeTerminalForeground();

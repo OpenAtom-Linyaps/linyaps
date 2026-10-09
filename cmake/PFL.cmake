@@ -207,7 +207,7 @@ macro(PFL_init) # NOTE: As we might call enable_testing() in `PFL_init`, it have
 
   if(auto)
     macro(_pfl_init_produce_auto_argument NAME DEFAULT)
-      if(DEFINED ${PROJECT_NAME}_${NAME} AND DEFINED PLF_ARG_${NAME})
+      if(DEFINED ${PROJECT_NAME}_${NAME} AND DEFINED PFL_ARG_${NAME})
         _pfl_fatal(
           "You may either define ${PROJECT_NAME}_${NAME} before call PFL_INIT"
           "or call PFL_INIT with argument ${NAME}.")

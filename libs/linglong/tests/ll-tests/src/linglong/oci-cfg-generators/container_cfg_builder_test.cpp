@@ -979,6 +979,26 @@ TEST_F(ContainerCfgBuilderTest, AddExtraMountAndExtraMounts)
     EXPECT_EQ(count, 3);
 }
 
+TEST_F(ContainerCfgBuilderTest, RejectMountDestinationsWithParentTraversal)
+{
+    for (const auto &destination : { "/../../host/path", "/usr/../host/path" }) {
+        Mount extra;
+        extra.destination = destination;
+        extra.source = "/host/source";
+        extra.type = "bind";
+
+        ContainerCfgBuilder builder;
+        builder.setAppId("org.deepin.demo")
+          .setBasePath(baseDir.path())
+          .setBundlePath(bundleDir.path())
+          .addExtraMount(extra);
+
+        auto result = builder.build();
+        ASSERT_FALSE(result.has_value()) << destination;
+        EXPECT_THAT(result.error().message(), ::testing::HasSubstr("mount destination"));
+    }
+}
+
 TEST_F(ContainerCfgBuilderTest, BuildMountWithMissingPathsFails)
 {
     // runtime path that does not exist

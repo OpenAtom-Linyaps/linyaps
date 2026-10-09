@@ -65,6 +65,24 @@ using ocppi::runtime::config::types::RootfsPropagation;
 
 namespace {
 
+utils::error::Result<void> validateMountDestinations(const std::vector<Mount> &mounts) noexcept
+{
+    for (const auto &mount : mounts) {
+        const std::filesystem::path destination{ mount.destination };
+        if (mount.destination.find('\0') != std::string::npos || destination.empty()
+            || !destination.is_absolute()) {
+            return LINGLONG_ERR(fmt::format("invalid mount destination {}", mount.destination));
+        }
+
+        if (std::find(destination.begin(), destination.end(), "..") != destination.end()) {
+            return LINGLONG_ERR(
+              fmt::format("mount destination {} must not escape the container root", destination));
+        }
+    }
+
+    return LINGLONG_OK;
+}
+
 bool bindIfExist(std::vector<Mount> &mounts,
                  std::filesystem::path source,
                  std::string destination = "",
@@ -2332,6 +2350,12 @@ utils::error::Result<void> ContainerCfgBuilder::build() noexcept
     BUILD_STEP(mergeMount);
     BUILD_STEP(finalize);
     BUILD_STEP(applyPatch);
+    if (config.mounts) {
+        auto result = validateMountDestinations(*config.mounts);
+        if (!result) {
+            return result;
+        }
+    }
     BUILD_STEP(selfAdjustingMount);
 
     return LINGLONG_OK;

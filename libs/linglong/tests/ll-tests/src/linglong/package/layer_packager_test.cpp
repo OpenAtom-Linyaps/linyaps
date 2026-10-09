@@ -185,4 +185,27 @@ TEST_F(LayerPackagerTest, InitWorkDir)
       << "workdir should be temporary directory";
 }
 
+TEST(LayerPackagerTest, RejectsMetadataAboveLayerFormatLimit)
+{
+    TempDir layerTempDir("linglong-layer-oversized-info-");
+    ASSERT_TRUE(layerTempDir.isValid());
+    std::filesystem::create_directories(layerTempDir.path() / "files");
+
+    api::types::v1::PackageInfoV2 packageInfo;
+    packageInfo.name = "hello";
+    packageInfo.version = "1";
+    packageInfo.id = "hello";
+    packageInfo.description =
+      std::string(static_cast<std::size_t>(maxLayerMetaInfoLength) + 1, 'x');
+    std::ofstream{ layerTempDir.path() / "info.json" } << nlohmann::json(packageInfo).dump();
+
+    LayerPackager packager;
+    auto result =
+      packager.pack(LayerDir(layerTempDir.path()),
+                    QString::fromStdString((layerTempDir.path() / "out.layer").string()));
+
+    ASSERT_FALSE(result.has_value());
+    EXPECT_THAT(result.error().message(), ::testing::HasSubstr("exceeds limit"));
+}
+
 } // namespace linglong::package

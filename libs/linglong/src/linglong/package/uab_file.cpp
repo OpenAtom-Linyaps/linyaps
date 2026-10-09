@@ -21,13 +21,24 @@
 #include <array>
 #include <filesystem>
 #include <fstream>
-#include <limits>
 #include <string_view>
 
 #include <fcntl.h>
 #include <unistd.h>
 
 namespace linglong::package {
+
+namespace {
+
+auto validateMetaInfoSize(const GElf_Shdr &section) -> utils::error::Result<void>
+{
+    if (section.sh_size > maxUabMetaInfoSize) {
+        return LINGLONG_ERR("linglong.meta is too large");
+    }
+    return LINGLONG_OK;
+}
+
+} // namespace
 
 utils::error::Result<std::unique_ptr<UABFile>>
 UABFile::loadFromFile(const std::filesystem::path &path) noexcept
@@ -171,6 +182,9 @@ UABFile::getMetaInfo() noexcept
     if (!metaSh) {
         return LINGLONG_ERR(metaSh.error());
     }
+    if (auto ret = validateMetaInfoSize(*metaSh); !ret) {
+        return LINGLONG_ERR(ret);
+    }
     auto metaData = readSectionData(metaSection, 0, metaSh->sh_size);
     if (!metaData) {
         return LINGLONG_ERR(metaData.error());
@@ -246,14 +260,13 @@ utils::error::Result<bool> UABFile::verify() noexcept
     if (!metaSh) {
         return LINGLONG_ERR(metaSh.error());
     }
+    if (auto ret = validateMetaInfoSize(*metaSh); !ret) {
+        return LINGLONG_ERR(ret);
+    }
     auto metaData = readSectionData(metaSection, 0, metaSh->sh_size);
     if (!metaData) {
         return LINGLONG_ERR(metaData.error());
     }
-    if (metaData->size() > static_cast<std::size_t>(std::numeric_limits<int>::max())) {
-        return LINGLONG_ERR("linglong.meta is too large");
-    }
-
     QCryptographicHash metaCryptor{ QCryptographicHash::Sha256 };
     metaCryptor.addData(metaData->data(), static_cast<int>(metaData->size()));
     if (metaCryptor.result().toHex().toStdString() != *expectedMetaDigest) {

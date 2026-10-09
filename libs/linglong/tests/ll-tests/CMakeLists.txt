@@ -37,6 +37,7 @@ pfl_add_executable(
   src/linglong/package/elf_handler_test.cpp
   src/linglong/package/fallback_version_test.cpp
   src/linglong/package/layer_dir_test.cpp
+  src/linglong/package/layer_file_test.cpp
   src/linglong/package/layer_packager_test.cpp
   src/linglong/package_manager/action_test.cpp
   src/linglong/package_manager/data_monitor_test.cpp

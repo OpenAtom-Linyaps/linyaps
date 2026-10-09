@@ -103,12 +103,31 @@ utils::error::Result<quint32> LayerFile::metaInfoLength()
 
     layerDataStream.startTransaction();
     layerDataStream.setByteOrder(QDataStream::LittleEndian);
-    layerDataStream >> metaInfoLengthValue;
+    quint32 length{};
+    layerDataStream >> length;
 
     if (!layerDataStream.commitTransaction()) {
         return LINGLONG_ERR("unknown error.");
     }
 
+    if (length == 0) {
+        return LINGLONG_ERR("layer metadata is empty");
+    }
+    if (length > maxLayerMetaInfoLength) {
+        return LINGLONG_ERR(
+          fmt::format("layer metadata length {} exceeds limit {}", length, maxLayerMetaInfoLength));
+    }
+
+    if (!this->isSequential()) {
+        const auto fileSize = this->size();
+        const auto currentPosition = this->pos();
+        if (fileSize < 0 || currentPosition < 0 || currentPosition > fileSize
+            || fileSize - currentPosition < static_cast<qint64>(length)) {
+            return LINGLONG_ERR("layer metadata is truncated");
+        }
+    }
+
+    metaInfoLengthValue = length;
     return metaInfoLengthValue;
 }
 

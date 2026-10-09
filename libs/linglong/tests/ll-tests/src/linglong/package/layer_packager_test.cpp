@@ -17,7 +17,9 @@
 
 #include <filesystem>
 #include <fstream>
+#include <iterator>
 #include <memory>
+#include <sstream>
 #include <string>
 
 using namespace linglong;
@@ -183,6 +185,39 @@ TEST_F(LayerPackagerTest, InitWorkDir)
     ASSERT_TRUE(ret.has_value()) << "Failed to init workdir" << ret.error().message();
     ASSERT_NE(packager.getWorkDir().string(), tmpDir.path() / "not-exists")
       << "workdir should be temporary directory";
+}
+
+TEST(LayerPackagerTest, FailedPackPreservesExistingOutput)
+{
+    TempDir layerTempDir("linglong-layer-pack-source-");
+    ASSERT_TRUE(layerTempDir.isValid());
+    std::filesystem::create_directories(layerTempDir.path() / "files");
+    api::types::v1::PackageInfoV2 packageInfo;
+    packageInfo.name = "hello";
+    packageInfo.version = "1";
+    packageInfo.id = "hello";
+    std::ofstream{ layerTempDir.path() / "info.json" } << nlohmann::json(packageInfo).dump();
+
+    TempDir outputTempDir("linglong-layer-pack-output-");
+    ASSERT_TRUE(outputTempDir.isValid());
+    const auto outputPath = outputTempDir.path() / "existing.layer";
+    LayerPackager initialPackager;
+    initialPackager.setCompressor("lz4");
+    auto initialResult = initialPackager.pack(LayerDir(layerTempDir.path()),
+                                              QString::fromStdString(outputPath.string()));
+    ASSERT_TRUE(initialResult.has_value()) << initialResult.error().message();
+    std::ifstream previousOutputFile{ outputPath, std::ios::binary };
+    const std::string previousOutput(std::istreambuf_iterator<char>{ previousOutputFile }, {});
+
+    LayerPackager failingPackager;
+    failingPackager.setCompressor("definitely-invalid-compressor");
+    auto result = failingPackager.pack(LayerDir(layerTempDir.path()),
+                                       QString::fromStdString(outputPath.string()));
+
+    ASSERT_FALSE(result.has_value());
+    std::ifstream output{ outputPath, std::ios::binary };
+    const std::string currentOutput(std::istreambuf_iterator<char>{ output }, {});
+    EXPECT_EQ(currentOutput, previousOutput);
 }
 
 } // namespace linglong::package

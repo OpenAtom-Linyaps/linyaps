@@ -13,8 +13,10 @@
 #include "linglong/utils/log/log.h"
 
 #include <QDataStream>
+#include <QSaveFile>
 #include <QSysInfo>
 
+#include <array>
 #include <filesystem>
 #include <fstream>
 #include <string>
@@ -99,20 +101,6 @@ LayerPackager::pack(const LayerDir &dir, const QString &layerFilePath) const
 {
     LINGLONG_TRACE("pack layer");
 
-    QFile layer(layerFilePath);
-    if (layer.exists()) {
-        layer.remove();
-    }
-
-    if (!layer.open(QIODevice::WriteOnly | QIODevice::Append)) {
-        return LINGLONG_ERR(layer.errorString().toStdString());
-    }
-
-    const auto &number = magicNumber();
-    if (layer.write(number) < 0) {
-        return LINGLONG_ERR(layer.errorString().toStdString());
-    }
-
     // generate LayerInfo
     api::types::v1::LayerInfo layerInfo;
     // layer info version not used yet, so give fixed value
@@ -136,16 +124,6 @@ LayerPackager::pack(const LayerDir &dir, const QString &layerFilePath) const
 
     Q_ASSERT(dataSizeStream.status() == QDataStream::Status::Ok);
 
-    if (layer.write(dataSizeBytes) < 0) {
-        return LINGLONG_ERR(layer.errorString().toStdString());
-    }
-
-    if (layer.write(data) < 0) {
-        return LINGLONG_ERR(layer.errorString().toStdString());
-    }
-
-    layer.close();
-
     // compress data with erofs
     const auto &compressedFilePath = this->workDir / "tmp.erofs";
     // 使用-b统一指定block size为4096(2^12), 避免不同系统的兼容问题
@@ -160,9 +138,57 @@ LayerPackager::pack(const LayerDir &dir, const QString &layerFilePath) const
         return LINGLONG_ERR(ret);
     }
 
-    auto res = utils::concatFile(compressedFilePath, layerFilePath.toStdString());
-    if (!res) {
-        return LINGLONG_ERR(res);
+    QFile compressedFile(QString::fromStdString(compressedFilePath.string()));
+    if (!compressedFile.open(QIODevice::ReadOnly)) {
+        return LINGLONG_ERR(compressedFile.errorString().toStdString());
+    }
+
+    QSaveFile layer(layerFilePath);
+    layer.setDirectWriteFallback(false);
+    if (!layer.open(QIODevice::WriteOnly)) {
+        return LINGLONG_ERR(layer.errorString().toStdString());
+    }
+
+    auto writeBytes = [&layer](const char *bytes, qint64 size) -> utils::error::Result<void> {
+        qint64 writtenTotal = 0;
+        while (writtenTotal < size) {
+            const auto written = layer.write(bytes + writtenTotal, size - writtenTotal);
+            if (written <= 0) {
+                return LINGLONG_ERR(layer.errorString().toStdString());
+            }
+            writtenTotal += written;
+        }
+        return LINGLONG_OK;
+    };
+
+    const auto &number = magicNumber();
+    if (auto writeResult = writeBytes(number.constData(), number.size()); !writeResult) {
+        return LINGLONG_ERR(writeResult);
+    }
+    if (auto writeResult = writeBytes(dataSizeBytes.constData(), dataSizeBytes.size());
+        !writeResult) {
+        return LINGLONG_ERR(writeResult);
+    }
+    if (auto writeResult = writeBytes(data.constData(), data.size()); !writeResult) {
+        return LINGLONG_ERR(writeResult);
+    }
+
+    std::array<char, 64 * 1024> buffer{};
+    while (true) {
+        const auto bytesRead = compressedFile.read(buffer.data(), buffer.size());
+        if (bytesRead < 0) {
+            return LINGLONG_ERR(compressedFile.errorString().toStdString());
+        }
+        if (bytesRead == 0) {
+            break;
+        }
+        if (auto writeResult = writeBytes(buffer.data(), bytesRead); !writeResult) {
+            return LINGLONG_ERR(writeResult);
+        }
+    }
+
+    if (!layer.commit()) {
+        return LINGLONG_ERR(layer.errorString().toStdString());
     }
 
     auto result = LayerFile::New(layerFilePath);

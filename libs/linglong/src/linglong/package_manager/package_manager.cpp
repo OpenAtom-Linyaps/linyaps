@@ -112,6 +112,34 @@ void checkPolkitAuthorizationAsync(const std::string &actionId,
 
 } // namespace
 
+std::vector<UninstallCandidate>
+selectUninstallCandidates(const std::vector<api::types::v1::RepositoryCacheLayersItem> &layers,
+                          const std::optional<std::string> &requestedModule) noexcept
+{
+    std::vector<UninstallCandidate> matches;
+    for (const auto &item : layers) {
+        const auto &module = item.info.packageInfoV2Module;
+        if (requestedModule ? module != *requestedModule
+                            : module != "binary" && module != "runtime") {
+            continue;
+        }
+        auto ref = package::Reference::fromPackageInfo(item.info);
+        if (!ref) {
+            LogW("invalid package info: {}", ref.error());
+            continue;
+        }
+        auto existing = std::find_if(matches.begin(), matches.end(), [&ref](const auto &match) {
+            return match.ref == *ref;
+        });
+        if (existing == matches.end()) {
+            matches.push_back(UninstallCandidate{ *ref, item.info.kind, module });
+        } else if (!requestedModule && module == "binary") {
+            existing->module = module;
+        }
+    }
+    return matches;
+}
+
 PackageManager::PackageManager(
   std::unique_ptr<linglong::repo::OSTreeRepo> repo,
   std::unique_ptr<linglong::runtime::ContainerBuilder> containerBuilder,
@@ -1055,58 +1083,35 @@ QVariantMap PackageManager::uninstallImpl(const QVariantMap &parameters,
                            candidate.error().message());
     }
 
-    int count = 0;
-    std::optional<package::Reference> mainRef{ std::nullopt };
-    std::string mainKind;
-    for (const auto &item : *candidate) {
-        // binary and runtime are both valid main modules
-        if (item.info.packageInfoV2Module == "binary"
-            || item.info.packageInfoV2Module == "runtime") {
-            if (!mainRef) {
-                auto ref = package::Reference::fromPackageInfo(item.info);
-                if (ref) {
-                    mainRef = *ref;
-                    mainKind = item.info.kind;
-                } else {
-                    LogW("invalid package info: {}", ref.error());
-                }
-            }
-            count++;
-        }
-    }
+    const auto requestedModule = paras->package.packageManager1PackageModule;
+    auto matchingRefs = selectUninstallCandidates(*candidate, requestedModule);
 
-    if ((mainKind == "base" || mainKind == "runtime") && !paras->options.force) {
-        return toDBusReply(utils::error::ErrorCode::AppUninstallBaseOrRuntime,
-                           "base or runtime package cannot be uninstalled");
-    }
-
-    if (!mainRef) {
+    if (matchingRefs.empty()) {
         return toDBusReply(utils::error::ErrorCode::AppUninstallNotFoundFromLocal,
-                           "the package is not installed");
+                           "the package module is not installed");
     }
 
-    if (count > 1) {
+    if (matchingRefs.size() > 1) {
         std::vector<std::string> items;
-        for (const auto &item : *candidate) {
-            if (item.info.packageInfoV2Module == "binary"
-                || item.info.packageInfoV2Module == "runtime") {
-                auto ref = package::Reference::fromPackageInfo(item.info);
-                if (ref) {
-                    items.emplace_back(ref->toString());
-                } else {
-                    items.emplace_back("invalid ref");
-                }
-            }
+        for (const auto &item : matchingRefs) {
+            items.emplace_back(item.ref.toString());
         }
         return toDBusReply(utils::error::ErrorCode::AppUninstallMultipleVersions,
                            common::strings::join(items, '\n'));
     }
 
-    auto runningRef = isRefBusy(*mainRef);
+    const auto &selected = matchingRefs.front();
+    if ((selected.kind == "base" || selected.kind == "runtime") && !paras->options.force) {
+        return toDBusReply(utils::error::ErrorCode::AppUninstallBaseOrRuntime,
+                           "base or runtime package cannot be uninstalled");
+    }
+
+    const auto &selectedRef = selected.ref;
+    auto runningRef = isRefBusy(selectedRef);
     if (!runningRef) {
         return toDBusReply(utils::error::ErrorCode::AppUninstallFailed,
                            fmt::format("failed to get the state of ref {}: {}",
-                                       mainRef->toString(),
+                                       selectedRef.toString(),
                                        runningRef.error()));
     }
 
@@ -1114,16 +1119,16 @@ QVariantMap PackageManager::uninstallImpl(const QVariantMap &parameters,
         return toDBusReply(utils::error::ErrorCode::AppUninstallAppIsRunning, "ref is busy");
     }
 
-    auto curModule = paras->package.packageManager1PackageModule.value_or("binary");
+    auto curModule = selected.module;
     auto refSpec = fmt::format("{}/{}/{}/{}",
-                               mainRef->channel,
-                               mainRef->id,
-                               mainRef->arch.toString(),
+                               selectedRef.channel,
+                               selectedRef.id,
+                               selectedRef.arch.toString(),
                                curModule);
 
     auto taskRet = tasks.addPackageTask(
       [this,
-       mainRef = *mainRef,
+       mainRef = selectedRef,
        curModule,
        noAutoPrune = paras->options.noAutoPrune.value_or(false)](Task &taskRef) {
           if (taskRef.isTaskDone()) {

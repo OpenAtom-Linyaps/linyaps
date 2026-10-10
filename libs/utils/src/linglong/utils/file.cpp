@@ -114,7 +114,7 @@ linglong::utils::error::Result<void> concatFile(const std::filesystem::path &sou
 
     std::error_code ec;
     if (!std::filesystem::exists(source, ec)) {
-        return LINGLONG_ERR("source file not exists", ec);
+        return LINGLONG_ERR("source file does not exist", ec);
     }
 
     if (std::filesystem::exists(target, ec) && std::filesystem::equivalent(source, target, ec)) {
@@ -291,7 +291,7 @@ getFiles(const std::filesystem::path &dir)
     }
 
     if (ec) {
-        return LINGLONG_ERR(fmt::format("failed to iterator: {}", ec.message()).c_str());
+        return LINGLONG_ERR(fmt::format("failed to iterate: {}", ec.message()).c_str());
     }
 
     return files;

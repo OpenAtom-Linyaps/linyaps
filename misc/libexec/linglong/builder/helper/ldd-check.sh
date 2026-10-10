@@ -84,14 +84,23 @@ processExecBin() {
 
 collectDependsLibs() {
         #support multiple path, split by ':'
-        declare paths
-        paths=$(echo "$1" | tr ':' ' ')
+        local rawPaths="$1"
+        declare -a pathList=()
+        declare -a validPaths=()
+        local p
 
-        if [[ -z ${paths} ]]; then
+        IFS=':' read -ra pathList <<<"${rawPaths}"
+        for p in "${pathList[@]}"; do
+                if [[ -n ${p} ]]; then
+                        validPaths+=("${p}")
+                fi
+        done
+
+        if [[ ${#validPaths[@]} -eq 0 ]]; then
                 logErr "No paths provided"
         fi
 
-        filePaths=$(find "${paths}" -type f)
+        filePaths=$(find "${validPaths[@]}" -type f)
 
         IFS=$'\n'
         for filePath in ${filePaths}; do

@@ -36,7 +36,7 @@ ll-cli repo add myrepo https://repo.example.com
 
 删除一个仓库。
 
-**用法**: `ll-cli repo remove [OPTIONS] NAME`
+**用法**: `ll-cli repo remove [OPTIONS] ALIAS`
 
 **参数**:
 
@@ -52,7 +52,7 @@ ll-cli repo remove myrepo
 
 更新仓库URL。
 
-**用法**: `ll-cli repo update [OPTIONS] NAME URL`
+**用法**: `ll-cli repo update [OPTIONS] ALIAS URL`
 
 **参数**:
 
@@ -69,11 +69,11 @@ ll-cli repo update myrepo https://updated-repo.example.com
 
 设置默认仓库名称。
 
-**用法**: `ll-cli repo set-default [OPTIONS] NAME`
+**用法**: `ll-cli repo set-default [OPTIONS] ALIAS`
 
 **参数**:
 
-- **Alias** _TEXT_ _REQUIRED_: 仓库名称的别名
+- **ALIAS** _TEXT_ _REQUIRED_: 仓库名称的别名
 
 **示例**:
 

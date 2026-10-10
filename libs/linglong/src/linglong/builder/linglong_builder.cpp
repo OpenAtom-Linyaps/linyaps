@@ -2184,13 +2184,17 @@ void Builder::printRepo()
     auto repoCfg = this->repo.getConfig();
     printMessage("[Current Repo]");
     printMessage("Name: " + repoCfg.defaultRepo, 2);
-    std::string repoUrl;
-    const auto &defaultRepo =
-      std::find_if(repoCfg.repos.begin(), repoCfg.repos.end(), [&repoCfg](const auto &repo) {
-          return repo.alias.value_or(repo.name) == repoCfg.defaultRepo;
-      });
-    repoUrl = defaultRepo->url;
-    printMessage("Url: " + repoUrl, 2);
+
+    // Reuse the checked helper rather than duplicating std::find_if here: the
+    // old code dereferenced end() and crashed when the configured default
+    // repository was not present in "repos".
+    auto defaultRepo = linglong::repo::getDefaultRepo(repoCfg);
+    if (!defaultRepo) {
+        printMessage("Url: <default repo not found>", 2);
+        return;
+    }
+
+    printMessage("Url: " + defaultRepo->url, 2);
 }
 
 bool Builder::checkDeprecatedInstallFile()

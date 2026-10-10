@@ -148,10 +148,10 @@ sudo apt update
 sudo apt install linglong-bin linglong-installer
 ```
 
-### AnolisOS 8
+### Anolis OS 23.5
 
 ```sh
-sudo dnf config-manager addrepo --from-repofile "https://ci.deepin.com/repo/obs/linglong:/CI:/release/AnolisOS_8/linglong%3ACI%3Arelease.repo"
+sudo dnf config-manager addrepo --from-repofile "https://ci.deepin.com/repo/obs/linglong:/CI:/release/Anolis_23.5/linglong%3ACI%3Arelease.repo"
 sudo dnf update
 sudo dnf install linglong-bin linyaps-web-store-installer
 ```

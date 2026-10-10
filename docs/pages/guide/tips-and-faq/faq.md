@@ -80,7 +80,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 18. uab离线包格式在 Debian、Ubuntu 下输入法无法使用？
 
-    建议安装 `fictx`输入法后体验。
+    建议安装 `fcitx` 输入法后体验。
 
 19. 怎么知道容器环境中安装了哪些包？
 

@@ -41,6 +41,14 @@ auto SourceFetcher::fetch(QDir destination) noexcept -> utils::error::Result<voi
         }
     }
 
+    auto sourceName = getSourceName();
+    if (sourceName.isEmpty() || sourceName == QLatin1String(".")
+        || sourceName == QLatin1String("..") || sourceName.contains(QLatin1Char('/'))
+        || sourceName.contains(QLatin1Char('\\'))) {
+        return LINGLONG_ERR("invalid source name '" + sourceName.toStdString()
+                            + "': expected a non-empty single filename");
+    }
+
     auto scriptFile = findBuilderScript("fetch-" + source.kind + "-source");
     if (!scriptFile) {
         return LINGLONG_ERR(scriptFile);
@@ -50,7 +58,7 @@ auto SourceFetcher::fetch(QDir destination) noexcept -> utils::error::Result<voi
     }
     auto output = m_cmd->exec(
       std::vector<std::string>{ scriptFile->string(),
-                                destination.absoluteFilePath(getSourceName()).toStdString(),
+                                destination.absoluteFilePath(sourceName).toStdString(),
                                 *source.url,
                                 source.kind == "git" ? *source.commit : *source.digest,
                                 this->cacheDir.absolutePath().toStdString() });

@@ -15,14 +15,28 @@ namespace linglong::builder {
 
 namespace detail {
 
+auto isInstalledExecutable(const std::filesystem::path &executable,
+                           const std::filesystem::path &installedBinDir) noexcept -> bool
+{
+    if (installedBinDir.empty()) {
+        return false;
+    }
+    if (executable.parent_path() == installedBinDir) {
+        return true;
+    }
+    std::error_code ec;
+    return std::filesystem::equivalent(executable.parent_path(), installedBinDir, ec);
+}
+
 auto findBuilderFileForExecutable(const std::filesystem::path &executable,
                                   const std::filesystem::path &buildRelative,
-                                  const std::filesystem::path &installed) noexcept
+                                  const std::filesystem::path &installed,
+                                  const std::filesystem::path &installedBinDir) noexcept
   -> utils::error::Result<std::filesystem::path>
 {
     LINGLONG_TRACE("find builder file for executable");
     std::error_code ec;
-    if (executable.parent_path() == std::filesystem::path(BINDIR)) {
+    if (isInstalledExecutable(executable, installedBinDir)) {
         if (std::filesystem::is_regular_file(installed, ec)) {
             return installed;
         }
@@ -40,6 +54,7 @@ auto findBuilderFileForExecutable(const std::filesystem::path &executable,
             break;
         }
     }
+
     return LINGLONG_ERR("builder file not found near executable: " + executable.string());
 }
 

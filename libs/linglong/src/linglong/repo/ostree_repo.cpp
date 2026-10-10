@@ -2834,8 +2834,14 @@ utils::error::Result<void> OSTreeRepo::mergeModules() const noexcept
             commits.push_back(layer.commit);
             modules.push_back(layer.info.packageInfoV2Module);
             hash.addData(QString::fromStdString(layer.commit).toUtf8());
-            if (layer.info.packageInfoV2Module == "binary"
-                || layer.info.packageInfoV2Module == "runtime") {
+            // layers are sorted by module name, so "binary" is visited before "runtime".
+            // Keep the first match to stay consistent with the primary layer selection
+            // above. Otherwise a package which ships both the binary module and the
+            // runtime module records the runtime commit, and getMergedModuleDir() can
+            // never match the binary layer item of that package.
+            if ((layer.info.packageInfoV2Module == "binary"
+                 || layer.info.packageInfoV2Module == "runtime")
+                && binaryCommit.empty()) {
                 binaryCommit = layer.commit;
             }
         }

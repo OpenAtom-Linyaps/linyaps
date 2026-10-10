@@ -82,18 +82,18 @@ sudo apt update
 sudo apt install linglong-bin linglong-installer
 ```
 
-### Fedora 41
+### Fedora 43
 
 ```sh
-sudo dnf config-manager addrepo --from-repofile "https://ci.deepin.com/repo/obs/linglong:/CI:/release/Fedora_41/linglong%3ACI%3Arelease.repo"
+sudo dnf config-manager addrepo --from-repofile "https://ci.deepin.com/repo/obs/linglong:/CI:/release/Fedora_43/linglong%3ACI%3Arelease.repo"
 sudo dnf update
 sudo dnf install linglong-bin linyaps-web-store-installer
 ```
 
-### Fedora 42
+### Fedora 44
 
 ```sh
-sudo dnf config-manager addrepo --from-repofile "https://ci.deepin.com/repo/obs/linglong:/CI:/release/Fedora_42/linglong%3ACI%3Arelease.repo"
+sudo dnf config-manager addrepo --from-repofile "https://ci.deepin.com/repo/obs/linglong:/CI:/release/Fedora_44/linglong%3ACI%3Arelease.repo"
 sudo dnf update
 sudo dnf install linglong-bin linyaps-web-store-installer
 ```

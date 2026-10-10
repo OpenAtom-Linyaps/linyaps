@@ -16,6 +16,9 @@
 
 #include <cstring>
 #include <fstream>
+#include <map>
+#include <string>
+#include <vector>
 
 using namespace linglong::repo;
 using namespace linglong::api::types::v1;
@@ -30,6 +33,100 @@ RepoConfigV2 makeConfig()
         .version = 2,
     };
 }
+
+// A single ref to seed into a test ostree repository. A null prefix selects
+// the legacy, unprefixed ref namespace written by repositories created before
+// the 1.7.0 migration.
+struct RefEntry
+{
+    const char *prefix;
+    const char *ref;
+    const char *checksum;
+};
+
+// Create a bare ostree repository at repoPath and return an owned handle. The
+// caller stores the result in a g_autoptr so the handle is released when the
+// test ends.
+OstreeRepo *createBareRepo(const std::filesystem::path &repoPath, GError **err)
+{
+    g_autoptr(GFile) gf = g_file_new_for_path(repoPath.c_str());
+    OstreeRepo *repo = ostree_repo_new(gf);
+    if (repo == nullptr) {
+        return nullptr;
+    }
+
+    if (ostree_repo_create(repo, OSTREE_REPO_MODE_BARE, nullptr, err) == FALSE) {
+        g_object_unref(repo);
+        return nullptr;
+    }
+
+    return repo;
+}
+
+// Commit a batch of refs atomically so the on-disk ref table holds both the
+// legacy names and the already-prefixed names before the migration runs.
+bool writeRefs(OstreeRepo *repo, const std::vector<RefEntry> &entries, GError **err)
+{
+    if (ostree_repo_prepare_transaction(repo, nullptr, nullptr, err) == FALSE) {
+        return false;
+    }
+
+    for (const auto &entry : entries) {
+        ostree_repo_transaction_set_ref(repo, entry.prefix, entry.ref, entry.checksum);
+    }
+
+    return ostree_repo_commit_transaction(repo, nullptr, nullptr, err) != 0;
+}
+
+// Read the whole ref table into a name to commit map so tests can assert on the
+// exact commit a ref points at, not merely on the ref being present.
+std::map<std::string, std::string> readRefs(OstreeRepo *repo, GError **err)
+{
+    g_autoptr(GHashTable) refs = nullptr;
+    std::map<std::string, std::string> result;
+    if (ostree_repo_list_refs(repo, nullptr, &refs, nullptr, err) == FALSE) {
+        return result;
+    }
+
+    g_hash_table_foreach(
+      refs,
+      [](gpointer key, gpointer value, gpointer data) {
+          auto &out = *static_cast<std::map<std::string, std::string> *>(data);
+          out.emplace(static_cast<const char *>(key), static_cast<const char *>(value));
+      },
+      &result);
+
+    return result;
+}
+
+// Create the legacy <root>/layers/<ref> path so the migration can create the
+// ref to checksum symlink exactly as it would on a real installation.
+void createLegacyLayer(const std::filesystem::path &root, const std::string &ref)
+{
+    auto layerPath = root / "layers" / ref;
+    std::filesystem::create_directories(layerPath.parent_path());
+    std::ofstream{ layerPath } << "";
+}
+
+// Distinct, syntactically valid 64-character hex commit ids. The migration
+// copies ref values without validating the commit, but every ref in a test
+// uses its own id so an overwritten ref is detectable.
+constexpr const char *kChecksumLegacyA =
+  "1111111111111111111111111111111111111111111111111111111111111111";
+constexpr const char *kChecksumLegacyB =
+  "2222222222222222222222222222222222222222222222222222222222222222";
+constexpr const char *kChecksumLegacyC =
+  "3333333333333333333333333333333333333333333333333333333333333333";
+constexpr const char *kChecksumKeptA =
+  "4444444444444444444444444444444444444444444444444444444444444444";
+constexpr const char *kChecksumKeptB =
+  "5555555555555555555555555555555555555555555555555555555555555555";
+constexpr const char *kChecksumKeptC =
+  "6666666666666666666666666666666666666666666666666666666666666666";
+
+constexpr const char *kLegacyRefA = "com.example.a/1.0.0/x86_64/main";
+constexpr const char *kLegacyRefB = "com.example.b/1.0.0/x86_64/main";
+constexpr const char *kLegacyRefC = "com.example.c/1.0.0/x86_64/main";
 
 TEST(MigrateTest, NonExistentRootIsNoChange)
 {
@@ -189,6 +286,119 @@ TEST(MigrateTest, RealOstreeRepoMigratesUnprefixedRefs)
     // The new symlink layers/<checksum> must point at the migrated ref.
     auto link = dir.path() / "layers" / checksum;
     EXPECT_TRUE(std::filesystem::is_symlink(link));
+}
+
+TEST(MigrateTest, LegacyRefsWithExistingPrefixedCounterpartsAreNotMigrated)
+{
+    TempDir dir;
+    std::ofstream{ dir.path() / ".version" } << "1.5.0";
+
+    g_autoptr(GError) gErr = nullptr;
+    g_autoptr(OstreeRepo) repo = createBareRepo(dir.path() / "repo", &gErr);
+    ASSERT_NE(repo, nullptr) << (gErr ? gErr->message : "ostree_repo_create failed");
+
+    // Every legacy unprefixed ref already has a prefixed counterpart holding a
+    // different commit. The migration must notice this and leave all of them
+    // alone. The previous growing-prefix lookup re-migrated all but the first
+    // ref and overwrote the commits that were already present.
+    ASSERT_TRUE(writeRefs(repo,
+                          {
+                            { nullptr, kLegacyRefA, kChecksumLegacyA },
+                            { nullptr, kLegacyRefB, kChecksumLegacyB },
+                            { nullptr, kLegacyRefC, kChecksumLegacyC },
+                            { "stable", kLegacyRefA, kChecksumKeptA },
+                            { "stable", kLegacyRefB, kChecksumKeptB },
+                            { "stable", kLegacyRefC, kChecksumKeptC },
+                          },
+                          &gErr))
+      << (gErr ? gErr->message : "writing refs failed");
+
+    // No prefixed counterpart is missing, so migrateRef reports no change and
+    // must not prepare a transaction at all.
+    EXPECT_EQ(tryMigrate(dir.path(), makeConfig()), MigrateResult::NoChange);
+
+    auto refs = readRefs(repo, &gErr);
+    ASSERT_FALSE(refs.empty()) << (gErr ? gErr->message : "listing refs failed");
+
+    // The already-migrated refs must still point at their original commits.
+    EXPECT_EQ(refs["stable:com.example.a/1.0.0/x86_64/main"], kChecksumKeptA);
+    EXPECT_EQ(refs["stable:com.example.b/1.0.0/x86_64/main"], kChecksumKeptB);
+    EXPECT_EQ(refs["stable:com.example.c/1.0.0/x86_64/main"], kChecksumKeptC);
+
+    // The legacy refs themselves are never rewritten by this step.
+    EXPECT_EQ(refs["com.example.a/1.0.0/x86_64/main"], kChecksumLegacyA);
+    EXPECT_EQ(refs["com.example.b/1.0.0/x86_64/main"], kChecksumLegacyB);
+    EXPECT_EQ(refs["com.example.c/1.0.0/x86_64/main"], kChecksumLegacyC);
+}
+
+TEST(MigrateTest, MigrationAddsOnlyMissingPrefixedRefs)
+{
+    TempDir dir;
+    std::ofstream{ dir.path() / ".version" } << "1.5.0";
+
+    g_autoptr(GError) gErr = nullptr;
+    g_autoptr(OstreeRepo) repo = createBareRepo(dir.path() / "repo", &gErr);
+    ASSERT_NE(repo, nullptr) << (gErr ? gErr->message : "ostree_repo_create failed");
+
+    // Three legacy refs, but only B already has its prefixed counterpart. The
+    // migration must create prefixed A and C from the legacy commits and must
+    // keep the commit that stable:B already points at.
+    ASSERT_TRUE(writeRefs(repo,
+                          {
+                            { nullptr, kLegacyRefA, kChecksumLegacyA },
+                            { nullptr, kLegacyRefB, kChecksumLegacyB },
+                            { nullptr, kLegacyRefC, kChecksumLegacyC },
+                            { "stable", kLegacyRefB, kChecksumKeptB },
+                          },
+                          &gErr))
+      << (gErr ? gErr->message : "writing refs failed");
+
+    createLegacyLayer(dir.path(), kLegacyRefA);
+    createLegacyLayer(dir.path(), kLegacyRefC);
+
+    EXPECT_EQ(tryMigrate(dir.path(), makeConfig()), MigrateResult::Success);
+
+    auto refs = readRefs(repo, &gErr);
+    ASSERT_FALSE(refs.empty()) << (gErr ? gErr->message : "listing refs failed");
+
+    EXPECT_EQ(refs["stable:com.example.a/1.0.0/x86_64/main"], kChecksumLegacyA);
+    EXPECT_EQ(refs["stable:com.example.b/1.0.0/x86_64/main"], kChecksumKeptB);
+    EXPECT_EQ(refs["stable:com.example.c/1.0.0/x86_64/main"], kChecksumLegacyC);
+
+    // The migrated refs get a layers/<checksum> symlink pointing at the legacy
+    // layer directory.
+    EXPECT_TRUE(std::filesystem::is_symlink(dir.path() / "layers" / kChecksumLegacyA));
+    EXPECT_TRUE(std::filesystem::is_symlink(dir.path() / "layers" / kChecksumLegacyC));
+    // The pre-existing prefixed ref must not produce a symlink of its own.
+    EXPECT_FALSE(std::filesystem::exists(dir.path() / "layers" / kChecksumKeptB));
+}
+
+TEST(MigrateTest, VersionNewerThan170SkipsLegacyRefMigration)
+{
+    TempDir dir;
+    // 2.0.0 has a larger major but smaller minor and patch than 1.7.0. The old
+    // non-lexicographic comparison ordered it below 1.7.0 and re-ran the
+    // migration; a real ordering must skip it.
+    std::ofstream{ dir.path() / ".version" } << "2.0.0";
+
+    g_autoptr(GError) gErr = nullptr;
+    g_autoptr(OstreeRepo) repo = createBareRepo(dir.path() / "repo", &gErr);
+    ASSERT_NE(repo, nullptr) << (gErr ? gErr->message : "ostree_repo_create failed");
+
+    ASSERT_TRUE(writeRefs(repo, { { nullptr, kLegacyRefA, kChecksumLegacyA } }, &gErr))
+      << (gErr ? gErr->message : "writing refs failed");
+
+    createLegacyLayer(dir.path(), kLegacyRefA);
+
+    EXPECT_EQ(tryMigrate(dir.path(), makeConfig()), MigrateResult::Success);
+
+    auto refs = readRefs(repo, &gErr);
+    ASSERT_FALSE(refs.empty()) << (gErr ? gErr->message : "listing refs failed");
+
+    // The prefixed ref was not created and the legacy ref keeps its commit.
+    EXPECT_TRUE(refs.find("stable:com.example.a/1.0.0/x86_64/main") == refs.end());
+    EXPECT_EQ(refs["com.example.a/1.0.0/x86_64/main"], kChecksumLegacyA);
+    EXPECT_FALSE(std::filesystem::exists(dir.path() / "layers" / kChecksumLegacyA));
 }
 
 } // namespace

@@ -172,6 +172,9 @@ api::types::v1::RepoConfigV2 convertToV2(const api::types::v1::RepoConfig &cfg) 
 
 int64_t getRepoMinPriority(const api::types::v1::RepoConfigV2 &cfg) noexcept
 {
+    if (cfg.repos.empty()) {
+        return 0;
+    }
 
     auto minElement = std::min_element(cfg.repos.begin(),
                                        cfg.repos.end(),
@@ -184,6 +187,10 @@ int64_t getRepoMinPriority(const api::types::v1::RepoConfigV2 &cfg) noexcept
 
 int64_t getRepoMaxPriority(const api::types::v1::RepoConfigV2 &cfg) noexcept
 {
+    if (cfg.repos.empty()) {
+        return 0;
+    }
+
     auto maxElement = std::max_element(cfg.repos.begin(),
                                        cfg.repos.end(),
                                        [](const auto &repo1, const auto &repo2) {

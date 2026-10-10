@@ -8,6 +8,8 @@
 
 #include <fmt/format.h>
 
+#include <algorithm>
+#include <cctype>
 #include <random>
 #include <sstream>
 
@@ -38,8 +40,13 @@ bool stringEqual(std::string_view str1, std::string_view str2, bool caseSensitiv
         return str1 == str2;
     }
 
-    return std::equal(str1.begin(), str1.end(), str2.begin(), str2.end(), [](char ch1, char ch2) {
-        return tolower(ch1) == tolower(ch2);
+    if (str1.size() != str2.size()) {
+        return false;
+    }
+
+    return std::equal(str1.begin(), str1.end(), str2.begin(), [](char ch1, char ch2) {
+        return std::tolower(static_cast<unsigned char>(ch1))
+          == std::tolower(static_cast<unsigned char>(ch2));
     });
 }
 

@@ -23,6 +23,37 @@ TEST(StringsTest, StringEqual)
     EXPECT_FALSE(stringEqual("hello", "hello world", true));
 }
 
+TEST(StringsTest, StringEqualUnequalLengths)
+{
+    // Case-insensitive comparison must not read past the shorter range.
+    EXPECT_FALSE(stringEqual("hello", "hell", false));
+    EXPECT_FALSE(stringEqual("hell", "hello", false));
+    EXPECT_FALSE(stringEqual("a", "", false));
+    EXPECT_FALSE(stringEqual("", "a", false));
+    EXPECT_FALSE(stringEqual("abc", "abcd", false));
+    EXPECT_FALSE(stringEqual("abcd", "abc", false));
+    EXPECT_TRUE(stringEqual("abc", "ABC", false));
+    EXPECT_FALSE(stringEqual("abc", "ABCd", false));
+}
+
+TEST(StringsTest, StringEqualHighBitBytes)
+{
+    // Bytes with the high bit set must not invoke undefined tolower behavior.
+    const std::string highBit(1, static_cast<char>(0xFF));
+    const std::string highBitSame(1, static_cast<char>(0xFF));
+    const std::string highBitOther(1, static_cast<char>(0xFE));
+    EXPECT_TRUE(stringEqual(highBit, highBitSame, false));
+    EXPECT_FALSE(stringEqual(highBit, highBitOther, false));
+    EXPECT_FALSE(stringEqual(highBit, "a", false));
+    EXPECT_FALSE(stringEqual("a", highBit, false));
+
+    const std::string mixed = std::string("a") + highBit + "b";
+    const std::string mixedSame = std::string("A") + highBit + "B";
+    const std::string mixedDiff = std::string("A") + highBit + "C";
+    EXPECT_TRUE(stringEqual(mixed, mixedSame, false));
+    EXPECT_FALSE(stringEqual(mixed, mixedDiff, false));
+}
+
 TEST(StringsTest, Trim)
 {
     EXPECT_EQ(trim("  hello  "), "hello");

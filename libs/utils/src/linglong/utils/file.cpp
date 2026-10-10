@@ -261,13 +261,12 @@ moveFiles(const std::filesystem::path &src,
 
         std::filesystem::create_directories(toPath.parent_path(), ec);
         if (ec) {
-            LogW("failed to create directory {}: {}", toPath, ec.message());
-            continue;
+            return LINGLONG_ERR(fmt::format("failed to create directory {}", toPath.parent_path()),
+                                ec);
         }
         std::filesystem::rename(fromPath, toPath, ec);
         if (ec) {
-            LogW("failed to copy {} to {}: {}", fromPath, toPath, ec.message());
-            continue;
+            return LINGLONG_ERR(fmt::format("failed to rename {} to {}", fromPath, toPath), ec);
         }
     }
 

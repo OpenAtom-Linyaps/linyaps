@@ -12,7 +12,7 @@ command: [echo, -e, hello world] #the commands that your application need to run
 
 base: org.deepin.base/25.2.1 #set the base environment, this can be changed.
 
-#set the runtime environment if you need, a example of setting deepin runtime is as follows.
+#set the runtime environment if you need, an example of setting deepin runtime is as follows.
 #runtime:
 #org.deepin.runtime.dtk/25.2.1
 

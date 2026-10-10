@@ -98,7 +98,7 @@
               },
               "destination": {
                 "type": "string",
-                "description": "mount source file to the another position of container"
+                "description": "mount source file to another position of the container"
               }
             }
           }

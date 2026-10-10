@@ -275,6 +275,42 @@ protected:
     std::unique_ptr<RepoAndPackageManagerCli> cli;
 };
 
+TEST_F(CliTest, interactionToleratesReplyWithoutAction)
+{
+    // A notifier is allowed to answer without an action: the terminal notifier returns an
+    // empty action for requests without actions. The interaction slot must not throw for
+    // such a reply, otherwise ll-cli terminates while the D-Bus signal is dispatched.
+    class NoActionNotifier : public cli::InteractiveNotifier
+    {
+    public:
+        utils::error::Result<api::types::v1::InteractionReply>
+        request(const api::types::v1::InteractionRequest &) override
+        {
+            return api::types::v1::InteractionReply{};
+        }
+
+        utils::error::Result<void> notify(const api::types::v1::InteractionRequest &) override
+        {
+            return LINGLONG_OK;
+        }
+    };
+
+    auto interactionCli =
+      std::make_unique<::testing::NiceMock<MockCli>>(*printer,
+                                                     *ociCLI,
+                                                     *containerBuilder,
+                                                     false,
+                                                     std::make_unique<NoActionNotifier>(),
+                                                     nullptr);
+
+    EXPECT_NO_THROW(QMetaObject::invokeMethod(
+      interactionCli.get(),
+      "interaction",
+      Q_ARG(QString, QStringLiteral("test-interaction")),
+      Q_ARG(int, static_cast<int>(api::types::v1::InteractionMessageType::Upgrade)),
+      Q_ARG(QVariantMap, QVariantMap{})));
+}
+
 TEST_F(CliTest, installRejectsMissingExplicitLocalPath)
 {
     const auto packagePath = tempDir->path() / "net.example_1.0_x86_64_binary";

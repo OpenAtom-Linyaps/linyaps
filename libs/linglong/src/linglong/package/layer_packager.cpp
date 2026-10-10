@@ -12,6 +12,8 @@
 #include "linglong/utils/file.h"
 #include "linglong/utils/log/log.h"
 
+#include <fmt/format.h>
+
 #include <QDataStream>
 #include <QSysInfo>
 
@@ -200,12 +202,12 @@ utils::error::Result<void> LayerPackager::copyFile(LayerFile &file,
         }
         ofs.write(buff, n);
         if (ofs.fail()) {
-            return LINGLONG_ERR("Failed to write to temporary file");
+            return LINGLONG_ERR(fmt::format("Failed to write to temporary file {}", toPath));
         }
     }
     ofs.close();
     if (ofs.fail()) {
-        return LINGLONG_ERR("Failed to close temporary file");
+        return LINGLONG_ERR(fmt::format("Failed to close temporary file {}", toPath));
     }
     return LINGLONG_OK;
 }

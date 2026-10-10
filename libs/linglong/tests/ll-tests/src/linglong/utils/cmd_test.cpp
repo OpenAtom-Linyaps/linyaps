@@ -1,10 +1,20 @@
-// SPDX-FileCopyrightText: 2024 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2024-2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 #include <gtest/gtest.h>
 
+#include "common/tempdir.h"
 #include "linglong/utils/cmd.h"
+
+#include <atomic>
+#include <chrono>
+#include <fstream>
+#include <thread>
+#include <vector>
+
+#include <fcntl.h>
+#include <unistd.h>
 
 namespace {
 
@@ -74,6 +84,67 @@ TEST(command, toStdin)
                                   << ret4.error().message();
     EXPECT_TRUE(ret4->find("1049600") != std::string::npos)
       << "wc -c should report 1049600 bytes, got: " << *ret4;
+}
+
+TEST(command, toStdinKeepsDescriptorsOpenedAfterInputEof)
+{
+    for (const auto &input : { std::string{}, std::string{ "patch input" } }) {
+        SCOPED_TRACE(input.empty() ? "empty input" : "nonempty input");
+        TempDir temporary;
+        const auto ready = temporary.path() / "ready";
+        const auto release = temporary.path() / "release";
+        std::atomic<bool> finished{ false };
+        bool observedEof = false;
+        std::vector<int> descriptors;
+
+        std::thread opener([&]() {
+            const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+            while (::access(ready.c_str(), F_OK) != 0 && !finished
+                   && std::chrono::steady_clock::now() < deadline) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            }
+            if (::access(ready.c_str(), F_OK) != 0) {
+                return;
+            }
+            observedEof = true;
+            // The child has consumed stdin through EOF. Open unrelated descriptors while
+            // Cmd is still alive, then let the child finish so Cmd's cleanup runs.
+            for (int i = 0; i < 16; ++i) {
+                descriptors.push_back(::open("/dev/null", O_RDONLY | O_CLOEXEC));
+            }
+            std::ofstream(release) << "finish\n";
+        });
+
+        auto result = linglong::utils::Cmd("/bin/sh").toStdin(input).exec(
+          { "-c",
+            "/bin/cat >/dev/null; : >\"$1\"; i=0; "
+            "while [ ! -e \"$2\" ]; do i=$((i+1)); "
+            "[ \"$i\" -le 500 ] || exit 9; sleep 0.01; done; printf done",
+            "cmd-regression",
+            ready.string(),
+            release.string() });
+        finished = true;
+        opener.join();
+
+        int opened = 0;
+        int closedByCommand = 0;
+        for (const auto fd : descriptors) {
+            if (fd < 0) {
+                continue;
+            }
+            ++opened;
+            if (::fcntl(fd, F_GETFD) == -1) {
+                ++closedByCommand;
+            } else {
+                ::close(fd);
+            }
+        }
+        ASSERT_TRUE(observedEof);
+        ASSERT_TRUE(result.has_value()) << result.error().message();
+        EXPECT_EQ(*result, "done");
+        ASSERT_EQ(opened, 16);
+        EXPECT_EQ(closedByCommand, 0) << "Cmd must only close descriptors it still owns";
+    }
 }
 
 } // namespace

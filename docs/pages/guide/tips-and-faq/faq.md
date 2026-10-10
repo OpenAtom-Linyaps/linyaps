@@ -84,7 +84,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 19. 怎么知道容器环境中安装了哪些包？
 
-    `ll-builder run --exec bash` 进入容器环境，使用 `cat /var/lib/dpkg/status | grep "^Package: "` 命令查看预装的软件包，另外源码编译的库可以使用 `cat /runtime/packages.list` 查看。
+    `ll-builder run /bin/bash` 进入容器环境，使用 `cat /var/lib/dpkg/status | grep "^Package: "` 命令查看预装的软件包，另外源码编译的库可以使用 `cat /runtime/packages.list` 查看。
 
 20. 应用启动后，为什么不显示应用托盘？
 

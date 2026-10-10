@@ -39,6 +39,13 @@ public:
     }
 
     utils::error::Result<void>
+    exportAppBinaries(const std::filesystem::path &destination,
+                      const api::types::v1::RepositoryCacheLayersItem &item)
+    {
+        return this->OSTreeRepo::exportAppBinaries(destination, item);
+    }
+
+    utils::error::Result<void>
     exportLayerSignData(const std::filesystem::path &destination,
                         const api::types::v1::RepositoryCacheLayersItem &item)
     {
@@ -56,6 +63,11 @@ public:
       const std::filesystem::path &destination, const std::vector<std::filesystem::path> &layerDirs)
     {
         return this->OSTreeRepo::unexportAppEntries(destination, layerDirs);
+    }
+
+    utils::error::Result<void> initCache(bool create = false)
+    {
+        return this->OSTreeRepo::initCache(create);
     }
 
     // mock getOverlayShareDir

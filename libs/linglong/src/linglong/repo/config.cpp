@@ -26,7 +26,7 @@ loadConfig(const std::filesystem::path &file) noexcept
     try {
         auto ifs = std::ifstream(file);
         if (!ifs.is_open()) {
-            return LINGLONG_ERR("open failed");
+            return LINGLONG_ERR(fmt::format("failed to open repo config {}", file));
         }
 
         // 尝试加载新版本配置
@@ -35,7 +35,7 @@ loadConfig(const std::filesystem::path &file) noexcept
             ifs.seekg(0);
             auto configV1 = utils::serialize::LoadYAML<api::types::v1::RepoConfig>(ifs);
             if (!configV1) {
-                return LINGLONG_ERR("parse yaml failed");
+                return LINGLONG_ERR(fmt::format("failed to parse repo config {}", file));
             }
 
             // 将旧版本配置转换为新版本
@@ -64,7 +64,7 @@ loadConfig(const std::vector<std::filesystem::path> &files) noexcept
         return config;
     }
 
-    return LINGLONG_ERR("all failed");
+    return LINGLONG_ERR("failed to load repo config from any candidate path");
 }
 
 utils::error::Result<void> saveConfig(const api::types::v1::RepoConfigV2 &cfg,
@@ -84,14 +84,14 @@ utils::error::Result<void> saveConfig(const api::types::v1::RepoConfigV2 &cfg,
 
         auto ofs = std::ofstream(path);
         if (!ofs.is_open()) {
-            return LINGLONG_ERR("open failed");
+            return LINGLONG_ERR(fmt::format("failed to open repo config {}", path));
         }
 
         auto node = ytj::to_yaml(cfg);
         ofs << node;
         ofs.close();
         if (!ofs) {
-            return LINGLONG_ERR("write failed");
+            return LINGLONG_ERR(fmt::format("failed to write repo config {}", path));
         }
 
         return LINGLONG_OK;

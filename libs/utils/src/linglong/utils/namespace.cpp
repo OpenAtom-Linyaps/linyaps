@@ -44,6 +44,9 @@ utils::error::Result<std::string> getUserName(uid_t uid)
     if (res != 0) {
         return LINGLONG_ERR(fmt::format("failed to get user name {}", res).c_str());
     }
+    if (result == nullptr) {
+        return LINGLONG_ERR(fmt::format("user not found for uid {}", uid).c_str());
+    }
 
     return result->pw_name;
 }

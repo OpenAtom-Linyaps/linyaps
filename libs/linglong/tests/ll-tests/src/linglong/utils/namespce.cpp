@@ -1,11 +1,16 @@
 
-// SPDX-FileCopyrightText: 2024 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2024-2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 #include <gtest/gtest.h>
 
 #include "linglong/utils/namespace.h"
+
+#include <limits>
+
+#include <pwd.h>
+#include <unistd.h>
 
 TEST(NamespaceTest, ParseSubuidRanges)
 {
@@ -62,4 +67,26 @@ TEST(NamespaceTest, ParseSubuidRanges)
     EXPECT_EQ((*ranges6)[0].count, "65536");
     EXPECT_EQ((*ranges6)[1].subuid, "200000");
     EXPECT_EQ((*ranges6)[1].count, "65536");
+}
+
+TEST(NamespaceTest, GetUserNameReturnsCurrentUser)
+{
+    auto result = linglong::utils::detail::getUserName(getuid());
+
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+    EXPECT_FALSE(result->empty());
+}
+
+TEST(NamespaceTest, GetUserNameRejectsUnmappedUid)
+{
+    auto uid = std::numeric_limits<uid_t>::max();
+    while (uid > 0 && getpwuid(uid) != nullptr) {
+        --uid;
+    }
+    ASSERT_EQ(getpwuid(uid), nullptr);
+
+    auto result = linglong::utils::detail::getUserName(uid);
+
+    ASSERT_FALSE(result.has_value());
+    EXPECT_NE(result.error().message().find("user not found for uid"), std::string::npos);
 }

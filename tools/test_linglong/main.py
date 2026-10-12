@@ -992,8 +992,7 @@ class SmokeTest:
     # 全部只读或幂等，不会破坏环境。
     # ⚠️ 每条断言都在真机上实测过，不要凭 help 文本想当然：
     #    - ll-cli version 不存在（rc=109）
-    #    - repo show --json 不支持 --json（rc=109）
-    #    这两个故意放在错误路径用例里，用来覆盖参数校验分支。
+    #    这个故意放在错误路径用例里，用来覆盖参数校验分支。
     def test_readonly_query_commands(self):
         # ps：列出运行中的容器。没有应用在跑时给中文提示，退出码 0
         r = self._ll_cli("ps")
@@ -1036,6 +1035,24 @@ class SmokeTest:
         r = self._ll_cli("--json", "list")
         if r.returncode != 0:
             raise AssertionError(f"ll-cli --json list 失败: rc={r.returncode}")
+
+        # 全局选项也必须能写在子命令之后。repo / analyze 这些子命令靠
+        # fallthrough 把未识别的选项交回根命令，漏掉就会以 rc=109
+        # （ExtrasError: The following argument was not expected）失败。
+        for args in (["repo", "show", "--json"],
+                     ["analyze", "size", "--json"],
+                     ["analyze", "depends", "--json"]):
+            r = self._ll_cli(*args)
+            if r.returncode != 0:
+                raise AssertionError(
+                    f"ll-cli {' '.join(args)} 失败: rc={r.returncode} "
+                    f"{r.stderr[:150]}")
+            try:
+                json.loads(r.stdout)
+            except json.JSONDecodeError as e:
+                raise AssertionError(
+                    f"ll-cli {' '.join(args)} 输出不是合法 JSON: "
+                    f"{r.stdout[:120]!r} ({e})")
 
     # ── Test: 已安装应用的 info / content ──
     #
@@ -1092,7 +1109,7 @@ class SmokeTest:
                     f"ll-cli {' '.join(args)} 失败但没有任何输出")
 
         # 参数校验分支：不存在的子命令 / 不被支持的选项
-        for args in (["version"], ["repo", "show", "--json"], ["--nonsense-flag"]):
+        for args in (["version"], ["--nonsense-flag"]):
             r = self._ll_cli(*args, check=False)
             if r.returncode == 0:
                 raise AssertionError(f"ll-cli {' '.join(args)} 非法参数竟然成功")
@@ -2113,10 +2130,10 @@ class SmokeTest:
             ["search", "deepin", "--json"],
             ["ps", "--json"],
             ["info", app_id, "--json"],
-            # ⚠️ repo show --json 实测【不支持】（rc=109，"argument was not
-            # expected: --json"）—— --json 虽然加在顶层 commandParser 上
-            # （main.cpp:606），但不会继承到 repo 这种嵌套子命令。
-            # 这类"命令本身不接受 --json"的情况不算失败，跳过即可。
+            # repo show --json 现在同样支持了：--json 写在子命令之后也会生效
+            # （见 fix(cli): accept global options after the repo/analyze/
+            # prune/inspect subcommands）。这里仍不列入，是因为 repo show
+            # 需要可用的仓库与守护进程才有输出，本组只覆盖无依赖的只读查询。
         ]
         unsupported = []
         for argv in cases:

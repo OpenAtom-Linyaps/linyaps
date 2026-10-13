@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2025-2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -12,7 +12,10 @@ std::filesystem::path getXDGRuntimeDir() noexcept
 {
     auto *runtimeDirEnv = std::getenv("XDG_RUNTIME_DIR");
     if (runtimeDirEnv != nullptr && runtimeDirEnv[0] != '\0') {
-        return runtimeDirEnv;
+        std::filesystem::path p{ runtimeDirEnv };
+        if (p.is_absolute()) {
+            return p;
+        }
     }
 
     // fallback to default
@@ -24,7 +27,10 @@ std::filesystem::path getXDGCacheHomeDir() noexcept
 {
     auto *cacheHomeEnv = std::getenv("XDG_CACHE_HOME");
     if (cacheHomeEnv != nullptr && cacheHomeEnv[0] != '\0') {
-        return cacheHomeEnv;
+        std::filesystem::path p{ cacheHomeEnv };
+        if (p.is_absolute()) {
+            return p;
+        }
     }
 
     // fallback to default
@@ -41,7 +47,10 @@ std::filesystem::path getXDGConfigHomeDir() noexcept
 {
     auto *configHomeEnv = std::getenv("XDG_CONFIG_HOME");
     if (configHomeEnv != nullptr && configHomeEnv[0] != '\0') {
-        return configHomeEnv;
+        std::filesystem::path p{ configHomeEnv };
+        if (p.is_absolute()) {
+            return p;
+        }
     }
 
     // fallback to default

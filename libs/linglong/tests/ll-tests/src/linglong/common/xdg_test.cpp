@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2025-2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -52,4 +52,37 @@ TEST_F(XDGTest, GetXDGRuntimeDir)
         auto runtimeDir = linglong::common::xdg::getXDGRuntimeDir();
         checkRuntimeDir(runtimeDir);
     }
+}
+
+TEST_F(XDGTest, GetXDGRuntimeDirRejectsRelativePath)
+{
+    linglong::utils::EnvironmentVariableGuard env("XDG_RUNTIME_DIR", "relative-runtime");
+    auto runtimeDir = linglong::common::xdg::getXDGRuntimeDir();
+    EXPECT_EQ(runtimeDir,
+              std::filesystem::path{ "/tmp" } / ("linglong-runtime-" + std::to_string(::getuid())));
+}
+
+TEST_F(XDGTest, GetXDGCacheHomeDirRejectsRelativePath)
+{
+    linglong::utils::EnvironmentVariableGuard home("HOME", "/tmp/xdg-test-home");
+    linglong::utils::EnvironmentVariableGuard cache("XDG_CACHE_HOME", "relative-cache");
+    auto cacheDir = linglong::common::xdg::getXDGCacheHomeDir();
+    EXPECT_EQ(cacheDir, "/tmp/xdg-test-home/.cache");
+}
+
+TEST_F(XDGTest, GetXDGConfigHomeDirRejectsRelativePath)
+{
+    linglong::utils::EnvironmentVariableGuard home("HOME", "/tmp/xdg-test-home");
+    linglong::utils::EnvironmentVariableGuard config("XDG_CONFIG_HOME", "relative-config");
+    auto configDir = linglong::common::xdg::getXDGConfigHomeDir();
+    EXPECT_EQ(configDir, "/tmp/xdg-test-home/.config");
+}
+
+TEST_F(XDGTest, AbsoluteHomeDirectoriesAreUsed)
+{
+    linglong::utils::EnvironmentVariableGuard cache("XDG_CACHE_HOME", "/tmp/xdg-cache");
+    linglong::utils::EnvironmentVariableGuard config("XDG_CONFIG_HOME", "/tmp/xdg-config");
+
+    EXPECT_EQ(linglong::common::xdg::getXDGCacheHomeDir(), "/tmp/xdg-cache");
+    EXPECT_EQ(linglong::common::xdg::getXDGConfigHomeDir(), "/tmp/xdg-config");
 }

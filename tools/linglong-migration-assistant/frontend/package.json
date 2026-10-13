@@ -1,0 +1,27 @@
+{
+  "name": "linyaps-migration-assistant",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@codemirror/lang-yaml": "^6.1.2",
+    "@codemirror/theme-one-dark": "^6.1.2",
+    "@element-plus/icons-vue": "^2.3.1",
+    "axios": "^1.7.9",
+    "codemirror": "^6.0.1",
+    "element-plus": "^2.9.1",
+    "vue": "^3.5.13",
+    "vue-codemirror": "^6.1.1",
+    "vue-router": "^4.5.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.2.1",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.7"
+  }
+}

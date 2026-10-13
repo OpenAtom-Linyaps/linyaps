@@ -121,12 +121,15 @@ void CLIPrinter::printSearchResult(
                 return lhs.packageInfoV2Module < rhs.packageInfoV2Module;
 
             auto lhsVer = package::Version::parse(lhs.version.c_str());
+            auto rhsVer = package::Version::parse(rhs.version.c_str());
+            if (!lhsVer && !rhsVer) {
+                return lhs.version > rhs.version;
+            }
             if (!lhsVer) {
                 return false;
             }
-            auto rhsVer = package::Version::parse(rhs.version.c_str());
             if (!rhsVer) {
-                return false;
+                return true;
             }
 
             return *lhsVer > *rhsVer;

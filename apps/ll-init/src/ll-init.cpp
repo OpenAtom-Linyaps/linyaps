@@ -644,6 +644,10 @@ std::vector<const char *> parse_args(int argc, char *argv[]) noexcept
         args.emplace_back(argv[i]);
     }
 
+    if (args.empty()) {
+        return args;
+    }
+
     args.emplace_back(nullptr);
     return args;
 }

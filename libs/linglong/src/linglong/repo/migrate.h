@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2024-2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -9,7 +9,9 @@
 #include <filesystem>
 
 namespace linglong::repo {
-enum class MigrateResult { Success, Failed, NoChange };
+enum class MigrateResult { Success, Failed, NoChange, Incompatible };
+
+MigrateResult checkRepoCompatibility(const std::filesystem::path &root) noexcept;
 
 MigrateResult tryMigrate(const std::filesystem::path &root,
                          const linglong::api::types::v1::RepoConfigV2 &cfg) noexcept;

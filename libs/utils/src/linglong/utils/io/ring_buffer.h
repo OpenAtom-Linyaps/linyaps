@@ -31,8 +31,16 @@ public:
             return std::nullopt;
         }
 
-        std::vector<std::byte> data(cap);
-        return RingBuffer{ std::move(data), cap - 1 };
+        if (cap > std::vector<std::byte>().max_size()) {
+            return std::nullopt;
+        }
+
+        try {
+            std::vector<std::byte> data(cap);
+            return RingBuffer{ std::move(data), cap - 1 };
+        } catch (...) {
+            return std::nullopt;
+        }
     }
 
     RingBuffer(const RingBuffer &) = delete;

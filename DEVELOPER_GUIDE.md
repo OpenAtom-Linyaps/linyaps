@@ -65,6 +65,33 @@ ctest --preset debug
 
 [cmake presets]: https://cmake.org/cmake/help/latest/manual/cmake-presets.7.html
 
+## Build-Time Profiling
+
+To locate compile-time hot spots (slowest files, heaviest headers, template
+instantiation costs), build with Clang `-ftime-trace` and aggregate the traces
+with [clang-build-analyzer]:
+
+```bash
+tools/analyze-build.sh
+```
+
+This configures the `build-trace` preset (Clang + `ENABLE_BUILD_TRACE=ON`),
+builds the project, then prints a hot-spot report. The aggregated trace is
+written to `build-trace/build-analysis.json`. `clang-build-analyzer` is built
+from source into `~/.cache/clang-build-analyzer` on first run if not on PATH.
+
+You can also drive the preset manually:
+
+```bash
+cmake --preset build-trace
+cmake --build --preset build-trace
+```
+
+Each translation unit emits a `*.json` trace file (Chrome tracing format) that
+can be opened in `chrome://tracing` for a per-file timeline.
+
+[clang-build-analyzer]: https://github.com/CacheFactory/clang-build-analyzer
+
 ## Packaging
 
 Linglong uses [CPM.cmake] to download missing dependencies locally.

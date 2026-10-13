@@ -9,12 +9,15 @@
 #include <elf.h>
 
 #include <cstddef>
+#include <cstdint>
 #include <cstring>
 #include <filesystem>
 #include <optional>
+#include <string_view>
 #include <vector>
 
 #include <fcntl.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 namespace lightElf {
@@ -160,22 +163,50 @@ public:
 
     [[nodiscard]] std::optional<SectionHeader> getSectionHeader(const std::string &name) const
     {
+        // Everything used below comes from the file being inspected: for a .uab the
+        // caller is the untrusted bundle itself, so e_shentsize/e_shnum/e_shoff and
+        // every sh_name must be treated as attacker controlled input.
+        //
+        // The section header table is only well formed when each entry is exactly as
+        // large as SectionHeader.  A tampered e_shentsize used to be handed straight
+        // to pread, so a value larger than sizeof(SectionHeader) wrote past the end of
+        // the on-stack `shdr` below and a smaller value left it only partially filled.
+        // Reject anything else instead of reading, which keeps the stack object safe.
+        if (header.e_shentsize != section_size) {
+            return std::nullopt;
+        }
+
+        // The table referenced by e_shoff/e_shnum has to fit inside the file, otherwise
+        // the entries the loop walks do not exist and reads would return short data.
+        if (!sectionTableInsideFile()) {
+            return std::nullopt;
+        }
+
         SectionHeader shdr;
         auto offset = header.e_shoff;
-        const auto *data = rawSectionNames.data();
 
         for (auto index = 0; index < header.e_shnum; ++index) {
-            if (::pread(fd, &shdr, header.e_shentsize, offset) == -1) {
+            // Read exactly one SectionHeader, never header.e_shentsize bytes: the two
+            // are equal at this point, but pinning the read to section_size keeps the
+            // stack buffer safe even if the validation above is ever reordered.
+            const auto bytesRead = ::pread(fd, &shdr, section_size, offset);
+            if (bytesRead == -1) {
                 throw std::runtime_error("failed to read section header of" + name + ": "
                                          + ::strerror(errno));
             }
+            if (bytesRead != static_cast<ssize_t>(section_size)) {
+                return std::nullopt;
+            }
 
-            auto curName = std::string_view(data + shdr.sh_name);
-            if (!curName.empty() && curName == name) {
+            // sh_name is an offset into the section-name string table.  A malformed
+            // entry is skipped rather than matched, so a single corrupt offset cannot
+            // make the string_view scan past the end of rawSectionNames.
+            const auto curName = sectionName(shdr);
+            if (curName && !curName->empty() && *curName == name) {
                 return shdr;
             }
 
-            offset += header.e_shentsize;
+            offset += section_size;
         }
 
         return std::nullopt;
@@ -183,6 +214,59 @@ public:
 
 private:
     constexpr static auto section_size = sizeof(SectionHeader);
+
+    // Returns the size of the file that fd refers to, or std::nullopt when it cannot be
+    // determined.  Needed to prove the section header table lies inside the file before
+    // any of it is read.
+    [[nodiscard]] std::optional<std::uintmax_t> fileSize() const noexcept
+    {
+        struct stat st{};
+        if (::fstat(fd, &st) == -1) {
+            return std::nullopt;
+        }
+
+        return static_cast<std::uintmax_t>(st.st_size);
+    }
+
+    // Checks e_shoff + e_shnum * sizeof(SectionHeader) <= file size without letting the
+    // untrusted e_shoff/e_shnum overflow the computation.
+    [[nodiscard]] bool sectionTableInsideFile() const noexcept
+    {
+        const auto size = fileSize();
+        if (!size) {
+            return false;
+        }
+
+        const auto tableOffset = static_cast<std::uint64_t>(header.e_shoff);
+        if (tableOffset > *size) {
+            return false;
+        }
+
+        const auto tableSize = static_cast<std::uint64_t>(header.e_shnum) * section_size;
+        return tableSize <= *size - tableOffset;
+    }
+
+    // Resolves sh_name into a bounded view of the section-name string table.  The view
+    // must not be built from a raw pointer into the table: an out-of-range sh_name or a
+    // table that is not NUL terminated at sh_name would make the length scan read past
+    // rawSectionNames.  Returns std::nullopt for such malformed entries.
+    [[nodiscard]] std::optional<std::string_view>
+    sectionName(const SectionHeader &shdr) const noexcept
+    {
+        if (shdr.sh_name >= rawSectionNames.size()) {
+            return std::nullopt;
+        }
+
+        const auto *begin = rawSectionNames.data() + shdr.sh_name;
+        const auto remaining = rawSectionNames.size() - shdr.sh_name;
+        const auto *terminator = static_cast<const char *>(std::memchr(begin, '\0', remaining));
+        if (terminator == nullptr) {
+            return std::nullopt;
+        }
+
+        return std::string_view{ begin, static_cast<std::size_t>(terminator - begin) };
+    }
+
     constexpr static auto header_size = sizeof(ElfHeader);
 
     std::vector<char> rawSectionNames;

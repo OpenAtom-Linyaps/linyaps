@@ -41,6 +41,13 @@ public:
                 listLocalBy,
                 (const repo::repoCacheQuery &query),
                 (override, const, noexcept));
+
+    MOCK_METHOD(utils::error::Result<api::types::v1::RepositoryCacheLayersItem>,
+                getLayerItem,
+                (const package::Reference &ref, std::string module),
+                (override, const, noexcept));
+
+    MOCK_METHOD(utils::error::Result<void>, mergeModules, (), (override, const, noexcept));
 };
 
 class MockAction : public service::Action
@@ -122,6 +129,28 @@ TEST_F(ActionTest, InstallNewApp)
     EXPECT_EQ(result->kind, "app");
     EXPECT_EQ(result->oldRef, std::nullopt);
     EXPECT_EQ(result->newRef->reference.toString(), "main:id1/1.0.0/x86_64");
+}
+
+TEST_F(ActionTest, UninstallRefPropagatesAllModuleRemovalFailures)
+{
+    LINGLONG_TRACE("UninstallRefPropagatesAllModuleRemovalFailures");
+
+    auto ref = package::Reference::parse("main:id1/1.0.0/x86_64").value();
+    EXPECT_CALL(*repo, getLayerItem(ref, "develop"))
+      .WillOnce(
+        Return(LINGLONG_ERR("remove develop failed", utils::error::ErrorCode::PermissionDenied)));
+    EXPECT_CALL(*repo, getLayerItem(ref, "debug"))
+      .WillOnce(
+        Return(LINGLONG_ERR("remove debug failed", utils::error::ErrorCode::AppUninstallFailed)));
+    EXPECT_CALL(*repo, mergeModules()).WillOnce(Return(LINGLONG_ERR("merge failed")));
+
+    auto result = pm->uninstallRef(ref, std::vector<std::string>{ "develop", "debug" });
+
+    ASSERT_FALSE(result.has_value());
+    EXPECT_EQ(result.error().code(), static_cast<int>(utils::error::ErrorCode::PermissionDenied));
+    EXPECT_EQ(result.error().message(),
+              "failed to uninstall main:id1/1.0.0/x86_64 modules: develop: remove develop failed\n"
+              "debug: remove debug failed");
 }
 
 TEST_F(ActionTest, OverwriteApp)

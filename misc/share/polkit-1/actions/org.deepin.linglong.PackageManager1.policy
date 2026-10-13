@@ -94,6 +94,16 @@
 		<description xml:lang="zh_TW">解除安裝套件</description>
 		<message xml:lang="zh_TW">解除安裝套件需要進行身分驗證</message>
 	</action>
+	<action id="org.deepin.linglong.PackageManager1.init-run-context">
+		<description>Initialize a container run context</description>
+		<message>Authentication is required to initialize a container run context</message>
+		<defaults>
+			<allow_any>auth_admin</allow_any>
+			<allow_inactive>auth_admin</allow_inactive>
+			<allow_active>yes</allow_active>
+		</defaults>
+		<annotate key="org.freedesktop.policykit.owner">unix-user:@LINGLONG_USERNAME@</annotate>
+	</action>
 	<action id="org.deepin.linglong.PackageManager1.install-from-file">
 		<description>Install packages from local files</description>
 		<message>Authentication is required to install packages from local files</message>

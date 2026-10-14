@@ -1127,6 +1127,33 @@ OSTreeRepo::clean(const std::vector<api::types::v1::RepositoryCacheLayersItem> &
             return LINGLONG_ERR(fmt::format("ostree_parse_refspec {}", ptr_view(parseErr)));
         }
 
+        // The cache entry of a stripped ref must be dropped as well, otherwise the layer
+        // stays visible (e.g. in ll-cli list) while its ref and deployed files are gone.
+        // Layer refs have the form <channel>/<id>/<version>/<arch>/<module>.
+        auto refComponents = common::strings::split(ref ? ref : "", '/');
+        if (refComponents.size() == 5) {
+            auto items = this->cache->queryLayerItem(repoCacheQuery{
+              .id = std::string{ refComponents[1] },
+              .repo = std::nullopt,
+              .channel = std::string{ refComponents[0] },
+              .version = std::string{ refComponents[2] },
+              .module = std::string{ refComponents[4] },
+              .deleted = std::nullopt,
+              .architecture = std::string{ refComponents[3] },
+            });
+            for (const auto &item : items) {
+                if (item.commit != entry.commit) {
+                    continue;
+                }
+                auto deleted = this->cache->deleteLayerItem(item);
+                if (!deleted) {
+                    LogW("failed to delete cache item of {}: {}",
+                         entry.refspec,
+                         deleted.error().message());
+                }
+            }
+        }
+
         auto removedRef = this->removeOstreeRef(remote ? remote : "", ref ? ref : "", entry.commit);
         if (!removedRef) {
             return LINGLONG_ERR(removedRef);

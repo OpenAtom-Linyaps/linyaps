@@ -451,7 +451,16 @@ utils::error::Result<void> UABPackager::packBundle(UABPackagerMode mode) noexcep
 
     auto bundleDir = buildDir / "bundle";
     std::error_code ec;
-    if (!std::filesystem::create_directories(bundleDir, ec)) {
+    // A leftover bundle directory from an interrupted export must neither fail this
+    // export nor leak its stale content into the new bundle, so remove it first.
+    // create_directories returns false without an error when the directory already
+    // exists, therefore only the error code decides whether it failed.
+    std::filesystem::remove_all(bundleDir, ec);
+    if (ec) {
+        return LINGLONG_ERR(fmt::format("couldn't clean up directory {}", bundleDir), ec);
+    }
+    std::filesystem::create_directories(bundleDir, ec);
+    if (ec) {
         return LINGLONG_ERR(fmt::format("couldn't create directory {}", bundleDir), ec);
     }
 

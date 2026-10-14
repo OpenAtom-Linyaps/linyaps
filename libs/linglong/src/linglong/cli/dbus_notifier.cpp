@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2024 - 2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -164,14 +164,17 @@ DBusNotifier::request(const api::types::v1::InteractionRequest &request)
     loop.exec();
 
     switch (reason) {
+    case CloseReason::Expired:
+        // The notification expired. Servers report this both when the notification
+        // times out and when they close it after an action was invoked, so reply
+        // with whatever choice was collected instead of killing the process.
+        [[fallthrough]];
     case CloseReason::Dismissed:
         [[fallthrough]];
     case CloseReason::CloseByCall:
         return api::types::v1::InteractionReply{ .action = choice.toStdString() };
     case CloseReason::Undefined:
         return LINGLONG_ERR("server return an undefined reason");
-    case CloseReason::Expired:
-        [[fallthrough]];
     case CloseReason::NoReason:
         break;
     }

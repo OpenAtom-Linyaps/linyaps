@@ -879,8 +879,10 @@ utils::error::Result<void> ContainerCfgBuilder::buildIdMappings() noexcept
 {
     LINGLONG_TRACE("build ID mappings");
 
-    config.linux_->uidMappings = std::move(uidMappings);
-    config.linux_->gidMappings = std::move(gidMappings);
+    if (!disableUserNamespaceEnabled) {
+        config.linux_->uidMappings = std::move(uidMappings);
+        config.linux_->gidMappings = std::move(gidMappings);
+    }
 
     return LINGLONG_OK;
 }

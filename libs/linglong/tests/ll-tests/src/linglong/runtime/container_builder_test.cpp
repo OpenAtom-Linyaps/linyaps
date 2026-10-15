@@ -5,6 +5,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "common/tempdir.h"
 #include "linglong/cli/cli.h"
 #include "linglong/runtime/container_builder.h"
 
@@ -239,6 +240,45 @@ TEST(ContainerBuilderUtil, GenContainerIDIsDeterministic)
     api::types::v1::RunContextConfig different = cfg;
     different.base = "stable:org.deepin.base/24/x86_64";
     EXPECT_NE(runtime::genContainerID(cfg), runtime::genContainerID(different));
+}
+
+TEST(ContainerBuilderUtil, RootfsBoundaryResolvesEscapingSymlinks)
+{
+    TempDir tempDir("linglong-rootfs-boundary-");
+    ASSERT_TRUE(tempDir.isValid());
+    const auto rootfs = tempDir.path() / "rootfs";
+    const auto outside = tempDir.path() / "outside";
+    std::filesystem::create_directories(rootfs);
+    std::filesystem::create_directories(outside);
+    std::filesystem::create_directory_symlink(outside, rootfs / "etc");
+
+    EXPECT_FALSE(runtime::detail::isPathInRootfs(rootfs / "etc/resolv.conf", rootfs));
+    EXPECT_FALSE(runtime::detail::isPathInRootfs(rootfs / "../outside/file", rootfs));
+    EXPECT_FALSE(runtime::detail::isPathInRootfs(rootfs, rootfs));
+}
+
+TEST(ContainerBuilderUtil, RootfsBoundaryAllowsInternalSymlinks)
+{
+    TempDir tempDir("linglong-rootfs-internal-link-");
+    ASSERT_TRUE(tempDir.isValid());
+    const auto rootfs = tempDir.path() / "rootfs";
+    std::filesystem::create_directories(rootfs / "usr/etc");
+    std::filesystem::create_directory_symlink("usr/etc", rootfs / "etc");
+
+    EXPECT_TRUE(runtime::detail::isPathInRootfs(rootfs / "etc/localtime", rootfs));
+}
+
+TEST(ContainerBuilderUtil, RootfsBoundaryAllowsFinalSymlinksToBeReplaced)
+{
+    TempDir tempDir("linglong-rootfs-leaf-link-");
+    ASSERT_TRUE(tempDir.isValid());
+    const auto rootfs = tempDir.path() / "rootfs";
+    const auto outside = tempDir.path() / "outside";
+    std::filesystem::create_directories(rootfs);
+    std::filesystem::create_directories(outside);
+    std::filesystem::create_symlink(outside, rootfs / "localtime");
+
+    EXPECT_TRUE(runtime::detail::isPathInRootfs(rootfs / "localtime", rootfs));
 }
 
 TEST(SecurityContextTest, FromAndToType)

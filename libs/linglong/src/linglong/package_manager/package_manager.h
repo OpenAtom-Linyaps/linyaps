@@ -31,6 +31,13 @@ namespace linglong::service {
 
 class Action;
 
+namespace detail {
+
+utils::error::Result<void> cleanStagingArtifact(const std::filesystem::path &stagingDir,
+                                                const std::filesystem::path &stagedFile) noexcept;
+
+} // namespace detail
+
 class PackageManager : public QObject, protected QDBusContext
 {
     Q_OBJECT
@@ -84,7 +91,7 @@ public
     executePostInstallHooks(const package::Reference &ref) noexcept;
     utils::error::Result<void> executePostUninstallHooks(const package::Reference &ref) noexcept;
     utils::error::Result<std::filesystem::path> copyToStaging(int sourceFD) noexcept;
-    utils::error::Result<void> cleanStaging() noexcept;
+    utils::error::Result<void> cleanStaging(const std::filesystem::path &stagedFile) noexcept;
 
     virtual utils::error::Result<void> installAppDepends(Task &task,
                                                          const api::types::v1::PackageInfoV2 &app);

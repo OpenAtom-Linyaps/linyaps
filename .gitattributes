@@ -1,0 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Wang1rrr
+# SPDX-License-Identifier: CC0-1.0
+
+apps/ll-builder-utils/ll-builder-export text eol=lf
+apps/ll-builder-utils/tests/*.sh text eol=lf

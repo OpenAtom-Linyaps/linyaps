@@ -23,6 +23,35 @@
 
 namespace linglong::runtime {
 
+auto detail::resolveInnerBindSourcePath(const std::filesystem::path &rootfs,
+                                        const std::filesystem::path &source) noexcept
+  -> utils::error::Result<std::filesystem::path>
+{
+    const auto sourcePath = rootfs / (source.is_absolute() ? source.relative_path() : source);
+    std::error_code ec;
+    const auto canonicalRootfs = std::filesystem::weakly_canonical(rootfs, ec);
+    if (ec) {
+        return LINGLONG_ERR(fmt::format("failed to resolve inner bind rootfs {}", rootfs), ec);
+    }
+
+    ec.clear();
+    const auto canonicalSource = std::filesystem::weakly_canonical(sourcePath, ec);
+    if (ec) {
+        return LINGLONG_ERR(fmt::format("failed to resolve inner bind source {}", sourcePath), ec);
+    }
+
+    const auto relative = canonicalSource.lexically_relative(canonicalRootfs);
+    if (relative.empty() || relative == "."
+        || std::any_of(relative.begin(), relative.end(), [](const auto &component) {
+               return component == "..";
+           })) {
+        return LINGLONG_ERR(
+          fmt::format("inner bind source {} is outside rootfs {}", source, rootfs));
+    }
+
+    return canonicalSource;
+}
+
 namespace {
 
 constexpr const char *runContextConfigVersion = "1";
@@ -1165,18 +1194,23 @@ utils::error::Result<void> RunContext::fillExtraAppMounts(generator::ContainerCf
 
             auto bindInnerMount =
               [&applicationMounts, &bundlePath](
-                const api::types::v1::ApplicationConfigurationPermissionsInnerBind &bind) {
-                  const std::filesystem::path source = bind.source;
-                  applicationMounts.push_back(ocppi::runtime::config::types::Mount{
-                    .destination = bind.destination,
-                    .gidMappings = {},
-                    .options = { { "rbind" } },
-                    .source = bundlePath / "rootfs"
-                      / (source.is_absolute() ? source.relative_path() : source),
-                    .type = "bind",
-                    .uidMappings = {},
-                  });
-              };
+                const api::types::v1::ApplicationConfigurationPermissionsInnerBind &bind)
+              -> utils::error::Result<void> {
+                const std::filesystem::path source = bind.source;
+                auto sourcePath = detail::resolveInnerBindSourcePath(bundlePath / "rootfs", source);
+                if (!sourcePath) {
+                    return LINGLONG_ERR("invalid inner bind source", sourcePath);
+                }
+                applicationMounts.push_back(ocppi::runtime::config::types::Mount{
+                  .destination = bind.destination,
+                  .gidMappings = {},
+                  .options = { { "rbind" } },
+                  .source = sourcePath->string(),
+                  .type = "bind",
+                  .uidMappings = {},
+                });
+                return LINGLONG_OK;
+            };
 
             const auto &perm = info.permissions;
             if (perm->binds) {
@@ -1186,7 +1220,12 @@ utils::error::Result<void> RunContext::fillExtraAppMounts(generator::ContainerCf
 
             if (perm->innerBinds) {
                 const auto &innerBinds = perm->innerBinds;
-                std::for_each(innerBinds->cbegin(), innerBinds->cend(), bindInnerMount);
+                for (const auto &bind : *innerBinds) {
+                    auto result = bindInnerMount(bind);
+                    if (!result) {
+                        return result;
+                    }
+                }
             }
 
             builder.addExtraMounts(applicationMounts);

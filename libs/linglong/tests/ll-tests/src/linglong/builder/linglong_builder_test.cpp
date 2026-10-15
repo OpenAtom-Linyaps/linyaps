@@ -158,6 +158,29 @@ TEST(LinglongBuilder, UabExportFilename)
     EXPECT_EQ(filename, "org.deepin.demo_1.0.0.0_arm64_main.uabx");
 };
 
+TEST(LinglongBuilder, UabExportPreservesExistingWorkingDirectory)
+{
+    TempDir workingDir;
+    ASSERT_TRUE(workingDir.isValid());
+
+    const auto existingExportDir = workingDir.path() / ".uabBuild";
+    std::filesystem::create_directories(existingExportDir);
+    const auto userFile = existingExportDir / "keep.txt";
+    std::ofstream(userFile) << "user data";
+
+    linglong::builder::BuilderMock builder(workingDir.path());
+    linglong::builder::ExportOption option;
+    option.ref = "/";
+
+    const auto result = builder.exportUAB(option);
+    ASSERT_FALSE(result.has_value());
+    EXPECT_TRUE(std::filesystem::is_regular_file(userFile));
+
+    std::ifstream file(userFile);
+    std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    EXPECT_EQ(content, "user data");
+}
+
 TEST(LinglongBuilder, LayerExportFilename)
 {
     linglong::builder::BuilderMock builder;

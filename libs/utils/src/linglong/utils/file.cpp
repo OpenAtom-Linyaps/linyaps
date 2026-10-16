@@ -183,7 +183,11 @@ calculateDirectorySize(const std::filesystem::path &dir) noexcept
             return LINGLONG_ERR(fmt::format("failed to get entry type of {}", entry.path()), ec);
         }
 
-        size += entry.file_size();
+        auto fileSize = entry.file_size(ec);
+        if (ec) {
+            return LINGLONG_ERR(fmt::format("failed to get file size of {}", entry.path()), ec);
+        }
+        size += fileSize;
     }
 
     return size;

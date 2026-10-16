@@ -14,6 +14,7 @@
 #include <memory>
 #include <string>
 
+#include <sys/stat.h>
 #include <unistd.h>
 
 namespace fs = std::filesystem;
@@ -625,4 +626,23 @@ TEST_F(FileTest, ConcatFile_ErrorCases)
     auto read_empty_source = linglong::utils::readFile(empty_target.string());
     ASSERT_TRUE(read_empty_source.has_value()) << read_empty_source.error().message();
     EXPECT_EQ(*read_empty_source, "target content");
+}
+
+TEST_F(FileTest, CalculateDirectorySizeCountsRegularFile)
+{
+    auto result = linglong::utils::calculateDirectorySize(src_dir);
+    ASSERT_TRUE(result.has_value());
+    EXPECT_GT(*result, 0u);
+}
+
+TEST_F(FileTest, CalculateDirectorySizeReturnsErrorForFifo)
+{
+    // A FIFO is neither a symlink nor a directory; file_size(ec) must report
+    // an error instead of the throwing overload terminating the process.
+    auto pipePath = src_dir / "not-a-regular-file";
+    ASSERT_NE(mkfifo(pipePath.c_str(), 0644), -1) << "mkfifo failed";
+
+    auto result = linglong::utils::calculateDirectorySize(src_dir);
+    ASSERT_FALSE(result.has_value());
+    EXPECT_NE(result.error().message().find("failed to get file size"), std::string::npos);
 }

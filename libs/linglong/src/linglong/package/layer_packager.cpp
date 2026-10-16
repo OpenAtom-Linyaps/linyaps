@@ -12,6 +12,8 @@
 #include "linglong/utils/file.h"
 #include "linglong/utils/log/log.h"
 
+#include <fmt/format.h>
+
 #include <QDataStream>
 #include <QSysInfo>
 
@@ -28,7 +30,7 @@ LayerPackager::LayerPackager()
     // maybe refactor on later
     auto ret = this->initWorkDir();
     if (!ret) {
-        LogE("init work dir failed");
+        LogE("init work dir failed: {}", ret.error());
     }
 }
 
@@ -41,8 +43,10 @@ utils::error::Result<void> LayerPackager::initWorkDir()
         std::error_code ec;
         std::filesystem::remove_all(this->workDir, ec);
         if (ec) {
-            return LINGLONG_ERR("failed to remove work dir", ec);
+            return LINGLONG_ERR(fmt::format("failed to remove work dir {}", this->workDir.string()),
+                                ec);
         }
+        this->workDir.clear();
     }
     // 优先使用环境变量LINGLONG_TMPDIR指定的目录，默认为/var/tmp，避免/tmp是tmpfs内存不足
     auto uuid = QUuid::createUuid().toString(QUuid::Id128);
@@ -55,7 +59,8 @@ utils::error::Result<void> LayerPackager::initWorkDir()
         dirPath = std::filesystem::temp_directory_path() / dirName;
         ret = this->mkdirDir(dirPath);
         if (!ret) {
-            LogE("failed to set work dir: {}", ret.error());
+            // Both candidates failed; do not keep a workDir that was never created.
+            return LINGLONG_ERR(ret);
         }
     }
     this->workDir = dirPath;
@@ -70,11 +75,11 @@ const std::filesystem::path &LayerPackager::getWorkDir() const
 // 创建目录，用于单元测试
 utils::error::Result<void> LayerPackager::mkdirDir(const std::string &path) noexcept
 {
-    LINGLONG_TRACE("mkdir dir" + path);
+    LINGLONG_TRACE("mkdir dir " + path);
     std::error_code ec;
     std::filesystem::create_directories(path, ec);
     if (ec) {
-        return LINGLONG_ERR("failed to create directory" + path, ec);
+        return LINGLONG_ERR("failed to create directory " + path, ec);
     }
     return LINGLONG_OK;
 }

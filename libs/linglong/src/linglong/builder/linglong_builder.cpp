@@ -2037,7 +2037,7 @@ set -e
         scriptContent.push_back('\n');
         scriptContent.append("# enable strip symbols\n");
         scriptContent.append("export CFLAGS=\"-g $CFLAGS\"\n");
-        scriptContent.append("export CXXFLAGS=\"-g $CFLAGS\"\n");
+        scriptContent.append("export CXXFLAGS=\"-g $CXXFLAGS\"\n");
     }
     scriptContent.append(project.build);
     scriptContent.push_back('\n');

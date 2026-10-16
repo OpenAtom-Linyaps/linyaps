@@ -5,8 +5,10 @@
 
 #include "../../common/tempdir.h"
 #include "../mocks/linglong_builder_mock.h"
+#include "linglong/api/types/v1/BuilderProject.hpp"
 #include "linglong/builder/linglong_builder.h"
 #include "linglong/utils/error/error.h"
+#include "linglong/utils/file.h"
 
 #include <filesystem>
 #include <fstream>
@@ -225,4 +227,54 @@ TEST(LinglongBuilder, CleanWithPermissionIssue)
     auto result = builder.cleanBuildArtifacts();
     ASSERT_TRUE(result.has_value()) << result.error().message();
     EXPECT_FALSE(fs::exists(linglongDir));
+}
+
+TEST(LinglongBuilder, EntryScriptAppendsToEachFlagVariable)
+{
+    TempDir workingDir;
+
+    // generateEntryScript writes to <workingDir>/linglong/entry.sh but does not
+    // create the parent directory; buildStagePrepare does that during a real build.
+    std::filesystem::create_directories(workingDir.path() / "linglong");
+
+    auto project = linglong::api::types::v1::BuilderProject{};
+    project.build = "echo building";
+
+    linglong::builder::BuilderMock builder(workingDir.path(), project);
+
+    auto result = builder.generateEntryScript();
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+
+    auto entry = linglong::utils::readFile(workingDir.path() / "linglong" / "entry.sh");
+    ASSERT_TRUE(entry.has_value()) << entry.error().message();
+
+    // Strip symbols is enabled by default: entry.sh must let each compiler flag
+    // variable keep its own previous value instead of overwriting one with the
+    // other's content.
+    EXPECT_NE(entry->find("export CFLAGS=\"-g $CFLAGS\"\n"), std::string::npos);
+    EXPECT_NE(entry->find("export CXXFLAGS=\"-g $CXXFLAGS\"\n"), std::string::npos);
+    EXPECT_NE(entry->find("echo building"), std::string::npos);
+}
+
+TEST(LinglongBuilder, EntryScriptSkipsFlagExportsWhenStripSymbolsDisabled)
+{
+    TempDir workingDir;
+
+    std::filesystem::create_directories(workingDir.path() / "linglong");
+
+    auto project = linglong::api::types::v1::BuilderProject{};
+    project.build = "echo building";
+
+    linglong::builder::BuilderMock builder(workingDir.path(), project);
+    builder.setBuildOptions(linglong::builder::BuilderBuildOptions{ .skipStripSymbols = true });
+
+    auto result = builder.generateEntryScript();
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+
+    auto entry = linglong::utils::readFile(workingDir.path() / "linglong" / "entry.sh");
+    ASSERT_TRUE(entry.has_value()) << entry.error().message();
+
+    EXPECT_EQ(entry->find("CFLAGS"), std::string::npos);
+    EXPECT_EQ(entry->find("symbols-strip.sh"), std::string::npos);
+    EXPECT_NE(entry->find("echo building"), std::string::npos);
 }

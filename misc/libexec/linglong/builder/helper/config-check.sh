@@ -1,14 +1,19 @@
 #!/bin/bash
 
-# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
+# SPDX-FileCopyrightText: 2023 - 2026 UnionTech Software Technology Co., Ltd.
 #
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
 #check app config file script
 #config file type: desktop|context-menu|dbus service| systemd user service
 
+if [ -z "${LINGLONG_APPID}" ]; then
+        echo "LINGLONG_APPID is not set."
+        exit 255
+fi
+
 if [ ! -d "/opt/apps/${LINGLONG_APPID}" ]; then
-        echo "/opt/apps/$APPID is not exist."
+        echo "/opt/apps/${LINGLONG_APPID} does not exist."
         exit 255
 fi
 

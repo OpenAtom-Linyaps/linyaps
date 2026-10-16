@@ -955,6 +955,23 @@ TEST(OSTreeRepoTest, searchRemote_RemoteError)
     EXPECT_FALSE(result.has_value());
 }
 
+TEST(OSTreeRepoTest, PushWithoutDefaultRepoReturnsError)
+{
+    TempDir tempDir;
+    OSTreeRepoMock mockRepo(tempDir.path());
+    repo::OSTreeRepo &repo = mockRepo;
+
+    auto ref = package::Reference::parse("stable:org.deepin.demo/1.0.0/x86_64");
+    ASSERT_TRUE(ref.has_value()) << ref.error().message();
+
+    // The mock repository is built without any entry in "repos", so push()
+    // has to surface the missing default repository instead of dereferencing
+    // the past-the-end iterator of std::find_if.
+    auto result = repo.push(*ref, "binary");
+
+    EXPECT_FALSE(result.has_value());
+}
+
 namespace {
 
 class OSTreeRepoMock : public repo::OSTreeRepo

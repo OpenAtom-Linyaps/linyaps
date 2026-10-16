@@ -776,7 +776,7 @@ auto ContainerBuilder::createRunContainer(runtime::RunContext &context,
 
     if (!options.lockName.empty()) {
         const auto lockPath = prepared->context->getBundleDir() / options.lockName;
-        prepared->cfgBuilder.addExtraMount({
+        prepared->cfgBuilder.addExtraMount(ocppi::runtime::config::types::Mount{
           .destination = common::dir::containerLockPath,
           .options = std::vector<std::string>{ "bind" },
           .source = lockPath.string(),

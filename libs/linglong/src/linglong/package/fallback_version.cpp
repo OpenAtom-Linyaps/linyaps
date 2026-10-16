@@ -59,7 +59,10 @@ bool FallbackVersion::semanticMatch(const std::string &versionStr) const noexcep
 
 bool FallbackVersion::operator==(const FallbackVersion &that) const
 {
-    return this->list == that.list;
+    // compare() is the semantic used by operator</>; exact string-list
+    // equality disagrees on leading zeros ("01" vs "1") and left every
+    // relational operator false for such pairs.
+    return compare(that) == 0;
 }
 
 bool FallbackVersion::operator!=(const FallbackVersion &that) const

@@ -42,7 +42,8 @@ generate() {
 	output_path="$1"
 
 	if [[ ! -f "$schema" ]]; then
-		echo "$schema not found" || exit 255
+		echo "$schema not found" >&2
+		exit 255
 	fi
 
 	filename="/dev/null"
@@ -135,8 +136,8 @@ generate \
 
 PATCH_FILE=${PATCH_FILE:="$repoRoot"/tools/codegen/fix.patch}
 if [[ ! -f "$PATCH_FILE" ]]; then
-	echo "No patch file found at $PATCH_FILE"
-	exit
+	echo "No patch file found at $PATCH_FILE" >&2
+	exit 255
 fi
 
 pushd "$repoRoot"

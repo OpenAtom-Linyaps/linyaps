@@ -66,6 +66,7 @@ pfl_add_executable(
   src/linglong/runtime/container_builder_test.cpp
   src/linglong/runtime/overlayfs_driver_test.cpp
   src/linglong/runtime/run_context_test.cpp
+  src/linglong/runtime/wayland_socket_addr_test.cpp
   src/linglong/utils/bash_command_helper_test.cpp
   src/linglong/utils/cmd_test.cpp
   src/linglong/utils/error/error_test.cpp

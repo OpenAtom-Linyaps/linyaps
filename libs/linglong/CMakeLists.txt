@@ -120,6 +120,8 @@ pfl_add_library(
   src/linglong/runtime/run_context.h
   src/linglong/runtime/security_context.cpp
   src/linglong/runtime/security_context.h
+  src/linglong/runtime/wayland_socket_addr.cpp
+  src/linglong/runtime/wayland_socket_addr.h
   TESTS
   ll-tests
   COMPILE_FEATURES

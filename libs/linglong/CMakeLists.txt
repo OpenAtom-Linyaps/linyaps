@@ -13,6 +13,8 @@ pfl_add_library(
   src/linglong/adaptors/package_manager/package_manager1.h
   src/linglong/adaptors/task/task1.cpp
   src/linglong/adaptors/task/task1.h
+  src/linglong/builder/builder_directory.cpp
+  src/linglong/builder/builder_directory.h
   src/linglong/builder/builder_script.cpp
   src/linglong/builder/builder_script.h
   src/linglong/builder/config.cpp
@@ -20,8 +22,12 @@ pfl_add_library(
   src/linglong/builder/linglong_builder.cpp
   src/linglong/builder/linglong_builder.h
   src/linglong/builder/printer.h
+  src/linglong/builder/source_cache.cpp
+  src/linglong/builder/source_cache.h
   src/linglong/builder/source_fetcher.cpp
   src/linglong/builder/source_fetcher.h
+  src/linglong/builder/project_lock.cpp
+  src/linglong/builder/project_lock.h
   src/linglong/cli/cli.cpp
   src/linglong/cli/cli.h
   src/linglong/cli/cli_printer.cpp

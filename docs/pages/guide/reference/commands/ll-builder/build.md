@@ -12,6 +12,16 @@ ll-builder-build - 构建如意玲珑项目
 
 `ll-builder build` 命令用来构建如意玲珑应用。构建完成后，构建内容将自动提交到本地 `ostree` 缓存中。
 
+lock 的 `build_architecture` 记录运行 `ll-builder` 的构建环境架构，与 `package.architecture` 指定的输出目标架构独立。所有复用 lock 的构建都要求当前构建架构与该字段一致；字段缺失或架构不匹配时，应运行 `ll-builder update-lockfile` 重新锁定资源。未指定架构的 Base 和 Runtime 在首次解析或更新时按当前构建架构查找本地和远程依赖；显式指定的依赖架构保持不变。
+
+普通构建优先复用 `linglong.lock` 中与当前源码声明匹配的条目。所有源码比较 `kind` 和 `url`；`file`、`archive` 和 `dsc` 还比较规范化后的 `digest`；`git` 还比较 `commit` 和 `submodules`，未指定 `submodules` 时按默认启用处理。非 Git 源码的 `commit` 和 `submodules` 不参与匹配。`name` 和 `version` 不参与匹配，输出名称使用当前项目配置。
+
+新增或声明变化的源码会重新下载，即使缓存中已有相同摘要的内容；配置了 `digest` 时必须校验通过，之后生成新的锁定条目。离线构建要求源码已有匹配的锁定条目和有效缓存。使用 `--locked` 时，源码声明不匹配会直接报错。
+
+Git 源码的 `commit` 可以填写分支名、标签或提交 SHA。lock 使用 `resolved.hash: git-commit:<SHA>` 记录确定的提交。YAML 声明不变时，即使远端分支或标签已经移动，构建仍使用锁定的 SHA；执行 `ll-builder update-lockfile` 才会重新解析该分支或标签。修改 YAML 中的分支名或标签则属于声明变化，普通构建会重新获取，`--locked` 构建会报错。
+
+构建容器中的文件修改会跨构建保留。当 base/runtime 的精确引用或模块列表变化时，构建环境会自动重置；执行 `ll-builder clean` 也会清除它。构建脚本应自行生成所需的临时数据，不应依赖上一次构建留下的文件。每次构建都会根据当前 `buildext.apt.build_depends` 执行 APT 安装流程，该列表变化不会触发环境重置。
+
 ## OPTIONS
 
 **-h, --help**
@@ -24,10 +34,13 @@ ll-builder-build - 构建如意玲珑项目
 : 指定当前工作目录下的项目配置文件。未指定时优先使用 `linglong.<当前架构>.yaml`，不存在时使用 `linglong.yaml`
 
 **--offline**
-: 仅使用本地文件。这意味着将设置 --skip-fetch-source 和 --skip-pull-depend
+: 仅使用本地源码缓存和依赖，不从远程获取它们；仍会准备和校验源码
+
+**--locked**
+: 要求项目 lock 存在且与项目声明一致；不能与 --skip-fetch-source 同时使用
 
 **--skip-fetch-source**
-: 跳过获取源代码
+: 跳过源码获取，原样使用现有的 `linglong/sources/`，适合构建手动修改的源码；项目 lock 和依赖仍按普通构建规则处理
 
 **--skip-pull-depend**
 : 跳过拉取依赖项

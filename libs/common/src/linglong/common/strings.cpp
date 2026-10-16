@@ -247,13 +247,20 @@ std::optional<std::string> decode_url(std::string_view url) noexcept
     return result;
 }
 
+namespace {
+constexpr bool is_ascii_alnum(unsigned char c) noexcept
+{
+    return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9');
+}
+} // namespace
+
 std::string encode_url(std::string_view value) noexcept
 {
     std::string escaped;
     escaped.reserve(value.length());
 
     for (unsigned char c : value) {
-        if (::isalnum(c) || c == '-' || c == '_' || c == '.' || c == '/') {
+        if (is_ascii_alnum(c) || c == '-' || c == '_' || c == '.' || c == '/') {
             escaped.push_back(static_cast<char>(c));
         } else {
             fmt::format_to(std::back_inserter(escaped), "%{:02X}", c);

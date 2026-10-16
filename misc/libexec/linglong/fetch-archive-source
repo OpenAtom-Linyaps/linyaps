@@ -27,6 +27,18 @@ if [ -d "$cachedir/archive_$digest" ]; then
 fi
 # Create a temporary directory
 tmpdir=$(mktemp -d)
+cleanup() {
+    status=$?
+    if ! rm -rf -- "$tmpdir" && [ "$status" -eq 0 ]; then
+        status=1
+    fi
+    exit "$status"
+}
+trap cleanup EXIT
+case "$tmpdir" in
+    /*) ;;
+    *) tmpdir="$PWD/$tmpdir" ;;
+esac
 # Change directory
 cd "$tmpdir"
 # Download dsc and tar
@@ -43,5 +55,3 @@ mkdir -p "$cachedir/tmp_$digest"
 tar --no-same-owner -xvf "$name" -C "$cachedir/tmp_$digest"
 mv "$cachedir/tmp_$digest" "$cachedir/archive_$digest"
 cp -r "$cachedir/archive_$digest" "$outputdir"
-# Clean temporary directory
-rm -r "$tmpdir"

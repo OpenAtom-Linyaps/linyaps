@@ -360,4 +360,133 @@ TEST(IOForwarder, ForwardsDataFromPipeToPipe)
     EXPECT_TRUE(forwarder.isFinished());
 }
 
+void dispatchForwarderEvents(EventLoop &loop, IOForwarder &forwarder)
+{
+    auto ready = loop.wait(100);
+    ASSERT_TRUE(ready.has_value());
+    ASSERT_GT(ready->count, 0);
+    for (int i = 0; i < ready->count; ++i) {
+        forwarder.onEvent(ready->events[i].data.fd, ready->events[i].events);
+    }
+}
+
+TEST(IOForwarder, ClosedSourceDrainsAllBatches)
+{
+    auto loop = EventLoop::create();
+    auto src = Pipe::create(O_CLOEXEC | O_NONBLOCK);
+    auto dst = Pipe::create(O_CLOEXEC | O_NONBLOCK);
+    ASSERT_TRUE(loop);
+    ASSERT_TRUE(src);
+    ASSERT_TRUE(dst);
+    ASSERT_TRUE(loop->add(src->readEnd(), EPOLLIN));
+
+    // A small forwarding buffer makes the test independent of pipe capacity.
+    IOForwarder forwarder{ *loop, 64 };
+    forwarder.setSrc(src->readEnd());
+    forwarder.setDst(dst->writeEnd());
+    std::string payload;
+    for (int i = 0; i < 257; ++i) {
+        payload += static_cast<char>('a' + i % 26);
+    }
+    ASSERT_EQ(::write(src->writeEnd(), payload.data(), payload.size()),
+              static_cast<ssize_t>(payload.size()));
+    src->closeWriteEnd();
+
+    dispatchForwarderEvents(*loop, forwarder);
+    EXPECT_FALSE(forwarder.isFinished());
+    for (int i = 0; i < 10 && !forwarder.isFinished(); ++i) {
+        dispatchForwarderEvents(*loop, forwarder);
+    }
+    ASSERT_TRUE(forwarder.isFinished());
+
+    std::array<char, 512> received{};
+    auto count = ::read(dst->readEnd(), received.data(), received.size());
+    ASSERT_EQ(count, static_cast<ssize_t>(payload.size()));
+    EXPECT_EQ(std::string(received.data(), static_cast<std::size_t>(count)), payload);
+}
+
+TEST(IOForwarder, HangupPreservesDataWhileDestinationIsFull)
+{
+    auto loop = EventLoop::create();
+    auto src = Pipe::create(O_CLOEXEC | O_NONBLOCK);
+    auto dst = Pipe::create(O_CLOEXEC | O_NONBLOCK);
+    ASSERT_TRUE(loop);
+    ASSERT_TRUE(src);
+    ASSERT_TRUE(dst);
+    ASSERT_TRUE(loop->add(src->readEnd(), EPOLLIN));
+
+    std::array<char, 4096> padding{};
+    ssize_t written;
+    do {
+        written = ::write(dst->writeEnd(), padding.data(), padding.size());
+    } while (written > 0);
+    ASSERT_EQ(written, -1);
+    ASSERT_EQ(errno, EAGAIN);
+
+    IOForwarder forwarder{ *loop, 64 };
+    forwarder.setSrc(src->readEnd());
+    forwarder.setDst(dst->writeEnd());
+    const std::string payload(257, 'x');
+    ASSERT_EQ(::write(src->writeEnd(), payload.data(), payload.size()),
+              static_cast<ssize_t>(payload.size()));
+    src->closeWriteEnd();
+    dispatchForwarderEvents(*loop, forwarder);
+    ASSERT_TRUE(forwarder.needsWriteWatch());
+    ASSERT_FALSE(forwarder.isFinished());
+
+    // Release backpressure after HUP has already been delivered.
+    while (::read(dst->readEnd(), padding.data(), padding.size()) > 0) { }
+    ASSERT_EQ(errno, EAGAIN);
+    for (int i = 0; i < 10 && !forwarder.isFinished(); ++i) {
+        dispatchForwarderEvents(*loop, forwarder);
+    }
+    ASSERT_TRUE(forwarder.isFinished());
+    EXPECT_FALSE(forwarder.needsWriteWatch());
+    auto count = ::read(dst->readEnd(), padding.data(), padding.size());
+    ASSERT_EQ(count, static_cast<ssize_t>(payload.size()));
+    EXPECT_EQ(std::string(padding.data(), static_cast<std::size_t>(count)), payload);
+}
+
+TEST(IOForwarder, EmptySourceHangupFinishes)
+{
+    auto loop = EventLoop::create();
+    auto src = Pipe::create(O_CLOEXEC | O_NONBLOCK);
+    auto dst = Pipe::create(O_CLOEXEC | O_NONBLOCK);
+    ASSERT_TRUE(loop);
+    ASSERT_TRUE(src);
+    ASSERT_TRUE(dst);
+    ASSERT_TRUE(loop->add(src->readEnd(), EPOLLIN));
+    IOForwarder forwarder{ *loop };
+    forwarder.setSrc(src->readEnd());
+    forwarder.setDst(dst->writeEnd());
+    src->closeWriteEnd();
+
+    dispatchForwarderEvents(*loop, forwarder);
+    EXPECT_TRUE(forwarder.isFinished());
+    EXPECT_TRUE(forwarder.bufferEmpty());
+}
+
+TEST(IOForwarder, DestinationErrorFinishesWithoutWriting)
+{
+    auto loop = EventLoop::create();
+    auto src = Pipe::create(O_CLOEXEC | O_NONBLOCK);
+    auto dst = Pipe::create(O_CLOEXEC | O_NONBLOCK);
+    ASSERT_TRUE(loop);
+    ASSERT_TRUE(src);
+    ASSERT_TRUE(dst);
+    ASSERT_TRUE(loop->add(dst->writeEnd(), EPOLLOUT));
+    IOForwarder forwarder{ *loop };
+    forwarder.setSrc(src->readEnd());
+    forwarder.setDst(dst->writeEnd());
+    ASSERT_EQ(::write(src->writeEnd(), "x", 1), 1);
+    forwarder.pull();
+    ASSERT_FALSE(forwarder.bufferEmpty());
+    dst->closeReadEnd();
+
+    // The real pipe reports EPOLLERR; it must not be treated as writable and
+    // cause a write to the closed pipe (which would raise SIGPIPE).
+    dispatchForwarderEvents(*loop, forwarder);
+    EXPECT_TRUE(forwarder.isFinished());
+}
+
 } // namespace

@@ -508,35 +508,13 @@ OSTreeRepo::removeOstreeRef(const api::types::v1::RepositoryCacheLayersItem &lay
     return this->removeOstreeRef(layer.repo, ostreeRefFromLayerItem(layer), layer.commit);
 }
 
-utils::error::Result<void> OSTreeRepo::handleRepositoryUpdate(
-  QDir layerDir, const api::types::v1::RepositoryCacheLayersItem &layer) noexcept
+utils::error::Result<std::string>
+OSTreeRepo::resolveRefspecCommit(const std::string &refspec) noexcept
 {
-    std::string refspec = ostreeRefSpecFromLayerItem(layer);
-    LINGLONG_TRACE(fmt::format("checkout {} from ostree repository to layers dir", refspec));
-
-    int root = open("/", O_DIRECTORY);
-    auto _ = utils::finally::finally([root]() {
-        close(root);
-    });
-
-    auto path = layerDir.absolutePath();
-    path = path.right(path.length() - 1);
-
-    if (!layerDir.mkpath(".")) {
-        Q_ASSERT(false);
-        return LINGLONG_ERR(
-          fmt::format("couldn't create directory {}", layerDir.absolutePath().toStdString()));
-    }
-
-    if (!layerDir.removeRecursively()) {
-        Q_ASSERT(false);
-        return LINGLONG_ERR(
-          fmt::format("couldn't remove directory {}", layerDir.absolutePath().toStdString()));
-    }
+    LINGLONG_TRACE(fmt::format("resolve ostree ref {}", refspec));
 
     g_autoptr(GError) gErr = nullptr;
     g_autofree char *commit{ nullptr };
-
     if (ostree_repo_resolve_rev_ext(this->ostreeRepo.get(),
                                     refspec.c_str(),
                                     FALSE,
@@ -544,19 +522,232 @@ utils::error::Result<void> OSTreeRepo::handleRepositoryUpdate(
                                     &commit,
                                     &gErr)
         == FALSE) {
-        return LINGLONG_ERR(fmt::format("ostree_repo_resolve_rev {}", ptr_view(gErr)));
+        return LINGLONG_ERR(fmt::format("ostree_repo_resolve_rev {} {}", refspec, ptr_view(gErr)));
     }
 
+    return std::string{ commit };
+}
+
+// Deploy the content of an ostree commit into `target`.
+//
+// The checkout is done in a temporary directory next to the final one and the
+// result is moved into place with rename(2), so `target` is only ever visible
+// either as the previous deployment or as a complete new one. That is what
+// makes installing or upgrading a layer safe against an unexpected power
+// failure: checking the commit out in place could leave a half populated
+// `layers/<commit>` behind while the repository cache still advertised the
+// layer as installed, and every application using it failed to start
+// afterwards.
+utils::error::Result<void> OSTreeRepo::deployLayer(const std::string &commit,
+                                                   const std::filesystem::path &target) noexcept
+{
+    LINGLONG_TRACE(fmt::format("deploy layer {} to {}", commit, target.string()));
+
+    std::error_code ec;
+    if (auto ret = utils::ensureDirectory(target.parent_path()); !ret) {
+        return LINGLONG_ERR("failed to ensure the layers directory", ret);
+    }
+
+    // The staging directory is unique per deployment, so two modules of the
+    // same package or two clients working at the same time never share a path.
+    // Its name starts with a dot to keep it out of the way of the deployed
+    // layers.
+    const auto uniqueSuffix = QUuid::createUuid().toString(QUuid::Id128).toStdString();
+    const auto staging = target.parent_path() / fmt::format(".tmp-{}-{}", commit, uniqueSuffix);
+
+    // A deployment is always retried from scratch, so the staging directory
+    // must never outlive this function, whichever error path is taken.
+    auto cleanupStaging = utils::finally::finally([&staging]() noexcept {
+        std::error_code ignored;
+        std::filesystem::remove_all(staging, ignored);
+    });
+
+    int root = open("/", O_DIRECTORY);
+    if (root == -1) {
+        return LINGLONG_ERR("failed to open the root directory");
+    }
+    auto closeRoot = utils::finally::finally([root]() noexcept {
+        ::close(root);
+    });
+
+    // ostree_repo_checkout_at() checks the commit out relatively to the
+    // directory descriptor it is given, and the root directory is used here, so
+    // the leading '/' is dropped from the destination path.
+    const auto relativeStaging = staging.relative_path().string();
+
+    g_autoptr(GError) gErr = nullptr;
     if (ostree_repo_checkout_at(this->ostreeRepo.get(),
                                 nullptr,
                                 root,
-                                path.toUtf8().constData(),
-                                commit,
+                                relativeStaging.c_str(),
+                                commit.c_str(),
                                 nullptr,
                                 &gErr)
         == FALSE) {
         return LINGLONG_ERR(
-          fmt::format("ostree_repo_checkout_at {} {}", path.toStdString(), ptr_view(gErr)));
+          fmt::format("ostree_repo_checkout_at {} {}", staging.string(), ptr_view(gErr)));
+    }
+
+    // rename(2) refuses to replace a non-empty directory, so an already
+    // deployed copy is moved aside first. Only the two rename calls below run
+    // while the layer directory does not exist; should the machine lose power
+    // inside that window, repairLayers() removes the leftover copy and deploys
+    // the commit again on the next start.
+    const auto replaced = std::filesystem::exists(target, ec);
+    if (ec) {
+        return LINGLONG_ERR(fmt::format("failed to check the layer directory {}", target), ec);
+    }
+
+    const auto backup = target.parent_path() / fmt::format(".old-{}-{}", commit, uniqueSuffix);
+    if (replaced) {
+        std::filesystem::rename(target, backup, ec);
+        if (ec) {
+            return LINGLONG_ERR(fmt::format("failed to move {} aside", target), ec);
+        }
+    }
+
+    std::filesystem::rename(staging, target, ec);
+    if (ec) {
+        if (replaced) {
+            std::error_code restoreEc;
+            std::filesystem::rename(backup, target, restoreEc);
+            if (restoreEc) {
+                LogE("failed to restore {} after a failed deployment: {}",
+                     target.string(),
+                     restoreEc.message());
+            }
+        }
+        return LINGLONG_ERR(fmt::format("failed to deploy {}", target), ec);
+    }
+
+    if (replaced) {
+        std::filesystem::remove_all(backup, ec);
+        if (ec) {
+            // Only garbage is left, and repairLayers() removes it on the next
+            // start, so this must not fail an otherwise complete deployment.
+            LogW("failed to remove the replaced layer {}: {}", backup.string(), ec.message());
+        }
+    }
+
+    return LINGLONG_OK;
+}
+
+// Repair the layers deployed by an install or upgrade that was interrupted, for
+// example by an unexpected power failure.
+//
+// Two kinds of leftovers are handled:
+//   * the staging and backup directories of the atomic deployment, which are
+//     never needed again and can be removed unconditionally;
+//   * a layer recorded in the repository cache whose directory is missing or
+//     does not contain a usable info.json. Its commit is still stored in the
+//     ostree repository, so the layer is deployed again instead of leaving the
+//     application unusable.
+//
+// When the entries tree already exists, the entries of a redeployed layer are
+// exported again as well: the export step rewrites desktop and service files
+// inside the layer directory, and a deployment done directly from the commit
+// does not contain those rewritten files.
+utils::error::Result<void> OSTreeRepo::repairLayers() noexcept
+{
+    LINGLONG_TRACE("repair the deployed layers");
+
+    std::error_code ec;
+    const auto layersDir = this->repoDir / "layers";
+    const auto layersDirExists = std::filesystem::exists(layersDir, ec);
+    if (ec) {
+        return LINGLONG_ERR(fmt::format("failed to check {}", layersDir.string()), ec);
+    }
+    if (!layersDirExists) {
+        // Nothing is deployed yet, so there is nothing to repair.
+        return LINGLONG_OK;
+    }
+
+    // Collect first and remove afterwards: removing a directory while its
+    // parent is being iterated is not portable.
+    std::vector<std::filesystem::path> leftovers;
+    for (const auto &entry : std::filesystem::directory_iterator(layersDir, ec)) {
+        const auto name = entry.path().filename().string();
+        if (name.rfind(".tmp-", 0) == 0 || name.rfind(".old-", 0) == 0) {
+            leftovers.emplace_back(entry.path());
+        }
+    }
+    if (ec) {
+        return LINGLONG_ERR(fmt::format("failed to scan {}", layersDir.string()), ec);
+    }
+
+    for (const auto &leftover : leftovers) {
+        std::error_code removeEc;
+        std::filesystem::remove_all(leftover, removeEc);
+        if (removeEc) {
+            LogW("failed to remove the leftover of an interrupted deployment {}: {}",
+                 leftover.string(),
+                 removeEc.message());
+        }
+    }
+
+    for (const auto &item : this->cache->queryExistingLayerItem()) {
+        const auto layerDir = this->layerPath(item.commit);
+        if (std::filesystem::exists(layerDir / "info.json", ec)) {
+            ec.clear();
+            continue;
+        }
+        ec.clear();
+
+        LogW("the deployed layer {} of {} is incomplete, deploying it again from {}",
+             item.commit,
+             item.info.id,
+             item.repo);
+
+        auto commit = this->resolveRefspecCommit(ostreeRefSpecFromLayerItem(item));
+        if (!commit) {
+            // The reference may have been removed by a prune, in which case it
+            // cannot be used to deploy the layer again.
+            LogW("failed to resolve the ostree reference of the layer {}: {}",
+                 item.commit,
+                 commit.error().message());
+            continue;
+        }
+
+        auto deployed = this->deployLayer(*commit, layerDir);
+        if (!deployed) {
+            LogE("failed to deploy the layer {} again: {}",
+                 item.commit,
+                 deployed.error().message());
+            continue;
+        }
+
+        const auto entriesDir = this->getEntriesDir();
+        if (std::filesystem::exists(entriesDir, ec)) {
+            auto exported = this->exportLayerEntries(entriesDir, item);
+            if (!exported) {
+                LogW("failed to export the entries of the layer {}: {}",
+                     item.commit,
+                     exported.error().message());
+            }
+        }
+        ec.clear();
+    }
+
+    return LINGLONG_OK;
+}
+
+utils::error::Result<void> OSTreeRepo::handleRepositoryUpdate(
+  QDir layerDir, const api::types::v1::RepositoryCacheLayersItem &layer) noexcept
+{
+    std::string refspec = ostreeRefSpecFromLayerItem(layer);
+    LINGLONG_TRACE(fmt::format("checkout {} from ostree repository to layers dir", refspec));
+
+    auto commit = this->resolveRefspecCommit(refspec);
+    if (!commit) {
+        return LINGLONG_ERR(commit);
+    }
+
+    // The layer directory is created by the callers through ensureEmptyLayerDir()
+    // and is replaced atomically by deployLayer().
+    auto target = std::filesystem::path(layerDir.absolutePath().toStdString());
+    auto deployed = this->deployLayer(*commit, target);
+    if (!deployed) {
+        return LINGLONG_ERR(deployed);
     }
 
     auto ret = this->cache->addLayerItem(layer);
@@ -649,7 +840,24 @@ utils::error::Result<void> OSTreeRepo::init(bool create) noexcept
         this->ostreeRepo.reset(*result);
     }
 
-    return initCache(create);
+    auto ret = initCache(create);
+    if (!ret) {
+        return LINGLONG_ERR(ret);
+    }
+
+    if (create) {
+        // The deployment repair writes to the repository, so it is only done
+        // when the repository is opened for writing; the read-only clients must
+        // not touch the deployed layers.
+        auto repaired = this->repairLayers();
+        if (!repaired) {
+            // A failed repair must not prevent the daemon from starting, the
+            // affected layer is only reported.
+            LogW("failed to repair the deployed layers: {}", repaired.error().message());
+        }
+    }
+
+    return LINGLONG_OK;
 }
 
 utils::error::Result<void> OSTreeRepo::initCache(bool create) noexcept

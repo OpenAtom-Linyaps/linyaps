@@ -622,8 +622,9 @@ auto ContainerBuilder::configureRunContainer(PreparedContainer &prepared,
     LINGLONG_TRACE("configure run container");
 
     auto *homeEnv = ::getenv("HOME");
-    if (homeEnv == nullptr) {
-        return LINGLONG_ERR("HOME is not set");
+    if (homeEnv == nullptr || *homeEnv == '\0') {
+        return LINGLONG_ERR(
+          "HOME is not set; export HOME to a writable directory before ll-builder run");
     }
     std::filesystem::path homePath{ homeEnv };
 

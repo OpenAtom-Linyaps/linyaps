@@ -332,6 +332,30 @@ TEST_F(RepoCacheTest, QueryUsesRemainingFilters)
     ASSERT_EQ(byId.size(), 1);
 }
 
+TEST_F(RepoCacheTest, EmptyArchitectureEntriesDoNotCrashCacheQueries)
+{
+    auto cacheFile = tempDir.path() / "states.json";
+    auto malformed = createLayerItem("empty-arch", "app.malformed", "1.0.0");
+    malformed.info.arch.clear();
+    writeCacheFile(cacheFile,
+                   api::types::v1::RepositoryCache{
+                     .config = createRepoConfig(),
+                     .layers = { malformed },
+                     .llVersion = "test",
+                     .merged = std::nullopt,
+                     .version = "2",
+                   });
+
+    RepoCache cache(cacheFile);
+    ASSERT_TRUE(cache.load().has_value());
+
+    EXPECT_EQ(cache.queryLayerItem(repoCacheQuery{ .id = "app.malformed" }).size(), 1);
+    EXPECT_TRUE(cache.queryLayerItem(repoCacheQuery{ .architecture = "x86_64" }).empty());
+
+    auto normal = createLayerItem("normal", "app.malformed", "1.0.0");
+    EXPECT_TRUE(cache.addLayerItem(normal).has_value());
+}
+
 } // namespace
 
 } // namespace linglong::repo::test

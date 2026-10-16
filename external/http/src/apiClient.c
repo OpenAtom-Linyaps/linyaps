@@ -10,6 +10,7 @@ apiClient_t *apiClient_create() {
     apiClient_t *apiClient = malloc(sizeof(apiClient_t));
     apiClient->basePath = strdup("http://localhost");
     apiClient->sslConfig = NULL;
+    apiClient->userAgent = NULL;
     apiClient->dataReceived = NULL;
     apiClient->dataReceivedLen = 0;
     apiClient->data_callback_func = NULL;

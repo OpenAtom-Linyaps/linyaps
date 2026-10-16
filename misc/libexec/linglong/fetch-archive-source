@@ -39,6 +39,7 @@ if [ "X$actual_hash" != "X$digest" ]; then
     exit 1;
 fi
 # Extract the archive
+rm -r "$cachedir/tmp_$digest" || true
 mkdir -p "$cachedir/tmp_$digest"
 tar --no-same-owner -xvf "$name" -C "$cachedir/tmp_$digest"
 mv "$cachedir/tmp_$digest" "$cachedir/archive_$digest"

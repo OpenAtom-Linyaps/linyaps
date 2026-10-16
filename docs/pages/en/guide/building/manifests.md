@@ -352,7 +352,7 @@ This project is used to build the root filesystem used by Linyaps. beige refers 
 ### Build Runtime
 
 ```yaml
-git clone git@github.com:linglongdev/org.deepin.Runtime.git -b v23
+git clone git@github.com:linglongdev/org.deepin.Runtime.git -b deprecated/v23
 cd org.deepin.Runtime
 ./depend-deb-list.sh | ./tools/download_deb_depend.bash
 ll-builder build --skip-fetch-source

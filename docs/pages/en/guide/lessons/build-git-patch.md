@@ -22,17 +22,17 @@ According to the [Linyaps Application Build Project `linglong.yaml` Specificatio
 2. version, which is the specific version number of the repository that needs to be fetched, generally the `Tags` label
 3. The repository commit number that needs to be applied. Fill in the value corresponding to the commit here, which will apply all changes up to this commit in the repository. This field has higher priority than `version`. Please do not fill in any `commit` after the merge time of `version`
 
-Combined with the compilation notes in the second section, we collected information about the `qBittorrent.git` and `libtorrent.git` repositories. To reduce build progress blocking caused by network issues, I chose to use mirror addresses here:
+Combined with the compilation notes in the second section, we collected information about the `qBittorrent.git` and `libtorrent.git` repositories. The `url` fields use the official repository addresses; if you encounter network issues, you can replace them with available mirror addresses:
 
 ```yaml
 sources:
   - kind: git
-    url: https://githubfast.com/qbittorrent/qBittorrent.git
+    url: https://github.com/qbittorrent/qBittorrent.git
     version: release-4.6.7
     commit: 839bc696d066aca34ebd994ee1673c4b2d5afd7b
 
   - kind: git
-    url: https://githubfast.com/arvidn/libtorrent.git
+    url: https://github.com/arvidn/libtorrent.git
     version: v2.0.9
     commit: 4b4003d0fdc09a257a0841ad965b22533ed87a0d
 ```
@@ -97,8 +97,8 @@ The following shows my process of obtaining & applying patches:
 
 ```zsh
 ❯ git remote -v
-origin  https://ghp.ci/https://github.com/qbittorrent/qBittorrent.git (fetch)
-origin  https://ghp.ci/https://github.com/qbittorrent/qBittorrent.git (push)
+origin  https://github.com/qbittorrent/qBittorrent.git (fetch)
+origin  https://github.com/qbittorrent/qBittorrent.git (push)
 ```
 
 As can be seen, after executing the command, information about the remote repository can be returned, indicating that this directory meets the requirements.

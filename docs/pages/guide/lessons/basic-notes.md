@@ -186,12 +186,12 @@ base: org.deepin.foundation/23.0.0
 ```yaml
 sources:
   - kind: git
-    url: https://githubfast.com/qbittorrent/qBittorrent.git
+    url: https://github.com/qbittorrent/qBittorrent.git
     version: release-4.6.7
     commit: 839bc696d066aca34ebd994ee1673c4b2d5afd7b
 
   - kind: git
-    url: https://githubfast.com/arvidn/libtorrent.git
+    url: https://github.com/arvidn/libtorrent.git
     version: v2.0.9
     commit: 4b4003d0fdc09a257a0841ad965b22533ed87a0d
 ```

@@ -194,6 +194,7 @@ int main(int argc, char *argv[])
             LogW("Failed to install driver package {}: {}",
                  options.packageName,
                  installResult.error().message());
+            return 1;
         }
 
         std::cout << "Successfully installed driver package" << std::endl;

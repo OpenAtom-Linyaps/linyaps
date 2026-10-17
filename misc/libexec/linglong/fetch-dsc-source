@@ -27,6 +27,18 @@ if [ -d "$cachedir/dsc_$digest" ]; then
 fi
 # Create a temporary directory
 tmpdir=$(mktemp -d)
+cleanup() {
+    status=$?
+    if ! rm -rf -- "$tmpdir" && [ "$status" -eq 0 ]; then
+        status=1
+    fi
+    exit "$status"
+}
+trap cleanup EXIT
+case "$tmpdir" in
+    /*) ;;
+    *) tmpdir="$PWD/$tmpdir" ;;
+esac
 # change directory
 cd "$tmpdir"
 # Download dsc and tar
@@ -44,5 +56,3 @@ rm -r "$cachedir/tmp_$digest" || true
 dpkg-source -x --no-copy "$name" "$cachedir/tmp_$digest"
 mv "$cachedir/tmp_$digest" "$cachedir/dsc_$digest"
 cp -r "$cachedir/dsc_$digest" "$outputdir"
-# Clean temporary directory
-rm -r "$tmpdir"

@@ -59,6 +59,9 @@ if [[ $skip_config -eq 0 ]]; then
     echo "start application configure check"
     if ! @CMAKE_INSTALL_FULL_LIBEXECDIR@/linglong/builder/helper/config-check.sh; then
             echo "Warning: application configure check failed."
+            if [ $check_level -eq 1 ]; then
+                    exit 1
+            fi
     fi
 else
     echo "Skipping application configure check."

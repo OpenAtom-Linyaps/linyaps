@@ -11,6 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       should_build: ${{ steps.filter.outputs.code }}
+      should_test_smoke: ${{ steps.filter.outputs.smoke }}
     steps:
       - uses: actions/checkout@v6
       - uses: dorny/paths-filter@v3
@@ -26,6 +27,28 @@ jobs:
               - 'po/**'
               - '**.cmake'
               - '**/CMakeLists.txt'
+            smoke:
+              - 'tools/test_linglong/**'
+              - '.github/workflows/build.yaml'
+
+  smoke-python-tests:
+    needs: path-filter
+    if: ${{ needs.path-filter.outputs.should_test_smoke == 'true' }}
+    name: test Python smoke-test helpers
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install report dependency
+        run: python3 -m pip install openpyxl==3.1.5
+      - name: Run unit tests
+        run: >-
+          python3 -W error::ResourceWarning -m unittest discover
+          -s tools/test_linglong/tests -v
 
   build-u24-x64:
     needs: path-filter
@@ -142,7 +165,14 @@ jobs:
   build-status:
     name: Final build Status
     needs:
-      [path-filter, build-u24-x64, build-u24-arm, build-u22-x64, build-u22-arm]
+      [
+        path-filter,
+        smoke-python-tests,
+        build-u24-x64,
+        build-u24-arm,
+        build-u22-x64,
+        build-u22-arm,
+      ]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -152,10 +182,24 @@ jobs:
           U24_ARM="${{ needs.build-u24-arm.result }}"
           U22_X64="${{ needs.build-u22-x64.result }}"
           U22_ARM="${{ needs.build-u22-arm.result }}"
+          SMOKE_TESTS="${{ needs.smoke-python-tests.result }}"
+          PATH_FILTER="${{ needs.path-filter.result }}"
 
-          if [[ "$U24_X64" == "failure" || "$U24_ARM" == "failure" || "$U22_X64" == "failure" || "$U22_ARM" == "failure" ]]; then
-            echo "One or more builds failed."
+          if [[ "$PATH_FILTER" != "success" ]]; then
+            echo "Path filtering did not complete successfully."
             exit 1
           fi
+
+          if [[ "$SMOKE_TESTS" != "success" && "$SMOKE_TESTS" != "skipped" ]]; then
+            echo "Python smoke-test helper tests failed or were cancelled."
+            exit 1
+          fi
+
+          for BUILD_RESULT in "$U24_X64" "$U24_ARM" "$U22_X64" "$U22_ARM"; do
+            if [[ "$BUILD_RESULT" != "success" && "$BUILD_RESULT" != "skipped" ]]; then
+              echo "One or more builds failed or were cancelled."
+              exit 1
+            fi
+          done
           echo "All builds successful or skipped."
           exit 0

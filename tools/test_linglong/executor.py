@@ -10,6 +10,7 @@
 """
 
 import os
+import shlex
 import subprocess
 import sys
 from typing import Optional
@@ -57,8 +58,10 @@ class CommandExecutor:
         if env:
             run_env.update(env)
         if sudo:
-            flags = SUDO_FLAGS
-            full_cmd = ["sudo"] + (flags.split() if flags else []) + full_cmd
+            # 允许通过 SUDO_FLAGS 环境变量覆盖默认的 -A（如 CI 环境的 -n），
+            # 显式设置为空字符串表示不附加任何 sudo 参数。
+            flags = os.environ.get("SUDO_FLAGS", SUDO_FLAGS)
+            full_cmd = ["sudo"] + (shlex.split(flags) if flags else []) + full_cmd
             # 覆盖率收集：sudo 后进程的身份是 root，让它写自己的 GCOV_PREFIX，
             # 避免和当前用户身份争抢同一个 .gcda。
             #

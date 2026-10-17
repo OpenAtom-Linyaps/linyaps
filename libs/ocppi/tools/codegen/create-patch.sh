@@ -26,9 +26,15 @@ cd "$repoRoot"
 
 "$USER_SHELL"
 
-diff -ruN "${origin#"$repoRoot/"}" "${include#"$repoRoot/"}" \
-	>"$repoRoot"/tools/codegen/fix.patch &&
-	exit 1
+# diff(1): 0 = identical, 1 = differences found, >=2 = trouble.
+if diff -ruN "${origin#"$repoRoot/"}" "${include#"$repoRoot/"}" \
+	>"$repoRoot"/tools/codegen/fix.patch; then
+	diff_status=0
+else
+	diff_status=$?
+fi
 
 chmod -R u+w "$origin"
 rm -rf "$origin"
+
+exit "$diff_status"

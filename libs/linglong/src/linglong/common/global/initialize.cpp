@@ -120,6 +120,17 @@ void initLinyapsLogSystem(linglong::utils::log::LogBackend backend)
 void applicationInitialize()
 {
     catchUnixSignals({ SIGTERM, SIGQUIT, SIGINT, SIGHUP });
+
+    // Commands run through Cmd::exec write into pipes whose reader may be gone
+    // at any moment (an executable OCI config patch that exits without draining
+    // its stdin, for example). With the default disposition that write(2)
+    // terminates the whole application before it can inspect EPIPE, so ignore
+    // SIGPIPE here and let the failing call report an ordinary error.
+    struct sigaction ignorePipe{};
+    ignorePipe.sa_handler = SIG_IGN;
+    sigemptyset(&ignorePipe.sa_mask);
+    ignorePipe.sa_flags = 0;
+    sigaction(SIGPIPE, &ignorePipe, nullptr);
 }
 
 // Return current binary file is installed on the system

@@ -52,6 +52,16 @@ configure_files(
 configure_file(share/linglong/builder/templates/example.yaml
                share/linglong/builder/templates/example.yaml COPYONLY)
 
+if(ENABLE_TESTING)
+  find_package(PythonInterp 3.6 QUIET)
+  if(PYTHONINTERP_FOUND)
+    add_test(NAME fetch_dsc_source_cleanup
+             COMMAND ${PYTHON_EXECUTABLE}
+                     ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_fetch_dsc_source.py
+                     ${CMAKE_CURRENT_BINARY_DIR}/libexec/linglong/fetch-dsc-source)
+  endif()
+endif()
+
 # bash-completion
 set(BASH_COMPLETIONS_DIR ${CMAKE_INSTALL_DATADIR}/bash-completion)
 

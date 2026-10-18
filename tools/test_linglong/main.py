@@ -2143,8 +2143,9 @@ class SmokeTest:
             print(f"    [note] 这些子命令不接受 --json，已跳过: {unsupported}")
 
         # 交叉验证：JSON 和文本两种输出必须一致
-        row_re = re.compile(r"^(\S+)\s+\S+\s+(\d[\d.]*)\s", re.M)
-        text_set = {f"{i}/{v}" for i, v in row_re.findall(
+        # 名称列可能含空格（org.deepin.runtime.dtk 的名称是 "deepin runtime"），
+        # 所以和 _installed_refs() 一样用 _REF_ROW 解析文本行。
+        text_set = {f"{i}/{v}" for i, v, _c, _m in self._REF_ROW.findall(
             self._ll_cli("list", check=False).stdout or "")}
         r = self._ll_cli("list", "--json", check=False)
         try:
@@ -2160,12 +2161,12 @@ class SmokeTest:
                 v = item.get("version")
                 if i and v:
                     json_set.add(f"{i}/{v}")
-        # ⚠️ 实测：两种输出【不相等】—— list --json 会比文本多出
-        # org.deepin.runtime.dtk 这类 runtime（文本列表看着只列 app）。
-        # 这可能是"文本只列应用、JSON 列全部已装 ref"的有意设计，
-        # 也可能是遗漏，所以这里【不断言相等】，只断言真正要紧的
-        # 安全属性：JSON 不能比文本【少】—— 少一个就是 JSON 漏报了
-        # 已安装的东西，那才是功能缺陷。
+         # ⚠️ 之前实测 list --json 比文本多出 org.deepin.runtime.dtk，
+        # 原因是这里的文本解析把名称列当成单个 token（\S+），名称含空格
+        # 的行整行匹配不上，并不是 ll-cli 的问题：Cli::list() 把同一份
+        # 列表交给 CLIPrinter 和 JSONPrinter，文本里同样列出了 runtime。
+        # 现在改用 _REF_ROW 解析，两边应当一致；这里仍只对"JSON 比文本
+        # 【少】"（漏报已安装的东西）断言，多出的部分保留为提示。
         missing = sorted(text_set - json_set)
         if missing:
             raise AssertionError(
@@ -2328,11 +2329,11 @@ class SmokeTest:
     def test_cache_write_failure(self):
         app_id = CALENDAR_APP_ID
         cache = "/var/lib/linglong/states.json"
-        row_re = re.compile(r"^(\S+)\s+\S+\s+(\d[\d.]*)\s", re.M)
 
         def installed():
             out = self._ll_cli("list", check=False).stdout
-            return {f"{i}/{v}" for i, v in row_re.findall(out or "")}
+            return {f"{i}/{v}"
+                    for i, v, _c, _m in self._REF_ROW.findall(out or "")}
 
         def ensure_installed():
             if not any(x.startswith(app_id + "/") for x in installed()):
@@ -2600,11 +2601,11 @@ class SmokeTest:
     #   4. 跑完必须把应用还原成"装着"（本用例动了真实安装状态）
     def test_client_disconnect_during_task(self):
         app_id = CALENDAR_APP_ID
-        row_re = re.compile(r"^(\S+)\s+\S+\s+(\d[\d.]*)\s", re.M)
 
         def installed():
             out = self._ll_cli("list", check=False).stdout
-            return {f"{i}/{v}" for i, v in row_re.findall(out or "")}
+            return {f"{i}/{v}"
+                    for i, v, _c, _m in self._REF_ROW.findall(out or "")}
 
         if not any(x.startswith(app_id + "/") for x in installed()):
             self._sudo_ll_cli("install", app_id, timeout=900, check=False)

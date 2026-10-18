@@ -1,6 +1,6 @@
 #!/bin/env bash
 
-# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
+# SPDX-FileCopyrightText: 2023-2026 UnionTech Software Technology Co., Ltd.
 #
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -9,6 +9,7 @@ cd "$(git rev-parse --show-toplevel)" || exit 255
 tmpdir=$(
         mktemp -d /tmp/linglong-develop-XXXXXX || exit 255
 )
+trap 'rm -rf "$tmpdir"' EXIT
 
 mkdir -p "$tmpdir"/external || exit 255
 
@@ -46,5 +47,3 @@ rm -rf external/CLI11
 mkdir -p external/CLI11/CLI || exit 255
 
 mv "$cli11_file" external/CLI11/CLI/CLI.hpp || exit 255
-
-rm -rf "$tmpdir"

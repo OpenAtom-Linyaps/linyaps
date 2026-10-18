@@ -341,6 +341,7 @@ int handleRemove(linglong::repo::OSTreeRepo &repo, const RemoveCommandOptions &o
 {
     auto ret = linglong::builder::cmdRemoveApp(repo, options.removeList, !options.noCleanObjects);
     if (!ret.has_value()) {
+        LogE("Remove failed: {}", ret.error());
         return -1;
     }
     return 0;

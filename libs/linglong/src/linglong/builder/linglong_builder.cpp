@@ -364,19 +364,28 @@ utils::error::Result<void> cmdRemoveApp(repo::OSTreeRepo &repo,
                                         std::vector<std::string> refs,
                                         bool prune)
 {
+    LINGLONG_TRACE("cmd remove app");
+
+    std::vector<std::string> failedRefs;
     for (const auto &ref : refs) {
         auto r = package::Reference::parse(ref);
         if (!r.has_value()) {
             std::cerr << ref << ": " << r.error().message() << std::endl;
+            failedRefs.push_back(ref);
             continue;
         }
         auto modules = repo.getModuleList(*r);
+        bool removed = true;
         for (const auto &module : modules) {
             auto v = repo.remove(*r, module);
             if (!v.has_value()) {
                 std::cerr << ref << ": " << v.error().message() << std::endl;
+                removed = false;
                 continue;
             }
+        }
+        if (!removed) {
+            failedRefs.push_back(ref);
         }
     }
     if (prune) {
@@ -389,6 +398,11 @@ utils::error::Result<void> cmdRemoveApp(repo::OSTreeRepo &repo,
     if (!v.has_value()) {
         std::cerr << v.error().message();
     }
+
+    if (!failedRefs.empty()) {
+        return LINGLONG_ERR(fmt::format("failed to remove {}", fmt::join(failedRefs, ", ")));
+    }
+
     return LINGLONG_OK;
 }
 

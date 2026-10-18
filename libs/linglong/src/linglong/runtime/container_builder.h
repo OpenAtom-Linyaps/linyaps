@@ -36,6 +36,8 @@ utils::error::Result<std::filesystem::path> makeBundleDir(const std::string &con
 
 std::string genContainerID(const api::types::v1::RunContextConfig &config) noexcept;
 
+utils::error::Result<std::filesystem::path> resolveHomeDirectory() noexcept;
+
 struct CommonContainerOptions
 {
     std::optional<std::filesystem::path> containerCachePath;

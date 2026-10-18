@@ -11,6 +11,7 @@
 #include "linglong/package/elf_handler.h"
 #include "linglong/package/uab_file.h"
 #include "linglong/package/uab_packager.h"
+#include "linglong/package_manager/uab_installation.h"
 #include "linglong/utils/cmd.h"
 
 #include <QCryptographicHash>
@@ -147,6 +148,48 @@ std::string readFile(const std::filesystem::path &path)
     return { std::istreambuf_iterator<char>{ stream }, std::istreambuf_iterator<char>{} };
 }
 
+// Rewrites the metadata section of a UAB built from the shared fixture and
+// refreshes the digest stored in the .note.uab.sig section. The metadata
+// section has a fixed size in the fixture, so the serialized JSON is padded
+// with spaces (ignored by JSON parsers) when the replacement is shorter.
+bool rewriteUabMeta(const std::filesystem::path &uabPath,
+                    const nlohmann::json &meta,
+                    std::size_t metaSectionSize)
+{
+    auto metaData = meta.dump();
+    if (metaData.size() > metaSectionSize) {
+        ADD_FAILURE() << "rewritten metadata does not fit into the linglong.meta section";
+        return false;
+    }
+    metaData.append(metaSectionSize - metaData.size(), ' ');
+    const auto metaDigest = calculateDigest(metaData);
+
+    auto elf = ElfHandler::create(uabPath);
+    if (!elf) {
+        ADD_FAILURE() << elf.error().message();
+        return false;
+    }
+
+    auto writeMetaRet =
+      (*elf)->writeSectionData("linglong.meta", 0, metaData.data(), metaData.size());
+    if (!writeMetaRet) {
+        ADD_FAILURE() << writeMetaRet.error().message();
+        return false;
+    }
+
+    auto writeSignatureRet =
+      (*elf)->writeSectionData(std::string{ common::uab::signatureSection },
+                               common::uab::digestOffset,
+                               metaDigest.data(),
+                               metaDigest.size());
+    if (!writeSignatureRet) {
+        ADD_FAILURE() << writeSignatureRet.error().message();
+        return false;
+    }
+
+    return true;
+}
+
 TEST_F(UabFileTest, UnpackFuseOffset)
 {
     if (!std::filesystem::exists("/dev/fuse")) {
@@ -219,6 +262,77 @@ TEST_F(UabFileTest, Verify)
     auto verifyRet = uab.verify();
     ASSERT_TRUE(verifyRet.has_value()) << "Failed to verify uab file";
     ASSERT_TRUE(*verifyRet) << "Verify failed";
+}
+
+TEST_F(UabFileTest, VerifyAcceptsEmptyArchitectureButLayerValidationRejectsIt)
+{
+    TempDir modifiedDir{ "linglong-uab-empty-arch-" };
+    const auto modifiedUab = modifiedDir.path() / "empty-arch.uab";
+    std::filesystem::copy_file(uabFile,
+                               modifiedUab,
+                               std::filesystem::copy_options::overwrite_existing);
+
+    const auto originalMeta = readFile(testDir->path() / "info.json");
+    auto meta = nlohmann::json::parse(originalMeta);
+    meta["layers"][0]["info"]["arch"] = nlohmann::json::array();
+    ASSERT_TRUE(rewriteUabMeta(modifiedUab, meta, originalMeta.size()));
+
+    auto uab = UABFile::loadFromFile(modifiedUab);
+    ASSERT_TRUE(uab.has_value()) << uab.error().message();
+
+    // verify() only checks the digest relationships between the note,
+    // metadata and bundle. It intentionally does not validate layer fields.
+    auto verifyRet = (*uab)->verify();
+    ASSERT_TRUE(verifyRet.has_value()) << verifyRet.error().message();
+    ASSERT_TRUE(*verifyRet);
+
+    auto metaInfo = (*uab)->getMetaInfo();
+    ASSERT_TRUE(metaInfo.has_value()) << metaInfo.error().message();
+    const auto &layers = metaInfo->get().layers;
+    ASSERT_FALSE(layers.empty());
+    ASSERT_TRUE(layers.front().info.arch.empty());
+
+    // This is the first layer check performed by the staged-UAB installation
+    // path. It must report an error rather than indexing arch[0].
+    auto validationRet = service::UabInstallationAction::validateUabLayer(layers.front());
+    ASSERT_FALSE(validationRet.has_value());
+    EXPECT_NE(validationRet.error().message().find("architecture"), std::string::npos);
+}
+
+TEST_F(UabFileTest, VerifyAcceptsInvalidArchitectureButLayerValidationRejectsIt)
+{
+    TempDir modifiedDir{ "linglong-uab-invalid-arch-" };
+    const auto modifiedUab = modifiedDir.path() / "invalid-arch.uab";
+    std::filesystem::copy_file(uabFile,
+                               modifiedUab,
+                               std::filesystem::copy_options::overwrite_existing);
+
+    const auto originalMeta = readFile(testDir->path() / "info.json");
+    auto meta = nlohmann::json::parse(originalMeta);
+    auto &info = meta["layers"][0]["info"];
+    info["arch"] = { "not-an-architecture" };
+    // Removing the optional description makes the rewritten JSON fit into the
+    // fixed-size metadata section used by the fixture.
+    info.erase("description");
+    ASSERT_TRUE(rewriteUabMeta(modifiedUab, meta, originalMeta.size()));
+
+    auto uab = UABFile::loadFromFile(modifiedUab);
+    ASSERT_TRUE(uab.has_value()) << uab.error().message();
+
+    auto verifyRet = (*uab)->verify();
+    ASSERT_TRUE(verifyRet.has_value()) << verifyRet.error().message();
+    ASSERT_TRUE(*verifyRet);
+
+    auto metaInfo = (*uab)->getMetaInfo();
+    ASSERT_TRUE(metaInfo.has_value()) << metaInfo.error().message();
+    const auto &layers = metaInfo->get().layers;
+    ASSERT_FALSE(layers.empty());
+    ASSERT_EQ(layers.front().info.arch.size(), 1U);
+    ASSERT_EQ(layers.front().info.arch.front(), "not-an-architecture");
+
+    auto validationRet = service::UabInstallationAction::validateUabLayer(layers.front());
+    ASSERT_FALSE(validationRet.has_value());
+    EXPECT_NE(validationRet.error().message().find("unknown architecture"), std::string::npos);
 }
 
 TEST_F(UabFileTest, VerifyRejectsMismatchedMetaSignature)

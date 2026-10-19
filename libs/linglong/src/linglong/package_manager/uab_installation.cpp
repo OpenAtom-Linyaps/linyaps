@@ -93,8 +93,7 @@ UabInstallationAction::validateUabLayer(const api::types::v1::UabLayer &layer)
             return LINGLONG_ERR(arch);
         }
         if (*arch != hostArch) {
-            return LINGLONG_ERR(
-              fmt::format("uab arch: {} not match host architecture", rawArch));
+            return LINGLONG_ERR(fmt::format("uab arch: {} not match host architecture", rawArch));
         }
     }
 

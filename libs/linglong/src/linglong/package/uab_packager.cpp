@@ -8,12 +8,15 @@
 #include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/api/types/v1/UabLayer.hpp"
 #include "linglong/api/types/v1/Version.hpp"
+#include "linglong/common/error.h"
 #include "linglong/common/strings.h"
 #include "linglong/common/uab_signature.h"
 #include "linglong/utils/cmd.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/file.h"
+#include "linglong/utils/finally/finally.h"
 #include "linglong/utils/log/log.h"
+#include "linglong/utils/unique_fd.h"
 
 #include <fmt/format.h>
 
@@ -22,12 +25,16 @@
 #include <QUuid>
 
 #include <algorithm>
+#include <array>
+#include <cerrno>
 #include <filesystem>
 #include <functional>
 #include <system_error>
 #include <utility>
 
+#include <fcntl.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 namespace linglong::package {
 
@@ -187,6 +194,160 @@ std::string detail::generateExecLoader() noexcept
            "exec \"$LINGLONG_UAB_APPROOT/entry.sh\" \"$@\"\n";
 }
 
+utils::error::Result<void> detail::exportToFile(const std::filesystem::path &source,
+                                                const std::filesystem::path &destination) noexcept
+{
+    LINGLONG_TRACE(fmt::format("export {} to {}", source, destination));
+
+    // 0755: the UAB must be executable regardless of the filesystem it is exported to.
+    constexpr mode_t exportedMode = S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH;
+    const auto destinationDir =
+      destination.parent_path().empty() ? std::filesystem::path{ "." } : destination.parent_path();
+
+    // Set the permissions before renaming so the destination is never visible with the wrong mode.
+    // chmod() follows symlinks, so operate on the source instead of the final path.
+    std::error_code ec;
+    std::filesystem::permissions(source,
+                                 static_cast<std::filesystem::perms>(exportedMode),
+                                 std::filesystem::perm_options::replace,
+                                 ec);
+    if (ec && ec != std::errc::no_such_file_or_directory) {
+        LogW("failed to set permissions on {}: {}", source, ec.message());
+    }
+
+    ec.clear();
+    std::filesystem::rename(source, destination, ec);
+    if (ec && ec != std::errc::cross_device_link) {
+        return LINGLONG_ERR(fmt::format("failed to rename {} to {}", source, destination), ec);
+    }
+
+    if (ec == std::errc::cross_device_link) {
+        // rename() cannot move a file to another filesystem (EXDEV), e.g. when the output is on
+        // another partition, a tmpfs or a removable disk. Copy the file into the destination
+        // directory under a temporary name and rename it there, so the destination never holds a
+        // partial file.
+        auto temporary = destinationDir / ("." + destination.filename().string() + ".tmp");
+
+        // The temporary file must be created by this call. A leftover file from a previous run is
+        // an error, and O_EXCL also prevents following a pre-existing symlink at this path.
+        utils::fd::UniqueFd tempFd{
+            ::open(temporary.c_str(), O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, S_IRUSR | S_IWUSR)
+        };
+        if (!tempFd) {
+            const int err = errno;
+            if (err == EEXIST) {
+                return LINGLONG_ERR(
+                  fmt::format("failed to create temporary file {}: {}; remove the stale file if "
+                              "no other export is running",
+                              temporary,
+                              common::error::errorString(err)),
+                  std::error_code(err, std::generic_category()));
+            }
+            return LINGLONG_ERR(fmt::format("failed to create temporary file {}: {}",
+                                            temporary,
+                                            common::error::errorString(err)),
+                                std::error_code(err, std::generic_category()));
+        }
+
+        // Remove the temporary file unless it has been renamed into place.
+        bool exported = false;
+        auto cleanupTemporary = utils::finally::finally([&temporary, &exported]() {
+            if (exported) {
+                return;
+            }
+            std::error_code removeEc;
+            std::filesystem::remove(temporary, removeEc);
+        });
+
+        utils::fd::UniqueFd sourceFd{ ::open(source.c_str(), O_RDONLY | O_CLOEXEC) };
+        if (!sourceFd) {
+            const int err = errno;
+            return LINGLONG_ERR(
+              fmt::format("failed to open {}: {}", source, common::error::errorString(err)),
+              std::error_code(err, std::generic_category()));
+        }
+
+        // Write through the descriptor returned by open() instead of reopening the temporary path.
+        std::array<char, 64 * 1024> buffer{};
+        for (;;) {
+            const auto readSize = ::read(sourceFd.get(), buffer.data(), buffer.size());
+            if (readSize < 0) {
+                if (errno == EINTR) {
+                    continue;
+                }
+                const int err = errno;
+                return LINGLONG_ERR(
+                  fmt::format("failed to read {}: {}", source, common::error::errorString(err)),
+                  std::error_code(err, std::generic_category()));
+            }
+            if (readSize == 0) {
+                break;
+            }
+            for (ssize_t written = 0; written < readSize;) {
+                const auto writeSize =
+                  ::write(tempFd.get(), buffer.data() + written, readSize - written);
+                if (writeSize < 0) {
+                    if (errno == EINTR) {
+                        continue;
+                    }
+                    const int err = errno;
+                    return LINGLONG_ERR(fmt::format("failed to write {}: {}",
+                                                    temporary,
+                                                    common::error::errorString(err)),
+                                        std::error_code(err, std::generic_category()));
+                }
+                if (writeSize == 0) {
+                    return LINGLONG_ERR(
+                      fmt::format("failed to write {}: write returned zero bytes", temporary),
+                      std::error_code(EIO, std::generic_category()));
+                }
+                written += writeSize;
+            }
+        }
+
+        if (::fchmod(tempFd.get(), exportedMode) != 0) {
+            LogW("failed to set permissions on {}: {}",
+                 temporary,
+                 common::error::errorString(errno));
+        }
+
+        if (::fsync(tempFd.get()) != 0) {
+            LogW("failed to flush {}: {}", temporary, common::error::errorString(errno));
+        }
+
+        if (::close(tempFd.release()) != 0) {
+            LogW("failed to close {}: {}", temporary, common::error::errorString(errno));
+        }
+
+        std::filesystem::rename(temporary, destination, ec);
+        if (ec) {
+            return LINGLONG_ERR(fmt::format("failed to rename {} to {}", temporary, destination),
+                                ec);
+        }
+        exported = true;
+
+        std::filesystem::remove(source, ec);
+        if (ec) {
+            LogW("failed to remove {} after exporting it to {}: {}",
+                 source,
+                 destination,
+                 ec.message());
+        }
+    }
+
+    // Persist the rename so the destination cannot disappear after a power loss.
+    utils::fd::UniqueFd dirFd{ ::open(destinationDir.c_str(), O_RDONLY | O_DIRECTORY | O_CLOEXEC) };
+    if (!dirFd) {
+        LogW("failed to open {} to flush it: {}",
+             destinationDir,
+             common::error::errorString(errno));
+    } else if (::fsync(dirFd.get()) != 0) {
+        LogW("failed to flush {}: {}", destinationDir, common::error::errorString(errno));
+    }
+
+    return LINGLONG_OK;
+}
+
 utils::error::Result<void>
 detail::ensureExecEntry(const std::filesystem::path &entryPath,
                         const std::optional<std::vector<std::string>> &command,
@@ -322,20 +483,9 @@ utils::error::Result<void> UABPackager::pack(const std::filesystem::path &uabFil
         return ret;
     }
 
-    std::filesystem::rename(uabApp, uabFilePath, ec);
-    if (ec) {
+    if (auto ret = detail::exportToFile(uabApp, uabFilePath); !ret) {
         return LINGLONG_ERR(fmt::format("export uab from {} to {} failed", uabApp, uabFilePath),
-                            ec);
-    }
-
-    std::filesystem::permissions(uabFilePath,
-                                 std::filesystem::perms::owner_exec
-                                   | std::filesystem::perms::group_exec
-                                   | std::filesystem::perms::others_exec,
-                                 std::filesystem::perm_options::add,
-                                 ec);
-    if (ec) {
-        return LINGLONG_ERR(fmt::format("failed to set {} permissions", uabFilePath), ec);
+                            ret);
     }
 
     return LINGLONG_OK;

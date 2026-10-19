@@ -115,6 +115,7 @@ DBusNotifier::request(const api::types::v1::InteractionRequest &request)
     quint32 notificationID{ 0 };
     QString choice;
     auto reason{ CloseReason::NoReason };
+    QEventLoop loop;
 
     auto invokeCon =
       QObject::connect(this,
@@ -128,13 +129,15 @@ DBusNotifier::request(const api::types::v1::InteractionRequest &request)
         QObject::disconnect(invokeCon);
     });
 
-    auto closedCon = QObject::connect(this,
-                                      &DBusNotifier::notificationClosed,
-                                      [&notificationID, &reason](quint32 ID, quint32 newReason) {
-                                          if (notificationID != 0 && notificationID == ID) {
-                                              reason = static_cast<CloseReason>(newReason);
-                                          }
-                                      });
+    auto closedCon =
+      QObject::connect(this,
+                       &DBusNotifier::notificationClosed,
+                       [&notificationID, &reason, &loop](quint32 ID, quint32 newReason) {
+                           if (notificationID != 0 && notificationID == ID) {
+                               reason = static_cast<CloseReason>(newReason);
+                               loop.quit();
+                           }
+                       });
     auto disClosedCon = utils::finally::finally([&closedCon] {
         QObject::disconnect(closedCon);
     });
@@ -152,16 +155,11 @@ DBusNotifier::request(const api::types::v1::InteractionRequest &request)
     }
     notificationID = *reply;
 
-    QEventLoop loop;
-    std::function<void()> checker = std::function{ [&loop, &reason, &checker]() {
-        if (reason != CloseReason::NoReason) {
-            loop.exit();
-        }
-        QMetaObject::invokeMethod(&loop, checker, Qt::QueuedConnection);
-    } };
-
-    QMetaObject::invokeMethod(&loop, checker, Qt::QueuedConnection);
-    loop.exec();
+    // The close signal wakes the event loop; do not keep a self-queued callback
+    // running while the user is deciding. quit() before exec() is not retained.
+    if (reason == CloseReason::NoReason) {
+        loop.exec();
+    }
 
     switch (reason) {
     case CloseReason::Dismissed:

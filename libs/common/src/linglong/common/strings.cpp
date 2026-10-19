@@ -8,6 +8,7 @@
 
 #include <fmt/format.h>
 
+#include <cctype>
 #include <random>
 #include <sstream>
 
@@ -38,9 +39,16 @@ bool stringEqual(std::string_view str1, std::string_view str2, bool caseSensitiv
         return str1 == str2;
     }
 
-    return std::equal(str1.begin(), str1.end(), str2.begin(), str2.end(), [](char ch1, char ch2) {
-        return tolower(ch1) == tolower(ch2);
-    });
+    if (str1.size() != str2.size()) {
+        return false;
+    }
+
+    return std::equal(str1.begin(),
+                      str1.end(),
+                      str2.begin(),
+                      [](unsigned char ch1, unsigned char ch2) {
+                          return std::tolower(ch1) == std::tolower(ch2);
+                      });
 }
 
 std::string_view trim_left(std::string_view str, std::string_view chars) noexcept

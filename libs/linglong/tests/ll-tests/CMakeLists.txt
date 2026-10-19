@@ -118,3 +118,10 @@ target_include_directories(${tests}
                            PUBLIC ${PROJECT_SOURCE_DIR}/apps/uab/header/src)
 target_include_directories(${tests}
                            PUBLIC ${PROJECT_SOURCE_DIR}/apps/ll-driver-detect/src)
+
+# The fetch helper regressions use local repositories and do not require network access.
+find_package(Python3 COMPONENTS Interpreter REQUIRED)
+add_test(
+  NAME fetch-git-source-clean-workdir
+  COMMAND ${Python3_EXECUTABLE}
+          ${PROJECT_SOURCE_DIR}/tools/tests/test_fetch_git_source.py)

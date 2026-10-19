@@ -303,6 +303,7 @@ TEST(ValidateUabLayer, RejectsSecondaryArchitectureThatDoesNotMatchHost)
 TEST(ValidateUabLayer, RejectsEmptyOrUnparsableMetadataFields)
 {
     using Mutator = void (*)(api::types::v1::UabLayer &);
+
     struct TestCase
     {
         const char *name;
@@ -312,22 +313,34 @@ TEST(ValidateUabLayer, RejectsEmptyOrUnparsableMetadataFields)
 
     const TestCase cases[] = {
         { "id",
-          [](api::types::v1::UabLayer &layer) { layer.info.id.clear(); },
+          [](api::types::v1::UabLayer &layer) {
+              layer.info.id.clear();
+          },
           "missing id" },
         { "channel",
-          [](api::types::v1::UabLayer &layer) { layer.info.channel.clear(); },
+          [](api::types::v1::UabLayer &layer) {
+              layer.info.channel.clear();
+          },
           "missing channel" },
         { "empty version",
-          [](api::types::v1::UabLayer &layer) { layer.info.version.clear(); },
+          [](api::types::v1::UabLayer &layer) {
+              layer.info.version.clear();
+          },
           "missing version" },
         { "unparsable version",
-          [](api::types::v1::UabLayer &layer) { layer.info.version = "."; },
+          [](api::types::v1::UabLayer &layer) {
+              layer.info.version = ".";
+          },
           "parse version failed" },
         { "kind",
-          [](api::types::v1::UabLayer &layer) { layer.info.kind.clear(); },
+          [](api::types::v1::UabLayer &layer) {
+              layer.info.kind.clear();
+          },
           "missing kind" },
         { "module",
-          [](api::types::v1::UabLayer &layer) { layer.info.packageInfoV2Module.clear(); },
+          [](api::types::v1::UabLayer &layer) {
+              layer.info.packageInfoV2Module.clear();
+          },
           "missing module" },
     };
 

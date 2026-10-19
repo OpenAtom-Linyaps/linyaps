@@ -146,7 +146,11 @@ private:
     [[nodiscard]] static utils::error::Result<
       std::vector<api::types::v1::ContainerProcessStateInfo>>
     getAllRunningContainers() noexcept;
-    utils::error::Result<bool> isRefBusy(const package::Reference &ref) noexcept;
+
+protected:
+    virtual utils::error::Result<bool> isRefBusy(const package::Reference &ref) noexcept;
+
+private:
     void deferredUninstall() noexcept;
     utils::error::Result<void>
     Prune(std::vector<api::types::v1::PackageInfoV2> &removedInfo) noexcept;

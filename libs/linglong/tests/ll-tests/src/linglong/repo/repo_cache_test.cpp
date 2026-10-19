@@ -281,6 +281,87 @@ TEST_F(RepoCacheTest, AddItemFailsWhenParentMissing)
     EXPECT_FALSE(result.has_value());
 }
 
+TEST_F(RepoCacheTest, AddItemRestoresLayersWhenWriteFails)
+{
+    auto cacheFile = tempDir.path() / "states.json";
+    RepoCache cache(cacheFile);
+    auto item = createLayerItem("c1", "app.a", "1.0.0");
+    auto temporaryFile = tempDir.path() / "temp-states.json";
+    ASSERT_TRUE(fs::create_directory(temporaryFile));
+
+    EXPECT_FALSE(cache.addLayerItem(item).has_value());
+    EXPECT_TRUE(cache.queryExistingLayerItem().empty());
+
+    ASSERT_TRUE(fs::remove(temporaryFile));
+    ASSERT_TRUE(cache.addLayerItem(item).has_value());
+    RepoCache reloaded(cacheFile);
+    ASSERT_TRUE(reloaded.load().has_value());
+    EXPECT_EQ(reloaded.queryExistingLayerItem().size(), 1);
+}
+
+TEST_F(RepoCacheTest, DeleteItemRestoresLayersWhenWriteFails)
+{
+    auto cacheFile = tempDir.path() / "states.json";
+    RepoCache cache(cacheFile);
+    auto first = createLayerItem("c1", "app.a", "1.0.0");
+    auto second = createLayerItem("c2", "app.b", "1.0.0");
+    ASSERT_TRUE(cache.addLayerItem(first).has_value());
+    ASSERT_TRUE(cache.addLayerItem(second).has_value());
+    auto temporaryFile = tempDir.path() / "temp-states.json";
+    ASSERT_TRUE(fs::create_directory(temporaryFile));
+
+    EXPECT_FALSE(cache.deleteLayerItem(first).has_value());
+    auto layers = cache.queryExistingLayerItem();
+    ASSERT_EQ(layers.size(), 2);
+    EXPECT_EQ(layers[0].commit, first.commit);
+    EXPECT_EQ(layers[1].commit, second.commit);
+
+    ASSERT_TRUE(fs::remove(temporaryFile));
+    ASSERT_TRUE(cache.deleteLayerItem(first).has_value());
+    RepoCache reloaded(cacheFile);
+    ASSERT_TRUE(reloaded.load().has_value());
+    auto persisted = reloaded.queryExistingLayerItem();
+    ASSERT_EQ(persisted.size(), 1);
+    EXPECT_EQ(persisted[0].commit, second.commit);
+}
+
+TEST_F(RepoCacheTest, UpdateMergedItemsRestoresStateWhenWriteFails)
+{
+    auto cacheFile = tempDir.path() / "states.json";
+    RepoCache cache(cacheFile);
+    ASSERT_TRUE(cache.writeToDisk().has_value());
+    auto temporaryFile = tempDir.path() / "temp-states.json";
+    ASSERT_TRUE(fs::create_directory(temporaryFile));
+    std::vector<api::types::v1::RepositoryCacheMergedItem> items = {
+        api::types::v1::RepositoryCacheMergedItem{ .commits = { "c1" },
+                                                   .id = "app.a",
+                                                   .modules = { "binary" } },
+    };
+
+    EXPECT_FALSE(cache.updateMergedItems(items).has_value());
+    EXPECT_FALSE(cache.queryMergedItems().has_value());
+
+    ASSERT_TRUE(fs::remove(temporaryFile));
+    ASSERT_TRUE(cache.updateMergedItems(items).has_value());
+    auto replacement = items;
+    replacement[0].id = "app.b";
+    ASSERT_TRUE(fs::create_directory(temporaryFile));
+    EXPECT_FALSE(cache.updateMergedItems(replacement).has_value());
+    auto merged = cache.queryMergedItems();
+    ASSERT_TRUE(merged.has_value());
+    ASSERT_EQ(merged->size(), 1);
+    EXPECT_EQ(merged->front().id, "app.a");
+
+    ASSERT_TRUE(fs::remove(temporaryFile));
+    ASSERT_TRUE(cache.writeToDisk().has_value());
+    RepoCache reloaded(cacheFile);
+    ASSERT_TRUE(reloaded.load().has_value());
+    auto persisted = reloaded.queryMergedItems();
+    ASSERT_TRUE(persisted.has_value());
+    ASSERT_EQ(persisted->size(), 1);
+    EXPECT_EQ(persisted->front().id, "app.a");
+}
+
 TEST_F(RepoCacheTest, AddDuplicateItemFails)
 {
     auto cacheFile = tempDir.path() / "states.json";

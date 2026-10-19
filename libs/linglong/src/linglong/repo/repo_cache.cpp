@@ -154,6 +154,7 @@ RepoCache::addLayerItem(const api::types::v1::RepositoryCacheLayersItem &item)
     cache.layers.emplace_back(item);
     auto ret = writeToDisk();
     if (!ret) {
+        cache.layers.pop_back();
         return LINGLONG_ERR(ret);
     }
 
@@ -192,9 +193,12 @@ RepoCache::deleteLayerItem(const api::types::v1::RepositoryCacheLayersItem &item
         return LINGLONG_ERR(it);
     }
 
+    const auto index = std::distance(cache.layers.begin(), *it);
+    auto originalItem = std::move(**it);
     cache.layers.erase(*it);
     auto ret = writeToDisk();
     if (!ret) {
+        cache.layers.insert(cache.layers.begin() + index, std::move(originalItem));
         return LINGLONG_ERR(ret);
     }
 
@@ -276,9 +280,11 @@ utils::error::Result<void> RepoCache::updateMergedItems(
   const std::vector<api::types::v1::RepositoryCacheMergedItem> &items) noexcept
 {
     LINGLONG_TRACE("update merged items");
+    auto originalItems = cache.merged;
     cache.merged = items;
     auto ret = writeToDisk();
     if (!ret) {
+        cache.merged = std::move(originalItems);
         return LINGLONG_ERR(ret);
     }
     return LINGLONG_OK;

@@ -475,6 +475,10 @@ public:
             if (!match.captured(5).isNull()) {
                 build_meta = match.captured(5).toStdString();
                 size_t security_pos = build_meta.find("security.");
+                while (security_pos != std::string::npos && security_pos != 0
+                       && build_meta[security_pos - 1] != '.') {
+                    security_pos = build_meta.find("security.", security_pos + 1);
+                }
                 if (security_pos != std::string::npos) {
                     std::string security_part = build_meta.substr(security_pos + 9);
 

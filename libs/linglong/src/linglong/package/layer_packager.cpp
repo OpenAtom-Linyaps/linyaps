@@ -127,6 +127,10 @@ LayerPackager::pack(const LayerDir &dir, const QString &layerFilePath) const
     layerInfo.info = nlohmann::json(*info);
     auto data = QByteArray::fromStdString(nlohmann::json(layerInfo).dump());
 
+    if (data.size() > LayerFile::maxMetadataSize) {
+        return LINGLONG_ERR("layer metadata exceeds the supported limit (16 MiB)");
+    }
+
     QByteArray dataSizeBytes;
 
     QDataStream dataSizeStream(&dataSizeBytes, QIODevice::WriteOnly);

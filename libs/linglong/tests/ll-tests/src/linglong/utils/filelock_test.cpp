@@ -388,3 +388,74 @@ TEST_F(FileLockTest, LockAlreadyLockedDiffType)
     EXPECT_THAT(lock_result.error().message(),
                 ::testing::HasSubstr("failed to lock with different type"));
 }
+
+namespace {
+
+// Use a separate process and traditional POSIX locks, as ll-init does. This
+// verifies kernel exclusion rather than FileLock's local isLocked() flag.
+int probePosixWriteLock(const std::filesystem::path &path)
+{
+    const auto child = ::fork();
+    if (child < 0) {
+        return -1;
+    }
+    if (child == 0) {
+        const auto fd = ::open(path.c_str(), O_WRONLY | O_CLOEXEC);
+        if (fd < 0) {
+            ::_exit(2);
+        }
+        struct flock fl{};
+        fl.l_type = F_WRLCK;
+        fl.l_whence = SEEK_SET;
+        const auto result = ::fcntl(fd, F_SETLK, &fl);
+        const auto error = errno;
+        ::close(fd);
+        ::_exit(result == 0 ? 0 : (error == EACCES || error == EAGAIN ? 1 : 2));
+    }
+    int status = 0;
+    if (::waitpid(child, &status, 0) != child || !WIFEXITED(status)) {
+        return -1;
+    }
+    return WEXITSTATUS(status);
+}
+
+} // namespace
+
+TEST_F(FileLockTest, ClosingHardLinkAliasKeepsOriginalLock)
+{
+    TempDir temp;
+    const auto path = temp.path() / "original";
+    const auto alias = temp.path() / "alias";
+    auto original = FileLock::create(path, LockType::Write);
+    ASSERT_TRUE(original.has_value());
+    ASSERT_TRUE(original->lock(LockType::Write).has_value());
+    std::filesystem::create_hard_link(path, alias);
+    {
+        auto other = FileLock::create(alias, LockType::Write, false);
+        ASSERT_TRUE(other.has_value());
+        auto acquired = other->tryLock(LockType::Write);
+        ASSERT_TRUE(acquired.has_value());
+        EXPECT_FALSE(*acquired);
+    }
+    EXPECT_TRUE(original->isLocked());
+    EXPECT_EQ(probePosixWriteLock(path), 1);
+    ASSERT_TRUE(original->unlock().has_value());
+    EXPECT_EQ(probePosixWriteLock(path), 0);
+}
+
+TEST_F(FileLockTest, ClosingUnmanagedAliasDescriptorKeepsOriginalLock)
+{
+    TempDir temp;
+    const auto path = temp.path() / "original";
+    auto original = FileLock::create(path, LockType::Write);
+    ASSERT_TRUE(original.has_value());
+    ASSERT_TRUE(original->lock(LockType::Write).has_value());
+    const auto alias = temp.path() / "." / "original";
+    const auto fd = ::open(alias.c_str(), O_RDONLY | O_CLOEXEC);
+    ASSERT_GE(fd, 0);
+    ASSERT_EQ(::close(fd), 0);
+    EXPECT_TRUE(original->isLocked());
+    EXPECT_EQ(probePosixWriteLock(path), 1);
+    ASSERT_TRUE(original->unlock().has_value());
+    EXPECT_EQ(probePosixWriteLock(path), 0);
+}

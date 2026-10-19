@@ -183,6 +183,8 @@ utils::error::Result<void> FileLock::lock(LockType type) noexcept
           fmt::format("try to lock with incompatible type: current {}, request {}", type_, type));
     }
 
+    // OFD locks belong to this open file description: closing another descriptor
+    // for the same inode must not release this object's lock.
     struct flock fl{};
     fl.l_type = (type == LockType::Write) ? F_WRLCK : F_RDLCK;
     fl.l_whence = SEEK_SET;
@@ -190,7 +192,7 @@ utils::error::Result<void> FileLock::lock(LockType type) noexcept
     fl.l_len = 0;
 
     while (true) {
-        if (::fcntl(fd, F_SETLKW, &fl) == 0) {
+        if (::fcntl(fd, F_OFD_SETLKW, &fl) == 0) {
             type_ = type;
             locked.store(true, std::memory_order_relaxed);
             return LINGLONG_OK;
@@ -236,7 +238,7 @@ utils::error::Result<bool> FileLock::tryLock(LockType type) noexcept
     fl.l_len = 0;
 
     while (true) {
-        if (::fcntl(fd, F_SETLK, &fl) == 0) {
+        if (::fcntl(fd, F_OFD_SETLK, &fl) == 0) {
             type_ = type;
             locked.store(true, std::memory_order_relaxed);
             return true;
@@ -275,7 +277,7 @@ utils::error::Result<void> FileLock::unlock() noexcept
     fl.l_len = 0;
 
     while (true) {
-        if (::fcntl(fd, F_SETLK, &fl) == 0) {
+        if (::fcntl(fd, F_OFD_SETLK, &fl) == 0) {
             locked.store(false, std::memory_order_relaxed);
             return LINGLONG_OK;
         }

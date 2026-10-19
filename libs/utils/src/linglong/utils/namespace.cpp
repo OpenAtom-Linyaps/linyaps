@@ -105,8 +105,10 @@ utils::error::Result<void> writeMapFile(pid_t pid, bool isUid, const std::string
     }
 
     file << content;
+    file.close();
     if (!file) {
-        return LINGLONG_ERR(fmt::format("failed to write {}", path));
+        return LINGLONG_ERR(
+          fmt::format("failed to write {}: {}", path, common::error::errorString(errno)));
     }
 
     return LINGLONG_OK;
@@ -123,8 +125,10 @@ utils::error::Result<void> denySetGroups(pid_t pid)
     }
 
     file << "deny";
+    file.close();
     if (!file) {
-        return LINGLONG_ERR(fmt::format("failed to write {}", path));
+        return LINGLONG_ERR(
+          fmt::format("failed to write {}: {}", path, common::error::errorString(errno)));
     }
 
     return LINGLONG_OK;

@@ -30,11 +30,13 @@ fi
 
 # Fetch commit
 git fetch origin "$commit" --depth 1 -n
-git add :/
 git reset --hard FETCH_HEAD
+# This is a dedicated source workdir. Remove ignored build outputs as well as
+# ordinary untracked files; a hard reset alone leaves ignored files behind.
+git clean -ffdx
 
 # Fetch submodule
 if [ -n "$GIT_SUBMODULES" ]; then
+    git submodule foreach --recursive 'git reset --hard HEAD && git clean -ffdx'
     git submodule update --init --recursive --depth 1
-    git submodule foreach git reset --hard HEAD
 fi

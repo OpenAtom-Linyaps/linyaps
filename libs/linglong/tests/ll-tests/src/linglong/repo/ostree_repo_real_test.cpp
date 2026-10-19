@@ -10,7 +10,9 @@
 #include "linglong/package/fuzzy_reference.h"
 #include "linglong/package/layer_dir.h"
 #include "linglong/package/reference.h"
+#include "linglong/package_manager/package_manager.h"
 #include "linglong/repo/ostree_repo.h"
+#include "linglong/runtime/container_builder.h"
 
 #include <filesystem>
 #include <fstream>
@@ -289,12 +291,57 @@ TEST_F(RealRepoTest, ExportAndUnexportReference)
     // In a minimal container the shared export config may be absent; neither
     // export nor unexport may crash, and unexport must clean any symlinks that
     // point into the layer dir.
-    repo->exportAppReference(*appRef);
+    ASSERT_TRUE(repo->exportAppReference(*appRef).has_value());
     repo->unexportAppReference(*appRef);
 
     auto item = repo->getLayerItem(*appRef, "binary");
     ASSERT_TRUE(item.has_value()) << item.error().message();
     repo->unexportLayerSignData(*item);
+}
+
+TEST_F(RealRepoTest, ExportReferenceReportsMissingLayer)
+{
+    auto missing = Reference::parse("stable:com.example.missing/1.0.0/x86_64");
+    ASSERT_TRUE(missing.has_value());
+    EXPECT_FALSE(repo->exportAppReference(*missing).has_value());
+}
+
+TEST_F(RealRepoTest, VersionSwitchStopsWhenEntryExportFails)
+{
+    class ExportTestPackageManager : public service::PackageManager
+    {
+    public:
+        explicit ExportTestPackageManager(std::unique_ptr<OSTreeRepo> repo)
+            : PackageManager(std::move(repo), nullptr, nullptr)
+        {
+        }
+
+        utils::error::Result<void> tryGenerateCache(const Reference &) noexcept override
+        {
+            cacheGenerated = true;
+            return LINGLONG_OK;
+        }
+
+        utils::error::Result<void> unapplyApp(const Reference &,
+                                              const std::optional<std::string> &) noexcept override
+        {
+            oldUnapplied = true;
+            return LINGLONG_OK;
+        }
+
+        bool cacheGenerated{ false };
+        bool oldUnapplied{ false };
+    };
+
+    auto newRef = importLayer("com.example.app", "2.0.0", "app", "binary", { "files/bin/new" });
+    ASSERT_TRUE(newRef.has_value());
+    fs::remove_all(repoRoot / "entries");
+    std::ofstream(repoRoot / "entries") << "not a directory";
+    ExportTestPackageManager pm(std::move(repo));
+
+    EXPECT_FALSE(pm.switchAppVersion(*appRef, *newRef, false).has_value());
+    EXPECT_FALSE(pm.cacheGenerated);
+    EXPECT_FALSE(pm.oldUnapplied);
 }
 
 TEST_F(RealRepoTest, QueriesForMissingReferencesFail)

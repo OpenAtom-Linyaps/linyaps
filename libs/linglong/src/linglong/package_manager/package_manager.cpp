@@ -386,7 +386,10 @@ utils::error::Result<void> PackageManager::applyApp(
     LINGLONG_TRACE(fmt::format("apply app {}", refStr));
 
     LogI("export new reference", refStr);
-    this->repo->exportAppReference(reference, module);
+    auto exported = this->repo->exportAppReference(reference, module);
+    if (!exported) {
+        return LINGLONG_ERR("failed to export application entries", exported);
+    }
 
     auto res = tryGenerateCache(reference);
     if (!res) {

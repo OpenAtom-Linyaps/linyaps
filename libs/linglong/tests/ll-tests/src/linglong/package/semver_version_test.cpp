@@ -11,6 +11,38 @@
 using namespace semver;
 using namespace semver::literals;
 
+TEST(VersionTest, SecuritySubstringIsOrdinaryBuildMetadata)
+{
+    for (const auto *metadata : { "insecurity.9",
+                                  "build-security.9",
+                                  "build.insecurity.9",
+                                  "insecurity.0",
+                                  "insecurity.01",
+                                  "insecurity.release" }) {
+        SCOPED_TRACE(metadata);
+        const auto parsed = version::parse(std::string("1.2.3+") + metadata);
+        EXPECT_EQ(parsed.security(), 0);
+        EXPECT_EQ(parsed.build_meta(), metadata);
+        EXPECT_EQ(parsed, version::parse("1.2.3"));
+        EXPECT_LT(parsed, version::parse("1.2.3+security.1"));
+    }
+}
+
+TEST(VersionTest, SecurityIdentifierAfterSubstringIsRecognized)
+{
+    const auto parsed = version::parse("1.2.3+insecurity.build.security.2");
+    EXPECT_EQ(parsed.security(), 2);
+    EXPECT_EQ(parsed.build_meta(), "insecurity.build.security.2");
+    EXPECT_GT(parsed, version::parse("1.2.3+security.1"));
+}
+
+TEST(VersionTest, LooseVersionsAlsoRequireSecurityIdentifierBoundary)
+{
+    const auto parsed = version::parse("v1.2+insecurity.3", false);
+    EXPECT_EQ(parsed.security(), 0);
+    EXPECT_EQ(parsed, version::parse("1.2.0"));
+}
+
 TEST(VersionTest, InvalidVersions)
 {
     EXPECT_THROW(version::parse("-1.0.0"), semver_exception);

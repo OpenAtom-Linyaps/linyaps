@@ -187,6 +187,50 @@ std::string detail::generateExecLoader() noexcept
            "exec \"$LINGLONG_UAB_APPROOT/entry.sh\" \"$@\"\n";
 }
 
+utils::error::Result<void> detail::moveFile(const std::filesystem::path &source,
+                                            const std::filesystem::path &destination) noexcept
+{
+    LINGLONG_TRACE(fmt::format("move {} to {}", source, destination));
+
+    std::error_code ec;
+    std::filesystem::rename(source, destination, ec);
+    if (!ec) {
+        return LINGLONG_OK;
+    }
+    if (ec != std::errc::cross_device_link) {
+        return LINGLONG_ERR(fmt::format("failed to rename {} to {}", source, destination), ec);
+    }
+
+    // rename() cannot move a file to another filesystem (EXDEV), e.g. when the output is on
+    // another partition, a tmpfs or a removable disk. Copy the file into the destination
+    // directory under a temporary name and rename it there, so the destination never holds a
+    // partial file.
+    auto temporary = destination.parent_path() / ("." + destination.filename().string() + ".tmp");
+    std::filesystem::copy_file(source,
+                               temporary,
+                               std::filesystem::copy_options::overwrite_existing,
+                               ec);
+    if (ec) {
+        std::error_code cleanupEc;
+        std::filesystem::remove(temporary, cleanupEc);
+        return LINGLONG_ERR(fmt::format("failed to copy {} to {}", source, temporary), ec);
+    }
+
+    std::filesystem::rename(temporary, destination, ec);
+    if (ec) {
+        std::error_code cleanupEc;
+        std::filesystem::remove(temporary, cleanupEc);
+        return LINGLONG_ERR(fmt::format("failed to rename {} to {}", temporary, destination), ec);
+    }
+
+    std::filesystem::remove(source, ec);
+    if (ec) {
+        LogW("failed to remove {} after moving it to {}: {}", source, destination, ec.message());
+    }
+
+    return LINGLONG_OK;
+}
+
 utils::error::Result<void>
 detail::ensureExecEntry(const std::filesystem::path &entryPath,
                         const std::optional<std::vector<std::string>> &command,
@@ -322,10 +366,9 @@ utils::error::Result<void> UABPackager::pack(const std::filesystem::path &uabFil
         return ret;
     }
 
-    std::filesystem::rename(uabApp, uabFilePath, ec);
-    if (ec) {
+    if (auto ret = detail::moveFile(uabApp, uabFilePath); !ret) {
         return LINGLONG_ERR(fmt::format("export uab from {} to {} failed", uabApp, uabFilePath),
-                            ec);
+                            ret);
     }
 
     std::filesystem::permissions(uabFilePath,

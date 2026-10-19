@@ -8,9 +8,13 @@
 #include "common/tempdir.h"
 #include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/package/uab_packager.h"
+#include "linglong/utils/temporary_directory.h"
 
 #include <filesystem>
 #include <fstream>
+#include <iterator>
+
+#include <sys/stat.h>
 
 namespace linglong::package {
 namespace {
@@ -181,6 +185,67 @@ TEST(UABPackagerTest, EnsureExecEntryGeneratesMissingEntry)
 
     const auto permissions = std::filesystem::status(entryPath).permissions();
     EXPECT_NE(permissions & std::filesystem::perms::owner_exec, std::filesystem::perms::none);
+}
+
+TEST(UABPackagerTest, MoveFileWithinFilesystem)
+{
+    TempDir tempDir("uab-packager-test-");
+
+    const auto source = tempDir.path() / ".exported.uab";
+    const auto destination = tempDir.path() / "output.uab";
+    std::ofstream{ source } << "bundle";
+
+    auto result = detail::moveFile(source, destination);
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+
+    EXPECT_FALSE(std::filesystem::exists(source));
+    std::ifstream output{ destination };
+    EXPECT_EQ(std::string(std::istreambuf_iterator<char>{ output }, {}), "bundle");
+}
+
+TEST(UABPackagerTest, MoveFileAcrossFilesystems)
+{
+    TempDir sourceDir("uab-packager-test-");
+    // /dev/shm is a tmpfs on most systems, so it is usually not on the same filesystem as the
+    // system temporary directory.
+    auto destinationDir = utils::TemporaryDirectory::create("uab-packager-test-", "/dev/shm");
+    if (!destinationDir) {
+        GTEST_SKIP() << "/dev/shm is not available: " << destinationDir.error().message();
+    }
+
+    struct stat sourceStat{};
+    struct stat destinationStat{};
+    ASSERT_EQ(::stat(sourceDir.path().c_str(), &sourceStat), 0);
+    ASSERT_EQ(::stat(destinationDir->path().c_str(), &destinationStat), 0);
+    if (sourceStat.st_dev == destinationStat.st_dev) {
+        GTEST_SKIP() << "the temporary directory and /dev/shm are on the same filesystem";
+    }
+
+    const auto source = sourceDir.path() / ".exported.uab";
+    const auto destination = destinationDir->path() / "output.uab";
+    std::ofstream{ source } << "new bundle";
+    std::ofstream{ destination } << "old bundle";
+
+    auto result = detail::moveFile(source, destination);
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+
+    EXPECT_FALSE(std::filesystem::exists(source));
+    std::ifstream output{ destination };
+    EXPECT_EQ(std::string(std::istreambuf_iterator<char>{ output }, {}), "new bundle");
+    // Only the output is left in the destination directory, no temporary file.
+    EXPECT_EQ(std::distance(std::filesystem::directory_iterator{ destinationDir->path() },
+                            std::filesystem::directory_iterator{}),
+              1);
+}
+
+TEST(UABPackagerTest, MoveFileFailsWhenSourceIsMissing)
+{
+    TempDir tempDir("uab-packager-test-");
+
+    auto result = detail::moveFile(tempDir.path() / "missing.uab", tempDir.path() / "output.uab");
+
+    ASSERT_FALSE(result.has_value());
+    EXPECT_FALSE(std::filesystem::exists(tempDir.path() / "output.uab"));
 }
 
 TEST(UABPackagerTest, SetIconRejectsNonExistent)

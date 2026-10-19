@@ -1588,7 +1588,8 @@ PackageManager::needToUpgrade(const package::FuzzyReference &fuzzyRef,
     }
 
     if (!local || remoteRef->version > local->version) {
-        auto remoteModules = candidates->getReferenceModules(*remoteRef);
+        auto remoteModules = candidates->getReferenceModules(
+          package::ReferenceWithRepo{ .repo = target->first.get(), .reference = *remoteRef });
         if (remoteModules.empty()) {
             return LINGLONG_ERR(fmt::format("no modules found for {}", remoteRef->toString()),
                                 utils::error::ErrorCode::AppUpgradeFailed);

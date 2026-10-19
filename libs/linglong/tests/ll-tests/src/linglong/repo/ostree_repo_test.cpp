@@ -16,6 +16,7 @@
 #include "linglong/repo/client_factory.h"
 #include "linglong/repo/config.h"
 #include "linglong/repo/ostree_repo.h"
+#include "linglong/repo/remote_packages.h"
 #include "linglong/utils/error/error.h"
 
 #include <nlohmann/json.hpp>
@@ -1605,3 +1606,67 @@ TEST_F(RepoTest, unexportRemovesWrapperWhenAllLayersOfAppRemoved)
 } // namespace
 
 } // namespace linglong::repo::test
+
+TEST(RemotePackagesTest, ModulesBelongToSelectedRepository)
+{
+    using namespace linglong;
+    const auto ref = package::Reference::parse("main:com.example.app/1.0.0/x86_64");
+    ASSERT_TRUE(ref.has_value());
+    // The same upstream name can be configured under different local aliases.
+    api::types::v1::Repo first{ .alias = "first",
+                                .name = "origin",
+                                .priority = 0,
+                                .url = "https://first.example/repo" };
+    api::types::v1::Repo second{ .alias = "second",
+                                 .name = "origin",
+                                 .priority = 0,
+                                 .url = "https://second.example/repo" };
+    api::types::v1::PackageInfoV2 binary{
+        .arch = { "x86_64" },
+        .channel = "main",
+        .id = "com.example.app",
+        .packageInfoV2Module = "binary",
+        .version = "1.0.0",
+    };
+    auto develop = binary;
+    develop.packageInfoV2Module = "develop";
+    repo::RemotePackages candidates;
+    candidates.addPackages(first, { binary });
+    candidates.addPackages(second, { develop });
+
+    auto latest = candidates.getLatestPackage();
+    ASSERT_TRUE(latest.has_value());
+    const package::ReferenceWithRepo selected{ .repo = latest->first.get(), .reference = *ref };
+    EXPECT_EQ(candidates.getReferenceModules(selected), std::vector<std::string>{ "binary" });
+    EXPECT_EQ(candidates.getReferenceModules({ .repo = second, .reference = *ref }),
+              std::vector<std::string>{ "develop" });
+
+    first.alias = "missing";
+    EXPECT_TRUE(candidates.getReferenceModules({ .repo = first, .reference = *ref }).empty());
+}
+
+TEST(RemotePackagesTest, ModulesMatchReferenceWithinUnaliasedRepository)
+{
+    using namespace linglong;
+    const auto ref = package::Reference::parse("main:com.example.app/1.0.0/x86_64");
+    ASSERT_TRUE(ref.has_value());
+    api::types::v1::Repo source{ .name = "source",
+                                 .priority = 0,
+                                 .url = "https://source.example/repo" };
+    api::types::v1::PackageInfoV2 binary{
+        .arch = { "x86_64" },
+        .channel = "main",
+        .id = "com.example.app",
+        .packageInfoV2Module = "binary",
+        .version = "1.0.0",
+    };
+    auto develop = binary;
+    develop.packageInfoV2Module = "develop";
+    auto otherVersion = develop;
+    otherVersion.version = "2.0.0";
+    otherVersion.packageInfoV2Module = "debug";
+    repo::RemotePackages candidates;
+    candidates.addPackages(source, { binary, develop, otherVersion });
+    EXPECT_EQ(candidates.getReferenceModules({ .repo = source, .reference = *ref }),
+              (std::vector<std::string>{ "binary", "develop" }));
+}

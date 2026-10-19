@@ -7,13 +7,17 @@
 #include "linglong/common/error.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/log/log.h"
+#include "linglong/utils/unique_fd.h"
 
+#include <array>
+#include <cerrno>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <string>
 #include <system_error>
 
+#include <fcntl.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -46,26 +50,28 @@ ensureOwnerPermissionsIfNeeded(const std::filesystem::path &path,
 linglong::utils::error::Result<std::string> readFile(const std::filesystem::path &filepath)
 {
     LINGLONG_TRACE(fmt::format("read file {}", filepath));
-    std::error_code ec;
-    auto exists = std::filesystem::exists(filepath, ec);
-    if (ec) {
-        return LINGLONG_ERR("check file", ec);
+    fd::UniqueFd input{ ::open(filepath.c_str(), O_RDONLY | O_CLOEXEC) };
+    if (!input) {
+        return LINGLONG_ERR(
+          fmt::format("failed to open file {}: {}", filepath, common::error::errorString(errno)));
     }
-    if (!exists) {
-        return LINGLONG_ERR("file not found");
+    std::string content;
+    std::array<char, 8192> buffer{};
+    while (true) {
+        const auto count = ::read(input.get(), buffer.data(), buffer.size());
+        if (count < 0) {
+            if (errno == EINTR) {
+                continue;
+            }
+            return LINGLONG_ERR(fmt::format("failed to read file {}: {}",
+                                            filepath,
+                                            common::error::errorString(errno)));
+        }
+        if (count == 0) {
+            return content;
+        }
+        content.append(buffer.data(), static_cast<std::size_t>(count));
     }
-    std::ifstream in{ filepath };
-    if (!in.is_open()) {
-        auto msg = std::string("open file:") + common::error::errorString(errno);
-        return LINGLONG_ERR(msg.c_str());
-    }
-    std::stringstream buffer;
-    buffer << in.rdbuf();
-    if (buffer.bad()) {
-        auto msg = std::string("read file: ") + common::error::errorString(errno);
-        return LINGLONG_ERR(msg.c_str());
-    }
-    return buffer.str();
 }
 
 linglong::utils::error::Result<void> writeFile(const std::filesystem::path &filepath,

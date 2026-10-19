@@ -177,11 +177,10 @@ bool rewriteUabMeta(const std::filesystem::path &uabPath,
         return false;
     }
 
-    auto writeSignatureRet =
-      (*elf)->writeSectionData(std::string{ common::uab::signatureSection },
-                               common::uab::digestOffset,
-                               metaDigest.data(),
-                               metaDigest.size());
+    auto writeSignatureRet = (*elf)->writeSectionData(std::string{ common::uab::signatureSection },
+                                                      common::uab::digestOffset,
+                                                      metaDigest.data(),
+                                                      metaDigest.size());
     if (!writeSignatureRet) {
         ADD_FAILURE() << writeSignatureRet.error().message();
         return false;

@@ -6,7 +6,10 @@
 
 #include "linglong/common/socket.h"
 
+#include <fcntl.h>
 #include <sys/socket.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
 class SocketFdTest : public ::testing::Test
 {
@@ -23,6 +26,37 @@ protected:
 };
 
 using namespace linglong::common::socket;
+
+TEST_F(SocketFdTest, ReceivedDescriptorIsCloseOnExec)
+{
+    const auto sent = sendFdWithPayload(sv[0], STDOUT_FILENO, "console");
+    ASSERT_TRUE(sent.has_value()) << sent.error();
+    const auto received = recvFdWithPayload(sv[1]);
+    ASSERT_TRUE(received.has_value()) << received.error();
+
+    const auto flags = ::fcntl(received->fd, F_GETFD);
+    EXPECT_NE(flags, -1);
+    EXPECT_NE(flags & FD_CLOEXEC, 0);
+    ::close(received->fd);
+}
+
+TEST_F(SocketFdTest, ReceivedDescriptorDoesNotSurviveExec)
+{
+    const auto sent = sendFdWithPayload(sv[0], STDOUT_FILENO, "console");
+    ASSERT_TRUE(sent.has_value()) << sent.error();
+    const auto received = recvFdWithPayload(sv[1]);
+    ASSERT_TRUE(received.has_value()) << received.error();
+
+    const auto path = "/proc/self/fd/" + std::to_string(received->fd);
+    EXPECT_EXIT(
+      {
+          ::execl("/usr/bin/test", "test", "!", "-e", path.c_str(), nullptr);
+          _exit(127);
+      },
+      ::testing::ExitedWithCode(0),
+      "");
+    ::close(received->fd);
+}
 
 TEST_F(SocketFdTest, NormalCrossProcessTransfer)
 {

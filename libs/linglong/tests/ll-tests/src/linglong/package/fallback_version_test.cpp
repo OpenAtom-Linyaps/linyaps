@@ -181,6 +181,11 @@ TEST(FallbackVersionTest, compare)
     EXPECT_GT(FallbackVersion::parse("1.2.3-🚀").value(),
               FallbackVersion::parse("1.2.3-😊").value());
 
+    EXPECT_EQ(FallbackVersion::parse("1.02.0003").value(), FallbackVersion::parse("1.2.3").value());
+    EXPECT_LT(FallbackVersion::parse("3").value(), FallbackVersion::parse("2147483648").value());
+    EXPECT_LT(FallbackVersion::parse("18446744073709551616").value(),
+              FallbackVersion::parse("18446744073709551617").value());
+
     // 空字符串和只有分隔符的版本号
     EXPECT_FALSE(FallbackVersion::parse("").has_value());
     EXPECT_FALSE(FallbackVersion::parse("...").has_value());

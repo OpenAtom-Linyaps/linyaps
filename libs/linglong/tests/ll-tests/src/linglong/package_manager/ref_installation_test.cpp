@@ -220,6 +220,7 @@ TEST_F(RefInstallationTest, InstallApp)
     service::PackageTask task({});
     ASSERT_TRUE(action->prepare());
     ASSERT_TRUE(action->doAction(task));
+    EXPECT_FALSE(QObject::disconnect(&task, &service::PackageTask::DataArrived, nullptr, nullptr));
 }
 
 TEST_F(RefInstallationTest, InstallNoAppFound)
@@ -240,6 +241,7 @@ TEST_F(RefInstallationTest, InstallNoAppFound)
     service::PackageTask task({});
     ASSERT_TRUE(action->prepare());
     auto res = action->doAction(task);
+    EXPECT_FALSE(QObject::disconnect(&task, &service::PackageTask::DataArrived, nullptr, nullptr));
     ASSERT_FALSE(res);
     EXPECT_EQ(res.error().code(),
               static_cast<int>(utils::error::ErrorCode::AppInstallNotFoundFromRemote));
@@ -314,6 +316,7 @@ TEST_F(RefInstallationTest, InstallExtraOnly)
     service::PackageTask task({});
     ASSERT_TRUE(action->prepare());
     ASSERT_TRUE(action->doAction(task));
+    EXPECT_FALSE(QObject::disconnect(&task, &service::PackageTask::DataArrived, nullptr, nullptr));
 }
 
 TEST_F(RefInstallationTest, InstallMultipleModules)
@@ -392,6 +395,7 @@ TEST_F(RefInstallationTest, InstallMultipleModules)
     service::PackageTask task({});
     ASSERT_TRUE(action->prepare());
     ASSERT_TRUE(action->doAction(task));
+    EXPECT_FALSE(QObject::disconnect(&task, &service::PackageTask::DataArrived, nullptr, nullptr));
 }
 
 TEST_F(RefInstallationTest, InstallDowngrade)
@@ -469,6 +473,7 @@ TEST_F(RefInstallationTest, InstallDowngrade)
     service::PackageTask task({});
     ASSERT_TRUE(action->prepare());
     auto res = action->doAction(task);
+    EXPECT_FALSE(QObject::disconnect(&task, &service::PackageTask::DataArrived, nullptr, nullptr));
     ASSERT_TRUE(res);
 }
 
@@ -571,6 +576,7 @@ TEST_F(RefInstallationTest, InstallDowngradeKeepsInstalledModules)
     service::PackageTask task({});
     ASSERT_TRUE(action->prepare());
     ASSERT_TRUE(action->doAction(task));
+    EXPECT_FALSE(QObject::disconnect(&task, &service::PackageTask::DataArrived, nullptr, nullptr));
 }
 
 TEST_F(RefInstallationTest, InstallDowngradeDeduplicatesRuntimeFallback)
@@ -644,6 +650,7 @@ TEST_F(RefInstallationTest, InstallDowngradeDeduplicatesRuntimeFallback)
     service::PackageTask task({});
     ASSERT_TRUE(action->prepare());
     ASSERT_TRUE(action->doAction(task));
+    EXPECT_FALSE(QObject::disconnect(&task, &service::PackageTask::DataArrived, nullptr, nullptr));
 }
 
 } // namespace

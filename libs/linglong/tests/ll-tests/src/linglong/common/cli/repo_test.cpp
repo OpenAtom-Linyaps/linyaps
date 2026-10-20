@@ -100,6 +100,46 @@ TEST_F(RepoCommandTest, RejectDuplicateAlias)
     EXPECT_EQ(config.repos.size(), 2);
 }
 
+class InvalidRepoUrlTest : public RepoCommandTest, public ::testing::WithParamInterface<std::string>
+{
+};
+
+TEST_P(InvalidRepoUrlTest, AddDoesNotSaveInvalidEndpoint)
+{
+    parse("repo add invalid " + GetParam());
+    auto ret = handle();
+    ASSERT_FALSE(ret);
+    EXPECT_EQ(setConfigCalls, 0);
+    EXPECT_EQ(config.repos.size(), 2U);
+}
+
+TEST_P(InvalidRepoUrlTest, UpdateDoesNotReplaceWorkingEndpoint)
+{
+    parse("repo update beta " + GetParam());
+    auto ret = handle();
+    ASSERT_FALSE(ret);
+    EXPECT_EQ(setConfigCalls, 0);
+    EXPECT_EQ(config.repos[1].url, "https://beta.example");
+}
+
+INSTANTIATE_TEST_SUITE_P(InvalidEndpoints,
+                         InvalidRepoUrlTest,
+                         ::testing::Values("http",
+                                           "httpx://repo.example",
+                                           "https:///",
+                                           "https://repo.example:bad",
+                                           "https://repo.example?token=abc",
+                                           "https://repo.example#fragment"));
+
+TEST_F(RepoCommandTest, AcceptsUppercaseHttpSchemeAndBasePath)
+{
+    parse("repo add community HTTPS://community.example/base/");
+    auto ret = handle();
+    ASSERT_TRUE(ret) << ret.error().message();
+    ASSERT_EQ(setConfigCalls, 1);
+    EXPECT_EQ(config.repos.back().url, "HTTPS://community.example/base");
+}
+
 TEST_F(RepoCommandTest, UpdateRepoUrl)
 {
     parse("repo update beta https://new-beta.example/");

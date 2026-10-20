@@ -58,6 +58,17 @@ tl::expected<SocketData, std::string> recvFdWithPayload(int socketFd, std::size_
     struct cmsghdr *cmsg = CMSG_FIRSTHDR(&msg);
 
     if (cmsg != nullptr && cmsg->cmsg_level == SOL_SOCKET && cmsg->cmsg_type == SCM_RIGHTS) {
+        const auto descriptorCount = (cmsg->cmsg_len - CMSG_LEN(0)) / sizeof(int);
+        // Ancillary alignment padding can hold more than one descriptor even
+        // though the control buffer was sized with CMSG_SPACE(sizeof(int)).
+        if (descriptorCount != 1) {
+            for (std::size_t i = 0; i < descriptorCount; ++i) {
+                int fd;
+                std::memcpy(&fd, CMSG_DATA(cmsg) + i * sizeof(int), sizeof(int));
+                ::close(fd);
+            }
+            return tl::make_unexpected("Expected exactly one file descriptor");
+        }
         std::memcpy(&received_fd, CMSG_DATA(cmsg), sizeof(int));
     }
 

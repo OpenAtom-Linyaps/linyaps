@@ -7,9 +7,11 @@
 #include "common/tempdir.h"
 #include "linglong/common/socket.h"
 
+#include <cstring>
 #include <filesystem>
 #include <string>
 
+#include <fcntl.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
@@ -264,3 +266,44 @@ TEST(SocketCreateTest, ReportsBindFailureForMissingParentDirectory)
     EXPECT_FALSE(res.has_value());
     EXPECT_NE(res.error().find("Bind failed"), std::string::npos);
 }
+
+class SocketSurplusFdTest : public SocketFdTest, public ::testing::WithParamInterface<int>
+{
+};
+
+TEST_P(SocketSurplusFdTest, RejectsAndClosesEveryReceivedDescriptor)
+{
+    std::array<int, 2> pipeFds{};
+    ASSERT_EQ(pipe(pipeFds.data()), 0);
+    char payload = 'x';
+    iovec iov{ &payload, sizeof(payload) };
+    alignas(cmsghdr) std::array<char, CMSG_SPACE(3 * sizeof(int))> control{};
+    msghdr message{};
+    message.msg_iov = &iov;
+    message.msg_iovlen = 1;
+    message.msg_control = control.data();
+    message.msg_controllen = CMSG_SPACE(GetParam() * sizeof(int));
+    auto *header = CMSG_FIRSTHDR(&message);
+    header->cmsg_level = SOL_SOCKET;
+    header->cmsg_type = SCM_RIGHTS;
+    header->cmsg_len = CMSG_LEN(GetParam() * sizeof(int));
+    std::array<int, 3> sent{ pipeFds[1], pipeFds[1], pipeFds[1] };
+    std::memcpy(CMSG_DATA(header), sent.data(), GetParam() * sizeof(int));
+    ASSERT_EQ(sendmsg(sv[0], &message, 0), 1);
+    close(pipeFds[1]);
+
+    const auto received = recvFdWithPayload(sv[1], 1024);
+    EXPECT_FALSE(received.has_value());
+    if (received) {
+        close(received->fd);
+    }
+
+    // Every duplicate of the write end must be closed, including descriptors
+    // that fit in ancillary padding and those received with MSG_CTRUNC.
+    ASSERT_NE(fcntl(pipeFds[0], F_SETFL, O_NONBLOCK), -1);
+    char byte{};
+    EXPECT_EQ(read(pipeFds[0], &byte, 1), 0);
+    close(pipeFds[0]);
+}
+
+INSTANTIATE_TEST_SUITE_P(AncillaryRights, SocketSurplusFdTest, ::testing::Values(2, 3));

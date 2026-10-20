@@ -1789,6 +1789,15 @@ ContainerCfgBuilder::applyExecutablePatch(const std::filesystem::path &patchFile
 utils::error::Result<void>
 ContainerCfgBuilder::applyCDIPatch(const linglong::cdi::types::ContainerEdits &edits) noexcept
 {
+    // Rootless containers cannot generally set supplementary groups. Do not silently
+    // accept a device whose required group permissions cannot be applied.
+    if (edits.additionalGids
+        && std::any_of(edits.additionalGids->begin(), edits.additionalGids->end(), [](int64_t gid) {
+               return gid != 0;
+           })) {
+        return LINGLONG_ERR("CDI additionalGids is not supported for nonzero group IDs");
+    }
+
     if (edits.env) {
         for (auto &e : *edits.env) {
             auto delimiter = e.find('=');

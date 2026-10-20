@@ -23,4 +23,8 @@ utils::error::Result<std::vector<api::types::v1::CdiDeviceEntry>> getCDIDevices(
 utils::error::Result<types::ContainerEdits>
 getCDIDeviceEdits(const api::types::v1::CdiDeviceEntry &device);
 
+// Resolve a selection together so spec-level edits are applied once per spec file.
+utils::error::Result<types::ContainerEdits>
+getCDIDevicesEdits(const std::vector<api::types::v1::CdiDeviceEntry> &devices);
+
 } // namespace linglong::cdi

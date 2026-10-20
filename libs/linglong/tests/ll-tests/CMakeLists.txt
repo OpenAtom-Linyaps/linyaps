@@ -118,3 +118,11 @@ target_include_directories(${tests}
                            PUBLIC ${PROJECT_SOURCE_DIR}/apps/uab/header/src)
 target_include_directories(${tests}
                            PUBLIC ${PROJECT_SOURCE_DIR}/apps/ll-driver-detect/src)
+
+foreach(scenario concurrent download_failure digest_mismatch cache_hit)
+  add_test(
+    NAME FetchFileSource.${scenario}
+    COMMAND sh ${CMAKE_CURRENT_SOURCE_DIR}/scripts/fetch_file_source_test.sh
+            ${PROJECT_SOURCE_DIR}/misc/libexec/linglong/fetch-file-source ${scenario})
+  set_tests_properties(FetchFileSource.${scenario} PROPERTIES TIMEOUT 15)
+endforeach()

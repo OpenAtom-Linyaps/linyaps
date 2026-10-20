@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
+# SPDX-FileCopyrightText: 2023-2026 UnionTech Software Technology Co., Ltd.
 #
 # SPDX-License-Identifier: LGPL-3.0-or-later
 set -e
@@ -11,23 +11,27 @@ digest=$3
 cachedir=$4
 
 # Check command tools
-if ! command -v wget
-then
+if ! command -v wget; then
     echo "wget not found, please install wget first"
-    exit 1;
+    exit 1
 fi
 # Check cache
 if [ -f "$cachedir/file_$digest" ]; then
     # Using hard links is faster
     cp --remove-destination --link "$cachedir/file_$digest" "$outputfile" || cp "$cachedir/file_$digest" "$outputfile"
-    exit;
+    exit
 fi
-# Download file
-wget "$url" -O "$cachedir/tmp_$digest"
-actual_hash=$(sha256sum "$cachedir/tmp_$digest" | awk '{print $1}')
+# Keep each download private until it has been verified. Multiple builders
+# may fetch the same digest concurrently.
+tmpdir=$(mktemp -d "$cachedir/tmp_${digest}.XXXXXX")
+tmpfile="$tmpdir/download"
+trap 'rm -f "$tmpfile"; rmdir "$tmpdir"' EXIT
+trap 'exit 1' HUP INT TERM
+wget "$url" -O "$tmpfile"
+actual_hash=$(sha256sum "$tmpfile" | awk '{print $1}')
 if [ "X$actual_hash" != "X$digest" ]; then
     echo "File SHA256 digest is $actual_hash, expected $digest"
-    exit 1;
+    exit 1
 fi
-mv "$cachedir/tmp_$digest" "$cachedir/file_$digest"
+mv "$tmpfile" "$cachedir/file_$digest"
 cp --remove-destination --link "$cachedir/file_$digest" "$outputfile" || cp "$cachedir/file_$digest" "$outputfile"

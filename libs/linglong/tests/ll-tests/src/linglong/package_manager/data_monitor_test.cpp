@@ -11,6 +11,8 @@
 
 #include <atomic>
 #include <chrono>
+#include <condition_variable>
+#include <mutex>
 #include <thread>
 
 using namespace linglong::service;
@@ -82,4 +84,30 @@ TEST(DataMonitor, PauseSuppressesCallbacks)
 
     // callback suppressed while paused
     EXPECT_EQ(callbackCount.load(), 0);
+}
+
+TEST(DataMonitor, StopWakesLongSamplingWaitAndAllowsRestart)
+{
+    std::mutex mutex;
+    std::condition_variable sampled;
+    int samples = 0;
+    DataMonitor monitor(2, 3, [&](DataMonitor &) {
+        std::lock_guard<std::mutex> lock(mutex);
+        ++samples;
+        sampled.notify_all();
+    });
+
+    for (int expected = 1; expected <= 2; ++expected) {
+        monitor.start();
+        {
+            std::unique_lock<std::mutex> lock(mutex);
+            ASSERT_TRUE(sampled.wait_for(lock, std::chrono::seconds(2), [&] {
+                return samples >= expected;
+            }));
+        }
+        const auto start = std::chrono::steady_clock::now();
+        monitor.stop();
+        EXPECT_LT(std::chrono::steady_clock::now() - start, std::chrono::seconds(1));
+        EXPECT_EQ(samples, expected);
+    }
 }

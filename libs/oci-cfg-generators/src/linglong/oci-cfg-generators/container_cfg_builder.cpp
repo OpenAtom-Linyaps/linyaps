@@ -1789,6 +1789,8 @@ ContainerCfgBuilder::applyExecutablePatch(const std::filesystem::path &patchFile
 utils::error::Result<void>
 ContainerCfgBuilder::applyCDIPatch(const linglong::cdi::types::ContainerEdits &edits) noexcept
 {
+    LINGLONG_TRACE("apply CDI edits");
+
     // Rootless containers cannot generally set supplementary groups. Do not silently
     // accept a device whose required group permissions cannot be applied.
     if (edits.additionalGids

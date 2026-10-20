@@ -1602,6 +1602,33 @@ TEST_F(RepoTest, unexportRemovesWrapperWhenAllLayersOfAppRemoved)
 }
 
 } // namespace
+
+TEST_F(RepoTest, unexportDoesNotTraverseDirectorySymlinks)
+{
+    TempDir tempDir;
+    auto config = api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 };
+    auto ostreeRepo = std::make_unique<MockOstreeRepo>(tempDir.path(), config);
+    const auto entries = tempDir.path() / "entries";
+    const auto external = tempDir.path() / "external";
+    const auto layer = tempDir.path() / "layers" / "removed";
+    fs::create_directories(layer);
+    fs::create_directories(external / "keep" / "empty");
+    fs::create_directories(entries / "share" / "unused" / "empty");
+    fs::create_directories(entries / "bin");
+    fs::create_directory_symlink(external, entries / "share" / "other-app");
+    fs::create_directory_symlink(entries, entries / "share" / "cycle");
+
+    const auto result = ostreeRepo->unexportAppEntries(entries, { layer });
+
+    ASSERT_TRUE(result) << result.error().message();
+    EXPECT_TRUE(fs::is_directory(external / "keep" / "empty"));
+    EXPECT_TRUE(fs::is_symlink(entries / "share" / "other-app"));
+    EXPECT_TRUE(fs::is_symlink(entries / "share" / "cycle"));
+    EXPECT_FALSE(fs::exists(entries / "share" / "unused"));
+    EXPECT_TRUE(fs::is_directory(entries / "share"));
+    EXPECT_TRUE(fs::is_directory(entries / "bin"));
+}
+
 } // namespace
 
 } // namespace linglong::repo::test

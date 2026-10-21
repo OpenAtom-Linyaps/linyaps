@@ -189,6 +189,20 @@ TEST_F(LayerPackagerTest, InitWorkDir)
       << "workdir should be temporary directory";
 }
 
+namespace {
+struct ScopedLogConfig
+{
+    utils::log::Logger backup;
+
+    ScopedLogConfig()
+        : backup(utils::log::g_logger)
+    {
+    }
+
+    ~ScopedLogConfig() { utils::log::g_logger = backup; }
+};
+} // namespace
+
 TEST(LayerPackagerCleanupTest, DestructorCleansUpNestedWorkDir)
 {
     std::filesystem::path workDir;
@@ -211,6 +225,10 @@ TEST(LayerPackagerCleanupTest, DestructorCleansUpNestedWorkDir)
 
 TEST(LayerPackagerCleanupTest, DestructorHandlesAbsentWorkDirWithoutErrorLog)
 {
+    ScopedLogConfig logGuard;
+    utils::log::setLogLevel(utils::log::LogLevel::Error);
+    utils::log::setLogBackend(utils::log::LogBackend::Console);
+
     std::filesystem::path workDir;
     {
         LayerPackager packager;
@@ -223,15 +241,10 @@ TEST(LayerPackagerCleanupTest, DestructorHandlesAbsentWorkDirWithoutErrorLog)
         ASSERT_FALSE(ec);
         ASSERT_FALSE(std::filesystem::exists(workDir));
 
-        // Enable console logging and capture stderr
-        utils::log::setLogLevel(utils::log::LogLevel::Error);
-        utils::log::setLogBackend(utils::log::LogBackend::Console);
         testing::internal::CaptureStderr();
-
         // Destructor of packager runs when leaving scope
     }
     std::string errOutput = testing::internal::GetCapturedStderr();
-    utils::log::setLogBackend(utils::log::LogBackend::None);
 
     // Verify directory remains absent and no 'failed to remove' was logged
     ASSERT_FALSE(std::filesystem::exists(workDir));
@@ -248,8 +261,13 @@ TEST(LayerPackagerCleanupTest, DestructorHandlesCleanupFailureWithoutCrash)
     }
 #endif
 
+    ScopedLogConfig logGuard;
+    utils::log::setLogLevel(utils::log::LogLevel::Error);
+    utils::log::setLogBackend(utils::log::LogBackend::Console);
+
     std::filesystem::path workDir;
     std::filesystem::path subDir;
+    std::filesystem::perms originalPerms;
     std::string errOutput;
     {
         LayerPackager packager;
@@ -264,35 +282,39 @@ TEST(LayerPackagerCleanupTest, DestructorHandlesCleanupFailureWithoutCrash)
         file << "locked file content";
         file.close();
 
+        originalPerms = std::filesystem::status(subDir).permissions();
         std::filesystem::permissions(subDir,
                                      std::filesystem::perms::owner_read
                                        | std::filesystem::perms::owner_exec,
                                      std::filesystem::perm_options::replace);
 
-        utils::log::setLogLevel(utils::log::LogLevel::Error);
-        utils::log::setLogBackend(utils::log::LogBackend::Console);
         testing::internal::CaptureStderr();
-
         // Destructor of packager runs here when leaving scope.
         // Under old throwing code: throws std::filesystem_error -> triggers std::terminate() ->
         // crash! Under fixed code: safely catches error via std::error_code, logs error, does not
         // terminate.
     }
     errOutput = testing::internal::GetCapturedStderr();
-    utils::log::setLogBackend(utils::log::LogBackend::None);
 
-    // Restore permissions so test directory can be safely cleaned up
+    // Restore original permissions so test directory can be safely cleaned up
     std::error_code ec;
-    std::filesystem::permissions(subDir,
-                                 std::filesystem::perms::all,
-                                 std::filesystem::perm_options::replace,
-                                 ec);
-    std::filesystem::remove_all(workDir, ec);
+    std::filesystem::permissions(subDir, originalPerms, std::filesystem::perm_options::replace, ec);
+    EXPECT_FALSE(ec) << "Failed to restore permissions on " << subDir << ": " << ec.message();
 
-    // Verify the error was properly reported with failed to remove
+    std::filesystem::remove_all(workDir, ec);
+    EXPECT_FALSE(ec) << "Failed to cleanup work directory " << workDir << ": " << ec.message();
+    EXPECT_FALSE(std::filesystem::exists(workDir));
+
+    // Verify the error was properly reported with prefix, workDir path, and error reason
     EXPECT_FALSE(errOutput.empty());
     EXPECT_NE(errOutput.find("failed to remove"), std::string::npos)
       << "Expected 'failed to remove' in log output when permission was denied, got: " << errOutput;
+    EXPECT_NE(errOutput.find(workDir.string()), std::string::npos)
+      << "Expected workDir path in log output, got: " << errOutput;
+    EXPECT_TRUE(errOutput.find("Permission denied") != std::string::npos
+                || errOutput.find(std::make_error_code(std::errc::permission_denied).message())
+                  != std::string::npos)
+      << "Expected permission denied error message in log output, got: " << errOutput;
 }
 
 } // namespace linglong::package

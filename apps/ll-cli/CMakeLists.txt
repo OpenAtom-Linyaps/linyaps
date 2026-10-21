@@ -5,6 +5,7 @@
 pfl_add_executable(
   SOURCES
   ./src/main.cpp
+  ./src/transform_old_exec.cpp
   OUTPUT_NAME
   ${LINGLONG_CLI_BIN}
   LINK_LIBRARIES

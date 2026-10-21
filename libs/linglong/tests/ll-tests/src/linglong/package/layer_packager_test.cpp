@@ -11,6 +11,7 @@
 #include "linglong/package/layer_packager.h"
 #include "linglong/utils/cmd.h"
 #include "linglong/utils/error/error.h"
+#include "linglong/utils/log/log.h"
 
 #include <QDir>
 #include <QSharedPointer>
@@ -19,6 +20,9 @@
 #include <fstream>
 #include <memory>
 #include <string>
+#ifndef _WIN32
+#  include <unistd.h>
+#endif
 
 using namespace linglong;
 
@@ -185,30 +189,110 @@ TEST_F(LayerPackagerTest, InitWorkDir)
       << "workdir should be temporary directory";
 }
 
-TEST_F(LayerPackagerTest, DestructorCleansUpWorkDir)
+TEST(LayerPackagerCleanupTest, DestructorCleansUpNestedWorkDir)
 {
     std::filesystem::path workDir;
     {
-        package::LayerPackager packager;
+        LayerPackager packager;
         workDir = packager.getWorkDir();
         ASSERT_TRUE(std::filesystem::exists(workDir));
+
+        // Create nested directories and files to verify recursive removal
+        auto nestedDir = workDir / "nested" / "sub";
+        std::filesystem::create_directories(nestedDir);
+        std::ofstream file(nestedDir / "test.txt");
+        file << "cleanup test content";
+        file.close();
+        ASSERT_TRUE(std::filesystem::exists(nestedDir / "test.txt"));
     }
+    // Entire workDir and its nested contents should be removed
     ASSERT_FALSE(std::filesystem::exists(workDir));
 }
 
-TEST_F(LayerPackagerTest, DestructorHandlesAbsentWorkDir)
+TEST(LayerPackagerCleanupTest, DestructorHandlesAbsentWorkDirWithoutErrorLog)
 {
     std::filesystem::path workDir;
     {
-        package::LayerPackager packager;
+        LayerPackager packager;
         workDir = packager.getWorkDir();
         ASSERT_TRUE(std::filesystem::exists(workDir));
+
+        // Pre-remove the workDir before destruction
         std::error_code ec;
         std::filesystem::remove_all(workDir, ec);
         ASSERT_FALSE(ec);
         ASSERT_FALSE(std::filesystem::exists(workDir));
+
+        // Enable console logging and capture stderr
+        utils::log::setLogLevel(utils::log::LogLevel::Error);
+        utils::log::setLogBackend(utils::log::LogBackend::Console);
+        testing::internal::CaptureStderr();
+
+        // Destructor of packager runs when leaving scope
     }
+    std::string errOutput = testing::internal::GetCapturedStderr();
+    utils::log::setLogBackend(utils::log::LogBackend::None);
+
+    // Verify directory remains absent and no 'failed to remove' was logged
     ASSERT_FALSE(std::filesystem::exists(workDir));
+    EXPECT_TRUE(errOutput.find("failed to remove") == std::string::npos)
+      << "Expected no 'failed to remove' error log when directory was already absent, got: "
+      << errOutput;
+}
+
+TEST(LayerPackagerCleanupTest, DestructorHandlesCleanupFailureWithoutCrash)
+{
+#ifndef _WIN32
+    if (::geteuid() == 0) {
+        GTEST_SKIP() << "Skipping permission test when running as root";
+    }
+#endif
+
+    std::filesystem::path workDir;
+    std::filesystem::path subDir;
+    std::string errOutput;
+    {
+        LayerPackager packager;
+        workDir = packager.getWorkDir();
+        ASSERT_TRUE(std::filesystem::exists(workDir));
+
+        // Create a non-empty subdirectory and revoke write permissions so contents cannot be
+        // unlinked
+        subDir = workDir / "locked_dir";
+        std::filesystem::create_directories(subDir);
+        std::ofstream file(subDir / "item.txt");
+        file << "locked file content";
+        file.close();
+
+        std::filesystem::permissions(subDir,
+                                     std::filesystem::perms::owner_read
+                                       | std::filesystem::perms::owner_exec,
+                                     std::filesystem::perm_options::replace);
+
+        utils::log::setLogLevel(utils::log::LogLevel::Error);
+        utils::log::setLogBackend(utils::log::LogBackend::Console);
+        testing::internal::CaptureStderr();
+
+        // Destructor of packager runs here when leaving scope.
+        // Under old throwing code: throws std::filesystem_error -> triggers std::terminate() ->
+        // crash! Under fixed code: safely catches error via std::error_code, logs error, does not
+        // terminate.
+    }
+    errOutput = testing::internal::GetCapturedStderr();
+    utils::log::setLogBackend(utils::log::LogBackend::None);
+
+    // Restore permissions so test directory can be safely cleaned up
+    std::error_code ec;
+    std::filesystem::permissions(subDir,
+                                 std::filesystem::perms::all,
+                                 std::filesystem::perm_options::replace,
+                                 ec);
+    std::filesystem::remove_all(workDir, ec);
+
+    // Verify the error was properly reported with failed to remove
+    EXPECT_FALSE(errOutput.empty());
+    EXPECT_NE(errOutput.find("failed to remove"), std::string::npos)
+      << "Expected 'failed to remove' in log output when permission was denied, got: " << errOutput;
 }
 
 } // namespace linglong::package

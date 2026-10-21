@@ -1049,7 +1049,8 @@ QVariantMap PackageManager::uninstallImpl(const QVariantMap &parameters,
 
     auto query = linglong::repo::repoCacheQuery{ .id = paras->package.id,
                                                  .channel = paras->package.channel,
-                                                 .version = paras->package.version };
+                                                 .version = paras->package.version,
+                                                 .deleted = false };
     auto candidate = this->repo->listLocalBy(query);
     if (!candidate) {
         return toDBusReply(utils::error::ErrorCode::AppUninstallFailed,

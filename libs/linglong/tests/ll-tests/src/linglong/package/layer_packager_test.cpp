@@ -185,4 +185,30 @@ TEST_F(LayerPackagerTest, InitWorkDir)
       << "workdir should be temporary directory";
 }
 
+TEST_F(LayerPackagerTest, DestructorCleansUpWorkDir)
+{
+    std::filesystem::path workDir;
+    {
+        package::LayerPackager packager;
+        workDir = packager.getWorkDir();
+        ASSERT_TRUE(std::filesystem::exists(workDir));
+    }
+    ASSERT_FALSE(std::filesystem::exists(workDir));
+}
+
+TEST_F(LayerPackagerTest, DestructorHandlesAbsentWorkDir)
+{
+    std::filesystem::path workDir;
+    {
+        package::LayerPackager packager;
+        workDir = packager.getWorkDir();
+        ASSERT_TRUE(std::filesystem::exists(workDir));
+        std::error_code ec;
+        std::filesystem::remove_all(workDir, ec);
+        ASSERT_FALSE(ec);
+        ASSERT_FALSE(std::filesystem::exists(workDir));
+    }
+    ASSERT_FALSE(std::filesystem::exists(workDir));
+}
+
 } // namespace linglong::package

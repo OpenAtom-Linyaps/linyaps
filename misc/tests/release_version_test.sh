@@ -9,9 +9,10 @@ set -eu
 source_dir=$1
 test_dir=$(mktemp -d)
 trap 'rm -rf "${test_dir}"' EXIT
+unset GIT_DIR GIT_WORK_TREE
 
 cp "${source_dir}/release.bash" "${test_dir}/release.bash"
-cat >"${test_dir}/CMakeLists.txt" <<'EOF'
+cat > "${test_dir}/CMakeLists.txt" <<'EOF'
 project(
   linglong
   VERSION 1.15.0)
@@ -21,6 +22,8 @@ cd "${test_dir}"
 git init --quiet
 git config user.name "Linyaps Test"
 git config user.email "test@linyaps.invalid"
+git config commit.gpgsign false
+git config core.hooksPath /dev/null
 git add CMakeLists.txt release.bash
 git commit --quiet -m "initial"
 

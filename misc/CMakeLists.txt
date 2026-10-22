@@ -190,6 +190,11 @@ if(ENABLE_TESTING)
       ${CMAKE_COMMAND} -DSOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}
       -DTEST_DIR=${CMAKE_CURRENT_BINARY_DIR}/tests/environment
       -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/environment_test.cmake)
+
+  add_test(
+    NAME release_version_validation
+    COMMAND /bin/bash ${CMAKE_CURRENT_SOURCE_DIR}/tests/release_version_test.sh
+            ${PROJECT_SOURCE_DIR})
 endif()
 
 # polkit actions

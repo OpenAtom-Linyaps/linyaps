@@ -291,10 +291,12 @@ installModule(const std::filesystem::path &buildOutput,
 {
     LINGLONG_TRACE("install module file");
 
+    const auto escapedBuildOutput =
+      QRegularExpression::escape(QString::fromStdString(buildOutput.string())).toStdString();
     auto ret = utils::moveFiles(
       buildOutput,
       moduleOutput,
-      [&buildOutput, &rules](const std::filesystem::path &path) {
+      [&buildOutput, &rules, &escapedBuildOutput](const std::filesystem::path &path) {
           for (auto rule : rules) {
               LogD("{} - {}", path, rule);
               // skip empty rule and comment start with #<space>
@@ -315,9 +317,9 @@ installModule(const std::filesystem::path &buildOutput,
               } else {
                   // rule is a regex
                   if (rule.rfind("^/", 0) != 0) {
-                      rule.insert(1, buildOutput.string() + "/");
+                      rule.insert(1, escapedBuildOutput + "/");
                   } else {
-                      rule.insert(1, buildOutput);
+                      rule.insert(1, escapedBuildOutput);
                   }
 
                   QRegularExpression regexp(rule.c_str());

@@ -16,6 +16,27 @@
 
 #include <unistd.h>
 
+TEST(LinglongBuilder, installModuleEscapesProjectPathInRegexRules)
+{
+    for (const auto &rule : { "^/include/.+\\.h$", "^include/.+\\.h$" }) {
+        SCOPED_TRACE(rule);
+        TempDir workingDir;
+        auto buildOutput = workingDir.path() / "project[1]+(debug)" / "output";
+        auto moduleOutput = workingDir.path() / "module";
+        std::filesystem::create_directories(buildOutput / "include");
+        std::filesystem::create_directories(moduleOutput);
+        std::ofstream(buildOutput / "include/header.h") << "header";
+        std::ofstream(buildOutput / "include/notes.txt") << "notes";
+
+        auto result = linglong::builder::installModule(buildOutput, moduleOutput, { rule });
+        ASSERT_TRUE(result.has_value()) << result.error().message();
+        EXPECT_TRUE(std::filesystem::exists(moduleOutput / "include/header.h"));
+        EXPECT_FALSE(std::filesystem::exists(buildOutput / "include/header.h"));
+        EXPECT_TRUE(std::filesystem::exists(buildOutput / "include/notes.txt"));
+        EXPECT_FALSE(std::filesystem::exists(moduleOutput / "include/notes.txt"));
+    }
+}
+
 TEST(LinglongBuilder, installModule)
 {
     TempDir buildOutput;

@@ -19,6 +19,7 @@ pfl_add_executable(
   src/linglong/builder/linglong_builder_test.cpp
   src/linglong/builder/pull_dependency_test.cpp
   src/linglong/builder/source_fetcher_test.cpp
+  src/linglong/cdi/cdi_selection_test.cpp
   src/linglong/cli/cli_printer_test.cpp
   src/linglong/cli/cli_test.cpp
   src/linglong/common/gkeyfile_wrapper_test.cpp

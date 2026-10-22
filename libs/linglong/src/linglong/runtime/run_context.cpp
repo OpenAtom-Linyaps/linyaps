@@ -584,23 +584,16 @@ utils::error::Result<void> RunContext::setupCDIDevices(generator::ContainerCfgBu
         return LINGLONG_OK;
     }
 
-    for (const auto &device : *contextCfg.cdiDevices) {
-        auto edits = cdi::getCDIDeviceEdits(device);
-        if (!edits) {
-            return LINGLONG_ERR(
-              fmt::format("failed to resolve CDI device edits {}={}", device.kind, device.name),
-              edits);
-        }
-
-        auto containerEdits = *edits;
-        if (!applyHooks) {
-            containerEdits.hooks = std::nullopt;
-        }
-
-        auto applyRes = builder.applyCDIPatch(containerEdits);
-        if (!applyRes) {
-            return LINGLONG_ERR("apply CDI device edits", applyRes);
-        }
+    auto edits = cdi::getCDIDevicesEdits(*contextCfg.cdiDevices);
+    if (!edits) {
+        return LINGLONG_ERR("failed to resolve CDI device edits", edits);
+    }
+    if (!applyHooks) {
+        edits->hooks = std::nullopt;
+    }
+    auto applyRes = builder.applyCDIPatch(*edits);
+    if (!applyRes) {
+        return LINGLONG_ERR("apply CDI device edits", applyRes);
     }
 
     return LINGLONG_OK;

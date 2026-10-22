@@ -923,6 +923,114 @@ devices:
     EXPECT_THAT(*builder.getConfig().process->env, ::testing::Contains("FOO=a=b"));
 }
 
+TEST_F(RunContextTest, cdiSpecHookRunsOnceForMultipleDevices)
+{
+    LINGLONG_TRACE("cdiSpecHookRunsOnceForMultipleDevices");
+
+    auto baseRef = package::Reference::parse("stable:org.deepin.base/23.0.0/x86_64");
+    ASSERT_TRUE(baseRef.has_value())
+      << "Failed to create base reference: " << baseRef.error().message();
+
+    api::types::v1::RepositoryCacheLayersItem baseItem;
+    baseItem.info.id = "org.deepin.base";
+    baseItem.info.version = "23.0.0";
+    baseItem.info.kind = "base";
+    baseItem.info.channel = "stable";
+    baseItem.info.arch = { std::string{ "x86_64" } };
+
+    EXPECT_CALL(*repo, getLayerItem(*baseRef, testing::_)).WillOnce(Return(baseItem));
+
+    package::LayerDir mockLayerDir(tempDir->path() / "merged");
+    EXPECT_CALL(*repo, getMergedModuleDir(*baseRef, testing::_))
+      .WillOnce(Return(utils::error::Result<package::LayerDir>(mockLayerDir)));
+
+    const auto specPath = tempDir->path() / "vendor-multi.yaml";
+    std::ofstream spec(specPath);
+    spec << R"(cdiVersion: "0.6.0"
+kind: "vendor.com/device"
+devices:
+  - name: "gpu0"
+    containerEdits:
+      env:
+        - "FOO=a=b"
+  - name: "gpu1"
+    containerEdits:
+      env:
+        - "SECOND_GPU=1"
+containerEdits:
+  hooks:
+    - hookName: "createContainer"
+      path: "/vendor/setup"
+)";
+    spec.close();
+
+    RunContext context(*this->repo);
+    auto result =
+      context.resolve(
+        *baseRef,
+        ResolveOptions{
+          .cdiDevices =
+            std::vector<api::types::v1::CdiDeviceEntry>{ api::types::v1::CdiDeviceEntry{
+                                                           .kind = "vendor.com/device",
+                                                           .name = "gpu0",
+                                                           .spec =
+                                                             api::types::v1::CdiSpec{
+                                                               .checksum = specChecksum(specPath),
+                                                               .path = specPath.string(),
+                                                             },
+                                                         },
+                                                         api::types::v1::CdiDeviceEntry{
+                                                           .kind = "vendor.com/device",
+                                                           .name = "gpu1",
+                                                           .spec =
+                                                             api::types::v1::CdiSpec{
+                                                               .checksum = specChecksum(specPath),
+                                                               .path = specPath.string(),
+                                                             },
+                                                         } },
+        });
+    ASSERT_TRUE(result.has_value()) << "Failed to resolve config: " << result.error().message();
+
+    const auto basePath = tempDir->path() / "base";
+    const auto bundlePath = tempDir->path() / "bundle";
+    std::filesystem::create_directories(basePath);
+    std::filesystem::create_directories(bundlePath);
+
+    generator::ContainerCfgBuilder builder;
+    builder.setAppId("org.deepin.base")
+      .setBasePath(basePath)
+      .setBundlePath(bundlePath)
+      .disablePatch();
+
+    result = context.setupCDIDevices(builder);
+    ASSERT_TRUE(result.has_value()) << "Failed to apply CDI edits: " << result.error().message();
+
+    result = builder.build();
+    ASSERT_TRUE(result.has_value()) << "Failed to build OCI config: " << result.error().message();
+
+    ASSERT_TRUE(builder.getConfig().process.has_value());
+    ASSERT_TRUE(builder.getConfig().process->env.has_value());
+    EXPECT_THAT(*builder.getConfig().process->env, ::testing::Contains("FOO=a=b"));
+    EXPECT_THAT(*builder.getConfig().process->env, ::testing::Contains("SECOND_GPU=1"));
+    ASSERT_TRUE(builder.getConfig().hooks);
+    ASSERT_TRUE(builder.getConfig().hooks->createContainer);
+    ASSERT_EQ(builder.getConfig().hooks->createContainer->size(), 1U);
+    EXPECT_EQ(builder.getConfig().hooks->createContainer->front().path, "/vendor/setup");
+
+    generator::ContainerCfgBuilder withoutHooks;
+    withoutHooks.setAppId("org.deepin.base")
+      .setBasePath(basePath)
+      .setBundlePath(bundlePath)
+      .disablePatch();
+    auto applied = context.setupCDIDevices(withoutHooks, false);
+    ASSERT_TRUE(applied) << applied.error().message();
+    auto built = withoutHooks.build();
+    ASSERT_TRUE(built) << built.error().message();
+    EXPECT_FALSE(withoutHooks.getConfig().hooks);
+    ASSERT_TRUE(withoutHooks.getConfig().process->env);
+    EXPECT_THAT(*withoutHooks.getConfig().process->env, ::testing::Contains("SECOND_GPU=1"));
+}
+
 TEST_F(RunContextTest, resolveFromConfigVersionMismatch)
 {
     LINGLONG_TRACE("resolveFromConfigVersionMismatch");

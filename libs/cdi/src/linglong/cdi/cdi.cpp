@@ -22,6 +22,7 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <set>
 #include <sstream>
 
 namespace linglong::cdi {
@@ -146,7 +147,8 @@ utils::error::Result<std::string> calculateSpecChecksum(const std::filesystem::p
 }
 
 utils::error::Result<types::ContainerEdits> getCDIDeviceEdits(const types::Cdi &spec,
-                                                              std::string_view deviceName)
+                                                              std::string_view deviceName,
+                                                              bool includeGlobalEdits)
 {
     LINGLONG_TRACE(fmt::format("get CDI device edits {}={}", spec.kind, deviceName));
 
@@ -156,7 +158,7 @@ utils::error::Result<types::ContainerEdits> getCDIDeviceEdits(const types::Cdi &
         }
 
         types::ContainerEdits globalEdits;
-        if (spec.containerEdits) {
+        if (includeGlobalEdits && spec.containerEdits) {
             globalEdits = spec.containerEdits.value();
         }
         return mergeEdits(globalEdits, dev.containerEdits);
@@ -278,26 +280,48 @@ getCDIDeviceEdits(const api::types::v1::CdiDeviceEntry &device)
 {
     LINGLONG_TRACE(fmt::format("get CDI device edits from entry {}={}", device.kind, device.name));
 
-    auto spec = parseCDISpecFile(device.spec.path);
-    if (!spec) {
-        return LINGLONG_ERR(spec);
-    }
+    return getCDIDevicesEdits({ device });
+}
 
-    auto checksum = calculateSpecChecksum(device.spec.path);
-    if (!checksum) {
-        return LINGLONG_ERR(checksum);
-    }
+utils::error::Result<types::ContainerEdits>
+getCDIDevicesEdits(const std::vector<api::types::v1::CdiDeviceEntry> &devices)
+{
+    LINGLONG_TRACE("get CDI edits for selected devices");
 
-    if (!device.spec.checksum.empty() && *checksum != device.spec.checksum) {
-        return LINGLONG_ERR(fmt::format("CDI spec checksum mismatch: {}", device.spec.path));
-    }
+    types::ContainerEdits result;
+    std::set<std::filesystem::path> appliedSpecs;
+    for (const auto &device : devices) {
+        std::error_code ec;
+        auto specPath = std::filesystem::canonical(device.spec.path, ec);
+        if (ec) {
+            return LINGLONG_ERR(
+              fmt::format("failed to resolve CDI spec {}: {}", device.spec.path, ec.message()));
+        }
+        auto spec = parseCDISpecFile(specPath);
+        if (!spec) {
+            return LINGLONG_ERR(spec);
+        }
 
-    if (spec->kind != device.kind) {
-        return LINGLONG_ERR(
-          fmt::format("CDI device kind mismatch: expected {}, got {}", device.kind, spec->kind));
-    }
+        auto checksum = calculateSpecChecksum(specPath);
+        if (!checksum) {
+            return LINGLONG_ERR(checksum);
+        }
+        if (!device.spec.checksum.empty() && *checksum != device.spec.checksum) {
+            return LINGLONG_ERR(fmt::format("CDI spec checksum mismatch: {}", device.spec.path));
+        }
+        if (spec->kind != device.kind) {
+            return LINGLONG_ERR(fmt::format("CDI device kind mismatch: expected {}, got {}",
+                                            device.kind,
+                                            spec->kind));
+        }
 
-    return getCDIDeviceEdits(*spec, device.name);
+        auto edits = getCDIDeviceEdits(*spec, device.name, appliedSpecs.insert(specPath).second);
+        if (!edits) {
+            return LINGLONG_ERR(edits);
+        }
+        result = mergeEdits(result, *edits);
+    }
+    return result;
 }
 
 } // namespace linglong::cdi

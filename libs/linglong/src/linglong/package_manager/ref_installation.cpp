@@ -343,15 +343,17 @@ utils::error::Result<void> RefInstallationAction::install(Task &task)
     LogD("install total size {}, need download size {}", taskTotalSize, taskNeededSize);
 
     utils::Transaction transaction;
-    // uninstall target ref if failed
-    transaction.addRollBack([this]() noexcept {
-        auto res = pm.tryUninstallRef(operation.newRef->reference);
-        if (!res) {
-            LogW("failed to roll back installed {}: {}",
-                 operation.newRef->reference.toString(),
-                 res.error());
-        }
-    });
+    if (!installingExtraModulesOnly) {
+        // uninstall target ref if failed
+        transaction.addRollBack([this]() noexcept {
+            auto res = pm.tryUninstallRef(operation.newRef->reference);
+            if (!res) {
+                LogW("failed to roll back installed {}: {}",
+                     operation.newRef->reference.toString(),
+                     res.error());
+            }
+        });
+    }
     for (const auto &item : refsToInstall) {
         const auto &[refRepo, module, meta] = item;
 
@@ -361,6 +363,17 @@ utils::error::Result<void> RefInstallationAction::install(Task &task)
         auto res = pm.installRefModule(task, refRepo, module);
         if (!res) {
             return LINGLONG_ERR(res);
+        }
+        if (installingExtraModulesOnly) {
+            transaction.addRollBack([this, ref = refRepo.reference, module]() noexcept {
+                auto res = pm.tryUninstallRef(ref, std::vector<std::string>{ module });
+                if (!res) {
+                    LogW("failed to roll back installed {}/{}: {}",
+                         ref.toString(),
+                         module,
+                         res.error());
+                }
+            });
         }
     }
 

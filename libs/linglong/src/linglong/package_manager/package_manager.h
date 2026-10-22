@@ -110,7 +110,9 @@ public
                                          const package::Reference &ref,
                                          const std::string &module,
                                          bool noAutoPrune = false) noexcept;
-    virtual utils::error::Result<bool> tryUninstallRef(const package::Reference &ref) noexcept;
+    virtual utils::error::Result<bool>
+    tryUninstallRef(const package::Reference &ref,
+                    std::optional<std::vector<std::string>> modules = std::nullopt) noexcept;
     utils::error::Result<void>
     uninstallRef(const package::Reference &ref,
                  std::optional<std::vector<std::string>> modules = std::nullopt) noexcept;

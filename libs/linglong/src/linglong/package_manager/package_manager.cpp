@@ -1348,7 +1348,8 @@ utils::error::Result<void> PackageManager::installRef(Task &task,
     return LINGLONG_OK;
 }
 
-utils::error::Result<bool> PackageManager::tryUninstallRef(const package::Reference &ref) noexcept
+utils::error::Result<bool> PackageManager::tryUninstallRef(
+  const package::Reference &ref, std::optional<std::vector<std::string>> modules) noexcept
 {
     LINGLONG_TRACE(fmt::format("try uninstall ref {}", ref.toString()));
 
@@ -1359,8 +1360,10 @@ utils::error::Result<bool> PackageManager::tryUninstallRef(const package::Refere
     }
 
     if (*busy) {
-        auto modules = repo->getModuleList(ref);
-        for (const auto &module : modules) {
+        if (!modules) {
+            modules = repo->getModuleList(ref);
+        }
+        for (const auto &module : *modules) {
             auto res = repo->markDeleted(ref, true, module);
             if (res) {
                 transaction.addRollBack([this, &ref, module]() noexcept {
@@ -1374,7 +1377,7 @@ utils::error::Result<bool> PackageManager::tryUninstallRef(const package::Refere
             }
         }
     } else {
-        auto res = uninstallRef(ref);
+        auto res = uninstallRef(ref, std::move(modules));
         if (!res) {
             return LINGLONG_ERR(res.error());
         }

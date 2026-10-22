@@ -32,11 +32,11 @@ except ImportError:
 # IllegalCharacterError，导致【整份报告生成失败】——更糟的是它会把
 # 真正的失败原因盖掉（只看得到 openpyxl 的堆栈）。
 # 这里统一清洗后再写入。
-_ILLEGAL_XML_CHARS = re.compile("[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]")
+_ILLEGAL_XML_CHARS = re.compile("[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f\ufffe\uffff]")
 
 
 def sanitize_cell(value):
-    """去掉 Excel 不接受的控制字符，非字符串原样返回。"""
+    """去掉 Excel 不接受的控制字符及 U+FFFE/U+FFFF，非字符串原样返回。"""
     if not isinstance(value, str):
         return value
     return _ILLEGAL_XML_CHARS.sub("", value)

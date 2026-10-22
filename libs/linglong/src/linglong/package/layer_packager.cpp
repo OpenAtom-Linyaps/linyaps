@@ -89,8 +89,14 @@ LayerPackager::~LayerPackager()
                  (this->workDir / "unpack").string());
         }
     }
-    if (!std::filesystem::remove_all(this->workDir)) {
-        LogE("failed to remove {}", this->workDir);
+    // remove_all returns the number of entries removed, not a boolean; an
+    // empty workDir (e.g. after a move) must not be reported as a failure.
+    if (!this->workDir.empty()) {
+        std::error_code ec;
+        std::filesystem::remove_all(this->workDir, ec);
+        if (ec) {
+            LogE("failed to remove {}: {}", this->workDir, ec.message());
+        }
     }
 }
 

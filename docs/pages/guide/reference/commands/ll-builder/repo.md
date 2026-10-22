@@ -40,8 +40,11 @@ ll-builder-repo - 显示和管理仓库
 **set-priority** _alias_ _priority_
 : 设置仓库优先级
 
-**enable-mirror** _alias_
+**enable-mirror** _alias_ [*options*]
 : 启用仓库镜像
+
+  **--region** _REGION_
+  : 镜像区域代码，例如 CN、US。设置后会将该参数作为查询参数追加到 mirrorlist URL
 
 **disable-mirror** _alias_
 : 禁用仓库镜像
@@ -94,6 +97,12 @@ ll-builder repo set-priority myalias 100
 
 ```bash
 ll-builder repo enable-mirror myalias
+```
+
+指定区域启用仓库镜像：
+
+```bash
+ll-builder repo enable-mirror myalias --region CN
 ```
 
 禁用仓库镜像：

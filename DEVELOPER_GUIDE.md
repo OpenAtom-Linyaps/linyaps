@@ -38,6 +38,14 @@ For running the unit tests (`ll-tests`) you also need:
 
 - `erofs-utils` (provides `mkfs.erofs`, used by the `LayerPackagerTest` and `UabFileTest` suite setup)
 
+The script tests also require Python 3.6 or newer and `wget`. They can be run
+without building the C++ tools:
+
+```bash
+cmake -S misc/tests -B build-script-tests
+ctest --test-dir build-script-tests --output-on-failure
+```
+
 Linglong uses [cmake presets]. To build and install:
 
 ```bash

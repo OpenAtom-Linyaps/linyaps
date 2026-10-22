@@ -168,6 +168,43 @@ TEST(LinglongBuilder, LayerExportFilename)
     EXPECT_EQ(filename, "org.deepin.demo_1.0.0.0_arm64_binary.layer");
 };
 
+namespace {
+
+linglong::api::types::v1::RepoConfigV2 removeTestRepoConfig()
+{
+    return linglong::api::types::v1::RepoConfigV2{
+        .defaultRepo = "stable",
+        .repos = { linglong::api::types::v1::Repo{ .name = "stable",
+                                                   .priority = 0,
+                                                   .url = "https://example.com/repo" } },
+        .version = 2,
+    };
+}
+
+} // namespace
+
+TEST(LinglongBuilder, RemoveAppFailsOnInvalidReference)
+{
+    TempDir repoDir;
+    auto repo = linglong::repo::OSTreeRepo::create(repoDir.path(), removeTestRepoConfig());
+    ASSERT_TRUE(repo.has_value()) << repo.error().message();
+
+    // A bare application ID is not a full reference (channel:id/version/arch).
+    auto result = linglong::builder::cmdRemoveApp(**repo, { "org.deepin.demo" }, false);
+    EXPECT_FALSE(result.has_value());
+}
+
+TEST(LinglongBuilder, RemoveAppSkipsReferenceNotInRepo)
+{
+    TempDir repoDir;
+    auto repo = linglong::repo::OSTreeRepo::create(repoDir.path(), removeTestRepoConfig());
+    ASSERT_TRUE(repo.has_value()) << repo.error().message();
+
+    auto result =
+      linglong::builder::cmdRemoveApp(**repo, { "main:org.deepin.demo/1.0.0.0/x86_64" }, false);
+    EXPECT_TRUE(result.has_value()) << result.error().message();
+}
+
 TEST(LinglongBuilder, CleanNoBuildDir)
 {
     TempDir workingDir;

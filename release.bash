@@ -42,6 +42,11 @@ if [[ -z "$NEW_VERSION" ]]; then
         echo "自动递增小版本号: $NEW_VERSION"
 fi
 
+if [[ ! "$NEW_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+        echo "错误: 版本号必须使用 major.minor.patch 格式!" >&2
+        exit 1
+fi
+
 # 更新 CMakeLists.txt 文件中的 VERSION 字段
 sed -E -i "/project\s*\(/,/\)/{
     s/(VERSION\s+)[0-9]+\.[0-9]+\.[0-9]+/\1${NEW_VERSION}/

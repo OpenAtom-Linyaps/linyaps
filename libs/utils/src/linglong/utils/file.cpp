@@ -7,13 +7,17 @@
 #include "linglong/common/error.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/log/log.h"
+#include "linglong/utils/unique_fd.h"
 
+#include <array>
+#include <cerrno>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <string>
 #include <system_error>
 
+#include <fcntl.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -121,8 +125,8 @@ linglong::utils::error::Result<void> concatFile(const std::filesystem::path &sou
         return LINGLONG_ERR("source and target are the same file", ec);
     }
 
-    std::ifstream ifs(source, std::ios::binary);
-    if (!ifs) {
+    fd::UniqueFd input{ ::open(source.c_str(), O_RDONLY | O_CLOEXEC) };
+    if (!input) {
         return LINGLONG_ERR(fmt::format("failed to open source {}", source));
     }
 
@@ -131,10 +135,30 @@ linglong::utils::error::Result<void> concatFile(const std::filesystem::path &sou
         return LINGLONG_ERR(fmt::format("failed to open target {}", target));
     }
 
-    ofs << ifs.rdbuf();
-    if (ofs.bad()) {
-        return LINGLONG_ERR(
-          fmt::format("failed to write target {} {}", target, common::error::errorString(errno)));
+    std::array<char, 8192> buffer{};
+    while (true) {
+        const auto count = ::read(input.get(), buffer.data(), buffer.size());
+        if (count < 0) {
+            if (errno == EINTR) {
+                continue;
+            }
+            return LINGLONG_ERR(fmt::format("failed to read source {}: {}",
+                                            source,
+                                            common::error::errorString(errno)));
+        }
+        if (count == 0) {
+            break;
+        }
+        ofs.write(buffer.data(), count);
+        if (!ofs) {
+            return LINGLONG_ERR(fmt::format("failed to write target {}", target));
+        }
+    }
+
+    // Buffered writes can fail only when the stream is flushed/closed.
+    ofs.close();
+    if (!ofs) {
+        return LINGLONG_ERR(fmt::format("failed to close target {}", target));
     }
     return LINGLONG_OK;
 }

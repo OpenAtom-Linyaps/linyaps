@@ -9,11 +9,14 @@
 #include "linglong/utils/file.h"
 
 #include <algorithm>
+#include <csignal>
 #include <filesystem>
 #include <fstream>
 #include <memory>
 #include <string>
 
+#include <sys/resource.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 namespace fs = std::filesystem;
@@ -625,4 +628,57 @@ TEST_F(FileTest, ConcatFile_ErrorCases)
     auto read_empty_source = linglong::utils::readFile(empty_target.string());
     ASSERT_TRUE(read_empty_source.has_value()) << read_empty_source.error().message();
     EXPECT_EQ(*read_empty_source, "target content");
+}
+
+TEST_F(FileTest, ConcatFileReportsBufferedWriteFailure)
+{
+    const auto source = src_dir / "buffered-source";
+    const auto target = dest_dir / "buffered-target";
+    std::ofstream(source) << "small payload";
+
+    const auto child = ::fork();
+    ASSERT_GE(child, 0);
+    if (child == 0) {
+        if (::signal(SIGXFSZ, SIG_IGN) == SIG_ERR) {
+            ::_exit(2);
+        }
+        const struct rlimit limit{ 0, 0 };
+        if (::setrlimit(RLIMIT_FSIZE, &limit) != 0) {
+            ::_exit(3);
+        }
+        auto result = linglong::utils::concatFile(source, target);
+        ::_exit(result.has_value() ? 1 : 0);
+    }
+
+    int status = 0;
+    ASSERT_EQ(::waitpid(child, &status, 0), child);
+    ASSERT_TRUE(WIFEXITED(status));
+    EXPECT_EQ(WEXITSTATUS(status), 0);
+    ASSERT_TRUE(fs::exists(target));
+    EXPECT_EQ(fs::file_size(target), 0);
+}
+
+TEST_F(FileTest, ConcatFileRejectsDirectorySource)
+{
+    EXPECT_FALSE(linglong::utils::concatFile(src_dir, dest_dir / "directory-source").has_value());
+}
+
+TEST_F(FileTest, ConcatFilePreservesChunkedBinaryContent)
+{
+    const auto source = src_dir / "chunked-source";
+    const auto target = dest_dir / "chunked-target";
+    std::string payload(16385, 'x');
+    payload[8192] = '\0';
+    {
+        std::ofstream out(source, std::ios::binary);
+        out.write(payload.data(), payload.size());
+        ASSERT_TRUE(out.good());
+    }
+    std::ofstream(target, std::ios::binary) << "prefix";
+    auto result = linglong::utils::concatFile(source, target);
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+    std::ifstream in(target, std::ios::binary);
+    const std::string actual((std::istreambuf_iterator<char>(in)),
+                             std::istreambuf_iterator<char>());
+    EXPECT_EQ(actual, "prefix" + payload);
 }

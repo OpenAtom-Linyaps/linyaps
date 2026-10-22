@@ -406,6 +406,38 @@ TEST_F(FileTest, EnsureDirectory)
     EXPECT_TRUE(fs::is_directory(multiple_dir));
 }
 
+TEST_F(FileTest, EnsureDirectoryErrorIncludesPathWhenRemovingFileFails)
+{
+    if (::geteuid() == 0) {
+        GTEST_SKIP() << "root can remove files regardless of the parent permission bits";
+    }
+
+    const auto parent = dest_dir / "read-only-parent";
+    fs::create_directory(parent);
+    const auto permissions = fs::status(parent).permissions();
+    const auto file = parent / "existing-file";
+    std::ofstream(file) << "content";
+    fs::permissions(parent, fs::perms::owner_read | fs::perms::owner_exec);
+
+    auto result = linglong::utils::ensureDirectory(file);
+
+    fs::permissions(parent, permissions);
+    ASSERT_FALSE(result);
+    EXPECT_NE(result.error().message().find(file.string()), std::string::npos);
+}
+
+TEST_F(FileTest, EnsureDirectoryErrorIncludesPathWhenCreatingDirectoryFails)
+{
+    const auto parent = dest_dir / "regular-file";
+    std::ofstream(parent) << "content";
+    const auto directory = parent / "nested-directory";
+
+    auto result = linglong::utils::ensureDirectory(directory);
+
+    ASSERT_FALSE(result);
+    EXPECT_NE(result.error().message().find(directory.string()), std::string::npos);
+}
+
 TEST_F(FileTest, EnsureDirectoryWithPermissionsIgnoresUmask)
 {
     constexpr auto permissions = fs::perms::owner_all | fs::perms::group_read
@@ -532,6 +564,20 @@ TEST_F(FileTest, RelinkFile)
     }
 }
 
+TEST_F(FileTest, RelinkFileErrorIncludesTemporaryPath)
+{
+    const auto parent = dest_dir / "regular-file";
+    std::ofstream(parent) << "content";
+    const auto link = parent / "link";
+    const auto target = dest_dir / "target";
+    const auto temporary = fs::path{ link.string() + ".linyaps.tmp" };
+
+    auto result = linglong::utils::relinkFileTo(link, target);
+
+    ASSERT_FALSE(result);
+    EXPECT_NE(result.error().message().find(temporary.string()), std::string::npos);
+}
+
 TEST_F(FileTest, WriteFile)
 {
     // Test writing to a new file
@@ -573,6 +619,19 @@ TEST_F(FileTest, WriteFile)
     fs::path subdir_file = dest_dir / "subdir" / "subfile.txt";
     result = linglong::utils::writeFile(subdir_file.string(), "subdir content");
     EXPECT_FALSE(result.has_value()); // Should fail because parent directory doesn't exist
+}
+
+TEST_F(FileTest, WriteFileErrorIncludesPath)
+{
+    const fs::path fullDevice{ "/dev/full" };
+    if (!fs::exists(fullDevice)) {
+        GTEST_SKIP() << "/dev/full is required to exercise a deferred write failure";
+    }
+
+    auto result = linglong::utils::writeFile(fullDevice, "content");
+
+    ASSERT_FALSE(result);
+    EXPECT_NE(result.error().message().find(fullDevice.string()), std::string::npos);
 }
 
 TEST_F(FileTest, ReadFile)

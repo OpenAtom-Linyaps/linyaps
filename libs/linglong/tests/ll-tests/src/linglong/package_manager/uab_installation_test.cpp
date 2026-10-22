@@ -583,3 +583,64 @@ TEST(CheckDistributionModeUABLayers, RejectsEmptyArchitectureFromDeserializedMet
     ASSERT_FALSE(result.has_value());
     EXPECT_THAT(result.error().message(), HasSubstr("missing architecture"));
 }
+
+TEST(CheckDistributionModeUABLayers, InvalidArchitectureInOtherLayerBeforeSplitting)
+{
+    TempDir tempDir;
+    MockOSTreeRepo mockRepo(tempDir.path());
+    repo::OSTreeRepo &repo = mockRepo;
+    std::vector<api::types::v1::UabLayer> layers = {
+        create_layer("id1", "1.0.0", "main", "app", "binary"),
+        create_layer("id1", "1.0.0", "main", "runtime", "runtime"),
+    };
+    layers.back().info.arch = { "not-an-architecture" };
+
+    auto result = UabInstallationAction::checkDistributionModeUABLayers(repo, layers);
+    ASSERT_FALSE(result.has_value());
+    EXPECT_THAT(result.error().message(), HasSubstr("unknown architecture"));
+}
+
+TEST(CheckDistributionModeUABLayers, RejectsEmptyArchitectureString)
+{
+    TempDir tempDir;
+    MockOSTreeRepo mockRepo(tempDir.path());
+    repo::OSTreeRepo &repo = mockRepo;
+    auto layer = create_layer("id1", "1.0.0", "main", "app", "binary");
+    layer.info.arch = { "" };
+
+    auto result = UabInstallationAction::checkDistributionModeUABLayers(repo, { layer });
+    ASSERT_FALSE(result.has_value());
+    EXPECT_THAT(result.error().message(), HasSubstr("unknown architecture"));
+}
+
+TEST(CheckDistributionModeUABLayers, AcceptsValidDeserializedMetadata)
+{
+    const auto currentArch = package::Architecture::currentCPUArchitecture().toString();
+    const nlohmann::json layerJson = {
+        { "info",
+          {
+            { "arch", { currentArch } },
+            { "base", "" },
+            { "channel", "main" },
+            { "id", "com.example.app" },
+            { "kind", "app" },
+            { "module", "binary" },
+            { "name", "demo" },
+            { "schema_version", "1" },
+            { "size", 0 },
+            { "version", "1.0.0" },
+          } },
+        { "minified", false },
+    };
+
+    auto layer = layerJson.get<api::types::v1::UabLayer>();
+
+    TempDir tempDir;
+    MockOSTreeRepo mockRepo(tempDir.path());
+    repo::OSTreeRepo &repo = mockRepo;
+
+    auto result = UabInstallationAction::checkDistributionModeUABLayers(repo, { layer });
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+    EXPECT_EQ(result->first.size(), 1U);
+    EXPECT_TRUE(result->second.empty());
+}

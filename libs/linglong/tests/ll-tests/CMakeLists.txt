@@ -74,6 +74,7 @@ pfl_add_executable(
   src/linglong/utils/filelock_test.cpp
   src/linglong/utils/hooks_test.cpp
   src/linglong/utils/io_test.cpp
+  src/linglong/utils/pipe_stdio_test.cpp
   src/linglong/utils/log.cpp
   src/linglong/utils/namespce.cpp
   src/linglong/utils/overlayfs_test.cpp

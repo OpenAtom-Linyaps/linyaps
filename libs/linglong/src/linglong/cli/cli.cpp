@@ -1203,7 +1203,10 @@ utils::error::Result<int> Cli::reuseContainer(const std::string &id,
         if (ioSetup->option.tty) {
             ioSetup->listenFd.reset();
         } else if (ioSetup->pipes) {
-            ioSetup->pipes->setupChildStdio();
+            if (!ioSetup->pipes->setupChildStdio()) {
+                LogE("failed to set up child standard I/O");
+                _exit(EXIT_FAILURE);
+            }
         }
 
         auto reuseCommand = utils::BashCommandHelper::generateBashCommandBase();

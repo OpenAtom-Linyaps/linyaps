@@ -25,12 +25,12 @@ using nlohmann::json;
 
 struct Sections {
 /**
-* Name of the section contains the read only filesystem image. It SHOULD always be
+* Name of the section that contains the read only filesystem image. It SHOULD always be
 * 'linglong.bundle'.
 */
 std::string bundle;
 /**
-* Name of the section contains the icon of this UAB file. It SHOULD always be
+* Name of the section that contains the icon of this UAB file. It SHOULD always be
 * 'linglong.icon'.
 */
 std::optional<std::string> icon;

@@ -51,7 +51,11 @@ void DataMonitor::stop()
         return;
     }
 
-    running.store(false);
+    {
+        std::lock_guard<std::mutex> lock(waitMutex);
+        running.store(false);
+    }
+    wakeup.notify_all();
     if (monitorThread.joinable()) {
         monitorThread.join();
     }
@@ -88,7 +92,10 @@ void DataMonitor::monitorLoop()
             cb(*this);
         }
 
-        std::this_thread::sleep_for(std::chrono::seconds(interval));
+        std::unique_lock<std::mutex> lock(waitMutex);
+        wakeup.wait_for(lock, std::chrono::seconds(interval), [this] {
+            return !running.load();
+        });
     }
 }
 

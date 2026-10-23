@@ -6,6 +6,7 @@
 
 #include <atomic>
 #include <chrono>
+#include <condition_variable>
 #include <functional>
 #include <mutex>
 #include <thread>
@@ -41,6 +42,8 @@ private:
     std::atomic<double> currentSpeed;
     std::thread monitorThread;
     std::mutex dataMutex;
+    std::mutex waitMutex;
+    std::condition_variable wakeup;
 };
 
 } // namespace linglong::service

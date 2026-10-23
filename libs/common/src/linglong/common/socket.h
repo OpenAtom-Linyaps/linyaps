@@ -17,6 +17,7 @@ struct SocketData
     std::string payload;
 };
 
+// The caller owns the received descriptor, which is marked close-on-exec.
 tl::expected<SocketData, std::string> recvFdWithPayload(int socketFd, std::size_t bufSize = 4096);
 
 tl::expected<void, std::string> sendFdWithPayload(int socketFd, int fd, const std::string &payload);

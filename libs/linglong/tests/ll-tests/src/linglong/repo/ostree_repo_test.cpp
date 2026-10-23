@@ -1352,6 +1352,52 @@ TEST_F(RepoTest, exportAppBinariesCreatesDefaultAppidScript)
               std::string::npos);
 }
 
+TEST_F(RepoTest, exportAppBinariesReportsFilesystemErrors)
+{
+    for (bool blockScript : { true, false }) {
+        SCOPED_TRACE(blockScript ? "script creation" : "symlink creation");
+        TempDir tempDir;
+        auto config = api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 };
+        auto ostreeRepo = std::make_unique<MockOstreeRepo>(tempDir.path(), config);
+        api::types::v1::RepositoryCacheLayersItem item{
+            .commit = "bin-commit",
+            .info =
+              api::types::v1::PackageInfoV2{
+                .command = std::vector<std::string>{ "myapp" },
+                .id = "com.example.app",
+                .kind = "app",
+                .packageInfoV2Module = "binary",
+              },
+        };
+        auto entriesDir = tempDir.path() / "entries";
+        auto blocker = blockScript ? entriesDir / "bin/apps/com.example.app/bin/com.example.app"
+                                   : entriesDir / "bin/com.example.app";
+        fs::create_directories(blocker);
+        std::ofstream(blocker / "keep") << "keep";
+
+        EXPECT_FALSE(ostreeRepo->exportAppBinaries(entriesDir, item).has_value());
+        EXPECT_TRUE(fs::exists(blocker / "keep"));
+    }
+}
+
+TEST_F(RepoTest, exportDirReportsLinkFailure)
+{
+    TempDir tempDir;
+    auto config = api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 };
+    auto ostreeRepo = std::make_unique<MockOstreeRepo>(tempDir.path(), config);
+    auto source = tempDir.path() / "source";
+    auto entriesDir = tempDir.path() / "entries";
+    fs::create_directories(source);
+    std::ofstream(source / "icon.png") << "icon";
+    auto blocker = entriesDir / "share/icons/icon.png.linyaps.tmp";
+    fs::create_directories(blocker);
+    std::ofstream(blocker / "keep") << "keep";
+
+    EXPECT_FALSE(
+      ostreeRepo->exportDir("com.example.app", source, entriesDir, "share/icons", 10).has_value());
+    EXPECT_TRUE(fs::exists(blocker / "keep"));
+}
+
 TEST_F(RepoTest, exportAppBinariesExportsFullCommandArray)
 {
     TempDir tempDir;

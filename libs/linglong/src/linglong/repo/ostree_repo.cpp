@@ -1948,12 +1948,16 @@ void OSTreeRepo::unexportAppReference(const package::Reference &ref,
     }
 }
 
-void OSTreeRepo::exportAppReference(const package::Reference &ref,
-                                    const std::optional<std::string> &module) noexcept
+utils::error::Result<void> OSTreeRepo::exportAppReference(
+  const package::Reference &ref, const std::optional<std::string> &module) noexcept
 {
+    LINGLONG_TRACE(fmt::format("export app reference {}", ref.toString()));
+
     QDir entriesDir(this->getEntriesDir().c_str());
     if (!entriesDir.exists()) {
-        entriesDir.mkpath(".");
+        if (!entriesDir.mkpath(".")) {
+            return LINGLONG_ERR("failed to create entries directory");
+        }
     }
 
     auto items = this->cache->queryLayerItem(repoCacheQuery{
@@ -1965,8 +1969,7 @@ void OSTreeRepo::exportAppReference(const package::Reference &ref,
       .architecture = ref.arch.toString(),
     });
     if (items.empty()) {
-        LogE("Failed to export app reference {}: no layer found", ref.toString());
-        return;
+        return LINGLONG_ERR(fmt::format("no layer found to export {}", ref.toString()));
     }
 
     bool exported = false;
@@ -1977,19 +1980,18 @@ void OSTreeRepo::exportAppReference(const package::Reference &ref,
 
         auto ret = exportAppEntries(entriesDir.absolutePath().toStdString(), item);
         if (!ret) {
-            LogE("Failed to export app module {}: {}",
-                 item.info.packageInfoV2Module,
-                 ret.error().message());
-            continue;
+            return LINGLONG_ERR(
+              fmt::format("failed to export app module {}", item.info.packageInfoV2Module),
+              ret);
         }
         exported = true;
     }
 
     if (!exported) {
-        LogW("No app module entries exported for {}", ref.toString());
-        return;
+        return LINGLONG_OK;
     }
     this->updateSharedInfo();
+    return LINGLONG_OK;
 }
 
 void OSTreeRepo::exportLayerSignData(const package::Reference &ref,
@@ -2188,7 +2190,9 @@ utils::error::Result<void> OSTreeRepo::exportDir(const std::string &appID,
             auto target = source_path.lexically_relative(linkpath.parent_path());
             auto res = utils::relinkFileTo(linkpath, target);
             if (!res) {
-                LogE("failed to link {} to {}", linkpath.string(), target.string());
+                return LINGLONG_ERR(
+                  fmt::format("failed to link {} to {}", linkpath.string(), target.string()),
+                  res);
             }
             continue;
         }
@@ -2458,15 +2462,12 @@ OSTreeRepo::exportAppBinaries(const std::filesystem::path &rootEntriesDir,
     }
 
     // Helper: create a wrapper script and a symlink in entries/bin/ pointing to it
-    auto exportOne = [&](const std::string &name, const std::vector<std::string> &command) -> void {
+    auto exportOne = [&](const std::string &name,
+                         const std::vector<std::string> &command) -> utils::error::Result<void> {
         auto realScript = appBinDir / name;
         auto ret = createBinaryWrapperScript(realScript, item.info.id, command);
         if (!ret) {
-            LogW("Failed to create binary script {} for {}: {}",
-                 name,
-                 item.info.id,
-                 ret.error().message());
-            return;
+            return LINGLONG_ERR("failed to create binary wrapper", ret);
         }
         // Create relative symlink: entries/bin/<name> → apps/APPID/bin/<name>
         auto linkPath = binDir / name;
@@ -2475,21 +2476,19 @@ OSTreeRepo::exportAppBinaries(const std::filesystem::path &rootEntriesDir,
         if (std::filesystem::exists(linkPath, ec) || std::filesystem::is_symlink(linkPath, ec)) {
             // Already exists (e.g. upgrade); remove old link before creating new one
             std::filesystem::remove(linkPath, ec);
+            if (ec) {
+                return LINGLONG_ERR(fmt::format("failed to remove {}", linkPath), ec);
+            }
         }
         std::filesystem::create_symlink(target, linkPath, ec);
         if (ec) {
-            LogW("Failed to create symlink {} → {} for {}: {}",
-                 linkPath.string(),
-                 target.string(),
-                 item.info.id,
-                 ec.message());
+            return LINGLONG_ERR(fmt::format("failed to create symlink {}", linkPath), ec);
         }
+        return LINGLONG_OK;
     };
 
     // Always export a single script named after the appid, using the full command array
-    exportOne(item.info.id, cmd);
-
-    return LINGLONG_OK;
+    return exportOne(item.info.id, cmd);
 }
 
 utils::error::Result<void>

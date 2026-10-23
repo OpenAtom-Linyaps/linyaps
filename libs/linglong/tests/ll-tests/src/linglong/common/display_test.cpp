@@ -4,7 +4,17 @@
 
 #include <gtest/gtest.h>
 
+#include "common/tempdir.h"
 #include "linglong/common/display.h"
+#include "linglong/utils/env.h"
+#include "linglong/utils/unique_fd.h"
+
+#include <cerrno>
+#include <cstring>
+#include <fstream>
+
+#include <sys/socket.h>
+#include <sys/un.h>
 
 namespace linglong::common::display {
 
@@ -197,6 +207,56 @@ TEST(DisplayTest, GetXOrgDisplay_NoDisplayNo)
 {
     auto result = getXOrgDisplay("test:");
     ASSERT_FALSE(result.has_value());
+}
+
+TEST(DisplayTest, GetWaylandDisplay_EmptyString)
+{
+    auto result = getWaylandDisplay("");
+    ASSERT_FALSE(result.has_value()) << "empty WAYLAND_DISPLAY should be rejected";
+}
+
+TEST(DisplayTest, GetWaylandDisplay_RegularFile)
+{
+    TempDir tempDir;
+    ASSERT_TRUE(tempDir.isValid());
+    const auto file = tempDir.path() / "wayland-file";
+    std::ofstream{ file } << "not a socket";
+
+    EXPECT_FALSE(getWaylandDisplay(file.string()).has_value());
+}
+
+TEST(DisplayTest, GetWaylandDisplay_Directory)
+{
+    TempDir tempDir;
+    ASSERT_TRUE(tempDir.isValid());
+
+    EXPECT_FALSE(getWaylandDisplay(tempDir.path().string()).has_value());
+}
+
+TEST(DisplayTest, GetWaylandDisplay_RealSocket)
+{
+    TempDir tempDir;
+    ASSERT_TRUE(tempDir.isValid());
+    const auto socketPath = tempDir.path() / "wayland-test";
+    linglong::utils::fd::UniqueFd socket{ ::socket(AF_UNIX, SOCK_STREAM, 0) };
+    ASSERT_TRUE(socket) << std::strerror(errno);
+
+    struct sockaddr_un addr{};
+    addr.sun_family = AF_UNIX;
+    ASSERT_LT(socketPath.native().size(), sizeof(addr.sun_path));
+    std::strncpy(addr.sun_path, socketPath.c_str(), sizeof(addr.sun_path) - 1);
+    ASSERT_EQ(::bind(socket.get(), reinterpret_cast<struct sockaddr *>(&addr), sizeof(addr)), 0)
+      << std::strerror(errno);
+
+    auto absoluteResult = getWaylandDisplay(socketPath.string());
+    ASSERT_TRUE(absoluteResult.has_value());
+    EXPECT_EQ(*absoluteResult, socketPath);
+
+    linglong::utils::EnvironmentVariableGuard runtimeDir{ "XDG_RUNTIME_DIR",
+                                                          tempDir.path().string() };
+    auto relativeResult = getWaylandDisplay(socketPath.filename().string());
+    ASSERT_TRUE(relativeResult.has_value());
+    EXPECT_EQ(*relativeResult, socketPath);
 }
 
 } // namespace linglong::common::display

@@ -8,6 +8,7 @@
 
 #include <fmt/format.h>
 
+#include <cstddef>
 #include <random>
 #include <sstream>
 

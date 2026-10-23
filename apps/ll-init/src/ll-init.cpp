@@ -28,7 +28,7 @@ namespace {
 
 void print_sys_error(std::string_view msg, int error) noexcept
 {
-    fmt::println(stderr, "{}: {}", msg, ::strerror(error));
+    fmt::print(stderr, "{}: {}\n", msg, ::strerror(error));
 }
 
 void print_sys_error(std::string_view msg) noexcept
@@ -40,7 +40,7 @@ void print_info(std::string_view msg) noexcept
 {
     static const auto is_debug = ::getenv("LINYAPS_INIT_VERBOSE_OUTPUT") != nullptr;
     if (is_debug) {
-        fmt::println(stderr, "{}", msg);
+        fmt::print(stderr, "{}\n", msg);
     }
 }
 

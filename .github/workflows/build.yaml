@@ -13,6 +13,8 @@ jobs:
       should_build: ${{ steps.filter.outputs.code }}
     steps:
       - uses: actions/checkout@v6
+      - name: Test final job-status decisions
+        run: python3 .github/tests/test_required_job_status.py
       - uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -26,6 +28,8 @@ jobs:
               - 'po/**'
               - '**.cmake'
               - '**/CMakeLists.txt'
+              - '.github/workflows/**'
+              - '.github/tests/**'
 
   build-u24-x64:
     needs: path-filter
@@ -148,14 +152,26 @@ jobs:
     steps:
       - name: Decide status
         run: |
+          FILTER_RESULT="${{ needs.path-filter.result }}"
+          SHOULD_RUN="${{ needs.path-filter.outputs.should_build }}"
+          if [[ "$FILTER_RESULT" != "success" ]]; then
+            echo "Path filtering did not succeed."
+            exit 1
+          fi
+          case "$SHOULD_RUN" in
+            true) EXPECTED_RESULT="success" ;;
+            false) EXPECTED_RESULT="skipped" ;;
+            *) echo "Missing or invalid path-filter output."; exit 1 ;;
+          esac
+
           U24_X64="${{ needs.build-u24-x64.result }}"
           U24_ARM="${{ needs.build-u24-arm.result }}"
           U22_X64="${{ needs.build-u22-x64.result }}"
           U22_ARM="${{ needs.build-u22-arm.result }}"
-
-          if [[ "$U24_X64" == "failure" || "$U24_ARM" == "failure" || "$U22_X64" == "failure" || "$U22_ARM" == "failure" ]]; then
-            echo "One or more builds failed."
-            exit 1
-          fi
-          echo "All builds successful or skipped."
-          exit 0
+          for RESULT in "$U24_X64" "$U24_ARM" "$U22_X64" "$U22_ARM"; do
+            if [[ "$RESULT" != "$EXPECTED_RESULT" ]]; then
+              echo "Required job result: $RESULT; expected: $EXPECTED_RESULT."
+              exit 1
+            fi
+          done
+          echo "All required job results match the successful path filter."

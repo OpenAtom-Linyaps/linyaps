@@ -26,6 +26,8 @@ jobs:
               - 'po/**'
               - '**.cmake'
               - '**/CMakeLists.txt'
+              - '.github/workflows/**'
+              - '.github/tests/**'
 
   codecov:
     needs: path-filter
@@ -67,10 +69,21 @@ jobs:
     steps:
       - name: Decide Status
         run: |
-          RESULT="${{ needs.codecov.result }}"
-          if [[ "$RESULT" == "failure" ]]; then
-            echo "Coverage generation failed."
+          FILTER_RESULT="${{ needs.path-filter.result }}"
+          SHOULD_RUN="${{ needs.path-filter.outputs.should_scan }}"
+          if [[ "$FILTER_RESULT" != "success" ]]; then
+            echo "Path filtering did not succeed."
             exit 1
           fi
-          echo "Coverage passed or skipped."
-          exit 0
+          case "$SHOULD_RUN" in
+            true) EXPECTED_RESULT="success" ;;
+            false) EXPECTED_RESULT="skipped" ;;
+            *) echo "Missing or invalid path-filter output."; exit 1 ;;
+          esac
+
+          RESULT="${{ needs.codecov.result }}"
+          if [[ "$RESULT" != "$EXPECTED_RESULT" ]]; then
+            echo "Required job result: $RESULT; expected: $EXPECTED_RESULT."
+            exit 1
+          fi
+          echo "All required job results match the successful path filter."

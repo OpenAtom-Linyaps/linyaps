@@ -1713,7 +1713,8 @@ OSTreeRepo::matchRemoteByPriority(const package::FuzzyReference &fuzzyRef,
         }
     } else {
         bool allError = true;
-        std::optional<utils::error::Result<std::vector<api::types::v1::PackageInfoV2>>> firstFailure;
+        std::optional<utils::error::Result<std::vector<api::types::v1::PackageInfoV2>>>
+          firstFailure;
         auto repos = this->getPriorityGroupedRepos();
         for (const auto &repoGroup : repos) {
             for (const auto &repo : repoGroup) {

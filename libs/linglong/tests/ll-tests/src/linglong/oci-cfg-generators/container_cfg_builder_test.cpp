@@ -449,6 +449,25 @@ TEST_F(ContainerCfgBuilderTest, EnablePrivateDirAndMapPrivate)
     EXPECT_THAT(*builder.getConfig().linux_->maskedPaths, ::testing::Contains(home / ".linglong"));
 }
 
+TEST_F(ContainerCfgBuilderTest, EnablePrivateDirReportsCreateDirectoriesError)
+{
+    auto home = baseDir.path() / "home";
+    ASSERT_TRUE(std::filesystem::create_directories(home));
+    // Make ~/.linglong a regular file so create_directories(appId) fails.
+    std::ofstream{ home / ".linglong" } << "not-a-directory";
+
+    ContainerCfgBuilder builder;
+    builder.setAppId("org.deepin.demo")
+      .setBasePath(baseDir.path())
+      .setBundlePath(bundleDir.path())
+      .bindHome(home)
+      .enablePrivateDir();
+
+    auto result = builder.build();
+    ASSERT_FALSE(result.has_value());
+    EXPECT_NE(result.error().message().find("can't be created"), std::string::npos);
+}
+
 TEST_F(ContainerCfgBuilderTest, MapPrivateRequiresPrivateDir)
 {
     auto home = baseDir.path() / "home";

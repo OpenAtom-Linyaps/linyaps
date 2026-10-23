@@ -213,6 +213,23 @@ TEST_F(ContainerCfgBuilderTest, AddIdMappings)
     EXPECT_EQ(builder.getConfig().linux_->gidMappings->at(0).hostID, 2000);
 }
 
+TEST_F(ContainerCfgBuilderTest, DisableUserNamespaceOmitsIdMappings)
+{
+    ContainerCfgBuilder builder;
+    builder.setAppId("org.deepin.demo")
+      .setBasePath(baseDir.path())
+      .setBundlePath(bundleDir.path())
+      .addUIdMapping(0, 1000, 1)
+      .addGIdMapping(0, 2000, 1)
+      .disableUserNamespace();
+
+    auto result = builder.build();
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+    ASSERT_TRUE(builder.getConfig().linux_.has_value());
+    EXPECT_FALSE(builder.getConfig().linux_->uidMappings.has_value());
+    EXPECT_FALSE(builder.getConfig().linux_->gidMappings.has_value());
+}
+
 TEST_F(ContainerCfgBuilderTest, SetCapabilities)
 {
     ContainerCfgBuilder builder;

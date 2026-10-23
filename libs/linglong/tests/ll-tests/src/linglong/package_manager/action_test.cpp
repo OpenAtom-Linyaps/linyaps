@@ -37,6 +37,15 @@ public:
     {
     }
 
+    MOCK_METHOD(utils::error::Result<void>,
+                markDeleted,
+                (const package::Reference &, bool, const std::string &),
+                (override, noexcept));
+    MOCK_METHOD(std::vector<std::string>,
+                getModuleList,
+                (const package::Reference &),
+                (override, const, noexcept));
+
     MOCK_METHOD(utils::error::Result<std::vector<api::types::v1::RepositoryCacheLayersItem>>,
                 listLocalBy,
                 (const repo::repoCacheQuery &query),
@@ -309,6 +318,89 @@ TEST_F(ActionTest, InstallSameRuntime)
     EXPECT_EQ(result->kind, "runtime");
     EXPECT_EQ(result->oldRef->toString(), "main:id1/1.0.0/x86_64");
     EXPECT_EQ(result->newRef->reference.toString(), "main:id1/1.0.0/x86_64");
+}
+
+} // namespace
+
+namespace {
+
+class BusyPackageManager : public service::PackageManager
+{
+public:
+    using service::PackageManager::PackageManager;
+    MOCK_METHOD(utils::error::Result<bool>,
+                isRefBusy,
+                (const package::Reference &),
+                (override, noexcept));
+};
+
+class DeferredUninstallTest : public ::testing::Test
+{
+protected:
+    void SetUp() override
+    {
+        auto ownedRepo = std::make_unique<MockRepo>(temp.path());
+        repo = ownedRepo.get();
+        auto createdRuntime = ocppi::cli::crun::Crun::New(temp.path());
+        ASSERT_TRUE(createdRuntime.has_value());
+        cli = std::move(*createdRuntime);
+        auto builder = std::make_unique<runtime::ContainerBuilder>(*cli);
+        pm =
+          std::make_unique<BusyPackageManager>(std::move(ownedRepo), std::move(builder), nullptr);
+    }
+
+    TempDir temp;
+    std::unique_ptr<ocppi::cli::crun::Crun> cli;
+    MockRepo *repo = nullptr;
+    std::unique_ptr<BusyPackageManager> pm;
+};
+
+TEST_F(DeferredUninstallTest, FailedLaterMarkRollsBackEarlierMarks)
+{
+    auto ref = package::Reference::parse("main:com.example.app/1.0.0/x86_64");
+    ASSERT_TRUE(ref.has_value());
+    EXPECT_CALL(*pm, isRefBusy(*ref)).WillOnce(Return(true));
+    EXPECT_CALL(*repo, getModuleList(*ref))
+      .WillOnce(Return(std::vector<std::string>{ "binary", "develop", "debug" }));
+    testing::InSequence sequence;
+    EXPECT_CALL(*repo, markDeleted(*ref, true, "binary"))
+      .WillOnce([](const auto &, bool, const auto &) -> utils::error::Result<void> {
+          return LINGLONG_OK;
+      });
+    EXPECT_CALL(*repo, markDeleted(*ref, true, "develop"))
+      .WillOnce([](const auto &, bool, const auto &) -> utils::error::Result<void> {
+          LINGLONG_TRACE("inject deferred deletion failure");
+          return LINGLONG_ERR("injected persistence failure");
+      });
+    EXPECT_CALL(*repo, markDeleted(*ref, false, "binary"))
+      .WillOnce([](const auto &, bool, const auto &) -> utils::error::Result<void> {
+          return LINGLONG_OK;
+      });
+    EXPECT_CALL(*repo, markDeleted(*ref, true, "debug")).Times(0);
+    auto result = pm->tryUninstallRef(*ref);
+    ASSERT_FALSE(result.has_value());
+    EXPECT_NE(result.error().message().find("injected persistence failure"), std::string::npos);
+}
+
+TEST_F(DeferredUninstallTest, SuccessfulMarksRemainDeferred)
+{
+    auto ref = package::Reference::parse("main:com.example.app/1.0.0/x86_64");
+    ASSERT_TRUE(ref.has_value());
+    EXPECT_CALL(*pm, isRefBusy(*ref)).WillOnce(Return(true));
+    EXPECT_CALL(*repo, getModuleList(*ref))
+      .WillOnce(Return(std::vector<std::string>{ "binary", "develop" }));
+    EXPECT_CALL(*repo, markDeleted(*ref, true, "binary"))
+      .WillOnce([](const auto &, bool, const auto &) -> utils::error::Result<void> {
+          return LINGLONG_OK;
+      });
+    EXPECT_CALL(*repo, markDeleted(*ref, true, "develop"))
+      .WillOnce([](const auto &, bool, const auto &) -> utils::error::Result<void> {
+          return LINGLONG_OK;
+      });
+    EXPECT_CALL(*repo, markDeleted(*ref, false, _)).Times(0);
+    auto result = pm->tryUninstallRef(*ref);
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+    EXPECT_FALSE(*result);
 }
 
 } // namespace

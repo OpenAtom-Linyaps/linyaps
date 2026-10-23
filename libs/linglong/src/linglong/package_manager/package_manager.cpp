@@ -1362,16 +1362,17 @@ utils::error::Result<bool> PackageManager::tryUninstallRef(const package::Refere
         auto modules = repo->getModuleList(ref);
         for (const auto &module : modules) {
             auto res = repo->markDeleted(ref, true, module);
-            if (res) {
-                transaction.addRollBack([this, &ref, module]() noexcept {
-                    auto res = repo->markDeleted(ref, false, module);
-                    if (!res) {
-                        LogW(fmt::format("failed to roll back mark deleted {} {}",
-                                         ref.toString(),
-                                         module));
-                    }
-                });
+            if (!res) {
+                return LINGLONG_ERR(res);
             }
+            transaction.addRollBack([this, &ref, module]() noexcept {
+                auto res = repo->markDeleted(ref, false, module);
+                if (!res) {
+                    LogW(fmt::format("failed to roll back mark deleted {} {}",
+                                     ref.toString(),
+                                     module));
+                }
+            });
         }
     } else {
         auto res = uninstallRef(ref);

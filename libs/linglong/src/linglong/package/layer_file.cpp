@@ -82,8 +82,14 @@ utils::error::Result<api::types::v1::LayerInfo> LayerFile::metaInfo() noexcept
     }
 
     auto rawData = this->read(qint64(*ret));
+    if (rawData.size() != qint64(*ret)) {
+        return LINGLONG_ERR("truncated layer metadata");
+    }
+    if (rawData.contains('\0')) {
+        return LINGLONG_ERR("layer metadata contains a NUL byte");
+    }
 
-    auto layerInfo = utils::serialize::LoadJSON<api::types::v1::LayerInfo>(rawData.data());
+    auto layerInfo = utils::serialize::LoadJSON<api::types::v1::LayerInfo>(rawData.toStdString());
     if (!layerInfo) {
         return LINGLONG_ERR(layerInfo);
     }
@@ -95,24 +101,34 @@ utils::error::Result<quint32> LayerFile::metaInfoLength()
 {
     LINGLONG_TRACE("read meta info length");
 
-    if (metaInfoLengthValue > 0) {
-        return metaInfoLengthValue;
+    const qint64 headerSize = magicNumber().size() + sizeof(quint32);
+    const auto fileSize = this->size();
+    if (fileSize < headerSize) {
+        return LINGLONG_ERR("truncated layer header");
+    }
+    // Always read from the header, independently of previous metadata/offset queries.
+    if (!this->seek(magicNumber().size())) {
+        return LINGLONG_ERR("failed to seek to layer metadata length");
     }
 
     QDataStream layerDataStream(this);
-
-    layerDataStream.startTransaction();
     layerDataStream.setByteOrder(QDataStream::LittleEndian);
-    layerDataStream >> metaInfoLengthValue;
-
-    if (!layerDataStream.commitTransaction()) {
-        return LINGLONG_ERR("unknown error.");
+    quint32 length = 0;
+    layerDataStream >> length;
+    if (layerDataStream.status() != QDataStream::Ok) {
+        return LINGLONG_ERR("failed to read layer metadata length");
+    }
+    if (length == 0 || length > maxMetadataSize) {
+        return LINGLONG_ERR("layer metadata length is outside the supported range (1..16 MiB)");
+    }
+    if (qint64(length) > fileSize - headerSize) {
+        return LINGLONG_ERR("layer metadata extends beyond the file size");
     }
 
-    return metaInfoLengthValue;
+    return length;
 }
 
-utils::error::Result<quint32> LayerFile::binaryDataOffset() noexcept
+utils::error::Result<quint64> LayerFile::binaryDataOffset() noexcept
 {
     LINGLONG_TRACE("get binary data offset");
 
@@ -121,8 +137,7 @@ utils::error::Result<quint32> LayerFile::binaryDataOffset() noexcept
         return LINGLONG_ERR(size);
     }
 
-    const auto &number = magicNumber();
-    return number.size() + *size + sizeof(quint32);
+    return quint64(magicNumber().size()) + *size + sizeof(quint32);
 }
 
 utils::error::Result<void> LayerFile::saveTo(const QString &destination) noexcept

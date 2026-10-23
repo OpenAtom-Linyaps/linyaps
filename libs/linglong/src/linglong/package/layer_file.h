@@ -37,9 +37,12 @@ public:
     LayerFile &operator=(LayerFile &&) = delete;
     ~LayerFile() override;
 
+    // Bound JSON metadata independently of the compressed filesystem payload.
+    static constexpr quint32 maxMetadataSize = 16 * 1024 * 1024;
+
     utils::error::Result<api::types::v1::LayerInfo> metaInfo() noexcept;
 
-    utils::error::Result<quint32> binaryDataOffset() noexcept;
+    utils::error::Result<quint64> binaryDataOffset() noexcept;
 
     utils::error::Result<void> saveTo(const QString &destination) noexcept;
 
@@ -54,7 +57,6 @@ private:
     utils::error::Result<quint32> metaInfoLength();
 
     bool cleanup = false;
-    quint32 metaInfoLengthValue = 0;
 };
 
 } // namespace linglong::package

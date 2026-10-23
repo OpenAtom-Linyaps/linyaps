@@ -11,6 +11,7 @@ pfl_add_executable(
   ./src/main.cpp
   ./src/driver_detection_config.cpp
   ./src/nvidia_driver_detector.cpp
+  ./src/intel_media_driver_detector.cpp
   ./src/application_singleton.cpp
   ./src/driver_detection_manager.cpp
   ./src/dbus_notifier.cpp

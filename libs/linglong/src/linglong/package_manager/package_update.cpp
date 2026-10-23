@@ -10,6 +10,7 @@
 #include "linglong/package_manager/package_manager.h"
 #include "linglong/package_manager/package_task.h"
 #include "linglong/repo/ostree_repo.h"
+#include "linglong/utils/finally/finally.h"
 #include "linglong/utils/log/log.h"
 
 namespace linglong::service {
@@ -123,18 +124,22 @@ utils::error::Result<void> PackageUpdateAction::update(PackageTask &task)
           fmt::format("{} {:>9}", taskMessage, fmt::format("[{}]", m.getHumanSpeed())));
     });
 
-    QObject::connect(&task,
-                     &service::PackageTask::DataArrived,
-                     [this, &task, &monitor](uint arrived) {
-                         monitor.dataArrived(arrived);
-                         monitor.start();
-                         monitor.pause(false);
+    const auto progressConnection =
+      QObject::connect(&task,
+                       &service::PackageTask::DataArrived,
+                       [this, &task, &monitor](uint arrived) {
+                           monitor.dataArrived(arrived);
+                           monitor.start();
+                           monitor.pause(false);
 
-                         if (taskTotalSize > 0 && taskNeededSize > 0) {
-                             taskFetchedSize += arrived;
-                             task.updateProgress(taskFetchedSize * 100.0 / taskNeededSize);
-                         }
-                     });
+                           if (taskTotalSize > 0 && taskNeededSize > 0) {
+                               taskFetchedSize += arrived;
+                               task.updateProgress(taskFetchedSize * 100.0 / taskNeededSize);
+                           }
+                       });
+    const auto disconnectProgress = utils::finally::finally([progressConnection] {
+        QObject::disconnect(progressConnection);
+    });
 
     bool allFailed = true;
     for (const auto &app : appsToUpgrade) {

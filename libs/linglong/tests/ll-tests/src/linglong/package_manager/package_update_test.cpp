@@ -329,6 +329,7 @@ TEST_F(PackageUpdateActionTest, Update)
 
     service::PackageTask task({});
     res = action->doAction(task);
+    EXPECT_FALSE(QObject::disconnect(&task, &service::PackageTask::DataArrived, nullptr, nullptr));
     ASSERT_TRUE(res.has_value());
 }
 
@@ -374,6 +375,7 @@ TEST_F(PackageUpdateActionTest, SkipPruneWhenNothingChanged)
 
     service::PackageTask task({});
     res = action->doAction(task);
+    EXPECT_FALSE(QObject::disconnect(&task, &service::PackageTask::DataArrived, nullptr, nullptr));
     ASSERT_TRUE(res.has_value());
 }
 
@@ -427,6 +429,7 @@ TEST_F(PackageUpdateActionTest, PruneRepositoryWhenAutoPruneDisabled)
 
     service::PackageTask task({});
     res = action->doAction(task);
+    EXPECT_FALSE(QObject::disconnect(&task, &service::PackageTask::DataArrived, nullptr, nullptr));
     ASSERT_TRUE(res.has_value());
 }
 
@@ -487,6 +490,7 @@ TEST_F(PackageUpdateActionTest, InstallChangedDependencyAndPruneUnusedWhenAppUpd
 
     service::PackageTask task({});
     res = action->doAction(task);
+    EXPECT_FALSE(QObject::disconnect(&task, &service::PackageTask::DataArrived, nullptr, nullptr));
     ASSERT_TRUE(res.has_value());
 }
 
@@ -514,6 +518,7 @@ TEST_F(PackageUpdateActionTest, SendMessageWhenAppUpdateFails)
     EXPECT_CALL(task, sendMessage(HasSubstr("failed to update app id1: update error")));
 
     res = action->doAction(task);
+    EXPECT_FALSE(QObject::disconnect(&task, &service::PackageTask::DataArrived, nullptr, nullptr));
     ASSERT_FALSE(res.has_value());
 }
 

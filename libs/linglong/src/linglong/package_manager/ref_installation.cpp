@@ -7,6 +7,7 @@
 #include "linglong/package_manager/data_monitor.h"
 #include "linglong/package_manager/package_manager.h"
 #include "linglong/repo/ostree_repo.h"
+#include "linglong/utils/finally/finally.h"
 #include "linglong/utils/log/log.h"
 
 #include <algorithm>
@@ -78,14 +79,20 @@ utils::error::Result<void> RefInstallationAction::doAction(PackageTask &task)
           fmt::format("{} {:>9}", taskMessage, fmt::format("[{}]", m.getHumanSpeed())));
     });
 
-    QObject::connect(mainTask, &service::PackageTask::DataArrived, [this, &monitor](uint arrived) {
-        monitor.dataArrived(arrived);
-        monitor.start();
+    const auto progressConnection =
+      QObject::connect(mainTask,
+                       &service::PackageTask::DataArrived,
+                       [this, &monitor](uint arrived) {
+                           monitor.dataArrived(arrived);
+                           monitor.start();
 
-        taskFetchedSize += arrived;
-        if (taskTotalSize > 0 && taskNeededSize > 0) {
-            mainTask->updateProgress(taskFetchedSize * 100.0 / taskNeededSize);
-        }
+                           taskFetchedSize += arrived;
+                           if (taskTotalSize > 0 && taskNeededSize > 0) {
+                               mainTask->updateProgress(taskFetchedSize * 100.0 / taskNeededSize);
+                           }
+                       });
+    const auto disconnectProgress = utils::finally::finally([progressConnection] {
+        QObject::disconnect(progressConnection);
     });
 
     auto res = preInstall(task);

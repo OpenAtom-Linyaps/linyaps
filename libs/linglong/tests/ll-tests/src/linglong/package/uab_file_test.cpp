@@ -2,6 +2,7 @@
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "../mocks/uab_file_mock.h"
@@ -13,17 +14,24 @@
 #include "linglong/package/uab_packager.h"
 #include "linglong/utils/cmd.h"
 
+#include <gelf.h>
+#include <libelf.h>
+
 #include <QCryptographicHash>
 #include <QFile>
 
 #include <algorithm>
+#include <cstddef>
+#include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <iterator>
+#include <limits>
 #include <memory>
 #include <string>
 #include <string_view>
 
+#include <fcntl.h>
 #include <unistd.h>
 
 __attribute__((used, section(".note.uab.sig"), aligned(4))) const auto linglongUabSignature =
@@ -469,6 +477,207 @@ TEST_F(UabFileTest, ExtractSignDataRetriesShortWrites)
     std::stringstream buffer;
     buffer << helloFile.rdbuf();
     EXPECT_EQ(buffer.str(), "Hello, World!");
+}
+
+TEST_F(UabFileTest, GetSectionHeaderRejectsZeroShnum)
+{
+    TempDir dir{ "linglong-uab-zero-shnum-" };
+    auto corruptedUab = dir.path() / "corrupted-zero-shnum.uab";
+    std::error_code ec;
+    std::filesystem::copy_file(uabFile, corruptedUab, ec);
+    ASSERT_FALSE(ec);
+
+    {
+        std::fstream fs(corruptedUab, std::ios::in | std::ios::out | std::ios::binary);
+        ASSERT_TRUE(fs.is_open());
+        unsigned char ident[EI_NIDENT];
+        fs.read(reinterpret_cast<char *>(ident), EI_NIDENT);
+        ASSERT_EQ(fs.gcount(), EI_NIDENT);
+
+        std::streamoff shnumOffset = (ident[EI_CLASS] == ELFCLASS64) ? 60 : 48;
+        uint16_t zeroShnum = 0;
+        fs.seekp(shnumOffset);
+        fs.write(reinterpret_cast<const char *>(&zeroShnum), sizeof(zeroShnum));
+        ASSERT_TRUE(fs.good());
+    }
+
+    MockUabFile uab(corruptedUab);
+    auto secRet = uab.testGetSectionHeader("linglong.meta");
+    ASSERT_FALSE(secRet.has_value());
+    EXPECT_THAT(secRet.error().message(),
+                ::testing::HasSubstr("invalid section header count or string table index"));
+}
+
+TEST_F(UabFileTest, GetSectionHeaderRejectsOutOfBoundsShstrndx)
+{
+    TempDir dir{ "linglong-uab-oob-shstrndx-" };
+    auto corruptedUab = dir.path() / "corrupted-oob-shstrndx.uab";
+    std::error_code ec;
+    std::filesystem::copy_file(uabFile, corruptedUab, ec);
+    ASSERT_FALSE(ec);
+
+    {
+        std::fstream fs(corruptedUab, std::ios::in | std::ios::out | std::ios::binary);
+        ASSERT_TRUE(fs.is_open());
+        unsigned char ident[EI_NIDENT];
+        fs.read(reinterpret_cast<char *>(ident), EI_NIDENT);
+        ASSERT_EQ(fs.gcount(), EI_NIDENT);
+
+        std::streamoff shstrndxOffset = (ident[EI_CLASS] == ELFCLASS64) ? 62 : 50;
+        uint16_t largeShstrndx = 0xFFFE;
+        fs.seekp(shstrndxOffset);
+        fs.write(reinterpret_cast<const char *>(&largeShstrndx), sizeof(largeShstrndx));
+        ASSERT_TRUE(fs.good());
+    }
+
+    MockUabFile uab(corruptedUab);
+    auto secRet = uab.testGetSectionHeader("linglong.meta");
+    ASSERT_FALSE(secRet.has_value());
+    EXPECT_THAT(secRet.error().message(),
+                ::testing::HasSubstr("invalid section header count or string table index"));
+}
+
+TEST_F(UabFileTest, GetSectionHeaderSkipsMalformedSectionNamesSafely)
+{
+    TempDir dir{ "linglong-uab-corrupt-sname-" };
+    auto corruptedUab = dir.path() / "corrupted-sname.uab";
+    std::error_code ec;
+    std::filesystem::copy_file(uabFile, corruptedUab, ec);
+    ASSERT_FALSE(ec);
+
+    {
+        std::fstream fs(corruptedUab, std::ios::in | std::ios::out | std::ios::binary);
+        ASSERT_TRUE(fs.is_open());
+        unsigned char ident[EI_NIDENT];
+        fs.read(reinterpret_cast<char *>(ident), EI_NIDENT);
+        ASSERT_EQ(fs.gcount(), EI_NIDENT);
+
+        const bool is64 = (ident[EI_CLASS] == ELFCLASS64);
+        std::streamoff e_shoff_offset = is64 ? 40 : 32;
+        std::streamoff e_shentsize_offset = is64 ? 58 : 46;
+
+        fs.seekg(e_shoff_offset);
+        uint64_t shoff = 0;
+        if (is64) {
+            fs.read(reinterpret_cast<char *>(&shoff), sizeof(uint64_t));
+        } else {
+            uint32_t shoff32 = 0;
+            fs.read(reinterpret_cast<char *>(&shoff32), sizeof(uint32_t));
+            shoff = shoff32;
+        }
+
+        fs.seekg(e_shentsize_offset);
+        uint16_t shentsize = 0;
+        fs.read(reinterpret_cast<char *>(&shentsize), sizeof(uint16_t));
+
+        ASSERT_GT(shoff, 0);
+        ASSERT_GT(shentsize, 0);
+
+        // Section 1's sh_name is at (shoff + shentsize).
+        std::streamoff sec1ShNameOffset = shoff + shentsize;
+        uint32_t invalidShName = 0x7FFFFFFF;
+        fs.seekp(sec1ShNameOffset);
+        fs.write(reinterpret_cast<const char *>(&invalidShName), sizeof(invalidShName));
+        ASSERT_TRUE(fs.good());
+    }
+
+    MockUabFile uab(corruptedUab);
+    auto secRet = uab.testGetSectionHeader("linglong.meta");
+    ASSERT_TRUE(secRet.has_value()) << secRet.error().message();
+
+    auto nonexistentRet = uab.testGetSectionHeader("nonexistent.section.test");
+    ASSERT_FALSE(nonexistentRet.has_value());
+    EXPECT_THAT(nonexistentRet.error().message(), ::testing::HasSubstr("couldn't found section"));
+}
+
+TEST_F(UabFileTest, ReadSectionDataRejectsExceedingFileSize)
+{
+    TempDir dir{ "linglong-uab-file-size-" };
+    auto corruptedUab = dir.path() / "corrupted-file-size.uab";
+    std::error_code ec;
+    std::filesystem::copy_file(uabFile, corruptedUab, ec);
+    ASSERT_FALSE(ec);
+
+    const auto fileSize = std::filesystem::file_size(corruptedUab);
+    ASSERT_GT(fileSize, 0);
+
+    std::streamoff shSizeFileOffset = -1;
+    bool is64 = false;
+    {
+        int fd = ::open(corruptedUab.c_str(), O_RDONLY);
+        ASSERT_GE(fd, 0);
+        elf_version(EV_CURRENT);
+        Elf *elf = elf_begin(fd, ELF_C_READ, nullptr);
+        ASSERT_NE(elf, nullptr);
+
+        GElf_Ehdr ehdr;
+        ASSERT_NE(gelf_getehdr(elf, &ehdr), nullptr);
+
+        is64 = (gelf_getclass(elf) == ELFCLASS64);
+
+        size_t shstrndx = 0;
+        ASSERT_EQ(elf_getshdrstrndx(elf, &shstrndx), 0);
+
+        Elf_Scn *scn = nullptr;
+        while ((scn = elf_nextscn(elf, scn)) != nullptr) {
+            GElf_Shdr shdr;
+            ASSERT_NE(gelf_getshdr(scn, &shdr), nullptr);
+            const char *name = elf_strptr(elf, shstrndx, shdr.sh_name);
+            if (name != nullptr && std::string_view(name) == "linglong.meta") {
+                const auto scnIdx = elf_ndxscn(scn);
+                const std::streamoff shdrOffset = ehdr.e_shoff + scnIdx * ehdr.e_shentsize;
+                const std::streamoff sizeFieldOffset =
+                  is64 ? offsetof(Elf64_Shdr, sh_size) : offsetof(Elf32_Shdr, sh_size);
+                shSizeFileOffset = shdrOffset + sizeFieldOffset;
+                break;
+            }
+        }
+        elf_end(elf);
+        ::close(fd);
+    }
+    ASSERT_GT(shSizeFileOffset, 0);
+
+    {
+        std::fstream fs(corruptedUab, std::ios::in | std::ios::out | std::ios::binary);
+        ASSERT_TRUE(fs.is_open());
+        fs.seekp(shSizeFileOffset);
+        if (is64) {
+            const uint64_t forgedSize = fileSize + 4096;
+            fs.write(reinterpret_cast<const char *>(&forgedSize), sizeof(forgedSize));
+        } else {
+            ASSERT_LE(fileSize + 4096, std::numeric_limits<uint32_t>::max());
+            const uint32_t forgedSize = static_cast<uint32_t>(fileSize + 4096);
+            fs.write(reinterpret_cast<const char *>(&forgedSize), sizeof(forgedSize));
+        }
+        ASSERT_TRUE(fs.good());
+    }
+
+    MockUabFile uab(corruptedUab);
+    auto ret = uab.testReadSectionData("linglong.meta", 0, fileSize + 1024);
+    ASSERT_FALSE(ret.has_value());
+    EXPECT_THAT(ret.error().message(),
+                ::testing::HasSubstr("section data exceeds physical file size"));
+}
+
+TEST_F(UabFileTest, ExtractSignDataUsesCloexecAndCleansUp)
+{
+    auto uab = MockUabFile(uabFile);
+    int capturedFlags = -1;
+    uab.wrapWriteDataFunc =
+      [&capturedFlags](int fd, const void *data, std::size_t size) -> ssize_t {
+        capturedFlags = ::fcntl(fd, F_GETFD);
+        return ::write(fd, data, size);
+    };
+
+    auto extractRet = uab.extractSignData(testDir->path() / "sign-data-cloexec");
+    ASSERT_TRUE(extractRet.has_value()) << extractRet.error().message();
+
+    EXPECT_NE(capturedFlags, -1);
+    EXPECT_NE(capturedFlags & FD_CLOEXEC, 0);
+
+    auto tarPath =
+      *extractRet / "entries" / "share" / "deepin-elf-verify" / ".elfsign" / "sign.tar";
+    EXPECT_FALSE(std::filesystem::exists(tarPath));
 }
 
 } // namespace linglong::package

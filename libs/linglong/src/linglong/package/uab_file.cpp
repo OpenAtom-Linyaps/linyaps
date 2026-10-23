@@ -19,12 +19,14 @@
 
 #include <algorithm>
 #include <array>
+#include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <limits>
 #include <string_view>
 
 #include <fcntl.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 namespace linglong::package {
@@ -48,7 +50,7 @@ UABFile::loadFromFile(const std::filesystem::path &path) noexcept
     elf_version(EV_CURRENT);
     auto *elf = elf_begin(file->fd, ELF_C_READ, nullptr);
     if (elf == nullptr) {
-        return LINGLONG_ERR(fmt::format("libelf err: {}", elf_errmsg(errno)));
+        return LINGLONG_ERR(fmt::format("libelf err: {}", elf_errmsg(-1)));
     }
 
     file->e = elf;
@@ -82,7 +84,12 @@ utils::error::Result<GElf_Shdr> UABFile::getSectionHeader(const QString &section
     size_t shdrstrndx{ 0 };
     if (elf_getshdrstrndx(this->e, &shdrstrndx) == -1) {
         return LINGLONG_ERR(
-          fmt::format("failed to get section header index of bundle: {}", elf_errmsg(errno)));
+          fmt::format("failed to get section header index of bundle: {}", elf_errmsg(-1)));
+    }
+
+    size_t shnum = 0;
+    if (elf_getshdrnum(this->e, &shnum) != 0 || shnum == 0 || shdrstrndx >= shnum) {
+        return LINGLONG_ERR("invalid section header count or string table index");
     }
 
     Elf_Scn *scn{ nullptr };
@@ -90,10 +97,13 @@ utils::error::Result<GElf_Shdr> UABFile::getSectionHeader(const QString &section
         GElf_Shdr shdr;
         if (gelf_getshdr(scn, &shdr) == nullptr) {
             return LINGLONG_ERR(
-              fmt::format("failed to get section header of bundle: {}", elf_errmsg(errno)));
+              fmt::format("failed to get section header of bundle: {}", elf_errmsg(-1)));
         }
 
         auto *sname = elf_strptr(this->e, shdrstrndx, shdr.sh_name);
+        if (sname == nullptr) {
+            continue;
+        }
         if (section.compare(sname) == 0) {
             return shdr;
         }
@@ -116,7 +126,34 @@ utils::error::Result<std::string> UABFile::readSectionData(const QString &sectio
         || size > sectionHeader->sh_size - offset) {
         return LINGLONG_ERR(fmt::format("data exceeds section {}", section));
     }
-    std::string data(size, '\0');
+
+    struct stat st{};
+    if (::fstat(fd, &st) == -1) {
+        return LINGLONG_ERR(
+          fmt::format("failed to fstat uab file: {}", common::error::errorString(errno)));
+    }
+
+    if (st.st_size < 0) {
+        return LINGLONG_ERR(fmt::format("invalid file size for {}", section));
+    }
+
+    const auto fileSize = static_cast<std::uintmax_t>(st.st_size);
+    const auto sectionOffset = static_cast<std::uintmax_t>(sectionHeader->sh_offset);
+    const auto readOffset = static_cast<std::uintmax_t>(offset);
+    const auto readSize = static_cast<std::uintmax_t>(size);
+
+    if (sectionOffset > fileSize || readOffset > fileSize - sectionOffset
+        || readSize > fileSize - sectionOffset - readOffset) {
+        return LINGLONG_ERR(fmt::format("section data exceeds physical file size for {}", section));
+    }
+
+    std::string data;
+    try {
+        data.assign(size, '\0');
+    } catch (...) {
+        return LINGLONG_ERR("failed to allocate memory for section data");
+    }
+
     std::size_t totalBytes{ 0 };
     while (totalBytes < size) {
         const auto bytesRead = ::pread(fd,
@@ -368,7 +405,7 @@ UABFile::extractSignData(const std::filesystem::path &destination) noexcept
     }
 
     auto tarFile = signDir / "sign.tar";
-    auto tarFd = ::open(tarFile.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    auto tarFd = ::open(tarFile.c_str(), O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0644);
     if (tarFd == -1) {
         return LINGLONG_ERR(
           fmt::format("open {} failed: {}", tarFile, common::error::errorString(errno)));
@@ -507,11 +544,11 @@ utils::error::Result<void> UABFile::saveErofsToFile(const std::string &path)
 
 utils::error::Result<void> UABFile::mkdirDir(const std::string &path) noexcept
 {
-    LINGLONG_TRACE("mkdir dir" + path);
+    LINGLONG_TRACE("mkdir dir " + path);
     std::error_code ec;
     std::filesystem::create_directories(path, ec);
     if (ec) {
-        return LINGLONG_ERR("failed to create directory" + path, ec);
+        return LINGLONG_ERR("failed to create directory " + path, ec);
     }
     return LINGLONG_OK;
 }

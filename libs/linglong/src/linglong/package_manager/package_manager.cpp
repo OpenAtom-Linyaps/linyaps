@@ -55,6 +55,7 @@
 #include <chrono>
 #include <cstdint>
 #include <functional>
+#include <mutex>
 #include <unordered_map>
 #include <utility>
 
@@ -122,6 +123,7 @@ PackageManager::PackageManager(
     , tasks(this)
     , m_search_queue(this)
     , m_init_run_context_queue(this)
+    , m_repoLockPath(common::dir::repoLockPath)
 {
 }
 
@@ -338,43 +340,63 @@ PackageManager::getAllRunningContainers() noexcept
 
 [[nodiscard]] utils::error::Result<void> PackageManager::lockRepo() noexcept
 {
-    LINGLONG_TRACE("lock whole repo")
-    lockFd = ::open(common::dir::repoLockPath, O_WRONLY);
-    if (lockFd == -1) {
-        return LINGLONG_ERR(fmt::format("failed to create lock file {}: {}",
-                                        common::dir::repoLockPath,
+    LINGLONG_TRACE("lock whole repo");
+
+    const std::lock_guard<std::mutex> lock(m_repoLockMutex);
+
+    if (lockFd != -1) {
+        return LINGLONG_ERR("repository is already locked");
+    }
+
+    auto fd = ::open(m_repoLockPath.c_str(), O_WRONLY | O_CLOEXEC);
+    if (fd == -1) {
+        return LINGLONG_ERR(fmt::format("failed to open lock file {}: {}",
+                                        m_repoLockPath.string(),
                                         common::error::errorString(errno)));
     }
 
     struct flock locker{ .l_type = F_WRLCK, .l_whence = SEEK_SET, .l_start = 0, .l_len = 0 };
 
-    if (::fcntl(lockFd, F_SETLK, &locker) == -1) {
+    if (::fcntl(fd, F_SETLK, &locker) == -1) {
+        const auto err = errno;
+        ::close(fd);
         return LINGLONG_ERR(fmt::format("failed to lock {}: {}",
-                                        common::dir::repoLockPath,
-                                        common::error::errorString(errno)));
+                                        m_repoLockPath.string(),
+                                        common::error::errorString(err)));
     }
 
+    lockFd = fd;
     return LINGLONG_OK;
 }
 
 [[nodiscard]] utils::error::Result<void> PackageManager::unlockRepo() noexcept
 {
-    LINGLONG_TRACE("unlock whole repo")
+    LINGLONG_TRACE("unlock whole repo");
+
+    const std::lock_guard<std::mutex> lock(m_repoLockMutex);
 
     if (lockFd == -1) {
         return LINGLONG_OK;
     }
 
+    const auto fd = std::exchange(lockFd, -1);
+
     struct flock unlocker{ .l_type = F_UNLCK, .l_whence = SEEK_SET, .l_start = 0, .l_len = 0 };
 
-    if (::fcntl(lockFd, F_SETLK, &unlocker)) {
-        return LINGLONG_ERR(fmt::format("failed to unlock {}: {}",
-                                        common::dir::repoLockPath,
-                                        common::error::errorString(errno)));
+    int fcntlRet = ::fcntl(fd, F_SETLK, &unlocker);
+    int fcntlErr = errno;
+
+    if (::close(fd) == -1) {
+        LogW("failed to close lock file {}: {}",
+             m_repoLockPath.string(),
+             common::error::errorString(errno));
     }
 
-    ::close(lockFd);
-    lockFd = -1;
+    if (fcntlRet == -1) {
+        return LINGLONG_ERR(fmt::format("failed to unlock {}: {}",
+                                        m_repoLockPath.string(),
+                                        common::error::errorString(fcntlErr)));
+    }
 
     return LINGLONG_OK;
 }

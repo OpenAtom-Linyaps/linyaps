@@ -25,7 +25,9 @@
 
 #include <filesystem>
 #include <memory>
+#include <mutex>
 #include <optional>
+#include <utility>
 
 namespace linglong::service {
 
@@ -117,6 +119,25 @@ public
     utils::error::Result<void> uninstallRefModule(const package::Reference &ref,
                                                   const std::string &module) noexcept;
 
+protected:
+    [[nodiscard]] utils::error::Result<void> lockRepo() noexcept;
+    [[nodiscard]] utils::error::Result<void> unlockRepo() noexcept;
+
+    void setRepoLockPath(std::filesystem::path path) noexcept
+    {
+        const std::lock_guard<std::mutex> lock(m_repoLockMutex);
+        m_repoLockPath = std::move(path);
+    }
+
+    [[nodiscard]] int getLockFd() const noexcept
+    {
+        const std::lock_guard<std::mutex> lock(m_repoLockMutex);
+        return lockFd;
+    }
+
+    int lockFd{ -1 };
+    mutable std::mutex m_repoLockMutex;
+
 private:
     QVariantMap installFromLayer(const QDBusUnixFileDescriptor &fd,
                                  const api::types::v1::CommonOptions &options,
@@ -141,8 +162,6 @@ private:
 
     utils::error::Result<void> setConfigurationImpl(const QVariantMap &parameters) noexcept;
 
-    [[nodiscard]] utils::error::Result<void> lockRepo() noexcept;
-    [[nodiscard]] utils::error::Result<void> unlockRepo() noexcept;
     [[nodiscard]] static utils::error::Result<
       std::vector<api::types::v1::ContainerProcessStateInfo>>
     getAllRunningContainers() noexcept;
@@ -160,7 +179,7 @@ private:
     PackageTaskQueue m_search_queue;
     PackageTaskQueue m_init_run_context_queue;
 
-    int lockFd{ -1 };
+    std::filesystem::path m_repoLockPath;
     bool daemonModeInitialized{ false };
     bool m_peerMode{ false };
 };

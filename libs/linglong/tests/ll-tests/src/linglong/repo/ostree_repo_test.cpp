@@ -17,15 +17,20 @@
 #include "linglong/repo/config.h"
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/utils/error/error.h"
+#include "linglong/utils/log/log.h"
 
 #include <nlohmann/json.hpp>
 
+#include <csignal>
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <memory>
 #include <string>
+
+#include <sys/resource.h>
+#include <unistd.h>
 
 namespace linglong::repo::test {
 
@@ -1486,7 +1491,10 @@ TEST_F(RepoTest, exportAppBinariesIdempotentUpsert)
                   std::string::npos);
     }
 
-    // Changed command: the wrapper is overwritten to reflect the new command
+    // An already-open script must keep its complete old contents across replacement.
+    std::ifstream previousScript(scriptPath);
+    ASSERT_TRUE(previousScript.is_open());
+    // Changed command: the wrapper is replaced to reflect the new command
     result = ostreeRepo->exportAppBinaries(entriesDir, makeItem({ "newcmd", "--flag" }));
     ASSERT_TRUE(result.has_value()) << result.error().message();
     {
@@ -1498,6 +1506,60 @@ TEST_F(RepoTest, exportAppBinariesIdempotentUpsert)
         // the old command must be gone
         EXPECT_EQ(content.find("'myapp'"), std::string::npos);
     }
+    std::string previousContent((std::istreambuf_iterator<char>(previousScript)),
+                                std::istreambuf_iterator<char>());
+    EXPECT_NE(previousContent.find("'myapp'"), std::string::npos);
+    EXPECT_EQ(previousContent.find("'newcmd'"), std::string::npos);
+}
+
+TEST_F(RepoTest, exportAppBinariesPreservesOldScriptWhenWriteFails)
+{
+    TempDir tempDir;
+    auto config = api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 };
+    auto ostreeRepo = std::make_unique<MockOstreeRepo>(tempDir.path(), config);
+    api::types::v1::RepositoryCacheLayersItem item{
+        .commit = "bin-commit",
+        .info =
+          api::types::v1::PackageInfoV2{
+            .command = std::vector<std::string>{ "old-command" },
+            .id = "com.example.app",
+            .kind = "app",
+            .packageInfoV2Module = "binary",
+          },
+    };
+    auto entriesDir = tempDir.path() / "entries";
+    ASSERT_TRUE(ostreeRepo->exportAppBinaries(entriesDir, item).has_value());
+
+    // Restrict only the child so a failed write is deterministic even when tests run as root.
+    ASSERT_EXIT(
+      {
+          // The death-test stderr capture is also a regular file subject to RLIMIT_FSIZE.
+          utils::log::setLogBackend(utils::log::LogBackend::None);
+          struct rlimit limit{};
+          if (::getrlimit(RLIMIT_FSIZE, &limit) != 0) {
+              _exit(2);
+          }
+          limit.rlim_cur = 0;
+          if (::setrlimit(RLIMIT_FSIZE, &limit) != 0) {
+              _exit(3);
+          }
+          std::signal(SIGXFSZ, SIG_IGN);
+          item.info.command = std::vector<std::string>{ "new-command" };
+          std::ignore = ostreeRepo->exportAppBinaries(entriesDir, item);
+          _exit(0);
+      },
+      ::testing::ExitedWithCode(0),
+      ".*");
+
+    auto scriptPath = entriesDir / "bin/apps/com.example.app/bin/com.example.app";
+    std::ifstream script(scriptPath);
+    ASSERT_TRUE(script.is_open());
+    std::string content((std::istreambuf_iterator<char>(script)), std::istreambuf_iterator<char>());
+    EXPECT_NE(content.find("'old-command'"), std::string::npos);
+    EXPECT_EQ(content.find("'new-command'"), std::string::npos);
+    EXPECT_EQ(
+      std::distance(fs::directory_iterator(scriptPath.parent_path()), fs::directory_iterator{}),
+      1);
 }
 
 TEST_F(RepoTest, unexportAppEntriesRemovesBinaryScripts)

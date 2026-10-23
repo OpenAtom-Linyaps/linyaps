@@ -34,6 +34,7 @@
 #include "linglong/utils/serialize/packageinfo_handler.h"
 #include "linglong/utils/temporary_directory.h"
 #include "linglong/utils/transaction.h"
+#include "linglong/utils/unique_fd.h"
 
 #include <gio/gio.h>
 #include <glib.h>
@@ -2338,10 +2339,7 @@ std::string buildWrapperScriptContent(const std::string &appID,
                        cmdArgs);
 }
 
-// Content: #!/usr/bin/env sh\nexec ll-cli run <appID> -- <command...> "$@"
-// The wrapper is created atomically with O_EXCL. If the file already exists (e.g. a
-// previous version was installed), the creation is idempotent: identical content is a
-// no-op and different content is overwritten, so the script always tracks the latest command.
+// Write a complete executable beside the live script, then atomically replace it.
 utils::error::Result<void>
 createBinaryWrapperScript(const std::filesystem::path &path,
                           const std::string &appID,
@@ -2359,56 +2357,48 @@ createBinaryWrapperScript(const std::filesystem::path &path,
 
     const std::string content = buildWrapperScriptContent(appID, command);
 
-    int fd = ::open(path.c_str(), O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, 0755);
-    if (fd < 0) {
-        if (errno != EEXIST) {
+    auto existing = linglong::utils::readFile(path);
+    if (existing && *existing == content) {
+        return LINGLONG_OK;
+    }
+
+    auto temporaryPath = path.string() + ".XXXXXX";
+    utils::fd::UniqueFd fd(::mkostemp(temporaryPath.data(), O_CLOEXEC));
+    if (!fd) {
+        return LINGLONG_ERR(fmt::format("create temporary wrapper for {}: {}",
+                                        path,
+                                        common::error::errorString(errno)));
+    }
+    auto cleanup = utils::finally::finally([&temporaryPath] {
+        std::error_code ec;
+        std::filesystem::remove(temporaryPath, ec);
+    });
+
+    if (::fchmod(fd.get(), 0755) != 0) {
+        return LINGLONG_ERR(
+          fmt::format("fchmod {}: {}", temporaryPath, common::error::errorString(errno)));
+    }
+
+    size_t offset = 0;
+    while (offset < content.size()) {
+        auto written = ::write(fd.get(), content.data() + offset, content.size() - offset);
+        if (written < 0 && errno == EINTR) {
+            continue;
+        }
+        if (written <= 0) {
             return LINGLONG_ERR(
-              fmt::format("open {}: {}", path.string(), common::error::errorString(errno)));
+              fmt::format("write {}: {}", temporaryPath, common::error::errorString(errno)));
         }
-
-        // The wrapper already exists. Keep it untouched when the content matches, otherwise
-        // overwrite so the exported command always reflects the latest version.
-        auto existing = linglong::utils::readFile(path);
-        if (existing && *existing == content) {
-            return LINGLONG_OK;
-        }
-        fd = ::open(path.c_str(), O_WRONLY | O_TRUNC | O_CLOEXEC);
-        if (fd < 0) {
-            return LINGLONG_ERR(fmt::format("open {} for overwrite: {}",
-                                            path.string(),
-                                            common::error::errorString(errno)));
-        }
+        offset += static_cast<size_t>(written);
     }
 
-    // fchmod ensures executable bit regardless of process umask
-    if (::fchmod(fd, 0755) != 0) {
-        ::close(fd);
-        std::error_code rmEc;
-        std::filesystem::remove(path, rmEc);
+    if (::close(fd.release()) != 0) {
         return LINGLONG_ERR(
-          fmt::format("fchmod {}: {}", path.string(), common::error::errorString(errno)));
+          fmt::format("close {}: {}", temporaryPath, common::error::errorString(errno)));
     }
-
-    ssize_t written = ::write(fd, content.data(), content.size());
-    if (written < 0) {
-        ::close(fd);
-        std::error_code rmEc;
-        std::filesystem::remove(path, rmEc);
-        return LINGLONG_ERR(
-          fmt::format("write to {}: {}", path.string(), common::error::errorString(errno)));
-    }
-    if (static_cast<size_t>(written) != content.size()) {
-        ::close(fd);
-        std::error_code rmEc;
-        std::filesystem::remove(path, rmEc);
-        return LINGLONG_ERR(fmt::format("partial write to {}", path.string()));
-    }
-
-    if (::close(fd) != 0) {
-        std::error_code rmEc;
-        std::filesystem::remove(path, rmEc);
-        return LINGLONG_ERR(
-          fmt::format("close {}: {}", path.string(), common::error::errorString(errno)));
+    std::filesystem::rename(temporaryPath, path, ec);
+    if (ec) {
+        return LINGLONG_ERR(fmt::format("replace wrapper {}", path), ec);
     }
 
     return LINGLONG_OK;

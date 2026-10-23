@@ -34,6 +34,9 @@ ensureExecEntry(const std::filesystem::path &entryPath,
                 const std::optional<std::vector<std::string>> &command,
                 const std::filesystem::path &prefix) noexcept;
 [[nodiscard]] std::string generateExecLoader() noexcept;
+// Move a file, also when source and destination are on different filesystems.
+[[nodiscard]] utils::error::Result<void>
+moveFile(const std::filesystem::path &source, const std::filesystem::path &destination) noexcept;
 
 } // namespace detail
 

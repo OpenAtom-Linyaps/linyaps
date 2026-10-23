@@ -56,9 +56,9 @@ fi
 
 echo "更新成功! 新的 VERSION: $UPDATED_VERSION"
 
-# 提交更改到 Git
+# 提交更改到 Git（只提交版本文件，保留索引中其他已暂存的无关文件）
 git add "$CMAKE_FILE"
-git commit -m "release $UPDATED_VERSION"
+git commit -m "release $UPDATED_VERSION" -- "$CMAKE_FILE"
 
 # 打 Git 标签
 TAG_NAME="$UPDATED_VERSION"

@@ -14,7 +14,7 @@ _ll_builder_get_repo_name_list() {
 
 _ll-builder() {
     local -a subcommands
-    subcommands=(create build run export push import extract clean repo list remove)
+    subcommands=(create build generate-lockfile update-lockfile run export push import extract clean repo list remove)
 
     _arguments -C \
         '--version' \
@@ -32,10 +32,15 @@ _ll-builder() {
                     _arguments '(-h --help --help-all)'{-h,--help,--help-all}
                     ;;
                 build)
-                    _values '' -f --file --offline --isolate-network \
+                    _values '' -f --file --offline --locked --isolate-network \
                         --skip-fetch-source --skip-pull-depend --skip-run-container \
                         --skip-commit-output --skip-output-check --skip-strip-symbols \
                         -h --help --help-all
+                    ;;
+                generate-lockfile|update-lockfile)
+                    _arguments \
+                        '(-f --file)'{-f,--file} \
+                        '(-h --help --help-all)'{-h,--help,--help-all}
                     ;;
                 run)
                     _arguments \

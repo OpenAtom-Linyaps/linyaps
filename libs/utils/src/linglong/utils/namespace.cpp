@@ -236,9 +236,25 @@ utils::error::Result<void> mappingTool(pid_t pid, bool isUid, uid_t namespaceID,
             return LINGLONG_ERR(fmt::format("subuid count out of range: {}", range.count));
         }
 
-        args.insert(
-          args.end(),
-          { std::to_string(containerID + 1), range.subuid, std::to_string(count - namespaceID) });
+        // `count` is unsigned long and namespaceID is a uid_t, so a range
+        // shorter than the namespace id wraps instead of being rejected: a
+        // 100-id subuid range with uid 1000 inside produced 18446744073709550716
+        // and newuidmap failed with an unrelated message. Refuse the mapping and
+        // say which range is too short.
+        if (namespaceID >= count) {
+            return LINGLONG_ERR(
+              fmt::format("subuid range {} is too short for namespace id {}: "
+                          "it holds {} id(s) but at least {} are needed",
+                          range.subuid,
+                          namespaceID,
+                          count,
+                          static_cast<unsigned long>(namespaceID) + 1UL));
+        }
+
+        args.insert(args.end(),
+                    { std::to_string(containerID + 1),
+                      range.subuid,
+                      std::to_string(count - namespaceID) });
         containerID += count;
     }
 

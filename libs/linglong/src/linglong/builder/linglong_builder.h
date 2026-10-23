@@ -153,8 +153,8 @@ private:
       -> utils::error::Result<package::Reference>;
     auto ensureDependencyModule(const package::Reference &reference,
                                 const std::string &module,
-                                std::optional<package::ReferenceWithRepo> &remote) noexcept
-      -> utils::error::Result<void>;
+                                std::optional<package::ReferenceWithRepo> &remote,
+                                bool optionalModule = false) noexcept -> utils::error::Result<bool>;
     auto recordProjectDependency(const DependencyFetchRequest &request,
                                  const package::Reference &reference) noexcept
       -> utils::error::Result<LockedDependency>;

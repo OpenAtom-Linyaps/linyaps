@@ -128,7 +128,8 @@ auto refWithRepo(package::Reference ref, std::string repoName = "stable")
     };
 }
 
-auto remotePackages(const std::vector<package::Reference> &references)
+auto remotePackages(const std::vector<package::Reference> &references,
+                    const std::string &module = "binary")
   -> utils::error::Result<repo::RemotePackages>
 {
     std::vector<api::types::v1::PackageInfoV2> infos;
@@ -137,6 +138,7 @@ auto remotePackages(const std::vector<package::Reference> &references)
         info.arch = { reference.arch.toString() };
         info.channel = reference.channel;
         info.id = reference.id;
+        info.packageInfoV2Module = module;
         info.version = reference.version.toString();
         infos.push_back(std::move(info));
     }
@@ -1348,6 +1350,166 @@ TEST_F(PullDependencyTest, MissingDevelopIsRequiredByLockAndOptionalForResolutio
     }
 }
 
+TEST_F(PullDependencyTest, OptionalDevelopFailuresPreserveLockAndRetry)
+{
+    LINGLONG_TRACE("optional develop failures do not become a permanent binary-only lock");
+    utils::EnvironmentVariableGuard cache("LINGLONG_FETCH_CACHE",
+                                          (m_tmpDir.path() / "cache").string());
+    const auto reference =
+      package::Reference::parse("main:org.deepin.base/23.0.0.0/" + currentArchitecture);
+    ASSERT_TRUE(reference);
+
+    for (const bool update : { false, true }) {
+        for (const bool failLookup : { false, true }) {
+            SCOPED_TRACE(update);
+            SCOPED_TRACE(failLookup);
+            const auto directory = m_tmpDir.path()
+              / (std::string(update ? "update-" : "generate-")
+                 + (failLookup ? "lookup" : "download"));
+            ASSERT_TRUE(std::filesystem::create_directory(directory));
+            builder::Builder builder(builderProject(),
+                                     directory,
+                                     *m_repo,
+                                     containerBuilder(),
+                                     builderConfig());
+            builder.projectYamlFile = (directory / "linglong.yaml").string();
+            const auto path = builder::projectLockPath(builder.projectYamlFile);
+            std::optional<std::string> previous;
+            if (update) {
+                const builder::LockedDependency base{ *builder.project->base,
+                                                      { { "binary", "develop" },
+                                                        lockedReference(reference) },
+                                                      "base" };
+                ASSERT_TRUE(
+                  builder::writeCompleteProjectLock(builder.projectYamlFile,
+                                                    builder::completeProjectLock({}, base)));
+                auto contents = utils::readFile(path);
+                ASSERT_TRUE(contents);
+                previous = *contents;
+            }
+            const auto mode =
+              update ? builder::ProjectLockMode::Update : builder::ProjectLockMode::Generate;
+
+            EXPECT_CALL(*m_repo, clearReferenceLocal(_, true)).WillOnce(Return(*reference));
+            expectCachedModule(*reference, "binary");
+            EXPECT_CALL(*m_repo, getLayerDir(*reference, "develop"))
+              .WillRepeatedly(
+                [&](const auto &, const auto &) -> utils::error::Result<package::LayerDir> {
+                    return LINGLONG_ERR("not installed");
+                });
+            EXPECT_CALL(*m_repo, mergeModules()).Times(testing::AtMost(1)).WillRepeatedly([] {
+                return utils::error::Result<void>{};
+            });
+            EXPECT_CALL(*m_repo, getModuleList(*reference))
+              .Times(testing::AtMost(1))
+              .WillRepeatedly(Return(std::vector<std::string>{ "binary" }));
+            if (failLookup) {
+                EXPECT_CALL(*m_repo, matchRemoteByPriority(_, _))
+                  .WillOnce(Return(LINGLONG_ERR("metadata request failed")));
+                EXPECT_CALL(*m_repo, pull(_, _, _)).Times(0);
+            } else {
+                EXPECT_CALL(*m_repo, matchRemoteByPriority(_, _))
+                  .WillOnce([&](const auto &, const auto &) {
+                      return remotePackages({ *reference }, "develop");
+                  });
+                EXPECT_CALL(*m_repo, pull(_, _, "develop"))
+                  .WillOnce(Return(LINGLONG_ERR("download interrupted")));
+            }
+
+            auto failed = builder.processProjectLock(mode);
+            ASSERT_FALSE(failed);
+            EXPECT_THAT(
+              failed.error().message(),
+              testing::HasSubstr("failed to fetch develop module of " + reference->toString()));
+            if (previous) {
+                auto contents = utils::readFile(path);
+                ASSERT_TRUE(contents);
+                EXPECT_EQ(*contents, *previous);
+            } else {
+                EXPECT_FALSE(std::filesystem::exists(path));
+            }
+            testing::Mock::VerifyAndClearExpectations(m_repo.get());
+
+            // Retrying after the repository recovers must fetch and lock develop.
+            EXPECT_CALL(*m_repo, clearReferenceLocal(_, true)).WillOnce(Return(*reference));
+            expectCachedModule(*reference, "binary");
+            EXPECT_CALL(*m_repo, getLayerDir(*reference, "develop"))
+              .WillOnce(Return(LINGLONG_ERR("not installed")))
+              .WillOnce(Return(LINGLONG_ERR("not installed")))
+              .WillOnce(Return(layerCached()));
+            EXPECT_CALL(*m_repo, matchRemoteByPriority(_, _))
+              .WillOnce([&](const auto &, const auto &) {
+                  return remotePackages({ *reference }, "develop");
+              });
+            EXPECT_CALL(*m_repo, pull(_, _, "develop"))
+              .WillOnce(Return(utils::error::Result<void>{}));
+            EXPECT_CALL(*m_repo, mergeModules()).WillOnce(Return(utils::error::Result<void>{}));
+            EXPECT_CALL(*m_repo, getModuleList(*reference))
+              .WillOnce(Return(std::vector<std::string>{ "binary", "develop" }));
+
+            auto retried = builder.processProjectLock(mode);
+            ASSERT_TRUE(retried) << retried.error().message();
+            auto written = builder::readProjectLock(path);
+            ASSERT_TRUE(written) << written.error().message();
+            ASSERT_EQ(written->dependencies.size(), 1);
+            EXPECT_EQ(written->dependencies.front().resolved.modules,
+                      (std::vector<std::string>{ "binary", "develop" }));
+            testing::Mock::VerifyAndClearExpectations(m_repo.get());
+        }
+    }
+}
+
+TEST_F(PullDependencyTest, OptionalDevelopUsesExactVersionAndSelectedRepository)
+{
+    LINGLONG_TRACE("do not combine optional modules across versions or repositories");
+    const auto reference =
+      package::Reference::parse("main:org.deepin.base/23.0.0.0/" + currentArchitecture);
+    auto newer = package::Reference::parse("main:org.deepin.base/24.0.0.0/" + currentArchitecture);
+    ASSERT_TRUE(reference);
+    ASSERT_TRUE(newer);
+    builder::Builder builder(builderProject(),
+                             m_tmpDir.path(),
+                             *m_repo,
+                             containerBuilder(),
+                             builderConfig());
+    const auto primary = refWithRepo(*reference, "primary");
+    auto binary = remotePackages({ *reference })->getRepoPackages().front().second.front();
+    auto newerDevelop =
+      remotePackages({ *newer }, "develop")->getRepoPackages().front().second.front();
+    auto otherDevelop = binary;
+    otherDevelop.packageInfoV2Module = "develop";
+
+    for (const bool selected : { false, true }) {
+        SCOPED_TRACE(selected);
+        std::optional<package::ReferenceWithRepo> remote =
+          selected ? std::optional{ primary } : std::nullopt;
+        EXPECT_CALL(*m_repo, getLayerDir(*reference, "develop"))
+          .WillOnce(Return(LINGLONG_ERR("not installed")));
+        EXPECT_CALL(*m_repo, matchRemoteByPriority(_, _))
+          .WillOnce([&](const package::FuzzyReference &fuzzy,
+                        const std::optional<api::types::v1::Repo> &specified)
+                      -> utils::error::Result<repo::RemotePackages> {
+              EXPECT_EQ(fuzzy.toString(), reference->toString());
+              EXPECT_EQ(specified.has_value(), selected);
+              if (specified) {
+                  EXPECT_EQ(specified->name, primary.repo.name);
+              }
+              repo::RemotePackages candidates;
+              candidates.addPackages(primary.repo, { binary, newerDevelop });
+              if (!specified) {
+                  candidates.addPackages(refWithRepo(*reference, "secondary").repo,
+                                         { otherDevelop });
+              }
+              return utils::error::Result<repo::RemotePackages>{ std::move(candidates) };
+          });
+        EXPECT_CALL(*m_repo, pull(_, _, _)).Times(0);
+        auto result = builder.ensureDependencyModule(*reference, "develop", remote, true);
+        ASSERT_TRUE(result) << result.error().message();
+        EXPECT_FALSE(*result);
+        testing::Mock::VerifyAndClearExpectations(m_repo.get());
+    }
+}
+
 TEST_F(PullDependencyTest, ResolvedBinaryFallbackFetchesDevelopForFinalReference)
 {
     LINGLONG_TRACE("fetch develop for the local fallback version");
@@ -1381,7 +1543,7 @@ TEST_F(PullDependencyTest, ResolvedBinaryFallbackFetchesDevelopForFinalReference
       .WillOnce([&](const package::FuzzyReference &fuzzy,
                     const auto &) -> utils::error::Result<repo::RemotePackages> {
           EXPECT_EQ(fuzzy.toString(), local->toString());
-          return remotePackages({ *newer, *local });
+          return remotePackages({ *newer, *local }, "develop");
       });
     EXPECT_CALL(*m_repo, pull(_, _, "develop"))
       .WillOnce([&](service::Task &,
@@ -2185,9 +2347,9 @@ TEST_F(PullDependencyTest, pullResolvedRef_not_cached_triggers_pull)
     EXPECT_TRUE(result.has_value()) << result.error().message();
 }
 
-TEST_F(PullDependencyTest, buildStagePullDependency_continues_when_local_develop_pull_fails)
+TEST_F(PullDependencyTest, buildStagePullDependency_allows_unavailable_develop)
 {
-    LINGLONG_TRACE("buildStagePullDependency_continues_when_local_develop_pull_fails");
+    LINGLONG_TRACE("buildStagePullDependency_allows_unavailable_develop");
 
     auto baseRef =
       package::Reference::parse("main:org.deepin.base/23.0.0.0/" + currentArchitecture);
@@ -2204,7 +2366,9 @@ TEST_F(PullDependencyTest, buildStagePullDependency_continues_when_local_develop
     expectFreshBase(*baseRef);
     EXPECT_CALL(*m_repo, getLayerDir(*baseRef, "develop"))
       .WillOnce(Return(LINGLONG_ERR("not found")));
-    EXPECT_CALL(*m_repo, matchRemoteByPriority(_, _)).WillOnce(Return(LINGLONG_ERR("not found")));
+    EXPECT_CALL(*m_repo, matchRemoteByPriority(_, _)).WillOnce([&](const auto &, const auto &) {
+        return remotePackages({ *baseRef });
+    });
     EXPECT_CALL(*m_repo, pull(_, _, _)).Times(0);
 
     auto result = builder.buildStagePullDependency();

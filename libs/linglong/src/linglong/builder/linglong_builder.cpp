@@ -924,59 +924,72 @@ auto Builder::fetchResolvedProjectDependency(const ResolveDependencyRequest &req
     }
     printDependencyStatus(reference, "binary", "complete");
 
-    auto develop = ensureDependencyModule(reference, "develop", remote);
-    if (!develop && !buildOptions.skipPullDepend) {
-        LogW("failed to fetch develop module of {}: {}",
-             reference.toString(),
-             develop.error().message());
+    auto develop = ensureDependencyModule(reference, "develop", remote, true);
+    if (!develop) {
+        printDependencyStatus(reference, "develop", "failed");
+        return LINGLONG_ERR("failed to fetch develop module of " + reference.toString(), develop);
     }
-    printDependencyStatus(reference, "develop", develop ? "complete" : "missing");
+    printDependencyStatus(reference, "develop", *develop ? "complete" : "missing");
     return reference;
 }
 
 auto Builder::ensureDependencyModule(const package::Reference &reference,
                                      const std::string &module,
-                                     std::optional<package::ReferenceWithRepo> &remote) noexcept
-  -> utils::error::Result<void>
+                                     std::optional<package::ReferenceWithRepo> &remote,
+                                     bool optionalModule) noexcept -> utils::error::Result<bool>
 {
     LINGLONG_TRACE("ensure dependency module " + reference.toString() + "/" + module);
 
     if (repo.getLayerDir(reference, module)) {
-        return LINGLONG_OK;
+        return true;
     }
 
     if (buildOptions.skipPullDepend) {
+        if (optionalModule) {
+            return false;
+        }
         return LINGLONG_ERR("dependency is unavailable locally: " + reference.toString() + "/"
                             + module);
     }
 
-    if (!remote) {
+    if (!remote || optionalModule) {
         auto fuzzy = package::FuzzyReference::parse(reference.toString());
         if (!fuzzy) {
             return LINGLONG_ERR(fuzzy);
         }
 
-        auto candidates = repo.matchRemoteByPriority(*fuzzy);
+        const auto specifiedRepo = optionalModule && remote
+          ? std::optional<api::types::v1::Repo>{ remote->repo }
+          : std::nullopt;
+        auto candidates = repo.matchRemoteByPriority(*fuzzy, specifiedRepo);
         if (!candidates) {
             return LINGLONG_ERR("failed to find dependency remotely: " + reference.toString(),
                                 candidates);
         }
 
+        std::optional<package::ReferenceWithRepo> matched;
+        bool moduleAvailable = false;
         for (const auto &[candidateRepo, packages] : candidates->getRepoPackages()) {
             for (const auto &packageInfo : packages) {
                 auto candidate = package::Reference::fromPackageInfo(packageInfo);
                 if (candidate && *candidate == reference) {
-                    remote = package::ReferenceWithRepo{ candidateRepo, *candidate };
-                    break;
+                    matched = package::ReferenceWithRepo{ candidateRepo, *candidate };
+                    moduleAvailable |= packageInfo.packageInfoV2Module == module;
                 }
             }
-            if (remote) {
+            if (matched) {
                 break;
             }
         }
-        if (!remote) {
+        // Only a successful lookup can establish that an optional module is absent.
+        // Download failures must not permanently omit it from the project lock.
+        if (optionalModule && !moduleAvailable) {
+            return false;
+        }
+        if (!matched) {
             return LINGLONG_ERR("dependency is unavailable remotely: " + reference.toString());
         }
+        remote = std::move(matched);
     }
 
     assert(remote->reference == reference);
@@ -989,7 +1002,7 @@ auto Builder::ensureDependencyModule(const package::Reference &reference,
         return LINGLONG_ERR("dependency module is unavailable: " + reference.toString() + "/"
                             + module);
     }
-    return LINGLONG_OK;
+    return true;
 }
 
 auto Builder::recordProjectDependency(const DependencyFetchRequest &request,

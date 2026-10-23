@@ -627,13 +627,31 @@ class SmokeTest:
         except Exception:
             pass
         finally:
-            self.cleanup()
-            generate_report(
-                results=self.results,
-                start_time=self.start_time,
-                results_file=RESULTS_FILE,
-                dated=self.dated,
-            )
+            cleanup_start = time.time_ns()
+            try:
+                self.cleanup()
+            except Exception as exc:  # noqa: BLE001
+                elapsed = (time.time_ns() - cleanup_start) // 1_000_000
+                self.has_failed = True
+                self.results.append(
+                    StepResult(
+                        index=len(self.STEPS) + 1,
+                        title="清理测试环境",
+                        status="FAIL",
+                        duration_ms=elapsed,
+                        error_message=str(exc),
+                        category="环境清理",
+                    )
+                )
+                print(f"  Cleanup error: {exc}", file=sys.stderr)
+                self._print_step_result("清理测试环境", "FAIL")
+            finally:
+                generate_report(
+                    results=self.results,
+                    start_time=self.start_time,
+                    results_file=RESULTS_FILE,
+                    dated=self.dated,
+                )
 
     # ── Test: 清理并重置仓库 ──
     def reset_repositories(self):

@@ -10,6 +10,8 @@
 #include "linglong/utils/gettext.h"
 #include "linglong/utils/log/log.h"
 
+#include <QUrl>
+
 #include <algorithm>
 #include <cerrno>
 
@@ -168,7 +170,10 @@ utils::error::Result<void> handleRepoCommand(CLI::App *app,
             return LINGLONG_ERR("url is empty.", EINVAL);
         }
 
-        if (url.rfind("http", 0) != 0) {
+        const QUrl parsedUrl(QString::fromStdString(url), QUrl::StrictMode);
+        if (!parsedUrl.isValid() || parsedUrl.host().isEmpty()
+            || (parsedUrl.scheme() != "http" && parsedUrl.scheme() != "https")
+            || parsedUrl.hasQuery() || parsedUrl.hasFragment()) {
             return LINGLONG_ERR("url is invalid: " + url, EINVAL);
         }
 

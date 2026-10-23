@@ -104,6 +104,24 @@ constexpr std::size_t ContainerIDDisplayLength = 12;
 constexpr const char *DebugDevelopModule = "develop";
 const std::filesystem::path BaseDebugFileDirectory{ "/usr/lib/debug" };
 
+// Human readable wording for the application lookup failures reported by the
+// CLI. Every subcommand used to embed its own copy of these sentences and the
+// copies had drifted apart, so the very same failure was reported both as
+// "Can not find such application." and as "Cannot find such application.".
+// Keeping the literals in a single place guarantees that `ll-cli info`,
+// `ll-cli content` and `ll-cli inspect` keep telling the user the same thing;
+// `_()` is applied right next to the literal so gettext can still extract the
+// messages when the translation template is refreshed.
+const char *appNotFoundMessage()
+{
+    return _("Cannot find such application.");
+}
+
+const char *runningAppNotFoundMessage()
+{
+    return _("Cannot find the running application.");
+}
+
 linglong::utils::error::Result<int> setNonBlock(int fd) noexcept
 {
     LINGLONG_TRACE(fmt::format("set fd {} nonblock", fd));
@@ -2918,8 +2936,8 @@ int Cli::info(const InfoOptions &options)
         auto ref = (*repo)->clearReferenceLocal(*fuzzyRef);
         if (!ref) {
             LogD("{}", ref.error());
-            this->printer.printErr(LINGLONG_ERRV("Cannot find such application.",
-                                                 utils::error::ErrorCode::AppNotFoundFromLocal));
+            this->printer.printErr(
+              LINGLONG_ERRV(appNotFoundMessage(), utils::error::ErrorCode::AppNotFoundFromLocal));
             return -1;
         }
 
@@ -2978,7 +2996,8 @@ int Cli::content(const ContentOptions &options)
     auto ref = (*repo)->clearReferenceLocal(*fuzzyRef);
     if (!ref) {
         LogD("{}", ref.error());
-        this->printer.printErr(LINGLONG_ERRV("Can not find such application."));
+        this->printer.printErr(
+          LINGLONG_ERRV(appNotFoundMessage(), utils::error::ErrorCode::AppNotFoundFromLocal));
         return -1;
     }
 
@@ -3412,7 +3431,8 @@ int Cli::getLayerDir(const InspectOptions &options)
     auto ref = (*repo)->clearReferenceLocal(*fuzzyRef);
     if (!ref) {
         LogD("{}", ref.error());
-        this->printer.printErr(LINGLONG_ERRV("Can not find such application."));
+        this->printer.printErr(
+          LINGLONG_ERRV(appNotFoundMessage(), utils::error::ErrorCode::AppNotFoundFromLocal));
         return -1;
     }
 
@@ -3443,7 +3463,7 @@ int Cli::getBundleDir(const InspectOptions &options)
     }
 
     if (containerIDList->empty()) {
-        this->printer.printErr(LINGLONG_ERRV("Can not find the running application."));
+        this->printer.printErr(LINGLONG_ERRV(runningAppNotFoundMessage()));
         return -1;
     }
 

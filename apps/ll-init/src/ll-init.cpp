@@ -659,10 +659,6 @@ int delegate_run(int argc, char **argv) noexcept
 
     auto stdin_is_tty = ::isatty(STDIN_FILENO) == 1;
     auto args = parse_args(argc, argv);
-    if (args.empty()) {
-        print_info("no arguments provided for delegate run");
-        return 0;
-    }
 
     int tty_fd{ -1 };
     if (stdin_is_tty) {
@@ -734,11 +730,6 @@ int run_init(int argc, char **argv) noexcept
     }
 
     auto args = parse_args(argc, argv);
-    if (args.empty()) {
-        print_info("no arguments provided");
-        return -1;
-    }
-
     auto child = ChildProcess::spawn(args, sigmask);
     if (!child) {
         print_info("failed to run child process");
@@ -803,6 +794,11 @@ int run_init(int argc, char **argv) noexcept
 
 int main(int argc, char **argv) // NOLINT
 {
+    if (argc <= 1) {
+        print_info("usage: ll-init <command> [args...]");
+        return -1;
+    }
+
     if (::getpid() != 1) {
         return delegate_run(argc, argv);
     }

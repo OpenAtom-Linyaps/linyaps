@@ -25,7 +25,7 @@ project (
 
 ```
 
-For futher information, check [examples] and [documents].
+For further information, check [examples] and [documents].
 
 [PFL.cmake]: https://github.com/black-desk/PFL.cmake/releases/latest/download/PFL.cmake
 

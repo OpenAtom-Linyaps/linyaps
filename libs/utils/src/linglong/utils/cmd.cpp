@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
+ * SPDX-FileCopyrightText: 2023-2026 UnionTech Software Technology Co., Ltd.
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
@@ -293,6 +293,7 @@ utils::error::Result<std::string> Cmd::exec(const std::vector<std::string> &args
                 if (writtenBytes >= m_stdinContent.size()) {
                     epoll_ctl(epfd, EPOLL_CTL_DEL, fd, nullptr);
                     close(fd);
+                    stdinPipe[1] = -1;
                     activeFds--;
                 }
             }

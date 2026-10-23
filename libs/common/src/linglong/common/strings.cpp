@@ -253,7 +253,10 @@ std::string encode_url(std::string_view value) noexcept
     escaped.reserve(value.length());
 
     for (unsigned char c : value) {
-        if (::isalnum(c) || c == '-' || c == '_' || c == '.' || c == '/') {
+        // Classify ASCII explicitly: ::isalnum is locale-dependent and may
+        // leave high bytes (0x80-0xFF) unescaped under non-C locales.
+        if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-'
+            || c == '_' || c == '.' || c == '/') {
             escaped.push_back(static_cast<char>(c));
         } else {
             fmt::format_to(std::back_inserter(escaped), "%{:02X}", c);

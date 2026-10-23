@@ -163,6 +163,12 @@ TEST(StringsTest, EncodeUrl)
     EXPECT_EQ(encode_url("\t"), "%09");
     EXPECT_EQ(encode_url("\x01"), "%01");
     EXPECT_EQ(encode_url("\xFF"), "%FF");
+    // High bytes must stay percent-encoded regardless of the C locale:
+    // ::isalnum can return true for 0x80-0xFF under non-C locales.
+    EXPECT_EQ(encode_url("\x80"), "%80");
+    EXPECT_EQ(encode_url("\xC3\xA9"), "%C3%A9");
+    EXPECT_EQ(encode_url("a\xFFz"), "a%FFz");
+    EXPECT_EQ(encode_url("\xFE\xFF"), "%FE%FF");
 }
 
 TEST(StringsTest, DecodeUrl)

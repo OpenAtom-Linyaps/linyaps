@@ -630,11 +630,11 @@ TEST_F(RepoTest, exportDirPreservesDesktopLocationsDuringRebuild)
                 auto result = repo.exportDir("appID", source, staging, "share/applications", 10);
                 ASSERT_TRUE(result.has_value()) << result.error().message();
             }
-            const bool expectDefault = !overlayEnabled || (existingLocations & 1);
-            const bool expectOverlay =
-              !overlayEnabled || (existingLocations & 2) || existingLocations == 0;
-            EXPECT_EQ(fs::is_symlink(staging / defaultPath), expectDefault);
-            EXPECT_EQ(fs::is_symlink(staging / overlayPath), expectOverlay);
+            // Whenever the default and overlay layouts differ, the entry is exported to
+            // both so shortcuts created under either layout keep resolving after a rebuild
+            // (#1977). Without a custom export path both paths denote the same location.
+            EXPECT_TRUE(fs::is_symlink(staging / defaultPath));
+            EXPECT_TRUE(fs::is_symlink(staging / overlayPath));
             // Exporting to staging must not modify the live tree.
             if (existingLocations & 1) {
                 EXPECT_EQ(fs::read_symlink(live / defaultPath), "missing-default");
@@ -644,14 +644,39 @@ TEST_F(RepoTest, exportDirPreservesDesktopLocationsDuringRebuild)
             }
             fs::rename(live, root / "entries_old_test");
             fs::rename(staging, live);
-            if (expectDefault) {
-                EXPECT_TRUE(fs::equivalent(live / defaultPath, source / "nested/test.desktop"));
-            }
-            if (expectOverlay) {
-                EXPECT_TRUE(fs::equivalent(live / overlayPath, source / "nested/test.desktop"));
-            }
+            EXPECT_TRUE(fs::equivalent(live / defaultPath, source / "nested/test.desktop"));
+            EXPECT_TRUE(fs::equivalent(live / overlayPath, source / "nested/test.desktop"));
         }
     }
+}
+
+TEST_F(RepoTest, exportDirHealsDesktopShortcutAtMissingOverlayLocation)
+{
+    // #1977: the live entries tree only carries the desktop entry under the default
+    // layout while desktop shortcuts reference the overlay layout. The export must
+    // create the link in both layouts so those shortcuts resolve again.
+    TempDir tempDir("repo_export_heal_");
+    const auto root = tempDir.path();
+    const auto live = root / "entries";
+    const auto staging = root / "entries_new_test";
+    const fs::path defaultPath = "share/applications/test.desktop";
+    const fs::path overlayPath = "apps/share/applications/test.desktop";
+    const auto source = root / "src/share/applications";
+    fs::create_directories(source);
+    std::ofstream(source / "test.desktop") << "[Desktop Entry]\nName=Test\n";
+    fs::create_directories(live / defaultPath.parent_path());
+
+    const auto config =
+      api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 };
+    MockOstreeRepo repo(root, config);
+    repo.wrapGetOverlayShareDirFunc = [&live]() { return live / "apps/share"; };
+
+    auto result = repo.exportDir("appID", source, staging, "share/applications", 10);
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+    EXPECT_TRUE(fs::is_symlink(staging / defaultPath));
+    EXPECT_TRUE(fs::is_symlink(staging / overlayPath));
+    EXPECT_TRUE(fs::equivalent(staging / defaultPath, source / "test.desktop"));
+    EXPECT_TRUE(fs::equivalent(staging / overlayPath, source / "test.desktop"));
 }
 
 TEST_F(RepoTest, exportDir)

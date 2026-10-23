@@ -2147,23 +2147,17 @@ utils::error::Result<void> OSTreeRepo::exportDir(const std::string &appID,
             const auto oldAppDir = this->getDefaultSharedDir() / "applications";
             const auto newAppDir = this->getOverlayShareDir() / "applications";
             const auto relativePath = relativeTarget.lexically_relative("share/applications");
-            // Read the existing layout from the live entries tree, but write all links
-            // into this export's root (which may be a temporary tree during a rebuild).
+            // Write all links into this export's root (which may be a temporary tree during
+            // a rebuild). Desktop shortcuts created under either layout must keep resolving
+            // after a rebuild, so when the default and overlay layouts differ the entry is
+            // exported to both locations instead of only the ones already present in the
+            // live tree; otherwise a shortcut pointing at the other layout stays broken
+            // forever (#1977).
             if (oldAppDir != newAppDir && !relativePath.empty() && *relativePath.begin() != ".."
                 && !relativePath.is_absolute() && target_path.extension() == ".desktop") {
                 std::vector<std::filesystem::path> exportPaths;
                 for (const auto &appDir : { oldAppDir, newAppDir }) {
-                    const auto status = std::filesystem::symlink_status(appDir / relativePath, ec);
-                    if (ec && ec != std::errc::no_such_file_or_directory) {
-                        return LINGLONG_ERR("check existing desktop entry", ec);
-                    }
-                    if (std::filesystem::exists(status)) {
-                        exportPaths.push_back(appDir.lexically_relative(this->getEntriesDir())
-                                              / relativePath);
-                    }
-                }
-                if (exportPaths.empty()) {
-                    exportPaths.push_back(newAppDir.lexically_relative(this->getEntriesDir())
+                    exportPaths.push_back(appDir.lexically_relative(this->getEntriesDir())
                                           / relativePath);
                 }
                 for (const auto &path : exportPaths) {

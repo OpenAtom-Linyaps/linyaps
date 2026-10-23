@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2024-2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -32,7 +32,13 @@ struct Version
 
     friend bool operator<(const Version &lhs, const Version &rhs) noexcept
     {
-        return lhs.major < rhs.major || lhs.minor < rhs.minor || lhs.patch < rhs.patch;
+        if (lhs.major != rhs.major) {
+            return lhs.major < rhs.major;
+        }
+        if (lhs.minor != rhs.minor) {
+            return lhs.minor < rhs.minor;
+        }
+        return lhs.patch < rhs.patch;
     }
 };
 
@@ -49,12 +55,12 @@ try {
     if (p2 == std::string::npos) {
         return std::nullopt;
     }
-    v.minor = std::stoi(std::string{ version.substr(p1 + 1, p2) });
+    v.minor = std::stoi(std::string{ version.substr(p1 + 1, p2 - p1 - 1) });
 
     if (version.find('.', p2 + 1) != std::string::npos) {
         return std::nullopt;
     }
-    v.patch = std::stoi(std::string{ version.substr(p2 + 1, version.size()) });
+    v.patch = std::stoi(std::string{ version.substr(p2 + 1) });
 
     return v;
 } catch (std::exception &e) {

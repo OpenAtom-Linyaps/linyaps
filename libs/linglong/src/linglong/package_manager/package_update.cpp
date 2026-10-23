@@ -211,7 +211,9 @@ utils::error::Result<void> PackageUpdateAction::updateApp(Task &task,
     }
 
     std::optional<api::types::v1::PackageInfoV2> newAppInfo;
-    if (!refsToInstall.empty()) {
+    // Both levels are checked: refsToInstall may hold a repository whose module
+    // list is empty, and front() on an empty vector is undefined behaviour.
+    if (!refsToInstall.empty() && !refsToInstall.front().second.empty()) {
         auto info = refsToInstall.front().second.front().second.getPackageInfo();
         if (!info) {
             return LINGLONG_ERR(info);
@@ -337,6 +339,16 @@ PackageUpdateAction::gatherRefsToUpdate(RefsToInstall &refsToInstall,
             modulePairs.emplace_back(module, std::move(meta).value());
             fetchPackageInfo = false;
         }
+
+        // An entry with no module would still be counted by the callers that
+        // test only `refsToInstall.empty()`, and one of them then reads
+        // `refsToInstall.front().second.front()`. Nothing to install means
+        // nothing to record.
+        if (modulePairs.empty()) {
+            LogD("no module to update for {}, skipping", remoteRef.reference.toString());
+            return LINGLONG_OK;
+        }
+
         refsToInstall.emplace_back(remoteRef, std::move(modulePairs));
     }
 

@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+ * SPDX-FileCopyrightText: 2025 - 2026 UnionTech Software Technology Co., Ltd.
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
@@ -82,7 +82,11 @@ public:
     template <typename... Args>
     void log(const LoggerContext &context,
              LogLevel level,
+#if FMT_VERSION >= 80000
              fmt::format_string<Args...> fmt,
+#else
+             fmt::string_view fmt,
+#endif
              Args &&...args)
     {
         if (logLevel < level || logBackend == LogBackend::None) {
@@ -97,14 +101,19 @@ public:
         }
 
         if ((logBackend & LogBackend::Console) != LogBackend::None) {
-            fmt::println(stderr, "{}", message);
+            fmt::print(stderr, "{}\n", message);
         }
 
         if ((logBackend & LogBackend::Journal) != LogBackend::None) {
             fmt::memory_buffer fileBuf;
             fmt::memory_buffer lineBuf;
+#if FMT_VERSION >= 80000
             fmt::format_to(fmt::appender(fileBuf), "CODE_FILE={}", context.file);
             fmt::format_to(fmt::appender(lineBuf), "CODE_LINE={}", context.line);
+#else
+            fmt::format_to(fileBuf, "CODE_FILE={}", context.file);
+            fmt::format_to(lineBuf, "CODE_LINE={}", context.line);
+#endif
             sd_journal_send_with_location(fmt::to_string(fileBuf).c_str(),
                                           fmt::to_string(lineBuf).c_str(),
                                           context.function,

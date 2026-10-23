@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2024-2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -30,9 +30,23 @@ struct Version
     int minor{ 0 };
     int patch{ 0 };
 
+    // Compare (major, minor, patch) lexicographically. The previous
+    // `lhs.major < rhs.major || lhs.minor < rhs.minor || lhs.patch < rhs.patch`
+    // chain is not a valid ordering: it also evaluates the minor/patch
+    // components when the more significant ones differ, so e.g. 2.0.0 compared
+    // less than 1.7.0. The 1.7.0 gate in dispatchMigrations relies on this
+    // being a real ordering; otherwise a repository whose .version is newer
+    // than 1.7.0 (but has a smaller minor or patch) would incorrectly re-run
+    // the legacy ref migration.
     friend bool operator<(const Version &lhs, const Version &rhs) noexcept
     {
-        return lhs.major < rhs.major || lhs.minor < rhs.minor || lhs.patch < rhs.patch;
+        if (lhs.major != rhs.major) {
+            return lhs.major < rhs.major;
+        }
+        if (lhs.minor != rhs.minor) {
+            return lhs.minor < rhs.minor;
+        }
+        return lhs.patch < rhs.patch;
     }
 };
 
@@ -85,7 +99,7 @@ int migrateRef(OstreeRepo *repo, const MigrateRefData &data)
     }
 
     std::unordered_map<std::string_view, std::string_view> needMigrate;
-    auto refPrefix = data.repoName + ":";
+    const std::string refPrefix = data.repoName + ":";
     for (auto it = allRefs.begin(); it != allRefs.end();) {
         if (it->first.rfind(refPrefix, 0) == 0) {
             ++it;
@@ -95,8 +109,21 @@ int migrateRef(OstreeRepo *repo, const MigrateRefData &data)
         }
     }
 
+    // Drop every legacy ref whose prefixed counterpart already exists in the
+    // repository. Re-migrating such a ref would call
+    // ostree_repo_transaction_set_ref(repo, repoName, ref, legacyChecksum) and
+    // point the existing prefixed ref at the stale legacy commit, overwriting
+    // both the commit and the layer symlink that were already there. Every ref
+    // that still needs migration must therefore be checked against its real
+    // prefixed name before the transaction is prepared; the prefixed name is
+    // the repository name, a colon and the legacy ref.
+    //
+    // Build the lookup key from scratch on every iteration. std::string::append
+    // mutates its receiver and returns a reference to it, so reusing a single
+    // growing buffer makes the prefix accumulate one ref per iteration and
+    // turns every lookup after the first into a key that can never exist.
     for (auto it = needMigrate.begin(); it != needMigrate.end();) {
-        auto tmpRef = refPrefix.append(it->first);
+        const std::string tmpRef = refPrefix + std::string{ it->first };
         if (allRefs.find(tmpRef) != allRefs.end()) {
             it = needMigrate.erase(it);
         } else {

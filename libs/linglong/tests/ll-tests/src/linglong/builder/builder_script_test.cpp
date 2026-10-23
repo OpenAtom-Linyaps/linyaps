@@ -12,6 +12,38 @@
 
 using namespace linglong::builder;
 
+TEST(BuilderScript, UsesInstalledFileThroughSymlinkedBinDirectory)
+{
+    TempDir temporary;
+    const auto installedBinDir = temporary.path() / "installed/bin";
+    std::filesystem::create_directories(installedBinDir);
+    const auto binAlias = temporary.path() / "bin";
+    std::error_code ec;
+    std::filesystem::create_directory_symlink(installedBinDir, binAlias, ec);
+    ASSERT_FALSE(ec) << ec.message();
+
+    const auto installedFile = temporary.path() / "installed-template.yaml";
+    std::ofstream(installedFile) << "id: @ID@\n";
+    const auto buildRelative = "misc/share/linglong/builder/templates/example.yaml";
+    const auto buildFile = temporary.path() / buildRelative;
+    std::filesystem::create_directories(buildFile.parent_path());
+    std::ofstream(buildFile) << "unrelated build template\n";
+
+    auto found = detail::findBuilderFileForExecutable(binAlias / "ll-builder",
+                                                      buildRelative,
+                                                      installedFile,
+                                                      installedBinDir);
+    ASSERT_TRUE(found.has_value()) << found.error().message();
+    EXPECT_EQ(*found, installedFile);
+
+    std::filesystem::remove(installedFile);
+    EXPECT_FALSE(detail::findBuilderFileForExecutable(binAlias / "ll-builder",
+                                                      buildRelative,
+                                                      installedFile,
+                                                      installedBinDir)
+                   .has_value());
+}
+
 TEST(BuilderScript, FindsScriptsAndTemplateInBuilderBuildLayout)
 {
     TempDir temporary;

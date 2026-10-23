@@ -17,12 +17,16 @@ namespace detail {
 
 auto findBuilderFileForExecutable(const std::filesystem::path &executable,
                                   const std::filesystem::path &buildRelative,
-                                  const std::filesystem::path &installed) noexcept
+                                  const std::filesystem::path &installed,
+                                  const std::filesystem::path &installedBinDir) noexcept
   -> utils::error::Result<std::filesystem::path>
 {
     LINGLONG_TRACE("find builder file for executable");
     std::error_code ec;
-    if (executable.parent_path() == std::filesystem::path(BINDIR)) {
+    if (!installedBinDir.empty()
+        && (executable.parent_path() == installedBinDir
+            || std::filesystem::equivalent(executable.parent_path(), installedBinDir, ec))) {
+        ec.clear();
         if (std::filesystem::is_regular_file(installed, ec)) {
             return installed;
         }
@@ -74,7 +78,8 @@ auto findBuilderScript(const std::string &scriptName) noexcept
     return detail::findBuilderFileForExecutable(
       *executable,
       std::filesystem::path("misc/libexec/linglong") / scriptName,
-      std::filesystem::path(LINGLONG_LIBEXEC_DIR) / scriptName);
+      std::filesystem::path(LINGLONG_LIBEXEC_DIR) / scriptName,
+      BINDIR);
 }
 
 auto findBuilderTemplate() noexcept -> utils::error::Result<std::filesystem::path>
@@ -87,7 +92,8 @@ auto findBuilderTemplate() noexcept -> utils::error::Result<std::filesystem::pat
     return detail::findBuilderFileForExecutable(
       *executable,
       "misc/share/linglong/builder/templates/example.yaml",
-      std::filesystem::path(LINGLONG_DATA_DIR) / "builder/templates/example.yaml");
+      std::filesystem::path(LINGLONG_DATA_DIR) / "builder/templates/example.yaml",
+      BINDIR);
 }
 
 } // namespace linglong::builder

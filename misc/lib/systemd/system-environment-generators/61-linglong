@@ -21,5 +21,15 @@ source_script="@CMAKE_INSTALL_PREFIX@/lib/linglong/generate-xdg-data-dirs.sh"
 
 # !!!systemd requires environment variables to be printed to standard output!!!
 # https://www.freedesktop.org/software/systemd/man/latest/systemd.environment-generator.html
-[ -n "${PATH}" ] && echo "PATH=${PATH}"
-[ -n "${XDG_DATA_DIRS}" ] && echo "XDG_DATA_DIRS=${XDG_DATA_DIRS}"
+# The tests are spelled out rather than chained with && so the script always
+# exits 0. systemd discards everything a generator printed when it exits
+# non-zero, so a run with an empty XDG_DATA_DIRS used to throw away the PATH
+# line as well.
+if [ -n "${PATH}" ]; then
+    echo "PATH=${PATH}"
+fi
+if [ -n "${XDG_DATA_DIRS}" ]; then
+    echo "XDG_DATA_DIRS=${XDG_DATA_DIRS}"
+fi
+
+exit 0

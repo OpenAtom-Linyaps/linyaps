@@ -193,6 +193,17 @@ TEST_F(RepoCommandTest, ShowUsesCallbackWithoutSaving)
     EXPECT_EQ(shownConfig->defaultRepo, "stable");
 }
 
+TEST_F(RepoCommandTest, UnknownAliasNamesTheRepoInError)
+{
+    parse("repo remove nosuchrepo");
+
+    auto ret = handle();
+
+    EXPECT_FALSE(ret.has_value());
+    EXPECT_NE(ret.error().message().find("nosuchrepo"), std::string::npos) << ret.error().message();
+    EXPECT_EQ(setConfigCalls, 0);
+}
+
 TEST_F(RepoCommandTest, ModifyReturnsError)
 {
     parse("repo modify https://example.com");

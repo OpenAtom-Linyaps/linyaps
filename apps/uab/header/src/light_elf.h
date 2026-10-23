@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2024-2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -8,13 +8,19 @@
 
 #include <elf.h>
 
+#include <algorithm>
 #include <cstddef>
+#include <cstdint>
 #include <cstring>
 #include <filesystem>
 #include <optional>
+#include <stdexcept>
+#include <string>
+#include <string_view>
 #include <vector>
 
 #include <fcntl.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 namespace lightElf {
@@ -73,12 +79,16 @@ public:
             }
         });
 
+        // Always read a whole ElfHeader: sizeof(ElfHeader) happens to equal
+        // sizeof(SectionHeader) for 64-bit ELFs, but not for 32-bit files (52 vs 40).
+        // The previous code used the section header size here, which left
+        // e_shentsize/e_shnum/e_shstrndx uninitialized for 32-bit files.
         ElfHeader elfHeader;
-        auto bytesRead = ::pread(fd, &elfHeader, section_size, 0);
+        auto bytesRead = ::pread(fd, &elfHeader, header_size, 0);
         if (bytesRead == -1) {
             throw std::runtime_error("failed to read " + path.string() + ": " + ::strerror(errno));
         }
-        if (bytesRead != section_size) {
+        if (bytesRead != static_cast<ssize_t>(header_size)) {
             throw std::runtime_error("incomplete read header from " + path.string());
         }
 
@@ -87,11 +97,45 @@ public:
             throw std::runtime_error(path.string() + "is not an elf file");
         }
 
+        // The ELF ABI requires e_shentsize to be exactly the size of a section header
+        // for this ELF class. Both the table walk below and getSectionHeader() use it as
+        // the entry stride and as the pread() length, so an attacker-controlled value
+        // larger than SectionHeader would overflow the stack object while a smaller one
+        // would yield partially initialized headers.
+        if (elfHeader.e_shentsize != section_size) {
+            throw std::runtime_error("invalid section header entry size of " + path.string()
+                                     + ", expect: " + std::to_string(section_size)
+                                     + ", current: " + std::to_string(elfHeader.e_shentsize));
+        }
+
         if (elfHeader.e_shoff == 0) {
             throw std::runtime_error("current elf does not has section header table");
         }
 
-        auto shdrstrndx = elfHeader.e_shstrndx;
+        // e_shnum == 0 is the ELF escape hatch for more than SHN_LORESERVE sections, where
+        // the real count is stored in sh_size of section 0. This parser does not implement
+        // that, so reject the file instead of silently treating it as having no sections.
+        if (elfHeader.e_shnum == 0) {
+            throw std::runtime_error("current elf has an empty section header table");
+        }
+
+        // Every offset below is attacker controlled, so make sure the complete section
+        // header table lives inside the file before any entry is dereferenced.
+        struct stat st{};
+        if (::fstat(fd, &st) == -1) {
+            throw std::runtime_error("failed to stat " + path.string() + ": " + ::strerror(errno));
+        }
+        const auto fileSize = static_cast<std::uint64_t>(st.st_size);
+        if (elfHeader.e_shoff > fileSize
+            || static_cast<std::uint64_t>(elfHeader.e_shnum) * elfHeader.e_shentsize
+              > fileSize - elfHeader.e_shoff) {
+            throw std::runtime_error("section header table of " + path.string()
+                                     + " is outside of the file");
+        }
+
+        // The extended index is a 32-bit sh_link, not the 16-bit e_shstrndx, so keep the
+        // wider type when promoting it.
+        std::uint32_t shdrstrndx = elfHeader.e_shstrndx;
         if (shdrstrndx == SHN_UNDEF) {
             throw std::runtime_error("current elf does not has section header string table");
         }
@@ -103,7 +147,7 @@ public:
                 throw std::runtime_error("failed to read initial section header of" + path.string()
                                          + ": " + ::strerror(errno));
             }
-            if (bytesRead != section_size) {
+            if (bytesRead != static_cast<ssize_t>(section_size)) {
                 throw std::runtime_error("incomplete read initial section header of"
                                          + path.string());
             }
@@ -117,13 +161,21 @@ public:
             shdrstrndx = shdr.sh_link;
         }
 
+        // The resolved index (either e_shstrndx or the extended sh_link) must point at an
+        // entry of the section header table, otherwise shdrstrtab below would be derived
+        // from attacker controlled data outside of the table we just validated.
+        if (shdrstrndx >= elfHeader.e_shnum) {
+            throw std::runtime_error("section header string table index of " + path.string()
+                                     + " is out of range");
+        }
+
         auto shdrstrtab = elfHeader.e_shoff + (shdrstrndx * elfHeader.e_shentsize);
         bytesRead = ::pread(fd, &shdr, section_size, shdrstrtab);
         if (bytesRead == -1) {
             throw std::runtime_error("failed to read section header string table of" + path.string()
                                      + ": " + ::strerror(errno));
         }
-        if (bytesRead != section_size) {
+        if (bytesRead != static_cast<ssize_t>(section_size)) {
             throw std::runtime_error("incomplete read section header string table of"
                                      + path.string());
         }
@@ -134,11 +186,26 @@ public:
                                      + ", current:" + std::to_string(shdr.sh_type));
         }
 
+        // The string table range must be inside the file as well, otherwise pread() below
+        // would be handed an out-of-range window. A short read used to be silently
+        // accepted, which left uninitialized bytes that getSectionHeader() then walked as
+        // NUL-terminated C strings.
+        if (shdr.sh_offset > fileSize
+            || static_cast<std::uint64_t>(shdr.sh_size) > fileSize - shdr.sh_offset) {
+            throw std::runtime_error("section header string table of " + path.string()
+                                     + " is outside of the file");
+        }
+
         std::vector<char> rawData(shdr.sh_size,
                                   '\0'); // NOTE: must reserve enough space before read
-        if (::pread(fd, rawData.data(), shdr.sh_size, shdr.sh_offset) == -1) {
+        auto strtabBytes = ::pread(fd, rawData.data(), shdr.sh_size, shdr.sh_offset);
+        if (strtabBytes == -1) {
             throw std::runtime_error("failed to read section header string table of" + path.string()
                                      + ": " + ::strerror(errno));
+        }
+        if (static_cast<std::uint64_t>(strtabBytes) != shdr.sh_size) {
+            throw std::runtime_error("incomplete read section header string table of"
+                                     + path.string());
         }
 
         this->fd = fd;
@@ -163,19 +230,35 @@ public:
         SectionHeader shdr;
         auto offset = header.e_shoff;
         const auto *data = rawSectionNames.data();
+        const auto dataSize = rawSectionNames.size();
 
         for (auto index = 0; index < header.e_shnum; ++index) {
-            if (::pread(fd, &shdr, header.e_shentsize, offset) == -1) {
+            // The constructor guarantees e_shentsize == sizeof(SectionHeader) and that the
+            // entire table is inside the file, so always read a full SectionHeader instead
+            // of letting a crafted e_shentsize decide how many bytes are written here.
+            auto bytesRead = ::pread(fd, &shdr, section_size, offset);
+            if (bytesRead == -1) {
                 throw std::runtime_error("failed to read section header of" + name + ": "
                                          + ::strerror(errno));
             }
-
-            auto curName = std::string_view(data + shdr.sh_name);
-            if (!curName.empty() && curName == name) {
-                return shdr;
+            if (bytesRead != static_cast<ssize_t>(section_size)) {
+                throw std::runtime_error("incomplete read section header of" + name);
             }
 
-            offset += header.e_shentsize;
+            // sh_name is an offset into the section header string table and a malformed
+            // file can point it anywhere, so skip entries outside of the table and bound
+            // the name to the table size: a missing terminating NUL must not make
+            // string_view walk past the end of the buffer.
+            if (shdr.sh_name < dataSize) {
+                const auto *begin = data + shdr.sh_name;
+                const auto *end = std::find(begin, data + dataSize, '\0');
+                auto curName = std::string_view(begin, static_cast<std::size_t>(end - begin));
+                if (!curName.empty() && curName == name) {
+                    return shdr;
+                }
+            }
+
+            offset += section_size;
         }
 
         return std::nullopt;

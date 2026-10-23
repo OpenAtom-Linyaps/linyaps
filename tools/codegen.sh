@@ -50,10 +50,31 @@ generate() {
         output_path="$1"
 
         if [[ ! -f "$schema" ]]; then
-                echo "$schema not found" || exit 255
+                echo "$schema not found" >&2
+                exit 255
         fi
 
         filename="/dev/null"
+        generated_files=0
+        quicktype_output="$(mktemp "${TMPDIR:-/tmp}/codegen-quicktype-output.XXXXXX")"
+
+        if ! (quicktype "$schema" \
+                --lang c++ \
+                -s schema \
+                -t "$toplevel_type" \
+                --namespace "$namespace" \
+                --code-format with-struct \
+                --source-style multi-source \
+                --include-location global-include \
+                --type-style pascal-case-upper-acronyms \
+                --member-style camel-case-upper-acronyms \
+                --enumerator-style pascal-case-upper-acronyms \
+                --no-boost \
+                --hide-null-optional) >"$quicktype_output"; then
+                rm -f "$quicktype_output"
+                echo "quicktype failed to generate $schema" >&2
+                exit 255
+        fi
 
         while read -r line; do
                 if [[ $line != //\ stdout &&
@@ -78,6 +99,8 @@ generate() {
                 filename="${repoRoot}/$include/$output_path/${line#\/\/ }"
                 if [[ $line == //\ stdout ]]; then
                         filename="/dev/null"
+                else
+                        generated_files=$((generated_files + 1))
                 fi
 
                 # echo "generating $filename"
@@ -89,19 +112,14 @@ generate() {
                         echo ""
                         echo "// clang-format off"
                 } >"$filename"
-        done < <(quicktype "$schema" \
-                --lang c++ \
-                -s schema \
-                -t "$toplevel_type" \
-                --namespace "$namespace" \
-                --code-format with-struct \
-                --source-style multi-source \
-                --include-location global-include \
-                --type-style pascal-case-upper-acronyms \
-                --member-style camel-case-upper-acronyms \
-                --enumerator-style pascal-case-upper-acronyms \
-                --no-boost \
-                --hide-null-optional)
+        done <"$quicktype_output"
+
+        rm -f "$quicktype_output"
+
+        if [[ "$generated_files" -eq 0 ]]; then
+                echo "quicktype generated no source files for $schema" >&2
+                exit 255
+        fi
 
         {
                 echo ""

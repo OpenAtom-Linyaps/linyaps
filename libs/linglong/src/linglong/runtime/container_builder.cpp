@@ -24,7 +24,10 @@
 
 #include <algorithm>
 #include <fstream>
+#include <system_error>
 
+#include <pwd.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 namespace linglong::runtime {
@@ -91,7 +94,67 @@ auto getXDPDocumentsMountPoint() noexcept -> utils::error::Result<std::filesyste
     return std::filesystem::path{ mountPoint.c_str() };
 }
 
+auto isUsableHomeDirectory(const std::filesystem::path &path) noexcept -> bool
+{
+    struct stat info{};
+    if (::stat(path.c_str(), &info) != 0 || !S_ISDIR(info.st_mode)) {
+        return false;
+    }
+
+    mode_t required{};
+    if (info.st_uid == ::getuid()) {
+        required = S_IRUSR | S_IWUSR | S_IXUSR;
+    } else if (info.st_gid == ::getgid()) {
+        required = S_IRGRP | S_IWGRP | S_IXGRP;
+    } else {
+        required = S_IROTH | S_IWOTH | S_IXOTH;
+    }
+
+    return (info.st_mode & required) == required;
+}
+
 } // namespace
+
+auto resolveHomeDirectory() noexcept -> utils::error::Result<std::filesystem::path>
+{
+    LINGLONG_TRACE("resolve home directory");
+
+    const auto *homeEnv = ::getenv("HOME");
+    if (homeEnv != nullptr && homeEnv[0] != '\0' && isUsableHomeDirectory(homeEnv)) {
+        return std::filesystem::path{ homeEnv };
+    }
+
+    auto bufferSize = ::sysconf(_SC_GETPW_R_SIZE_MAX);
+    if (bufferSize < 0) {
+        bufferSize = 16384;
+    }
+
+    std::vector<char> buffer(static_cast<std::size_t>(bufferSize));
+    struct passwd entry{};
+    struct passwd *result{ nullptr };
+    const auto ret = ::getpwuid_r(::getuid(), &entry, buffer.data(), buffer.size(), &result);
+    if (ret != 0) {
+        return LINGLONG_ERR("failed to resolve current user's home directory",
+                            std::error_code{ ret, std::generic_category() });
+    }
+    if (result == nullptr || result->pw_dir == nullptr || result->pw_dir[0] == '\0') {
+        return LINGLONG_ERR("current user has no home directory");
+    }
+
+    std::filesystem::path passwdHome{ result->pw_dir };
+    if (!isUsableHomeDirectory(passwdHome)) {
+        return LINGLONG_ERR(
+          fmt::format("neither HOME ({}) nor passwd home ({}) is usable by uid {}",
+                      homeEnv == nullptr || homeEnv[0] == '\0' ? "not set" : homeEnv,
+                      passwdHome,
+                      ::getuid()));
+    }
+
+    LogW("HOME {} is unavailable to the container user, using {}",
+         homeEnv == nullptr || homeEnv[0] == '\0' ? "is not set" : homeEnv,
+         passwdHome);
+    return passwdHome;
+}
 
 utils::error::Result<std::filesystem::path> makeBundleDir(const std::string &containerID,
                                                           const std::string &bundleSuffix)
@@ -422,8 +485,10 @@ auto ContainerBuilder::configureBuildContainer(PreparedContainer &prepared,
 {
     LINGLONG_TRACE("configure build container");
 
+    // Build containers do not mount the host home; bindTmp() guarantees a writable /tmp.
     prepared.cfgBuilder.setBasePath(options.basePath, false)
       .forwardDefaultEnv()
+      .appendEnv("HOME", "/tmp")
       .appendEnv("LINYAPS_INIT_SKIP_LOCK", "YES")
       .disableUserNamespace()
       .setCapabilities(buildContainerCaps)
@@ -621,11 +686,10 @@ auto ContainerBuilder::configureRunContainer(PreparedContainer &prepared,
 {
     LINGLONG_TRACE("configure run container");
 
-    auto *homeEnv = ::getenv("HOME");
-    if (homeEnv == nullptr) {
-        return LINGLONG_ERR("HOME is not set");
+    auto homePath = resolveHomeDirectory();
+    if (!homePath) {
+        return LINGLONG_ERR("failed to resolve a usable home directory", homePath);
     }
-    std::filesystem::path homePath{ homeEnv };
 
     prepared.cfgBuilder.setAnnotation(generator::ANNOTATION::LAST_PID, std::to_string(::getpid()))
       .bindUserGroup(true)
@@ -633,10 +697,10 @@ auto ContainerBuilder::configureRunContainer(PreparedContainer &prepared,
       .bindRemovableStorageMounts()
       .bindHostRoot()
       .bindHostStatics()
-      .bindHome(homePath)
+      .bindHome(*homePath)
       .enablePrivateDir()
-      .mapPrivate((homePath / ".ssh").string(), true)
-      .mapPrivate((homePath / ".gnupg").string(), true)
+      .mapPrivate((*homePath / ".ssh").string(), true)
+      .mapPrivate((*homePath / ".gnupg").string(), true)
       .bindIPC()
       .forwardDefaultEnv();
 

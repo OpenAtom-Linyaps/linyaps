@@ -5,10 +5,50 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "common/tempdir.h"
 #include "linglong/cli/cli.h"
 #include "linglong/runtime/container_builder.h"
+#include "linglong/utils/env.h"
+
+#include <sys/stat.h>
 
 using namespace linglong;
+
+using linglong::utils::EnvironmentVariableGuard;
+
+TEST(ContainerBuilderUtil, ResolveHomeDirectoryUsesUsableEnvironmentValue)
+{
+    TempDir home{ "ll-builder-home-" };
+    EnvironmentVariableGuard homeGuard("HOME", home.path().string());
+
+    auto result = runtime::resolveHomeDirectory();
+
+    ASSERT_TRUE(result) << result.error().message();
+    EXPECT_EQ(*result, home.path());
+}
+
+TEST(ContainerBuilderUtil, ResolveHomeDirectoryFallsBackFromEmptyEnvironmentValue)
+{
+    EnvironmentVariableGuard homeGuard("HOME", "");
+
+    auto result = runtime::resolveHomeDirectory();
+
+    ASSERT_TRUE(result) << result.error().message();
+    EXPECT_FALSE(result->empty());
+    EXPECT_TRUE(std::filesystem::is_directory(*result));
+}
+
+TEST(ContainerBuilderUtil, ResolveHomeDirectoryFallsBackFromUnusableDirectory)
+{
+    TempDir home{ "ll-builder-unusable-home-" };
+    ASSERT_EQ(::chmod(home.path().c_str(), 0000), 0);
+    EnvironmentVariableGuard homeGuard("HOME", home.path().string());
+
+    auto result = runtime::resolveHomeDirectory();
+
+    ASSERT_TRUE(result) << result.error().message();
+    EXPECT_NE(*result, home.path());
+}
 
 TEST(RunContainerOptionsTest, ApplyRuntimeConfigEnablesDevicePassthru)
 {

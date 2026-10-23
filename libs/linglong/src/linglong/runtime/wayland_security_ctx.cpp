@@ -8,6 +8,7 @@
 #include "linglong/oci-cfg-generators/container_cfg_builder.h"
 #include "linglong/runtime/container.h"
 #include "linglong/runtime/run_context.h"
+#include "linglong/runtime/wayland_socket_addr.h"
 #include "linglong/utils/finally/finally.h"
 #include "linglong/utils/log/log.h"
 #include "wayland-security-context-v1.h"
@@ -121,17 +122,21 @@ WaylandSecurityContextManagerV1::createSecurityContext(RunContext &runContext,
 
     auto waylandSocket = containerContext.getBundleDir() / "wayland-socket";
 
+    const auto path = waylandSocket.string();
+
+    // sun_path is a fixed size buffer, so a bundle directory that is too deep
+    // cannot be represented at all. Reject it before anything is copied into a
+    // stack allocated address, mirroring common::socket::createUnixSocket().
+    auto addr = makeWaylandSocketAddr(path);
+    if (!addr) {
+        return LINGLONG_ERR(addr);
+    }
+
     std::error_code ec;
     std::filesystem::create_directories(waylandSocket.parent_path(), ec);
     if (ec) {
         return LINGLONG_ERR("failed to create directories for socket", ec);
     }
-
-    struct sockaddr_un addr{};
-    addr.sun_family = AF_UNIX;
-    const auto path = waylandSocket.string();
-    std::copy(path.cbegin(), path.cend(), &addr.sun_path[0]);
-    addr.sun_path[path.size()] = 0;
 
     // just in case the socket file exists
     std::filesystem::remove(waylandSocket, ec);
@@ -148,8 +153,8 @@ WaylandSecurityContextManagerV1::createSecurityContext(RunContext &runContext,
     });
 
     auto ret = ::bind(listenFd,
-                      reinterpret_cast<const struct sockaddr *>(&addr),
-                      offsetof(sockaddr_un, sun_path) + path.size());
+                      reinterpret_cast<const struct sockaddr *>(&*addr),
+                      waylandSocketAddrLength(path));
     if (ret == -1) {
         return LINGLONG_ERR("failed to bind socket for listen fd", errno);
     }

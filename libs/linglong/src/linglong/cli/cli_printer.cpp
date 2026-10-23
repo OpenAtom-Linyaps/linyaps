@@ -47,6 +47,12 @@ void CLIPrinter::printPruneResult(const std::vector<api::types::v1::PackageInfoV
     std::cout << "Unused base or runtime:" << std::endl;
     for (const auto &info : list) {
         auto ref = package::Reference::fromPackageInfo(info);
+        if (!ref) {
+            // The package has already been pruned, so still list it, but without
+            // dereferencing the error result.
+            std::cout << info.id << "/" << info.version << std::endl;
+            continue;
+        }
         std::cout << ref->toString() << std::endl;
     }
     std::cout << list.size() << " unused base or runtime have been removed." << std::endl;

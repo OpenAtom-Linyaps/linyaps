@@ -503,3 +503,31 @@ TEST_F(JSONPrinterTest, PrintMessage)
 }
 
 } // namespace
+
+TEST(CLIPrinter, PrintPruneResultPrintsReference)
+{
+    auto pkg = makePackage("org.deepin.demo", "Demo", "1.0.0.0", "main", "binary", "");
+    pkg.arch = { "x86_64" };
+
+    CaptureStdout capture;
+    linglong::cli::CLIPrinter printer;
+    printer.printPruneResult(std::vector<PackageInfoV2>{ pkg });
+
+    auto out = capture.out();
+    EXPECT_THAT(out, ::testing::HasSubstr("main:org.deepin.demo/1.0.0.0/x86_64"));
+    EXPECT_THAT(out, ::testing::HasSubstr("1 unused base or runtime have been removed."));
+}
+
+TEST(CLIPrinter, PrintPruneResultToleratesInvalidReference)
+{
+    // No architecture, so Reference::fromPackageInfo() returns an error for this package.
+    auto pkg = makePackage("org.deepin.broken", "Broken", "1.0.0.0", "main", "binary", "");
+
+    CaptureStdout capture;
+    linglong::cli::CLIPrinter printer;
+    printer.printPruneResult(std::vector<PackageInfoV2>{ pkg });
+
+    auto out = capture.out();
+    EXPECT_THAT(out, ::testing::HasSubstr("org.deepin.broken/1.0.0.0"));
+    EXPECT_THAT(out, ::testing::HasSubstr("1 unused base or runtime have been removed."));
+}

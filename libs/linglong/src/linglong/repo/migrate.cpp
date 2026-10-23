@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2024-2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -96,7 +96,12 @@ int migrateRef(OstreeRepo *repo, const MigrateRefData &data)
     }
 
     for (auto it = needMigrate.begin(); it != needMigrate.end();) {
-        auto tmpRef = refPrefix.append(it->first);
+        // Build the candidate prefixed ref without mutating refPrefix.
+        // append() returns a reference to the mutated string, so the old
+        // `refPrefix.append(...)` call permanently grew refPrefix and made
+        // every lookup after the first one search for a concatenated name
+        // such as "stable:org.a/apporg.b/app".
+        auto tmpRef = refPrefix + std::string{ it->first };
         if (allRefs.find(tmpRef) != allRefs.end()) {
             it = needMigrate.erase(it);
         } else {

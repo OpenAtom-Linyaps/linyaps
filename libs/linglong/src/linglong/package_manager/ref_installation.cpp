@@ -191,9 +191,7 @@ utils::error::Result<void> RefInstallationAction::install(Task &task)
 {
     LINGLONG_TRACE("ref installation install");
 
-    const auto &newRef = operation.newRef->reference;
-
-    auto remoteModules = candidates.getReferenceModules(newRef);
+    auto remoteModules = candidates.getReferenceModules(*operation.newRef);
     if (remoteModules.empty()) {
         return LINGLONG_ERR("no modules found");
     }

@@ -36,7 +36,7 @@ public:
     bool empty() const { return repoPackages.empty(); }
 
     const utils::error::Result<PackageWithRepo> getLatestPackage() const;
-    std::vector<std::string> getReferenceModules(const package::Reference &ref) const;
+    std::vector<std::string> getReferenceModules(const package::ReferenceWithRepo &ref) const;
 
 private:
     std::list<PackagesWithRepo> repoPackages;

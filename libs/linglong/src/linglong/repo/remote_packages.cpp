@@ -46,10 +46,16 @@ const utils::error::Result<PackageWithRepo> RemotePackages::getLatestPackage() c
     return *latest;
 }
 
-std::vector<std::string> RemotePackages::getReferenceModules(const package::Reference &ref) const
+std::vector<std::string>
+RemotePackages::getReferenceModules(const package::ReferenceWithRepo &refRepo) const
 {
     std::vector<std::string> modules;
+    const auto &ref = refRepo.reference;
+    const auto repoName = refRepo.repo.alias.value_or(refRepo.repo.name);
     for (const auto &packages : repoPackages) {
+        if (packages.first.alias.value_or(packages.first.name) != repoName) {
+            continue;
+        }
         for (const auto &package : packages.second) {
             if (package.id == ref.id && package.channel == ref.channel
                 && package.version == ref.version.toString()

@@ -7,6 +7,8 @@
 #include "linglong/utils/finally/finally.h"
 #include "linglong/utils/log/log.h"
 
+#include <unordered_set>
+
 #include <unistd.h>
 
 namespace linglong::service {
@@ -38,6 +40,16 @@ UabInstallationAction::checkDistributionModeUABLayers(
 {
     LINGLONG_TRACE("check distribution mode uab layers");
 
+    // UAB metadata is plain external input: it is parsed from linglong.meta in
+    // the staged file and has not been checked by UABFile::verify(). Validate
+    // every layer before splitUABLayers() interprets kind or any later code
+    // indexes arch, so one malformed package cannot crash the package manager.
+    for (const auto &layer : layers) {
+        if (auto res = validateUabLayer(layer); !res) {
+            return LINGLONG_ERR(res);
+        }
+    }
+
     auto splitLayers = splitUABLayers(layers);
     const auto &appLayers = splitLayers.first;
     const auto &otherLayers = splitLayers.second;
@@ -60,6 +72,59 @@ UabInstallationAction::checkDistributionModeUABLayers(
     return splitLayers;
 }
 
+utils::error::Result<void>
+UabInstallationAction::validateUabLayer(const api::types::v1::UabLayer &layer)
+{
+    LINGLONG_TRACE("validate uab layer");
+
+    // Keep all field checks in one place. The package manager is a shared,
+    // long-running service, so malformed metadata must be rejected as an
+    // error before any field is dereferenced or indexed.
+    const auto &info = layer.info;
+
+    if (info.arch.empty()) {
+        return LINGLONG_ERR("uab layer is missing architecture");
+    }
+
+    const auto &hostArch = package::Architecture::currentCPUArchitecture();
+    for (const auto &rawArch : info.arch) {
+        auto arch = package::Architecture::parse(rawArch);
+        if (!arch) {
+            return LINGLONG_ERR(arch);
+        }
+        if (*arch != hostArch) {
+            return LINGLONG_ERR(fmt::format("uab arch: {} not match host architecture", rawArch));
+        }
+    }
+
+    // These fields are used as map keys, filesystem paths and reference
+    // components during installation. Empty values cannot describe a valid
+    // layer, so reject them here instead of failing halfway through an import.
+    if (info.id.empty()) {
+        return LINGLONG_ERR("uab layer is missing id");
+    }
+    if (info.channel.empty()) {
+        return LINGLONG_ERR("uab layer is missing channel");
+    }
+    if (info.version.empty()) {
+        return LINGLONG_ERR("uab layer is missing version");
+    }
+
+    auto version = package::Version::parse(info.version);
+    if (!version) {
+        return LINGLONG_ERR(version);
+    }
+
+    if (info.kind.empty()) {
+        return LINGLONG_ERR("uab layer is missing kind");
+    }
+    if (info.packageInfoV2Module.empty()) {
+        return LINGLONG_ERR("uab layer is missing module");
+    }
+
+    return LINGLONG_OK;
+}
+
 utils::error::Result<void> UabInstallationAction::checkUABLayersConstrain(
   repo::OSTreeRepo &repo, const std::vector<linglong::api::types::v1::UabLayer> &layers)
 {
@@ -70,22 +135,35 @@ utils::error::Result<void> UabInstallationAction::checkUABLayersConstrain(
     }
 
     const auto &front = layers.front().info;
+    std::unordered_set<std::string> modules;
     for (const auto &layer : layers) {
-        auto arch = package::Architecture::parse(layer.info.arch[0]);
-        if (!arch) {
-            return LINGLONG_ERR(arch);
-        }
-        if (*arch != package::Architecture::currentCPUArchitecture()) {
-            return LINGLONG_ERR(
-              fmt::format("uab arch: {} not match host architecture", layer.info.arch[0]));
+        // checkUABLayersConstrain() is public and is also called directly by
+        // tests, so it must not rely on the caller having validated metadata.
+        if (auto res = validateUabLayer(layer); !res) {
+            return LINGLONG_ERR(res);
         }
 
         if (layer.info.id != front.id) {
             return LINGLONG_ERR("more than one layers with different id");
         }
 
+        if (layer.info.channel != front.channel) {
+            return LINGLONG_ERR("modules have different channel");
+        }
+
         if (layer.info.version != front.version) {
             return LINGLONG_ERR("modules have different version");
+        }
+
+        if (layer.info.kind != front.kind) {
+            return LINGLONG_ERR("modules have different kind");
+        }
+
+        // All layers of one package are exported into layers/<id>/<module>.
+        // Duplicate module names would make that layout ambiguous.
+        if (!modules.insert(layer.info.packageInfoV2Module).second) {
+            return LINGLONG_ERR(
+              fmt::format("duplicate module {} in uab layers", layer.info.packageInfoV2Module));
         }
     }
 

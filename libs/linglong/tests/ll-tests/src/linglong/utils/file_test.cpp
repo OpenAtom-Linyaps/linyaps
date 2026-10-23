@@ -620,6 +620,32 @@ TEST_F(FileTest, ReadFile)
     EXPECT_EQ(*result_subdir, subdir_content);
 }
 
+TEST_F(FileTest, ReadFileRejectsDirectory)
+{
+    auto result = linglong::utils::readFile(src_dir);
+    ASSERT_FALSE(result.has_value());
+    EXPECT_NE(result.error().message().find(src_dir.string()), std::string::npos);
+}
+
+TEST_F(FileTest, ReadFilePreservesEmptyFilesAndChunkBoundaries)
+{
+    const auto path = src_dir / "chunk-boundaries";
+    for (const auto size : { 0, 8191, 8192, 8193, 16384 }) {
+        std::string expected(size, 'x');
+        if (!expected.empty()) {
+            expected[size / 2] = '\0';
+        }
+        {
+            std::ofstream out(path, std::ios::binary);
+            out.write(expected.data(), expected.size());
+            ASSERT_TRUE(out.good());
+        }
+        auto actual = linglong::utils::readFile(path);
+        ASSERT_TRUE(actual.has_value()) << actual.error().message();
+        EXPECT_EQ(*actual, expected) << "size=" << size;
+    }
+}
+
 TEST_F(FileTest, WriteFileAndReadFile)
 {
     // Test write and read operations together

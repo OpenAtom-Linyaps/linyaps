@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
+# SPDX-FileCopyrightText: 2023-2026 UnionTech Software Technology Co., Ltd.
 #
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -58,6 +58,12 @@ fi
 if [[ $skip_config -eq 0 ]]; then
     echo "start application configure check"
     if ! @CMAKE_INSTALL_FULL_LIBEXECDIR@/linglong/builder/helper/config-check.sh; then
+            # Level 1 means a failed check is an error, exactly like the ldd
+            # check above; level 0 means the failure is reported and ignored.
+            if [ $check_level -eq 1 ]; then
+                    echo "Error: application configure check failed."
+                    exit 1
+            fi
             echo "Warning: application configure check failed."
     fi
 else

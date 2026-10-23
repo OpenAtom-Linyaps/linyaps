@@ -181,6 +181,7 @@ bool operator==(const PMTaskState &lhs, const PMTaskState &rhs);
 
 class Cli : public QObject
 {
+    friend class CliFileUrlTest;
     Q_OBJECT
 public:
     Cli(const Cli &) = delete;

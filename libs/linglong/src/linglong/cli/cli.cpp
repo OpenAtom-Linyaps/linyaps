@@ -68,6 +68,7 @@
 #include <QEventLoop>
 #include <QFileInfo>
 #include <QProcess>
+#include <QUrl>
 
 #include <algorithm>
 #include <array>
@@ -3084,13 +3085,20 @@ int Cli::content(const ContentOptions &options)
         return mappingFile(url);
     }
 
-    // if the scheme of url is "file", we need to map the native file path to the corresponding
-    // container path, others will deliver to app directly.
-    constexpr std::string_view filePrefix = "file://";
-    if (url.rfind(filePrefix, 0) == 0) {
-        std::filesystem::path nativePath = url.substr(filePrefix.size());
-        std::filesystem::path target = mappingFile(nativePath);
-        return std::string{ filePrefix } + target.string();
+    auto parsed =
+      QUrl::fromEncoded(QByteArray(url.data(), static_cast<int>(url.size())), QUrl::StrictMode);
+    if (parsed.isValid() && parsed.scheme() == "file"
+        && (parsed.host().isEmpty()
+            || parsed.host().compare("localhost", Qt::CaseInsensitive) == 0)) {
+        // localhost identifies a local file, not a path component. Decode before
+        // filesystem lookup so encoded symlink names resolve like native paths.
+        parsed.setHost({});
+        const auto localPath = parsed.toLocalFile();
+        if (!localPath.isEmpty() && std::filesystem::path(localPath.toStdString()).is_absolute()) {
+            const auto mapped = mappingFile(localPath.toStdString());
+            parsed.setPath(QString::fromStdString(mapped));
+            return parsed.toEncoded(QUrl::FullyEncoded).toStdString();
+        }
     }
 
     return std::string{ url };

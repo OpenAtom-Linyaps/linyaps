@@ -669,7 +669,9 @@ TEST_F(RepoTest, exportDirHealsDesktopShortcutAtMissingOverlayLocation)
     const auto config =
       api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 };
     MockOstreeRepo repo(root, config);
-    repo.wrapGetOverlayShareDirFunc = [&live]() { return live / "apps/share"; };
+    repo.wrapGetOverlayShareDirFunc = [&live]() {
+        return live / "apps/share";
+    };
 
     auto result = repo.exportDir("appID", source, staging, "share/applications", 10);
     ASSERT_TRUE(result.has_value()) << result.error().message();

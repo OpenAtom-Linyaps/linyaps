@@ -1251,6 +1251,69 @@ TEST(OSTreeRepoTest, matchRemoteByPriority_AllReposError)
     EXPECT_FALSE(result.has_value());
 }
 
+TEST(OSTreeRepoTest, matchRemoteByPriority_MixedErrorAndEmpty)
+{
+    LINGLONG_TRACE("matchRemoteByPriority_MixedErrorAndEmpty");
+    for (bool errorFirst : { false, true }) {
+        SCOPED_TRACE(errorFirst);
+        TempDir tempDir;
+        OSTreeRepoMock mockRepo(tempDir.path());
+        repo::OSTreeRepo &repo = mockRepo;
+        auto fuzzyRef = package::FuzzyReference::parse("com.example.app");
+        const auto first = api::types::v1::Repo{ .name = "first", .priority = 2 };
+        const auto second = api::types::v1::Repo{ .name = "second", .priority = 1 };
+        EXPECT_CALL(mockRepo, getPriorityGroupedRepos())
+          .WillOnce(
+            Return(std::vector<std::vector<api::types::v1::Repo>>{ { first }, { second } }));
+        EXPECT_CALL(mockRepo, searchRemote(_, _, true))
+          .Times(2)
+          .WillRepeatedly([&](const auto &, const auto &selected, bool)
+                            -> utils::error::Result<std::vector<api::types::v1::PackageInfoV2>> {
+              if ((selected.name == "first") == errorFirst) {
+                  return LINGLONG_ERR("query failed");
+              }
+              return std::vector<api::types::v1::PackageInfoV2>{};
+          });
+        auto result = repo.matchRemoteByPriority(*fuzzyRef);
+        EXPECT_FALSE(result.has_value());
+    }
+}
+
+TEST(OSTreeRepoTest, matchRemoteByPriority_PartialFailureWithCandidate)
+{
+    LINGLONG_TRACE("matchRemoteByPriority_PartialFailureWithCandidate");
+    for (bool samePriority : { false, true }) {
+        SCOPED_TRACE(samePriority);
+        TempDir tempDir;
+        OSTreeRepoMock mockRepo(tempDir.path());
+        repo::OSTreeRepo &repo = mockRepo;
+        auto fuzzyRef = package::FuzzyReference::parse("com.example.app");
+        const auto first = api::types::v1::Repo{ .name = "first", .priority = 2 };
+        const auto second =
+          api::types::v1::Repo{ .name = "second", .priority = samePriority ? 2 : 1 };
+        const auto groups = samePriority
+          ? std::vector<std::vector<api::types::v1::Repo>>{ { first, second } }
+          : std::vector<std::vector<api::types::v1::Repo>>{ { first }, { second } };
+        EXPECT_CALL(mockRepo, getPriorityGroupedRepos()).WillOnce(Return(groups));
+        EXPECT_CALL(mockRepo, searchRemote(_, _, true))
+          .Times(2)
+          .WillRepeatedly([&](const auto &, const auto &selected, bool)
+                            -> utils::error::Result<std::vector<api::types::v1::PackageInfoV2>> {
+              if (selected.name == "first") {
+                  return LINGLONG_ERR("query failed");
+              }
+              return std::vector<api::types::v1::PackageInfoV2>{
+                  api::types::v1::PackageInfoV2{ .id = "com.example.app", .version = "1.0.0" },
+              };
+          });
+        auto result = repo.matchRemoteByPriority(*fuzzyRef);
+        ASSERT_TRUE(result.has_value());
+        ASSERT_EQ(result->getRepoPackages().size(), 1);
+        EXPECT_EQ(result->getRepoPackages().front().first.name, "second");
+        EXPECT_EQ(result->getRepoPackages().front().second.front().version, "1.0.0");
+    }
+}
+
 TEST(OSTreeRepoTest, matchRemoteByPriority_NoReposConfigured)
 {
     TempDir tempDir;

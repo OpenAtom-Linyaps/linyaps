@@ -1713,11 +1713,13 @@ OSTreeRepo::matchRemoteByPriority(const package::FuzzyReference &fuzzyRef,
         }
     } else {
         bool allError = true;
+        bool anyError = false;
         auto repos = this->getPriorityGroupedRepos();
         for (const auto &repoGroup : repos) {
             for (const auto &repo : repoGroup) {
                 auto list = this->searchRemote(fuzzyRef, repo, true);
                 if (!list) {
+                    anyError = true;
                     LogW("failed to search remote packages from {}: {}", repo.name, list.error());
                     continue;
                 }
@@ -1736,7 +1738,7 @@ OSTreeRepo::matchRemoteByPriority(const package::FuzzyReference &fuzzyRef,
             }
         }
 
-        if (allError) {
+        if (allError || (anyError && remotePackages.empty())) {
             return LINGLONG_ERR("failed to search remote packages",
                                 utils::error::ErrorCode::NetworkError);
         }

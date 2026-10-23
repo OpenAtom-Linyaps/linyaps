@@ -110,6 +110,23 @@ utils::error::Result<void> UabInstallationAction::checkUABLayersConstrain(
     return LINGLONG_OK;
 }
 
+utils::error::Result<void> UabInstallationAction::validateUABLayerModule(std::string_view module)
+{
+    LINGLONG_TRACE("validate uab layer module");
+
+    if (module.empty()) {
+        return LINGLONG_ERR("UAB layer module is empty");
+    }
+
+    // The module is used as one path component when locating an unpacked UAB layer.
+    if (module == "." || module == ".." || module.find_first_of("/\\") != std::string_view::npos
+        || module.find('\0') != std::string_view::npos) {
+        return LINGLONG_ERR("UAB layer module is not a safe path component");
+    }
+
+    return LINGLONG_OK;
+}
+
 bool UabInstallationAction::extraModuleOnly(const std::vector<api::types::v1::UabLayer> &layers)
 {
     for (const auto &layer : layers) {
@@ -360,6 +377,10 @@ UabInstallationAction::installUabLayer(const std::vector<api::types::v1::UabLaye
 
     for (const auto &layer : layers) {
         std::error_code ec;
+        if (auto moduleValid = validateUABLayerModule(layer.info.packageInfoV2Module);
+            !moduleValid) {
+            return LINGLONG_ERR(moduleValid);
+        }
         auto layerDirPath =
           uabMountPoint / "layers" / layer.info.id / layer.info.packageInfoV2Module;
         if (!std::filesystem::exists(layerDirPath, ec)) {

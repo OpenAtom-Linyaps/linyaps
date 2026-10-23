@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 
-# SPDX-FileCopyrightText: 2023-2024 UnionTech Software Technology Co., Ltd.
+# SPDX-FileCopyrightText: 2023-2026 UnionTech Software Technology Co., Ltd.
 #
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -53,7 +53,9 @@ _append_path_to_xdg_data_dirs() {
 # --- Helper function: initialize XDG_DATA_DIRS if empty ---
 _init_xdg_data_dir() {
     # If XDG_DATA_DIRS is empty, set to system default paths
-    [ -z "${XDG_DATA_DIRS}" ] && XDG_DATA_DIRS="/usr/local/share:/usr/share"
+    if [ -z "${XDG_DATA_DIRS:-}" ]; then
+        XDG_DATA_DIRS="/usr/local/share:/usr/share"
+    fi
 }
 
 _init_xdg_data_dir

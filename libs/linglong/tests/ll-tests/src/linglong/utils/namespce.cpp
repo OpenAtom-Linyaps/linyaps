@@ -7,6 +7,44 @@
 
 #include "linglong/utils/namespace.h"
 
+#include <fstream>
+
+#include <unistd.h>
+
+namespace linglong::utils::detail {
+// Internal procfs writer used by the namespace setup path.
+utils::error::Result<void> writeMapFile(pid_t pid, bool isUid, const std::string &content);
+} // namespace linglong::utils::detail
+
+TEST(NamespaceTest, RejectedUidMapWriteReturnsError)
+{
+    const auto path = "/proc/" + std::to_string(::getpid()) + "/uid_map";
+    std::ofstream probe(path);
+    if (!probe.is_open()) {
+        GTEST_SKIP() << "Cannot open this process's uid_map for writing";
+    }
+    probe.close();
+
+    // Invalid mapping text cannot change the process's ID mappings.
+    const auto result = linglong::utils::detail::writeMapFile(::getpid(), true, "invalid-map\n");
+    ASSERT_FALSE(result.has_value());
+    EXPECT_NE(result.error().message().find(path), std::string::npos);
+}
+
+TEST(NamespaceTest, RejectedGidMapWriteReturnsError)
+{
+    const auto path = "/proc/" + std::to_string(::getpid()) + "/gid_map";
+    std::ofstream probe(path);
+    if (!probe.is_open()) {
+        GTEST_SKIP() << "Cannot open this process's gid_map for writing";
+    }
+    probe.close();
+
+    const auto result = linglong::utils::detail::writeMapFile(::getpid(), false, "invalid-map\n");
+    ASSERT_FALSE(result.has_value());
+    EXPECT_NE(result.error().message().find(path), std::string::npos);
+}
+
 TEST(NamespaceTest, ParseSubuidRanges)
 {
     uid_t uid = 0;

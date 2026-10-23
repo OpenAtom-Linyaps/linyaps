@@ -48,7 +48,8 @@ CLI::App *addRepoCommand(CLI::App &commandParser,
       commandParser
         .add_subcommand("repo",
                         _("Display or modify information of the repository currently using"))
-        ->group(group);
+        ->group(group)
+        ->fallthrough();
     cliRepo->usage(usage(programName, " repo SUBCOMMAND [OPTIONS]"));
     cliRepo->require_subcommand(1);
 

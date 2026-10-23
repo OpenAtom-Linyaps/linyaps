@@ -4,6 +4,7 @@
 #include <gtest/gtest.h>
 
 #include "common/tempdir.h"
+#include "linglong/builder/builder_script.h"
 #include "linglong/builder/source_fetcher.h"
 #include "linglong/utils/cmd.h"
 #include "linglong/utils/env.h"
@@ -393,6 +394,78 @@ TEST(GitSourceHash, RejectsInvalidPrefixesAndCommitIds)
     EXPECT_FALSE(gitCommitFromHash("git-commit:" + std::string(39, 'a')));
     EXPECT_FALSE(gitCommitFromHash("git-commit:" + std::string(41, 'a')));
     EXPECT_FALSE(gitCommitFromHash("git-commit:" + std::string(40, 'g')));
+}
+
+TEST_F(SourceFetcherTest, RejectsOptionLikeGitRevisionBeforeRunningHelper)
+{
+    TempDir temporary;
+    api::types::v1::BuilderProjectSource source;
+    source.kind = "git";
+    source.url = "https://example.com/repository.git";
+    source.commit = "--upload-pack=/tmp/evil-upload-pack";
+
+    const auto cache = temporary.path() / "cache";
+    const auto destination = temporary.path() / "destination";
+    ASSERT_TRUE(prepareSourceDirectories(cache, { destination }));
+
+    SourceFetcher fetcher(GenerateSourceRequest{ source }, SourceCacheLayout(cache));
+    auto result = fetcher.fetch(destination);
+    ASSERT_FALSE(result.has_value());
+    EXPECT_NE(result.error().message().find("git source commit must not start with '-'"),
+              std::string::npos);
+}
+
+TEST(GitSourceHelper, DoesNotRunOptionLikeRevisionAsUploadPack)
+{
+    utils::Cmd git("git");
+    if (!git.exists()) {
+        GTEST_SKIP() << "git is not available";
+    }
+
+    TempDir temporary;
+    const auto repository = temporary.path() / "repository";
+    auto initialized = git.exec({ "init", repository.string() });
+    ASSERT_TRUE(initialized.has_value()) << initialized.error().message();
+    ASSERT_TRUE(git.exec({ "-C", repository.string(), "config", "user.name", "Test" }))
+      << "failed to configure git user name";
+    ASSERT_TRUE(git.exec({ "-C", repository.string(), "config", "user.email", "test@example.com" }))
+      << "failed to configure git user email";
+    std::ofstream(repository / "source.txt") << "source contents";
+    ASSERT_TRUE(git.exec({ "-C", repository.string(), "add", "source.txt" }))
+      << "failed to stage test source";
+    ASSERT_TRUE(git.exec({ "-C", repository.string(), "commit", "-m", "initial" }))
+      << "failed to commit test source";
+
+    auto script = findBuilderScript("fetch-git-source");
+    ASSERT_TRUE(script.has_value()) << script.error().message();
+
+    const auto marker = temporary.path() / "upload-pack-marker";
+    const auto uploadPack = temporary.path() / "evil-upload-pack";
+    std::ofstream(uploadPack) << R"(#!/bin/sh
+printf marker > "$LINGLONG_TEST_UPLOAD_PACK_MARKER"
+exec git-upload-pack "$@"
+)";
+    std::filesystem::permissions(uploadPack, std::filesystem::perms::owner_all);
+
+    utils::EnvironmentVariableGuard markerPath("LINGLONG_TEST_UPLOAD_PACK_MARKER", marker.string());
+    utils::EnvironmentVariableGuard noSystemConfig("GIT_CONFIG_NOSYSTEM", "1");
+    utils::EnvironmentVariableGuard noGlobalConfig("GIT_CONFIG_GLOBAL", "/dev/null");
+    utils::Cmd helper("sh");
+
+    auto valid = helper.exec({ script->string(),
+                               "checkout",
+                               repository.string(),
+                               "HEAD",
+                               (temporary.path() / "valid-checkout").string() });
+    ASSERT_TRUE(valid.has_value()) << valid.error().message();
+
+    auto malicious = helper.exec({ script->string(),
+                                   "checkout",
+                                   repository.string(),
+                                   "--upload-pack=" + uploadPack.string(),
+                                   (temporary.path() / "malicious-checkout").string() });
+    EXPECT_FALSE(malicious.has_value());
+    EXPECT_FALSE(std::filesystem::exists(marker));
 }
 
 TEST(SourceUrl, ExtractsFileName)

@@ -711,6 +711,9 @@ private:
         if (!source.commit) {
             return LINGLONG_ERR("git source requires commit");
         }
+        if (!source.commit->empty() && source.commit->front() == '-') {
+            return LINGLONG_ERR("git source commit must not start with '-'");
+        }
 
         const auto artifact = temporary / "checkout";
         auto ref = *source.commit;

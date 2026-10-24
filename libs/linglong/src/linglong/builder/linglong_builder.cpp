@@ -150,8 +150,12 @@ utils::error::Result<void> pullResolvedRef(const package::ReferenceWithRepo &ref
     printReplacedText(
       fmt::format("{:<35}{:<15}{:<15}waiting ...", ref.id, ref.version.toString(), module),
       2);
+    // The connection must be scoped to tmpTask's lifetime: without a context
+    // object it outlives the stack-local task and a later cancel signal would
+    // invoke Cancel() on destroyed storage (use-after-free).
     QObject::connect(common::global::GlobalTaskControl::instance(),
                      &common::global::GlobalTaskControl::OnCancel,
+                     &tmpTask,
                      [&tmpTask]() {
                          tmpTask.Cancel();
                      });

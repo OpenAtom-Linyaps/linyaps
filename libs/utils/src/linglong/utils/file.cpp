@@ -183,7 +183,15 @@ calculateDirectorySize(const std::filesystem::path &dir) noexcept
             return LINGLONG_ERR(fmt::format("failed to get entry type of {}", entry.path()), ec);
         }
 
-        size += entry.file_size();
+        // the throwing overload must not be used inside this noexcept function:
+        // a file removed between visitation and file_size() would raise
+        // filesystem_error and terminate the process
+        uintmax_t entrySize = entry.file_size(ec);
+        if (ec) {
+            return LINGLONG_ERR(
+              fmt::format("failed to get file size of {}", entry.path().string()), ec);
+        }
+        size += entrySize;
     }
 
     return size;

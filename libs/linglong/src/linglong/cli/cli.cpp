@@ -1278,7 +1278,7 @@ utils::error::Result<int> Cli::reuseContainer(const std::string &id,
             return LINGLONG_ERR(ret);
         }
     } else if (ioSetup->pipes) {
-        ioSetup->pipes->closeParentEnds();
+        ioSetup->pipes->closeChildEnds();
         masterOut.reset(ioSetup->pipes->stdinPipe->releaseWriteEnd());
         stdoutRead.reset(ioSetup->pipes->stdoutPipe->releaseReadEnd());
         stderrRead.reset(ioSetup->pipes->stderrPipe->releaseReadEnd());

@@ -130,6 +130,12 @@ WaylandSecurityContextManagerV1::createSecurityContext(RunContext &runContext,
     struct sockaddr_un addr{};
     addr.sun_family = AF_UNIX;
     const auto path = waylandSocket.string();
+    // sun_path is 108 bytes (linux/un.h); the container id alone is a 64-char
+    // sha256, so with the /tmp fallback for XDG_RUNTIME_DIR the path can
+    // exceed the buffer and std::copy would write past addr on the stack.
+    if (path.size() >= sizeof(addr.sun_path)) {
+        return LINGLONG_ERR("wayland socket path is too long: " + path);
+    }
     std::copy(path.cbegin(), path.cend(), &addr.sun_path[0]);
     addr.sun_path[path.size()] = 0;
 

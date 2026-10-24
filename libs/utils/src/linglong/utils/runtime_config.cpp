@@ -10,6 +10,8 @@
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/serialize/json.h"
 
+#include <fmt/format.h>
+
 #include <algorithm>
 #include <filesystem>
 #include <fstream>
@@ -38,7 +40,14 @@ loadRuntimeConfigFromDir(const std::filesystem::path &configDir, const std::stri
     std::vector<RuntimeConfigure> configs;
     auto configPath = configBaseDir / "config.json";
     std::error_code ec;
-    if (std::filesystem::exists(configPath, ec)) {
+    // file_type::none means the status itself could not be determined (e.g. ELOOP/EACCES);
+    // not_found with a set error_code is the regular "absent" case on POSIX.
+    auto configStatus = std::filesystem::status(configPath, ec);
+    if (configStatus.type() == std::filesystem::file_type::none) {
+        return LINGLONG_ERR(
+          fmt::format("failed to check runtime config {}: {}", configPath.string(), ec.message()));
+    }
+    if (std::filesystem::exists(configStatus)) {
         auto config = linglong::utils::loadRuntimeConfig(configPath);
         if (!config) {
             return LINGLONG_ERR(config);
@@ -47,7 +56,13 @@ loadRuntimeConfigFromDir(const std::filesystem::path &configDir, const std::stri
     }
 
     auto configDPath = configBaseDir / "config.d";
-    if (std::filesystem::is_directory(configDPath, ec)) {
+    auto configDStatus = std::filesystem::status(configDPath, ec);
+    if (configDStatus.type() == std::filesystem::file_type::none) {
+        return LINGLONG_ERR(fmt::format("failed to check runtime config drop-in dir {}: {}",
+                                        configDPath.string(),
+                                        ec.message()));
+    }
+    if (std::filesystem::is_directory(configDStatus)) {
         std::vector<std::filesystem::path> paths;
         for (const auto &entry : std::filesystem::directory_iterator(
                configDPath,

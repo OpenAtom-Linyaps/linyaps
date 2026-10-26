@@ -50,10 +50,12 @@ generate() {
         output_path="$1"
 
         if [[ ! -f "$schema" ]]; then
-                echo "$schema not found" || exit 255
+                echo "$schema not found" >&2
+                exit 255
         fi
 
         filename="/dev/null"
+        generated=0
 
         while read -r line; do
                 if [[ $line != //\ stdout &&
@@ -78,6 +80,8 @@ generate() {
                 filename="${repoRoot}/$include/$output_path/${line#\/\/ }"
                 if [[ $line == //\ stdout ]]; then
                         filename="/dev/null"
+                else
+                        generated=$((generated + 1))
                 fi
 
                 # echo "generating $filename"
@@ -102,6 +106,11 @@ generate() {
                 --enumerator-style pascal-case-upper-acronyms \
                 --no-boost \
                 --hide-null-optional)
+
+        if [[ $generated -eq 0 ]]; then
+                echo "quicktype generated no source files for $schema" >&2
+                exit 255
+        fi
 
         {
                 echo ""

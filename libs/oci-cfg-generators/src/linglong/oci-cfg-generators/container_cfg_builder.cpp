@@ -600,6 +600,7 @@ ContainerCfgBuilder &ContainerCfgBuilder::bindHostStatics() noexcept
         "/etc/machine-id",
         // FIXME: support for host /etc/ssl, ref https://github.com/p11-glue/p11-kit
         "/usr/lib/locale",
+        "/usr/local/share/fonts",
         "/usr/share/fonts",
         "/usr/share/icons",
         "/usr/share/themes",

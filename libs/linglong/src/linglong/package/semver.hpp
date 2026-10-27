@@ -1,6 +1,6 @@
 /*
 SPDX-FileCopyrightText: 2024 Peter Csajtai <peter.csajtai@outlook.com>
-SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+SPDX-FileCopyrightText: 2025-2026 UnionTech Software Technology Co., Ltd.
 
 SPDX-License-Identifier: MIT
 
@@ -101,7 +101,6 @@ class prerelease_part
 private:
     bool m_numeric = false;
     std::string m_value;
-    uint64_t m_numeric_value;
 
 public:
     explicit prerelease_part(std::string part)
@@ -115,7 +114,6 @@ public:
                 throw semver_exception("Pre-release part '" + part
                                        + "' is numeric but contains a leading zero.");
             }
-            m_numeric_value = parse_numeric_part(part);
             m_numeric = true;
         }
 
@@ -131,7 +129,7 @@ public:
 
     [[nodiscard]] std::string value() const { return m_value; }
 
-    [[nodiscard]] uint64_t numeric_value() const { return m_numeric_value; }
+    [[nodiscard]] uint64_t numeric_value() const { return parse_numeric_part(m_value); }
 
     [[nodiscard]] int compare(const prerelease_part &other) const
     {
@@ -139,10 +137,10 @@ public:
             return -1;
         if (!m_numeric && other.m_numeric)
             return 1;
-        if (m_numeric) {
-            return (m_numeric_value < other.m_numeric_value)
-              ? -1
-              : (m_numeric_value > other.m_numeric_value);
+        // Numeric identifiers have no leading zeroes, so digit count followed
+        // by lexical order compares them without imposing an integer limit.
+        if (m_numeric && m_value.size() != other.m_value.size()) {
+            return m_value.size() < other.m_value.size() ? -1 : 1;
         }
         return (m_value < other.m_value) ? -1 : (m_value > other.m_value);
     }
@@ -190,9 +188,15 @@ public:
             }
         }
         if (last_numeric_index_found) {
-            prerelease_part last = new_parts[last_numeric_index];
-            new_parts[last_numeric_index] =
-              prerelease_part(std::to_string(last.numeric_value() + 1));
+            auto value = new_parts[last_numeric_index].value();
+            const auto digit = value.find_last_not_of('9');
+            if (digit == std::string::npos) {
+                value = "1" + std::string(value.size(), '0');
+            } else {
+                ++value[digit];
+                value.replace(digit + 1, std::string::npos, value.size() - digit - 1, '0');
+            }
+            new_parts[last_numeric_index] = prerelease_part(std::move(value));
         } else {
             new_parts.emplace_back(default_prerelease_part);
         }

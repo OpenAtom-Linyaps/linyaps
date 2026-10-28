@@ -109,8 +109,10 @@ TEST_P(NamespaceMappingFailureTest, ReapsChildBeforeReturning)
         GTEST_SKIP() << "User and mount namespaces are unavailable";
     }
 
-    // Run in a separate process so waitpid(-1) cannot observe unrelated children
-    // owned by the test runner. The alarm bounds a broken cleanup handshake.
+    // Re-exec the test binary instead of inheriting threads and exit handlers
+    // left by earlier tests. This also isolates waitpid(-1) from their children.
+    ::testing::FLAGS_gtest_death_test_style = "threadsafe";
+    // The alarm bounds a broken cleanup handshake.
     // Exit normally after the library calls so coverage runtimes can flush the
     // counters collected in the isolated process.
     const bool failUid = GetParam();

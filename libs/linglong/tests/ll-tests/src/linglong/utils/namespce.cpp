@@ -8,6 +8,7 @@
 #include "linglong/common/error.h"
 #include "linglong/utils/namespace.h"
 
+#include <cstdlib>
 #include <fstream>
 
 #include <sched.h>
@@ -110,6 +111,8 @@ TEST_P(NamespaceMappingFailureTest, ReapsChildBeforeReturning)
 
     // Run in a separate process so waitpid(-1) cannot observe unrelated children
     // owned by the test runner. The alarm bounds a broken cleanup handshake.
+    // Exit normally after the library calls so coverage runtimes can flush the
+    // counters collected in the isolated process.
     const bool failUid = GetParam();
     ASSERT_EXIT(([&]() {
                     alarm(5);
@@ -124,15 +127,15 @@ TEST_P(NamespaceMappingFailureTest, ReapsChildBeforeReturning)
                         || result.error().message().find(failUid ? "failed to mapping uid"
                                                                  : "failed to mapping gid")
                           == std::string::npos) {
-                        _exit(1);
+                        std::exit(1);
                     }
                     errno = 0;
                     const auto remaining = waitpid(-1, nullptr, WNOHANG);
                     if (remaining != -1 || errno != ECHILD) {
-                        _exit(2);
+                        std::exit(2);
                     }
                     const auto success = linglong::utils::runInNamespace(1, argv, 0, 0);
-                    _exit(success && *success == 0 ? 0 : 3);
+                    std::exit(success && *success == 0 ? 0 : 3);
                 }()),
                 ::testing::ExitedWithCode(0),
                 "");

@@ -6180,6 +6180,25 @@ class SmokeTest:
             self._ll_builder("create", name, cwd=str(workdir), timeout=300,
                              check=False)
 
+            # 项目名必须是单个目录名。以前 NAME 被直接当路径拼接：
+            # `create ../x` 写到工作目录之外、`create /tmp/x` 在绝对路径建目录，
+            # 而且都返回成功。
+            escaped = workdir.parent / f"escaped{os.getpid()}"
+            absolute = f"/tmp/ll-builder-abs-{os.getpid()}"
+            for bad in (f"../escaped{os.getpid()}", f"a/b{os.getpid()}", absolute,
+                        ".."):
+                r = self._ll_builder("create", bad, cwd=str(workdir),
+                                     timeout=60, check=False)
+                if r.returncode == 0:
+                    raise AssertionError(
+                        f"ll-builder create {bad!r} 竟然成功，项目名不该被当成路径")
+            if escaped.exists():
+                raise AssertionError(
+                    f"ll-builder create 在工作目录之外建了目录: {escaped}")
+            if Path(absolute).exists():
+                raise AssertionError(
+                    f"ll-builder create 在绝对路径建了目录: {absolute}")
+
             # clean：在项目目录里
             r = self._ll_builder("clean", cwd=str(proj), timeout=600,
                                  check=False)

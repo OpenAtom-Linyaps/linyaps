@@ -116,6 +116,21 @@ void IOForwarder::onDstWritable() noexcept
     push();
 }
 
+void IOForwarder::onEvent(int fd, uint32_t events) noexcept
+{
+    if (fd == srcFd_ && (events & (EPOLLIN | EPOLLHUP | EPOLLERR)) != 0) {
+        // HUP can arrive while the pipe still contains more data than fits in
+        // our buffer. Let pull() observe EOF after all pending bytes are read.
+        drive();
+    }
+    if (fd == dstFd_ && (events & (EPOLLHUP | EPOLLERR)) != 0) {
+        markDstFailed();
+    }
+    if (fd == dstFd_ && (events & EPOLLOUT) != 0 && needsWriteWatch()) {
+        onDstWritable();
+    }
+}
+
 void IOForwarder::registerDstWrite() noexcept
 {
     if (writeWatched_ || dstFd_ < 0) {

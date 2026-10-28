@@ -3,6 +3,9 @@
 
 #include "temporary_directory.h"
 
+#include "linglong/utils/file.h"
+#include "linglong/utils/log/log.h"
+
 #include <cerrno>
 #include <cstring>
 #include <string>
@@ -83,6 +86,20 @@ void TemporaryDirectory::cleanup() noexcept
 
     std::error_code ec;
     std::filesystem::remove_all(directory, ec);
+    if (ec) {
+        auto removable = makeDirectoryTreeRemovable(directory);
+        if (removable) {
+            ec.clear();
+            std::filesystem::remove_all(directory, ec);
+        } else {
+            LogW("failed to make temporary directory {} removable: {}",
+                 directory,
+                 removable.error());
+        }
+        if (ec) {
+            LogW("failed to remove temporary directory {}: {}", directory, ec.message());
+        }
+    }
     directory.clear();
 }
 

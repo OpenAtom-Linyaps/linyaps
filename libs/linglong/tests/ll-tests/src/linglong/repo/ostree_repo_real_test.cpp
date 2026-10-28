@@ -6,11 +6,16 @@
 #include <gtest/gtest.h>
 
 #include "../../common/tempdir.h"
+#include "../mocks/ostree_repo_mock.h"
+#include "configure.h"
 #include "linglong/api/types/v1/Generators.hpp"
+#include "linglong/builder/builder_script.h"
+#include "linglong/common/gkeyfile_wrapper.h"
 #include "linglong/package/fuzzy_reference.h"
 #include "linglong/package/layer_dir.h"
 #include "linglong/package/reference.h"
 #include "linglong/repo/ostree_repo.h"
+#include "linglong/utils/cmd.h"
 
 #include <filesystem>
 #include <fstream>
@@ -351,6 +356,82 @@ TEST_F(RealRepoTest, CreateTempMergedModuleDirWorks)
 
     std::error_code ec;
     fs::remove_all(tmp->path(), ec);
+}
+
+TEST_F(RealRepoTest, ExportSystemdServicesRewritesCommandsForBothLayouts)
+{
+    using KeyFile = common::GKeyFileWrapper;
+    auto generator = builder::findBuilderScript("app-conf-generator");
+    ASSERT_TRUE(generator.has_value()) << generator.error().message();
+
+    // This wrapper only exposes exportDir; its callbacks remain unset.
+    MockOstreeRepo exporter(repoRoot, makeRepoConfig());
+    for (const auto *layout : { "lib", "share" }) {
+        SCOPED_TRACE(layout);
+        const auto id = std::string("com.example.service.") + layout;
+        const auto stage = repoRoot / (std::string("service-source-") + layout);
+        const auto relative = fs::path(layout) / "systemd/user";
+        const auto name = id + ".service";
+        const auto service = stage / "files" / relative / name;
+        const auto start = "/opt/apps/" + id + "/files/bin/main";
+        const auto post = "/opt/apps/" + id + "/files/bin/post";
+        fs::create_directories(service.parent_path());
+        std::ofstream(service) << "[Service]\nType=oneshot\nExecStart=" << start
+                               << "\nExecStartPost=" << post << '\n';
+
+        auto generated =
+          utils::Cmd("bash").exec({ "-e", generator->string(), id, (stage / "files").string() });
+        ASSERT_TRUE(generated.has_value()) << generated.error().message();
+        auto before = KeyFile::New(QString::fromStdString(service.string()));
+        ASSERT_TRUE(before.has_value()) << before.error().message();
+        auto generatedStart = before->getValue<QString>("ExecStart", KeyFile::SystemdService);
+        auto generatedPost = before->getValue<QString>("ExecStartPost", KeyFile::SystemdService);
+        ASSERT_TRUE(generatedStart.has_value());
+        ASSERT_TRUE(generatedPost.has_value());
+        ASSERT_EQ(*generatedStart,
+                  QString::fromStdString("/usr/bin/ll-cli run " + id + " -- " + start));
+        ASSERT_EQ(*generatedPost, QString::fromStdString(post));
+
+        fs::create_directories(stage / "entries" / relative);
+        fs::copy_file(service, stage / "entries" / relative / name);
+        PackageInfoV2 info;
+        info.id = id;
+        info.version = "1.0.0";
+        info.kind = "app";
+        info.channel = "stable";
+        info.arch = { "x86_64" };
+        info.packageInfoV2Module = "binary";
+        std::ofstream(stage / "info.json") << nlohmann::json(info).dump();
+        auto imported = repo->importLayerDir(LayerDir(stage));
+        ASSERT_TRUE(imported.has_value()) << imported.error().message();
+        auto ref = Reference::fromPackageInfo(info);
+        ASSERT_TRUE(ref.has_value()) << ref.error().message();
+        auto layer = repo->getLayerDir(*ref, "binary");
+        ASSERT_TRUE(layer.has_value()) << layer.error().message();
+        const auto source = layer->path() / "entries" / relative;
+        ASSERT_GT(fs::hard_link_count(source / name), 1);
+
+        const auto destination = repoRoot / "entries";
+        const auto exportedPath = destination / "lib/systemd/user" / name;
+        const auto prefix = std::string(LINGLONG_CLIENT_PATH) + " run " + id + " -- ";
+        for (int pass = 0; pass < 2; ++pass) {
+            SCOPED_TRACE(pass);
+            auto exported = exporter.exportDir(id, source, destination, "lib/systemd/user", 10);
+            ASSERT_TRUE(exported.has_value()) << exported.error().message();
+            ASSERT_TRUE(fs::is_symlink(exportedPath));
+            auto after = KeyFile::New(QString::fromStdString(exportedPath.string()));
+            ASSERT_TRUE(after.has_value()) << after.error().message();
+            auto exportedStart = after->getValue<QString>("ExecStart", KeyFile::SystemdService);
+            auto exportedPost = after->getValue<QString>("ExecStartPost", KeyFile::SystemdService);
+            auto type = after->getValue<QString>("Type", KeyFile::SystemdService);
+            ASSERT_TRUE(exportedStart.has_value());
+            ASSERT_TRUE(exportedPost.has_value());
+            ASSERT_TRUE(type.has_value());
+            EXPECT_EQ(*exportedStart, QString::fromStdString(prefix + start));
+            EXPECT_EQ(*exportedPost, QString::fromStdString(prefix + post));
+            EXPECT_EQ(*type, "oneshot");
+        }
+    }
 }
 
 TEST_F(RealRepoTest, ListLocalByQuery)

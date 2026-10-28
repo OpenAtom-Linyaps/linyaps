@@ -10,25 +10,38 @@ input=$2
 output=$3
 
 case "$action" in
-download)
-    if ! command -v wget >/dev/null 2>&1; then
-        echo "wget not found, please install wget first" >&2
-        exit 1
-    fi
+    download)
+        if ! command -v wget > /dev/null 2>&1; then
+            echo "wget not found, please install wget first" >&2
+            exit 1
+        fi
 
-    wget "$input" -O "$output"
-    ;;
-materialize)
-    if ! command -v tar >/dev/null 2>&1; then
-        echo "tar not found, please install tar first" >&2
+        wget "$input" -O "$output"
+        ;;
+    materialize)
+        # Cached archives do not retain their original filename or extension.
+        signature=$(od -An -tx1 -N4 "$input" | tr -d ' \n')
+        case "$signature" in
+            504b0304 | 504b0506 | 504b0708)
+                if ! command -v unzip > /dev/null 2>&1; then
+                    echo "unzip not found, please install unzip to extract ZIP sources" >&2
+                    exit 1
+                fi
+                mkdir "$output"
+                unzip -oq "$input" -d "$output"
+                ;;
+            *)
+                if ! command -v tar > /dev/null 2>&1; then
+                    echo "tar not found, please install tar first" >&2
+                    exit 1
+                fi
+                mkdir "$output"
+                tar --no-same-owner -xf "$input" -C "$output"
+                ;;
+        esac
+        ;;
+    *)
+        echo "unsupported archive source action: $action" >&2
         exit 1
-    fi
-
-    mkdir "$output"
-    tar --no-same-owner -xf "$input" -C "$output"
-    ;;
-*)
-    echo "unsupported archive source action: $action" >&2
-    exit 1
-    ;;
+        ;;
 esac

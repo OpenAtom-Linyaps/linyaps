@@ -162,7 +162,25 @@ TEST(StringsTest, EncodeUrl)
     EXPECT_EQ(encode_url("\n"), "%0A");
     EXPECT_EQ(encode_url("\t"), "%09");
     EXPECT_EQ(encode_url("\x01"), "%01");
+    EXPECT_EQ(encode_url("\x80"), "%80");
+    EXPECT_EQ(encode_url("\xBF"), "%BF");
+    EXPECT_EQ(encode_url("\xE9"), "%E9");
     EXPECT_EQ(encode_url("\xFF"), "%FF");
+    EXPECT_EQ(encode_url("中文"), "%E4%B8%AD%E6%96%87");
+}
+
+TEST(StringsTest, EncodeUrlLocaleIndependent)
+{
+    const char *origLocale = std::setlocale(LC_CTYPE, nullptr);
+    std::string savedLocale = origLocale ? origLocale : "C";
+
+    std::setlocale(LC_CTYPE, "en_US.UTF-8");
+    EXPECT_EQ(encode_url("\xE9"), "%E9");
+    EXPECT_EQ(encode_url("\x80"), "%80");
+    EXPECT_EQ(encode_url("\xFF"), "%FF");
+    EXPECT_EQ(encode_url("ä"), "%C3%A4");
+
+    std::setlocale(LC_CTYPE, savedLocale.c_str());
 }
 
 TEST(StringsTest, DecodeUrl)

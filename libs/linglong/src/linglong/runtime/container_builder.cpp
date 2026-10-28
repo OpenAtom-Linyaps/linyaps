@@ -713,7 +713,7 @@ auto ContainerBuilder::configureRunContainer(PreparedContainer &prepared,
         auto securityContext = manager->createSecurityContext(runContext, *prepared.context);
         if (!securityContext) {
             auto msg = "failed to create security context: " + fromType(type);
-            return LINGLONG_ERR(msg.c_str());
+            return LINGLONG_ERR(msg.c_str(), securityContext);
         }
 
         auto res = (*securityContext)->apply(prepared.cfgBuilder);

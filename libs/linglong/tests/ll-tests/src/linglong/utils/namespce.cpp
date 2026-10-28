@@ -5,15 +5,19 @@
 
 #include <gtest/gtest.h>
 
+#include "linglong/common/error.h"
 #include "linglong/utils/namespace.h"
 
 #include <fstream>
 
+#include <sched.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 namespace linglong::utils::detail {
 // Internal procfs writer used by the namespace setup path.
 utils::error::Result<void> writeMapFile(pid_t pid, bool isUid, const std::string &content);
+utils::error::Result<void> denySetGroups(pid_t pid);
 } // namespace linglong::utils::detail
 
 TEST(NamespaceTest, RejectedUidMapWriteReturnsError)
@@ -28,7 +32,14 @@ TEST(NamespaceTest, RejectedUidMapWriteReturnsError)
     // Invalid mapping text cannot change the process's ID mappings.
     const auto result = linglong::utils::detail::writeMapFile(::getpid(), true, "invalid-map\n");
     ASSERT_FALSE(result.has_value());
-    EXPECT_NE(result.error().message().find(path), std::string::npos);
+    const auto prefix = "failed to write " + path + ": ";
+    const auto message = result.error().message();
+    // Depending on the namespace's permissions, the kernel rejects either the
+    // write itself (EPERM) or the invalid mapping text (EINVAL).
+    EXPECT_TRUE(
+      message.find(prefix + linglong::common::error::errorString(EPERM)) != std::string::npos
+      || message.find(prefix + linglong::common::error::errorString(EINVAL)) != std::string::npos)
+      << message;
 }
 
 TEST(NamespaceTest, RejectedGidMapWriteReturnsError)
@@ -42,8 +53,92 @@ TEST(NamespaceTest, RejectedGidMapWriteReturnsError)
 
     const auto result = linglong::utils::detail::writeMapFile(::getpid(), false, "invalid-map\n");
     ASSERT_FALSE(result.has_value());
-    EXPECT_NE(result.error().message().find(path), std::string::npos);
+    const auto prefix = "failed to write " + path + ": ";
+    const auto message = result.error().message();
+    // Depending on the namespace's permissions, the kernel rejects either the
+    // write itself (EPERM) or the invalid mapping text (EINVAL).
+    EXPECT_TRUE(
+      message.find(prefix + linglong::common::error::errorString(EPERM)) != std::string::npos
+      || message.find(prefix + linglong::common::error::errorString(EINVAL)) != std::string::npos)
+      << message;
 }
+
+TEST(NamespaceTest, RejectedSetGroupsWriteReturnsError)
+{
+    // Once a GID mapping exists, the kernel forbids changing setgroups.
+    // Check this before writing so the test cannot change an unmapped namespace.
+    std::ifstream mapping("/proc/self/gid_map");
+    std::string entry;
+    if (!std::getline(mapping, entry) || entry.empty()) {
+        GTEST_SKIP() << "Requires an existing GID mapping";
+    }
+
+    const auto path = "/proc/" + std::to_string(::getpid()) + "/setgroups";
+    std::ofstream probe(path);
+    if (!probe.is_open()) {
+        GTEST_SKIP() << "Cannot open this process's setgroups for writing";
+    }
+    probe.close();
+
+    const auto result = linglong::utils::detail::denySetGroups(::getpid());
+    ASSERT_FALSE(result.has_value());
+    const auto expected =
+      "failed to write " + path + ": " + linglong::common::error::errorString(EPERM);
+    EXPECT_NE(result.error().message().find(expected), std::string::npos);
+}
+
+class NamespaceMappingFailureTest : public ::testing::TestWithParam<bool>
+{
+};
+
+TEST_P(NamespaceMappingFailureTest, ReapsChildBeforeReturning)
+{
+    const auto probe = fork();
+    ASSERT_NE(probe, -1);
+    if (probe == 0) {
+        _exit(unshare(CLONE_NEWUSER | CLONE_NEWNS) == 0 ? 0 : 1);
+    }
+    int status = 0;
+    pid_t waited;
+    do {
+        waited = waitpid(probe, &status, 0);
+    } while (waited == -1 && errno == EINTR);
+    ASSERT_EQ(waited, probe);
+    if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
+        GTEST_SKIP() << "User and mount namespaces are unavailable";
+    }
+
+    // Run in a separate process so waitpid(-1) cannot observe unrelated children
+    // owned by the test runner. The alarm bounds a broken cleanup handshake.
+    const bool failUid = GetParam();
+    ASSERT_EXIT(([&]() {
+                    alarm(5);
+                    char command[] = "/bin/true";
+                    char *argv[] = { command, nullptr };
+                    const auto invalidID = static_cast<uid_t>(-1);
+                    const auto result = linglong::utils::runInNamespace(1,
+                                                                        argv,
+                                                                        failUid ? invalidID : 0,
+                                                                        failUid ? 0 : invalidID);
+                    if (result
+                        || result.error().message().find(failUid ? "failed to mapping uid"
+                                                                 : "failed to mapping gid")
+                          == std::string::npos) {
+                        _exit(1);
+                    }
+                    errno = 0;
+                    const auto remaining = waitpid(-1, nullptr, WNOHANG);
+                    if (remaining != -1 || errno != ECHILD) {
+                        _exit(2);
+                    }
+                    const auto success = linglong::utils::runInNamespace(1, argv, 0, 0);
+                    _exit(success && *success == 0 ? 0 : 3);
+                }()),
+                ::testing::ExitedWithCode(0),
+                "");
+}
+
+INSTANTIATE_TEST_SUITE_P(UidAndGid, NamespaceMappingFailureTest, ::testing::Bool());
 
 TEST(NamespaceTest, ParseSubuidRanges)
 {

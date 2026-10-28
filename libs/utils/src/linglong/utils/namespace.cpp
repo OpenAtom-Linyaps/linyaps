@@ -434,6 +434,17 @@ runInNamespace(int argc, char **argv, std::optional<uid_t> uid, std::optional<gi
         return LINGLONG_ERR(fmt::format("clone failed: {}", common::error::errorString(errno)));
     }
 
+    auto reapOnSetupFailure = linglong::utils::finally::finally([&pair, pid]() {
+        if (pair[0] == -1) {
+            return;
+        }
+
+        // The child is waiting for the mapping handshake. Terminate it before
+        // waiting, including when it has not reached its socket read yet.
+        kill(pid, SIGKILL);
+        while (waitpid(pid, nullptr, 0) == -1 && errno == EINTR) { }
+    });
+
     LogD("waiting child {}", pid);
 
     char buf{ 0 };

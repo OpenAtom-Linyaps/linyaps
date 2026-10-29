@@ -1531,7 +1531,14 @@ class SmokeTest:
         return status >> 8, buf.decode("utf-8", "replace")
 
     # ── Helper: 等待容器出现并返回容器 ID ──
-    def _wait_container(self, timeout: int = 40) -> str:
+    def _wait_container(self, timeout: int = 40, app_id: str = "") -> str:
+        """等 ps 里出现指定应用的容器，返回容器 ID（超时返回空串）。
+
+        ⚠️ 不能直接取 ps 的第一条：机器上可能残留别的容器（GUI 应用被
+        DBus 服务拉起、上一轮没退干净的），第一条不一定是我们刚起的。
+        实测 run64/65：日历容器排在 demo 容器前面，导致容器生命周期用例
+        把日历的容器当成 demo 的，误判失败。
+        """
         deadline = time.time() + timeout
         while time.time() < deadline:
             r = self._ll_cli("ps", "--json", check=False)
@@ -1540,8 +1547,10 @@ class SmokeTest:
                     arr = json.loads(r.stdout)
                 except json.JSONDecodeError:
                     arr = []
-                if arr:
-                    return arr[0].get("id", "")
+                for item in arr:
+                    pkg = item.get("package", "")
+                    if not app_id or f"main:{app_id}/" in pkg:
+                        return item.get("id", "")
             time.sleep(2)
         return ""
 
@@ -1628,11 +1637,14 @@ class SmokeTest:
     # checkContainerStatus / acceptConsoleFd / setupIOChannels 等函数。
     def test_container_lifecycle(self):
         app_id = DEMO_APP_ID
+        # 机器上可能残留别的容器（GUI 应用被 DBus 服务拉起），先清干净，
+        # 否则 ps 里第一条不一定是本用例刚起的 demo 容器。
+        self._cleanup_containers(app_id)
         proc = subprocess.Popen(
             [LL_CLI, "run", app_id, "--", "sleep", "120"],
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         try:
-            cid = self._wait_container(timeout=40)
+            cid = self._wait_container(timeout=40, app_id=app_id)
             if not cid:
                 raise AssertionError("容器已启动但 ll-cli ps 看不到它")
 
@@ -1650,7 +1662,8 @@ class SmokeTest:
                 arr = json.loads(r.stdout)
             except json.JSONDecodeError as e:
                 raise AssertionError(f"ll-cli ps --json 非法 JSON: {e}")
-            if not arr or arr[0].get("id") != cid:
+            entry = next((c for c in arr if c.get("id") == cid), None)
+            if entry is None:
                 raise AssertionError(
                     f"ps --json 应含容器 {cid}, 实际: {r.stdout[:200]!r}")
 
@@ -1658,7 +1671,7 @@ class SmokeTest:
             # （cli.cpp:102 ContainerIDDisplayLength），--no-truncated 才给全长。
             # 只断言 rc==0 证明不了截断逻辑 —— 必须验证 12 位这个长度、
             # 全长确实更长、以及"短 ID 是全 ID 的前缀"这层关系。
-            short_entry = arr[0]
+            short_entry = entry
             r = self._ll_cli("ps", "--no-truncated", "--json", timeout=60,
                              check=False)
             if r.returncode != 0:
@@ -1754,7 +1767,7 @@ class SmokeTest:
             [LL_CLI, "run", app_id, "--instance", inst, "--", "sleep", "120"],
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         try:
-            cid = self._wait_container(timeout=40)
+            cid = self._wait_container(timeout=40, app_id=app_id)
             if not cid:
                 raise AssertionError("带 --instance 启动的容器未出现在 ll-cli ps 中")
 
@@ -2699,7 +2712,7 @@ class SmokeTest:
             [LL_CLI, "run", app_id, "--instance", inst, "--", "sleep", "300"],
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         try:
-            if not self._wait_container(timeout=40):
+            if not self._wait_container(timeout=40, app_id=app_id):
                 raise AssertionError("带 --instance 启动的容器没出现在 ps 里")
 
             # 关键：用 pty（终端）去复用，才会走交互 I/O 那块
@@ -2753,7 +2766,7 @@ class SmokeTest:
                  "sleep", "300"],
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             try:
-                cid = self._wait_container(timeout=40)
+                cid = self._wait_container(timeout=40, app_id=app_id)
                 if not cid:
                     raise AssertionError("带 --instance 启动的容器没出现在 ps 里")
                 r = self._ll_cli("kill", app_id, timeout=60, check=False)
@@ -4353,7 +4366,7 @@ class SmokeTest:
             finally:
                 os._exit(127)
         try:
-            if not self._wait_container(timeout=40):
+            if not self._wait_container(timeout=40, app_id=app_id):
                 raise AssertionError("PTY 下启动的容器未出现在 ll-cli ps 中")
 
             # 复用同一实例：走 reuseContainer + acceptConsoleFd + PTY 传递
@@ -6174,7 +6187,7 @@ class SmokeTest:
                                 "--", "sleep", "240"], env)
                 finally:
                     os._exit(127)
-            if not self._wait_container(timeout=60):
+            if not self._wait_container(timeout=60, app_id=app):
                 raise AssertionError("旧版本容器没起来，无法构造 busy 场景")
 
             # 3) 运行中升级：这一步才会走 tryUninstallRef + markDeleted

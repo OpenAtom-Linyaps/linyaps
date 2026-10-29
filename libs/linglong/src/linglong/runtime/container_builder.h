@@ -22,6 +22,8 @@
 #include <map>
 #include <optional>
 
+#include <sys/types.h>
+
 namespace linglong::cli {
 struct RunOptions;
 }
@@ -57,6 +59,7 @@ struct RunContainerOptions
     [[nodiscard]] auto isPipewireSocketMountEnabled() const noexcept -> bool;
     [[nodiscard]] auto isAtSpiSocketMountEnabled() const noexcept -> bool;
     [[nodiscard]] auto isPrivileged() const noexcept -> bool;
+    [[nodiscard]] auto shouldUsePrivilegedMode(uid_t uid) const noexcept -> bool;
 
     CommonContainerOptions common;
 

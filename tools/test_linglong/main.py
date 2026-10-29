@@ -5982,8 +5982,13 @@ class SmokeTest:
 
         # --privileged 必须 root：先以非 root 拿"拒绝"分支，
         # 再以 root 走真正启用的分支。
-        self._ll_cli("run", app, "--instance", inst, "--privileged",
-                     "--", "/bin/echo", "PRIV", timeout=120, check=False)
+        r = self._ll_cli("run", app, "--instance", inst, "--privileged",
+                         "--", "/bin/echo", "PRIV", timeout=120, check=False)
+        if r.returncode == 0:
+            raise AssertionError("非 root + --privileged 居然成功了")
+        if "privileged mode requires running as root" not in (r.stdout + r.stderr):
+            raise AssertionError(
+                f"非 root + --privileged 报错不对: {(r.stdout + r.stderr)[:300]}")
 
         r = self._sudo_ll_cli("run", app, "--instance", inst,
                               "--privileged", "--", "/bin/echo", "PRIVROOT",
@@ -5991,6 +5996,24 @@ class SmokeTest:
         if r.returncode != 0:
             raise AssertionError(
                 f"root + --privileged 失败: {(r.stdout + r.stderr)[:300]}")
+
+        # root 不显式传 --privileged 也必须自动进入 privileged 模式：
+        # 与宿主机共享 user namespace，并获得原有的 privilege capabilities。
+        hostUserNs = self._run_cmd(["readlink", "/proc/self/ns/user"], sudo=True)
+        r = self._sudo_ll_cli(
+            "run", app, "--instance", inst + "auto", "--", "/bin/sh", "-c",
+            "printf 'USERNS=%s\\n' \"$(readlink /proc/self/ns/user)\"; "
+            "awk '/^CapEff:/{printf \"CAPEFF=%s\\n\", $2}' /proc/self/status",
+            timeout=180, check=False)
+        if r.returncode != 0:
+            raise AssertionError(
+                f"root 自动 privileged 失败: {(r.stdout + r.stderr)[:300]}")
+        if f"USERNS={hostUserNs.stdout.strip()}" not in r.stdout:
+            raise AssertionError(
+                f"root 自动 privileged 未共享宿主机 user namespace: {r.stdout[:300]}")
+        if "CAPEFF=00000000800435fb" not in r.stdout:
+            raise AssertionError(
+                f"root 自动 privileged capabilities 不匹配: {r.stdout[:300]}")
 
         # --caps-add（delimiter 为逗号）
         r = self._ll_cli("run", app, "--instance", inst + "c",

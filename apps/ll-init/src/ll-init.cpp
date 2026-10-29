@@ -654,7 +654,10 @@ int delegate_run(int argc, char **argv) noexcept
 
     auto stdin_is_tty = ::isatty(STDIN_FILENO) == 1;
     auto args = parse_args(argc, argv);
-    if (args.empty()) {
+    // parse_args always appends the execv terminator, so args is never empty and
+    // the previous test could not fire: with no command, args[0] is the nullptr
+    // sentinel and execv would be called with it.
+    if (argc <= 1 || args.front() == nullptr) {
         print_info("no arguments provided for delegate run");
         return 0;
     }
@@ -729,7 +732,9 @@ int run_init(int argc, char **argv) noexcept
     }
 
     auto args = parse_args(argc, argv);
-    if (args.empty()) {
+    // See delegate_run: the terminator makes args non-empty, so the check has to
+    // look at the first element or at argc.
+    if (argc <= 1 || args.front() == nullptr) {
         print_info("no arguments provided");
         return -1;
     }

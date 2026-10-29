@@ -184,6 +184,14 @@ install(
   RENAME 21linglong)
 
 if(ENABLE_TESTING)
+  foreach(command ll-cli ll-builder)
+    add_test(
+      NAME bash_completion_${command}
+      COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/tests/bash_completion_test.sh
+              ${CMAKE_CURRENT_SOURCE_DIR}/share/bash-completion/completions/${command}
+              ${command})
+  endforeach()
+
   add_test(
     NAME linglong_environment
     COMMAND

@@ -113,6 +113,9 @@ _ll_builder_complete() {
             output_options="${common_options} ${repo_subcommands}"
         elif [[ " ${COMP_WORDS[*]} " =~ " enable-mirror " ]]; then
             output_options="--region ${common_options}"
+            if [[ "${prev}" == "enable-mirror" ]]; then
+                output_options+=" $(__ll_builder_get_repo_name_list)"
+            fi
         elif [[ " remove update set-default set-priority enable-mirror disable-mirror " =~ " ${prev} " ]]; then
             output_options="$(__ll_builder_get_repo_name_list)"
         else

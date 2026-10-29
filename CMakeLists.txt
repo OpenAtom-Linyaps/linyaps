@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
-cmake_minimum_required(VERSION 3.11.4)
+cmake_minimum_required(VERSION 3.14.0)
 
 project(
   linglong
@@ -158,15 +158,32 @@ set(LINGLONG_ENABLE_WAYLAND_SEC_CTX_SUPPORT
     CACHE BOOL "enable linglong wayland security context support")
 
 # harden the build
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+include(CheckPIESupported)
+check_pie_supported()
+
+if(CMAKE_CXX_LINK_PIE_SUPPORTED)
+    message(STATUS "enable position independent code")
+    set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+endif()
 
 set(CMAKE_EXE_LINKER_FLAGS
-    "${CMAKE_EXE_LINKER_FLAGS} -pie -Wl,-z,relro -Wl,-z,now")
+    "${CMAKE_EXE_LINKER_FLAGS} -Wl,-z,relro -Wl,-z,now")
 
 add_compile_options(-fstack-protector-strong)
 if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
   message(STATUS "Non-Debug build, enabling FORTIFY_SOURCE")
-  add_compile_definitions(_FORTIFY_SOURCE=2)
+  include(CheckCXXSourceCompiles)
+  check_cxx_source_compiles(
+        "
+#ifdef _FORTIFY_SOURCE
+#  error predefined FORTIFY_SOURCE
+#endif
+int main() { return 0; }"
+  FORTIFY_NOT_PREDEFINED)
+
+  if (FORTIFY_NOT_PREDEFINED)
+    add_compile_definitions(_FORTIFY_SOURCE=2)
+  endif()
 endif()
 
 string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}" SYSTEM_PROC_LOWER)

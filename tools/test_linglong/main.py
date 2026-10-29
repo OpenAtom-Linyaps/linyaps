@@ -995,6 +995,10 @@ class SmokeTest:
     #    - repo show --json 不支持 --json（rc=109）
     #    这两个故意放在错误路径用例里，用来覆盖参数校验分支。
     def test_readonly_query_commands(self):
+        # 前面的用例会起容器（GUI 应用装/升级后 DBus 服务还会自动拉起），
+        # 容器退出与服务端记录的回收都是异步的 —— 不能假设"此刻必然无
+        # 容器"（实测 run64/run65：日历容器退出后 ps 里仍有残留记录）。
+        self._ensure_no_containers()
         # ps：列出运行中的容器。没有应用在跑时给中文提示，退出码 0
         r = self._ll_cli("ps")
         if r.returncode != 0:
@@ -1564,6 +1568,33 @@ class SmokeTest:
             self._ll_cli("kill", app_id, timeout=60, check=False)
             time.sleep(3)
         # 超时也返回，让上层的断言去报告问题，不在这里静默吞掉
+
+    # ── Helper: 确保 ps 里没有容器（含服务端残留记录）──
+    #
+    # _cleanup_containers 只能杀掉还活着的容器；容器进程被 SIGKILL 后，
+    # PackageManager 服务端可能留下"僵尸记录"，ps 仍会把它列出来，而对
+    # 它执行 kill 只会得到 "no container found"。这时只能重启服务让它
+    # 重新扫描容器目录。ps 用例要断言"无容器的中文提示"，必须先过这关。
+    def _ensure_no_containers(self, app_id: str = "", timeout: int = 20):
+        def _listed():
+            r = self._ll_cli("ps", "--json", check=False)
+            try:
+                return json.loads(r.stdout) if r.returncode == 0 else []
+            except json.JSONDecodeError:
+                return []
+
+        if not app_id:
+            app_id = CALENDAR_APP_ID  # 真机实测最容易残留的是 GUI 日历应用
+        self._cleanup_containers(app_id, timeout=timeout)
+        if not _listed():
+            return
+        # 记录残留：重启服务重新扫描后再清一遍
+        self._restart_package_manager()
+        self._cleanup_containers(app_id, timeout=timeout)
+        items = _listed()
+        if items:
+            ids = ", ".join(str(i.get("id", "?")) for i in items)
+            raise AssertionError(f"清理后仍残留容器记录: {ids}")
 
     # ── Test: ll-cli run 的运行期选项 ──
     #
@@ -4128,18 +4159,18 @@ class SmokeTest:
         if not snapshot:
             raise AssertionError(
                 "拒绝用空快照还原安装状态（那会把机器上的应用全卸掉）")
-        # 硬护栏（比例判据）：要卸载的数量 >= 快照总数时拒绝。
-        # 历史上这里因为快照格式不匹配，把"全部应用"都当成多余的卸掉过
-        # 【两次】，把机器清空。原来的绝对阈值（"超过 2 个就拒绝"）挡得住
-        # 灾难，却会误伤合法用例：例如"强制重装"会合法地多出 3 个 ref
-        # （被降级的应用 + 被顺带拉进来的旧 base），于是它无法自还原。
-        # 比例判据表达的是：不可能合法地卸载"比你知道的还多"的应用。
+        # 硬护栏：唯一绝不允许的情况是把机器上【当前所有】应用都卸掉
+        # （那等于清空机器）。历史上这里是按"卸载数 >= 快照总数"的比例
+        # 判据，本意是防快照格式不匹配导致的灾难，但会误伤合法场景：
+        # 日历模块用例会合法地多出 7 个 ref（5.14.x 的 binary/develop/
+        # lang-ja + 被顺带拉进来的旧 base/runtime），正好等于快照总数，
+        # 于是还原被拒绝、机器被留在脏状态（实测 run64/run65 两次）。
+        # 真正危险的只有"快照里一个应用都对不上"的情况。
         extra = now - snapshot
-        if extra and len(extra) >= len(snapshot):
+        if extra and extra >= now:
             raise AssertionError(
-                f"拒绝：要卸载 {len(extra)} 个 ref，不少于快照总数 "
-                f"{len(snapshot)} 个（疑似快照不匹配，会清空机器）: "
-                f"{sorted(extra)}")
+                f"拒绝：快照里没有任何已装应用，要卸载全部 {len(now)} 个 ref"
+                f"（疑似快照不匹配，会清空机器）: {sorted(extra)}")
         for ref in sorted(extra):
             parts = ref.split("/")
             i, v = parts[0], parts[1]

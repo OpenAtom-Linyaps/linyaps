@@ -248,6 +248,11 @@ auto RunContainerOptions::isPrivileged() const noexcept -> bool
     return this->privileged;
 }
 
+auto RunContainerOptions::shouldUsePrivilegedMode(uid_t uid) const noexcept -> bool
+{
+    return this->privileged || uid == 0;
+}
+
 ContainerBuilder::ContainerBuilder(ocppi::cli::CLI &cli)
     : cli(cli)
 {
@@ -685,12 +690,14 @@ auto ContainerBuilder::configureRunContainer(PreparedContainer &prepared,
         prepared.cfgBuilder.appendEnv(options.getEnv());
     }
 
+    const auto uid = getuid();
     std::vector<std::string> capabilities;
-    if (options.isPrivileged()) {
-        if (getuid() != 0) {
+    if (options.shouldUsePrivilegedMode(uid)) {
+        if (uid != 0) {
             return LINGLONG_ERR("privileged mode requires running as root");
         }
 
+        LogI("uid {} enables privileged run mode (explicit: {})", uid, options.isPrivileged());
         prepared.cfgBuilder.disableUserNamespace();
         capabilities = { "CAP_CHOWN",    "CAP_DAC_OVERRIDE",     "CAP_FOWNER",     "CAP_FSETID",
                          "CAP_KILL",     "CAP_NET_BIND_SERVICE", "CAP_SETFCAP",    "CAP_SETGID",

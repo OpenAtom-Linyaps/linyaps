@@ -1713,8 +1713,8 @@ OSTreeRepo::matchRemoteByPriority(const package::FuzzyReference &fuzzyRef,
         }
     } else {
         bool allError = true;
-        std::optional<utils::error::Result<std::vector<api::types::v1::PackageInfoV2>>>
-          firstFailure;
+        std::optional<utils::error::Error> firstFailure;
+        std::string firstFailureRepo;
         auto repos = this->getPriorityGroupedRepos();
         for (const auto &repoGroup : repos) {
             for (const auto &repo : repoGroup) {
@@ -1722,7 +1722,8 @@ OSTreeRepo::matchRemoteByPriority(const package::FuzzyReference &fuzzyRef,
                 if (!list) {
                     LogW("failed to search remote packages from {}: {}", repo.name, list.error());
                     if (!firstFailure.has_value()) {
-                        firstFailure = std::move(list);
+                        firstFailure = std::move(list.error());
+                        firstFailureRepo = repo.name;
                     }
                     continue;
                 }
@@ -1751,7 +1752,9 @@ OSTreeRepo::matchRemoteByPriority(const package::FuzzyReference &fuzzyRef,
         // Report the failed query instead of a successful empty result, but
         // keep a success when every query completed and found nothing (#2285).
         if (remotePackages.empty() && firstFailure.has_value()) {
-            return LINGLONG_ERR(std::move(*firstFailure));
+            return LINGLONG_ERR(
+              fmt::format("failed to search remote packages from {}", firstFailureRepo),
+              std::move(*firstFailure));
         }
     }
 

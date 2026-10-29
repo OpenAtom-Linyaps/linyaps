@@ -951,76 +951,93 @@ TEST(OSTreeRepoTest, searchRemote_Search)
 }
 
 namespace {
-// Wire two repositories into one priority group; each repository gets its own
-// mocked HTTP client so per-repo failures and empty successes can be combined.
-struct TwoRepoSearchFixture
+using SearchResponse =
+  std::unique_ptr<fuzzy_search_app_200_response_t, decltype(&fuzzy_search_app_200_response_free)>;
+
+api::types::v1::Repo searchRepo(const std::string &name, int64_t priority, const std::string &url)
 {
-    static constexpr auto failingUrl = "http://localhost:8081";
-    static constexpr auto otherUrl = "http://localhost:8082";
+    return api::types::v1::Repo{ .name = name, .priority = priority, .url = url };
+}
 
-    explicit TwoRepoSearchFixture(const std::filesystem::path &path)
-        : mockRepo(
-            path,
-            api::types::v1::RepoConfigV2{
-              .defaultRepo = "other",
-              .repos = { api::types::v1::Repo{
-                           .name = "failing", .priority = 0, .url = failingUrl },
-                         api::types::v1::Repo{ .name = "other", .priority = 0, .url = otherUrl } },
-              .version = 2,
-            })
-    {
-    }
+std::unique_ptr<MockClientAPIWrapper> searchClient(const std::string &url, SearchResponse response)
+{
+    auto client = std::make_unique<MockClientAPIWrapper>(
+      apiClient_create_with_base_path(url.c_str(), nullptr, nullptr));
+    EXPECT_CALL(*client, fuzzySearch(_)).WillOnce(Return(std::move(response)));
+    return client;
+}
 
-    OSTreeRepoMock mockRepo;
-};
+// The client fails before producing a response (transport-level failure).
+std::unique_ptr<MockClientAPIWrapper> requestFailureClient(const std::string &url)
+{
+    auto client = std::make_unique<MockClientAPIWrapper>(
+      apiClient_create_with_base_path(url.c_str(), nullptr, nullptr));
+    EXPECT_CALL(*client, fuzzySearch(_)).WillOnce(Return(nullptr));
+    return client;
+}
+
+SearchResponse emptySuccessResponse()
+{
+    return SearchResponse{ create_response_from_data({}), &fuzzy_search_app_200_response_free };
+}
+
+SearchResponse httpErrorResponse()
+{
+    return SearchResponse{ fuzzy_search_app_200_response_create(503,
+                                                               nullptr,
+                                                               strdup("service unavailable"),
+                                                               nullptr),
+                           &fuzzy_search_app_200_response_free };
+}
+
+void wireClient(OSTreeRepoMock &mockRepo, const std::string &url,
+                std::unique_ptr<MockClientAPIWrapper> client)
+{
+    EXPECT_CALL(mockRepo, createClientV2(url)).WillOnce(Return(std::move(client)));
+}
 } // namespace
 
 TEST(OSTreeRepoTest, matchRemoteByPriority_PartialFailureWithEmptyResultFails)
 {
     TempDir tempDir;
-    TwoRepoSearchFixture fixture(tempDir.path());
-    repo::OSTreeRepo &repo = fixture.mockRepo;
+    constexpr auto failingUrl = "http://localhost:8081";
+    constexpr auto emptyUrl = "http://localhost:8082";
+    OSTreeRepoMock mockRepo(
+      tempDir.path(),
+      api::types::v1::RepoConfigV2{
+        .defaultRepo = "empty",
+        .repos = { searchRepo("failing", 0, failingUrl), searchRepo("empty", 0, emptyUrl) },
+        .version = 2,
+      });
+    repo::OSTreeRepo &repo = mockRepo;
 
-    auto failingClient = std::make_unique<MockClientAPIWrapper>(
-      apiClient_create_with_base_path(TwoRepoSearchFixture::failingUrl, nullptr, nullptr));
-    EXPECT_CALL(*failingClient, fuzzySearch(_)).WillOnce(Return(nullptr));
-
-    auto emptyClient = std::make_unique<MockClientAPIWrapper>(
-      apiClient_create_with_base_path(TwoRepoSearchFixture::otherUrl, nullptr, nullptr));
-    EXPECT_CALL(*emptyClient, fuzzySearch(_))
-      .WillOnce(Return(std::unique_ptr<fuzzy_search_app_200_response_t,
-                                       decltype(&fuzzy_search_app_200_response_free)>(
-        create_response_from_data({}),
-        &fuzzy_search_app_200_response_free)));
-
-    EXPECT_CALL(fixture.mockRepo, createClientV2(std::string{ TwoRepoSearchFixture::failingUrl }))
-      .WillOnce(Return(std::move(failingClient)));
-    EXPECT_CALL(fixture.mockRepo, createClientV2(std::string{ TwoRepoSearchFixture::otherUrl }))
-      .WillOnce(Return(std::move(emptyClient)));
+    wireClient(mockRepo, failingUrl, requestFailureClient(failingUrl));
+    wireClient(mockRepo, emptyUrl, searchClient(emptyUrl, emptySuccessResponse()));
 
     auto fuzzyRef = package::FuzzyReference::parse("com.example.app");
     auto result = repo.matchRemoteByPriority(*fuzzyRef);
 
-    EXPECT_FALSE(result.has_value());
+    ASSERT_FALSE(result.has_value());
+    EXPECT_NE(result.error().message().find("failed to search remote packages from failing"),
+              std::string::npos);
 }
 
 TEST(OSTreeRepoTest, matchRemoteByPriority_AllEmptySuccessStillSucceeds)
 {
     TempDir tempDir;
-    TwoRepoSearchFixture fixture(tempDir.path());
-    repo::OSTreeRepo &repo = fixture.mockRepo;
+    constexpr auto firstUrl = "http://localhost:8081";
+    constexpr auto secondUrl = "http://localhost:8082";
+    OSTreeRepoMock mockRepo(
+      tempDir.path(),
+      api::types::v1::RepoConfigV2{
+        .defaultRepo = "second",
+        .repos = { searchRepo("first", 0, firstUrl), searchRepo("second", 0, secondUrl) },
+        .version = 2,
+      });
+    repo::OSTreeRepo &repo = mockRepo;
 
-    for (const auto *url : { TwoRepoSearchFixture::failingUrl, TwoRepoSearchFixture::otherUrl }) {
-        auto client = std::make_unique<MockClientAPIWrapper>(
-          apiClient_create_with_base_path(url, nullptr, nullptr));
-        EXPECT_CALL(*client, fuzzySearch(_))
-          .WillOnce(Return(std::unique_ptr<fuzzy_search_app_200_response_t,
-                                           decltype(&fuzzy_search_app_200_response_free)>(
-            create_response_from_data({}),
-            &fuzzy_search_app_200_response_free)));
-        EXPECT_CALL(fixture.mockRepo, createClientV2(std::string{ url }))
-          .WillOnce(Return(std::move(client)));
-    }
+    wireClient(mockRepo, firstUrl, searchClient(firstUrl, emptySuccessResponse()));
+    wireClient(mockRepo, secondUrl, searchClient(secondUrl, emptySuccessResponse()));
 
     auto fuzzyRef = package::FuzzyReference::parse("com.example.app");
     auto result = repo.matchRemoteByPriority(*fuzzyRef);
@@ -1032,32 +1049,84 @@ TEST(OSTreeRepoTest, matchRemoteByPriority_AllEmptySuccessStillSucceeds)
 TEST(OSTreeRepoTest, matchRemoteByPriority_PartialFailureWithResultsStillSucceeds)
 {
     TempDir tempDir;
-    TwoRepoSearchFixture fixture(tempDir.path());
-    repo::OSTreeRepo &repo = fixture.mockRepo;
+    constexpr auto failingUrl = "http://localhost:8081";
+    constexpr auto matchUrl = "http://localhost:8082";
+    OSTreeRepoMock mockRepo(
+      tempDir.path(),
+      api::types::v1::RepoConfigV2{
+        .defaultRepo = "matching",
+        .repos = { searchRepo("failing", 0, failingUrl), searchRepo("matching", 0, matchUrl) },
+        .version = 2,
+      });
+    repo::OSTreeRepo &repo = mockRepo;
 
-    auto failingClient = std::make_unique<MockClientAPIWrapper>(
-      apiClient_create_with_base_path(TwoRepoSearchFixture::failingUrl, nullptr, nullptr));
-    EXPECT_CALL(*failingClient, fuzzySearch(_)).WillOnce(Return(nullptr));
-
-    auto matchClient = std::make_unique<MockClientAPIWrapper>(
-      apiClient_create_with_base_path(TwoRepoSearchFixture::otherUrl, nullptr, nullptr));
+    wireClient(mockRepo, failingUrl, requestFailureClient(failingUrl));
     std::vector<AppData> matched{ { .app_id = "com.example.app", .version = "1.0.0" } };
-    EXPECT_CALL(*matchClient, fuzzySearch(_))
-      .WillOnce(Return(std::unique_ptr<fuzzy_search_app_200_response_t,
-                                       decltype(&fuzzy_search_app_200_response_free)>(
-        create_response_from_data(matched),
-        &fuzzy_search_app_200_response_free)));
-
-    EXPECT_CALL(fixture.mockRepo, createClientV2(std::string{ TwoRepoSearchFixture::failingUrl }))
-      .WillOnce(Return(std::move(failingClient)));
-    EXPECT_CALL(fixture.mockRepo, createClientV2(std::string{ TwoRepoSearchFixture::otherUrl }))
-      .WillOnce(Return(std::move(matchClient)));
+    wireClient(mockRepo,
+               matchUrl,
+               searchClient(matchUrl,
+                            SearchResponse{ create_response_from_data(matched),
+                                            &fuzzy_search_app_200_response_free }));
 
     auto fuzzyRef = package::FuzzyReference::parse("com.example.app");
     auto result = repo.matchRemoteByPriority(*fuzzyRef);
 
     ASSERT_TRUE(result.has_value()) << result.error().message();
     EXPECT_FALSE(result->empty());
+}
+
+TEST(OSTreeRepoTest, matchRemoteByPriority_PropagatesTheFirstOfMultipleFailures)
+{
+    TempDir tempDir;
+    constexpr auto firstFailingUrl = "http://localhost:8081";
+    constexpr auto secondFailingUrl = "http://localhost:8082";
+    constexpr auto emptyUrl = "http://localhost:8083";
+    OSTreeRepoMock mockRepo(
+      tempDir.path(),
+      api::types::v1::RepoConfigV2{
+        .defaultRepo = "empty",
+        .repos = { searchRepo("first-failing", 0, firstFailingUrl),
+                   searchRepo("second-failing", 0, secondFailingUrl),
+                   searchRepo("empty", 0, emptyUrl) },
+        .version = 2,
+      });
+    repo::OSTreeRepo &repo = mockRepo;
+
+    wireClient(mockRepo, firstFailingUrl, searchClient(firstFailingUrl, httpErrorResponse()));
+    wireClient(mockRepo, secondFailingUrl, requestFailureClient(secondFailingUrl));
+    wireClient(mockRepo, emptyUrl, searchClient(emptyUrl, emptySuccessResponse()));
+
+    auto fuzzyRef = package::FuzzyReference::parse("com.example.app");
+    auto result = repo.matchRemoteByPriority(*fuzzyRef);
+
+    ASSERT_FALSE(result.has_value());
+    EXPECT_NE(result.error().message().find("failed to search remote packages from first-failing"),
+              std::string::npos);
+}
+
+TEST(OSTreeRepoTest, matchRemoteByPriority_FailureInLowerPriorityGroupFailsEmptyLookup)
+{
+    TempDir tempDir;
+    constexpr auto highUrl = "http://localhost:8081";
+    constexpr auto lowUrl = "http://localhost:8082";
+    OSTreeRepoMock mockRepo(
+      tempDir.path(),
+      api::types::v1::RepoConfigV2{
+        .defaultRepo = "high",
+        .repos = { searchRepo("high", 10, highUrl), searchRepo("low", 0, lowUrl) },
+        .version = 2,
+      });
+    repo::OSTreeRepo &repo = mockRepo;
+
+    wireClient(mockRepo, highUrl, searchClient(highUrl, emptySuccessResponse()));
+    wireClient(mockRepo, lowUrl, requestFailureClient(lowUrl));
+
+    auto fuzzyRef = package::FuzzyReference::parse("com.example.app");
+    auto result = repo.matchRemoteByPriority(*fuzzyRef);
+
+    ASSERT_FALSE(result.has_value());
+    EXPECT_NE(result.error().message().find("failed to search remote packages from low"),
+              std::string::npos);
 }
 
 TEST(OSTreeRepoTest, BuildPullRefCandidatesFallbackToRuntimeForBinary)

@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
+ * SPDX-FileCopyrightText: 2023 - 2026 UnionTech Software Technology Co., Ltd.
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
@@ -27,6 +27,20 @@
 
 namespace linglong::utils {
 
+namespace {
+
+bool isExecutableFile(const std::filesystem::path &path) noexcept
+{
+    std::error_code ec;
+    if (!std::filesystem::is_regular_file(path, ec)) {
+        return false;
+    }
+
+    return ::access(path.c_str(), X_OK) == 0;
+}
+
+} // namespace
+
 Cmd::Cmd(std::string command) noexcept
     : m_command(std::move(command))
 {
@@ -41,11 +55,10 @@ bool Cmd::exists() noexcept
 
 std::filesystem::path Cmd::getCommandPath()
 {
-    // Check if command is an absolute path
-    std::error_code ec;
+    // Absolute paths must already be executable regular files.
     std::filesystem::path path{ m_command };
-    if (path.is_absolute() && std::filesystem::exists(path, ec)) {
-        return path;
+    if (path.is_absolute()) {
+        return isExecutableFile(path) ? path : std::filesystem::path{};
     }
 
     // Search in PATH environment variable
@@ -60,8 +73,7 @@ std::filesystem::path Cmd::getCommandPath()
 
     for (const auto &pathDir : pathDirs) {
         std::filesystem::path fullPath = std::filesystem::path{ pathDir } / m_command;
-        if (std::filesystem::exists(fullPath, ec)
-            && std::filesystem::is_regular_file(fullPath, ec)) {
+        if (isExecutableFile(fullPath)) {
             return fullPath;
         }
     }

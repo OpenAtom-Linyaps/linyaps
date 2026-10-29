@@ -36,6 +36,18 @@
                 "CMAKE_CXX_CLANG_TIDY": "clang-tidy",
                 "CMAKE_CXX_COMPILER": "clang++"
             }
+        },
+        {
+            "name": "build-trace",
+            "displayName": "Build-time trace configuration",
+            "description": "Configure linglong with Clang -ftime-trace for clang-build-analyzer.",
+            "binaryDir": "${sourceDir}/build-trace",
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "clang",
+                "CMAKE_CXX_COMPILER": "clang++",
+                "ENABLE_BUILD_TRACE": true,
+                "CMAKE_EXPORT_COMPILE_COMMANDS": true
+            }
         }
     ],
     "buildPresets": [
@@ -57,6 +69,12 @@
             "displayName": "Run clang-tidy",
             "description": "Build linglong with clang-tidy",
             "configurePreset": "clang-tidy"
+        },
+        {
+            "name": "build-trace",
+            "displayName": "Build with -ftime-trace",
+            "description": "Build linglong with -ftime-trace enabled.",
+            "configurePreset": "build-trace"
         }
     ],
     "testPresets": [

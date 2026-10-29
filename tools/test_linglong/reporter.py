@@ -191,3 +191,60 @@ def generate_report(
         )
         return
     print(f"Excel report saved: {output_name}")
+
+
+def generate_junit_xml(
+    results: list[StepResult],
+    start_time: datetime,
+    output_path: str,
+) -> None:
+    """生成 JUnit XML 报告，供 Jenkins 的 junit 发布器消费。
+
+    结果如实映射：PASS -> <testcase/>，FAIL -> <failure>，
+    SKIPPED -> <skipped/>。步骤分组写进 classname，Jenkins 里可以按
+    分组折叠查看，也能出用例级的历史趋势。
+    """
+    from xml.sax.saxutils import escape, quoteattr
+
+    def attr(value) -> str:
+        return quoteattr(sanitize_cell(str(value if value is not None else "")))
+
+    total = len(results)
+    failed = sum(1 for r in results if r.status == "FAIL")
+    skipped = sum(1 for r in results if r.status == "SKIPPED")
+    duration_sec = sum(r.duration_ms for r in results) / 1000.0
+    timestamp = start_time.strftime("%Y-%m-%dT%H:%M:%S")
+
+    lines = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        "<testsuites>",
+        f'  <testsuite name="linglong-smoketest" tests="{total}"'
+        f' failures="{failed}" skipped="{skipped}"'
+        f' time="{duration_sec:.3f}" timestamp="{timestamp}">',
+    ]
+    for r in results:
+        cls = attr(r.category or "未分组")
+        name = attr(f"{r.index}. {r.title}")
+        secs = r.duration_ms / 1000.0
+        if r.status == "FAIL":
+            message = attr(r.error_message or "失败")
+            body = escape(sanitize_cell(r.error_message or ""))
+            lines.append(
+                f'    <testcase classname={cls} name={name} time="{secs:.3f}">'
+                f"<failure message={message}>{body}</failure></testcase>"
+            )
+        elif r.status == "SKIPPED":
+            message = attr(r.error_message or "跳过")
+            lines.append(
+                f'    <testcase classname={cls} name={name} time="{secs:.3f}">'
+                f"<skipped message={message}/></testcase>"
+            )
+        else:
+            lines.append(
+                f'    <testcase classname={cls} name={name} time="{secs:.3f}"/>'
+            )
+    lines.append("  </testsuite>")
+    lines.append("</testsuites>")
+    with open(output_path, "w", encoding="utf-8") as fp:
+        fp.write("\n".join(lines) + "\n")
+    print(f"JUnit report saved: {output_path}")

@@ -32,7 +32,7 @@ initDefaultBuildConfig(const std::filesystem::path &path)
     std::error_code ec;
     std::filesystem::create_directories(path.parent_path(), ec);
     if (ec) {
-        return LINGLONG_ERR("failed to create config dir", ec);
+        return LINGLONG_ERR(fmt::format("failed to create config dir {}", path.parent_path()), ec);
     }
 
     linglong::api::types::v1::BuilderConfig config;
@@ -54,7 +54,7 @@ auto loadConfig(const std::filesystem::path &path) noexcept
     try {
         auto config = utils::serialize::LoadYAMLFile<api::types::v1::BuilderConfig>(path);
         if (!config) {
-            return LINGLONG_ERR("parse build config", config);
+            return LINGLONG_ERR(fmt::format("parse build config {}", path), config);
         }
         if (config->version != 1) {
             return LINGLONG_ERR(
@@ -104,11 +104,15 @@ auto saveConfig(const api::types::v1::BuilderConfig &cfg,
     try {
         auto ofs = std::ofstream(path);
         if (!ofs.is_open()) {
-            return LINGLONG_ERR("open failed");
+            return LINGLONG_ERR(fmt::format("failed to open builder config {}", path));
         }
 
         auto node = ytj::to_yaml(cfg);
         ofs << node;
+        ofs.close();
+        if (!ofs) {
+            return LINGLONG_ERR(fmt::format("failed to write builder config {}", path));
+        }
 
         return LINGLONG_OK;
     } catch (const std::exception &e) {

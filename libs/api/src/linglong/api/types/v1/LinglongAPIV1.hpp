@@ -22,6 +22,12 @@
 #include "linglong/api/types/v1/ApplicationPermissionsRequest.hpp"
 #include "linglong/api/types/v1/BuilderConfig.hpp"
 #include "linglong/api/types/v1/BuilderProject.hpp"
+#include "linglong/api/types/v1/BuilderProjectLock.hpp"
+#include "linglong/api/types/v1/BuilderProjectLockDependency.hpp"
+#include "linglong/api/types/v1/BuilderProjectLockDependencyResolved.hpp"
+#include "linglong/api/types/v1/BuilderProjectSource.hpp"
+#include "linglong/api/types/v1/BuilderSourceLockEntry.hpp"
+#include "linglong/api/types/v1/BuilderSourceLockResolved.hpp"
 #include "linglong/api/types/v1/CdiDeviceEntry.hpp"
 #include "linglong/api/types/v1/CliContainer.hpp"
 #include "linglong/api/types/v1/CommonOptions.hpp"
@@ -97,6 +103,12 @@ std::optional<ApplicationConfigurationPermissions> applicationConfigurationPermi
 std::optional<ApplicationPermissionsRequest> applicationPermissionsRequest;
 std::optional<BuilderConfig> builderConfig;
 std::optional<BuilderProject> builderProject;
+std::optional<BuilderProjectLock> builderProjectLock;
+std::optional<BuilderProjectLockDependency> builderProjectLockDependency;
+std::optional<BuilderProjectLockDependencyResolved> builderProjectLockDependencyResolved;
+std::optional<BuilderProjectSource> builderProjectSource;
+std::optional<BuilderSourceLockEntry> builderSourceLockEntry;
+std::optional<BuilderSourceLockResolved> builderSourceLockResolved;
 std::optional<CdiDeviceEntry> cdiDeviceEntry;
 std::optional<CliContainer> cliContainer;
 std::optional<CommonOptions> commonOptions;

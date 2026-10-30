@@ -1,12 +1,12 @@
 #!/bin/bash
 
-# SPDX-FileCopyrightText: 2023 - 2026 UnionTech Software Technology Co., Ltd.
+# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
 #
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
-set -euo pipefail
+set -eo pipefail
 
-prefix="${PREFIX:?PREFIX is required}"
+prefix="${PREFIX:?PREFIX must be set}"
 
 tmpFile=$(mktemp)
 trap 'rm -f "$tmpFile"' EXIT
@@ -24,9 +24,16 @@ while read -r filepath; do
                 continue
         fi
         # https://sourceware.org/gdb/current/onlinedocs/gdb.html/Separate-Debug-Files.html
-        # awk exits 0 when no line matches, so a missing Build ID yields an empty string.
-        buildID=$(readelf -n "$filepath" 2>/dev/null | awk '/Build ID/ {print $NF}')
-        if [[ -z "${buildID}" ]]; then
+        if buildID=$(readelf -n "$filepath" | awk '/Build ID/ {print $NF}'); then
+                :
+        else
+                status=$?
+                echo "failed to read Build ID from $filepath" >&2
+                exit "$status"
+        fi
+        # Without an ID there is no valid .build-id destination. Leave the
+        # original ELF intact rather than producing an unusable debug file.
+        if [[ -z "$buildID" ]]; then
                 echo "skip $filepath: no Build ID found"
                 continue
         fi

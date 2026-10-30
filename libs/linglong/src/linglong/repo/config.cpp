@@ -7,14 +7,19 @@
 #include "linglong/repo/config.h"
 
 #include "linglong/api/types/v1/Generators.hpp"
+#include "linglong/common/constants.h"
 #include "linglong/utils/error/error.h"
+#include "linglong/utils/finally/finally.h"
 #include "linglong/utils/log/log.h"
 #include "linglong/utils/serialize/yaml.h"
 #include "ytj/ytj.hpp"
 
 #include <fmt/format.h>
 
+#include <cerrno>
 #include <fstream>
+
+#include <unistd.h>
 
 namespace linglong::repo {
 
@@ -82,16 +87,61 @@ utils::error::Result<void> saveConfig(const api::types::v1::RepoConfigV2 &cfg,
             return LINGLONG_ERR("default repo not found in repos");
         }
 
-        auto ofs = std::ofstream(path);
+        std::error_code ec;
+        const auto targetExists = std::filesystem::exists(path, ec);
+        if (ec) {
+            return LINGLONG_ERR("failed to inspect config", ec);
+        }
+        auto permissions = common::shared_file_permissions;
+        if (targetExists) {
+            permissions = std::filesystem::status(path, ec).permissions();
+            if (ec) {
+                return LINGLONG_ERR("failed to inspect config permissions", ec);
+            }
+        }
+
+        auto temporaryTemplate =
+          (path.parent_path() / ("." + path.filename().string() + ".tmp.XXXXXX")).string();
+        const auto temporaryFD = ::mkstemp(temporaryTemplate.data());
+        if (temporaryFD == -1) {
+            return LINGLONG_ERR("failed to create temporary config",
+                                std::error_code(errno, std::generic_category()));
+        }
+
+        const auto temporary = std::filesystem::path(temporaryTemplate);
+        auto cleanup = utils::finally::finally([&temporary]() {
+            std::error_code ec;
+            std::filesystem::remove(temporary, ec);
+        });
+
+        if (::close(temporaryFD) == -1) {
+            return LINGLONG_ERR("failed to close temporary config",
+                                std::error_code(errno, std::generic_category()));
+        }
+
+        auto ofs = std::ofstream(temporary);
         if (!ofs.is_open()) {
-            return LINGLONG_ERR("open failed");
+            return LINGLONG_ERR("failed to open temporary config");
         }
 
         auto node = ytj::to_yaml(cfg);
         ofs << node;
         ofs.close();
         if (!ofs) {
-            return LINGLONG_ERR("write failed");
+            return LINGLONG_ERR("failed to write temporary config");
+        }
+
+        std::filesystem::permissions(temporary,
+                                     permissions,
+                                     std::filesystem::perm_options::replace,
+                                     ec);
+        if (ec) {
+            return LINGLONG_ERR("failed to set config permissions", ec);
+        }
+
+        std::filesystem::rename(temporary, path, ec);
+        if (ec) {
+            return LINGLONG_ERR("failed to replace config", ec);
         }
 
         return LINGLONG_OK;

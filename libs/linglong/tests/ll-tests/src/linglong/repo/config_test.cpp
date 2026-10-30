@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+ * SPDX-FileCopyrightText: 2025 - 2026 UnionTech Software Technology Co., Ltd.
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
@@ -13,8 +13,11 @@
 
 #include <common/tempdir.h>
 
+#include <atomic>
 #include <filesystem>
 #include <fstream>
+#include <thread>
+#include <vector>
 
 using namespace linglong::repo;
 using namespace linglong::api::types::v1;
@@ -212,6 +215,105 @@ TEST(Repo, SaveConfigWritesFile)
     auto loaded = loadConfig(file);
     ASSERT_TRUE(loaded.has_value());
     EXPECT_EQ(loaded->repos[0].url, "https://example.com/repo");
+}
+
+TEST(Repo, SaveConfigPreservesExistingPermissions)
+{
+    TempDir dir;
+    auto cfg = RepoConfigV2{
+        .defaultRepo = "stable",
+        .repos = { Repo{ .name = "stable", .priority = 0, .url = "https://example.com/old" } },
+        .version = 2,
+    };
+    const auto file = dir.path() / "saved.yaml";
+    ASSERT_TRUE(saveConfig(cfg, file));
+    const auto permissions = fs::perms::owner_read | fs::perms::owner_write;
+    fs::permissions(file, permissions);
+
+    cfg.repos.front().url = "https://example.com/new";
+    ASSERT_TRUE(saveConfig(cfg, file));
+
+    EXPECT_EQ(fs::status(file).permissions(), permissions);
+    auto loaded = loadConfig(file);
+    ASSERT_TRUE(loaded.has_value());
+    EXPECT_EQ(loaded->repos.front().url, cfg.repos.front().url);
+}
+
+TEST(Repo, SaveConfigCleansTemporaryFileWhenReplacementFails)
+{
+    TempDir dir;
+    const auto destination = dir.path() / "saved.yaml";
+    ASSERT_TRUE(fs::create_directory(destination));
+    const auto sentinel = destination / "sentinel";
+    std::ofstream(sentinel) << "preserved";
+    auto cfg = RepoConfigV2{
+        .defaultRepo = "stable",
+        .repos = { Repo{ .name = "stable", .priority = 0, .url = "https://example.com/repo" } },
+        .version = 2,
+    };
+
+    // A file cannot replace a directory, even when the test runs as root.
+    EXPECT_FALSE(saveConfig(cfg, destination));
+
+    EXPECT_TRUE(fs::is_directory(destination));
+    std::string content;
+    std::ifstream(sentinel) >> content;
+    EXPECT_EQ(content, "preserved");
+    std::vector<fs::path> remaining;
+    for (const auto &entry : fs::directory_iterator(dir.path())) {
+        remaining.push_back(entry.path());
+    }
+    EXPECT_EQ(remaining, std::vector<fs::path>{ destination });
+}
+
+TEST(Repo, SaveConfigReadersNeverObservePartialReplacement)
+{
+    TempDir dir;
+    auto makeConfig = [](const std::string &suffix) {
+        RepoConfigV2 cfg{ .defaultRepo = "repo-0", .version = 2 };
+        for (int i = 0; i < 128; ++i) {
+            cfg.repos.emplace_back(
+              Repo{ .name = "repo-" + std::to_string(i),
+                    .priority = i,
+                    .url = "https://example.com/" + suffix + "/repo-" + std::to_string(i) });
+        }
+        return cfg;
+    };
+
+    const auto first = makeConfig("first");
+    const auto second = makeConfig("second");
+    const auto file = dir.path() / "saved.yaml";
+    ASSERT_TRUE(saveConfig(first, file));
+
+    std::atomic_bool writerDone{ false };
+    std::atomic_bool writerSucceeded{ true };
+    std::thread writer([&]() {
+        for (int i = 0; i < 50; ++i) {
+            if (!saveConfig(i % 2 == 0 ? second : first, file)) {
+                writerSucceeded.store(false, std::memory_order_relaxed);
+                break;
+            }
+        }
+        writerDone.store(true, std::memory_order_release);
+    });
+
+    bool readerSucceeded = true;
+    do {
+        auto loaded = loadConfig(file);
+        if (!loaded || loaded->repos.size() != first.repos.size()) {
+            readerSucceeded = false;
+            break;
+        }
+        const auto &url = loaded->repos.front().url;
+        if (url != first.repos.front().url && url != second.repos.front().url) {
+            readerSucceeded = false;
+            break;
+        }
+    } while (!writerDone.load(std::memory_order_acquire));
+
+    writer.join();
+    EXPECT_TRUE(writerSucceeded.load(std::memory_order_relaxed));
+    EXPECT_TRUE(readerSucceeded);
 }
 
 TEST(Repo, SaveConfigMissingDefaultRepoFails)

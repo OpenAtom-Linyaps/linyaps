@@ -169,7 +169,7 @@ base: org.deepin.foundation/23.0.0
 Then when starting the Linyaps application build project, it will default to using the highest version number `23.0.0.29`
 
 5. The Linyaps application build project configuration file is currently not directly compatible with configuration files of other package build tools. It needs to be adapted and modified according to build project configuration file cases:
-   https://linglong.dev/guide/ll-builder/manifests.html
+   https://linyaps.org.cn/guide/building/manifests.html
 
 ### Custom Fields
 

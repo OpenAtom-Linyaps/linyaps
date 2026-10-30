@@ -1623,6 +1623,12 @@ TEST(ProjectLock, RejectsInvalidSources)
     missingCommit.url = "https://example.com/source.git";
     cases.emplace_back(std::move(missingCommit), "git source commit is missing");
 
+    api::types::v1::BuilderProjectSource optionLikeCommit;
+    optionLikeCommit.kind = "git";
+    optionLikeCommit.url = "https://example.com/source.git";
+    optionLikeCommit.commit = "--upload-pack=/tmp/evil-upload-pack";
+    cases.emplace_back(std::move(optionLikeCommit), "git source commit must not start with '-'");
+
     api::types::v1::BuilderProjectSource gitDigest;
     gitDigest.kind = "git";
     gitDigest.url = "https://example.com/source.git";

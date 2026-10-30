@@ -144,6 +144,9 @@ utils::error::Result<std::string> validateSource(const api::types::v1::BuilderPr
     if (source.kind == "git" && !source.commit) {
         return LINGLONG_ERR("git source commit is missing");
     }
+    if (source.kind == "git" && !source.commit->empty() && source.commit->front() == '-') {
+        return LINGLONG_ERR("git source commit must not start with '-'");
+    }
     if (source.kind == "git" && source.digest) {
         return LINGLONG_ERR("git source does not support digest");
     }

@@ -2978,7 +2978,7 @@ int Cli::content(const ContentOptions &options)
     auto ref = (*repo)->clearReferenceLocal(*fuzzyRef);
     if (!ref) {
         LogD("{}", ref.error());
-        this->printer.printErr(LINGLONG_ERRV("Can not find such application."));
+        this->printer.printErr(LINGLONG_ERRV("Cannot find such application."));
         return -1;
     }
 
@@ -3412,7 +3412,7 @@ int Cli::getLayerDir(const InspectOptions &options)
     auto ref = (*repo)->clearReferenceLocal(*fuzzyRef);
     if (!ref) {
         LogD("{}", ref.error());
-        this->printer.printErr(LINGLONG_ERRV("Can not find such application."));
+        this->printer.printErr(LINGLONG_ERRV("Cannot find such application."));
         return -1;
     }
 
@@ -3443,7 +3443,7 @@ int Cli::getBundleDir(const InspectOptions &options)
     }
 
     if (containerIDList->empty()) {
-        this->printer.printErr(LINGLONG_ERRV("Can not find the running application."));
+        this->printer.printErr(LINGLONG_ERRV("Cannot find the running application."));
         return -1;
     }
 

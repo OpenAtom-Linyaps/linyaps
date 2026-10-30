@@ -74,7 +74,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
     The file system inside the container is a read-only file system, and writing data to application resource files is not allowed.
 
-17. Why does executing binaries with `suid`, `guid` permissions fail?
+17. Why does executing binaries with `suid`, `sgid` permissions fail?
 
     To ensure system security, Linyaps containers prohibit the execution of such privileged binaries.
 

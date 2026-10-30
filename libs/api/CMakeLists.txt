@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2024 UnionTech Software Technology Co., Ltd.
+# SPDX-FileCopyrightText: 2024 - 2026 UnionTech Software Technology Co., Ltd.
 #
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -21,6 +21,10 @@ pfl_add_library(
   src/linglong/api/types/v1/BuilderProjectModules.hpp
   src/linglong/api/types/v1/BuilderProjectPackage.hpp
   src/linglong/api/types/v1/BuilderProjectSource.hpp
+  src/linglong/api/types/v1/BuilderProjectLock.hpp
+  src/linglong/api/types/v1/BuilderProjectLockDependency.hpp
+  src/linglong/api/types/v1/BuilderSourceLockEntry.hpp
+  src/linglong/api/types/v1/BuilderSourceLockResolved.hpp
   src/linglong/api/types/v1/CliContainer.hpp
   src/linglong/api/types/v1/CommonOptions.hpp
   src/linglong/api/types/v1/CommonResult.hpp
@@ -40,7 +44,6 @@ pfl_add_library(
   src/linglong/api/types/v1/PackageManager1GetRepoInfoResult.hpp
   src/linglong/api/types/v1/PackageManager1GetRepoInfoResultRepoInfo.hpp
   src/linglong/api/types/v1/PackageManager1InstallParameters.hpp
-  src/linglong/api/types/v1/PackageManager1JobInfo.hpp
   src/linglong/api/types/v1/PackageManager1ModifyRepoParameters.hpp
   src/linglong/api/types/v1/PackageManager1Package.hpp
   src/linglong/api/types/v1/PackageManager1PackageTaskResult.hpp

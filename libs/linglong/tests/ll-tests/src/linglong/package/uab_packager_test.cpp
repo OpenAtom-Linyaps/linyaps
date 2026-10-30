@@ -18,7 +18,6 @@ namespace {
 TEST(UABPackagerTest, CopyDirectoryForDistributedBundleCreatesHardLinks)
 {
     TempDir tempDir("uab-packager-test-");
-    ASSERT_TRUE(tempDir.isValid());
 
     const auto source = tempDir.path() / "source";
     const auto destination = tempDir.path() / "destination";
@@ -37,7 +36,6 @@ TEST(UABPackagerTest, CopyDirectoryForDistributedBundleCreatesHardLinks)
 TEST(UABPackagerTest, CopyDirectoryForDistributedBundlePreservesSymlinks)
 {
     TempDir tempDir("uab-packager-test-");
-    ASSERT_TRUE(tempDir.isValid());
 
     const auto source = tempDir.path() / "source";
     const auto destination = tempDir.path() / "destination";
@@ -113,7 +111,6 @@ TEST(UABPackagerTest, GenerateExecLoaderForwardsToAppEntry)
 TEST(UABPackagerTest, EnsureExecEntryPreservesExistingEntryWithoutCommand)
 {
     TempDir tempDir("uab-packager-test-");
-    ASSERT_TRUE(tempDir.isValid());
 
     const auto entryPath = tempDir.path() / "entry.sh";
     constexpr auto existingEntry = "#!/bin/sh\nexec /usr/bin/demo \"$@\"\n";
@@ -137,7 +134,6 @@ TEST(UABPackagerTest, EnsureExecEntryPreservesExistingEntryWithoutCommand)
 TEST(UABPackagerTest, EnsureExecEntryRejectsNonExecutableExistingEntry)
 {
     TempDir tempDir("uab-packager-test-");
-    ASSERT_TRUE(tempDir.isValid());
 
     const auto entryPath = tempDir.path() / "entry.sh";
     std::ofstream{ entryPath } << "#!/bin/sh\nexec /usr/bin/demo \"$@\"\n";
@@ -157,7 +153,6 @@ TEST(UABPackagerTest, EnsureExecEntryRejectsNonExecutableExistingEntry)
 TEST(UABPackagerTest, EnsureExecEntryRejectsExistingDirectory)
 {
     TempDir tempDir("uab-packager-test-");
-    ASSERT_TRUE(tempDir.isValid());
 
     const auto entryPath = tempDir.path() / "entry.sh";
     ASSERT_TRUE(std::filesystem::create_directory(entryPath));
@@ -171,7 +166,6 @@ TEST(UABPackagerTest, EnsureExecEntryRejectsExistingDirectory)
 TEST(UABPackagerTest, EnsureExecEntryGeneratesMissingEntry)
 {
     TempDir tempDir("uab-packager-test-");
-    ASSERT_TRUE(tempDir.isValid());
 
     const auto entryPath = tempDir.path() / "entry.sh";
     auto result = detail::ensureExecEntry(entryPath,
@@ -200,7 +194,6 @@ TEST(UABPackagerTest, SetIconRejectsNonExistent)
 TEST(UABPackagerTest, SetIconRejectsDirectory)
 {
     TempDir td("uab-icon-test-");
-    ASSERT_TRUE(td.isValid());
     UABPackager packager("/tmp/build");
     auto result = packager.setIcon(td.path());
     ASSERT_FALSE(result.has_value());
@@ -210,7 +203,6 @@ TEST(UABPackagerTest, SetIconRejectsDirectory)
 TEST(UABPackagerTest, AppendLayerRejectsInvalid)
 {
     TempDir td("uab-layer-test-");
-    ASSERT_TRUE(td.isValid());
     LayerDir invalid(td.path() / "no-layer");
     UABPackager packager("/tmp/build");
     auto result = packager.appendLayer(invalid);
@@ -222,13 +214,11 @@ TEST(UABPackagerTest, PackEndToEndWithValidLayers)
 {
     // /proc/self/exe serves as a valid ELF header.
     TempDir headerDir("uab-header-");
-    ASSERT_TRUE(headerDir.isValid());
     auto header = headerDir.path() / "header.elf";
     std::filesystem::copy_file("/proc/self/exe", header);
 
     // Build a base layer (kind=base).
     TempDir baseDir("uab-base-");
-    ASSERT_TRUE(baseDir.isValid());
     std::filesystem::create_directories(baseDir.path() / "files" / "usr" / "lib");
     std::ofstream{ baseDir.path() / "files" / "usr" / "lib" / "libbase.so" } << "base";
     {
@@ -245,7 +235,6 @@ TEST(UABPackagerTest, PackEndToEndWithValidLayers)
 
     // Build an app layer (kind=app).
     TempDir appDir("uab-app-");
-    ASSERT_TRUE(appDir.isValid());
     std::filesystem::create_directories(appDir.path() / "files" / "usr" / "bin");
     std::ofstream{ appDir.path() / "files" / "usr" / "bin" / "hello" } << "hello world";
     {
@@ -268,7 +257,6 @@ TEST(UABPackagerTest, PackEndToEndWithValidLayers)
 
     // Pack.
     TempDir buildDir("uab-build-");
-    ASSERT_TRUE(buildDir.isValid());
     UABPackager packager(buildDir.path());
     packager.setDefaultHeader(header);
     packager.setCompressor("lz4");

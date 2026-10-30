@@ -50,6 +50,8 @@ pfl_add_library(
   src/linglong/utils/serialize/yaml.cpp
   src/linglong/utils/serialize/yaml.h
   src/linglong/utils/signal/signal_blocker.h
+  src/linglong/utils/temporary_directory.cpp
+  src/linglong/utils/temporary_directory.h
   src/linglong/utils/terminal/terminal_guard.h
   src/linglong/utils/transaction.cpp
   src/linglong/utils/transaction.h

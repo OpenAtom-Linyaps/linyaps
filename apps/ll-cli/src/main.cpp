@@ -12,6 +12,7 @@
 #include "linglong/cli/terminal_notifier.h"
 #include "linglong/common/error.h"
 #include "linglong/common/global/initialize.h"
+#include "linglong/common/version.h"
 #include "linglong/runtime/container_builder.h"
 #include "linglong/utils/finally/finally.h"
 #include "linglong/utils/gettext.h"
@@ -567,6 +568,18 @@ void addInspectCommand(CLI::App &commandParser,
                    inspectOptions.module,
                    _("Specify the module type (binary or develop). Only works when type is layer"))
       ->check(validatorString);
+
+    auto *cliInspectRemoteInfo = cliInspect->add_subcommand(
+      "remote-info",
+      _("Display package information fetched from the remote repository"));
+    cliInspectRemoteInfo->usage(_("Usage: ll-cli inspect remote-info [OPTIONS] REF"));
+    cliInspectRemoteInfo
+      ->add_option("REF", inspectOptions.appid, _("Specify the application reference"))
+      ->required()
+      ->check(validatorString);
+    cliInspectRemoteInfo->add_option("--repo", inspectOptions.repo, _("Specify the repo"))
+      ->type_name("REPO")
+      ->check(validatorString);
 }
 
 } // namespace
@@ -664,9 +677,10 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     // print version if --version flag is set
     if (*versionFlag) {
         if (*jsonFlag) {
-            std::cout << nlohmann::json{ { "version", LINGLONG_VERSION_FULL } } << std::endl;
+            std::cout << nlohmann::json{ { "version", linglong::common::versionFull() } }
+                      << std::endl;
         } else {
-            std::cout << _("linyaps CLI version ") << LINGLONG_VERSION_FULL << std::endl;
+            std::cout << _("linyaps CLI version ") << linglong::common::versionFull() << std::endl;
         }
         return 0;
     }

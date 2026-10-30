@@ -22,14 +22,7 @@ public:
     {
     }
 
-    // 公开exportDir以便测试
-    utils::error::Result<void> exportDir(const std::string &appID,
-                                         const std::filesystem::path &source,
-                                         const std::filesystem::path &destination,
-                                         const int &max_depth)
-    {
-        return this->OSTreeRepo::exportDir(appID, source, destination, max_depth);
-    }
+    using OSTreeRepo::exportDir;
 
     utils::error::Result<void>
     exportLayerEntries(const std::filesystem::path &destination,
@@ -43,6 +36,13 @@ public:
                      const api::types::v1::RepositoryCacheLayersItem &item)
     {
         return this->OSTreeRepo::exportAppEntries(destination, item);
+    }
+
+    utils::error::Result<void>
+    exportAppBinaries(const std::filesystem::path &destination,
+                      const api::types::v1::RepositoryCacheLayersItem &item)
+    {
+        return this->OSTreeRepo::exportAppBinaries(destination, item);
     }
 
     utils::error::Result<void>
@@ -63,6 +63,11 @@ public:
       const std::filesystem::path &destination, const std::vector<std::filesystem::path> &layerDirs)
     {
         return this->OSTreeRepo::unexportAppEntries(destination, layerDirs);
+    }
+
+    utils::error::Result<void> initCache(bool create = false)
+    {
+        return this->OSTreeRepo::initCache(create);
     }
 
     // mock getOverlayShareDir

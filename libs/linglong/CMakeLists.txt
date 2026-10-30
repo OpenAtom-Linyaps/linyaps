@@ -8,19 +8,26 @@ pfl_add_library(
   LIBRARY_TYPE
   STATIC
   SOURCES
-  src/linglong/builder/builder_releases.qrc
   # find -regex '\./src/.+\.[ch]\(pp\)?\(\.in\)?' -type f -printf '%P\n'| sort
   src/linglong/adaptors/package_manager/package_manager1.cpp
   src/linglong/adaptors/package_manager/package_manager1.h
   src/linglong/adaptors/task/task1.cpp
   src/linglong/adaptors/task/task1.h
+  src/linglong/builder/builder_directory.cpp
+  src/linglong/builder/builder_directory.h
+  src/linglong/builder/builder_script.cpp
+  src/linglong/builder/builder_script.h
   src/linglong/builder/config.cpp
   src/linglong/builder/config.h
   src/linglong/builder/linglong_builder.cpp
   src/linglong/builder/linglong_builder.h
   src/linglong/builder/printer.h
+  src/linglong/builder/source_cache.cpp
+  src/linglong/builder/source_cache.h
   src/linglong/builder/source_fetcher.cpp
   src/linglong/builder/source_fetcher.h
+  src/linglong/builder/project_lock.cpp
+  src/linglong/builder/project_lock.h
   src/linglong/cli/cli.cpp
   src/linglong/cli/cli.h
   src/linglong/cli/cli_printer.cpp
@@ -46,6 +53,8 @@ pfl_add_library(
   src/linglong/common/global/initialize.h
   src/linglong/common/serialize/json.cpp
   src/linglong/common/serialize/json.h
+  src/linglong/common/version.cpp.in
+  src/linglong/common/version.h
   src/linglong/extension/extension.cpp
   src/linglong/extension/extension.h
   src/linglong/package/architecture.cpp

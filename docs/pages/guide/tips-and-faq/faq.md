@@ -8,7 +8,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 1. 应用运行读取 `/usr/share`下应用安装资源文件，为什么读取失败？
 
-   如意玲珑应用是在容器环境中运行，应用数据会挂载到 `/opt/apps/<appid>`/下，`/usr/share`目录下只会存在系统数据，不会存在应用相关数据。因此直接读取 `/usr/share` 会失败。建议处理：采用 `XDG_DATA_DIRS` 环境变量读取资源，`/opt/apps/<appid>/files/share`会存在在此环境变量搜索路径中。
+   如意玲珑应用是在容器环境中运行，应用数据会挂载到 `/opt/apps/<appid>/`下，`/usr/share`目录下只会存在系统数据，不会存在应用相关数据。因此直接读取 `/usr/share` 会失败。建议处理：采用 `XDG_DATA_DIRS` 环境变量读取资源，`/opt/apps/<appid>/files/share`会包含在此环境变量搜索路径中。
 
 2. 应用运行时找不到字体库文件？为什么 `deb`包安装时能读取到对应的字体库？
 
@@ -24,7 +24,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 5. 应用数据保存到哪里？在容器外哪里能找到？
 
-   因如意玲珑应用遵循互不干涉原则，`XDG_DATA_HOME`、`XDG_CONFIG_HOME`、`XDG_CACHE_HOME`环境变量被定义到宿主机 `~/.linglong/<appid>`/对应的路径下，因此用户应用数据会保存在此路径下，应用运行过程中写入数据时，也应该读取对应的环境变量写入数据。禁止读写其它应用的配置。
+   因如意玲珑应用遵循互不干涉原则，`XDG_DATA_HOME`、`XDG_CONFIG_HOME`、`XDG_CACHE_HOME`环境变量被定义到宿主机 `~/.linglong/<appid>/`对应的路径下，因此用户应用数据会保存在此路径下，应用运行过程中写入数据时，也应该读取对应的环境变量写入数据。禁止读写其它应用的配置。
 
 6. 应用提供了 `dbus service`文件，如何放置？`Exec`字段写什么？
 

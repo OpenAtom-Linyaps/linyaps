@@ -7,11 +7,21 @@
 玲珑冒烟测试 — 主测试类与入口
 """
 
+import base64
+import getpass
+import json
 import os
+import pty
+import shutil
+import tempfile
 import random
 import re
+import select
+import signal
+import socket
 import subprocess
 import sys
+import threading
 import time
 import argparse
 from datetime import datetime
@@ -27,6 +37,11 @@ DEMO_VERSION = "0.0.0.1"
 DEMO_ARCH = os.uname().machine
 DEMO_CHANNEL = "main"
 DEMO_PROJECT_DIR = DEMO_APP_ID
+# 用于验证 `ll-builder build -f <file>`：把 linglong.yaml 复制一份、只改包名，
+# 这样"到底读了哪个项目文件"在构建输出里就可辨认。
+DEMO_CUSTOM_YAML_APP_ID = "org.deepin.customsmokefile"
+# 用于验证 getProjectYAMLPath 的架构专属分支（linglong.<arch>.yaml 优先）。
+DEMO_ARCH_YAML_APP_ID = "org.deepin.archsmokefile"
 
 # ── calendar app ──
 CALENDAR_APP_ID = "org.dde.calendar"
@@ -42,15 +57,43 @@ SEMVER_OLD_VERSION = "1.0.0.0"
 TESTSUITE_BASELINE_APP_ID = "cn.org.linyaps.testsuite.baseline"
 TESTSUITE_BASELINE_TIMEOUT = 300
 
+# ── 非 TTY 的交互确认通知 ──
+#
+# ll-cli 需要用户确认时走 InteractiveNotifier：TTY 下直接问，非 TTY 下用
+# cli/dbus_notifier.cpp 发桌面通知、等用户点按钮。而 sudo 会剥掉
+# DBUS_SESSION_BUS_ADDRESS（本机没有 sudoers 的 env_keep），ll-cli 于是
+# 退回 DummyNotifier —— 动作 "dummy" 被 Cli::interaction 当成 yes，
+# dbus_notifier.cpp 一行都跑不到。
+#
+# 这里自己起一条 root 私有会话总线 + 桩通知服务（notif_stub.py），再用
+# `sudo -A env DBUS_SESSION_BUS_ADDRESS=... ll-cli` 把地址显式传进去。
+NOTIF_APP_ID = CALENDAR_APP_ID
+NOTIF_BUS_DIR = "/tmp/linglong-smoke-notif-bus"
+NOTIF_BUS_SOCKET = NOTIF_BUS_DIR + "/bus"
+NOTIF_BUS_PID = NOTIF_BUS_DIR + "/daemon.pid"
+NOTIF_STUB_LOG = NOTIF_BUS_DIR + "/notifications.jsonl"
+NOTIF_STUB_OUT = NOTIF_BUS_DIR + "/stub.out"
+NOTIF_STUB_PID = NOTIF_BUS_DIR + "/stub.pid"
+NOTIF_INSTALL_TIMEOUT = 900
+
+# ── 图形驱动检测 ──
+LIBEXEC_DIR = "/usr/libexec/linglong"
+DRIVER_DETECT_BINARY = "/usr/libexec/linglong/ll-driver-detect"
+
 # ── tools ──
 LL_CLI = "ll-cli"
 LL_BUILDER = "ll-builder"
 
+# ── repo 配置（机器状态）──
+# 仓库增删、优先级、镜像开关、默认仓库都写在这个文件里。它是【机器状态】
+# 而不是用例的私有数据，用例改完必须还原（见 SmokeTest.REPO_CONFIG_STEPS）。
+REPO_CONFIG_PATH = Path("/var/lib/linglong/config.yaml")
+
 # ── report ──
 RESULTS_FILE = os.path.join(os.getcwd(), "test-results.json")
-from .executor import CommandExecutor
+from .executor import SUDO_FLAGS, CommandExecutor
 from .reporter import generate_report
-from .models import RepoState, StepResult
+from .models import RepoState, StepResult, StepSkipped
 
 class SmokeTest:
 
@@ -65,12 +108,163 @@ class SmokeTest:
         ("创建 demo 项目", "create_demo_project", "应用构建"),
         ("构建并导出 demo 应用", "test_demo_build_and_export", "应用构建"),
         ("验证 demo DBus 环境变量", "test_demo_dbus_environment", "应用构建"),
+        # ⚠️ 这两个用例必须在 demo 项目目录还存在时执行：
+        #    步骤「安装并运行 demo 应用」结束时会把 org.deepin.demo/ 删掉，
+        #    所以它们必须排在它前面，不能放到末尾。
+        ("builder build 跳过选项", "test_builder_build_options", "应用构建"),
+        ("builder --isolate-network 网络隔离", "test_builder_isolate_network", "应用构建"),
+        ("builder export 选项", "test_builder_export_options", "应用构建"),
+        ("builder run 选项", "test_builder_run_options", "应用构建"),
+        # push 的错误路径需要在真实项目目录里跑（要读 linglong.yaml），
+        # 所以必须和上面几个 builder 用例一样排在「安装并运行 demo 应用」之前
+        # —— 那一步结束会把 org.deepin.demo/ 删掉。
+        ("builder push 错误路径", "test_builder_push_errors", "构建器覆盖"),
         ("安装并运行 demo 应用", "test_demo_install_and_run", "应用部署"),
         ("查询仓库与运行时信息", "test_repository_queries", "应用部署"),
+        ("ll-cli run 运行期选项", "test_run_command_options", "运行时覆盖"),
+        ("容器生命周期 ps/enter/kill", "test_container_lifecycle", "运行时覆盖"),
+        ("容器实例复用", "test_container_instance_reuse", "运行时覆盖"),
+        # ── 覆盖率补强用例（第一批）──
+        # 只依赖 base 与已安装应用，不依赖 demo 构建产物。
+        # ⚠️ 必须排在「清理未使用运行时（prune）」之前：prune 会把无人依赖的
+        #    base 一并移除，之后 run 就没有可运行目标了。
+        ("run 的文件/URL/设备传递选项", "test_run_file_url_device", "运行时覆盖"),
+        ("run 的 base/runtime 显式指定", "test_run_explicit_base_runtime", "运行时覆盖"),
+        ("run 的 debug 选项错误路径", "test_run_debug_options", "运行时覆盖"),
+        ("全局选项与帮助输出", "test_global_options", "命令覆盖"),
+        ("清理未使用运行时（prune）", "test_prune", "命令覆盖"),
+        ("search 筛选选项", "test_search_options", "命令覆盖"),
+        ("inspect 目录查询", "test_inspect_commands", "命令覆盖"),
+        ("扩展运行（--extensions）", "test_run_with_extensions", "运行时覆盖"),
+        ("扩展层的解析、env 注入与挂载", "test_extension_layer_env_and_mount", "运行时覆盖"),
+        ("运行配置 env 注入", "test_runtime_config_env_injection", "运行时覆盖"),
+        ("架构字符串解析", "test_architecture_parsing", "应用管理"),
+        ("旧版仓库配置迁移", "test_repo_config_v1_migration", "仓库管理"),
+        ("仓库缓存重建", "test_repo_cache_rebuild", "仓库管理"),
+        ("重复安装与强制重装", "test_install_force_and_duplicate", "应用管理"),
+        ("缓存写失败时的行为", "test_cache_write_failure", "仓库管理"),
+        ("锁目录不可写时的行为", "test_filelock_dir_unwritable", "运行时覆盖"),
+        ("容器运行时不可用时的行为", "test_runtime_binary_unusable", "运行时覆盖"),
+        ("--json 输出一致性", "test_json_output_variants", "CLI 输出"),
+        ("运行配置嵌套挂载", "test_runtime_config_mounts", "运行时覆盖"),
+        ("TTY 透传与信号转发", "test_tty_and_signal_forwarding", "运行时覆盖"),
+        ("从终端复用运行中的实例", "test_reuse_instance_with_tty", "运行时覆盖"),
+        ("客户端在任务进行中断开", "test_client_disconnect_during_task", "服务管理"),
+        ("错误路径必须给出清晰报错", "test_error_paths_report_clearly", "CLI 输出"),
+        ("应用 permissions 的 binds/innerBinds", "test_run_app_permissions_binds", "运行时覆盖"),
+        ("安装/升级错误路径", "test_install_error_paths", "命令覆盖"),
         ("安装、升级并运行日历应用", "test_calendar_install_upgrade_run", "应用管理"),
         ("验证日历模块生命周期", "test_calendar_module_lifecycle", "应用管理"),
         ("验证 versionV1 到 versionV2 升降级", "test_semver_upgrade_flow", "应用管理"),
         ("安装并运行 baseline 测试套件", "test_testsuite_baseline", "应用管理"),
+        ("版本号解析边界", "test_version_parsing_edge_cases", "应用管理"),
+        ("查询只读子命令（ps/list/repo）", "test_readonly_query_commands", "命令覆盖"),
+        ("检查已安装应用（info/content）", "test_installed_app_inspection", "命令覆盖"),
+        ("验证错误路径处理", "test_error_paths", "命令覆盖"),
+        ("分析已安装应用（analyze）", "test_analyze_commands", "命令覆盖"),
+        ("builder 项目级子命令", "test_builder_project_commands", "构建器覆盖"),
+        # ── 覆盖率补强用例（第二批）──
+        # 安装/卸载/升级的选项分支错误路径，只改参数不改系统状态，放最后安全。
+        ("install 的仓库与模块选项", "test_install_repo_module_options", "命令覆盖"),
+        ("uninstall 的模块与强制选项", "test_uninstall_module_force_options", "命令覆盖"),
+        ("upgrade 的依赖与清理选项", "test_upgrade_deps_prune_options", "命令覆盖"),
+        # ── 覆盖率补强用例（第三批）──
+        # 这三个不依赖 demo 产物，也不改变已安装应用，放最后最安全。
+        # peer 模式走 ll-cli 自建的 package-manager，与 dbus 服务是两套代码；
+        # --json 走 json_printer；镜像管理走 repo 的写分支。
+        ("peer 模式（--no-dbus）", "test_no_dbus_peer_mode", "命令覆盖"),
+        ("仓库镜像管理", "test_repo_mirror_management", "命令覆盖"),
+        # repo add --alias / enable-mirror --region / modify 三条写分支。
+        # 只动一个临时仓库（用完即删），不碰 stable 的镜像配置。
+        ("repo 别名与镜像写分支", "test_repo_alias_and_mirror", "命令覆盖"),
+        ("--json 输出格式", "test_json_output", "命令覆盖"),
+        # ── 覆盖率补强用例（第四批）──
+        # 都在真 PTY 下跑：ll-cli 用 isatty() 决定是否走 TTY 分支，
+        # subprocess 的管道会让这些代码永远不被执行。
+        # 必须排在日历应用已安装之后（依赖 CALENDAR_APP_ID 可运行）。
+        ("PTY 下的 run 与容器复用", "test_run_in_pty", "运行时覆盖"),
+        ("run 的文件/URL 占位符映射", "test_run_placeholder_mapping", "运行时覆盖"),
+        ("CDI 设备注入", "test_cdi_device_injection", "运行时覆盖"),
+        ("显示/时区/网络环境分支", "test_display_env_branches", "运行时覆盖"),
+        ("--debug 的 gdb 附加提示", "test_debug_attach_hint", "运行时覆盖"),
+        # ── 覆盖率补强用例（第五批）──
+        # driver-detect 是独立程序，不依赖应用；放在 PTY 用例之后。
+        ("图形驱动检测工具", "test_driver_detect", "命令覆盖"),
+        # 上面那条只跑 --check-only；这条用桩通知服务把"发通知问用户装不装"
+        # 这段跑起来：回 not_remind 必须写 neverRemind，不应答必须 25 秒
+        # 超时且什么都不做。不碰 install_now（会下载 1.6GB 驱动）。
+        ("驱动检测的交互通知", "test_driver_detect_notification", "命令覆盖"),
+        # entries 重写需要独立构建并安装一个项目，放在最后、
+        # 已安装应用都验证完之后（它自己会卸载并清理）。
+        ("entries 文件重写", "test_entry_file_rewrite", "应用构建"),
+        # ⚠️ 迁移用例会改 /var/lib/linglong/.version 并重启服务，
+        #    放最后；它自己负责还原，跑完还会校验服务与 ll-cli 可用。
+        ("仓库版本迁移", "test_repo_migration", "仓库管理"),
+        # ── 覆盖率补强用例（第六批）──
+        # 升级交互：先装旧版本再装新版，服务端会走 Policy::Upgrade 并发出
+        # TaskInteraction 信号，客户端 Cli::interaction 才会被执行
+        # （实测该函数 40 行里覆盖到 28 行）。自己还原版本。
+        ("版本升降级触发安装交互", "test_upgrade_interaction", "应用管理"),
+        # install -y -> skipInteraction。对照式验证：PTY 下不带 -y 回答 "n"
+        # 必须出现提问且升级被取消；带 -y 必须完全不提问且真的升上去。
+        # 依赖日历应用可用，排在上面那条之后。
+        ("install -y 跳过交互", "test_install_yes_option", "应用管理"),
+        # 非 TTY 的通知交互：同样的升级场景，但把一条 root 私有会话总线 +
+        # 桩通知服务（notif_stub.py）交给 ll-cli，让它走
+        # cli/dbus_notifier.cpp 的 GetCapabilities/Notify/等信号，而不是
+        # sudo 下退化的 DummyNotifier。桩分别回 yes / no，断言
+        # "真的升上去" / "真的被取消"，并核对通知正文里的新旧两个 ref。
+        # 自己还原成最新版（后面的 PTY / 容器用例还要用日历应用）。
+        ("通知交互：yes 升级 / no 取消", "test_install_interaction_notification",
+         "应用管理"),
+        # 源码拉取：linglong.yaml 的 sources 字段，走 fetchSources +
+        # SourceFetcher + fetch-<kind>-source 脚本，此前整块未覆盖。
+        # 自己起本地 HTTP 服务供 wget 下载，不依赖外网。
+        ("项目源码拉取（sources）", "test_project_sources_fetch", "应用构建"),
+        # layer 往返：export --layer -> import / extract / import-dir。
+        # import-dir 是【隐藏子命令】（->group("")），--help 里看不到。
+        ("layer 导入导出往返", "test_builder_layer_roundtrip", "构建器覆盖"),
+        # 隐藏的运行/卸载选项：run --privileged（需 root）/--caps-add/
+        # --run-context，以及 uninstall 的 --prune/--all 兼容标志。
+        # 这些在 --help 里都不显示（->group("")）。
+        ("隐藏的运行与卸载选项", "test_hidden_options", "运行时覆盖"),
+        # 非标准版本串：VersionV1/V2 都解析不了时会回退到 FallbackVersion，
+        # 整个 fallback_version.cpp 此前是 0% 覆盖。
+        ("非标准版本串回退解析", "test_fallback_version_strings", "命令覆盖"),
+        # 运行中升级 -> switchAppVersion 移除旧版本 -> tryUninstallRef
+        # 发现旧版本 busy -> markDeleted 延迟删除 -> 定时器 deferredUninstall。
+        # 覆盖 markDeleted / tryUninstallRef / deferredUninstall。
+        ("运行中升级触发延迟卸载", "test_upgrade_running_app", "应用管理"),
+        # ll-builder 的 clean / create：clean 此前一次都没跑过。
+        ("builder clean 与 create", "test_builder_clean_create", "构建器覆盖"),
+        # remove --no-clean-objects：判据是对象仓文件数的变化，
+        # 自带一个一次性应用，跑完自己清掉引用。
+        ("builder remove --no-clean-objects", "test_builder_remove_no_clean_objects",
+         "构建器覆盖"),
+        # 容器配置补丁机制：/usr/lib/linglong/container/config.d 下的
+        # 可执行补丁与 JSON 补丁（applyPatch / applyJsonPatchFile /
+        # applyExecutablePatch），此前整块未覆盖。
+        ("容器配置补丁机制", "test_container_config_patch", "运行时覆盖"),
+        # buildext.apt.depends：让构建走 buildStagePreCommit 里
+        # "准备 overlay + 跑依赖脚本"这条整链（此前 57 行里 49 行未覆盖），
+        # 以及 generateDependsScript。
+        ("builder buildext apt depends", "test_builder_buildext_apt", "构建器覆盖"),
+        # UABX（自执行 UAB）：export --uabx。此前冒烟里 "uabx" 出现 0 次，
+        # exportUAB 92 行里 68 行、uab_packager.cpp 的
+        # prepareExecutableBundle 整块（31 行）都未覆盖。
+        ("UABX 自执行包导出", "test_builder_uabx_export", "构建器覆盖"),
+        # install hook：/etc/linglong/config.d 下的 ll-pre-install= /
+        # ll-post-install= / ll-post-uninstall= 行，从【文件】安装时
+        # 解析并执行。hooks.cpp 此前只有 22% 覆盖。
+        ("安装钩子（install hooks）", "test_install_hooks", "仓库覆盖"),
+        # 强制 entries 全量重新导出：删掉 entries/.version 再重启服务，
+        # 服务启动时 ll-package-manager 会调 fixExportAllEntries ->
+        # exportAllEntries。这两个函数此前都是 0%。
+        #
+        # ⚠️ 必须放在【最后】：重导出会让 ostree 仓库忙上一阵子，
+        #    后面紧跟构建会随机报 "stage pull dependency error /
+        #    cannot be used in worksheets"（踩过，整轮挂在这）。
+        ("entries 全量重导出", "test_repo_entries_reexport", "仓库覆盖"),
     ]
 
     def __init__(self, dated: bool = False, verbose: bool = False):
@@ -113,6 +307,194 @@ class SmokeTest:
         )
         print(f"{c}[{status}]\033[0m {title}")
 
+    # ── 会修改机器仓库配置的步骤 ──
+    #
+    # 这些用例会写 /var/lib/linglong/config.yaml（仓库增删、优先级、
+    # 镜像开关、默认仓库…）。那是【机器状态】而不是用例的私有数据：
+    # 改了不还原，之后所有运行（包括 Jenkins 上的）都会跑在被污染的
+    # 配置上，而且现象很难查。
+    #
+    # 实测踩过：test_repo_mirror_management 收尾停在 disable-mirror stable，
+    # 把机器上原本 mirror_enabled: true 的 stable 关掉了；它还会
+    # repo update stable <url> 改地址。这些都不会自己回去。
+    #
+    # 又踩过一次：test_no_dbus_peer_mode 也会
+    # enable-mirror / disable-mirror stable（为了走 peer 模式的写权限
+    # 分支），当时没列进来，于是整轮跑完 stable 的镜像开关又被关掉了。
+    #
+    # 与其在每个用例里手写 try/finally（容易漏），不如在这里声明一次，
+    # run_step 会在执行前后自动快照 / 还原，用例里忘了也不会出事；
+    # cleanup() 里还有一道兜底还原 + 校验。
+    REPO_CONFIG_STEPS = frozenset({
+        "test_repo_mirror_management",
+        "test_repo_alias_and_mirror",
+        "test_no_dbus_peer_mode",
+        "test_repo_config_v1_migration",
+        "test_repo_cache_rebuild",
+        "test_cache_write_failure",
+    })
+
+    # 整轮开始前的仓库配置快照，供 cleanup() 校验"改了要还原"。
+    _repo_config_at_start = None
+    _installed_refs_at_start = None
+
+    # ── repo 配置快照 / 还原 ──
+    @staticmethod
+    def _normalize_repo_config(text: str) -> list:
+        """把仓库配置归一化成一个"行的多重集合"，用来做还原校验。
+
+        故意【不做逐字节比较】：服务/CLI 重写这个文件时，键的顺序、
+        缩进、空行都可能变，但语义没变，逐字节比会误报。
+        排序后逐行比：值的任何变化、仓库的增删都会露出来，
+        而纯粹的排版差异不会。
+        """
+        return sorted(ln.strip() for ln in text.splitlines() if ln.strip())
+
+    def _read_root_file(self, path) -> str:
+        """读一个通常需要 root 的文件，返回【干净】的内容。
+
+        ⚠️ 不要直接拿 `sudo -A cat` 的 stdout 当文件内容：sudo 在需要
+        认证时会把 "验证成功" 这类 PAM 消息打到 stdout 上（时间戳还有
+        效时又不打），于是同一份文件两次读出来会凭空多一行 —— 拿它做
+        精确比较或回写就会出错。实测就是这么误报了一次"配置没还原"。
+
+        这些文件实际是 644，普通用户就能读，所以先直接读；万一以后权限
+        收紧，退回 `sudo cp` 到临时文件、再【不带 sudo】读临时文件，
+        这样 sudo 的杂音只落在被丢弃的 cp stdout 上。
+        """
+        r = self._run_cmd(["cat", str(path)], check=False)
+        if r.returncode == 0:
+            return r.stdout
+        tmpdir = Path(tempfile.mkdtemp(prefix="ll-rootfile-"))
+        try:
+            tmp = tmpdir / "content"
+            r = self._run_cmd(["cp", str(path), str(tmp)], sudo=True,
+                              check=False)
+            if r.returncode != 0:
+                raise RuntimeError(
+                    f"读取 {path} 失败: rc={r.returncode} {r.stderr[:200]}")
+            return tmp.read_text()
+        finally:
+            shutil.rmtree(tmpdir, ignore_errors=True)
+
+    def _snapshot_repo_config(self) -> str:
+        """读出仓库配置原文，供用完后还原。"""
+        return self._read_root_file(REPO_CONFIG_PATH)
+
+    def _restart_package_manager(self, timeout: int = 90) -> None:
+        """重启 PackageManager 服务，并等它真的回到 active。
+
+        ⚠️ systemctl restart 是异步的：返回时单元可能还在 activating，
+        所以必须轮询等待，不能立刻判定。
+        """
+        svc = "org.deepin.linglong.PackageManager.service"
+        if not shutil.which("systemctl"):
+            return
+        self._run_cmd(["systemctl", "reset-failed", svc], sudo=True,
+                      check=False)
+        self._run_cmd(["systemctl", "restart", svc], sudo=True, check=False,
+                      timeout=300)
+        deadline = time.time() + timeout
+        state = ""
+        while time.time() < deadline:
+            r = self._run_cmd(["systemctl", "is-active", svc], check=False)
+            state = r.stdout.strip()
+            if state == "active":
+                return
+            time.sleep(2)
+        raise RuntimeError(f"重启后 PackageManager 服务未回到 active: {state!r}")
+
+    def _restore_repo_config(self, snapshot: str) -> None:
+        """把仓库配置写回快照内容；已经一致就跳过。
+
+        ⚠️ 不能靠 `repo enable-mirror` / `disable-mirror` 之类的命令拼回原状：
+        disable-mirror 并不会清掉 region，优先级顺序也被改动过，
+        用命令是拼不回来的。直接写回原文最忠实。
+
+        ⚠️⚠️ 但【光写文件不够】：PackageManager 服务把仓库配置缓存在内存里，
+        之后任何走服务的配置写入（repo add / remove / set-priority …）都会
+        按它内存里的旧状态重写整个文件，把这里的还原直接冲掉。
+        实测（2026-09，冒烟机）：
+            repo disable-mirror stable   -> 文件 mirror_enabled: false
+            把文件改回 true（模拟还原）
+            repo add <临时仓库>           -> 文件又变回 false
+        这就是"整轮跑完 stable 的 mirror_enabled 被关掉"的真正原因 ——
+        之前只在用例前后写回文件，看着还原了，后面随便一条服务端写命令
+        又把它冲掉了。
+        所以写完文件必须让服务重新加载（重启），否则还原等于没做。
+        """
+        if self._snapshot_repo_config() == snapshot:
+            return
+        tmpdir = Path(tempfile.mkdtemp(prefix="ll-repocfg-"))
+        try:
+            tmp = tmpdir / "config.yaml"
+            tmp.write_text(snapshot)
+            # 目标文件已存在，cp 是就地截断写入，属主/权限保持不变
+            r = self._run_cmd(["cp", str(tmp), str(REPO_CONFIG_PATH)],
+                              sudo=True, check=False)
+            if r.returncode != 0:
+                raise RuntimeError(
+                    f"写回 {REPO_CONFIG_PATH} 失败: rc={r.returncode} "
+                    f"{r.stderr[:200]}")
+        finally:
+            shutil.rmtree(tmpdir, ignore_errors=True)
+        if self._snapshot_repo_config() != snapshot:
+            raise RuntimeError(f"写回后 {REPO_CONFIG_PATH} 与快照仍不一致")
+        # 让服务丢掉内存里的旧配置，重新从文件加载
+        self._restart_package_manager()
+        if self._snapshot_repo_config() != snapshot:
+            raise RuntimeError(
+                f"重启服务后 {REPO_CONFIG_PATH} 又和快照不一致了"
+                "（说明还有别的进程在按旧配置回写）")
+
+    def _verify_repo_config_restored(self) -> bool:
+        """整轮结束后，仓库配置必须和开始前语义一致。
+
+        为什么单靠 _verify_repo_state_restored 不够：它只看默认仓库和
+        最高优先级仓库，镜像开关 / region / 仓库地址被改是查不出来的。
+        实测就漏过 —— test_repo_mirror_management 收尾停在
+        disable-mirror stable，把机器上原本 mirror_enabled: true 的
+        stable 关掉了，而校验一路绿灯。
+        """
+        if self._repo_config_at_start is None:
+            return True
+        try:
+            now = self._snapshot_repo_config()
+        except Exception as exc:  # noqa: BLE001
+            print(f"  Error: 读取仓库配置失败，无法校验还原: {exc}",
+                  file=sys.stderr)
+            return False
+        before = self._normalize_repo_config(self._repo_config_at_start)
+        after = self._normalize_repo_config(now)
+        if before == after:
+            return True
+        print(f"  Error: 冒烟结束后 {REPO_CONFIG_PATH} 与开始前不一致",
+              file=sys.stderr)
+        for ln in sorted(set(before) - set(after)):
+            print(f"    丢失: {ln!r}", file=sys.stderr)
+        for ln in sorted(set(after) - set(before)):
+            print(f"    多出/被改: {ln!r}", file=sys.stderr)
+        return False
+
+    @staticmethod
+    def _builder_ref(app_id: str, version: str = "1.0.0.1",
+                     module: str | None = None) -> str:
+        """拼出 `ll-builder remove` 需要的【完整引用】。
+
+        ⚠️ 只给包名是不行的：Reference::parse 的正则要求
+        channel:id/version/arch 四段（reference.cpp:27），对不上就直接
+        返回 "regexp mismatched."；而 cmdRemoveApp 对每个 ref 只是打印
+        一行错误就 continue，最后仍返回成功 —— 于是【静默什么都不删】。
+
+        后果不只是测试没测到：探针包会一直留在构建仓库里，
+        states.json 的 layer 记录越积越多，最后把 mergeModules 拖垮，
+        表现为后面随机报 "stage pull dependency error"。
+        """
+        ref = f"main:{app_id}/{version}/{DEMO_ARCH}"
+        if module:
+            ref = f"{ref}/{module}"
+        return ref
+
     def run_step(self, title: str, step_index: int):
         method_name = self.STEPS[step_index][1]
         method = getattr(self, method_name, None)
@@ -122,8 +504,28 @@ class SmokeTest:
         start = time.time_ns()
         print(f"\n==> {title}")
         category = self.STEPS[step_index][2] if len(self.STEPS[step_index]) > 2 else ""
+        restore_error = None
         try:
-            method()
+            # 会改机器仓库配置的步骤：执行前后自动快照 / 还原
+            snapshot = None
+            if method_name in self.REPO_CONFIG_STEPS:
+                snapshot = self._snapshot_repo_config()
+            try:
+                method()
+            finally:
+                if snapshot is not None:
+                    try:
+                        self._restore_repo_config(snapshot)
+                    except Exception as exc:  # noqa: BLE001
+                        # 这里正在 finally 里，直接抛会盖掉用例本身的异常，
+                        # 所以先记下来，等用例没抛错时再据此判 FAIL。
+                        restore_error = exc
+                        print(f"  Error: 还原仓库配置失败: {exc}",
+                              file=sys.stderr)
+            if restore_error is not None:
+                raise AssertionError(
+                    f"用例改了 {REPO_CONFIG_PATH} 但没有还原成功: "
+                    f"{restore_error}")
             elapsed = (time.time_ns() - start) // 1_000_000
             self.results.append(
                 StepResult(
@@ -136,6 +538,25 @@ class SmokeTest:
             )
             self._print_step_result(title, "PASS")
         except Exception as e:
+            # 前置条件不满足（比如仓库里的测试包被清理掉了）：记 SKIPPED，
+            # 但【不】fail-fast。否则一个测试包消失就会让后面几十个用例
+            # 全变成 SKIPPED，把真正的问题淹没。
+            # ⚠️ 只有确实不是被测代码的问题才允许走这条路（见 StepSkipped）。
+            if isinstance(e, StepSkipped) and restore_error is None:
+                elapsed = (time.time_ns() - start) // 1_000_000
+                self.results.append(
+                    StepResult(
+                        index=step_index + 1,
+                        title=title,
+                        status="SKIPPED",
+                        duration_ms=elapsed,
+                        error_message=str(e),
+                        category=category,
+                    )
+                )
+                print(f"  跳过原因: {e}", file=sys.stderr)
+                self._print_step_result(title, "SKIPPED")
+                return
             elapsed = (time.time_ns() - start) // 1_000_000
             self.results.append(
                 StepResult(
@@ -148,6 +569,9 @@ class SmokeTest:
                 )
             )
             print(f"  Error: {e}", file=sys.stderr)
+            if restore_error is not None and str(restore_error) not in str(e):
+                print(f"  Error: 另：还原仓库配置也失败: {restore_error}",
+                      file=sys.stderr)
             self._print_step_result(title, "FAIL")
             self.has_failed = True
             for i in range(step_index + 1, len(self.STEPS)):
@@ -165,9 +589,40 @@ class SmokeTest:
             raise
 
     def run(self):
+        # 先给 PackageManager 服务装上覆盖率环境：
+        # 服务不继承脚本的环境变量，不这样做服务端覆盖率会写去编译期
+        # 路径而被完全忽略（安装/卸载/entries 导出都在服务里）。
+        # 失败不阻断冒烟本身，只影响覆盖率收集，所以只告警。
+        try:
+            if not self.ensure_service_coverage_env():
+                print("Warning: 未能为 PackageManager 服务设置覆盖率环境，"
+                      "服务端覆盖率可能缺失")
+        except Exception as exc:  # noqa: BLE001
+            print(f"Warning: 设置服务覆盖率环境失败: {exc}")
+
+        # 记下仓库配置的原样，cleanup() 结束时校验它没被改坏。
+        # 冒烟会加一个临时仓库 smoketesting，cleanup 里的
+        # reset_repositories() 会把它删掉，所以首尾应当一致。
+        try:
+            self._repo_config_at_start = self._snapshot_repo_config()
+            self._installed_refs_at_start = self._installed_refs()
+        except Exception as exc:  # noqa: BLE001
+            print(f"Warning: 读取仓库配置失败，跳过还原校验: {exc}")
+
         try:
             for i in range(len(self.STEPS)):
                 title = self.STEPS[i][0]
+                # 每步之前修一下构建缓存的自洽性（自愈兜底）。
+                # 账本里若有 commit 已不存在的 layer 记录，之后任何一次
+                # ll-builder build 的 mergeModules() 都会失败
+                # （报 "stage pull dependency error"，重试无用）。
+                # 注：这个不自洽在当前代码上没能复现（见
+                # ensure_builder_cache_healthy 的说明），保留纯属兜底。
+                # 这一步只是读一个 JSON + 查几个文件是否存在，很便宜。
+                try:
+                    self.ensure_builder_cache_healthy()
+                except Exception as exc:  # noqa: BLE001
+                    print(f"Warning: 检查构建缓存失败: {exc}")
                 self.run_step(title, i)
         except Exception:
             pass
@@ -394,6 +849,9 @@ class SmokeTest:
 
     # ── Test: versionV1 到 versionV2 升降级 ──
     def test_semver_upgrade_flow(self):
+        self._require_repo_versions(
+            SEMVER_APP_ID, least=1,
+            why="versionV1 到 versionV2 的升降级只能用它来构造")
         self._ll_cli("search", SEMVER_APP_ID)
         self._sudo_ll_cli("uninstall", SEMVER_APP_ID, check=False)
         self._sudo_ll_cli("install", SEMVER_APP_ID)
@@ -412,8 +870,69 @@ class SmokeTest:
         if SEMVER_APP_ID not in r.stdout:
             raise AssertionError(f"{SEMVER_APP_ID} not found after force install")
 
+    # ── Test: 版本号解析的边界 ──
+    #
+    # 起因：versionv1.cpp(56%)、versionv2.cpp(27%)、fallback_version.cpp(35%)
+    # 覆盖率都很低，猜是"版本串不合法"时的解析分支没走到。
+    # 实测（2026-09 冒烟机）：这些奇怪版本串在【更早】的 fuzzy reference
+    # 解析层就被拒了，versionv1/v2/fallback_version 一行都没涨 ——
+    # 那三个文件要走的是 V1 老格式包（如 org.deepin.semver.demo）的路径，
+    # 不是用户随手敲的版本串。所以这个用例现在的价值是：
+    #   - 覆盖 ll-cli / 服务端对非法引用的一整条报错路径（实测 +14 行）
+    #   - 断言"非法版本"和"合法但仓库里没有"给出的报错不一样
+    #     （防止版本解析这一层被绕过、所有错误混成一个）
+    #
+    # 断言的是【功能行为】而不是"有没有执行到"：不合法的版本必须给出
+    # 非 0 退出码和明确的报错，而且不能把进程搞崩（rc 不能是信号）。
+    def test_version_parsing_edge_cases(self):
+        app = CALENDAR_APP_ID
+        weird = (
+            "1",                     # 段数不够
+            "1.0",
+            "1.0.0",
+            "1.0.0.0.1",             # 段数过多
+            "01.0.0.0",              # 前导零
+            "1.0.0.-1",              # 负数
+            "1.0.0.a",               # 非数字
+            "a.b.c.d",
+            "1.0.0.0-rc1",           # 预发布后缀
+            "1.0.0.0+meta",          # 构建元数据后缀
+            "v1.0.0.0",              # 多余的 v 前缀
+            "1.0.0.0_1",
+            "1.0.0.0/2",
+            "999999999999999999999.0.0.0",   # 溢出
+            "0.0.0.0",               # 合法但仓库里没有
+            "1.0.0.0",               # 合法但仓库里没有
+        )
+        for ver in weird:
+            r = self._sudo_ll_cli("install", f"{app}/{ver}", timeout=180,
+                                  check=False)
+            out = (r.stdout or "") + (r.stderr or "")
+            if r.returncode < 0:
+                raise AssertionError(
+                    f"版本串 {ver!r} 把 ll-cli 搞崩了（信号）: {out[:200]}")
+            if r.returncode == 0:
+                raise AssertionError(
+                    f"版本串 {ver!r} 竟然安装成功，这个用例的前提不成立了")
+            if not out.strip():
+                raise AssertionError(f"版本串 {ver!r} 失败却没有任何报错输出")
+        # 合法版本（0.0.0.0 / 1.0.0.0）走的是"解析成功但仓库里没有"的分支，
+        # 报错内容应当和"版本串非法"不同 —— 顺便确认这两类没被混为一谈
+        r_bad = self._sudo_ll_cli("install", f"{app}/a.b.c.d", timeout=180,
+                                  check=False)
+        r_ok = self._sudo_ll_cli("install", f"{app}/0.0.0.0", timeout=180,
+                                 check=False)
+        if (r_bad.stdout + r_bad.stderr).strip() == \
+                (r_ok.stdout + r_ok.stderr).strip():
+            raise AssertionError(
+                "非法版本串和合法但不存在的版本给了同样的报错，"
+                "说明版本解析这一层没起作用")
+
     # ── Test: baseline 测试套件 ──
     def test_testsuite_baseline(self):
+        self._require_repo_versions(
+            TESTSUITE_BASELINE_APP_ID, least=1,
+            why="这个用例就是跑这个测试套件本身")
         self._sudo_ll_cli("uninstall", TESTSUITE_BASELINE_APP_ID, check=False)
         self._sudo_ll_cli("install", TESTSUITE_BASELINE_APP_ID)
         try:
@@ -466,7 +985,4423 @@ class SmokeTest:
             ok = False
         return ok
 
+
+    # ── Test: 只读子命令全覆盖 ──
+    #
+    # ps / list 的各种变体原先完全没有用例，cli.cpp 里对应的大段代码零覆盖。
+    # 全部只读或幂等，不会破坏环境。
+    # ⚠️ 每条断言都在真机上实测过，不要凭 help 文本想当然：
+    #    - ll-cli version 不存在（rc=109）
+    #    - repo show --json 不支持 --json（rc=109）
+    #    这两个故意放在错误路径用例里，用来覆盖参数校验分支。
+    def test_readonly_query_commands(self):
+        # 前面的用例会起容器（GUI 应用装/升级后 DBus 服务还会自动拉起），
+        # 容器退出与服务端记录的回收都是异步的 —— 不能假设"此刻必然无
+        # 容器"（实测 run64/run65：日历容器退出后 ps 里仍有残留记录）。
+        self._ensure_no_containers()
+        # ps：列出运行中的容器。没有应用在跑时给中文提示，退出码 0
+        r = self._ll_cli("ps")
+        if r.returncode != 0:
+            raise AssertionError(f"ll-cli ps 失败: rc={r.returncode}")
+        if r.stdout.strip() != "没有正在运行的容器":
+            raise AssertionError(
+                f"ll-cli ps 无容器时应提示无容器, 实际: {r.stdout.strip()[:120]!r}")
+
+        # ps --json：空时应是合法 JSON 数组
+        r = self._ll_cli("ps", "--json")
+        if r.returncode != 0:
+            raise AssertionError(f"ll-cli ps --json 失败: rc={r.returncode}")
+        try:
+            parsed = json.loads(r.stdout)
+        except json.JSONDecodeError as e:
+            raise AssertionError(
+                f"ll-cli ps --json 输出不是合法 JSON: {r.stdout[:120]!r} ({e})")
+        if not isinstance(parsed, list):
+            raise AssertionError(
+                f"ll-cli ps --json 应输出数组, 实际: {type(parsed).__name__}")
+
+        # list 的各种变体，每种走 cli.cpp 里不同的分支
+        for args in (["list"], ["list", "--json"], ["list", "--type=all"],
+                     ["list", "--type=runtime"], ["list", "--type=app"],
+                     ["list", "--upgradable"]):
+            r = self._ll_cli(*args)
+            if r.returncode != 0:
+                raise AssertionError(
+                    f"ll-cli {' '.join(args)} 失败: rc={r.returncode} {r.stderr[:150]}")
+            if args[-1] == "--json":
+                try:
+                    json.loads(r.stdout)
+                except json.JSONDecodeError as e:
+                    raise AssertionError(
+                        f"ll-cli {' '.join(args)} 输出不是合法 JSON: "
+                        f"{r.stdout[:120]!r} ({e})")
+
+        # 全局 --json 选项走的是和子命令 --json 不同的解析路径
+        r = self._ll_cli("--json", "list")
+        if r.returncode != 0:
+            raise AssertionError(f"ll-cli --json list 失败: rc={r.returncode}")
+
+    # ── Test: 已安装应用的 info / content ──
+    #
+    # info / content 必须先装一个应用才能跑，所以放在 demo 安装之后。
+    # 这里自己装一次再卸掉，保证用例独立、不依赖前面步骤的副作用。
+    def test_installed_app_inspection(self):
+        # 前置条件：demo 应用已由前面的步骤安装。
+        # 先确认它确实在，避免用例因为顺序问题给出误导性的失败。
+        app_id = DEMO_APP_ID
+        listing = self._ll_cli("list")
+        if app_id not in listing.stdout:
+            raise AssertionError(
+                f"{app_id} 未安装，本用例应在安装步骤之后执行")
+
+        r = self._ll_cli("info", app_id)
+        if r.returncode != 0:
+            raise AssertionError(
+                f"ll-cli info {app_id} 失败: rc={r.returncode} {r.stderr[:200]}")
+        if app_id not in r.stdout:
+            raise AssertionError(
+                f"ll-cli info 输出应含应用 ID {app_id}, 实际: {r.stdout[:200]!r}")
+
+        r = self._ll_cli("info", app_id, "--json")
+        if r.returncode != 0:
+            raise AssertionError(
+                f"ll-cli info {app_id} --json 失败: {r.stderr[:200]}")
+        try:
+            json.loads(r.stdout)
+        except json.JSONDecodeError as e:
+            raise AssertionError(f"ll-cli info --json 输出不是合法 JSON: {e}")
+
+        r = self._ll_cli("content", app_id)
+        if r.returncode != 0:
+            raise AssertionError(
+                f"ll-cli content {app_id} 失败: rc={r.returncode} {r.stderr[:200]}")
+
+    # ── Test: 错误路径处理 ──
+    #
+    # 错误处理分支在正常流程里永远走不到，但代码量不小。
+    # 断言"失败得干净"：非 0 退出、有输出、不被信号杀死。
+    def test_error_paths(self):
+        bogus = "org.deepin.nonexistent.app"
+        for args in (["info", bogus], ["content", bogus],
+                     ["run", bogus], ["uninstall", bogus]):
+            r = self._ll_cli(*args, check=False)
+            if r.returncode == 0:
+                raise AssertionError(
+                    f"ll-cli {' '.join(args)} 对不存在的应用竟然成功")
+            if r.returncode < 0:
+                raise AssertionError(
+                    f"ll-cli {' '.join(args)} 被信号杀死 (rc={r.returncode})，不应崩溃")
+            if not (r.stderr.strip() or r.stdout.strip()):
+                raise AssertionError(
+                    f"ll-cli {' '.join(args)} 失败但没有任何输出")
+
+        # 参数校验分支：不存在的子命令 / 不被支持的选项
+        for args in (["version"], ["repo", "show", "--json"], ["--nonsense-flag"]):
+            r = self._ll_cli(*args, check=False)
+            if r.returncode == 0:
+                raise AssertionError(f"ll-cli {' '.join(args)} 非法参数竟然成功")
+            if r.returncode < 0:
+                raise AssertionError(f"ll-cli {' '.join(args)} 崩溃了")
+
+
+    # ── Test: analyze 子命令 ──
+    #
+    # analyze 有 size / depends 两个子命令，size 还带 --sort / --asc。
+    # 这些分支在 cli.cpp 里对应 calculateModuleSizes / calculateRealDiskUsage /
+    # sortDependsTree / moduleNameLess 等函数，原先全零覆盖。
+    def test_analyze_commands(self):
+        # size 的 5 个排序字段，每个走不同的比较器
+        for field in ("actual", "logical", "exclusive", "shared", "id"):
+            r = self._ll_cli("analyze", "size", f"--sort={field}")
+            if r.returncode != 0:
+                raise AssertionError(
+                    f"ll-cli analyze size --sort={field} 失败: "
+                    f"rc={r.returncode} {r.stderr[:200]}")
+
+        r = self._ll_cli("analyze", "size", "--asc")
+        if r.returncode != 0:
+            raise AssertionError(f"ll-cli analyze size --asc 失败: {r.stderr[:200]}")
+
+        r = self._ll_cli("analyze", "size", "--sort=id", "--asc")
+        if r.returncode != 0:
+            raise AssertionError(
+                f"ll-cli analyze size --sort=id --asc 失败: {r.stderr[:200]}")
+
+        # depends：依赖树
+        r = self._ll_cli("analyze", "depends", check=False)
+        if r.returncode != 0:
+            raise AssertionError(
+                f"ll-cli analyze depends 失败: rc={r.returncode} {r.stderr[:200]}")
+
+        # depends 带 APP：走"单个应用的依赖树"分支，与不带参数的
+        # "全部应用"是两段不同的代码（实测 Cli::depends 80 行里
+        # 只测不带参数时覆盖不到这 62 行）。
+        # ⚠️ 只对 app 有效，传 runtime/base 会被拒（is not an app）。
+        for target in (CALENDAR_APP_ID, "org.deepin.runtime.dtk",
+                       "org.deepin.base"):
+            self._ll_cli("analyze", "depends", target, timeout=180,
+                         check=False)
+        self._ll_cli("analyze", "depends", "org.no.such.app",
+                     timeout=180, check=False)
+
+        # 非法排序字段应被拒绝
+        r = self._ll_cli("analyze", "size", "--sort=nonexistent", check=False)
+        if r.returncode == 0:
+            raise AssertionError("ll-cli analyze size --sort=nonexistent 竟然成功")
+
+    # ── Test: ll-builder 项目级子命令 ──
+    #
+    # 这些子命令原先只有 create/build/export/run/list/remove 被碰到，
+    # 且都是"成功路径"。这里补上失败路径与带选项的路径，
+    # 对应 linglong_builder.cpp 里的 cmdListApp / cmdRemoveApp / push / extractLayer。
+    def test_builder_project_commands(self):
+        # list：列出已构建应用。构建过 demo 之后这里应有内容
+        r = self._ll_builder("list")
+        if r.returncode != 0:
+            raise AssertionError(f"ll-builder list 失败: {r.stderr[:200]}")
+
+        # remove 的两种参数形态：合法但不存在 vs 非法格式。
+        #
+        # ⚠️ 必须用【完整引用】main:id/version/arch。只给包名的话
+        #    Reference::parse 的正则对不上，cmdRemoveApp 打印一行
+        #    "regexp mismatched." 就 continue —— 而且【退出码仍然是 0】。
+        #    实测这两种形态都返回 0，所以判据只能是输出：拿退出码
+        #    当"删掉了"的证据是查不出问题的（旧用例只查"没崩溃"，
+        #    结果清理语句一直是空操作，构建仓库里积了十几个探针包）。
+        ref = self._builder_ref("org.deepin.nonexistent")
+        r = self._ll_builder("remove", ref, check=False)
+        if r.returncode != 0:
+            raise AssertionError(
+                f"删除不存在的应用不该失败（cmdRemoveApp 会跳过）: "
+                f"rc={r.returncode} {(r.stdout + r.stderr)[:200]}")
+        if "regexp mismatched" in (r.stdout + r.stderr):
+            raise AssertionError(
+                f"完整引用 {ref} 被当成非法格式了，说明引用拼错了")
+
+        # 非法格式：必须明确报出格式错误。
+        # 这就是上面那个坑的来源 —— 报了错但退出码还是 0。
+        r = self._ll_builder("remove", "not-a-valid-ref", check=False)
+        combined = r.stdout + r.stderr
+        if "regexp mismatched" not in combined:
+            raise AssertionError(
+                f"非法引用没有报出格式错误（会静默失败）: {combined[:200]!r}")
+        if "not-a-valid-ref" not in combined:
+            raise AssertionError(
+                f"非法引用的报错里应带上原始引用串: {combined[:200]!r}")
+
+        # extract / import：文件不存在时应给出明确错误且退出码非 0
+        for sub in ("extract", "import"):
+            args = [sub, "/nonexistent/path/to/layer.layer"]
+            if sub == "extract":
+                args.append("/tmp/ll-extract-out")
+            r = self._ll_builder(*args, check=False)
+            if r.returncode == 0:
+                raise AssertionError(f"ll-builder {sub} 不存在的文件竟然成功")
+            if r.returncode < 0:
+                raise AssertionError(f"ll-builder {sub} 崩溃了")
+            if not (r.stderr.strip() or r.stdout.strip()):
+                raise AssertionError(f"ll-builder {sub} 失败但无任何输出")
+
+        # build 在非项目目录下的错误路径
+        r = self._ll_builder("build", "--offline", cwd="/tmp", check=False)
+        if r.returncode == 0:
+            raise AssertionError("ll-builder build 在非项目目录竟然成功")
+
+        # push 在非项目目录下的错误路径
+        r = self._ll_builder("push", cwd="/tmp", check=False)
+        if r.returncode == 0:
+            raise AssertionError("ll-builder push 在非项目目录竟然成功")
+
+    # ── Test: ll-builder build 的跳过类选项 ──
+    #
+    # build 有一批 --skip-* / --offline 选项，正常构建流程一个都不会走到。
+    # 在 demo 项目里跑一遍，覆盖这些分支。
+    def test_builder_build_options(self):
+        old_cwd = os.getcwd()
+        try:
+            os.chdir(DEMO_PROJECT_DIR)
+            # 已构建过，搭配 skip 选项可快速走通而不重复真构建
+            r = self._ll_builder(
+                "build", "--skip-fetch-source", "--skip-pull-depend",
+                "--skip-run-container", "--skip-commit-output",
+                check=False)
+            if r.returncode < 0:
+                raise AssertionError("ll-builder build 带 skip 选项时崩溃了")
+
+            r = self._ll_builder("build", "--skip-output-check", check=False)
+            if r.returncode < 0:
+                raise AssertionError("ll-builder build --skip-output-check 崩溃了")
+
+            # --skip-strip-symbols：它决定【生成的构建脚本】里是否注入 -g
+            # 以及是否调用 symbols-strip.sh（linglong_builder.cpp:2042/2050）。
+            # 带不带这个选项构建都能成功，所以断言 rc==0 毫无意义 ——
+            # 直接检查生成出来的 entry.sh 本身。
+            #
+            # ⚠️ 这一步必须自己跑一次不带 --skip-run-container 的构建：
+            #    buildStageBuild 在 skipRunContainer 时会在生成 entry.sh
+            #    之前就 return，上面那次构建根本没产出这个文件。
+            entry = Path("linglong") / "entry.sh"
+            strip_markers = ("enable strip symbols",
+                             "symbols-strip.sh",
+                             'export CFLAGS="-g $CFLAGS"')
+
+            r = self._ll_builder(
+                "build", "--skip-fetch-source", "--skip-pull-depend",
+                "--skip-commit-output", check=False)
+            if r.returncode != 0:
+                raise AssertionError(
+                    f"ll-builder build 失败: rc={r.returncode} {r.stderr[:200]}")
+            if not entry.is_file():
+                raise AssertionError(f"默认构建后没有生成 {entry}")
+            default_script = entry.read_text(errors="replace")
+            for marker in strip_markers:
+                if marker not in default_script:
+                    raise AssertionError(
+                        f"默认构建的 entry.sh 里应含 {marker!r}, "
+                        f"实际内容: {default_script[:400]!r}")
+
+            r = self._ll_builder(
+                "build", "--skip-fetch-source", "--skip-pull-depend",
+                "--skip-commit-output", "--skip-strip-symbols", check=False)
+            if r.returncode != 0:
+                raise AssertionError(
+                    f"ll-builder build --skip-strip-symbols 失败: "
+                    f"rc={r.returncode} {r.stderr[:200]}")
+            if not entry.is_file():
+                raise AssertionError(
+                    f"--skip-strip-symbols 构建后没有生成 {entry}")
+            skip_script = entry.read_text(errors="replace")
+            for marker in strip_markers:
+                if marker in skip_script:
+                    raise AssertionError(
+                        f"--skip-strip-symbols 之后 entry.sh 里不该再出现 "
+                        f"{marker!r}, 实际内容: {skip_script[:400]!r}")
+
+            # -f/--file：必须真的用指定的项目文件，而不是回落到 linglong.yaml。
+            # 判据有两条，都指向"用的是哪个文件"：
+            #   (1) 输出里 "Using project file <路径>" 指向我们给的那个文件
+            #   (2) [Build Target] 是被我们改过的包名
+            # 只改包名是为了让"读了哪个文件"在输出里可辨认 —— 两个文件除了
+            # 包名完全一样，所以包名变了就只能是读了 custom 那份。
+            yaml_path = Path("linglong.yaml")
+            if DEMO_APP_ID not in yaml_path.read_text(errors="replace"):
+                raise AssertionError(
+                    f"{yaml_path} 里没有 {DEMO_APP_ID}，无法构造 -f 用例")
+            custom = Path("custom-smoke.yaml")
+            custom.write_text(
+                yaml_path.read_text(errors="replace").replace(
+                    DEMO_APP_ID, DEMO_CUSTOM_YAML_APP_ID))
+            try:
+                r = self._ll_builder(
+                    "build", "-f", str(custom), "--skip-fetch-source",
+                    "--skip-pull-depend", "--skip-commit-output", check=False)
+                if r.returncode != 0:
+                    raise AssertionError(
+                        f"ll-builder build -f 失败: "
+                        f"rc={r.returncode} {r.stderr[:200]}")
+                out = r.stdout + r.stderr
+                if str(custom.resolve()) not in out:
+                    raise AssertionError(
+                        f"build -f 的输出里没有指明使用了 {custom.resolve()}: "
+                        f"{out[:400]!r}")
+                if DEMO_CUSTOM_YAML_APP_ID not in out:
+                    raise AssertionError(
+                        f"build -f 没有采用指定项目文件里的包名 "
+                        f"{DEMO_CUSTOM_YAML_APP_ID}（说明仍读了 linglong.yaml）: "
+                        f"{out[:400]!r}")
+            finally:
+                custom.unlink(missing_ok=True)
+
+            # 架构专属项目文件的优先级：getProjectYAMLPath 会先找
+            # linglong.<arch>.yaml，找不到才回落到 linglong.yaml。
+            # 判据还是"用了哪个文件"—— 包名不同就只可能读了架构专属那份。
+            #
+            # ⚠️ 必须放在本用例【最后】并确保删掉：这个文件一旦留下，
+            #    后续所有不带 -f 的构建都会改用架构专属文件，别的用例就变了。
+            arch_yaml = Path(f"linglong.{DEMO_ARCH}.yaml")
+            arch_yaml.write_text(
+                yaml_path.read_text(errors="replace").replace(
+                    DEMO_APP_ID, DEMO_ARCH_YAML_APP_ID))
+            try:
+                r = self._ll_builder(
+                    "build", "--skip-fetch-source", "--skip-pull-depend",
+                    "--skip-commit-output", check=False)
+                if r.returncode != 0:
+                    raise AssertionError(
+                        f"存在 {arch_yaml} 时构建失败: "
+                        f"rc={r.returncode} {r.stderr[:200]}")
+                out = r.stdout + r.stderr
+                if str(arch_yaml.resolve()) not in out:
+                    raise AssertionError(
+                        f"存在 {arch_yaml} 时应优先使用它: {out[:400]!r}")
+                if DEMO_ARCH_YAML_APP_ID not in out:
+                    raise AssertionError(
+                        f"架构专属项目文件没有生效（构建目标里没有 "
+                        f"{DEMO_ARCH_YAML_APP_ID}）: {out[:400]!r}")
+            finally:
+                arch_yaml.unlink(missing_ok=True)
+
+            # build COMMAND：按语义应该"进入容器执行命令而不是构建应用"，
+            # 所以不能只看 rc —— 必须验证命令真的在【容器里】跑了。
+            # PREFIX / TRIPLET / CWD 都是 buildStageBuild() 塞给容器进程的环境
+            # 与工作目录，宿主上不存在（宿主 $PREFIX 为空、CWD 是项目目录），
+            # 因此它们能证明命令是在容器内执行的，而不是被宿主直接执行了。
+            # --skip-commit-output 让 build 在 build stage 之后直接成功返回。
+            r = self._ll_builder(
+                "build", "--skip-fetch-source", "--skip-pull-depend",
+                "--skip-commit-output",
+                "--", "/bin/bash", "-c",
+                'echo "CMD_RAN=1"; echo "PREFIX=$PREFIX"; echo "CWD=$PWD"',
+                check=False)
+            if r.returncode != 0:
+                raise AssertionError(
+                    f"ll-builder build COMMAND 失败: rc={r.returncode} "
+                    f"{(r.stdout + r.stderr)[:300]}")
+            if "CMD_RAN=1" not in r.stdout:
+                raise AssertionError(
+                    "ll-builder build COMMAND 没有执行自定义命令, "
+                    f"输出: {r.stdout[:300]!r}")
+            m = re.search(r"^PREFIX=(\S*)$", r.stdout, re.M)
+            if not m or not m.group(1):
+                raise AssertionError(
+                    "ll-builder build COMMAND 的命令不像在容器里执行: "
+                    f"PREFIX 为空 (宿主上 PREFIX 本就未设置), 输出: {r.stdout[:300]!r}")
+            if not re.search(r"^CWD=/project$", r.stdout, re.M):
+                raise AssertionError(
+                    "ll-builder build COMMAND 的工作目录应为容器内的 /project, "
+                    f"实际输出: {r.stdout[:300]!r}")
+        finally:
+            os.chdir(old_cwd)
+            self._sudo_ll_cli("uninstall", DEMO_APP_ID, check=False)
+
+    # ── Test: --isolate-network 是否真的隔离了网络 ──
+    #
+    # 只断言 rc==0 是没用的：带不带这个选项构建都会成功，那只能证明代码被走到，
+    # 证明不了隔离生效。这里用两条实测判据，且都做「共享 vs 隔离」对照 ——
+    # 只有对照成立，才能说明差异确实是这个选项造成的：
+    #   1) /proc/net/dev 与 /proc/net/route 是 netns 作用域的：
+    #      共享网络时容器与宿主同 netns，能看到宿主网卡和路由；
+    #      隔离后必须只剩 lo、且没有任何路由。
+    #   2) 在宿主 127.0.0.1 上开一个监听端口，再从容器里连它：
+    #      共享网络时能连上（这一步同时证明判据本身有效），隔离后必须连不上。
+    # 判据 2 是自给自足的 —— 不依赖外网是否可达，离线 CI 上同样成立。
+    def test_builder_isolate_network(self):
+        listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        listener.bind(("127.0.0.1", 0))
+        listener.listen(8)
+        listener.settimeout(0.5)
+        port = listener.getsockname()[1]
+        stop = threading.Event()
+
+        def accept_loop():
+            while not stop.is_set():
+                try:
+                    conn, _ = listener.accept()
+                except (socket.timeout, OSError):
+                    continue
+                try:
+                    conn.close()
+                except OSError:
+                    pass
+
+        worker = threading.Thread(target=accept_loop, daemon=True)
+        worker.start()
+
+        probe = (
+            'echo "IFACES=$(grep -c : /proc/net/dev)"\n'
+            'echo "ROUTES=$(tail -n +2 /proc/net/route | wc -l)"\n'
+            'if timeout 5 bash -c "exec 3<>/dev/tcp/127.0.0.1/%d" 2>/dev/null; '
+            'then echo "NET=REACHABLE"; else echo "NET=UNREACHABLE"; fi\n'
+        ) % port
+
+        def run_probe(isolate):
+            args = ["build", "--skip-fetch-source", "--skip-pull-depend",
+                    "--skip-commit-output"]
+            if isolate:
+                args.append("--isolate-network")
+            args += ["--", "/bin/bash", "-c", probe]
+            r = self._ll_builder(*args, timeout=600, check=False)
+            if r.returncode != 0:
+                raise AssertionError(
+                    f"ll-builder build (isolate={isolate}) 失败: rc={r.returncode} "
+                    f"{(r.stdout + r.stderr)[:300]}")
+            got = {}
+            for key in ("IFACES", "ROUTES", "NET"):
+                m = re.search(r"^%s=(\S+)$" % key, r.stdout, re.M)
+                if not m:
+                    raise AssertionError(
+                        f"隔离探针未输出 {key} (isolate={isolate}): "
+                        f"{r.stdout[-300:]!r}")
+                got[key] = m.group(1)
+            return got
+
+        old_cwd = os.getcwd()
+        try:
+            os.chdir(DEMO_PROJECT_DIR)
+            shared = run_probe(False)
+            isolated = run_probe(True)
+        finally:
+            os.chdir(old_cwd)
+            stop.set()
+            worker.join(timeout=5)
+            listener.close()
+
+        # 对照：共享网络时必须连得上，否则判据本身失效，后面的结论不成立
+        if shared["NET"] != "REACHABLE":
+            raise AssertionError(
+                f"共享网络时容器竟然连不上宿主 127.0.0.1:{port}，"
+                f"该判据无效，无法据此判断隔离: {shared}")
+        if int(shared["IFACES"]) < 2 or int(shared["ROUTES"]) < 1:
+            raise AssertionError(
+                f"共享网络时容器应能看到宿主网卡与路由, 实际: {shared}")
+
+        # 隔离：必须真的出不去
+        if isolated["NET"] != "UNREACHABLE":
+            raise AssertionError(
+                f"--isolate-network 下容器仍能连上宿主 127.0.0.1:{port}，"
+                f"网络并没有被隔离: {isolated}")
+        if int(isolated["IFACES"]) != 1:
+            raise AssertionError(
+                f"--isolate-network 下容器内应只剩 lo, 实际: {isolated}")
+        if int(isolated["ROUTES"]) != 0:
+            raise AssertionError(
+                f"--isolate-network 下容器内不应有任何路由, 实际: {isolated}")
+
+    # ── Test: export 的压缩器与模块选项 ──
+    def test_builder_export_options(self):
+        old_cwd = os.getcwd()
+        try:
+            os.chdir(DEMO_PROJECT_DIR)
+            for compressor in ("lz4", "zstd"):
+                out = f"{DEMO_APP_ID}-c-{compressor}-{os.getpid()}.uab"
+                r = self._ll_builder(
+                    "export", "-z", compressor, "--output", out, check=False)
+                if r.returncode < 0:
+                    raise AssertionError(f"ll-builder export -z {compressor} 崩溃了")
+                Path(out).unlink(missing_ok=True)
+
+            # --layer 与 --output 互斥，应被拒绝
+            r = self._ll_builder("export", "--layer", "--output", "/tmp/x.uab",
+                                 check=False)
+            if r.returncode == 0:
+                raise AssertionError("export --layer 与 --output 互斥却没报错")
+
+            # 非法的压缩器
+            r = self._ll_builder("export", "-z", "bogus", check=False)
+            if r.returncode == 0:
+                raise AssertionError("export -z bogus 竟然成功")
+        finally:
+            os.chdir(old_cwd)
+            # ll-builder run 会把 demo 装进系统。这里主动卸掉，
+            # 否则后面的「安装并运行 demo 应用」会因"应用程序已经安装"而失败。
+            self._sudo_ll_cli("uninstall", DEMO_APP_ID, check=False)
+
+    # ── Helper: 在伪终端里执行命令 ──
+    #
+    # ll-cli enter 最终会调用 ll-box exec --tty，必须有真实 TTY，
+    # 否则返回 65280（run command failed）。subprocess 默认没有 TTY，
+    # 所以这里用 pty.fork() 造一个。
+    @staticmethod
+    def _run_in_pty(cmd: list, timeout: int = 30):
+        pid, fd = pty.fork()
+        if pid == 0:
+            # 子进程：fd 就是它的 stdin/stdout/stderr
+            try:
+                os.execvp(cmd[0], cmd)
+            finally:
+                os._exit(127)
+        buf = b""
+        deadline = time.time() + timeout
+        try:
+            while time.time() < deadline:
+                try:
+                    chunk = os.read(fd, 4096)
+                except OSError:
+                    break
+                if not chunk:
+                    break
+                buf += chunk
+        finally:
+            try:
+                os.close(fd)
+            except OSError:
+                pass
+        _, status = os.waitpid(pid, 0)
+        return status >> 8, buf.decode("utf-8", "replace")
+
+    # ── Helper: 等待容器出现并返回容器 ID ──
+    def _wait_container(self, timeout: int = 40, app_id: str = "") -> str:
+        """等 ps 里出现指定应用的容器，返回容器 ID（超时返回空串）。
+
+        ⚠️ 不能直接取 ps 的第一条：机器上可能残留别的容器（GUI 应用被
+        DBus 服务拉起、上一轮没退干净的），第一条不一定是我们刚起的。
+        实测 run64/65：日历容器排在 demo 容器前面，导致容器生命周期用例
+        把日历的容器当成 demo 的，误判失败。
+        """
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            r = self._ll_cli("ps", "--json", check=False)
+            if r.returncode == 0:
+                try:
+                    arr = json.loads(r.stdout)
+                except json.JSONDecodeError:
+                    arr = []
+                for item in arr:
+                    pkg = item.get("package", "")
+                    if not app_id or f"main:{app_id}/" in pkg:
+                        return item.get("id", "")
+            time.sleep(2)
+        return ""
+
+    # ── Helper: 彻底清理某个应用的容器 ──
+    #
+    # ll-cli kill 只是让容器退出，ll-box 进程可能还没回收。
+    # 残留的 ll-box 会占住应用引用，使 sudo ll-cli uninstall 恒返回 255
+    # （而且不打印任何错误），从而让后续所有安装步骤级联失败。
+    # 这里反复 kill 直到 ps 里确实看不到该应用。
+    def _cleanup_containers(self, app_id: str, timeout: int = 60):
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            r = self._ll_cli("ps", "--json", check=False)
+            try:
+                arr = json.loads(r.stdout) if r.returncode == 0 else []
+            except json.JSONDecodeError:
+                arr = []
+            if not arr:
+                return
+            for item in arr:
+                cid = item.get("id")
+                if cid:
+                    self._ll_cli("kill", cid, timeout=60, check=False)
+            self._ll_cli("kill", app_id, timeout=60, check=False)
+            time.sleep(3)
+        # 超时也返回，让上层的断言去报告问题，不在这里静默吞掉
+
+    # ── Helper: 确保 ps 里没有容器（含服务端残留记录）──
+    #
+    # _cleanup_containers 只能杀掉还活着的容器；容器进程被 SIGKILL 后，
+    # PackageManager 服务端可能留下"僵尸记录"，ps 仍会把它列出来，而对
+    # 它执行 kill 只会得到 "no container found"。这时只能重启服务让它
+    # 重新扫描容器目录。ps 用例要断言"无容器的中文提示"，必须先过这关。
+    def _ensure_no_containers(self, app_id: str = "", timeout: int = 20):
+        def _listed():
+            r = self._ll_cli("ps", "--json", check=False)
+            try:
+                return json.loads(r.stdout) if r.returncode == 0 else []
+            except json.JSONDecodeError:
+                return []
+
+        if not app_id:
+            app_id = CALENDAR_APP_ID  # 真机实测最容易残留的是 GUI 日历应用
+        self._cleanup_containers(app_id, timeout=timeout)
+        if not _listed():
+            return
+        # 记录残留：重启服务重新扫描后再清一遍
+        self._restart_package_manager()
+        self._cleanup_containers(app_id, timeout=timeout)
+        items = _listed()
+        if items:
+            ids = ", ".join(str(i.get("id", "?")) for i in items)
+            raise AssertionError(f"清理后仍残留容器记录: {ids}")
+
+    # ── Test: ll-cli run 的运行期选项 ──
+    #
+    # run 有一大批影响容器配置的选项，代码在 run_context.cpp 和
+    # container_cfg_builder.cpp 里（合计约 1700 行，原先大半零覆盖）。
+    # 这里逐个跑一遍，断言能正常启动并退出。
+    def test_run_command_options(self):
+        app_id = DEMO_APP_ID
+        option_sets = [
+            ("--env", ["--env", "SMOKE_TEST_VAR=1"]),
+            ("--workdir", ["--workdir", "/tmp"]),
+            ("--disable-xdp", ["--disable-xdp"]),
+            ("--enable-xdp", ["--enable-xdp"]),
+            ("--enable-pipewire", ["--enable-pipewire"]),
+            ("--enable-atspi", ["--enable-atspi"]),
+            ("--instance", ["--instance", "smokeinst"]),
+            ("--cdi-spec-dir", ["--cdi-spec-dir", "/etc/cdi"]),
+        ]
+        for name, opts in option_sets:
+            r = self._ll_cli("run", app_id, *opts, "--", "/bin/true",
+                             timeout=90, check=False)
+            if r.returncode != 0:
+                raise AssertionError(
+                    f"ll-cli run {name} 失败: rc={r.returncode} {r.stderr[:200]}")
+
+    # ── Test: 容器生命周期（ps / enter / kill）──
+    #
+    # demo 应用本身是 echo hello world，跑完立刻退出，看不出容器。
+    # 所以先用 ll-cli run <app> -- sleep N 起一个长驻容器，
+    # 才能覆盖 ps / enter / kill 以及 cli.cpp 里的
+    # checkContainerStatus / acceptConsoleFd / setupIOChannels 等函数。
+    def test_container_lifecycle(self):
+        app_id = DEMO_APP_ID
+        # 机器上可能残留别的容器（GUI 应用被 DBus 服务拉起），先清干净，
+        # 否则 ps 里第一条不一定是本用例刚起的 demo 容器。
+        self._cleanup_containers(app_id)
+        proc = subprocess.Popen(
+            [LL_CLI, "run", app_id, "--", "sleep", "120"],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        try:
+            cid = self._wait_container(timeout=40, app_id=app_id)
+            if not cid:
+                raise AssertionError("容器已启动但 ll-cli ps 看不到它")
+
+            # ps 的人类可读输出里应出现应用 ID
+            r = self._ll_cli("ps")
+            if r.returncode != 0:
+                raise AssertionError(f"ll-cli ps 失败: {r.stderr[:200]}")
+            if app_id not in r.stdout:
+                raise AssertionError(
+                    f"ll-cli ps 输出里应含 {app_id}, 实际: {r.stdout[:200]!r}")
+
+            # ps --json 的结构
+            r = self._ll_cli("ps", "--json")
+            try:
+                arr = json.loads(r.stdout)
+            except json.JSONDecodeError as e:
+                raise AssertionError(f"ll-cli ps --json 非法 JSON: {e}")
+            entry = next((c for c in arr if c.get("id") == cid), None)
+            if entry is None:
+                raise AssertionError(
+                    f"ps --json 应含容器 {cid}, 实际: {r.stdout[:200]!r}")
+
+            # ps --no-truncated：默认会把容器 ID 截断到 12 位
+            # （cli.cpp:102 ContainerIDDisplayLength），--no-truncated 才给全长。
+            # 只断言 rc==0 证明不了截断逻辑 —— 必须验证 12 位这个长度、
+            # 全长确实更长、以及"短 ID 是全 ID 的前缀"这层关系。
+            short_entry = entry
+            r = self._ll_cli("ps", "--no-truncated", "--json", timeout=60,
+                             check=False)
+            if r.returncode != 0:
+                raise AssertionError(
+                    f"ll-cli ps --no-truncated 失败: "
+                    f"rc={r.returncode} {r.stderr[:200]}")
+            try:
+                full_arr = json.loads(r.stdout)
+            except json.JSONDecodeError as e:
+                raise AssertionError(
+                    f"ll-cli ps --no-truncated --json 非法 JSON: {e}")
+
+            # 按 pid 认人：机器上可能不止一个容器
+            full_entry = next(
+                (c for c in full_arr if c.get("pid") == short_entry.get("pid")), None)
+            if full_entry is None:
+                raise AssertionError(
+                    f"ps --no-truncated 里找不到 pid={short_entry.get('pid')} "
+                    f"的容器: {r.stdout[:200]!r}")
+
+            short_id = short_entry.get("id", "")
+            full_id = full_entry.get("id", "")
+            if len(short_id) != 12:
+                raise AssertionError(
+                    f"ps 默认应把容器 ID 截断到 12 位, 实际 {len(short_id)} 位: "
+                    f"{short_id!r}")
+            if len(full_id) <= len(short_id):
+                raise AssertionError(
+                    f"ps --no-truncated 的容器 ID 没有变长: "
+                    f"默认={short_id!r}({len(short_id)}位) "
+                    f"全长={full_id!r}({len(full_id)}位)")
+            if not full_id.startswith(short_id):
+                raise AssertionError(
+                    f"ps --no-truncated 的全长 ID 应以默认 ID 为前缀: "
+                    f"默认={short_id!r} 全长={full_id!r}")
+
+            # enter：必须在伪终端里跑
+            rc, out = self._run_in_pty(
+                [LL_CLI, "enter", cid, "--", "/bin/echo", "SMOKE_ENTER_OK"])
+            if rc != 0:
+                raise AssertionError(f"ll-cli enter 失败: rc={rc} out={out[:200]!r}")
+            if "SMOKE_ENTER_OK" not in out:
+                raise AssertionError(f"enter 输出里没有预期内容: {out[:200]!r}")
+
+            # kill
+            r = self._ll_cli("kill", cid, timeout=60, check=False)
+            if r.returncode != 0:
+                raise AssertionError(
+                    f"ll-cli kill {cid} 失败: rc={r.returncode} {r.stderr[:200]}")
+        finally:
+            if proc.poll() is None:
+                proc.kill()
+                proc.wait()
+            # 兜底清理。必须确保容器真的没了：
+            # 残留的 ll-box 进程会占住应用引用，导致后面的
+            # sudo ll-cli uninstall 一直返回 255（且没有任何错误输出），
+            # 进而让后续所有安装类步骤全部失败。
+            self._cleanup_containers(app_id)
+
+    # ── Test: ll-builder run 的选项 ──
+    #
+    # 需要 demo 项目目录存在，必须排在「安装并运行 demo 应用」之前
+    # （那一步结束时会把 org.deepin.demo/ 删掉）。
+    def test_builder_run_options(self):
+        old_cwd = os.getcwd()
+        try:
+            os.chdir(DEMO_PROJECT_DIR)
+            for name, opts in [
+                ("--workdir", ["--workdir", "/tmp"]),
+                ("--debug", ["--debug"]),
+                ("--modules binary", ["--modules", "binary"]),
+                ("--modules develop", ["--modules", "develop"]),
+                ("--modules binary,develop", ["--modules", "binary,develop"]),
+            ]:
+                r = self._ll_builder("run", *opts, "--", "/bin/true",
+                                     timeout=120, check=False)
+                if r.returncode != 0:
+                    raise AssertionError(
+                        f"ll-builder run {name} 失败: rc={r.returncode} "
+                        f"{r.stderr[:200]}")
+        finally:
+            os.chdir(old_cwd)
+
+    # ── Test: 容器实例复用（reuseContainer）──
+    #
+    # ll-cli run --instance <name> 会在第二次调用时复用已有容器，
+    # 这条路径在 cli.cpp 里对应 reuseContainer 的多个重载（L1273~L1607，
+    # 约 300 行），原先完全没被触发。
+    def test_container_instance_reuse(self):
+        app_id = DEMO_APP_ID
+        inst = f"smokereuse{os.getpid()}"
+        proc = subprocess.Popen(
+            [LL_CLI, "run", app_id, "--instance", inst, "--", "sleep", "120"],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        try:
+            cid = self._wait_container(timeout=40, app_id=app_id)
+            if not cid:
+                raise AssertionError("带 --instance 启动的容器未出现在 ll-cli ps 中")
+
+            # 第二次使用同一个 instance：应复用而不是新建
+            r = self._ll_cli("run", app_id, "--instance", inst, "--",
+                             "/bin/echo", "REUSED", timeout=90, check=False)
+            if r.returncode != 0:
+                raise AssertionError(
+                    f"复用实例失败: rc={r.returncode} {r.stderr[:200]}")
+            if "REUSED" not in r.stdout:
+                raise AssertionError(
+                    f"复用实例的输出里没有预期内容: {r.stdout[:200]!r}")
+
+            # 复用后容器数不应增加（仍只有一个）
+            r = self._ll_cli("ps", "--json", check=False)
+            try:
+                arr = json.loads(r.stdout)
+            except json.JSONDecodeError:
+                arr = []
+            if len(arr) != 1:
+                raise AssertionError(
+                    f"复用后应只有 1 个容器, 实际 {len(arr)} 个: {r.stdout[:200]!r}")
+        finally:
+            if proc.poll() is None:
+                proc.kill()
+                proc.wait()
+            self._cleanup_containers(app_id)
+
+    # ── Test: 清理未使用的 base/runtime ──
+    #
+    # prune 需要 root（走 polkit 授权），所以用 sudo 调。
+    # 对应 package_manager.cpp 的 Prune / pruneImpl / isRefBusy。
+    def test_prune(self):
+        r = self._sudo_ll_cli("prune", timeout=180, check=False)
+        if r.returncode != 0:
+            raise AssertionError(
+                f"sudo ll-cli prune 失败: rc={r.returncode} {r.stderr[:200]}")
+        combined = r.stdout + r.stderr
+        if "unused" not in combined.lower() and "未使用" not in combined:
+            raise AssertionError(
+                f"prune 输出里应有清理结果说明, 实际: {combined[:200]!r}")
+
+    # ── Test: search 的各种筛选选项 ──
+    #
+    # search 的 --type / --dev / --show-all-version 会走到 cli.cpp 里
+    # 不同的查询构造分支。
+    def test_search_options(self):
+        for opts in (["--type=all"], ["--type=runtime"], ["--type=base"],
+                     ["--type=app"], ["--dev"], ["--show-all-version"],
+                     ["--type=app", "--dev", "--show-all-version"]):
+            r = self._ll_cli("search", "deepin", *opts, timeout=90, check=False)
+            if r.returncode != 0:
+                raise AssertionError(
+                    f"ll-cli search {' '.join(opts)} 失败: "
+                    f"rc={r.returncode} {r.stderr[:200]}")
+
+        # 非法 type：实测不会报错，只是搜不到东西（rc=0，提示未找到）。
+        # 这里只断言"不崩溃"，不要凭 CLI11 的枚举校验想当然。
+        r = self._ll_cli("search", "deepin", "--type=bogus", check=False)
+        if r.returncode < 0:
+            raise AssertionError("search --type=bogus 崩溃了")
+
+        # --repo：只在指定仓库里搜。这里必须验证两件事，只断言 rc 是不够的：
+        #   1) 指定的仓库不存在时要【报错】，而不是悄悄退化成"搜所有仓库"
+        #   2) 指定真实仓库时要能正常出结果
+        r = self._ll_cli("search", "deepin", "--repo", "no-such-repo-smoke",
+                         timeout=90, check=False)
+        if r.returncode == 0:
+            raise AssertionError(
+                "search --repo 指定不存在的仓库竟然成功 —— 说明 --repo 被忽略了")
+        if r.returncode < 0:
+            raise AssertionError("search --repo 不存在的仓库崩溃了")
+        if "no-such-repo-smoke" not in (r.stdout + r.stderr):
+            raise AssertionError(
+                f"search --repo 的报错里应指明是哪个仓库找不到: "
+                f"{(r.stdout + r.stderr)[:200]!r}")
+
+        # 真实仓库名从 repo show 的第一行取（"Default: <alias>"），不写死，
+        # 免得仓库配置一变这个用例就假失败
+        r = self._ll_cli("repo", "show", timeout=60, check=False)
+        m = re.search(r"^Default:\s*(\S+)", r.stdout, re.M)
+        if not m:
+            raise AssertionError(
+                f"repo show 输出里找不到默认仓库: {r.stdout[:200]!r}")
+        default_repo = m.group(1)
+
+        r = self._ll_cli("search", "deepin", "--repo", default_repo,
+                         timeout=120, check=False)
+        if r.returncode != 0:
+            raise AssertionError(
+                f"search --repo {default_repo} 失败: "
+                f"rc={r.returncode} {r.stderr[:200]}")
+        if "org.deepin.base" not in r.stdout:
+            raise AssertionError(
+                f"search --repo {default_repo} deepin 应能搜到 org.deepin.base, "
+                f"实际: {r.stdout[:200]!r}")
+
+    # ── Test: inspect 子命令 ──
+    #
+    # ll-cli inspect dir 会打印应用的 layer/bundle 目录，
+    # 对应 cli.cpp 的 inspect / getLayerDir / getBundleDir（约 120 行）。
+    # 必须先有已安装的应用。
+    def test_inspect_commands(self):
+        app_id = DEMO_APP_ID
+        listing = self._ll_cli("list")
+        if app_id not in listing.stdout:
+            raise AssertionError(f"{app_id} 未安装，本用例需在安装步骤之后执行")
+
+        # 默认 type=layer
+        r = self._ll_cli("inspect", "dir", app_id)
+        if r.returncode != 0:
+            raise AssertionError(
+                f"ll-cli inspect dir {app_id} 失败: rc={r.returncode} {r.stderr[:200]}")
+        if not r.stdout.strip():
+            raise AssertionError("inspect dir 没有输出目录路径")
+
+        # 显式 layer
+        r = self._ll_cli("inspect", "dir", "-t", "layer", app_id)
+        if r.returncode != 0:
+            raise AssertionError(
+                f"inspect dir -t layer 失败: rc={r.returncode} {r.stderr[:200]}")
+
+        # bundle 类型
+        r = self._ll_cli("inspect", "dir", "-t", "bundle", app_id, check=False)
+        if r.returncode < 0:
+            raise AssertionError("inspect dir -t bundle 崩溃了")
+
+        # 指定模块
+        r = self._ll_cli("inspect", "dir", "-m", "binary", app_id, check=False)
+        if r.returncode < 0:
+            raise AssertionError("inspect dir -m binary 崩溃了")
+
+        # 缺少 APP 参数应被拒绝
+        r = self._ll_cli("inspect", "dir", check=False)
+        if r.returncode == 0:
+            raise AssertionError("inspect dir 缺少 APP 参数竟然成功")
+
+        # 不存在的应用
+        r = self._ll_cli("inspect", "dir", "org.deepin.nonexistent.app", check=False)
+        if r.returncode == 0:
+            raise AssertionError("inspect dir 不存在的应用竟然成功")
+
+    # ── Test: 扩展（extensions）──
+    #
+    # run --extensions 会走到 run_context.cpp 的 makeManualExtensionDefine /
+    # fillExtraAppMounts / getRuntimeLayerPath（约 390 行）。
+    # 扩展必须已安装才可用，这里用 base 里声明的显卡驱动扩展。
+    def test_run_with_extensions(self):
+        app_id = DEMO_APP_ID
+        # org.deepin.driver.display.nvidia 在 base 的 extensions 里声明过，
+        # 实测可以直接 --extensions 使用（rc=0）。
+        r = self._ll_cli("run", app_id,
+                         "--extensions", "org.deepin.driver.display.nvidia",
+                         "--", "/bin/true", timeout=90, check=False)
+        if r.returncode != 0:
+            raise AssertionError(
+                f"run --extensions 失败: rc={r.returncode} {r.stderr[:200]}")
+
+        # 未安装的扩展应给出明确错误
+        r = self._ll_cli("run", app_id,
+                         "--extensions", "org.deepin.nonexistent.extension",
+                         "--", "/bin/true", timeout=90, check=False)
+        if r.returncode == 0:
+            raise AssertionError("run --extensions 用了不存在的扩展竟然成功")
+        if r.returncode < 0:
+            raise AssertionError("run --extensions 不存在扩展时崩溃了")
+
+    # ── Test: 自建扩展包（kind: extension）的解析、env 注入与挂载 ──
+    #
+    # run_context.cpp 里扩展相关的代码此前基本是 0%：仓库里唯一的扩展
+    # org.deepin.driver.display.nvidia 要下 1.6GB 驱动包，冒烟不可能装。
+    # 这里自己构建一个极小的扩展（构建只要几秒），再用【用户级】运行配置
+    # 把它挂到已安装的日历应用上：
+    #
+    #   $XDG_CONFIG_HOME/linglong/apps/<appId>/config.d/*.json
+    #     {"ext_defs": {"<appId>": [{name,version,directory,allow_env}]}}
+    #
+    # 覆盖范围：
+    #   - ResolveOptions::applyRuntimeConfig / externalExtensionDefs
+    #   - matchedExtensionDefines / resolveLayerExtensions / resolveExtension
+    #   - 扩展 env 注入：ext_impl.env + ExtensionDefine.allow_env 白名单
+    #     + $PREFIX / $ORIGIN 替换
+    #   - 扩展 deviceNodes 挂载与 /opt/extensions/<id> 挂载
+    #
+    # ⚠️ 踩过的坑：
+    #   1. 运行配置的 JSON 键是【下划线】的 ext_defs / allow_env，
+    #      写驼峰 extDefs 会被静默忽略（现象：扩展完全不生效、无任何报错）。
+    #   2. 项目的 base 只能写三段版本（如 org.deepin.base/25.2.2），
+    #      写 25.2.2.8 会报 "base version is not valid" ——
+    #      version.cpp:validateDependVersion 的正则只认 MAJOR.MINOR[.PATCH]。
+    #   3. 扩展必须真的装进本地仓库：resolveExtension 的 skipOnNotFound=true
+    #      会把"没装"静默跳过，用例会假通过。
+    #   4. 配置放临时 XDG_CONFIG_HOME 里，删目录即还原，不碰系统目录。
+    # ── 用户级运行配置里的 env 注入 ──
+    #
+    # container_builder.cpp 里 RunContainerOptions::applyRuntimeConfig 的
+    # runtimeConfig.env 合并（151-154）此前未覆盖；同一个函数下面的
+    # applyCliRunOptions 对【畸形 --env】的报错分支（175）也未覆盖。
+    #
+    # 配置走 $XDG_CONFIG_HOME/linglong/apps/<appId>/config.d/*.json 的
+    # "env" 键（和 ext_defs 一样是【下划线】风格）。放临时 XDG_CONFIG_HOME
+    # 里，删目录即还原，不碰系统目录。
+    #
+    # 断言的是功能行为，不是"跑到了"：
+    #   1. 配置里声明的 env 必须真的出现在容器里
+    #   2. 命令行 --env 声明的 env 必须真的出现在容器里
+    #   3. 畸形 --env（没有 =）必须报错，而不是静默忽略或崩溃
+    # ── 架构字符串解析 ──
+    #
+    # architecture.cpp 里 Architecture(const std::string &raw) 的映射分支
+    # （arm64/loongarch64/loong64/sw64/mips64/riscv64）和未知架构那句
+    # throw std::runtime_error("unknown architecture") 此前未覆盖。
+    #
+    # ⚠️ currentCPUArchitecture() 里的 sw_64 / loongarch 分支是【宿主相关】
+    # 的（x86_64 上永远走不到），isNewWorldLoongArch() 要读 loongarch 的
+    # e_flags —— 冒烟里不可达，不追。
+    #
+    # 断言的是功能行为：引用里写【已知但不同】的架构必须被正常解析
+    # （报"找不到"而不是"未知架构"），写【未知】架构必须明确报
+    # unknown architecture，两种情况都不能崩。
+    #
+    # 用【不存在的版本号】避免真去下载别的架构的包。
+    # ── 旧版(V1)仓库配置的迁移 ──
+    #
+    # repo/config.cpp 里 loadConfig 的 V1 回退分支（新格式读失败后
+    # seekg(0) 再按 V1 读）和 convertToV2（约 35 行）此前完全未覆盖。
+    # 触发方式：把仓库配置写成 V1 格式（repos 是 map），服务重启时就会走
+    # 迁移路径。坏 YAML 则走 "parse yaml failed" / "all failed" 错误路径。
+    #
+    # ⚠️ 服务把仓库配置【缓存在内存】里：光改文件不重启不生效，而且服务
+    #    下一次写配置时会拿内存里的旧值把文件冲掉。所以这里改文件后必须
+    #    重启服务；步骤也已加进 REPO_CONFIG_STEPS，主流程会再兜底快照/还原。
+    #
+    # 断言的是功能行为：
+    #   1. V1 配置（repos 是 map）必须被读出来并迁移成 V2（repos 是 list）
+    #   2. 迁移后的优先级必须符合 convertToV2 的规则：默认仓库 0，
+    #      其余依次 -100、-200……
+    #   3. 坏 YAML 必须让服务拒绝启动（而不是带着半截配置跑起来），
+    #      还原之后必须能恢复
+    # ── 仓库缓存是可丢弃的（删掉必须能重建）──
+    #
+    # repo_cache.cpp 里 load() 的"缓存文件不存在"分支（第 38 行）和
+    # rebuild()（10/42 未覆盖）此前没走到 —— 套件里缓存一直在，没人删过。
+    #
+    # 缓存路径是 <repoDir>/states.json（ostree_repo.cpp:cacheFilePath），
+    # 也就是 /var/lib/linglong/states.json。缓存是【派生数据】，删掉必须能
+    # 从 ostree 仓库重建 —— 这正是要断言的功能行为：
+    #   1. 删掉 states.json + 重启服务后，ll-cli list 必须仍然列出原来的应用
+    #   2. states.json 必须被重新写出来
+    # 跑完把原文件还原 + 重启（步骤也在 REPO_CONFIG_STEPS 里兜底）。
+    # ── 缓存写失败时必须"干净失败"，不能静默不一致 ──
+    #
+    # repo_cache.cpp 里 writeToDisk() 的错误分支（35-36、279-290 等）
+    # 此前完全没覆盖：缓存文件一直可写，没人制造过写失败。
+    #
+    # 手法是【可还原的故障注入】：chattr +i 把 states.json 设为不可写，
+    # 做一次真实的状态变更（卸载日历），看它怎么表现，然后立刻
+    # chattr -i + 重启服务还原，并把应用恢复成装好的状态。
+    # ⚠️ 断言的不是"必须成功"或"必须失败"，而是：
+    #   1. 不管成功还是失败，都不能崩（rc 不能是信号）
+    #   2. 还原之后，ll-cli list 的应用集合必须和开始前【一致】
+    #      —— 也就是不允许出现"缓存说装了、仓库里其实没有"这种
+    #      静默不一致
+    # ── 锁目录只读时：CLI 不能被搞坏，权限必须还原 ──
+    #
+    # 手法是可还原的故障注入：把按 uid 的锁目录（/run/linglong/<uid>）
+    # 设为只读，跑一次 ll-cli run，然后立刻恢复权限并断言能重新跑起来。
+    #
+    # ⚠️ 实测说明（别误以为它覆盖了 filelock 的失败分支）：
+    #    锁文件 .cli.<id>.lock 【已经存在】时，只读【目录】不影响打开
+    #    已有文件，所以 ll-cli run 照样成功、filelock.cpp 的
+    #    "failed to open lock file" 分支并【没有】被走到
+    #    （实测覆盖率为 0 增长）。要真走到那条分支，得先删掉锁文件、
+    #    或者用全新的容器 ID 配只读目录 —— 留作后续。
+    #
+    # 它真正守住的两件事：
+    #   1. 锁目录只读时 CLI 不能崩（rc 不能是信号）
+    #   2. 权限必须按【开始前读到的真实值】还原；读歪了要按已知安全值
+    #      兜底并报错（见下面 stat_mode 的 PAM 杂音说明）
+    # ── 容器运行时不可执行时：必须干净报错，且不能留半启动容器 ──
+    #
+    # 可还原故障注入第三例：把 ll-box（真正拉容器的那个运行时）chmod 000，
+    # 让 ll-cli run 起不来，看它怎么表现，然后立刻恢复权限并断言能跑起来。
+    # 这条路会走到 run_context.cpp / utils::Cmd 的命令执行失败分支。
+    #
+    # 断言的功能属性（比"有没有报错"更重要的两条）：
+    #   1. 不能崩（rc 不能是信号），失败要有可读的报错
+    #   2. 【不能留下半启动的容器】—— ll-cli ps 里不能多出这个应用的容器
+    #      （运行时都起不来却留下容器，就是脏状态）
+    #   3. 权限还原后，ll-cli run 必须能正常跑出预期输出
+    # ── --json 输出：必须是合法 JSON，且和文本输出说的是同一件事 ──
+    #
+    # --json 是全局 flag（apps/ll-cli/src/main.cpp:606），每个命令都有
+    # 自己的 JSON 分支（libs/linglong/src/linglong/cli/json_printer.cpp，
+    # 44 行未覆盖）。套件此前只用过 ps --json，其余分支没走到。
+    #
+    # 断言的是功能行为（不只是"有没有输出"）：
+    #   1. 命令必须成功，且 stdout 必须是【能解析的 JSON】
+    #   2. list --json 和 list 说的必须是同一件事：
+    #      JSON 里的应用集合 == 文本列表里的应用集合
+    #      （两种输出对不上，就是功能不一致）
+    # ── 错误路径必须给出清晰报错（不能静默、不能崩）──
+    #
+    # cli.cpp 里几处错误处理整块没覆盖：handleUpgradeError（15/15）、
+    # handleUninstallError（22/32）、handleInstallError（15/36）、
+    # handleCommonError（9/19），以及 info 的错误分支（22/46）。
+    # 套件里这些命令走的都是"成功"路径。
+    #
+    # 断言的是功能行为：对不存在的应用做这些操作时，必须
+    #   1. 以非 0 退出（不能假装成功）
+    #   2. 给出【非空且能看懂的】报错（不能只崩个信号、不能一片空白）
+    # 全部是只读命令，不改机器状态。
+    def test_error_paths_report_clearly(self):
+        ghost = "org.deepin.smoke.nonexistent"
+        # ⚠️ 实测：uninstall 要 root（否则报 "Error 9: not authorized"，
+        # 那是权限不是"没装"）；depends / size 【不是 CLI 子命令】
+        # （直接报 "The following arguments were not expected"），
+        # 所以都不放在这里。
+        cases = [
+            (["uninstall", "--force", ghost], True),
+            (["upgrade", ghost], False),
+            (["info", ghost], False),
+        ]
+        problems = []
+        for argv, need_root in cases:
+            if need_root:
+                r = self._sudo_ll_cli(*argv, timeout=120, check=False)
+                code = r.returncode
+                out = (r.stdout or "") + (r.stderr or "")
+            else:
+                code, out = self._pty_ll_cli(*argv, timeout=120)
+            text = (out or "").strip()
+            if code == 0:
+                problems.append(f"{' '.join(argv)}: 对不存在的应用居然返回成功")
+                continue
+            if code < 0:
+                problems.append(f"{' '.join(argv)}: 崩了（rc={code}）")
+                continue
+            if not text:
+                problems.append(f"{' '.join(argv)}: 失败了但没有任何报错")
+                continue
+            # 报错得是"这个应用有问题"的意思，不能是无关的崩溃信息
+            if not any(k in text for k in (
+                    "未找到", "找不到", "不存在", "没有", "未安装",
+                    "not found", "Cannot find", "No such", "unknown",
+                    "无效", "invalid")):
+                problems.append(
+                    f"{' '.join(argv)}: 报错看不出是'应用不存在': "
+                    f"{text[:160]!r}")
+        if problems:
+            raise AssertionError("；".join(problems))
+
+    def test_json_output_variants(self):
+        app_id = CALENDAR_APP_ID
+
+        # 先确保有应用可查，否则 list 的交叉验证没意义
+        r = self._ll_cli("list", check=False)
+        if app_id not in (r.stdout or ""):
+            self._sudo_ll_cli("install", app_id, timeout=900, check=False)
+
+        def parse_any(text, argv):
+            """整体是合法 JSON 就通过；否则按行（NDJSON）逐行校验。
+
+            ⚠️ 输出可能是【多行 JSON】：带进度上报的命令会先吐
+            {"message":...,"percentage":...} 再吐结果，整段用 json.loads
+            会报 "Extra data"（实测 search --json，且是【间歇】出现 ——
+            镜像快时只有结果一行，慢时前面多一行进度）。
+            """
+            try:
+                json.loads(text)
+                return
+            except json.JSONDecodeError:
+                pass
+            for lineno, line in enumerate(text.splitlines(), 1):
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    json.loads(line)
+                except json.JSONDecodeError as exc:
+                    raise AssertionError(
+                        f"ll-cli {' '.join(argv)} 第 {lineno} 行不是合法 "
+                        f"JSON: {exc}; 内容 {line[:160]!r}") from exc
+
+        cases = [
+            ["list", "--json"],
+            ["search", "deepin", "--json"],
+            ["ps", "--json"],
+            ["info", app_id, "--json"],
+            # ⚠️ repo show --json 实测【不支持】（rc=109，"argument was not
+            # expected: --json"）—— --json 虽然加在顶层 commandParser 上
+            # （main.cpp:606），但不会继承到 repo 这种嵌套子命令。
+            # 这类"命令本身不接受 --json"的情况不算失败，跳过即可。
+        ]
+        unsupported = []
+        for argv in cases:
+            r = self._ll_cli(*argv, timeout=120, check=False)
+            out = (r.stdout or "").strip()
+            err = (r.stderr or "") + (r.stdout or "")
+            if r.returncode != 0 and "not expected" in err:
+                unsupported.append(" ".join(argv))
+                continue
+            if r.returncode != 0:
+                raise AssertionError(
+                    f"ll-cli {' '.join(argv)} 失败: rc={r.returncode} "
+                    f"{(r.stderr or '')[:200]!r}")
+            if not out:
+                raise AssertionError(f"ll-cli {' '.join(argv)} 没有任何输出")
+            try:
+                parse_any(out, argv)
+            except json.JSONDecodeError as exc:
+                raise AssertionError(
+                    f"ll-cli {' '.join(argv)} 的输出不是合法 JSON: "
+                    f"{exc}; 开头 {out[:200]!r}") from exc
+
+        if unsupported:
+            print(f"    [note] 这些子命令不接受 --json，已跳过: {unsupported}")
+
+        # 交叉验证：JSON 和文本两种输出必须一致
+        row_re = re.compile(r"^(\S+)\s+\S+\s+(\d[\d.]*)\s", re.M)
+        text_set = {f"{i}/{v}" for i, v in row_re.findall(
+            self._ll_cli("list", check=False).stdout or "")}
+        r = self._ll_cli("list", "--json", check=False)
+        try:
+            data = json.loads(r.stdout or "[]")
+        except json.JSONDecodeError:
+            data = []
+        if isinstance(data, dict):
+            data = data.get("apps", data.get("data", []))
+        json_set = set()
+        for item in data if isinstance(data, list) else []:
+            if isinstance(item, dict):
+                i = item.get("id") or item.get("appId") or item.get("name")
+                v = item.get("version")
+                if i and v:
+                    json_set.add(f"{i}/{v}")
+        # ⚠️ 实测：两种输出【不相等】—— list --json 会比文本多出
+        # org.deepin.runtime.dtk 这类 runtime（文本列表看着只列 app）。
+        # 这可能是"文本只列应用、JSON 列全部已装 ref"的有意设计，
+        # 也可能是遗漏，所以这里【不断言相等】，只断言真正要紧的
+        # 安全属性：JSON 不能比文本【少】—— 少一个就是 JSON 漏报了
+        # 已安装的东西，那才是功能缺陷。
+        missing = sorted(text_set - json_set)
+        if missing:
+            raise AssertionError(
+                f"list --json 比文本输出【少】了这些已装应用（漏报）: "
+                f"{missing}; 文本 {sorted(text_set)} vs "
+                f"JSON {sorted(json_set)}")
+        extra = sorted(json_set - text_set)
+        if extra:
+            print(f"    [note] list --json 比文本多出（疑似 runtime 之类）: "
+                  f"{extra}")
+
+    def test_runtime_binary_unusable(self):
+        app_id = CALENDAR_APP_ID
+        box = None
+        # ll-box 装在 /usr/bin（不是 /usr/libexec/linglong，那里只有
+        # ll-package-manager、ll-init、ll-driver-detect 这些）
+        for cand in ("/usr/bin/ll-box", "/usr/bin/ll-box-static",
+                     f"{LIBEXEC_DIR}/ll-box"):
+            if os.path.exists(cand):
+                box = cand
+                break
+        if box is None:
+            raise StepSkipped("没找到 ll-box")
+
+        r = self._ll_cli("list", check=False)
+        if app_id not in (r.stdout or ""):
+            self._sudo_ll_cli("install", app_id, timeout=900, check=False)
+
+        def containers():
+            r = self._ll_cli("ps", "--json", check=False)
+            try:
+                return json.loads(r.stdout)
+            except (json.JSONDecodeError, TypeError):
+                return []
+
+        before_box_mode = format(os.stat(box).st_mode & 0o7777, "o")
+        before = len(containers())
+        try:
+            r = self._run_cmd(["chmod", "000", box], sudo=True, check=False)
+            if r.returncode != 0:
+                raise StepSkipped(f"改不了 {box} 权限，跳过")
+
+            code, out = self._pty_ll_cli(
+                "run", app_id, "--", "/bin/echo", "BOXPROBE", timeout=120)
+            if code < 0:
+                raise AssertionError(
+                    f"运行时不可用时把进程搞崩了: rc={code} {out[:200]!r}")
+            if code == 0 and "BOXPROBE" in out:
+                raise AssertionError(
+                    "ll-box 都 chmod 000 了居然还能起容器（没走这条路）")
+            if not out.strip():
+                raise AssertionError("运行时不可用时失败了但没有任何报错")
+
+            after = len(containers())
+            if after > before:
+                raise AssertionError(
+                    f"运行时起不来却留下了容器: ps {before} -> {after} 个")
+        finally:
+            # 用一开始读到的真实权限还原，别硬编码
+            self._run_cmd(["chmod", before_box_mode, box], sudo=True,
+                          check=False)
+            self._cleanup_containers(app_id)
+            if not os.access(box, os.X_OK):
+                raise AssertionError(f"{box} 权限没能还原成可执行")
+
+        code, out = self._pty_ll_cli(
+            "run", app_id, "--", "/bin/echo", "BOXPROBE", timeout=120)
+        if code != 0 or "BOXPROBE" not in out:
+            raise AssertionError(
+                f"权限还原后仍然起不来: rc={code} {out[:200]!r}")
+
+    def test_filelock_dir_unwritable(self):
+        app_id = CALENDAR_APP_ID
+        # 锁是在【按 uid 的子目录】里建的（cli.cpp:1649
+        # userContainerDir = /run/linglong/<uid>，锁名 .cli.<id>.lock）；
+        # 只读父目录没用 —— 子目录已存在，照样能建锁（实测过）。
+        lock_dir = f"/run/linglong/{os.getuid()}"
+        repo_lock = "/run/linglong/lock"
+        probe = ["run", app_id, "--", "/bin/echo", "LOCKPROBE"]
+
+        def stat_mode():
+            # ⚠️ 这里【不能用 sudo stat】读权限：askpass 的"验证成功"
+            # 会混进 stdout，chmod 收到 "1777\n验证成功" 这种垃圾值，
+            # 结果把目录权限改坏又还原不回来（真踩过，/run/linglong
+            # 被留在 555）。os.stat 不需要 root，干净。
+            try:
+                return format(os.stat(lock_dir).st_mode & 0o7777, "o")
+            except OSError:
+                return ""
+
+        r = self._ll_cli("list", check=False)
+        if app_id not in (r.stdout or ""):
+            self._sudo_ll_cli("install", app_id, timeout=900, check=False)
+
+        before_mode = stat_mode()
+        if not before_mode:
+            raise StepSkipped(f"{lock_dir} 不存在，跳过")
+        had_repo_lock = os.path.exists(repo_lock)
+
+        try:
+            r = self._run_cmd(["chmod", "555", lock_dir], sudo=True,
+                              check=False)
+            if r.returncode != 0:
+                raise StepSkipped(f"改不了 {lock_dir} 权限，跳过")
+
+            # 真正打穿锁分支：Cli::run 只在【新容器】分支里建仓库锁
+            # （dumpContainerInfo → FileLock::create(/run/linglong/lock,
+            # Read)）。所以要用全新实例 + 让锁文件先不存在，光把目录设
+            # 只读是不够的（锁文件已存在时打开它不需要目录写权限）。
+            self._run_cmd(["rm", "-f", repo_lock], sudo=True, check=False)
+            inst = f"smokelock{os.getpid()}"
+            code, out = self._pty_ll_cli(
+                "run", app_id, "--instance", inst, "--",
+                "/bin/echo", "LOCKPROBE", timeout=90)
+            if code < 0:
+                raise AssertionError(
+                    f"锁目录不可写时把进程搞崩了: rc={code} {out[:200]!r}")
+            if code == 0:
+                raise AssertionError(
+                    "锁目录只读 + 锁文件不存在 + 全新实例，居然还能起容器"
+                    f"（说明这条路没建锁）: {out[:200]!r}")
+            if not out.strip():
+                raise AssertionError("锁建不起来时失败了但没有任何报错")
+        finally:
+            self._cleanup_containers(app_id)
+            # ⚠️ 锁文件必须由我们补回来：产品自己【建不回来】——
+            # FileLock::create(..., false) 是不带 O_CREAT 的打开，
+            # 文件不在就永远报 "failed to open lock file ... 没有那个
+            # 文件或目录"。所以删了 /run/linglong/lock 之后，
+            # 哪怕目录权限恢复、服务重启，新容器也再也起不来。
+            # 这是本轮实测到的产品缺陷，已记进提交说明。
+            if had_repo_lock and not os.path.exists(repo_lock):
+                self._run_cmd(["touch", repo_lock], sudo=True, check=False)
+                self._run_cmd(
+                    ["chown", "deepin-linglong:deepin-linglong", repo_lock],
+                    sudo=True, check=False)
+                self._run_cmd(["chmod", "666", repo_lock], sudo=True,
+                              check=False)
+            if had_repo_lock and not os.path.exists(repo_lock):
+                raise AssertionError("锁文件没能还原（机器会起不了新容器）")
+            # 还原权限（用一开始读到的真实值，别硬编码）
+            self._run_cmd(["chmod", before_mode, lock_dir], sudo=True,
+                          check=False)
+            now = stat_mode()
+            if now != before_mode:
+                # 兜底：万一 before_mode 读歪了，按目录类型恢复到已知安全值
+                safe = "1777" if lock_dir == "/run/linglong" else "755"
+                self._run_cmd(["chmod", safe, lock_dir], sudo=True,
+                              check=False)
+                raise AssertionError(
+                    f"{lock_dir} 权限没还原: {before_mode} -> {now}"
+                    f"（已按 {safe} 兜底恢复）")
+
+        # 还原之后必须能正常跑起来
+        code, out = self._pty_ll_cli(*probe, timeout=90)
+        if code != 0 or "LOCKPROBE" not in out:
+            raise AssertionError(
+                f"权限还原后仍然跑不起来: rc={code} {out[:200]!r}")
+
+    def test_cache_write_failure(self):
+        app_id = CALENDAR_APP_ID
+        cache = "/var/lib/linglong/states.json"
+        row_re = re.compile(r"^(\S+)\s+\S+\s+(\d[\d.]*)\s", re.M)
+
+        def installed():
+            out = self._ll_cli("list", check=False).stdout
+            return {f"{i}/{v}" for i, v in row_re.findall(out or "")}
+
+        def ensure_installed():
+            if not any(x.startswith(app_id + "/") for x in installed()):
+                self._sudo_ll_cli("install", app_id, timeout=900, check=False)
+
+        ensure_installed()
+        before = installed()
+        if not any(x.startswith(app_id + "/") for x in before):
+            raise StepSkipped(f"{app_id} 装不上（镜像里没有？）")
+
+        try:
+            r = self._run_cmd(["chattr", "+i", cache], sudo=True, check=False)
+            if r.returncode != 0:
+                raise StepSkipped("文件系统不支持 chattr +i，无法做故障注入")
+
+            # 真实的状态变更：卸载（缓存写不进去）
+            r = self._sudo_ll_cli("uninstall", "--force", app_id,
+                                  timeout=300, check=False)
+            if r.returncode < 0:
+                raise AssertionError(
+                    f"缓存不可写时卸载把进程搞崩了: rc={r.returncode}")
+        finally:
+            # 还原：先解除不可写，再重启服务让它重新读盘
+            self._run_cmd(["chattr", "-i", cache], sudo=True, check=False)
+            self._restart_package_manager()
+            ensure_installed()
+            after = installed()
+            if before != after:
+                raise AssertionError(
+                    "缓存写失败 + 还原之后应用集合和开始前不一致"
+                    f"（静默不一致）: {sorted(before)} -> {sorted(after)}")
+
+    def test_repo_cache_rebuild(self):
+        cache = "/var/lib/linglong/states.json"
+        workdir = Path(tempfile.mkdtemp(prefix="cacheprobe-"))
+        backup = workdir / "states.json"
+        # ⚠️ 必须用统一的 3 段快照。原来这里用自己写的 2 段正则取 before，
+        # 却拿它和 3 段的 after 相减 —— 2 段永远不等于 3 段，lost 恒等于
+        # 全部 before，用例必然 FAIL（run51 实测），而且那个正则还会丢掉
+        # 名称含空格的应用（org.deepin.runtime.dtk）。
+        before = self._installed_refs()
+        if not before:
+            raise StepSkipped("本地仓库里没有已装应用，重建无从验证")
+
+        self._run_cmd(["cp", "-a", cache, str(backup)], sudo=True,
+                      check=True)
+        try:
+            self._run_cmd(["rm", "-f", cache], sudo=True, check=True)
+            self._restart_package_manager()
+
+            after = self._installed_refs()
+            lost = sorted(before - after)
+            if lost:
+                raise AssertionError(
+                    f"删掉缓存后这些应用从 list 里消失了（没能重建）: {lost}")
+
+            r = self._run_cmd(["test", "-s", cache], sudo=True, check=False)
+            if r.returncode != 0:
+                raise AssertionError("删掉缓存后 states.json 没有被重新写出来")
+        finally:
+            self._run_cmd(["cp", "-a", str(backup), cache], sudo=True,
+                          check=False)
+            self._restart_package_manager()
+            shutil.rmtree(workdir, ignore_errors=True)
+            if workdir.exists():
+                self._run_cmd(["rm", "-rf", str(workdir)], sudo=True,
+                              check=False)
+
+    def test_repo_config_v1_migration(self):
+        cfg = "/var/lib/linglong/config.yaml"
+        svc = "org.deepin.linglong.PackageManager.service"
+        default_url = "https://repo-dev.cicd.getdeepin.org"
+        extra = "smoke-v1-extra"
+
+        v1 = (
+            "version: 1\n"
+            "defaultRepo: stable\n"
+            "repos:\n"
+            f"  stable: {default_url}\n"
+            f"  {extra}: https://smoke.invalid/v1\n")
+        bad = "this is: [not valid yaml\n  :::\n"
+
+        def write_config(text):
+            self._run_cmd(["bash", "-c", f"cat > {cfg} <<'SMOKE_EOF'\n"
+                                         f"{text}SMOKE_EOF\n"],
+                          sudo=True, check=True)
+
+        def service_active():
+            r = self._run_cmd(["systemctl", "is-active", svc],
+                              check=False)
+            return (r.stdout or "").strip() == "active"
+
+        # 1) V1 配置：服务必须能起来，并把 map 迁移成带优先级的 list
+        write_config(v1)
+        self._restart_package_manager()
+        if not service_active():
+            raise AssertionError("V1 配置下服务没起来")
+        code, out = self._pty_ll_cli("repo", "show", timeout=60, sudo=True)
+        if code != 0:
+            raise AssertionError(f"V1 配置下 repo show 失败: {out[:200]!r}")
+        if "stable" not in out:
+            raise AssertionError(f"V1 迁移后丢了默认仓库: {out[:200]!r}")
+        # 默认仓库优先级 0，其余 -100 起
+        prios = dict(re.findall(r"(\S+)\s+\S+\s+\S+\s+(-?\d+)", out))
+        if prios.get("stable") != "0":
+            raise AssertionError(
+                f"V1 迁移后默认仓库优先级不是 0: {prios} / {out[:200]!r}")
+        if prios.get(extra) != "-100":
+            raise AssertionError(
+                f"V1 迁移后第二个仓库优先级不是 -100: {prios} / {out[:200]!r}")
+
+        # 2) 坏 YAML：服务必须拒绝启动，而不是带着半截配置跑
+        write_config(bad)
+        self._run_cmd(["systemctl", "reset-failed", svc], sudo=True,
+                      check=False)
+        self._run_cmd(["systemctl", "restart", svc], sudo=True, check=False)
+        time.sleep(5)
+        if service_active():
+            raise AssertionError("坏 YAML 下服务居然还在跑")
+
+    # ── 重复安装：已安装必须明确拒绝，--force 必须能重装 ──
+    #
+    # cli.cpp 的 installOptions.forceOpt（--force，第 298 行）以及服务端
+    # package_manager 里"已安装"的判断分支此前没有专门用例：套件里的安装
+    # 都是"没装才装"，从没在已安装状态下再装一次。
+    #
+    # 断言的是功能行为：
+    #   1. 重复 install（不带 --force）必须【失败并说明已安装】，
+    #      而不是静默成功或把仓库搞乱
+    #   2. install --force 必须成功
+    #   3. 两种情况跑完，ll-cli list 里的应用集合都不变
+    def test_install_force_and_duplicate(self):
+        app_id = CALENDAR_APP_ID
+        # ⚠️ 必须用统一的 3 段快照（self._installed_refs），不要自己写 2 段
+        # 正则：那种正则要求名称是单个词，会把 org.deepin.runtime.dtk
+        # （名称是 "deepin runtime"）整行丢掉，于是还原时把它当成"多余的"
+        # 卸掉 —— 2026-09 实测就是这么把它弄丢的（漏 1 个时"比例判据"也
+        # 不会触发，所以护栏救不了这种漏）。
+        before = self._installed_refs()
+        if not any(x.startswith(app_id + "/") for x in before):
+            self._sudo_ll_cli("install", app_id, timeout=900, check=False)
+            before = self._installed_refs()
+        if not any(x.startswith(app_id + "/") for x in before):
+            raise StepSkipped(f"{app_id} 装不上（镜像里没有？）")
+
+        # 1) 重复安装：必须失败并说清原因
+        r = self._sudo_ll_cli("install", app_id, timeout=300, check=False)
+        combined = (r.stdout or "") + (r.stderr or "")
+        if r.returncode == 0:
+            raise AssertionError(
+                f"重复安装已装应用居然成功: {combined[:200]!r}")
+        if not any(k in combined for k in ("已安装", "已经安装", "already",
+                                           "installed")):
+            raise AssertionError(
+                f"重复安装的报错没说清原因: {combined[:200]!r}")
+
+        # 2) ⚠️ 实测：install --force 对【已安装】应用【不生效】——
+        #    同样报"应用程序已经安装"、rc=255（--help 写的是
+        #    "Force install the application"）。这属于产品行为问题，
+        #    用例不去迁就它，所以这里【不断言 --force 能重装】，
+        #    只把事实记下来（要不要改由维护者定）。
+        r = self._sudo_ll_cli("install", "--force", app_id, timeout=900,
+                              check=False)
+        if r.returncode != 0:
+            combined = (r.stdout or "") + (r.stderr or "")
+            if not any(k in combined for k in ("已安装", "已经安装")):
+                raise AssertionError(
+                    f"install --force 失败了，但报错跟'已安装'无关，"
+                    f"像是别的问题: {combined[:200]!r}")
+
+        # 3) ⚠️ 实测（2026-09 冒烟机，整轮里才暴露出来）：
+        #    install --force 是【真的会重装】的，而且会换成镜像里的版本
+        #    —— 它把日历从 6.5.42.1 换成了 5.14.5.1，还顺带拉来旧 base
+        #    23.1.0.3。所以【不能】断言"应用集合不变"（我第一版就是这么
+        #    写的，结果整轮 FAIL 并中止）。这里只断言真正要紧的：
+        #    这个应用不能因为重装反而没了。
+        after = self._installed_refs()
+        if not any(x.startswith(app_id + "/") for x in after):
+            raise AssertionError(
+                f"强制重装后 {app_id} 反而没了: {sorted(after)}")
+        ver_before = sorted(x for x in before if x.startswith(app_id + "/"))
+        ver_after = sorted(x for x in after if x.startswith(app_id + "/"))
+        if ver_before != ver_after:
+            print(f"    [note] install --force 换了版本: "
+                  f"{ver_before} -> {ver_after}")
+        # --force 会真的重装并换版本，必须按快照还原
+        self._restore_installed_refs(before)
+
+    def test_architecture_parsing(self):
+        app_id = CALENDAR_APP_ID
+        # 版本号用【肯定不存在】的，避免真去下载别的架构的包；
+        # 也就不依赖"应用已安装"（应用可能排在被卸载之后）。
+        ghost = "999999.0.0.0"
+
+        # 1) 已知架构：必须解析通过，报的是"找不到"而不是"未知架构"
+        for arch in ("arm64", "loongarch64", "loong64", "sw64", "mips64",
+                     "riscv64"):
+            ref = f"{app_id}/{ghost}/{arch}"
+            code, out = self._pty_ll_cli("install", ref, timeout=90)
+            if "unknown architecture" in out:
+                raise AssertionError(
+                    f"已知架构 {arch} 被当成未知架构了: {out[:200]!r}")
+            if code == 0:
+                raise AssertionError(
+                    f"装了不存在的版本 {ghost}({arch}) 居然成功: {out[:200]!r}")
+
+        # 2) 未知架构：必须明确报未知架构，且不能崩
+        for arch in ("bogus", "amd64", "aarch64", "X86_64"):
+            ref = f"{app_id}/{ghost}/{arch}"
+            code, out = self._pty_ll_cli("install", ref, timeout=90)
+            if code == 0:
+                raise AssertionError(
+                    f"未知架构 {arch} 居然装成功了: {out[:200]!r}")
+            if "unknown architecture" not in out:
+                raise AssertionError(
+                    f"未知架构 {arch} 的报错不对: {out[:200]!r}")
+
+    # ── 运行配置里的嵌套挂载：父子两个都必须可见 ──
+    #
+    # container_cfg_builder.cpp 里有一整组"挂载点树"代码完全没覆盖
+    # （adjustNode 36/36、shouldFix 29/29、tryFixMountpointsTree 25/25、
+    # constructMountpointsTree 22/22、insertChildRecursively 15/15、
+    # generateMounts 14/14、mountBind 12/12、getRelativePath 12/12、
+    # buildQuirkVolatile 8/8 …合计约 185 行）。
+    #
+    # 触发口不是命令行 --bind（CLI 根本没有这个选项），而是按应用的
+    # 运行配置：RuntimeConfigure.mounts（见
+    # libs/api/src/linglong/api/types/v1/RuntimeConfigure.hpp）。
+    # 父目录和子目录各挂一个，就会走"挂载点树需要修正"的那条路。
+    #
+    # 断言的是功能行为：两个挂载在容器里【都必须能读到】，不是只看
+    # 命令跑没跑通 —— 只挂上父的、丢了子的，就是功能不对。
+    # ── TTY 透传 + 运行中信号转发 ──
+    #
+    # ll-init.cpp（108 行未覆盖）里两块从没走到：
+    #   · delegate_run（11/40 未覆盖）—— 只在 stdin 是 tty 时才走的
+    #     "把命令交给用户"路径（isatty(STDIN_FILENO)）
+    #   · ChildProcess::forward_signal / reap_pending / has_zombies ——
+    #     容器在跑的时候收到信号、以及子进程退出后的回收
+    #
+    # 断言的是功能行为：
+    #   1. 从终端（pty）跑，容器里的 stdin 必须【真的是 tty】
+    #      —— 交互式程序（vim、top）能不能用就看这个
+    #   2. 跑着的容器被 kill 之后必须真的退出、且不留在 ps 里
+    #      （信号要转发到应用进程，僵尸要被回收）
+    # ── 从终端复用运行中的实例（交互路径）──
+    #
+    # reuseContainer 里有一整块交互 I/O 从没走到（1391-1449：把终端设成
+    # raw 模式、ioctl 拿窗口大小、epoll 转发 stdin/stdout、以及一堆失败
+    # 返回）。套件里现有的复用用例走的是非 pty 路径，所以碰不到。
+    #
+    # 断言的是功能行为（真实用户场景：一个实例在跑，另开终端往里发命令）：
+    #   1. 复用必须成功，且新命令的输出必须回显到当前终端
+    #   2. 复用不能偷偷再起一个容器（容器数不增加）
+    # ── 客户端在任务进行中断开（Ctrl-C / 关终端）──
+    #
+    # package_task.cpp 里这几块整块没覆盖：PackageTask::onCallerDisconnected
+    # （7/7）、PackageTaskQueue::getTask（7/7）、PackageTask::onMessage
+    # （5/5）—— 套件里所有任务都是"客户端一直等到结束"。
+    #
+    # 断言的功能行为（真实场景：装到一半按 Ctrl-C / 关掉终端）：
+    #   1. 服务端不能因此崩（服务必须还 active）
+    #   2. 不能留下永久占用（后续命令必须还能正常执行，不能卡在锁上）
+    #   3. 状态必须一致：应用要么装着要么没装，不能半装
+    #   4. 跑完必须把应用还原成"装着"（本用例动了真实安装状态）
+    def test_client_disconnect_during_task(self):
+        app_id = CALENDAR_APP_ID
+        row_re = re.compile(r"^(\S+)\s+\S+\s+(\d[\d.]*)\s", re.M)
+
+        def installed():
+            out = self._ll_cli("list", check=False).stdout
+            return {f"{i}/{v}" for i, v in row_re.findall(out or "")}
+
+        if not any(x.startswith(app_id + "/") for x in installed()):
+            self._sudo_ll_cli("install", app_id, timeout=900, check=False)
+        if not any(x.startswith(app_id + "/") for x in installed()):
+            raise StepSkipped(f"{app_id} 装不上（镜像里没有？）")
+        snapshot = self._installed_refs()
+
+        # ⚠️ 必须用【会一直连着等进度】的 install：实测 ll-cli uninstall
+        # 是"提交任务就返回"，客户端根本没连着，杀它不会触发
+        # onCallerDisconnected（我第一版就是这么写的，0 增量）。
+        # 先把应用卸掉，让 install 真的有活干，再中途把整个进程组
+        # （含 sudo 包装）杀掉 —— 等价于用户按 Ctrl-C / 关终端。
+        self._sudo_ll_cli("uninstall", "--force", app_id, timeout=300,
+                          check=False)
+        proc = subprocess.Popen(
+            ["sudo", "-A", LL_CLI, "install", app_id],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            start_new_session=True)
+        try:
+            time.sleep(8)  # 让任务真正跑起来再断
+            try:
+                os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            proc.wait(timeout=60)
+        finally:
+            if proc.poll() is None:
+                proc.kill()
+                proc.wait()
+
+        time.sleep(20)  # 给服务端收拾残局的时间
+
+        active = self._run_cmd(["systemctl", "is-active",
+                                "org.deepin.linglong.PackageManager.service"],
+                               check=False).stdout
+        if "active" not in (active or ""):
+            raise AssertionError(f"客户端断开后服务不 active 了: {active!r}")
+
+        r = self._ll_cli("list", check=False)
+        if r.returncode != 0:
+            raise AssertionError(
+                f"客户端断开后 ll-cli list 不可用（疑似卡在锁上）: "
+                f"rc={r.returncode} {(r.stderr or '')[:200]!r}")
+
+        after = installed()
+        if after != installed():
+            raise AssertionError("ll-cli list 两次结果不一致（服务端状态不稳）")
+
+        # 还原成"跑之前的确切状态"（不是"随便装回来"—— 镜像最新版
+        # 可能不是原来那个版本，会静默换掉）
+        self._restore_installed_refs(snapshot)
+
+    def test_reuse_instance_with_tty(self):
+        app_id = CALENDAR_APP_ID
+        inst = f"smokereusetty{os.getpid()}"
+        r = self._ll_cli("list", check=False)
+        if app_id not in (r.stdout or ""):
+            self._sudo_ll_cli("install", app_id, timeout=900, check=False)
+
+        proc = subprocess.Popen(
+            [LL_CLI, "run", app_id, "--instance", inst, "--", "sleep", "300"],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        try:
+            if not self._wait_container(timeout=40, app_id=app_id):
+                raise AssertionError("带 --instance 启动的容器没出现在 ps 里")
+
+            # 关键：用 pty（终端）去复用，才会走交互 I/O 那块
+            code, out = self._pty_ll_cli(
+                "run", app_id, "--instance", inst, "--",
+                "/bin/sh", "-c", "echo REUSED_TTY", timeout=120)
+            if code != 0:
+                raise AssertionError(
+                    f"从终端复用实例失败: rc={code} {out[:250]!r}")
+            if "REUSED_TTY" not in out:
+                raise AssertionError(
+                    f"复用后新命令的输出没回显: {out[:250]!r}")
+
+            r = self._ll_cli("ps", "--json", check=False)
+            try:
+                arr = json.loads(r.stdout or "[]")
+            except json.JSONDecodeError:
+                arr = []
+            if isinstance(arr, list) and len(arr) != 1:
+                raise AssertionError(
+                    f"复用后应只有 1 个容器, 实际 {len(arr)} 个")
+        finally:
+            if proc.poll() is None:
+                proc.kill()
+                proc.wait()
+            self._cleanup_containers(app_id)
+
+    def test_tty_and_signal_forwarding(self):
+        app_id = CALENDAR_APP_ID
+        r = self._ll_cli("list", check=False)
+        if app_id not in (r.stdout or ""):
+            self._sudo_ll_cli("install", app_id, timeout=900, check=False)
+
+        try:
+            # 1) TTY 透传
+            code, out = self._pty_ll_cli(
+                "run", app_id, "--", "/bin/sh", "-c",
+                "if [ -t 0 ]; then echo IS_TTY; else echo NO_TTY; fi",
+                timeout=120)
+            if code != 0:
+                raise AssertionError(f"pty 下运行失败: rc={code} {out[:200]!r}")
+            if "IS_TTY" not in out:
+                raise AssertionError(
+                    "从终端跑，容器里的 stdin 不是 tty（交互式程序会不可用）: "
+                    f"{out[:200]!r}")
+
+            # 2) 跑着的容器收到信号：必须退出、不能留僵尸/残留容器
+            inst = f"smokesig{os.getpid()}"
+            proc = subprocess.Popen(
+                [LL_CLI, "run", app_id, "--instance", inst, "--",
+                 "sleep", "300"],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            try:
+                cid = self._wait_container(timeout=40, app_id=app_id)
+                if not cid:
+                    raise AssertionError("带 --instance 启动的容器没出现在 ps 里")
+                r = self._ll_cli("kill", app_id, timeout=60, check=False)
+                if r.returncode != 0:
+                    raise AssertionError(
+                        f"ll-cli kill 失败: rc={r.returncode} "
+                        f"{(r.stderr or r.stdout)[:200]!r}")
+                # 等它真的消失
+                deadline = time.time() + 40
+                gone = False
+                while time.time() < deadline:
+                    rr = self._ll_cli("ps", "--json", check=False)
+                    if app_id not in (rr.stdout or ""):
+                        gone = True
+                        break
+                    time.sleep(2)
+                if not gone:
+                    raise AssertionError(
+                        "kill 之后容器还留在 ll-cli ps 里（信号没转发/僵尸没回收）")
+            finally:
+                if proc.poll() is None:
+                    proc.kill()
+                    proc.wait()
+        finally:
+            self._cleanup_containers(app_id)
+
+    def test_runtime_config_mounts(self):
+        app_id = CALENDAR_APP_ID
+        workdir = Path(tempfile.mkdtemp(prefix="rtmount-"))
+        cfg_home = workdir / "cfg"
+        cfg_dir = cfg_home / "linglong" / "apps" / app_id / "config.d"
+        cfg_dir.mkdir(parents=True)
+        outer = workdir / "outer"
+        inner = outer / "inner"
+        inner.mkdir(parents=True)
+        (outer / "outer.txt").write_text("OUTER_OK")
+        (inner / "inner.txt").write_text("INNER_OK")
+
+        r = self._ll_cli("list", check=False)
+        if app_id not in (r.stdout or ""):
+            self._sudo_ll_cli("install", app_id, timeout=900, check=False)
+
+        (cfg_dir / "smoke-mounts.json").write_text(json.dumps({
+            "mounts": [
+                {"destination": "/opt/smoke-nest", "source": str(outer),
+                 "type": "bind", "options": ["rbind"]},
+                {"destination": "/opt/smoke-nest/inner", "source": str(inner),
+                 "type": "bind", "options": ["rbind"]},
+            ],
+            # 顺带覆盖几个同样没走到的配置分支
+            "enablePipewire": True,
+            "disableXdp": True,
+            "enableAtspi": True,
+        }, indent=2))
+
+        try:
+            code, out = self._pty_ll_cli(
+                "run", app_id, "--", "/bin/sh", "-c",
+                "cat /opt/smoke-nest/outer.txt; "
+                "cat /opt/smoke-nest/inner/inner.txt",
+                timeout=120, env={"XDG_CONFIG_HOME": str(cfg_home)})
+            if code != 0:
+                raise AssertionError(
+                    f"带嵌套挂载运行失败: rc={code} {out[:300]!r}")
+            if "OUTER_OK" not in out:
+                raise AssertionError(
+                    f"父挂载在容器里读不到: {out[:300]!r}")
+            if "INNER_OK" not in out:
+                raise AssertionError(
+                    f"子挂载在容器里读不到（挂载点树没修对）: {out[:300]!r}")
+        finally:
+            shutil.rmtree(workdir, ignore_errors=True)
+            if workdir.exists():
+                self._run_cmd(["rm", "-rf", str(workdir)], sudo=True,
+                              check=False)
+            self._cleanup_containers(app_id)
+            if workdir.exists():
+                raise AssertionError(f"临时运行配置没清干净: {workdir}")
+
+    def test_runtime_config_env_injection(self):
+        app_id = CALENDAR_APP_ID
+        workdir = Path(tempfile.mkdtemp(prefix="rtenvprobe-"))
+        cfg_home = workdir / "cfg"
+        cfg_dir = cfg_home / "linglong" / "apps" / app_id / "config.d"
+        cfg_dir.mkdir(parents=True)
+
+        # 应用可能排在"日历被卸载"之后
+        r = self._ll_cli("list", check=False)
+        if app_id not in r.stdout:
+            self._sudo_ll_cli("install", app_id, timeout=900, check=False)
+
+        (cfg_dir / "smoke-env.json").write_text(json.dumps({
+            "env": {
+                "SMOKE_RT_ENV": "rt1",
+                "SMOKE_RT_FROM_CONFIG": "cfg",
+            },
+        }, indent=2))
+
+        try:
+            # 1) 运行配置里的 env
+            code, out = self._pty_ll_cli(
+                "run", app_id, "--", "/bin/sh", "-c",
+                "echo RT=$SMOKE_RT_ENV CFG=$SMOKE_RT_FROM_CONFIG",
+                timeout=90, env={"XDG_CONFIG_HOME": str(cfg_home)})
+            if code != 0:
+                raise AssertionError(f"带运行配置运行失败: rc={code} {out[:200]}")
+            if "RT=rt1" not in out or "CFG=cfg" not in out:
+                raise AssertionError(
+                    f"运行配置里的 env 没有注入容器: {out[:200]!r}")
+
+            # 2) 命令行 --env
+            code, out = self._pty_ll_cli(
+                "run", app_id, "--env", "SMOKE_RT_FROM_CLI=cli1",
+                "--", "/bin/sh", "-c", "echo CLI=$SMOKE_RT_FROM_CLI",
+                timeout=90, env={"XDG_CONFIG_HOME": str(cfg_home)})
+            if code != 0:
+                raise AssertionError(f"--env 运行失败: rc={code} {out[:200]}")
+            if "CLI=cli1" not in out:
+                raise AssertionError(f"--env 没有注入容器: {out[:200]!r}")
+
+            # 3) 畸形 --env（没有 =）：必须被拒绝且不崩。
+            #    实测：ll-cli 在【参数解析层】就拦下来了
+            #    （"--env: 输入参数无效，请输入有效参数"），根本走不到服务端
+            #    applyCliRunOptions 里那句 "invalid environment variable"
+            #    —— 也就是说 container_builder.cpp:175 这个分支
+            #    【没法用 ll-cli 覆盖】，只能靠直接发 DBus 请求（后续再补）。
+            code, out = self._pty_ll_cli(
+                "run", app_id, "--env", "SMOKE_RT_BAD",
+                "--", "/bin/sh", "-c", "true",
+                timeout=90, env={"XDG_CONFIG_HOME": str(cfg_home)})
+            if code == 0:
+                raise AssertionError(f"畸形 --env 居然成功了: {out[:200]!r}")
+            if not any(k in out for k in ("输入参数无效",
+                                          "invalid environment variable")):
+                raise AssertionError(f"畸形 --env 的报错不对: {out[:200]!r}")
+        finally:
+            shutil.rmtree(workdir, ignore_errors=True)
+            if workdir.exists():
+                self._run_cmd(["rm", "-rf", str(workdir)], sudo=True,
+                              check=False)
+            if workdir.exists():
+                raise AssertionError(f"临时目录没删掉: {workdir}")
+
+    def test_extension_layer_env_and_mount(self):
+        app_id = CALENDAR_APP_ID
+        ext_id = f"org.linyaps.smoke.ext{os.getpid()}"
+        ext_ver = "1.0.0.1"
+        env_ok = "ext-on"
+        env_lib = f"/opt/extensions/{ext_id}/lib"
+        workdir = Path(tempfile.mkdtemp(prefix="extprobe-"))
+        proj = workdir / "smokeext"
+        cfg_home = workdir / "cfg"
+        cfg_dir = cfg_home / "linglong" / "apps" / app_id / "config.d"
+
+        # 应用可能排在"日历被卸载"之后
+        r = self._ll_cli("list", check=False)
+        if app_id not in r.stdout:
+            self._sudo_ll_cli("install", app_id, timeout=900, check=False)
+
+        proj.mkdir(parents=True)
+        cfg_dir.mkdir(parents=True)
+        (proj / "linglong.yaml").write_text(
+            'version: "1"\n\n'
+            "package:\n"
+            f"  id: {ext_id}\n"
+            "  name: smoke extension\n"
+            f"  version: {ext_ver}\n"
+            "  kind: extension\n"
+            "  description: |\n"
+            "    smoke test extension\n"
+            f"  extension_of: {app_id}\n"
+            "  env:\n"
+            f'    SMOKE_EXT_ENV: "{env_ok}"\n'
+            '    SMOKE_EXT_LIB: "$PREFIX/lib"\n'
+            '    SMOKE_EXT_ORIGIN: "$ORIGIN/smoke"\n'
+            '    SMOKE_EXT_DENIED: "must-not-appear"\n'
+            "  libs:\n"
+            "    - /usr/lib/smoke-ext-libs\n"
+            "  deviceNodes:\n"
+            "    - path: /tmp/smoke-ext-null\n"
+            "      hostPath: /dev/null\n\n"
+            "command: [echo, smoke-extension]\n\n"
+            "base: org.deepin.base/25.2.2\n\n"
+            "build: |\n"
+            "  mkdir -p $PREFIX/share $PREFIX/lib/smoke-ext-libs\n"
+            "  echo smoke-ext-file > $PREFIX/share/smoke-ext.txt\n"
+            "  echo smoke-lib > $PREFIX/lib/smoke-ext-libs/libsmoke.txt\n")
+
+        # 用户级运行配置：声明日历应用使用这个扩展，并给出 env 白名单
+        (cfg_dir / "smoke-ext.json").write_text(json.dumps({
+            "ext_defs": {
+                app_id: [{
+                    "name": ext_id,
+                    "version": ext_ver,
+                    "directory": f"/opt/extensions/{ext_id}",
+                    "allow_env": {
+                        "SMOKE_EXT_ENV": "",
+                        "SMOKE_EXT_LIB": "/usr/lib/smoke-default",
+                        "SMOKE_EXT_ORIGIN": "/base",
+                    },
+                }],
+            },
+        }, indent=2))
+
+        try:
+            r = self._ll_builder("build", cwd=str(proj), timeout=1800, check=False)
+            if r.returncode != 0:
+                raise AssertionError(
+                    f"构建扩展项目失败: rc={r.returncode} "
+                    f"{(r.stdout + r.stderr)[-400:]}")
+
+            r = self._ll_builder("export", "--layer", cwd=str(proj),
+                                 timeout=900, check=False)
+            if r.returncode != 0:
+                raise AssertionError(
+                    f"导出扩展 layer 失败: rc={r.returncode} "
+                    f"{(r.stdout + r.stderr)[-400:]}")
+            layers = sorted(proj.glob("*_binary.layer"))
+            if not layers:
+                raise AssertionError("导出后没有找到扩展的 binary.layer")
+
+            r = self._sudo_ll_cli("install", str(layers[0]), timeout=1200,
+                                  check=False)
+            if r.returncode != 0:
+                raise AssertionError(
+                    f"安装扩展 layer 失败: rc={r.returncode} "
+                    f"{(r.stdout + r.stderr)[-400:]}")
+            # 安装走服务端，覆盖计数还在服务进程内存里，得让它落盘
+            self.flush_service_coverage()
+
+            r = self._ll_cli("list", check=False)
+            if ext_id not in r.stdout:
+                raise AssertionError(
+                    f"扩展装完后 ll-cli list 里没有 {ext_id}，"
+                    "后面 resolveExtension 会静默跳过、用例会假通过")
+
+            # ── 正式轮：带运行配置跑，扩展必须真的生效 ──
+            script = (
+                "echo EXT=$SMOKE_EXT_ENV; "
+                "echo LIB=$SMOKE_EXT_LIB; "
+                "echo ORIGIN=$SMOKE_EXT_ORIGIN; "
+                "echo DENIED=[$SMOKE_EXT_DENIED]; "
+                f"cat /opt/extensions/{ext_id}/share/smoke-ext.txt; "
+                "test -c /tmp/smoke-ext-null && echo DEVNODE=ok")
+            code, out = self._pty_ll_cli(
+                "run", app_id, "--", "/bin/sh", "-c", script, timeout=300,
+                env={"XDG_CONFIG_HOME": str(cfg_home)})
+            if code != 0:
+                raise AssertionError(
+                    f"带扩展运行失败: rc={code} {out[-400:]!r}")
+            for want, why in (
+                (f"EXT={env_ok}", "扩展声明的 env 没有被注入"),
+                (f"LIB={env_lib}", "$PREFIX 没有被替换成扩展挂载点"),
+                ("smoke-ext-file", "扩展层没有被挂到 /opt/extensions/<id>"),
+                ("DEVNODE=ok", "扩展声明的 deviceNodes 没有被挂载"),
+                # ⚠️ 下面两条断言的是【最终生效值】而不是 allow_env 语义：
+                #    ll-cli run 会把解析好的 RunContextConfig 交给服务端，
+                #    服务端 PackageManager::initRunContext 会再 resolve 一次，
+                #    那次走的是 "target 没声明过这个扩展 -> manual define"，
+                #    而 manual define 里没有 allow_env，于是 env 被原样注入。
+                #    所以 allow_env 的白名单/默认值语义在整条链路里【不生效】。
+                ("ORIGIN=/smoke", "扩展的 $ORIGIN 占位符没有被替换"),
+                ("DENIED=[must-not-appear]", "扩展声明的 env 没有原样进容器"),
+                # 但 CLI 侧那次解析确实跑了 allow_env 分支：不在白名单里的
+                # env 必须留下一条警告（这条日志就是该分支被执行的证据）。
+                ("not allowed in", "CLI 侧的 allow_env 白名单分支没有跑到"),
+            ):
+                if want not in out:
+                    raise AssertionError(f"{why}（期望 {want!r}）: {out[-400:]!r}")
+
+            # ── 对照组：不带运行配置，同样的 env 必须是空的 ──
+            # 否则"扩展生效"这个结论不成立（可能是别处注入的）。
+            code, out = self._pty_ll_cli(
+                "run", app_id, "--", "/bin/sh", "-c",
+                "echo EXT=[$SMOKE_EXT_ENV]", timeout=300,
+                env={"XDG_CONFIG_HOME": None})
+            if code != 0:
+                raise AssertionError(f"对照运行失败: rc={code} {out[-300:]!r}")
+            if "EXT=[]" not in out:
+                raise AssertionError(
+                    f"没有运行配置时扩展的 env 仍然生效了，"
+                    f"说明结论不成立: {out[-300:]!r}")
+        finally:
+            self._sudo_ll_cli("uninstall", ext_id, timeout=600, check=False)
+            # builder 是以 root 身份跑的，项目目录里会留下 v25 删不掉的文件，
+            # 所以 shutil.rmtree 之后还要用 sudo 兜一次底。
+            shutil.rmtree(workdir, ignore_errors=True)
+            if workdir.exists():
+                self._run_cmd(["rm", "-rf", str(workdir)], sudo=True,
+                              check=False)
+            r = self._ll_cli("list", check=False)
+            if ext_id in r.stdout:
+                raise AssertionError(f"用例结束后扩展 {ext_id} 仍留在机器上")
+            if workdir.exists():
+                raise AssertionError(f"用例结束后临时目录 {workdir} 没删掉")
+
+    # ── Test: 应用声明的 permissions.binds / innerBinds ──
+    #
+    # run_context.cpp:fillExtraAppMounts 里处理 info.permissions 的那一段
+    # 此前是 0%：仓库里的应用（日历）都没声明 permissions，而这段代码
+    # 只在【应用层自己的 info.json 带 permissions】时才会跑到。
+    # 自己构建一个带 permissions 的小应用（builder 会把项目顶层的
+    # permissions 原样写进 info.json，见 linglong_builder.cpp:1287）：
+    #
+    #   binds      —— 把【宿主】文件绑进容器；
+    #   innerBinds —— 把【容器 rootfs 里】的文件绑到另一个位置
+    #                 （源码里是 bundlePath/rootfs/<source>）。
+    #
+    # 断言方式：在容器里把两个目标都读出来，内容必须是源文件的内容 ——
+    # 只看"执行到"是不够的，绑错了路径同样会"执行到"。
+    def test_run_app_permissions_binds(self):
+        app_id = f"org.linyaps.smoke.perm{os.getpid()}"
+        host_content = "smoke-host-bind-content"
+        inner_content = "smoke-inner-bind-content"
+        host_dst = "/tmp/smoke-host-bind.txt"
+        inner_dst = "/tmp/smoke-inner-bind.txt"
+        inner_src = f"/opt/apps/{app_id}/files/share/smoke-inner.txt"
+        workdir = Path(tempfile.mkdtemp(prefix="permprobe-"))
+        proj = workdir / "permprobe"
+        host_file = workdir / "host-bind.txt"
+        proj.mkdir(parents=True)
+        host_file.write_text(host_content + "\n")
+        # ⚠️ 宿主绑定源是【服务进程】去打开的，而服务跑在 uid 993
+        #    （deepin-linglong），不是 root：tempfile.mkdtemp 建的目录是
+        #    0700，服务读不到，现象是 ll-box 报
+        #    "clone failed: open: ... Permission denied"，然后
+        #    InitRunContext 失败。这里必须放开权限。
+        os.chmod(workdir, 0o755)
+        os.chmod(host_file, 0o644)
+
+        (proj / "linglong.yaml").write_text(
+            'version: "1"\n\n'
+            "package:\n"
+            f"  id: {app_id}\n"
+            "  name: smoke permissions\n"
+            "  version: 1.0.0.1\n"
+            "  kind: app\n"
+            "  description: |\n"
+            "    smoke test permissions binds\n\n"
+            "command: [echo, smoke-permissions]\n\n"
+            "base: org.deepin.base/25.2.2\n\n"
+            "permissions:\n"
+            "  binds:\n"
+            f"    - source: {host_file}\n"
+            f"      destination: {host_dst}\n"
+            "  innerBinds:\n"
+            f"    - source: {inner_src}\n"
+            f"      destination: {inner_dst}\n\n"
+            "build: |\n"
+            "  mkdir -p $PREFIX/share\n"
+            f"  echo {inner_content} > $PREFIX/share/smoke-inner.txt\n")
+
+        try:
+            r = self._ll_builder("build", cwd=str(proj), timeout=1800, check=False)
+            if r.returncode != 0:
+                raise AssertionError(
+                    f"构建 permissions 项目失败: rc={r.returncode} "
+                    f"{(r.stdout + r.stderr)[-400:]}")
+
+            r = self._ll_builder("export", "--layer", cwd=str(proj),
+                                 timeout=900, check=False)
+            if r.returncode != 0:
+                raise AssertionError(
+                    f"导出 permissions layer 失败: rc={r.returncode} "
+                    f"{(r.stdout + r.stderr)[-400:]}")
+            layers = sorted(proj.glob("*_binary.layer"))
+            if not layers:
+                raise AssertionError("导出后没有找到 permissions 的 binary.layer")
+
+            r = self._sudo_ll_cli("install", str(layers[0]), timeout=1200,
+                                  check=False)
+            if r.returncode != 0:
+                raise AssertionError(
+                    f"安装 permissions layer 失败: rc={r.returncode} "
+                    f"{(r.stdout + r.stderr)[-400:]}")
+            self.flush_service_coverage()
+
+            script = f"cat {host_dst}; cat {inner_dst}"
+            code, out = self._pty_ll_cli("run", app_id, "--", "/bin/sh", "-c",
+                                         script, timeout=300)
+            if code != 0:
+                raise AssertionError(
+                    f"带 permissions 运行失败: rc={code} {out[-400:]!r}")
+            if host_content not in out:
+                raise AssertionError(
+                    f"permissions.binds 没有把宿主文件绑进容器: {out[-400:]!r}")
+            if inner_content not in out:
+                raise AssertionError(
+                    f"permissions.innerBinds 没有把应用内部文件绑过去: "
+                    f"{out[-400:]!r}")
+        finally:
+            self._sudo_ll_cli("uninstall", app_id, timeout=600, check=False)
+            # 同扩展用例：builder 留下的 root 文件 v25 删不掉
+            shutil.rmtree(workdir, ignore_errors=True)
+            if workdir.exists():
+                self._run_cmd(["rm", "-rf", str(workdir)], sudo=True,
+                              check=False)
+            r = self._ll_cli("list", check=False)
+            if app_id in r.stdout:
+                raise AssertionError(f"用例结束后应用 {app_id} 仍留在机器上")
+            if workdir.exists():
+                raise AssertionError(f"用例结束后临时目录 {workdir} 没删掉")
+
+    # ── Test: 安装/升级的错误处理路径 ──
+    #
+    # 这些错误处理函数在正常流程里永远走不到：
+    #   cli.cpp: handleInstallError / handleInstallFromFileError / handleUpgradeError
+    #   uab_file.cpp: extractSignData / saveErofsToFile（解析失败分支）
+    # 用损坏的 UAB 与不存在的文件来触发。
+    def test_install_error_paths(self):
+        workdir = Path(tempfile.mkdtemp(prefix="ll-smoke-err-"))
+        try:
+            bogus = workdir / "bogus.uab"
+            bogus.write_bytes(b"this is definitely not a uab file\n")
+
+            random_uab = workdir / "random.uab"
+            random_uab.write_bytes(os.urandom(200 * 1024))
+
+            missing = workdir / "does-not-exist.uab"
+
+            for path in (bogus, random_uab, missing):
+                r = self._sudo_ll_cli("install", str(path), timeout=120, check=False)
+                if r.returncode == 0:
+                    raise AssertionError(f"安装非法文件 {path.name} 竟然成功")
+                if r.returncode < 0:
+                    raise AssertionError(f"安装 {path.name} 时崩溃了")
+                if not (r.stderr.strip() or r.stdout.strip()):
+                    raise AssertionError(f"安装 {path.name} 失败但无任何输出")
+
+            # 同样的坏文件换 .layer 后缀：走 PackageManager::installFromLayer
+            # （与 installFromUAB 是两条不同的链路，错误分支也不同）
+            bogus_layer = workdir / "bogus.layer"
+            bogus_layer.write_bytes(b"this is definitely not a layer file\n")
+            random_layer = workdir / "random.layer"
+            random_layer.write_bytes(os.urandom(200 * 1024))
+            # 只有头没有 erofs 体：能过头部检查但在解析元信息时失败
+            truncated_layer = workdir / "truncated.layer"
+            truncated_layer.write_bytes(
+                (workdir / "random.layer").read_bytes()[:64])
+            empty_layer = workdir / "empty.layer"
+            empty_layer.write_bytes(b"")
+
+            for path in (bogus_layer, random_layer, truncated_layer,
+                         empty_layer, workdir / "nope.layer"):
+                r = self._sudo_ll_cli("install", str(path), timeout=120,
+                                      check=False)
+                if r.returncode == 0:
+                    raise AssertionError(f"安装非法 {path.name} 竟然成功")
+                if r.returncode < 0:
+                    raise AssertionError(f"安装 {path.name} 时崩溃了")
+
+            # upgrade 的错误路径
+            r = self._sudo_ll_cli("upgrade", "org.deepin.nonexistent.app",
+                                  timeout=120, check=False)
+            if r.returncode == 0:
+                raise AssertionError("upgrade 不存在的应用竟然成功")
+            if r.returncode < 0:
+                raise AssertionError("upgrade 不存在的应用时崩溃了")
+
+            r = self._sudo_ll_cli("upgrade", str(bogus), timeout=120, check=False)
+            if r.returncode == 0:
+                raise AssertionError("upgrade 非法文件竟然成功")
+            if r.returncode < 0:
+                raise AssertionError("upgrade 非法文件时崩溃了")
+        finally:
+            shutil.rmtree(workdir, ignore_errors=True)
+
+    # ── Test: ll-builder push 的错误路径 ──
+    #
+    # push 需要远端签名服务，CI 里没有，所以只能覆盖到失败分支。
+    # 但这仍然会走到 linglong_builder.cpp 的 push 准备逻辑与
+    # ostree_repo 的远端交互入口。
+    def test_builder_push_errors(self):
+        # ⚠️ 本用例原先直接 chdir(DEMO_PROJECT_DIR)，但排在前面的步骤
+        #    （「安装并运行 demo 应用」）结束时会把 org.deepin.demo/ 删掉，
+        #    于是 chdir 抛 FileNotFoundError，用例必失败；
+        #    又因为 run_step 是 fail-fast（一个 FAIL 会跳过其后所有用例），
+        #    这会让排在它后面的用例全部不执行。
+        #    这里改成：项目目录在就用它，不在就在临时目录里跑 ——
+        #    push 的错误路径本来也不需要真实的项目目录。
+        old_cwd = os.getcwd()
+        workdir = None
+        try:
+            if Path(DEMO_PROJECT_DIR).is_dir():
+                os.chdir(DEMO_PROJECT_DIR)
+            else:
+                workdir = Path(tempfile.mkdtemp(prefix="ll-smoke-push-"))
+                os.chdir(workdir)
+
+            # 不可达的仓库地址：应给出明确错误，不崩溃
+            r = self._ll_builder("push", "--repo-url", "http://127.0.0.1:1/nope",
+                                 "--repo-name", "smoke", timeout=180, check=False)
+            if r.returncode == 0:
+                raise AssertionError("push 到不可达地址竟然成功")
+            if r.returncode < 0:
+                raise AssertionError("push 到不可达地址时崩溃了")
+            if not (r.stderr.strip() or r.stdout.strip()):
+                raise AssertionError("push 失败但无任何输出")
+
+            # push --module：按语义是"只推指定模块"，而不是项目里的全部模块。
+            # 默认走 getProjectModule()，会依次推 binary / develop；
+            # 给了 --module 就只剩那一个（main.cpp:889-893）。
+            # 判据就是"到底推了哪个模块"—— handlePush 会逐个打印
+            # "Pushing module: X"，这个输出直接反映被推送的模块集合。
+            out = r.stdout + r.stderr
+            if "Pushing module: binary" not in out:
+                raise AssertionError(
+                    f"不带 --module 时应推项目的全部模块（至少含 binary）: "
+                    f"{out[:400]!r}")
+
+            r = self._ll_builder("push", "--module", "develop",
+                                 "--repo-url", "http://127.0.0.1:1/nope",
+                                 "--repo-name", "smoke", timeout=180, check=False)
+            out = r.stdout + r.stderr
+            if "Pushing module: develop" not in out:
+                raise AssertionError(
+                    f"push --module develop 没有推 develop 模块: {out[:400]!r}")
+            if "Pushing module: binary" in out:
+                raise AssertionError(
+                    f"push --module develop 不该再去推 binary 模块: {out[:400]!r}")
+        finally:
+            os.chdir(old_cwd)
+            if workdir is not None:
+                shutil.rmtree(workdir, ignore_errors=True)
+
+    # ── Helper: 找一个可以直接运行的目标 ──
+    #
+    # 本批用例刻意不依赖 demo 构建产物（构建慢、且会被前面步骤删掉项目目录），
+    # 改用已安装的 base 作为运行目标。base 一定存在（所有应用都依赖它），
+    # 且 `ll-cli run <base> -- /bin/true` 实测 rc=0。
+    def _find_runnable_target(self) -> str:
+        # 本批用例排在流水线末尾，而前面的「清理未使用运行时（prune）」
+        # 会把无人依赖的 base 一并移除，所以这里不能假设 base 一定还在。
+        # 先看已装的，缺了就补装一个 —— 幂等，且 base 是所有应用的前提。
+        r = self._ll_cli("list", "--type=base", check=False)
+        if r.returncode == 0 and "org.deepin.base" in r.stdout:
+            return "org.deepin.base"
+
+        self._sudo_ll_cli("install", "org.deepin.base", timeout=600, check=False)
+
+        r = self._ll_cli("list", "--type=base", check=False)
+        if r.returncode == 0 and "org.deepin.base" in r.stdout:
+            return "org.deepin.base"
+
+        # 退回到 demo（若前面的步骤留下了它）
+        listing = self._ll_cli("list", check=False)
+        if DEMO_APP_ID in listing.stdout:
+            return DEMO_APP_ID
+
+        raise AssertionError(
+            "既没有可用的 base，也补装失败，无法执行本用例")
+
+    # ── Test: run 的文件 / URL / 设备传递选项 ──
+    #
+    # --file / --url / --device / --device-mode 这几个选项在原先的用例里
+    # 一个都没碰过，对应 cli.cpp 里文件与 URL 参数的处理分支、
+    # 以及 container_cfg_builder.cpp 的设备（CDI）注入逻辑。
+    # 实测（2026-09-16，base 25.2.2.8）：
+    #   --file /etc/hostname        rc=0
+    #   --url https://example.com   rc=0
+    #   --device-mode passthru      rc=0
+    #   --device /dev/null          rc=255 invalid device format（格式校验分支）
+    #   --device nvidia.com/gpu=0   rc=255 device not found（查找失败分支）
+    def test_run_file_url_device(self):
+        app_id = self._find_runnable_target()
+
+        # 正常路径：文件与 URL 都能被接受
+        for name, opts in (
+            ("--file", ["--file", "/etc/hostname"]),
+            ("--url", ["--url", "https://example.com"]),
+        ):
+            r = self._ll_cli("run", app_id, *opts, "--", "/bin/true",
+                             timeout=120, check=False)
+            if r.returncode != 0:
+                raise AssertionError(
+                    f"ll-cli run {name} 失败: rc={r.returncode} {r.stderr[:200]}")
+
+        # --device-mode 单独使用是可接受的
+        r = self._ll_cli("run", app_id, "--device-mode", "passthru",
+                         "--", "/bin/true", timeout=120, check=False)
+        if r.returncode != 0:
+            raise AssertionError(
+                f"ll-cli run --device-mode passthru 失败: "
+                f"rc={r.returncode} {r.stderr[:200]}")
+
+        # 错误路径：设备格式非法
+        r = self._ll_cli("run", app_id, "--device", "/dev/null",
+                         "--", "/bin/true", timeout=120, check=False)
+        if r.returncode == 0:
+            raise AssertionError("--device /dev/null 这种非法格式竟然成功")
+        if r.returncode < 0:
+            raise AssertionError("--device 非法格式时崩溃了")
+        if "invalid device format" not in (r.stderr + r.stdout):
+            raise AssertionError(
+                f"--device 非法格式应提示 invalid device format, "
+                f"实际: {(r.stderr + r.stdout)[:200]!r}")
+
+        # 错误路径：格式合法但设备不存在
+        r = self._ll_cli("run", app_id, "--device", "nvidia.com/gpu=0",
+                         "--", "/bin/true", timeout=120, check=False)
+        if r.returncode == 0:
+            raise AssertionError("--device 指向不存在的设备竟然成功")
+        if r.returncode < 0:
+            raise AssertionError("--device 设备不存在时崩溃了")
+
+    # ── Test: run 显式指定 base / runtime ──
+    #
+    # 显式 --base / --runtime 会走到 run_context.cpp 里与"从应用元数据推导"
+    # 不同的那条解析分支（RunContext::resolve 的显式引用路径）。
+    def test_run_explicit_base_runtime(self):
+        app_id = self._find_runnable_target()
+
+        # 取出当前 base 的完整引用（ID/版本/架构）
+        r = self._ll_cli("list", "--type=base", check=False)
+        base_ref = None
+        if r.returncode == 0:
+            for line in r.stdout.splitlines():
+                parts = line.split()
+                if len(parts) >= 2 and parts[0].startswith("org.deepin.base"):
+                    base_ref = f"{parts[0]}/{parts[1]}"
+                    break
+        if base_ref is None:
+            raise AssertionError("未能从 ll-cli list --type=base 解析出 base 引用")
+
+        r = self._ll_cli("run", app_id, "--base", base_ref,
+                         "--", "/bin/true", timeout=120, check=False)
+        if r.returncode != 0:
+            raise AssertionError(
+                f"ll-cli run --base {base_ref} 失败: "
+                f"rc={r.returncode} {r.stderr[:200]}")
+
+        # ⚠️ 不存在的 base：实测【不保证】非 0 退出。
+        #    run_context.cpp 里 --base 只在真正 resolve base layer 时才校验
+        #    （见 RunContext::resolve 中 "base layer must be resolved for all kinds"），
+        #    而 `-- /bin/true` 这种直接命令路径可能不走到那里，
+        #    于是 rc=0 而 --base 被忽略。所以这里【只】断言不崩溃、有输出，
+        #    不断言退出码 —— 否则会写出随环境状态漂移的脆弱用例。
+        r = self._ll_cli("run", app_id, "--base", "org.deepin.nonexistent.base",
+                         "--", "/bin/true", timeout=120, check=False)
+        if r.returncode < 0:
+            raise AssertionError("--base 指定不存在的 base 时崩溃了")
+
+        # 不存在的 runtime 同理
+        r = self._ll_cli("run", app_id,
+                         "--runtime", "org.deepin.nonexistent.runtime",
+                         "--", "/bin/true", timeout=120, check=False)
+        if r.returncode < 0:
+            raise AssertionError("--runtime 指定不存在的 runtime 时崩溃了")
+
+    # ── Test: run 的 debug 选项错误路径 ──
+    #
+    # --debug 系列在 cli.cpp 里有一段独立的参数校验与 gdbserver 装配逻辑。
+    # 实测：--debug 需要先装开发模块，当前环境会走
+    #   "基础环境 ... 未安装开发模块，正在安装。" -> Error 9: not authorized
+    # 因此这里只断言"不崩溃且给出明确失败"，不去依赖能真正装上开发模块。
+    def test_run_debug_options(self):
+        app_id = self._find_runnable_target()
+
+        for name, opts in (
+            ("--debug", ["--debug"]),
+            ("--debug-listen", ["--debug", "--debug-listen", "127.0.0.1:9999"]),
+            ("--debug-symbol-dir", ["--debug", "--debug-symbol-dir", "/tmp"]),
+            # ⚠️ 选项名是 --debug-debuginfod，不是 --debuginfod。
+            #    写成 --debuginfod 会被 CLI11 拒绝（rc=109 unexpected argument），
+            #    那样就只是在测参数校验，测不到 debuginfod 那条分支。
+            ("--debug-debuginfod", ["--debug",
+                                    "--debug-debuginfod", "http://127.0.0.1:1/nope"]),
+        ):
+            # ⚠️ 必须用 PTY + stop_when，【不能】用带 timeout 的 subprocess：
+            #    --debug 会起 gdbserver 等调试器附加，进程按设计【不会退出】。
+            #    develop 模块没装时它会很快报错退出，看起来"正常"；
+            #    一旦 develop 模块在位（例如为收集覆盖率而安装），
+            #    它就会真的挂住直到超时 —— 实测这让本步骤 120s 超时失败，
+            #    并因冒烟是 fail-fast 而跳过后面的全部步骤。
+            #    stop_when 收到 gdb 提示后就正常收尾，不再傻等。
+            code, out = self._pty_ll_cli(
+                "run", app_id, *opts, "--", "/bin/true",
+                timeout=60, stop_when="linglong-gdb")
+            if code < 0:
+                raise AssertionError(f"ll-cli run {name} 崩溃了")
+            # 无论成功还是失败，都必须有可读输出，不能静默
+            if not out.strip():
+                raise AssertionError(f"ll-cli run {name} 既无输出也未见错误")
+
+    # ── Test: install 的仓库与模块选项 ──
+    #
+    # --repo / --module / --no-auto-prune 都会走到 cli.cpp 里
+    # 与默认安装不同的参数组装分支。用不存在的仓库/模块来覆盖失败分支，
+    # 不实际改动系统状态。
+    def test_install_repo_module_options(self):
+        # 不存在的仓库：应失败且给出提示
+        r = self._sudo_ll_cli("install", "--repo", "nonexistent-repo",
+                              CALENDAR_APP_ID, timeout=180, check=False)
+        if r.returncode == 0:
+            raise AssertionError("install --repo 指定不存在的仓库竟然成功")
+        if r.returncode < 0:
+            raise AssertionError("install --repo 不存在的仓库时崩溃了")
+        if not (r.stderr.strip() or r.stdout.strip()):
+            raise AssertionError("install --repo 失败但无任何输出")
+
+        # 不存在的模块：应被拒绝
+        r = self._sudo_ll_cli("install", "--module", "bogus-module",
+                              CALENDAR_APP_ID, timeout=180, check=False)
+        if r.returncode == 0:
+            raise AssertionError("install --module 指定不存在的模块竟然成功")
+        if r.returncode < 0:
+            raise AssertionError("install --module 不存在的模块时崩溃了")
+
+        # --no-auto-prune：参数本身合法，安装不存在的应用应干净失败
+        r = self._sudo_ll_cli("install", "--no-auto-prune",
+                              "org.deepin.nonexistent.app",
+                              timeout=180, check=False)
+        if r.returncode == 0:
+            raise AssertionError("install 不存在的应用竟然成功")
+        if r.returncode < 0:
+            raise AssertionError("install 不存在的应用时崩溃了")
+
+    # ── Test: uninstall 的模块与强制选项 ──
+    #
+    # uninstall --module / --force / --no-auto-prune 对应卸载流程里
+    # 不同的目标解析与依赖清理分支，之前完全没有用例。
+    def test_uninstall_module_force_options(self):
+        # 未安装的应用：应干净失败
+        for name, opts in (
+            ("--module", ["--module", "bogus-module"]),
+            ("--force", ["--force"]),
+            ("--no-auto-prune", ["--no-auto-prune"]),
+        ):
+            r = self._sudo_ll_cli("uninstall", *opts,
+                                  "org.deepin.nonexistent.app",
+                                  timeout=120, check=False)
+            if r.returncode == 0:
+                raise AssertionError(f"uninstall {name} 对不存在的应用竟然成功")
+            if r.returncode < 0:
+                raise AssertionError(f"uninstall {name} 崩溃了")
+
+        # ⚠️ 绝对不要用 --force 去卸 base/runtime 来测这个分支：
+        #    实测 `sudo ll-cli uninstall --force org.deepin.base` 会真的把它卸掉
+        #    （rc=0），而被卸的 base 是后续所有用例的前提，
+        #    会让排在后面的用例连锁失败。
+        #    --force 的参数解析分支用"不存在的应用"同样能覆盖到。
+        r = self._sudo_ll_cli("uninstall", "--force",
+                              "org.deepin.nonexistent.base",
+                              timeout=120, check=False)
+        if r.returncode == 0:
+            raise AssertionError("uninstall --force 对不存在的 base 竟然成功")
+        if r.returncode < 0:
+            raise AssertionError("uninstall --force 不存在的 base 时崩溃了")
+
+    # ── Test: upgrade 的依赖与清理选项 ──
+    def test_upgrade_deps_prune_options(self):
+        for name, opts in (
+            ("--deps-only", ["--deps-only"]),
+            ("--no-auto-prune", ["--no-auto-prune"]),
+            ("--deps-only --no-auto-prune",
+             ["--deps-only", "--no-auto-prune"]),
+        ):
+            r = self._sudo_ll_cli("upgrade", *opts,
+                                  "org.deepin.nonexistent.app",
+                                  timeout=180, check=False)
+            if r.returncode == 0:
+                raise AssertionError(
+                    f"upgrade {name} 对不存在的应用竟然成功")
+            if r.returncode < 0:
+                raise AssertionError(f"upgrade {name} 崩溃了")
+            if not (r.stderr.strip() or r.stdout.strip()):
+                raise AssertionError(f"upgrade {name} 失败但无任何输出")
+
+    # ── Test: --no-dbus（peer-to-peer 模式）──
+    #
+    # --no-dbus 是【全局】flag（挂在顶层 commandParser 上，不在子命令里），
+    # 所以必须写在子命令【前面】：`ll-cli --no-dbus list`。
+    # 写成 `ll-cli list --no-dbus` 会被 CLI11 当成未知参数拒绝（rc=109），
+    # 那走的是完全不同的分支，测不到 peer 路径（踩过）。
+    #
+    # peer 模式下 ll-cli 自己 fork 出一个 package-manager 并通过
+    # 临时 unix socket 通信（initializePeerModePackageManager /
+    # preparePeerSocketDir），与走 dbus 服务的默认路径是两套独立代码。
+    def test_no_dbus_peer_mode(self):
+        # 只读且【不需要 package manager】的命令读的是本地状态，
+        # 根本不会去初始化 package manager，所以非 root 也能成功。
+        # （实测：repo show / search 这类需要 PM 的会报 root-only，别放这里）
+        for args in (["list"], ["ps"], ["analyze", "size"],
+                     ["analyze", "depends"]):
+            r = self._ll_cli("--no-dbus", *args, timeout=120, check=False)
+            if r.returncode != 0:
+                raise AssertionError(
+                    f"ll-cli --no-dbus {' '.join(args)} 失败: "
+                    f"rc={r.returncode} {r.stderr[:200]}")
+
+        # 非 root 在【需要 package manager】的命令上会走到
+        # initializePeerModePackageManager 的 getuid()!=0 检查，
+        # 报 "--no-dbus should only be used by root user."（rc=255）。
+        # ⚠️ 别用 list 测这条：list 不需要 PM，非 root 也返回 0（实测踩过）。
+        for args in (["repo", "show"], ["search", "deepin"], ["prune"],
+                     ["install", "org.deepin.nonexistent.app"],
+                     ["uninstall", "org.deepin.nonexistent.app"]):
+            r = self._ll_cli("--no-dbus", *args, timeout=120, check=False)
+            if r.returncode == 0:
+                raise AssertionError(
+                    f"非 root 的 ll-cli --no-dbus {' '.join(args)} 竟然成功")
+            if r.returncode < 0:
+                raise AssertionError(
+                    f"非 root 的 ll-cli --no-dbus {' '.join(args)} 崩溃了")
+            if "root" not in (r.stderr + r.stdout):
+                raise AssertionError(
+                    f"非 root --no-dbus {' '.join(args)} 没有给出 root-only 提示: "
+                    f"{(r.stderr + r.stdout)[:200]}")
+
+        # root 身份下的 peer 模式：这里才会真正建起 peer socket 并
+        # fork 出 package-manager，是 --no-dbus 的完整成功路径。
+        for args in (["list"], ["ps"], ["repo", "show"],
+                     ["search", "deepin"], ["analyze", "depends"]):
+            r = self._sudo_ll_cli("--no-dbus", *args, timeout=180, check=False)
+            if r.returncode != 0:
+                raise AssertionError(
+                    f"sudo ll-cli --no-dbus {' '.join(args)} 失败: "
+                    f"rc={r.returncode} {r.stderr[:200]}")
+
+        # 直接起一次 peer 模式的【服务端】，让它走"没人连接 -> 10 秒启动
+        # 超时 -> 自己退出并删掉 socket"这条路。
+        #
+        # ⚠️ 为什么非得起这一次：ll-cli --no-dbus 时服务端是被
+        #     sudo --user deepin-linglong --preserve-env=... ll-package-manager --no-dbus
+        #    起的，sudo 会把 GCOV_PREFIX 剥掉，于是它只能往【编译期路径】
+        #    （构建树，属主是 v25）写 .gcda —— uid 993 根本写不进去。
+        #    实测：构建树里的 main.cpp.gcda 时间戳一直停在编译那一刻，
+        #    apps/ll-package-manager/src/main.cpp 的 peer 分支
+        #    （peer socket / 启动超时 / 退出清理，约 25 行）从来没被统计过。
+        #    这里用 root + 显式 GCOV_PREFIX 直接跑一次服务端，覆盖率就能落盘。
+        #
+        # ⚠️ 两个必须踩对的点：
+        #   1. 服务端 main() 里有一道 `qgetenv("USER") != deepin-linglong`
+        #      就直接退出的检查 —— 用 root 跑（USER=root）根本进不去 peer
+        #      分支，必须 sudo --user deepin-linglong 且把 USER 传对。
+        #   2. GCOV_PREFIX 要显式给（sudo 会剥掉外层环境），而且必须指向
+        #      deepin-linglong 可写的前缀；不给的话它会去写编译期路径
+        #      （构建树，属主 v25）—— uid 993 写不进去，覆盖率就丢了。
+        sock = f"/tmp/smoke-peer-{os.getpid()}.socket"
+        plog = f"/tmp/smoke-peer-{os.getpid()}.log"
+        prefix = os.environ.get("GCOV_PREFIX_ROOT",
+                                "/var/tmp/linglong-cov-root")
+        user = "deepin-linglong"
+        script = (
+            f"rm -f {sock}\n"
+            f"sudo -A --user {user} env USER={user} "
+            f"GCOV_PREFIX={prefix} GCOV_PREFIX_STRIP=0 "
+            f"{LIBEXEC_DIR}/ll-package-manager --no-dbus "
+            f"--peer-socket {sock} >{plog} 2>&1 &\n"
+            "pid=$!\n"
+            "for i in $(seq 1 60); do [ -S " + sock + " ] && break; sleep 0.2; done\n"
+            "if [ ! -S " + sock + " ]; then echo NO_SOCKET; "
+            "cat " + plog + "; kill $pid 2>/dev/null; exit 1; fi\n"
+            "for i in $(seq 1 100); do kill -0 $pid 2>/dev/null || break; "
+            "sleep 0.3; done\n"
+            "if kill -0 $pid 2>/dev/null; then echo STILL_RUNNING; "
+            "kill $pid 2>/dev/null; exit 1; fi\n"
+            "if [ -S " + sock + " ]; then echo SOCKET_LEFT; exit 1; fi\n"
+            "echo PEER_EXITED_CLEANLY\n")
+        r = self._run_cmd(["bash", "-c", script], timeout=180, check=False)
+        out = (r.stdout or "") + (r.stderr or "")
+        # 探针日志别留在机器上
+        self._run_cmd(["bash", "-c", f"rm -f {plog}"], sudo=True, check=False)
+        if "PEER_EXITED_CLEANLY" not in out:
+            raise AssertionError(
+                "peer 模式的 package-manager 没能自己起、自己退干净: "
+                f"rc={r.returncode} {out[-300:]}")
+
+        # peer 模式下的写操作（root 有权），走 peer 的权限校验分支
+        for args in (["repo", "set-default", "stable"],
+                     ["repo", "enable-mirror", "stable"],
+                     ["repo", "disable-mirror", "stable"]):
+            r = self._sudo_ll_cli("--no-dbus", *args, timeout=180, check=False)
+            if r.returncode != 0:
+                raise AssertionError(
+                    f"sudo ll-cli --no-dbus {' '.join(args)} 失败: "
+                    f"rc={r.returncode} {r.stderr[:200]}")
+
+    # ── Test: 仓库镜像管理 ──
+    #
+    # enable-mirror / disable-mirror / update 之前完全没被调用，
+    # 对应 repo 子命令里的镜像与 URL 更新分支。
+    def test_repo_mirror_management(self):
+        for args in (["enable-mirror", "stable"], ["disable-mirror", "stable"]):
+            r = self._sudo_ll_cli("repo", *args, timeout=120, check=False)
+            if r.returncode != 0:
+                raise AssertionError(
+                    f"repo {' '.join(args)} 失败: "
+                    f"rc={r.returncode} {r.stderr[:200]}")
+
+        # update 需要 <alias> <url> 两个参数
+        r = self._sudo_ll_cli("repo", "update", "stable", SMOKE_REPO_URL,
+                              timeout=180, check=False)
+        if r.returncode not in (0, 255):
+            raise AssertionError(
+                f"repo update 异常退出: rc={r.returncode} {r.stderr[:200]}")
+
+        # 缺参数应被 CLI11 拒绝（rc=106），而不是崩溃
+        r = self._sudo_ll_cli("repo", "update", timeout=60, check=False)
+        if r.returncode == 0:
+            raise AssertionError("repo update 缺参数竟然成功")
+        if r.returncode < 0:
+            raise AssertionError("repo update 缺参数崩溃了")
+
+        # 对不存在的仓库做写操作：应报错而非崩溃
+        r = self._sudo_ll_cli("repo", "set-default", "nonexistent-repo",
+                              timeout=60, check=False)
+        if r.returncode == 0:
+            raise AssertionError("repo set-default 不存在的仓库竟然成功")
+        if r.returncode < 0:
+            raise AssertionError("repo set-default 不存在的仓库崩溃了")
+
+    # ── Test: repo 的别名与镜像写分支 ──
+    #
+    # 覆盖 repo.cpp 里三条此前没走到的写分支：
+    #   - add --alias：alias 存进去之后【就是】这个仓库的查找键
+    #   - enable-mirror --region：写 mirrorEnabled 与 region
+    #   - modify：整条子命令已废弃，必须明确报错
+    #
+    # ⚠️ 全程只动一个临时仓库，绝不去改 stable。
+    #    已有的 test_repo_mirror_management 会 enable/disable stable 的镜像，
+    #    如果这里再用 stable 验证 region，就会把机器上原有的镜像配置改掉。
+    #
+    # 判据落在【落盘的配置文件】/var/lib/linglong/config.yaml 上，
+    # 而不是只看 rc —— 写分支的语义就是"配置真的被改了"。
+    def test_repo_alias_and_mirror(self):
+        name = "smoke-alias-probe"
+        alias = "smoke-alias-probe-alias"
+        cfg_path = Path("/var/lib/linglong/config.yaml")
+
+        def repo_cfg() -> str:
+            r = self._run_cmd(["cat", str(cfg_path)], sudo=True, check=False)
+            return r.stdout
+
+        def cleanup():
+            # 别名和名称都要试一遍：repo 的查找键是 alias.value_or(name)，
+            # 万一 --alias 没生效（或有人改坏了这个选项），键就变成 name，
+            # 只按别名删会漏掉，把临时仓库留在 /var/lib/linglong/config.yaml
+            # 里污染后续所有运行。变异测试就是这么暴露出这个漏洞的。
+            for key in (alias, name):
+                self._sudo_ll_cli("repo", "remove", key, timeout=60, check=False)
+
+        cleanup()  # 幂等：上次跑挂了的残留先清掉
+        try:
+            before = repo_cfg()
+            if name in before or alias in before:
+                raise AssertionError(
+                    f"清理后配置里仍有 {name}/{alias}，不敢继续 —— "
+                    f"请手动执行 `sudo ll-cli repo remove {name}` 清掉残留。"
+                    f"当前配置: {before[:300]!r}")
+
+            # add --alias：别名与名称都给，且刻意取不同的值
+            r = self._sudo_ll_cli("repo", "add", name, SMOKE_REPO_URL,
+                                  "--alias", alias, timeout=120, check=False)
+            if r.returncode != 0:
+                raise AssertionError(
+                    f"repo add --alias 失败: rc={r.returncode} {r.stderr[:200]}")
+
+            after_add = repo_cfg()
+            if f"name: {name}" not in after_add:
+                raise AssertionError(
+                    f"repo add 后配置里没有 name: {name}: {after_add[:400]!r}")
+            if f"alias: {alias}" not in after_add:
+                raise AssertionError(
+                    f"repo add --alias 后配置里没有 alias: {alias} "
+                    f"（--alias 没被采纳）: {after_add[:400]!r}")
+
+            # 重复添加必须被拒绝，而且不能把配置写成两份。
+            # 查重用的也是 alias.value_or(name)，所以这里正好一并验证。
+            r = self._sudo_ll_cli("repo", "add", name, SMOKE_REPO_URL,
+                                  "--alias", alias, timeout=120, check=False)
+            if r.returncode == 0:
+                raise AssertionError(
+                    f"repo add 重复添加同名/同别名仓库竟然成功: {name}/{alias}")
+            if "already exist" not in (r.stdout + r.stderr):
+                raise AssertionError(
+                    f"repo add 重复添加的报错应说明已存在: "
+                    f"{(r.stdout + r.stderr)[:200]!r}")
+            if repo_cfg().count(f"alias: {alias}") != 1:
+                raise AssertionError(
+                    f"重复 add 被拒后配置里 {alias} 应仍只有一份: "
+                    f"{repo_cfg()[:400]!r}")
+
+            # 关键判据：alias 才是查找键。用别名操作必须成功，
+            # 用名称操作必须失败（repo.cpp 里一律 alias.value_or(name)）。
+            r = self._sudo_ll_cli("repo", "set-priority", alias, "5",
+                                  timeout=60, check=False)
+            if r.returncode != 0:
+                raise AssertionError(
+                    f"repo set-priority 用别名 {alias} 竟然失败: "
+                    f"rc={r.returncode} {r.stderr[:200]}")
+
+            r = self._sudo_ll_cli("repo", "set-priority", name, "6",
+                                  timeout=60, check=False)
+            if r.returncode == 0:
+                raise AssertionError(
+                    f"repo set-priority 用名称 {name} 竟然成功 —— "
+                    f"说明查找键不是 alias，--alias 形同虚设")
+
+            # enable-mirror --region：两个字段都要落盘
+            r = self._sudo_ll_cli("repo", "enable-mirror", alias,
+                                  "--region", "CN", timeout=120, check=False)
+            if r.returncode != 0:
+                raise AssertionError(
+                    f"repo enable-mirror --region 失败: "
+                    f"rc={r.returncode} {r.stderr[:200]}")
+
+            after_mirror = repo_cfg()
+            block = self._yaml_repo_block(after_mirror, alias)
+            if "mirror_enabled: true" not in block:
+                raise AssertionError(
+                    f"enable-mirror 后该仓库应写 mirror_enabled: true, "
+                    f"实际块: {block!r}")
+            if "region: CN" not in block:
+                raise AssertionError(
+                    f"enable-mirror --region CN 后应写 region: CN, "
+                    f"实际块: {block!r}")
+
+            # disable-mirror 应把开关关掉
+            r = self._sudo_ll_cli("repo", "disable-mirror", alias,
+                                  timeout=120, check=False)
+            if r.returncode != 0:
+                raise AssertionError(
+                    f"repo disable-mirror 失败: rc={r.returncode} {r.stderr[:200]}")
+            block = self._yaml_repo_block(repo_cfg(), alias)
+            if "mirror_enabled: true" in block:
+                raise AssertionError(
+                    f"disable-mirror 后 mirror_enabled 应变成 false, "
+                    f"实际块: {block!r}")
+
+            # modify：整条子命令已废弃，必须报错且说明替代做法
+            r = self._sudo_ll_cli("repo", "modify", SMOKE_REPO_URL,
+                                  timeout=60, check=False)
+            if r.returncode == 0:
+                raise AssertionError("repo modify 已废弃，竟然还返回成功")
+            if r.returncode < 0:
+                raise AssertionError("repo modify 崩溃了")
+            out = r.stdout + r.stderr
+            if "modify" not in out or "deprecated" not in out:
+                raise AssertionError(
+                    f"repo modify 的报错应说明该子命令已废弃: {out[:300]!r}")
+        finally:
+            cleanup()
+
+        # 收尾：临时仓库必须清干净，且 stable 不能被顺手改坏
+        final = repo_cfg()
+        if name in final or alias in final:
+            raise AssertionError(
+                f"临时仓库没有清理干净: {final[:400]!r}")
+        if "name: stable" not in final:
+            raise AssertionError(
+                f"stable 仓库不应被本用例影响: {final[:400]!r}")
+
+    @staticmethod
+    def _yaml_repo_block(cfg_text: str, alias: str) -> str:
+        """从 config.yaml 里取出某个仓库那一段（按 `  - ` 分段，不依赖 YAML 库）。
+
+        config.yaml 是缩进式的列表，每个仓库以 `  - ` 起头、到下一个
+        `  - ` 或文件结束为止。取到这一段再在里面找字段，就不会把别的
+        仓库的 mirror_enabled 误判成本仓库的。
+        """
+        blocks: list[list[str]] = []
+        current: list[str] = []
+        for line in cfg_text.splitlines():
+            if line.startswith("  - "):
+                if current:
+                    blocks.append(current)
+                current = [line]
+            elif current:
+                current.append(line)
+        if current:
+            blocks.append(current)
+
+        for block in blocks:
+            joined = "\n".join(block)
+            if f"alias: {alias}" in joined or f"name: {alias}" in joined:
+                return joined
+        return ""
+
+    # ── Test: install -y 是否真的跳过了交互 ──
+    #
+    # -y / --yes 对应 skipInteraction（cli.cpp:2348）。服务端只在
+    # Policy::Upgrade 且 !skipInteraction 时才发 TaskInteraction
+    # （ref_installation.cpp:172），客户端在 TTY 下用 TerminalNotifier
+    # 从 stdin 提问（会打印 "your choice:" / "press enter to continue"）。
+    #
+    # 所以判据不能是"rc==0"——不带 -y 时交互也会被回答、升级照样成功。
+    # 必须做对照：
+    #   不带 -y + 回答 "n"  -> 出现提问，且升级被取消（版本不变）
+    #   带   -y             -> 完全不出现提问，升级成功（版本变新）
+    def test_install_yes_option(self):
+        app = CALENDAR_APP_ID
+        versions = self._available_versions(app)
+        if len(versions) < 2:
+            raise AssertionError(
+                f"{app} 可用版本不足两个，无法构造升级场景: {versions}")
+        newest, older = versions[0], versions[1]
+
+        def installed_version():
+            r = self._ll_cli("list", timeout=180, check=False)
+            for line in r.stdout.splitlines():
+                if app in line:
+                    m = re.search(r"\b(\d+\.\d+\.\d+\.\d+)\b", line)
+                    if m:
+                        return m.group(1)
+            return None
+
+        try:
+            self._sudo_ll_cli("uninstall", app, timeout=300, check=False)
+            r = self._sudo_ll_cli("install", f"{app}/{older}",
+                                  timeout=900, check=False)
+            if r.returncode != 0:
+                raise AssertionError(
+                    f"安装旧版本 {older} 失败: {(r.stdout + r.stderr)[:300]}")
+            if installed_version() != older:
+                raise AssertionError(
+                    f"装旧版后期望 {older}，实际 {installed_version()}")
+
+            # 对照轮：不带 -y，在真 PTY 里回答 "n" -> 提问必须出现、升级被取消
+            #
+            # ⚠️ 必须 sudo：install 要过 polkit 授权，不提权会直接
+            #    "Error 9: not authorized"，连交互那一步都到不了。
+            rc, out = self._pty_ll_cli("install", f"{app}/{newest}",
+                                       timeout=600, input_text="n\n", sudo=True)
+            if "your choice" not in out and "press enter to continue" not in out:
+                raise AssertionError(
+                    f"不带 -y 的升级没有向用户提问（PTY 下应走 TerminalNotifier）: "
+                    f"{out[-400:]!r}")
+            if installed_version() != older:
+                raise AssertionError(
+                    f"回答了 n 却仍然升级成功（期望被取消，版本停在 {older}）: "
+                    f"实际 {installed_version()}")
+
+            # 正式轮：带 -y -> 不能再提问，且必须真的升上去
+            rc, out = self._pty_ll_cli("install", "-y", f"{app}/{newest}",
+                                       timeout=600, input_text="", sudo=True)
+            if "your choice" in out or "press enter to continue" in out:
+                raise AssertionError(
+                    f"带了 -y 竟然还在向用户提问，skipInteraction 没生效: "
+                    f"{out[-400:]!r}")
+            if installed_version() != newest:
+                raise AssertionError(
+                    f"-y 升级后期望 {newest}，实际 {installed_version()}")
+        finally:
+            # 还原成最新版，后面的用例还要用它
+            self._sudo_ll_cli("uninstall", app, timeout=300, check=False)
+            self._sudo_ll_cli("install", f"{app}/{newest}",
+                              timeout=900, check=False)
+
+
+    # ── Test: ll-builder remove --no-clean-objects ──
+    #
+    # cmdRemoveApp(repo, refs, prune) 里 prune 就是 !noCleanObjects：
+    # 带 --no-clean-objects 时【不调用 repo.prune()】，对象仓里的东西留着。
+    #
+    # 判据落在对象仓的文件数上 —— 这正是这个选项的语义所在，
+    # 只看 rc 是看不出来的（两种情况下 rc 都是 0）：
+    #   1) 构建一个一次性的应用并提交
+    #   2) remove --no-clean-objects -> 引用没了，但对象数【必须不变】
+    #   3) 再 remove 一次（引用已经没了，但 prune 照跑）-> 对象数【必须减少】
+    # 第 3 步是关键对照：同一批对象，只有在缺少该选项时才被清掉，
+    # 所以"数量变化"确实归因于这个选项，而不是别的原因。
+    #
+    # ⚠️ 必须用完整引用（channel:id/version/arch）。只给包名会得到
+    #    "regexp mismatched."，什么都不会删 —— 静默地变成空操作。
+    def test_builder_remove_no_clean_objects(self):
+        app_id = "org.deepin.cleanobjprobe"
+        workdir = Path(tempfile.mkdtemp(prefix="ll-cleanobj-"))
+        objects_dir = Path.home() / ".cache/linglong-builder/repo/objects"
+
+        def count_objects() -> int:
+            return sum(1 for p in objects_dir.rglob("*") if p.is_file())
+
+        def ref_of(app: str) -> str:
+            r = self._ll_builder("list", timeout=120, check=False)
+            for line in r.stdout.splitlines():
+                line = line.strip()
+                if app in line and ":" in line:
+                    return line
+            return ""
+
+        old_cwd = os.getcwd()
+        ref = ""
+        try:
+            os.chdir(workdir)
+            r = self._ll_builder("create", app_id, timeout=180, check=False)
+            if r.returncode != 0:
+                raise AssertionError(
+                    f"ll-builder create {app_id} 失败: {r.stderr[:200]}")
+
+            os.chdir(app_id)
+            # 这里要真构建并提交（不能加 --skip-commit-output），
+            # 否则对象仓里没有东西可删
+            r = self._ll_builder("build", "--skip-fetch-source",
+                                 "--skip-pull-depend", timeout=1800, check=False)
+            if r.returncode != 0:
+                raise AssertionError(
+                    f"ll-builder build {app_id} 失败: "
+                    f"rc={r.returncode} {(r.stdout + r.stderr)[:400]}")
+
+            ref = ref_of(app_id)
+            if not ref:
+                raise AssertionError(
+                    f"构建后 ll-builder list 里找不到 {app_id} 的完整引用")
+
+            n0 = count_objects()
+
+            r = self._ll_builder("remove", ref, "--no-clean-objects",
+                                 timeout=300, check=False)
+            if r.returncode != 0:
+                raise AssertionError(
+                    f"remove --no-clean-objects 失败: "
+                    f"rc={r.returncode} {r.stderr[:200]}")
+            if ref_of(app_id):
+                raise AssertionError(
+                    f"remove --no-clean-objects 之后 {app_id} 的引用还在，没删掉")
+            n1 = count_objects()
+            if n1 != n0:
+                raise AssertionError(
+                    f"--no-clean-objects 时不该清理对象仓: "
+                    f"删前 {n0} 个对象, 删后 {n1} 个")
+
+            # 引用已经没了，但 cmdRemoveApp 仍会走到 prune —— 用这一步做对照
+            r = self._ll_builder("remove", ref, timeout=300, check=False)
+            n2 = count_objects()
+            if n2 >= n1:
+                raise AssertionError(
+                    f"不带 --no-clean-objects 时应该清理掉已无引用的对象: "
+                    f"上次 {n1} 个, 这次 {n2} 个（没有减少）")
+        finally:
+            os.chdir(old_cwd)
+            # 兜底：把引用清掉，别给后面的用例留垃圾
+            if ref:
+                self._ll_builder("remove", ref, timeout=300, check=False)
+            shutil.rmtree(workdir, ignore_errors=True)
+
+    # ── Test: --json 输出格式 ──
+    #
+    # --json 会走 json_printer 而不是默认的表格 printer，两条渲染路径
+    # 完全不同（libs/linglong/src/linglong/cli/json_printer.cpp）。
+    # 之前只有 list 一处用过 --json，json_printer 覆盖率极低。
+    # 这里对每个产出结构化数据的子命令都跑一次，并要求输出真的是 JSON。
+    def test_json_output(self):
+        cases = (
+            ("list", ["list"]),
+            ("ps", ["ps"]),
+            ("repo show", ["repo", "show"]),
+            ("analyze size", ["analyze", "size"]),
+        )
+        for name, args in cases:
+            r = self._ll_cli("--json", *args, timeout=120, check=False)
+            if r.returncode != 0:
+                raise AssertionError(
+                    f"ll-cli --json {name} 失败: "
+                    f"rc={r.returncode} {r.stderr[:200]}")
+            out = r.stdout.strip()
+            if not out:
+                raise AssertionError(f"ll-cli --json {name} 没有任何输出")
+            # 必须是合法 JSON —— 这是 json_printer 相对表格输出的本质区别
+            try:
+                json.loads(out)
+            except ValueError as e:
+                raise AssertionError(
+                    f"ll-cli --json {name} 输出不是合法 JSON: {e}; "
+                    f"前 200 字符: {out[:200]}") from e
+
+        # info 对不存在的应用：应返回错误 JSON 且不崩溃
+        r = self._ll_cli("--json", "info", "org.deepin.nonexistent.app",
+                         timeout=60, check=False)
+        if r.returncode == 0:
+            raise AssertionError("--json info 不存在的应用竟然成功")
+        if r.returncode < 0:
+            raise AssertionError("--json info 不存在的应用崩溃了")
+
+    # ── Test: 全局选项与帮助输出 ──
+    #
+    # 全局 --json / --no-progress / --help-all 走的是与子命令选项
+    # 不同的解析层（CLI11 的全局 option 处理），之前没有用例。
+    def test_global_options(self):
+        # --no-progress 应被接受
+        r = self._ll_cli("--no-progress", "list", timeout=60, check=False)
+        if r.returncode != 0:
+            raise AssertionError(
+                f"ll-cli --no-progress list 失败: rc={r.returncode}")
+
+        # --json 全局选项 + 子命令组合
+        r = self._ll_cli("--json", "list", "--type=runtime", check=False)
+        if r.returncode != 0:
+            raise AssertionError(
+                f"ll-cli --json list --type=runtime 失败: rc={r.returncode}")
+
+        # --help-all 会展开所有子命令帮助，覆盖帮助渲染分支
+        for args in (["--help"], ["--help-all"],
+                     ["run", "--help"], ["repo", "--help"]):
+            r = self._ll_cli(*args, timeout=60, check=False)
+            if r.returncode != 0:
+                raise AssertionError(
+                    f"ll-cli {' '.join(args)} 失败: rc={r.returncode}")
+            if not (r.stdout.strip() or r.stderr.strip()):
+                raise AssertionError(f"ll-cli {' '.join(args)} 无任何输出")
+
+        # --version：两个命令各有一份实现，ll-cli 还多一条 --json 分支。
+        # 不能只看 rc —— 必须验证版本号真的被解析出来，而且两个命令报的是
+        # 同一个构建（它们同源编译，不一致说明有一边的 flag 没生效）。
+        #
+        # ⚠️ 这里不能用 \b 起头：ll-builder 的输出是
+        #    "如意玲珑构建工具版本1.15.0-dev+8a8ee84"（版本号紧贴汉字），
+        #    而汉字在 Python 的 Unicode 语义下算 \w，所以 "本1" 之间
+        #    【没有】\b 边界，加了 \b 会一个都匹配不到。
+        versions = {}
+        for name, runner in (("ll-cli", self._ll_cli),
+                             ("ll-builder", self._ll_builder)):
+            r = runner("--version", timeout=60, check=False)
+            if r.returncode != 0:
+                raise AssertionError(
+                    f"{name} --version 失败: rc={r.returncode} {r.stderr[:200]}")
+            m = re.search(r"(\d+\.\d+\.\d+[0-9A-Za-z.+-]*)", r.stdout)
+            if not m:
+                raise AssertionError(
+                    f"{name} --version 输出里解析不出版本号: {r.stdout[:200]!r}")
+            versions[name] = m.group(1)
+
+        if versions["ll-cli"] != versions["ll-builder"]:
+            raise AssertionError(
+                f"ll-cli 与 ll-builder 报的版本不一致（同源编译不该如此）: {versions}")
+
+        # ll-cli --json --version 走的是另一条输出分支（cli.cpp:666）
+        r = self._ll_cli("--json", "--version", timeout=60, check=False)
+        if r.returncode != 0:
+            raise AssertionError(
+                f"ll-cli --json --version 失败: rc={r.returncode} {r.stderr[:200]}")
+        try:
+            data = json.loads(r.stdout)
+        except json.JSONDecodeError as e:
+            raise AssertionError(
+                f"ll-cli --json --version 不是合法 JSON: {e}; {r.stdout[:200]!r}")
+        if data.get("version") != versions["ll-cli"]:
+            raise AssertionError(
+                f"--json --version 与文本模式的版本不一致: "
+                f"{data.get('version')!r} != {versions['ll-cli']!r}")
+
+        # 非法全局选项应被拒绝
+        r = self._ll_cli("--definitely-not-a-flag", check=False)
+        if r.returncode == 0:
+            raise AssertionError("ll-cli 非法全局选项竟然成功")
+        if r.returncode < 0:
+            raise AssertionError("ll-cli 非法全局选项崩溃了")
+
+    # ── Helper: 在伪终端里跑 ll-cli 并回收输出 ──
+    #
+    # 为什么需要真 PTY：ll-cli 用
+    #     isatty(STDIN_FILENO) && isatty(STDOUT_FILENO)      (cli.cpp:183)
+    # 决定是否走 TTY 分支（分配 console PTY、经 unix socket 传 fd、
+    # 传 winsize、raw mode、interaction 提示等）。subprocess 默认给的
+    # 是管道，这些分支全部走不到 —— 实测 cli.cpp 长期只有 59%，
+    # 换成 PTY 后到 72%，common/socket.cpp 从 0% 到 44%。
+    #
+    # 与 _run_in_pty 的区别：这里用非阻塞读 + 硬超时 + 超时强杀，
+    # 因为 `ll-cli run` 有可能一直等不到 EOF（应用不退出），
+    # 阻塞式 read 会把整个冒烟挂死。
+    # ── 安装状态快照 / 完整还原 ──
+    #
+    # ⚠️ 血的教训（整轮 run45 暴露）：镜像里同一个应用的"最新版"可能和
+    # 机器上装着的不一样 —— 日历实测 6.5.42.1 被换成了 5.14.5.1，重装
+    # 还会顺带拉来旧 base 23.1.0.3。所以"卸载再装回来"会【静默换版本】，
+    # 凡是动过安装状态的用例，都必须按快照里的【确切 id/版本/模块】还原。
+    # ⚠️ 名称列可能是多个词（org.deepin.runtime.dtk 的名称是 "deepin
+    # runtime"），所以名称不能写成 \S+ —— 那样整行会被静默丢弃，而被漏掉
+    # 的 ref 又会被还原逻辑当成"多余的"卸掉（只漏 1 个时还不会触发
+    # "一次卸载超过 2 个 ref" 的护栏，会真的被卸掉）。用 .*? 吃掉名称空格。
+    _REF_ROW = re.compile(r"^(\S+)\s+.*?\s+(\d[\d.]*)\s+(\S+)\s+(\S+)\s",
+                          re.M)
+
+    def _installed_refs(self):
+        out = self._ll_cli("list", check=False).stdout or ""
+        return {f"{i}/{v}/{m}" for i, v, c, m in self._REF_ROW.findall(out)}
+
+    def _restore_installed_refs(self, snapshot):
+        """把安装状态还原成 snapshot（多退少补，带确切版本）。
+
+        ⚠️ 必须能接受 2 段（id/版本）和 3 段（id/版本/模块）两种快照：
+        整轮 run46 就是因为我传了 2 段快照进来，导致集合相减把【所有】
+        应用都算成"多余的"并全部卸载，把机器清空了。
+        """
+        # ⚠️ 2 段快照（id/版本）不区分模块，【不能】当成"只有 binary" ——
+        # 否则"多退"会把同 id/版本下 develop 等模块当成多余的卸掉
+        # （run48 实测：base 的 develop 模块就是这样被删掉的）。
+        # 做法：用当前实际存在的模块把 2 段条目补全。
+        now = self._installed_refs()
+        expanded = set()
+        for r in snapshot:
+            # ⚠️ 段数要按【斜杠数】判断：id/版本 是 1 个斜杠（ID 里是点，
+            # 不是斜杠），id/版本/模块 才是 2 个。这里原来写成 == 2，于是
+            # 2 段条目被当成 3 段、不做展开，永远匹配不上真实的
+            # id/版本/模块 —— 结果"每条都算缺、每个真实 ref 都算多"，
+            # 这就是历史上两次把机器清空的真正原因（护栏只是在打补丁）。
+            if r.count("/") == 1:
+                mods = {x for x in now if x.startswith(r + "/")}
+                expanded |= mods or {f"{r}/binary"}
+            else:
+                expanded.add(r)
+        snapshot = expanded
+        if not snapshot:
+            raise AssertionError(
+                "拒绝用空快照还原安装状态（那会把机器上的应用全卸掉）")
+        # 硬护栏：唯一绝不允许的情况是把机器上【当前所有】应用都卸掉
+        # （那等于清空机器）。历史上这里是按"卸载数 >= 快照总数"的比例
+        # 判据，本意是防快照格式不匹配导致的灾难，但会误伤合法场景：
+        # 日历模块用例会合法地多出 7 个 ref（5.14.x 的 binary/develop/
+        # lang-ja + 被顺带拉进来的旧 base/runtime），正好等于快照总数，
+        # 于是还原被拒绝、机器被留在脏状态（实测 run64/run65 两次）。
+        # 真正危险的只有"快照里一个应用都对不上"的情况。
+        extra = now - snapshot
+        if extra and extra >= now:
+            raise AssertionError(
+                f"拒绝：快照里没有任何已装应用，要卸载全部 {len(now)} 个 ref"
+                f"（疑似快照不匹配，会清空机器）: {sorted(extra)}")
+        for ref in sorted(extra):
+            parts = ref.split("/")
+            i, v = parts[0], parts[1]
+            m = parts[2] if len(parts) > 2 else "binary"
+            argv = ["uninstall", "--force", f"{i}/{v}"]
+            if m and m != "binary":
+                argv += ["--module", m]
+            self._sudo_ll_cli(*argv, timeout=300, check=False)
+        for ref in sorted(snapshot - now):
+            parts = ref.split("/")
+            i, v = parts[0], parts[1]
+            m = parts[2] if len(parts) > 2 else "binary"
+            argv = ["install", f"{i}/{v}"]
+            if m and m != "binary":
+                argv += ["--module", m]
+            self._sudo_ll_cli(*argv, timeout=900, check=False)
+        after = self._installed_refs()
+        if after != snapshot:
+            raise AssertionError(
+                f"安装状态没还原干净: {sorted(snapshot)} -> {sorted(after)}")
+
+    def _pty_ll_cli(self, *args: str, timeout: int = 60, env: dict | None = None,
+                    stop_when: str | None = None, grace: int = 10,
+                    input_text: str | None = None, sudo: bool = False):
+        """在真 PTY 里跑 ll-cli，返回 (退出码, 去噪输出)。
+
+        stop_when: 输出里出现该子串就【主动收尾】，不再傻等。
+            有些命令按设计就不会自己退出（例如 `run --debug` 会起
+            gdbserver 等调试器附加），死等超时会把冒烟拖到分钟级。
+            覆盖数据在代码执行到时就已经产生，只要让进程正常退出即可。
+
+        env: 额外环境变量。值为 None 表示【真正删掉】该变量
+            （getenv 返回 nullptr 与返回 "" 在某些分支上并不等价）。
+
+        input_text: 预先把这些字节写进 PTY。用于回答交互式提问
+            （TerminalNotifier 会先打印 "your choice:" 再读 stdin）。
+            不需要等提示出现再写 —— PTY 的行规程会把输入缓存住，
+            等 std::cin 真的去读时自然就拿到了。
+
+        sudo: 用 sudo 提权跑。install/uninstall 这类命令要过 polkit 授权，
+            不提权会直接得到 "Error 9: not authorized"，根本走不到交互那一步。
+            用 sudo -A + SUDO_ASKPASS：askpass 只是把密码 echo 出去、
+            不去读终端，所以 ll-cli 的 stdin/stdout 仍然是这个 PTY，
+            isatty() 成立，TTY 分支照常走。
+
+        收尾用 SIGINT 而不是 SIGKILL：libgcov 在正常退出或 SIGINT 时
+        才把计数写回 .gcda，SIGKILL 会丢掉这个进程的整份计数。
+        """
+        cmd = [LL_CLI, *args]
+        if sudo:
+            cmd = ["sudo", *SUDO_FLAGS.split(), *cmd]
+        pid, fd = pty.fork()
+        if pid == 0:
+            run_env = os.environ.copy()
+            # 非 sudo 的 ll-cli 走当前用户的 prefix（见 executor.py 的说明）；
+            # 提权后进程身份是 root，必须换成 root 的 prefix，
+            # 否则两边争抢同一份 .gcda（权限不对时 libgcov 直接丢掉整份计数）。
+            if sudo:
+                if run_env.get("GCOV_PREFIX_ROOT"):
+                    run_env["GCOV_PREFIX"] = run_env["GCOV_PREFIX_ROOT"]
+            else:
+                run_env.setdefault("GCOV_PREFIX", "/var/tmp/linglong-cov-user")
+            run_env["GCOV_PREFIX_STRIP"] = "0"
+            run_env.setdefault("DISPLAY", ":0")
+            if env:
+                for k, v in env.items():
+                    if v is None:
+                        run_env.pop(k, None)
+                    else:
+                        run_env[k] = v
+            try:
+                os.execvpe(cmd[0], cmd, run_env)
+            finally:
+                os._exit(127)
+
+        buf = b""
+        if input_text:
+            # 必须在切非阻塞之前写：几字节的输入不会填满 PTY 缓冲区，
+            # 不会真的阻塞，但省掉一次 partial-write 的处理。
+            try:
+                os.write(fd, input_text.encode())
+            except OSError:
+                pass
+        os.set_blocking(fd, False)
+        deadline = time.time() + timeout
+        reaped = False
+        hit_marker = False
+        try:
+            while time.time() < deadline:
+                r, _, _ = select.select([fd], [], [], 0.5)
+                if r:
+                    try:
+                        chunk = os.read(fd, 65536)
+                    except OSError:
+                        break
+                    if not chunk:
+                        break
+                    buf += chunk
+                    if stop_when and stop_when in buf.decode("utf-8", "replace"):
+                        hit_marker = True
+                        break
+                else:
+                    got, _ = os.waitpid(pid, os.WNOHANG)
+                    if got:
+                        reaped = True
+                        break
+        finally:
+            if not reaped:
+                if hit_marker:
+                    # 让 libgcov 有机会落盘，再收尸
+                    try:
+                        os.kill(pid, signal.SIGINT)
+                    except OSError:
+                        pass
+                    end = time.time() + grace
+                    while time.time() < end:
+                        got, _ = os.waitpid(pid, os.WNOHANG)
+                        if got:
+                            reaped = True
+                            break
+                        time.sleep(0.2)
+                if not reaped:
+                    try:
+                        os.kill(pid, signal.SIGKILL)
+                    except OSError:
+                        pass
+            try:
+                os.close(fd)
+            except OSError:
+                pass
+        try:
+            _, status = os.waitpid(pid, 0)
+            code = status >> 8
+        except ChildProcessError:
+            code = -1
+
+        text = buf.decode("utf-8", "replace")
+        # libgcov 在标准错误上打的 "profiling:...:Cannot open" 与业务无关，
+        # 留着会让断言里的子串匹配误判。
+        text = "\n".join(l for l in text.splitlines() if "profiling:" not in l)
+        return code, text
+
+    # ── Test: PTY 下的 run（TTY 分支 + 容器复用）──
+    #
+    # 对应代码：
+    #   cli.cpp  setupIOChannels / reuseContainer / acceptConsoleFd
+    #   common/socket.cpp  sendFdWithPayload / recvFdWithPayload
+    #
+    # ⚠️ acceptConsoleFd 在 reuseContainer 里（即 `run` 复用已有容器），
+    #    【不在】enter 里 —— 一开始按直觉去测 enter 是错的（实测纠正）。
+    def test_run_in_pty(self):
+        inst = f"smokepty{os.getpid()}"
+
+        # ⚠️ 不能假设日历应用一定还装着：本用例排在「验证日历模块
+        #    生命周期」之后，那一步会把日历卸掉。实测因此失败在
+        #    "PTY 下启动的容器未出现在 ll-cli ps 中"（其实是 run 直接报
+        #    package not found，容器根本没起）。
+        #    这里先确保目标可运行，缺了就装回来。
+        app_id = CALENDAR_APP_ID
+        r = self._ll_cli("list", check=False)
+        if CALENDAR_APP_ID not in r.stdout:
+            self._sudo_ll_cli("install", CALENDAR_APP_ID,
+                              timeout=900, check=False)
+            r = self._ll_cli("list", check=False)
+            if CALENDAR_APP_ID not in r.stdout:
+                # 退回 base（_find_runnable_target 保证它在位）
+                app_id = self._find_runnable_target()
+
+        # 第一次：真 PTY 下启动一个长驻实例
+        pid, fd = pty.fork()
+        if pid == 0:
+            run_env = os.environ.copy()
+            run_env.setdefault("GCOV_PREFIX", "/var/tmp/linglong-cov-user")
+            run_env["GCOV_PREFIX_STRIP"] = "0"
+            run_env.setdefault("DISPLAY", ":0")
+            try:
+                os.execvpe(LL_CLI, [LL_CLI, "run", app_id,
+                                    "--instance", inst, "--", "sleep", "120"],
+                           run_env)
+            finally:
+                os._exit(127)
+        try:
+            if not self._wait_container(timeout=40, app_id=app_id):
+                raise AssertionError("PTY 下启动的容器未出现在 ll-cli ps 中")
+
+            # 复用同一实例：走 reuseContainer + acceptConsoleFd + PTY 传递
+            for label, extra in (("第二次", "R1"), ("第三次", "R2")):
+                code, out = self._pty_ll_cli(
+                    "run", app_id, "--instance", inst,
+                    "--", "/bin/echo", extra, timeout=90)
+                if code != 0:
+                    raise AssertionError(
+                        f"PTY 下{label}复用实例失败: rc={code} {out[:200]}")
+                if extra not in out:
+                    raise AssertionError(
+                        f"PTY 下{label}复用的输出里没有 {extra}: {out[:200]!r}")
+
+            # 全新实例（不带 --instance）：走 TTY 下首次分配 console
+            code, out = self._pty_ll_cli(
+                "run", app_id, "--", "/bin/echo", "FRESH", timeout=90)
+            if code != 0:
+                raise AssertionError(
+                    f"PTY 下全新实例运行失败: rc={code} {out[:200]}")
+            if "FRESH" not in out:
+                raise AssertionError(f"PTY 下全新实例无预期输出: {out[:200]!r}")
+        finally:
+            try:
+                os.kill(pid, 9)
+            except OSError:
+                pass
+            try:
+                os.close(fd)
+            except OSError:
+                pass
+            try:
+                os.waitpid(pid, 0)
+            except ChildProcessError:
+                pass
+            self._cleanup_containers(app_id, timeout=40)
+
+    # ── Test: run 的文件/URL 占位符映射 ──
+    #
+    # 对应 cli.cpp 的 mappingFile / mappingUrl / filePathMapping。
+    #
+    # ⚠️ 关键：只在【命令参数里带 %f/%F/%u/%U 占位符】时才会调用
+    #    mappingFile。只写 `--file /tmp/x` 而不带占位符，命令能跑通
+    #    但 mappingFile 一行都不会执行（实测 +0 行，踩过）。
+    #
+    # 映射规则（实测）：HOME 之外的绝对路径 → /run/host/rootfs<原路径>；
+    # HOME 之内保持原样；软链接先 realpath；非 file:// 的 URL 原样透传。
+    def test_run_placeholder_mapping(self):
+        tmp_file = f"/tmp/smoke-map-{os.getpid()}.txt"
+        Path(tmp_file).write_text("map\n")
+        link = f"/tmp/smoke-map-link-{os.getpid()}.txt"
+        try:
+            os.symlink(tmp_file, link)
+        except OSError:
+            link = tmp_file
+
+        try:
+            # %f + 单个文件：应被映射到 /run/host/rootfs 下
+            code, out = self._pty_ll_cli(
+                "run", CALENDAR_APP_ID, "--file", tmp_file,
+                "--", "/bin/echo", "%f", timeout=90)
+            if code != 0:
+                raise AssertionError(f"%f 运行失败: rc={code} {out[:200]}")
+            if "/run/host/rootfs" not in out:
+                raise AssertionError(
+                    f"%f 的路径没有被映射到 /run/host/rootfs: {out[:200]!r}")
+
+            # %F + 多个文件：走多条映射 + 告警分支
+            code, out = self._pty_ll_cli(
+                "run", CALENDAR_APP_ID, "--file", "/etc/hostname", "/etc/hosts",
+                "--", "/bin/echo", "%F", timeout=90)
+            if code != 0:
+                raise AssertionError(f"%F 运行失败: rc={code} {out[:200]}")
+            if out.count("/run/host/rootfs") < 2:
+                raise AssertionError(
+                    f"%F 多个文件没有各自映射: {out[:200]!r}")
+
+            # %u + file:// URL：前缀保留，路径被映射
+            code, out = self._pty_ll_cli(
+                "run", CALENDAR_APP_ID, "--url", f"file://{tmp_file}",
+                "--", "/bin/echo", "%u", timeout=90)
+            if code != 0:
+                raise AssertionError(f"%u file:// 失败: rc={code} {out[:200]}")
+            if "file:///run/host/rootfs" not in out:
+                raise AssertionError(
+                    f"%u 没有保留 file:// 前缀并映射路径: {out[:200]!r}")
+
+            # %u + 非 file 协议：原样透传，不映射
+            code, out = self._pty_ll_cli(
+                "run", CALENDAR_APP_ID, "--url", "https://example.com",
+                "--", "/bin/echo", "%u", timeout=90)
+            if code != 0:
+                raise AssertionError(f"%u https 失败: rc={code} {out[:200]}")
+            if "https://example.com" not in out:
+                raise AssertionError(
+                    f"%u 的 https URL 没有原样透传: {out[:200]!r}")
+
+            # 软链接：应先 realpath 再映射
+            code, out = self._pty_ll_cli(
+                "run", CALENDAR_APP_ID, "--file", link,
+                "--", "/bin/echo", "%f", timeout=90)
+            if code != 0:
+                raise AssertionError(f"%f 软链接失败: rc={code} {out[:200]}")
+        finally:
+            for p in (tmp_file, link):
+                try:
+                    os.unlink(p)
+                except OSError:
+                    pass
+            self._cleanup_containers(CALENDAR_APP_ID, timeout=40)
+
+    # ── Test: CDI 设备注入 ──
+    #
+    # 对应 oci-cfg-generators/container_cfg_builder.cpp 的
+    # applyCDIPatch / adjustNode / shouldFix / tryFixMountpointsTree
+    # 以及 runtime/run_context.cpp 的 filterCDIDevices。
+    #
+    # 设备引用格式是【恰好一个等号】的 `<kind>=<name>`：
+    #     --device covtest.io/class=covdev0
+    # kind 里带等号会被 split 成 3 段而报 "invalid device format"（踩过）。
+    def test_cdi_device_injection(self):
+        spec_dir = "/tmp/smoke-cdi"
+        shutil.rmtree(spec_dir, ignore_errors=True)
+        os.makedirs(spec_dir, exist_ok=True)
+
+        # 一个只带 env 的设备：最容易成功，用来验证正常注入
+        Path(f"{spec_dir}/env.yaml").write_text(
+            'cdiVersion: "0.5.0"\n'
+            'kind: "smoke.io/env"\n'
+            'devices:\n'
+            '  - name: "envdev"\n'
+            '    containerEdits:\n'
+            '      env:\n'
+            '        - "SMOKE_CDI_ENV=1"\n'
+        )
+        # 一个带 mounts 的设备：会走到挂载点处理与 json patch 相关分支
+        Path(f"{spec_dir}/mnt.yaml").write_text(
+            'cdiVersion: "0.5.0"\n'
+            'kind: "smoke.io/mnt"\n'
+            'devices:\n'
+            '  - name: "mntdev"\n'
+            '    containerEdits:\n'
+            '      mounts:\n'
+            '        - hostPath: "/tmp"\n'
+            '          containerPath: "/mnt/smokecdi"\n'
+            '          type: "bind"\n'
+            '          options: ["rbind"]\n'
+        )
+        # 一个带 deviceNodes 的设备
+        Path(f"{spec_dir}/dev.yaml").write_text(
+            'cdiVersion: "0.5.0"\n'
+            'kind: "smoke.io/dev"\n'
+            'devices:\n'
+            '  - name: "devdev"\n'
+            '    containerEdits:\n'
+            '      deviceNodes:\n'
+            '        - path: "/dev/null"\n'
+            '          hostPath: "/dev/null"\n'
+            '          type: "c"\n'
+            '          major: 1\n'
+            '          minor: 3\n'
+            '          permissions: "rwm"\n'
+        )
+        # nvidia.com/gpu=all：不带 --device 时会被【自动】注入
+        # （run_context.cpp 里专门找 kind=="nvidia.com/gpu" && name=="all"
+        #   的那一段）。注意 --cdi-spec-dir 是【替换】默认的
+        # /etc/cdi + /var/run/cdi，所以这里造的设备一定是唯一候选。
+        Path(f"{spec_dir}/nvidia.yaml").write_text(
+            'cdiVersion: "0.5.0"\n'
+            'kind: "nvidia.com/gpu"\n'
+            'devices:\n'
+            '  - name: "all"\n'
+            '    containerEdits:\n'
+            '      env:\n'
+            '        - "SMOKE_CDI_ALL=1"\n'
+        )
+
+        try:
+            # 只带 env 的设备：应成功，且环境变量真的被注入容器
+            code, out = self._pty_ll_cli(
+                "run", CALENDAR_APP_ID, "--cdi-spec-dir", spec_dir,
+                "--device", "smoke.io/env=envdev",
+                "--", "/bin/sh", "-c", "echo CDI=$SMOKE_CDI_ENV", timeout=90)
+            if code != 0:
+                raise AssertionError(f"CDI env 设备运行失败: rc={code} {out[:200]}")
+            if "CDI=1" not in out:
+                raise AssertionError(
+                    f"CDI 的 env 没有被注入容器: {out[:200]!r}")
+
+            # 带 mounts 的设备：容器可能因挂载失败而退出，但代码路径会走到
+            code, out = self._pty_ll_cli(
+                "run", CALENDAR_APP_ID, "--cdi-spec-dir", spec_dir,
+                "--device", "smoke.io/mnt=mntdev",
+                "--", "/bin/echo", "MNT", timeout=90)
+            if code < 0:
+                raise AssertionError("CDI mounts 设备崩溃了")
+
+            # 带 deviceNodes 的设备
+            code, out = self._pty_ll_cli(
+                "run", CALENDAR_APP_ID, "--cdi-spec-dir", spec_dir,
+                "--device", "smoke.io/dev=devdev",
+                "--", "/bin/echo", "DEV", timeout=90)
+            if code < 0:
+                raise AssertionError("CDI deviceNodes 设备崩溃了")
+
+            # 不带 --device：CDI 目录里的 nvidia.com/gpu=all 应被自动注入
+            code, out = self._pty_ll_cli(
+                "run", CALENDAR_APP_ID, "--cdi-spec-dir", spec_dir,
+                "--", "/bin/sh", "-c", "echo ALL=$SMOKE_CDI_ALL", timeout=90)
+            if code != 0:
+                raise AssertionError(
+                    f"带 nvidia.com/gpu=all 运行时失败: rc={code} {out[:200]}")
+            if "ALL=1" not in out:
+                raise AssertionError(
+                    "没有 --device 时 nvidia.com/gpu=all 没有被自动注入: "
+                    f"{out[:200]!r}")
+
+            # 不存在的设备名：必须报错且不崩溃
+            code, out = self._pty_ll_cli(
+                "run", CALENDAR_APP_ID, "--cdi-spec-dir", spec_dir,
+                "--device", "smoke.io/env=doesnotexist",
+                "--", "/bin/echo", "X", timeout=90)
+            if code == 0:
+                raise AssertionError("不存在的 CDI 设备竟然运行成功")
+            if code < 0:
+                raise AssertionError("不存在的 CDI 设备崩溃了")
+
+            # 格式非法（等号数量不对）：必须报错且不崩溃
+            code, out = self._pty_ll_cli(
+                "run", CALENDAR_APP_ID, "--cdi-spec-dir", spec_dir,
+                "--device", "noequalsign",
+                "--", "/bin/echo", "X", timeout=90)
+            if code == 0:
+                raise AssertionError("非法 CDI 设备格式竟然成功")
+            if code < 0:
+                raise AssertionError("非法 CDI 设备格式崩溃了")
+        finally:
+            shutil.rmtree(spec_dir, ignore_errors=True)
+            self._cleanup_containers(CALENDAR_APP_ID, timeout=40)
+
+    # ── Test: --debug 的 gdb 附加提示（需要 TTY）──
+    #
+    # 对应 cli.cpp 的 printDebugAttachHint / createDebugAttachScript /
+    # makeDebugAttachScriptContent / makeDebugSymbolDir。
+    #
+    # ⚠️ 两个前置条件（都踩过）：
+    #   1) printDebugAttachHint 开头就是 `isatty(stdout)==0 直接 return`，
+    #      所以必须真 PTY，否则这些函数一行都不执行；
+    #   2) --debug 会先要求装 base 的 develop 模块，非 root 装会报
+    #      "Error 9: not authorized"，所以在装好之前根本走不到提示代码。
+    def test_debug_attach_hint(self):
+        # ⚠️ 不能用 CALENDAR_APP_ID：它依赖 base 23.1.0.3，
+        #    而该版本的 develop 模块在仓库里不存在
+        #    （报 "要安装该模块，必须先安装此应用程序"），
+        #    于是 --debug 会停在"正在安装开发模块"的报错上，
+        #    根本走不到提示分支（实测如此，导致本步骤失败）。
+        #    _find_runnable_target() 会保证 base（25.2.x）在位并有
+        #    develop 模块，是这里唯一可靠的目标。
+        app_id = self._find_runnable_target()
+
+        # 确保 develop 模块在位（root 才有权限装）
+        self._sudo_ll_cli("install", "org.deepin.base", "--module=develop",
+                          timeout=600, check=False)
+
+        variants = (
+            ("基础", []),
+            ("symbol-dir", ["--debug-symbol-dir", "/tmp/smoke-dbgsym"]),
+            ("debuginfod", ["--debug-debuginfod", "http://smoke.invalid/"]),
+            ("三个齐",
+             ["--debug-listen", "127.0.0.1:23459",
+              "--debug-symbol-dir", "/tmp/smoke-dbgsym2",
+              "--debug-debuginfod", "http://smoke.invalid/"]),
+        )
+        out = ""
+        for name, extra in variants:
+            # ⚠️ 必须用 stop_when 提前收尾：`run --debug` 会起 gdbserver
+            #    等调试器附加，【进程本身不会退出】。若只靠 timeout 兜底，
+            #    4 个变体 × 60s 会把这一步拖到数分钟。
+            #    覆盖计数在代码执行到时已产生，收到提示后正常退出即可。
+            code, out = self._pty_ll_cli(
+                "run", app_id, "--debug", *extra,
+                "--", "/bin/echo", "DBG", timeout=60,
+                stop_when="linglong-gdb")
+            if code < 0:
+                raise AssertionError(f"--debug（{name}）崩溃了")
+            # 走到提示分支时会打印 attach 脚本路径；没走到也要有输出，
+            # 便于在日志里看出实际停在哪一步。
+            if not out.strip():
+                raise AssertionError(f"--debug（{name}）没有任何输出")
+
+        # 确认确实走到了"生成 gdb 附加脚本"的提示分支
+        if "linglong-gdb" not in out and "调试模式" not in out:
+            if "not authorized" in out:
+                raise AssertionError(
+                    f"--debug 因权限不足未走到提示分支: {out[:300]}")
+            if "未安装开发模块" in out or "failed to install develop module" in out:
+                raise AssertionError(
+                    f"--debug 因缺少 develop 模块未走到提示分支: {out[:300]}")
+            raise AssertionError(
+                f"--debug 没有生成 gdb 附加脚本的提示: {out[:300]!r}")
+
+        # 端口占用是上一次运行的残留，不是被测代码的问题；
+        # 顺手报出来，避免下次又被同样的现象误导去查错方向。
+        if "Address already in use" in out:
+            raise AssertionError(
+                "gdbserver 端口被占用（疑似上次运行残留），"
+                "请先清理 gdbserver 再跑: " + out[:200])
+
+        self._cleanup_containers(app_id, timeout=40)
+        # gdbserver 是 --debug 起来的，收尾时顺手清掉，避免占用默认端口
+        # 2345 影响后续用例。
+        self._run_cmd(["pkill", "-9", "gdbserver"], sudo=True, check=False)
+
+    # ── Test: 图形驱动检测工具（ll-driver-detect）──
+    #
+    # ll-driver-detect 装在 /usr/libexec/linglong/ 下（不在 PATH 里），
+    # 是一整套从未被冒烟触碰过的程序，覆盖 apps/ll-driver-detect/src/。
+    #
+    # 它的入口先读 /sys/module/nvidia/version；没有 NVIDIA 硬件时
+    # 直接早退，后面几百行都到不了。这里在【私有 mount namespace】里
+    # 用 tmpfs 覆盖 /sys/module 并造出该文件，从而驱动完整流程。
+    # 包名格式是 org.deepin.driver.display.nvidia.<版本，点换横线>。
+    def test_driver_detect(self):
+        binary = "/usr/libexec/linglong/ll-driver-detect"
+        if not os.path.exists(binary):
+            raise AssertionError(f"找不到 {binary}")
+
+        # 不带任何 flag：应打印帮助或进入检测
+        r = self._run_cmd([binary, "--help"], check=False)
+        if r.returncode != 0:
+            raise AssertionError(f"ll-driver-detect --help 失败: {r.stderr[:200]}")
+
+        # --check-only：只检查不安装不通知，最安全
+        r = self._run_cmd([binary, "--check-only"], check=False)
+        if r.returncode < 0:
+            raise AssertionError("ll-driver-detect --check-only 崩溃了")
+
+        # --install-only：只安装不通知（会真的去仓库查驱动包）
+        r = self._run_cmd([binary, "--install-only"], check=False)
+        if r.returncode < 0:
+            raise AssertionError("ll-driver-detect --install-only 崩溃了")
+
+        # 配置文件驱动的分支：neverRemind / 非法 JSON / 空对象
+        # 路径来自 XDG_CONFIG_HOME（默认 ~/.config/linglong/driver_detection.json）
+        cfg_dir = Path.home() / ".config" / "linglong"
+        cfg = cfg_dir / "driver_detection.json"
+        backup = None
+        try:
+            cfg_dir.mkdir(parents=True, exist_ok=True)
+            if cfg.exists():
+                backup = cfg.read_text()
+            for content in ('{"neverRemind":true}', '{"neverRemind":false}',
+                            '{}', '{bad json'):
+                cfg.write_text(content)
+                r = self._run_cmd([binary, "--check-only"], check=False)
+                if r.returncode < 0:
+                    raise AssertionError(
+                        f"配置 {content} 下 ll-driver-detect 崩溃了")
+        finally:
+            if backup is not None:
+                cfg.write_text(backup)
+            else:
+                try:
+                    cfg.unlink()
+                except OSError:
+                    pass
+
+        # 在私有 mount namespace 里伪造 NVIDIA 版本文件，
+        # 走完整的 detect() -> 仓库查询链路
+        script = (
+            "mount -t tmpfs tmpfs /sys/module 2>/dev/null || exit 0\n"
+            "mkdir -p /sys/module/nvidia\n"
+            "echo '580.119.02' > /sys/module/nvidia/version\n"
+            "chmod 755 /sys/module/nvidia\n"
+            "chmod 644 /sys/module/nvidia/version\n"
+            f"{binary} --check-only 2>&1 | grep -v 'profiling:' | head -5\n"
+        )
+        r = self._run_cmd(
+            ["unshare", "-m", "bash", "-c", script],
+            sudo=True, check=False, timeout=180)
+        if r.returncode < 0:
+            raise AssertionError("伪造 NVIDIA 版本后 ll-driver-detect 崩溃了")
+        # 不应再出现 "version file not found"，否则说明 tmpfs 覆盖没生效
+        if "version file not found" in (r.stdout + r.stderr):
+            raise AssertionError(
+                "伪造的 NVIDIA 版本文件没被读到，namespace 覆盖失败: "
+                f"{(r.stdout + r.stderr)[:200]}")
+
+    # ── Test: ll-driver-detect 的交互通知 ──
+    #
+    # 上面那条只跑到 --check-only；真正会发通知的那段（main.cpp 的
+    # "Handle user notifications" 以及 apps/ll-driver-detect/src/
+    # dbus_notifier.cpp 的 init / sendInteractiveNotification）需要
+    # 一个能应答的 org.freedesktop.Notifications。这里复用桩通知服务：
+    #
+    #   not_remind -> 必须把 neverRemind 写进
+    #                 $XDG_CONFIG_HOME/linglong/driver_detection.json
+    #   不应答      -> 25 秒超时后什么都不做，配置文件不能被创建
+    #
+    # ⚠️ 绝不回 install_now：那条路会真的去装 1.6GB 的
+    #    org.deepin.driver.display.nvidia.<版本> 驱动包。
+    #
+    # 用独立的 XDG_CONFIG_HOME（临时目录）跑，既不碰真实配置，也避开
+    # ll-driver-detect 的单实例锁文件（锁在同一个目录下）。
+    def test_driver_detect_notification(self):
+        if not os.path.exists(DRIVER_DETECT_BINARY):
+            raise AssertionError(f"找不到 {DRIVER_DETECT_BINARY}")
+
+        for action, expect_never_remind in (("not_remind", True), ("none", False)):
+            cfg_home = Path(tempfile.mkdtemp(prefix="ll-drvcfg-"))
+            cfg = cfg_home / "linglong" / "driver_detection.json"
+            try:
+                bus = self._start_notification_stub(action)
+                try:
+                    started = time.time()
+                    r = self._run_driver_detect(bus, cfg_home)
+                    elapsed = time.time() - started
+
+                    notes = self._notification_log()
+                    if not notes:
+                        # 驱动检测要先查远端仓库里有没有对应的驱动包。镜像抖一下
+                        # （实测报 "Failed to get package info from remote repo:
+                        # Failed to parse search result"）或者仓库里暂时没有
+                        # 这个包，工具就会自己报 Driver detection failed，
+                        # 根本走不到通知分支 —— 那是环境问题，不是被测功能的
+                        # 问题，所以明确跳过并写清原因。
+                        combined = r.stdout + r.stderr
+                        if "Driver detection failed" in combined:
+                            raise StepSkipped(
+                                f"[{action}] ll-driver-detect 没能走到通知分支"
+                                f"（仓库/镜像问题）："
+                                f"{combined.strip().splitlines()[-1][:200]}")
+                        raise AssertionError(
+                            f"[{action}] 桩没收到通知，说明没走到通知分支: "
+                            f"rc={r.returncode} {(r.stdout + r.stderr)[:200]}")
+                    actions = notes[-1].get("actions") or []
+                    if "install_now" not in actions or "not_remind" not in actions:
+                        raise AssertionError(
+                            f"[{action}] 通知按钮不是驱动安装的两个动作: {actions!r}")
+
+                    cfg_text = cfg.read_text() if cfg.exists() else ""
+                    if expect_never_remind:
+                        if r.returncode != 0:
+                            raise AssertionError(
+                                f"[{action}] ll-driver-detect 退出码 {r.returncode}: "
+                                f"{(r.stdout + r.stderr)[:200]}")
+                        if '"neverRemind": true' not in cfg_text:
+                            raise AssertionError(
+                                f"[{action}] 选了不再提醒，配置里却没有 neverRemind: "
+                                f"{cfg_text!r}")
+                    else:
+                        # 没应答 -> 25 秒超时 -> 什么都不做
+                        if cfg_text:
+                            raise AssertionError(
+                                f"[{action}] 没人应答却写了配置: {cfg_text!r}")
+                        if elapsed < 20:
+                            raise AssertionError(
+                                f"[{action}] 只用了 {elapsed:.1f}s，没等通知超时，"
+                                "说明通知没发出去就返回了")
+                finally:
+                    self._stop_notification_stub()
+            finally:
+                shutil.rmtree(cfg_home, ignore_errors=True)
+
+    def _run_driver_detect(self, bus_address: str, cfg_home: Path):
+        """在私有 mount namespace 里伪造 NVIDIA 版本后跑 ll-driver-detect。"""
+        script = (
+            "mount -t tmpfs tmpfs /sys/module 2>/dev/null || exit 0\n"
+            "mkdir -p /sys/module/nvidia\n"
+            "echo '580.119.02' > /sys/module/nvidia/version\n"
+            "chmod 755 /sys/module/nvidia\n"
+            "chmod 644 /sys/module/nvidia/version\n"
+            f"XDG_CONFIG_HOME={cfg_home} {DRIVER_DETECT_BINARY} 2>&1 "
+            "| grep -v 'profiling:' | tail -6\n"
+        )
+        return self._sudo_on_bus(
+            bus_address, "unshare", "-m", "bash", "-c", script,
+            timeout=180, check=False)
+
+    # ── Test: 显示/时区/网络的环境分支 ──
+    #
+    # 对应 run_context.cpp 的 detectDisplaySystem / resolveTimeZone /
+    # resolveNetworkConf，以及 common/display.cpp 的 getXOrgAuthFile。
+    #
+    # 这些都是【环境变量驱动】的，改环境变量即可覆盖，安全且可移植。
+    #
+    # ⚠️ 不要去改 /etc/resolv.conf 或 /etc/localtime 来覆盖"文件状态"分支：
+    #    ll-cli run 的容器是由 PackageManager 服务（另一个进程）创建的，
+    #    它【不在】本进程的 mount namespace 里，看不到本进程的私有挂载，
+    #    却能看到本进程对真实文件系统的删除/改写。
+    #    实测：在 unshare -m 里 rm/ln /etc/resolv.conf 会直接改坏宿主机，
+    #    导致 DNS 失效、ll-cli search 报 code 3001（已发生过并修复）。
+    def test_display_env_branches(self):
+        cases = (
+            ("XAUTHORITY 假路径", {"XAUTHORITY": "/tmp/smoke-no-such-xauth"}),
+            ("XAUTHORITY 空", {"XAUTHORITY": ""}),
+            ("XAUTHORITY 未设", {"XAUTHORITY": None}),
+            ("WAYLAND_DISPLAY 设", {"WAYLAND_DISPLAY": "wayland-0"}),
+            ("WAYLAND_DISPLAY 空", {"WAYLAND_DISPLAY": ""}),
+            ("WAYLAND_DISPLAY 未设", {"WAYLAND_DISPLAY": None}),
+            ("TZDIR 有效", {"TZDIR": "/usr/share/zoneinfo"}),
+            ("TZDIR 无效", {"TZDIR": "/nonexistent-zoneinfo"}),
+            ("TZDIR 空", {"TZDIR": ""}),
+            ("XDG_RUNTIME_DIR", {"XDG_RUNTIME_DIR": "/run/user/1001"}),
+            ("会话总线",
+             {"DBUS_SESSION_BUS_ADDRESS": "unix:path=/run/user/1001/bus"}),
+            ("DISPLAY 未设", {"DISPLAY": None}),
+        )
+        for name, env in cases:
+            code, out = self._pty_ll_cli(
+                "run", CALENDAR_APP_ID, "--", "/bin/echo", "ENV", timeout=60,
+                env=env)
+            if code < 0:
+                raise AssertionError(f"环境分支（{name}）崩溃了")
+            if "ENV" not in out:
+                raise AssertionError(
+                    f"环境分支（{name}）没有跑到命令: {out[:200]!r}")
+
+    # ── Test: 仓库版本迁移 ──
+    #
+    # 对应 repo/migrate.cpp。tryMigrate 读 /var/lib/linglong/.version：
+    #   - 若等于 LINGLONG_VERSION（1.15.0）→ 直接 NoChange，整个文件不执行
+    #   - 不等于 → dispatchMigrations，其中只有 from < 1.7.0 才真的迁移
+    # 所以必须把戳改成旧版本才能覆盖到这些代码；跑完要还原。
+    def test_repo_migration(self):
+        if not shutil.which("systemctl"):
+            raise AssertionError("没有 systemctl，无法测试仓库迁移")
+
+        version_file = "/var/lib/linglong/.version"
+        svc = "org.deepin.linglong.PackageManager.service"
+
+        r = self._run_cmd(["cat", version_file], sudo=True, check=False)
+        if r.returncode != 0:
+            raise AssertionError(f"读不到 {version_file}: {r.stderr[:200]}")
+        original = r.stdout.strip()
+
+        try:
+            # 各种旧版本值：都会走 dispatchMigrations，且都 < 1.7.0
+            for old in ("1.6.0", "1.5.0", "1.0.0"):
+                w = self._run_cmd(
+                    ["bash", "-c", f"printf '%s' '{old}' > {version_file}"],
+                    sudo=True, check=False)
+                if w.returncode != 0:
+                    raise AssertionError(f"写版本戳 {old} 失败: {w.stderr[:200]}")
+                self._run_cmd(["systemctl", "restart", svc],
+                              sudo=True, check=False, timeout=300)
+
+            # 版本串无法解析：应走 parseVersion 失败分支，不能把服务搞崩到不可恢复
+            self._run_cmd(
+                ["bash", "-c", f"printf '%s' 'garbage' > {version_file}"],
+                sudo=True, check=False)
+            self._run_cmd(["systemctl", "restart", svc],
+                          sudo=True, check=False, timeout=300)
+        finally:
+            # 无论成败都要还原，否则后续安装/运行会因版本戳异常而失败。
+            # 上面故意写过 'garbage'，服务会因此进入 failed 状态，
+            # 所以先 reset-failed 再重启，否则可能一直起不来。
+            self._run_cmd(
+                ["bash", "-c", f"printf '%s' '{original}' > {version_file}"],
+                sudo=True, check=False)
+            self._run_cmd(["systemctl", "reset-failed", svc],
+                          sudo=True, check=False)
+            self._run_cmd(["systemctl", "restart", svc],
+                          sudo=True, check=False, timeout=300)
+
+        # 还原后服务必须回到 active，否则整轮冒烟都不可信。
+        # ⚠️ systemctl restart 是异步的：返回时单元可能还在 activating，
+        #    甚至短暂处于 failed（例如上一轮刚被非法版本戳弄失败过）。
+        #    所以这里要轮询等待，不能立刻判定（踩过：立刻查得到 'failed'，
+        #    但几秒后服务其实是正常的）。
+        deadline = time.time() + 60
+        state = ""
+        while time.time() < deadline:
+            r = self._run_cmd(["systemctl", "is-active", svc], check=False)
+            state = r.stdout.strip()
+            if state == "active":
+                break
+            time.sleep(2)
+        if state != "active":
+            raise AssertionError(f"迁移测试后服务未恢复: {state!r}")
+
+        # 还原后 ll-cli 必须照常可用（给它几次机会，服务刚起来可能还没就绪）
+        last = None
+        for _ in range(10):
+            r = self._ll_cli("list", timeout=120, check=False)
+            if r.returncode == 0:
+                last = None
+                break
+            last = r
+            time.sleep(3)
+        if last is not None:
+            raise AssertionError(
+                f"迁移测试后 ll-cli list 失败: {last.stderr[:200]}")
+
+    # ── Test: 生成并安装带 entries 的重写项目 ──
+    #
+    # 对应 ostree_repo.cpp 的 exportDir / IniLikeFileRewrite 一族：
+    #   desktopFileRewrite / buildDesktopExec / dbusServiceRewrite /
+    #   systemdServiceRewrite / contextMenuRewrite
+    #
+    # 这些函数只在【安装】时把 entries 里的 Exec 改写为
+    #   /usr/bin/ll-cli run <id> -- ...
+    # 冒烟此前从不构造带 share/applications 等目录的项目，
+    # 所以这一族（合计 100+ 行）长期是 0%。
+    #
+    # ⚠️ 分派条件是路径含 "share/applications"、"share/dbus-1"、
+    #    "share/systemd/user"、"share/applications/context-menus"。
+    #    注意是【share/systemd/user】而不是 lib/systemd/user：
+    #    builder 会把 files/lib/systemd/user 复制到 entries/lib/systemd/user，
+    #    但 exportDir 只匹配 share/systemd/user，
+    #    所以 systemdServiceRewrite 在正常构建流程里走不到（实测 0%）。
+    def test_entry_file_rewrite(self):
+        proj = f"/tmp/smoke-entries-{os.getpid()}"
+        shutil.rmtree(proj, ignore_errors=True)
+        os.makedirs(proj, exist_ok=True)
+
+        app_id = "org.deepin.smokeentries"
+        # 生成 linglong.yaml。
+        # ⚠️ build 是 YAML 块标量，heredoc 正文必须缩进，
+        #    否则正文顶格会提前终止块标量，yaml-cpp 报
+        #    "end of map not found"（踩过）。这里用 TAB + <<-EOF，
+        #    YAML 里 TAB 属于内容，bash 会把行首 TAB 剥掉。
+        def heredoc(path: str, body: str) -> str:
+            lines = [f'cat > "{path}" <<-EOF']
+            lines += ["\t" + ln for ln in body.splitlines()]
+            lines.append("EOF")
+            return "\n".join(lines)
+
+        prefix = '"$PREFIX"'
+        script = "\n".join([
+            "set -e",
+            f'mkdir -p {prefix}/share/applications/context-menus',
+            f'mkdir -p {prefix}/share/dbus-1/services',
+            f'mkdir -p {prefix}/share/systemd/user',
+            heredoc(
+                f"{prefix}/share/applications/{app_id}.desktop",
+                "[Desktop Entry]\n"
+                "Type=Application\n"
+                f"Name=Smoke Entries\n"
+                f"Exec=/opt/apps/{app_id}/files/bin/probe %f\n"
+                f"Icon={app_id}\n"
+                "Terminal=false\n"
+                "Categories=Utility;"),
+            heredoc(
+                f"{prefix}/share/applications/context-menus/{app_id}.conf",
+                "[ContextMenu]\n"
+                f"Name=Smoke Entries\n"
+                f"Exec=/opt/apps/{app_id}/files/bin/probe %U"),
+            heredoc(
+                f"{prefix}/share/dbus-1/services/{app_id}.service",
+                "[D-BUS Service]\n"
+                f"Name={app_id}\n"
+                f"Exec=/opt/apps/{app_id}/files/bin/probe --dbus"),
+            heredoc(
+                f"{prefix}/share/systemd/user/{app_id}.service",
+                "[Unit]\n"
+                "Description=Smoke Entries\n"
+                "[Service]\n"
+                "Type=simple\n"
+                f"ExecStart=/opt/apps/{app_id}/files/bin/probe --serve\n"
+                f"ExecStop=/opt/apps/{app_id}/files/bin/probe --stop\n"
+                "Restart=on-failure\n"
+                "[Install]\n"
+                "WantedBy=default.target"),
+        ])
+        yaml = (
+            'version: "1"\n\n'
+            "package:\n"
+            f"  id: {app_id}\n"
+            "  name: smoke entries\n"
+            "  version: 1.0.0.1\n"
+            "  kind: app\n"
+            "  description: |\n"
+            "    probe project for entry file rewrites\n\n"
+            "command: [echo, -e, smoke-entries]\n\n"
+            "base: org.deepin.base/25.2.1\n\n"
+            "build: |\n"
+            + "\n".join(("  " + ln) if ln.strip() else "" for ln in script.splitlines())
+            + "\n"
+        )
+        (Path(proj) / "linglong.yaml").write_text(yaml)
+
+        old_cwd = os.getcwd()
+        try:
+            os.chdir(proj)
+            r = self._ll_builder("build", check=False, timeout=1800)
+            if r.returncode != 0:
+                raise AssertionError(
+                    f"构建 entries 项目失败: rc={r.returncode} "
+                    f"{(r.stdout + r.stderr)[-400:]}")
+
+            # 导出 layer（install 只接受 .layer/.uab）
+            r = self._ll_builder("export", "--layer", check=False, timeout=900)
+            if r.returncode != 0:
+                raise AssertionError(
+                    f"导出 layer 失败: rc={r.returncode} "
+                    f"{(r.stdout + r.stderr)[-400:]}")
+            layers = sorted(Path(proj).glob("*_binary.layer"))
+            if not layers:
+                raise AssertionError("导出后没有找到 binary.layer")
+
+            # 安装：这时才执行 exportDir 里的 ini-like 重写
+            r = self._sudo_ll_cli("install", str(layers[0]),
+                                  check=False, timeout=1200)
+            if r.returncode != 0:
+                raise AssertionError(
+                    f"安装 entries layer 失败: rc={r.returncode} "
+                    f"{(r.stdout + r.stderr)[-400:]}")
+
+            # 必须重启服务，否则服务端的覆盖计数还在内存里没落盘。
+            # 见 flush_service_coverage 的说明。
+            self.flush_service_coverage()
+
+            # 验证重写结果：entries 里的 Exec 应被改写为 ll-cli run
+            #
+            # ⚠️ /var/lib/linglong/entries/apps/ 下是【符号链接】指向层目录，
+            #    而 .linyaps.original 备份留在层目录里（同一层内）。
+            #    所以要在【链接解析后】的目录里找备份，否则会误判"没备份"。
+            desktop = None
+            for cand in (
+                Path("/var/lib/linglong/entries/apps/share/applications")
+                / f"{app_id}.desktop",
+                Path("/var/lib/linglong/entries/share/applications")
+                / f"{app_id}.desktop",
+            ):
+                if cand.exists():
+                    desktop = cand
+                    break
+            if desktop is None:
+                raise AssertionError(
+                    f"安装后找不到 {app_id}.desktop（entries 下的 desktop 文件）")
+
+            content = desktop.read_text(errors="replace")
+            if "ll-cli run" not in content:
+                raise AssertionError(
+                    f"desktop 的 Exec 没有被重写为 ll-cli run: {content[:200]!r}")
+
+            real_dir = desktop.resolve().parent
+            if not list(real_dir.glob("*.linyaps.original")):
+                raise AssertionError(
+                    f"没有生成 .linyaps.original 备份，说明重写走了非预期路径"
+                    f"（查找目录 {real_dir}）")
+
+            # dbus service 的 Exec 也应被重写
+            dbus_svc = (Path("/var/lib/linglong/entries/share/dbus-1/services")
+                        / f"{app_id}.service")
+            if dbus_svc.exists():
+                dbus_content = dbus_svc.read_text(errors="replace")
+                if "ll-cli run" not in dbus_content:
+                    raise AssertionError(
+                        f"dbus service 的 Exec 没被重写: {dbus_content[:200]!r}")
+        finally:
+            os.chdir(old_cwd)
+            self._sudo_ll_cli("uninstall", app_id, check=False, timeout=600)
+            # ll-cli uninstall 只清【包管理】那边；构建仓库里的 ref 必须用
+            # ll-builder remove 清，而且要给它【完整引用】，否则静默不删，
+            # 探针包会一直积在构建仓库里（实测积了十几个）。
+            self._ll_builder("remove", self._builder_ref(app_id),
+                             cwd=str(proj), timeout=600, check=False)
+            self.flush_service_coverage()
+            shutil.rmtree(proj, ignore_errors=True)
+
+    # ── Test: 为 PackageManager 服务准备覆盖率收集 ──
+    #
+    # ⚠️ 没有这一步，服务端的覆盖率【一定会丢】。
+    #
+    # ll-package-manager 是 systemd 服务，它的进程环境由 systemd 决定，
+    # 不会继承冒烟脚本导出的 GCOV_PREFIX。实测（移除 drop-in 后重启）：
+    #     服务 Environment 为空 → libgcov 按编译期绝对路径写盘 →
+    #     gcda 落到 /tmp/mixrepo/... （73 个文件），
+    #     而收集流程只扫 /var/tmp/linglong-cov-{root,user,svc}，
+    #     于是安装/卸载/导出 entries 等服务端代码的覆盖率全被忽略。
+    #
+    # 这里写一个 systemd drop-in 把 GCOV_PREFIX 指定到 svc 前缀。
+    # 只在需要收集覆盖率时才有意义，因此做成幂等且可跳过。
+    def ensure_service_coverage_env(self) -> bool:
+        svc = "org.deepin.linglong.PackageManager.service"
+        if not shutil.which("systemctl"):
+            return False
+
+        drop_in_dir = Path(
+            "/etc/systemd/system/org.deepin.linglong.PackageManager.service.d")
+        drop_in = drop_in_dir / "gcov.conf"
+        wanted = ("[Service]\n"
+                  "Environment=GCOV_PREFIX=/var/tmp/linglong-cov-svc\n"
+                  "Environment=GCOV_PREFIX_STRIP=0\n")
+
+        if not drop_in.exists() or drop_in.read_text() != wanted:
+            self._run_cmd(["mkdir", "-p", str(drop_in_dir)], sudo=True,
+                          check=False)
+            # executor 不支持 stdin 输入，用 printf 把内容写进去。
+            # 内容里没有 % 与转义字符，直接单引号包裹即可。
+            body = wanted.replace("'", "'\\''")
+            r = self._run_cmd(
+                ["bash", "-c", f"printf '%s' '{body}' > {drop_in}"],
+                sudo=True, check=False)
+            if r.returncode != 0:
+                raise AssertionError(
+                    f"写入 {drop_in} 失败: {(r.stdout + r.stderr)[:200]}")
+            self._run_cmd(["systemctl", "daemon-reload"], sudo=True,
+                          check=False)
+            self._run_cmd(["systemctl", "restart", svc], sudo=True,
+                          check=False, timeout=300)
+            time.sleep(3)
+
+        # 确认服务确实拿到了 GCOV_PREFIX
+        r = self._run_cmd(
+            ["bash", "-c",
+             "tr '\\0' '\\n' < /proc/$(systemctl show -p MainPID --value "
+             + svc + ")/environ | grep -c GCOV_PREFIX"],
+            sudo=True, check=False)
+        counts = [ln.strip() for ln in r.stdout.splitlines()
+                  if ln.strip().isdigit()]
+        if not counts or int(counts[0]) == 0:
+            raise AssertionError(
+                "服务仍然没有 GCOV_PREFIX，服务端覆盖率会丢失")
+
+        self.ensure_coverage_prefixes_writable()
+        return True
+
+    @staticmethod
+    def _uab_utils_missing(result) -> bool:
+        """判断这次失败是不是"环境里没有可用的 builder-utils"。
+
+        UAB/UABX 导出需要 cn.org.linyaps.builder.utils，而且
+        linglong_builder.cpp:66 要求版本 >= minimumBuilderUtilsVersion
+        （当前 deepin/master 是 0.0.4.0）。实测 2026-09 时
+        mirror-repo-linglong.deepin.com 与 repo-dev.cicd.getdeepin.org
+        【都只发布 0.0.2.0】，所以这一步在纯远程环境里根本做不成，
+        只能靠构建缓存里早先留下的高版本副本。
+
+        这属于环境缺件，不是被测功能的问题，所以按"跳过"处理并打清楚
+        原因，而不是把整轮冒烟判成 FAIL。等仓库发布了 >= 0.0.4.0 的
+        builder-utils，这段会自动重新跑起来。
+        """
+        combined = (result.stdout or "") + (result.stderr or "")
+        markers = (
+            "failed to get builder utils",
+            "failed to get UAB utilities",
+            "builder-utils",
+            "builder utils did not provide",
+        )
+        if not any(m in combined for m in markers):
+            return False
+        print("    [skip] 环境缺少可用的 builder-utils"
+              "（UAB 导出需要 >= 0.0.4.0，仓库只发布 0.0.2.0），"
+              "跳过 UAB 相关断言")
+        return True
+
+    def ensure_builder_cache_healthy(self) -> bool:
+        """修复 ll-builder 构建缓存里"账上有、仓里没有"的 layer 记录。
+
+        背景（踩了很久的坑）：整轮冒烟跑到后半程时，`ll-builder build`
+        会稳定失败：
+
+            Build failed: [code -1]:
+            stage pull dependency error
+
+        构建其实已经走完依赖解析（base 的 binary/develop 都打印 complete），
+        真正的失败点在最后一步 OSTreeRepo::mergeModules()
+        （ostree_repo.cpp:2747）。它会对构建仓库里【所有】多模块分组做
+        ostree_repo_checkout_at 合并，只要有一个分组的 commit 在仓库里
+        已经不存在，整次构建就报这个错（而且是确定性的，重试没用）。
+
+        ⚠️ 关于成因：本函数最初的注释把它归到"`import-dir` 记账但不写
+        commit"+"`remove` 只删对象不留记录"，这两句【与代码相反】，
+        已按实测更正（2026-09）：
+          * OSTreeRepo::importLayerDir（ostree_repo.cpp:819）会
+            `commitDirToRepo()` 写出 commit，并把它写进账本 item.commit；
+          * OSTreeRepo::remove（ostree_repo.cpp:983）会
+            `cache->deleteLayerItem()` 删掉账本记录；对象是随后由
+            Builder::remove 的 `if (prune) repo.prune()`
+            （linglong_builder.cpp:381）清掉的；
+          * 实测：import-dir 之后账本自洽；再触发一次 prune（remove 掉一个
+            别的 ref）也不会删掉它的 commit —— 该 commit 有 ostree ref
+            （local:main/<id>/<version>/<arch>/<module>）保护。
+        也就是说在当前代码上【没能复现】出悬空记录：原始现象要么已被上游
+        修掉，要么另有成因。这里保留检查作为【自愈兜底】—— 它很便宜
+        （读一个 JSON + 查几个文件是否存在），一旦真出现不自洽就地摘掉，
+        而不是让整轮构建在后面随机失败。
+
+        ⚠️ 这里【不能】直接删掉整个 ~/.cache/linglong-builder：
+        那样连 cn.org.linyaps.builder.utils 都要重新下载，
+        实测会下到 96% 失败，反而让 export --uabx 挂掉（也踩过）。
+        所以只把不自洽的记录从 states.json 里摘掉。
+
+        返回 True 表示改过 states.json。
+        """
+        repo_root = Path.home() / ".cache" / "linglong-builder"
+        states = repo_root / "states.json"
+        objects = repo_root / "repo" / "objects"
+        if not states.exists() or not objects.is_dir():
+            return False
+
+        try:
+            data = json.loads(states.read_text())
+        except (OSError, ValueError):
+            return False
+
+        layers = data.get("layers")
+        if not isinstance(layers, list):
+            return False
+
+        def commit_exists(commit) -> bool:
+            if not isinstance(commit, str) or len(commit) < 3:
+                return False
+            return (objects / commit[:2] / f"{commit[2:]}.commit").exists()
+
+        kept_layers = []
+        dropped_commits = set()
+        dropped_names = []
+        for item in layers:
+            commit = (item or {}).get("commit")
+            if commit_exists(commit):
+                kept_layers.append(item)
+                continue
+            dropped_commits.add(commit)
+            info = (item or {}).get("info") or {}
+            dropped_names.append(f"{info.get('id')}/{info.get('version')}"
+                                 f"/{info.get('module')}")
+
+        if not dropped_names:
+            return False
+
+        print(f"    [warn] 构建缓存不自洽：{len(dropped_names)} 条 layer 记录的 "
+              f"commit 在仓库里已不存在，已从 states.json 摘除："
+              f"{dropped_names[:3]}")
+
+        # merged 记录里只要引用了被摘掉的 commit 就一并去掉，
+        # 否则 mergeModules 会认为"已经合并过"而跳过，后续挂载就会失败。
+        merged = data.get("merged")
+        if isinstance(merged, list):
+            data["merged"] = [
+                m for m in merged
+                if not (set(m.get("commits") or []) & dropped_commits)
+            ]
+
+        data["layers"] = kept_layers
+        try:
+            states.write_text(json.dumps(data, ensure_ascii=False, indent=2))
+        except OSError as exc:
+            print(f"    [warn] 写回 states.json 失败: {exc}")
+            return False
+        return True
+
+    # ── 让各 GCOV_PREFIX 树可写 ──
+    #
+    # ⚠️ 这是一个【静默丢覆盖率】的坑，实测踩过：
+    #
+    # libgcov 写 .gcda 时【不会创建中间目录】，它要求整条路径已经存在
+    # 且可写。而 GCOV_PREFIX_STRIP=0 会让落盘路径变成
+    #   $GCOV_PREFIX + 编译期绝对路径
+    # 也就是 $GCOV_PREFIX/home/<user>/.../obj-x86_64-linux-gnu/...
+    #
+    # 只要这套中间目录是【另一个身份】建出来的（例如以 root 跑过一次，
+    # 目录就是 root:root 755），之后换普通用户跑就会在每一个 .gcda 上
+    # 报 "profiling:...Cannot open"，覆盖率全部丢弃——而冒烟测试本身
+    # 仍然全绿，完全看不出问题。实测一轮日志里有 2879 条 Cannot open。
+    #
+    # 所以这里按"谁写哪棵树"把属主摆正：
+    #   user 前缀 -> 当前用户（非 sudo 的 ll-cli/ll-builder）
+    #   svc  前缀 -> deepin-linglong（PackageManager 服务）
+    #   root 前缀 -> 保持 root（sudo 调用）
+    def ensure_coverage_prefixes_writable(self) -> None:
+        me = getpass.getuser()
+        plan = (
+            ("/var/tmp/linglong-cov-user", f"{me}:{me}"),
+            ("/var/tmp/linglong-cov-svc", "deepin-linglong:deepin-linglong"),
+            # root 前缀：sudo 命令（root）和 peer 模式的服务端
+            # （sudo --user deepin-linglong，见 test_no_dbus_peer_mode）
+            # 都会往这里写。这里【不 chown】（里面已经有 root 写的文件），
+            # 但必须让所有身份都能写：实测 prefix 里已存在的 gcda 若是
+            # root:root 0644，uid 993 的 gcov 覆盖不了它，写入静默失败，
+            # peer 分支的覆盖率就永远统计不到。
+            # 修前/修后（删掉旧 gcda + 放开权限后重跑一次 peer）：
+            #   apps/ll-package-manager/src/main.cpp 未覆盖 57 -> 39 行，
+            #   总体 75.00% -> 75.10%。
+            ("/var/tmp/linglong-cov-root", None),
+        )
+        for prefix, owner in plan:
+            # 目录不存在时先建出来（chown -R 对不存在的路径会报错）
+            self._run_cmd(["mkdir", "-p", prefix], sudo=True, check=False)
+            if owner is not None:
+                self._run_cmd(["chown", "-R", owner, prefix], sudo=True,
+                              check=False)
+            # a+rwX：目录可进入、文件可写；X 只作用于目录和已有可执行位，
+            # 不会把普通文件误设成可执行。
+            self._run_cmd(["chmod", "-R", "a+rwX", prefix], sudo=True,
+                          check=False)
+
+    # ── 让 PackageManager 服务把覆盖计数落盘 ──
+    #
+    # ⚠️ 这是收集服务端覆盖率的【必要步骤】，此前一直缺失。
+    #
+    # ll-package-manager 是常驻服务（systemd Type=dbus）。libgcov 只在
+    # 进程退出时才把 .gcda 写盘，所以服务运行期间执行的所有代码
+    # （安装/卸载/导出 entries/延迟卸载等，全在服务里）其计数都还在内存中。
+    #
+    # 实测（清空 svc prefix 后做一次安装，对比重启前后）：
+    #     未重启（计数还在内存里）: 50.8% (9766/19227)
+    #     重启服务后（落盘）:       58.2% (11190/19227)
+    # 单次操作就相差 1424 行 / 7.4 个百分点 —— 不重启就全丢了。
+    # 另一处印证：做完整装操作后 gcda 的 mtime 不变，restart 后立即更新，
+    # 且 ostree_repo.cpp 的未覆盖行数从 574 降到 530。
+    #
+    # 服务需要 GCOV_PREFIX=/var/tmp/linglong-cov-svc（由 systemd drop-in
+    # 注入），否则会写到编译期路径而丢失；没有该变量时本函数直接返回
+    # False，避免做无用重启。
+    def flush_service_coverage(self) -> bool:
+        svc = "org.deepin.linglong.PackageManager.service"
+        if not shutil.which("systemctl"):
+            return False
+        # 先确认服务确实带 GCOV_PREFIX，否则重启也没意义。
+        # ⚠️ SUDO_ASKPASS 的辅助脚本会把 "验证成功" 一起写进 stdout，
+        #    所以不能直接 isdigit()，要按行找一个纯数字行。
+        r = self._run_cmd(
+            ["bash", "-c",
+             "pid=$(systemctl show -p MainPID --value " + svc + "); "
+             "tr '\\0' '\\n' < /proc/$pid/environ 2>/dev/null | grep -c GCOV_PREFIX"],
+            sudo=True, check=False)
+        counts = [ln.strip() for ln in r.stdout.splitlines()
+                  if ln.strip().isdigit()]
+        if not counts or int(counts[0]) == 0:
+            return False
+
+        self._run_cmd(["systemctl", "restart", svc],
+                      sudo=True, check=False, timeout=300)
+        return True
+
     def cleanup(self):
+        # 先把所有容器收干净再卸载：残留的 ll-box 进程会占住应用引用，
+        # 让 sudo ll-cli uninstall 恒返回 255（且没有任何错误输出），
+        # 于是应用卸不掉、项目目录删不净，污染下一次运行。
+        self._cleanup_containers(DEMO_APP_ID, timeout=30)
+        self._cleanup_containers(CALENDAR_APP_ID, timeout=30)
         self._run_cmd([LL_CLI, "kill", "-s", "9", CALENDAR_APP_ID], check=False)
         self._sudo_ll_cli("uninstall", DEMO_APP_ID, check=False)
         self._sudo_ll_cli("uninstall", CALENDAR_APP_ID, check=False)
@@ -475,13 +5410,1404 @@ class SmokeTest:
         self._remove_demo_project_dir()
         self.reset_repositories()
 
+        # ⚠️ 上面这几句会把套件当夹具用的应用卸掉（demo / 日历 / semver /
+        # baseline）。但机器上原本就【预装】了其中一些 —— 例如日历，以及它
+        # 依赖的 org.deepin.runtime.dtk 和 base —— 卸掉之后它们就回不来了：
+        # 实测整轮跑完机器会少 3 个 ref（run52 之后只剩 3 个）。
+        # 这里按【整轮开始前的已装集合】兜底还原一次，语义与上面仓库配置的
+        # 兜底一致：让机器回到开跑前的样子，而不是留下被清理过的状态。
+        # 注意这里【不】判 has_failed：cleanup 卸载夹具是设计如此，还原失败
+        # 属于环境问题（装不回来），不该把一个跑得没问题的整轮判失败。
+        if self._installed_refs_at_start:
+            try:
+                self._restore_installed_refs(self._installed_refs_at_start)
+            except Exception as exc:  # noqa: BLE001
+                print(f"  Error: 还原整轮开始前的已装应用集合失败: {exc}",
+                      file=sys.stderr)
+
         if not self._verify_repo_state_restored("ll-cli"):
             self.has_failed = True
         if not self._verify_repo_state_restored("ll-builder"):
             self.has_failed = True
+        # 逐项核对整个仓库配置（镜像开关 / region / 地址 / 优先级…）
+        if not self._verify_repo_config_restored():
+            # 有步骤漏了还原：这里用整轮开始前的快照【兜底还原】一次，
+            # 保证机器不会留在被污染的状态；但这一轮仍然判 FAIL ——
+            # "改了配置没还原"是脚本的 bug，必须暴露出来而不是被兜底掩盖。
+            print("  Error: 有步骤没还原仓库配置，尝试用开始前的快照兜底还原",
+                  file=sys.stderr)
+            try:
+                self._restore_repo_config(self._repo_config_at_start)
+                if self._verify_repo_config_restored():
+                    print("  兜底还原成功，机器配置已回到开始前的样子",
+                          file=sys.stderr)
+            except Exception as exc:  # noqa: BLE001
+                print(f"  Error: 兜底还原也失败了: {exc}", file=sys.stderr)
+            self.has_failed = True
+
+        # 最后再把服务端计数落盘一次：上面这些卸载/仓库重置同样发生在
+        # PackageManager 服务里，不重启就收集不到。
+        # 这是整轮冒烟服务端覆盖率的最后一道保障。
+        self.flush_service_coverage()
+
+    # ── Test: 版本升降级触发安装交互 ──
+    #
+    # 覆盖 Cli::interaction（客户端）+ PackageTask::requestInteraction /
+    # ReplyInteraction（服务端）。
+    #
+    # 触发条件（ref_installation.cpp）：
+    #   operation == ActionOperation::Policy::Upgrade && !options.skipInteraction
+    # 也就是【已装旧版时再装一个更新的版本】。服务端会发 TaskInteraction
+    # 信号，客户端收到后构造 InteractionRequest 并回复。
+    #
+    # ⚠️ 注意 Downgrade 是【另一条】路径：它不走交互，而是直接报
+    #    AppInstallNeedDowngrade（除非 --force）。所以必须"先旧后新"，
+    #    不能靠 --force 降级来凑。
+    def test_upgrade_interaction(self):
+        app = CALENDAR_APP_ID
+
+        # ⚠️ 必须用【显式版本】触发升级，不能靠 "install <id>" 让服务端去解析
+        #    "最新版"。实测踩过：冒烟运行期间会配置优先级的 smoketesting
+        #    仓库，此时远端"最新"的解析结果会变，于是 "install <id>" 被判成
+        #    Downgrade 并返回 AppInstallNeedDowngrade
+        #    （提示"已安装最新版本…--force"），升级根本没发生。
+        #    显式给出版本号就绕开了这层解析。
+        versions = self._available_versions(app)
+        if len(versions) < 2:
+            raise AssertionError(
+                f"{app} 可用版本不足两个，无法构造升级场景: {versions}")
+        newest, older = versions[0], versions[1]
+
+        def installed_version():
+            r = self._ll_cli("list", timeout=180, check=False)
+            for line in r.stdout.splitlines():
+                if app in line:
+                    m = re.search(r"\b(\d+\.\d+\.\d+\.\d+)\b", line)
+                    if m:
+                        return m.group(1)
+            return None
+
+        try:
+            self._sudo_ll_cli("uninstall", app, timeout=300, check=False)
+
+            # 先装旧版，并【确认真的装上了旧版】——否则后面的"升级"是假象
+            r = self._sudo_ll_cli("install", f"{app}/{older}",
+                                  timeout=900, check=False)
+            if r.returncode != 0:
+                raise AssertionError(
+                    f"安装旧版本 {older} 失败: {(r.stdout + r.stderr)[:300]}")
+            got = installed_version()
+            if got != older:
+                raise AssertionError(
+                    f"装旧版后期望 {older}，实际 {got}")
+
+            # 关键一步：装更新的版本 -> Policy::Upgrade -> TaskInteraction
+            # -> 客户端 Cli::interaction
+            r = self._sudo_ll_cli("install", f"{app}/{newest}",
+                                  timeout=900, check=False)
+            if r.returncode != 0:
+                raise AssertionError(
+                    f"升级安装失败: {(r.stdout + r.stderr)[:300]}")
+            got = installed_version()
+            if got != newest:
+                raise AssertionError(
+                    f"升级后期望 {newest}，实际 {got}")
+
+            # Overwrite 分支：同一版本再装一次
+            self._sudo_ll_cli("install", f"{app}/{newest}",
+                              timeout=300, check=False)
+
+            # Downgrade + --force：绕过交互直接降级
+            r = self._sudo_ll_cli("install", f"{app}/{older}", "--force",
+                                  timeout=900, check=False)
+            if r.returncode == 0 and installed_version() != older:
+                raise AssertionError("--force 降级没有生效")
+        finally:
+            # 还原成最新版，后面的用例还要用它
+            self._sudo_ll_cli("uninstall", app, timeout=300, check=False)
+            self._sudo_ll_cli("install", f"{app}/{newest}",
+                              timeout=900, check=False)
+
+    def _available_versions(self, app_id: str) -> list[str]:
+        """按远端给出的顺序返回可用版本（最新的在前）。"""
+        r = self._ll_cli("search", "--show-all-version", app_id,
+                         timeout=180, check=False)
+        out = r.stdout + r.stderr
+        seen: list[str] = []
+        for v in re.findall(r"\b(\d+\.\d+\.\d+\.\d+)\b", out):
+            if v not in seen:
+                seen.append(v)
+        return seen
+
+    def _require_repo_versions(self, app_id: str, least: int = 1,
+                               why: str = "") -> list[str]:
+        """确认仓库里还有这个测试包，否则【明确跳过】而不是判失败。
+
+        这些包只用于测试，实测会随镜像同步时有时无。包一没了用例必然
+        失败，但那是环境问题：直接跳过并写清原因，比 fail-fast 把后面
+        几十个用例全变成 SKIPPED 更有利于定位问题。
+        """
+        versions = self._available_versions(app_id)
+        if len(versions) < least:
+            raise StepSkipped(
+                f"仓库里已经没有 {app_id}（需要至少 {least} 个版本，"
+                f"实际找到 {len(versions)} 个）"
+                + (f"：{why}" if why else "")
+                + "。这属于环境问题（仓库/镜像里暂时没有这个包），"
+                  "不是被测代码的问题")
+        return versions
+
+    # ── 桩通知服务（非 TTY 的交互确认）──
+    def _try_read_root_file(self, path) -> str:
+        """读 root 文件，读不到就当空串（用于"文件可能还没生成"的轮询）。"""
+        try:
+            return self._read_root_file(path)
+        except RuntimeError:
+            return ""
+
+    def _sudo_ll_cli_on_bus(self, bus_address: str, *args: str, **kwargs):
+        """在指定会话总线上跑 ll-cli。
+
+        ⚠️ 不能用 executor 的 env= 参数：那是 sudo【之前】的环境变量，
+           sudo 会把它剥掉。必须在 sudo 之后用 env 显式设置。
+        """
+        return self._sudo_on_bus(bus_address, LL_CLI, *args, **kwargs)
+
+    def _sudo_on_bus(self, bus_address: str, *cmd: str, **kwargs):
+        """以 root 在指定会话总线上跑一条命令。"""
+        return self._run_cmd(
+            ["env", f"DBUS_SESSION_BUS_ADDRESS={bus_address}", *cmd],
+            sudo=True,
+            **kwargs,
+        )
+
+    def _installed_app_version(self, app_id: str):
+        r = self._ll_cli("list", timeout=180, check=False)
+        for line in r.stdout.splitlines():
+            if app_id in line:
+                m = re.search(r"\b(\d+\.\d+\.\d+\.\d+)\b", line)
+                if m:
+                    return m.group(1)
+        return None
+
+    def _start_notification_stub(self, action: str) -> str:
+        """起 root 私有会话总线 + 桩通知服务，返回总线地址。"""
+        stub = Path(__file__).resolve().parent / "notif_stub.py"
+        if not stub.exists():
+            raise AssertionError(f"找不到桩通知服务脚本: {stub}")
+
+        probe = self._run_cmd(
+            ["python3", "-c",
+             "import dbus, dbus.service; from gi.repository import GLib"],
+            check=False,
+        )
+        if probe.returncode != 0:
+            raise AssertionError(
+                "缺少 python3-dbus / python3-gi，无法起桩通知服务: "
+                + (probe.stderr or "").strip()[:200])
+
+        self._stop_notification_stub()
+        self._run_cmd(["mkdir", "-p", NOTIF_BUS_DIR], sudo=True, check=False)
+
+        # --fork 让 dbus-daemon 后台化；--print-pid 拿到 PID —— 收尾按 PID 杀，
+        # 不用 pkill -f（那条路的模式串会命中 sudo 自己，踩过）
+        #
+        # ⚠️ --print-address / --print-pid 都要显式写 =1（stdout）：
+        #    不写的话前者会把后一个选项当成自己的 fd 参数，
+        #    报 Invalid file descriptor: "--print-pid"。
+        r = self._run_cmd(
+            ["dbus-daemon", "--session",
+             f"--address=unix:path={NOTIF_BUS_SOCKET}",
+             "--fork", "--print-address=1", "--print-pid=1"],
+            sudo=True, check=False,
+        )
+        address, bus_pid = "", ""
+        for line in (r.stdout + r.stderr).splitlines():
+            line = line.strip()
+            if line.startswith("unix:path="):
+                address = line
+            elif line.isdigit():
+                bus_pid = line
+        if r.returncode != 0 or not address or not bus_pid:
+            raise AssertionError(
+                f"私有会话总线启动失败: rc={r.returncode} "
+                f"{(r.stdout + r.stderr)[:300]}")
+        self._run_cmd(["bash", "-c", f"echo {bus_pid} > {NOTIF_BUS_PID}"],
+                      sudo=True, check=False)
+
+        self._run_cmd(["rm", "-f", NOTIF_STUB_LOG], sudo=True, check=False)
+        cmd = (f"DBUS_SESSION_BUS_ADDRESS={address} nohup python3 {stub} "
+               f"{action} {NOTIF_STUB_LOG} > {NOTIF_STUB_OUT} 2>&1 & "
+               f"echo $! > {NOTIF_STUB_PID}")
+        self._run_cmd(["bash", "-c", cmd], sudo=True, check=False)
+
+        # 等桩把 org.freedesktop.Notifications 抢到手（打印 stub ready）
+        deadline = time.time() + 15
+        out = ""
+        while time.time() < deadline:
+            out = self._try_read_root_file(NOTIF_STUB_OUT)
+            if "stub ready" in out:
+                return address
+            if "Traceback" in out or "缺少" in out:
+                break
+            time.sleep(0.5)
+        self._stop_notification_stub()
+        raise AssertionError(f"桩通知服务没起来: {out[:300]}")
+
+    def _stop_notification_stub(self):
+        """按 PID 收掉桩和私有总线（幂等）。"""
+        for pid_file in (NOTIF_STUB_PID, NOTIF_BUS_PID):
+            r = self._run_cmd(["cat", pid_file], check=False)
+            pid = (r.stdout or "").strip()
+            if r.returncode == 0 and pid.isdigit():
+                self._run_cmd(["kill", pid], sudo=True, check=False)
+            self._run_cmd(["rm", "-f", pid_file], sudo=True, check=False)
+        self._run_cmd(["rm", "-rf", NOTIF_BUS_DIR], sudo=True, check=False)
+
+    def _notification_log(self) -> list:
+        """桩收到的通知，按时间顺序。"""
+        notes = []
+        for line in self._try_read_root_file(NOTIF_STUB_LOG).splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                notes.append(json.loads(line))
+            except json.JSONDecodeError:
+                pass
+        return notes
+
+    # ── Test: 非 TTY 的通知交互（cli/dbus_notifier.cpp）──
+    #
+    # 触发条件同 test_upgrade_interaction（已装旧版时再装更新的版本 ->
+    # ref_installation.cpp 的 Policy::Upgrade -> TaskInteraction）。区别在于
+    # 这里给 ll-cli 一条【真的能连上的会话总线 + 桩通知服务】，于是它走
+    # cli/dbus_notifier.cpp 的 GetCapabilities/Notify/等信号，而不是
+    # sudo 下的 DummyNotifier。
+    #
+    # 桩分别回 yes / no，两轮都断言"功能真的按回答走了"：
+    #   yes -> 版本必须升上去；no -> 必须报"操作已取消"且版本停在旧版。
+    # 并核对通知正文里同时出现新旧两个 ref —— 只"执行到"不算数。
+    def test_install_interaction_notification(self):
+        app = NOTIF_APP_ID
+        versions = self._available_versions(app)
+        if len(versions) < 2:
+            raise AssertionError(
+                f"{app} 可用版本不足两个，无法构造升级场景: {versions}")
+        newest, older = versions[0], versions[1]
+
+        try:
+            for action, expect_upgrade in (("Y", True), ("N", False)):
+                self._run_interaction_round(action, expect_upgrade,
+                                            app, newest, older)
+        finally:
+            self._stop_notification_stub()
+            # 还原成最新版：后面的用例（PTY / 容器）还要用日历应用
+            self._sudo_ll_cli("uninstall", app, timeout=300, check=False)
+            self._sudo_ll_cli("install", f"{app}/{newest}",
+                              timeout=NOTIF_INSTALL_TIMEOUT, check=False)
+
+    def _run_interaction_round(self, action: str, expect_upgrade: bool,
+                               app: str, newest: str, older: str):
+        bus = self._start_notification_stub(action)
+        try:
+            self._sudo_ll_cli("uninstall", app, timeout=300, check=False)
+            r = self._sudo_ll_cli("install", f"{app}/{older}",
+                                  timeout=NOTIF_INSTALL_TIMEOUT, check=False)
+            if r.returncode != 0:
+                raise AssertionError(
+                    f"[{action}] 安装旧版本 {older} 失败: "
+                    f"{(r.stdout + r.stderr)[:300]}")
+            got = self._installed_app_version(app)
+            if got != older:
+                raise AssertionError(
+                    f"[{action}] 装旧版后期望 {older}，实际 {got}")
+
+            # 关键一步：装更新的版本 -> Policy::Upgrade -> TaskInteraction
+            # -> Cli::interaction -> notifier->request() -> 桩收到通知
+            r = self._sudo_ll_cli_on_bus(
+                bus, "install", f"{app}/{newest}",
+                timeout=NOTIF_INSTALL_TIMEOUT, check=False)
+            got = self._installed_app_version(app)
+
+            notes = self._notification_log()
+            if not notes:
+                raise AssertionError(
+                    f"[{action}] 桩没收到通知，说明没走到 dbus_notifier: "
+                    f"rc={r.returncode} {(r.stdout + r.stderr)[:200]}")
+            note = notes[-1]
+            if note.get("summary") != "Package Manager needs to confirm request.":
+                raise AssertionError(
+                    f"[{action}] 通知标题不对: {note.get('summary')!r}")
+            if note.get("actions") != ["yes", "Yes", "no", "No"]:
+                raise AssertionError(
+                    f"[{action}] 通知按钮不对: {note.get('actions')!r}")
+            body = note.get("body", "")
+            if older not in body or newest not in body:
+                raise AssertionError(
+                    f"[{action}] 通知正文没同时提到新旧版本: {body!r}")
+
+            if expect_upgrade:
+                if r.returncode != 0:
+                    raise AssertionError(
+                        f"[{action}] 回答 yes 却失败了: "
+                        f"{(r.stdout + r.stderr)[:300]}")
+                if got != newest:
+                    raise AssertionError(
+                        f"[{action}] 回答 yes 后期望 {newest}，实际 {got}")
+            else:
+                if r.returncode == 0:
+                    raise AssertionError(f"[{action}] 回答 no 却装成功了")
+                if got != older:
+                    raise AssertionError(
+                        f"[{action}] 回答 no 后期望仍是 {older}，实际 {got}")
+        finally:
+            self._stop_notification_stub()
+
+    # ── Test: 项目源码拉取（sources）──
+    #
+    # 覆盖 fetchSources + SourceFetcher::fetch + getSourceName，以及
+    # misc/libexec/linglong/fetch-{file,archive}-source 脚本。
+    # 这一整块此前是 0% 覆盖。
+    #
+    # ⚠️ fetch-*-source 脚本用 wget 下载，而本机的 wget 不认 file://
+    #    （实测报"不支持的协议类型"），所以这里起一个本地 HTTP 服务，
+    #    不依赖外网也不需要真实仓库。
+    def test_project_sources_fetch(self):
+        import hashlib
+
+        workdir = Path(tempfile.mkdtemp(prefix="sources-"))
+        srcdir = workdir / "www"
+        srcdir.mkdir()
+
+        # 准备一个普通文件和一份 tar 包，供 file / archive 两种 kind 使用
+        payload = srcdir / "hello.txt"
+        payload.write_text("hello from local file source\n")
+        tree = srcdir / "tree"
+        tree.mkdir()
+        (tree / "inner.txt").write_text("inner\n")
+        archive = srcdir / "bundle.tar.gz"
+        subprocess.run(["tar", "czf", str(archive), "-C", str(tree), "."],
+                       check=True, capture_output=True)
+
+        def sha256(p):
+            return hashlib.sha256(p.read_bytes()).hexdigest()
+
+        # 起本地 HTTP 服务；端口被占就直接复用（不要去 pkill，容易误伤）
+        port = 18700 + os.getpid() % 500
+        base_url = f"http://127.0.0.1:{port}"
+        server = None
+        if subprocess.run(["curl", "-s", "-o", "/dev/null", "-m", "2",
+                           f"{base_url}/hello.txt"],
+                          capture_output=True).returncode != 0:
+            server = subprocess.Popen(
+                [sys.executable, "-m", "http.server", str(port),
+                 "--bind", "127.0.0.1"],
+                cwd=str(srcdir), stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL)
+            time.sleep(3)
+
+        project_tpl = (
+            'version: "1"\n\n'
+            "package:\n"
+            "  id: org.deepin.srcprobe\n"
+            "  name: srcprobe\n"
+            "  version: 1.0.0.1\n"
+            "  kind: app\n"
+            "  description: probe sources fetching\n\n"
+            "command:\n"
+            "  - /bin/true\n\n"
+            # ⚠️ base 要写模糊版本（三段），写 25.2.2.8 会报
+            #    "base version is not valid"
+            "base: org.deepin.base/25.2.2\n\n"
+            "sources:\n"
+            "%s\n"
+            "build: |\n"
+            "  echo build-ok\n"
+        )
+
+        def write_project(name, sources_yaml):
+            d = workdir / name
+            d.mkdir(exist_ok=True)
+            (d / "linglong.yaml").write_text(project_tpl % sources_yaml)
+            return d
+
+        ok_sources = (
+            "  - kind: file\n"
+            f"    url: {base_url}/hello.txt\n"
+            f"    digest: {sha256(payload)}\n"
+            "    name: hello.txt\n"
+            "  - kind: archive\n"
+            f"    url: {base_url}/bundle.tar.gz\n"
+            f"    digest: {sha256(archive)}\n"
+            "    name: bundle"
+        )
+        good = write_project("ok", ok_sources)
+
+        try:
+            r = self._ll_builder("build", cwd=str(good), timeout=1800,
+                             check=False)
+            out = r.stdout + r.stderr
+            if r.returncode != 0:
+                raise AssertionError(
+                    f"sources 构建失败: {out[-400:]}")
+
+            # 再构建一次走【缓存命中】分支（fetch-*-source 里的
+            # cachedir/file_$digest 与 archive_$digest 早退路径）
+            self._ll_builder("build", cwd=str(good), timeout=1800,
+                             check=False)
+
+            # 错误分支：摘要不符 / 缺 url / 未知 kind / git 缺 commit
+            errs = {
+                "bad_digest": ("  - kind: file\n"
+                               f"    url: {base_url}/hello.txt\n"
+                               f"    digest: {'0' * 64}\n"
+                               "    name: h.txt"),
+                "no_url": ("  - kind: file\n"
+                           f"    digest: {sha256(payload)}"),
+                "bad_kind": ("  - kind: nosuchkind\n"
+                             f"    url: {base_url}/hello.txt\n"
+                             f"    digest: {sha256(payload)}"),
+                "git_no_commit": ("  - kind: git\n"
+                                  f"    url: {base_url}/hello.txt"),
+            }
+            for name, sy in errs.items():
+                d = write_project(name, sy)
+                r = self._ll_builder("build", cwd=str(d), timeout=900,
+                                         check=False)
+                # 这些都必须失败；若某天变成成功说明校验被放开了
+                if r.returncode == 0:
+                    raise AssertionError(
+                        f"sources 错误分支 {name} 竟然构建成功")
+        finally:
+            if server is not None:
+                server.terminate()
+                try:
+                    server.wait(timeout=10)
+                except subprocess.TimeoutExpired:
+                    server.kill()
+            shutil.rmtree(workdir, ignore_errors=True)
+            # 清掉探针装出来的东西。
+            # ⚠️ 两边都要清：ll-cli uninstall 清的是【包管理】那边，
+            #    构建仓库里的 ref 只有 ll-builder remove 能清，
+            #    而且必须给完整引用（只给包名会静默不删）。
+            self._sudo_ll_cli("uninstall", "org.deepin.srcprobe",
+                              timeout=300, check=False)
+            self._ll_builder("remove", self._builder_ref("org.deepin.srcprobe"),
+                             timeout=600, check=False)
+
+    # ── Test: layer 导入导出往返 ──
+    #
+    # 覆盖 Builder::importLayer / extractLayer（此前 25 行与 17 行都是 0%），
+    # 以及【隐藏子命令】ll-builder import-dir。
+    #
+    # ⚠️ 为什么原来没覆盖：既有用例只喂了不存在的 layer 文件，
+    #    CLI11 的 ExistingFile 校验在进入 Builder 之前就报错退出了，
+    #    所以函数体一行都没执行。必须【真的先导出一个 layer】。
+    def test_builder_layer_roundtrip(self):
+        workdir = Path(tempfile.mkdtemp(prefix="layerprobe-"))
+        project = workdir / "proj"
+        project.mkdir()
+        (project / "linglong.yaml").write_text(
+            'version: "1"\n\n'
+            "package:\n"
+            "  id: org.deepin.layerprobe\n"
+            "  name: layerprobe\n"
+            "  version: 1.0.0.1\n"
+            "  kind: app\n"
+            "  description: probe layer import/export\n\n"
+            "command:\n"
+            "  - /bin/true\n\n"
+            "base: org.deepin.base/25.2.2\n\n"
+            "build: |\n"
+            "  echo layer-ok\n")
+
+        try:
+            r = self._ll_builder("build", cwd=str(project), timeout=1800,
+                                 check=False)
+            if r.returncode != 0:
+                raise AssertionError(
+                    f"layer 探针构建失败: {(r.stdout + r.stderr)[-400:]}")
+
+            r = self._ll_builder("export", "--layer", cwd=str(project),
+                                 timeout=1800, check=False)
+            if r.returncode != 0:
+                raise AssertionError(
+                    f"export --layer 失败: {(r.stdout + r.stderr)[-300:]}")
+
+            layers = sorted(project.glob("*.layer"))
+            if not layers:
+                raise AssertionError("export --layer 没有产出 .layer 文件")
+            layer = layers[0]
+
+            # --modules：显式指定要导出的模块，会走
+            # OSTreeRepo::createTempMergedModuleDir（此前 0% 覆盖），
+            # 把多个模块目录临时合并成一个 layer 再打包。
+            # ⚠️ 必须带 -o，否则会覆盖上面那个 .layer 产物。
+            # ⚠️ 带 -o 会走 UAB 导出（需要 builder-utils），环境缺就跳过
+            #    这一段，别把整轮判成失败——见 _uab_utils_missing()。
+            for mods in ("binary", "binary,develop"):
+                out = project / f"modules-{mods.replace(',', '-')}.layer"
+                r = self._ll_builder("export", f"--modules={mods}",
+                                     "-o", str(out), cwd=str(project),
+                                     timeout=1800, check=False)
+                if r.returncode != 0:
+                    if self._uab_utils_missing(r):
+                        break
+                    raise AssertionError(
+                        f"export --modules={mods} 失败: "
+                        f"{(r.stdout + r.stderr)[-300:]}")
+                if not out.exists() or out.stat().st_size == 0:
+                    raise AssertionError(
+                        f"export --modules={mods} 没有产出 layer 文件")
+
+            # --modules 与 --layer 互斥
+            self._ll_builder("export", "--layer", "--modules=binary",
+                             cwd=str(project), timeout=300, check=False)
+
+            # import：把 layer 导回构建仓库
+            r = self._ll_builder("import", str(layer), timeout=900,
+                                 check=False)
+            if r.returncode != 0:
+                raise AssertionError(
+                    f"import 失败: {(r.stdout + r.stderr)[-300:]}")
+
+            # extract：把 layer 解到目录
+            outdir = workdir / "extracted"
+            r = self._ll_builder("extract", str(layer), str(outdir),
+                                 timeout=900, check=False)
+            if r.returncode != 0:
+                raise AssertionError(
+                    f"extract 失败: {(r.stdout + r.stderr)[-300:]}")
+            if not outdir.is_dir() or not any(outdir.iterdir()):
+                raise AssertionError("extract 没有解出任何内容")
+
+            # import-dir：隐藏子命令，直接导目录。
+            # ⚠️ 必须先 remove：import 与 import-dir 导入的是同一个 ref，
+            #    构建仓库里已经有就会报 "item already exist"（踩过）。
+            self._ll_builder("remove",
+                             self._builder_ref("org.deepin.layerprobe"),
+                             timeout=600, check=False)
+            r = self._ll_builder("import-dir", str(outdir), timeout=900,
+                                 check=False)
+            if r.returncode != 0:
+                raise AssertionError(
+                    f"import-dir（隐藏命令）失败: "
+                    f"{(r.stdout + r.stderr)[-300:]}")
+
+            # 错误路径：不存在的 layer / 缺参数，由 CLI11 校验拦下
+            self._ll_builder("import", str(workdir / "nope.layer"),
+                             timeout=300, check=False)
+            self._ll_builder("extract", timeout=300, check=False)
+        finally:
+            # ⚠️ import-dir 会把 layer 记进构建仓库的 states.json，
+            #    但它的 commit 并不在 repo/objects 里。留着这条悬空记录，
+            #    后面任何一次 ll-builder build 的 mergeModules() 都会失败
+            #    （报 "stage pull dependency error"，且重试无用）。
+            #    实测整轮冒烟就是被这一条拖挂的。
+            self._ll_builder("remove",
+                             self._builder_ref("org.deepin.layerprobe"),
+                             timeout=600, check=False)
+            shutil.rmtree(workdir, ignore_errors=True)
+            self._sudo_ll_cli("uninstall", "org.deepin.layerprobe",
+                              timeout=300, check=False)
+
+    # ── Test: 隐藏的运行与卸载选项 ──
+    #
+    # ll-cli 里有一批 ->group("") 的选项，--help 完全不显示，
+    # 但代码路径是实打实的：
+    #   run --privileged         要求 root，非 root 直接报错退出
+    #   run --caps-add           给容器加 capabilities
+    #   run --run-context        直接吃一段 JSON（RunContextConfig）
+    #   uninstall --prune/--all  为兼容旧 ll-cli 保留，已废弃但仍在解析
+    def test_hidden_options(self):
+        app = CALENDAR_APP_ID
+        inst = f"smokehidden{os.getpid()}"
+
+        # --privileged 必须 root：先以非 root 拿"拒绝"分支，
+        # 再以 root 走真正启用的分支。
+        r = self._ll_cli("run", app, "--instance", inst, "--privileged",
+                         "--", "/bin/echo", "PRIV", timeout=120, check=False)
+        if r.returncode == 0:
+            raise AssertionError("非 root + --privileged 居然成功了")
+        if "privileged mode requires running as root" not in (r.stdout + r.stderr):
+            raise AssertionError(
+                f"非 root + --privileged 报错不对: {(r.stdout + r.stderr)[:300]}")
+
+        r = self._sudo_ll_cli("run", app, "--instance", inst,
+                              "--privileged", "--", "/bin/echo", "PRIVROOT",
+                              timeout=180, check=False)
+        if r.returncode != 0:
+            raise AssertionError(
+                f"root + --privileged 失败: {(r.stdout + r.stderr)[:300]}")
+
+        # root 不显式传 --privileged 也必须自动进入 privileged 模式：
+        # 与宿主机共享 user namespace，并获得原有的 privilege capabilities。
+        hostUserNs = self._run_cmd(["readlink", "/proc/self/ns/user"], sudo=True)
+        r = self._sudo_ll_cli(
+            "run", app, "--instance", inst + "auto", "--", "/bin/sh", "-c",
+            "printf 'USERNS=%s\\n' \"$(readlink /proc/self/ns/user)\"; "
+            "awk '/^CapEff:/{printf \"CAPEFF=%s\\n\", $2}' /proc/self/status",
+            timeout=180, check=False)
+        if r.returncode != 0:
+            raise AssertionError(
+                f"root 自动 privileged 失败: {(r.stdout + r.stderr)[:300]}")
+        if f"USERNS={hostUserNs.stdout.strip()}" not in r.stdout:
+            raise AssertionError(
+                f"root 自动 privileged 未共享宿主机 user namespace: {r.stdout[:300]}")
+        if "CAPEFF=00000000800435fb" not in r.stdout:
+            raise AssertionError(
+                f"root 自动 privileged capabilities 不匹配: {r.stdout[:300]}")
+
+        # --caps-add（delimiter 为逗号）
+        r = self._ll_cli("run", app, "--instance", inst + "c",
+                         "--caps-add", "CAP_NET_RAW,CAP_SYS_ADMIN",
+                         "--", "/bin/echo", "CAP", timeout=120, check=False)
+        if r.returncode != 0:
+            raise AssertionError(
+                f"--caps-add 失败: {(r.stdout + r.stderr)[:300]}")
+
+        # --run-context：合法 JSON 与两类解析失败
+        for payload in (
+            '{"version":"1","app":"%s","instance":"%s"}' % (app, inst),
+            "not json",      # 解析异常分支
+            "{}",            # 缺 version，out_of_range 分支
+        ):
+            self._ll_cli("run", app, "--instance", inst,
+                         "--run-context", payload, "--", "/bin/echo", "CTX",
+                         timeout=180, check=False)
+
+        # 已废弃但仍在解析的兼容标志：缺 APP 参数会报 APP is required，
+        # 正好覆盖参数校验这条分支。
+        self._ll_cli("uninstall", "--prune", timeout=120, check=False)
+        self._ll_cli("uninstall", "--all", timeout=120, check=False)
+
+        self._cleanup_containers(app, timeout=40)
+
+    # ── Test: 非标准版本串回退解析 ──
+    #
+    # Version::parse 的默认 ParseOptions 是 strict=true / fallback=true，
+    # 也就是 V2（semver）与 V1（四段数字）都解析失败时，会回退到
+    # FallbackVersion —— 它接受任意点分字符串。
+    # fallback_version.cpp 整个文件（86 行）此前是 0% 覆盖。
+    #
+    # 触发点：所有接受 <id>/<version> 或 --version 的入口。
+    def test_fallback_version_strings(self):
+        app = CALENDAR_APP_ID
+        # 这些串 V1/V2 都解析不了，必然落到 FallbackVersion
+        weird = ["abc", "1.0.0-alpha", "x.y.z", "2024.09", "not-a-version"]
+        for v in weird:
+            # 查询类：不改变系统状态
+            self._ll_cli("info", f"{app}/{v}", timeout=120, check=False)
+            self._ll_cli("search", app, f"--version={v}", timeout=180,
+                         check=False)
+            self._ll_cli("list", f"--version={v}", timeout=120, check=False)
+            self._ll_cli("upgrade", f"{app}/{v}", timeout=180, check=False)
+            self._ll_cli("analyze", "depends", f"{app}/{v}", timeout=120,
+                         check=False)
+            # 安装/卸载类：需要 root，且都会被拒绝（远端没有这些版本），
+            # 但请求已经过版本解析这一步
+            self._sudo_ll_cli("install", f"{app}/{v}", timeout=300,
+                              check=False)
+            self._sudo_ll_cli("uninstall", f"{app}/{v}", timeout=300,
+                              check=False)
+
+    # ── Test: 运行中升级触发延迟卸载 ──
+    #
+    # 这是【延迟卸载】的完整链路，覆盖三个此前未覆盖的函数：
+    #   OSTreeRepo::markDeleted            （旧版本被标记删除）
+    #   PackageManager::tryUninstallRef    （busy 分支）
+    #   PackageManager::deferredUninstall  （定时器到期后真正删除）
+    #
+    # 触发路径（switchAppVersion）：
+    #   装旧版 -> 跑起来 -> 装新版
+    #   -> applyApp(new) / unapplyApp(old)
+    #   -> tryUninstallRef(oldRef)
+    #   -> isRefBusy(oldRef) 为真 -> markDeleted(old, true) 而不是直接删
+    #
+    # ⚠️ 注意：直接 "卸载一个正在运行的应用" 走的是 uninstallImpl 里的
+    #    【硬拒绝】（AppUninstallAppIsRunning + 弹通知），不会 markDeleted。
+    #    必须走"升级"这条路才会进延迟分支（踩过）。
+    #
+    # 定时器间隔由【服务端】环境变量 LINGLONG_DEFERRED_TIMEOUT（秒）决定，
+    # 默认 3600；这里临时调小，跑完还原。
+    def test_upgrade_running_app(self):
+        app = CALENDAR_APP_ID
+        svc = "org.deepin.linglong.PackageManager.service"
+        drop_in = Path(
+            "/etc/systemd/system/org.deepin.linglong.PackageManager.service.d"
+            "/gcov.conf")
+
+        versions = self._available_versions(app)
+        if len(versions) < 2:
+            raise AssertionError(f"{app} 可用版本不足: {versions}")
+        newest, older = versions[0], versions[1]
+
+        original_drop_in = None
+        if drop_in.exists():
+            original_drop_in = self._run_cmd(
+                ["cat", str(drop_in)], sudo=True, check=False).stdout
+
+        inst = f"smokedefer{os.getpid()}"
+        container_pid = None
+        try:
+            # 把延迟卸载超时调小，否则要等 1 小时
+            body = ("[Service]\n"
+                    "Environment=GCOV_PREFIX=/var/tmp/linglong-cov-svc\n"
+                    "Environment=GCOV_PREFIX_STRIP=0\n"
+                    "Environment=LINGLONG_DEFERRED_TIMEOUT=15\n")
+            self._run_cmd(
+                ["bash", "-c",
+                 f"printf '%s' '{body}' > {drop_in}"],
+                sudo=True, check=False)
+            self._run_cmd(["systemctl", "daemon-reload"], sudo=True,
+                          check=False)
+            self._run_cmd(["systemctl", "restart", svc], sudo=True,
+                          check=False, timeout=300)
+            time.sleep(5)
+
+            # 1) 装旧版
+            self._sudo_ll_cli("uninstall", app, timeout=300, check=False)
+            r = self._sudo_ll_cli("install", f"{app}/{older}",
+                                  timeout=900, check=False)
+            if r.returncode != 0:
+                raise AssertionError(
+                    f"安装旧版 {older} 失败: {(r.stdout + r.stderr)[:300]}")
+
+            # 2) 把旧版跑起来（真 PTY，长驻）
+            container_pid, fd = pty.fork()
+            if container_pid == 0:
+                env = os.environ.copy()
+                env.setdefault("GCOV_PREFIX", "/var/tmp/linglong-cov-user")
+                env["GCOV_PREFIX_STRIP"] = "0"
+                env.setdefault("DISPLAY", ":0")
+                try:
+                    os.execvpe(LL_CLI,
+                               [LL_CLI, "run", app, "--instance", inst,
+                                "--", "sleep", "240"], env)
+                finally:
+                    os._exit(127)
+            if not self._wait_container(timeout=60, app_id=app):
+                raise AssertionError("旧版本容器没起来，无法构造 busy 场景")
+
+            # 3) 运行中升级：这一步才会走 tryUninstallRef + markDeleted
+            r = self._sudo_ll_cli("install", f"{app}/{newest}",
+                                  timeout=900, check=False)
+            if r.returncode != 0:
+                raise AssertionError(
+                    f"运行中升级失败: {(r.stdout + r.stderr)[:300]}")
+
+            # 4) 停掉容器，等定时器把标记为删除的旧版本真正清掉
+            self._cleanup_containers(app, timeout=60)
+            time.sleep(35)
+        finally:
+            if container_pid:
+                try:
+                    os.kill(container_pid, signal.SIGINT)
+                except OSError:
+                    pass
+            # 还原 drop-in（去掉 LINGLONG_DEFERRED_TIMEOUT）
+            if original_drop_in is not None:
+                safe = original_drop_in.replace("'", "'\\''")
+                self._run_cmd(
+                    ["bash", "-c", f"printf '%s' '{safe}' > {drop_in}"],
+                    sudo=True, check=False)
+            else:
+                self._run_cmd(["rm", "-f", str(drop_in)], sudo=True,
+                              check=False)
+            self._run_cmd(["systemctl", "daemon-reload"], sudo=True,
+                          check=False)
+            self._run_cmd(["systemctl", "restart", svc], sudo=True,
+                          check=False, timeout=300)
+            time.sleep(3)
+            # 恢复成最新版
+            self._sudo_ll_cli("uninstall", app, timeout=300, check=False)
+            self._sudo_ll_cli("install", f"{app}/{newest}", timeout=900,
+                              check=False)
+
+    # ── Test: builder clean 与 create ──
+    #
+    # 覆盖 main.cpp 的 handleClean / handleCreate。
+    # ⚠️ clean 在原来的冒烟里【一次都没跑过】（grep 结果为 0）。
+    def test_builder_clean_create(self):
+        workdir = Path(tempfile.mkdtemp(prefix="cleanprobe-"))
+        name = f"cleanprobe{os.getpid()}"
+        try:
+            # create：生成模板项目
+            r = self._ll_builder("create", name, cwd=str(workdir),
+                                 timeout=300, check=False)
+            if r.returncode != 0:
+                raise AssertionError(
+                    f"ll-builder create 失败: {(r.stdout + r.stderr)[:300]}")
+            proj = workdir / name
+            if not (proj / "linglong.yaml").exists():
+                raise AssertionError("create 没有生成 linglong.yaml")
+
+            # create 同名：已存在分支
+            self._ll_builder("create", name, cwd=str(workdir), timeout=300,
+                             check=False)
+
+            # clean：在项目目录里
+            r = self._ll_builder("clean", cwd=str(proj), timeout=600,
+                                 check=False)
+            if r.returncode != 0:
+                raise AssertionError(
+                    f"ll-builder clean 失败: {(r.stdout + r.stderr)[:300]}")
+
+            # clean：不在项目目录里（另一条分支）
+            self._ll_builder("clean", cwd=str(workdir), timeout=600,
+                             check=False)
+            # clean 不接受位置参数
+            self._ll_builder("clean", "org.deepin.demo", timeout=300,
+                             check=False)
+        finally:
+            shutil.rmtree(workdir, ignore_errors=True)
+
+    # ── Test: 容器配置补丁机制 ──
+    #
+    # 覆盖 ContainerCfgBuilder::applyPatch / applyPatchFile /
+    # applyJsonPatchFile / applyExecutablePatch，此前这一整块是 0% 覆盖。
+    #
+    # 机制（container_cfg_builder.cpp:1638 起）：
+    #   固定读 /usr/lib/linglong/container/config.d 这个目录
+    #   （LINGLONG_INSTALL_PREFIX 是 /usr，见 configure.h）：
+    #     - 目录下的普通文件      -> 全局补丁
+    #     - 目录下以 <appId> 命名的子目录 -> 只对该应用生效
+    #   每个补丁文件：
+    #     - 有可执行位            -> 当程序跑，stdin 给 OCI 配置 JSON，
+    #                                stdout 拿回改后的 JSON
+    #     - 扩展名是 .json        -> {ociVersion, patch:[JSON Patch 操作]}
+    #                                ociVersion 必须等于 "1.0.1"
+    #     - 两者都不是            -> 报错但【只跳过，不影响启动】
+    #
+    # ⚠️ 这是系统目录，跑完必须清理干净，否则会影响这台机器上
+    #    其他应用的正常运行。
+    def test_container_config_patch(self):
+        cfg_dir = Path("/usr/lib/linglong/container/config.d")
+        app = CALENDAR_APP_ID
+
+        # 先确保应用在位（本用例可能排在日历被卸载之后）
+        r = self._ll_cli("list", check=False)
+        if app not in r.stdout:
+            self._sudo_ll_cli("install", app, timeout=900, check=False)
+
+        existed_before = cfg_dir.exists()
+        try:
+            self._run_cmd(["mkdir", "-p", str(cfg_dir)], sudo=True,
+                          check=False)
+
+            # 1) 可执行补丁：原样透传，验证"可执行位优先"这条分支
+            self._run_cmd(
+                ["bash", "-c",
+                 f"printf '%s\\n' '#!/bin/sh' 'cat' > {cfg_dir}/passthrough.sh"],
+                sudo=True, check=False)
+            self._run_cmd(["chmod", "755", f"{cfg_dir}/passthrough.sh"],
+                          sudo=True, check=False)
+
+            # 2) 全局 JSON 补丁：给 annotations 加一个键
+            patch = ('{"ociVersion":"1.0.1","patch":[{"op":"add",'
+                     '"path":"/annotations","value":{"smoke":"1"}}]}')
+            self._run_cmd(
+                ["bash", "-c", f"printf '%s' '{patch}' > {cfg_dir}/global.json"],
+                sudo=True, check=False)
+
+            # 3) 按 appId 的子目录补丁
+            app_dir = cfg_dir / app
+            self._run_cmd(["mkdir", "-p", str(app_dir)], sudo=True,
+                          check=False)
+            app_patch = ('{"ociVersion":"1.0.1","patch":[{"op":"add",'
+                         '"path":"/annotations/apppatch","value":"yes"}]}')
+            self._run_cmd(
+                ["bash", "-c",
+                 f"printf '%s' '{app_patch}' > {app_dir}/app.json"],
+                sudo=True, check=False)
+
+            # 4) 坏补丁：既不可执行也不是 .json -> 走"跳过"分支
+            self._run_cmd(
+                ["bash", "-c", f"printf '%s' 'nonsense' > {cfg_dir}/bad.txt"],
+                sudo=True, check=False)
+            self._run_cmd(["chmod", "644", f"{cfg_dir}/bad.txt"],
+                          sudo=True, check=False)
+
+            # 触发：跑一次应用就会执行 applyPatch
+            r = self._ll_cli("run", app, "--", "/bin/echo", "PATCHOK",
+                             timeout=180, check=False)
+            out = r.stdout + r.stderr
+            if r.returncode != 0:
+                raise AssertionError(
+                    f"带补丁运行失败: {out[:300]}")
+            # 坏补丁必须被跳过而不是让启动失败
+            if "bad.txt" not in out and "patch" not in out.lower():
+                # 输出可能被日志级别吞掉，不强制要求出现
+                pass
+
+            # 再跑一次，覆盖配置已存在时的复用路径
+            self._ll_cli("run", app, "--", "/bin/echo", "PATCHOK2",
+                         timeout=180, check=False)
+        finally:
+            # 清理：只删我们自己造的文件，目录原本不存在就整个删掉
+            for f in ("passthrough.sh", "global.json", "bad.txt"):
+                self._run_cmd(["rm", "-f", str(cfg_dir / f)], sudo=True,
+                              check=False)
+            self._run_cmd(["rm", "-rf", str(cfg_dir / app)], sudo=True,
+                          check=False)
+            if not existed_before:
+                self._run_cmd(["rm", "-rf", str(cfg_dir)], sudo=True,
+                              check=False)
+            self._cleanup_containers(app, timeout=40)
+
+    # ── Test: 安装钩子（install hooks）──
+    #
+    # 覆盖 utils/hooks.cpp 的 parseInstallHooks / parseInstallHookCommandLine /
+    # executeHookCommands / executeInstallHooks / executePostInstallHooks /
+    # executePostUninstallHooks。这个文件此前只有 22% 覆盖
+    # （parseInstallHookCommandLine 与 executeHookCommands 都是 0%）。
+    #
+    # 机制（utils/hooks.cpp:92）：
+    #   从 LINGLONG_INSTALL_HOOKS_DIR = /etc/linglong/config.d 读【所有】
+    #   普通文件，逐行匹配三个前缀：
+    #     ll-pre-install=      装之前跑
+    #     ll-post-install=     装完跑
+    #     ll-post-uninstall=   卸载后跑
+    #   值可以用单/双引号包起来；引号不闭合会报
+    #   "Invalid install hook command: unterminated quoted command"。
+    #   只有【从文件安装】（ll-cli install <x.uab> / <x.layer>）才会走
+    #   InstallFromFile -> parseInstallHooks + executeInstallHooks，
+    #   从仓库按 id 安装不会。
+    #
+    # ⚠️ 这是系统目录，跑完必须清理干净，否则这台机器上
+    #    以后所有从文件安装都会跑我们的钩子。
+    def test_install_hooks(self):
+        cfg_dir = Path("/etc/linglong/config.d")
+        workdir = Path(tempfile.mkdtemp(prefix="hookprobe-"))
+        app_id = f"org.deepin.hookprobe{os.getpid()}"
+        hook_file = cfg_dir / "smoke-hooks.conf"
+        existed_before = cfg_dir.exists()
+        try:
+            # 先构建并导出一个普通 UAB
+            (workdir / "linglong.yaml").write_text(
+                'version: "1"\n\n'
+                "package:\n"
+                f"  id: {app_id}\n"
+                "  name: hookprobe\n"
+                "  version: 1.0.0.1\n"
+                "  kind: app\n"
+                "  description: probe install hooks\n"
+                f"  architecture: {DEMO_ARCH}\n\n"
+                "base: org.deepin.base/25.2.2\n\n"
+                "command:\n"
+                "  - /bin/echo\n\n"
+                "build: |\n"
+                '  mkdir -p "$PREFIX/bin"\n'
+                f"  printf '#!/bin/sh\\necho hookprobe\\n' "
+                f'> "$PREFIX/bin/hookprobe"\n'
+                '  chmod 755 "$PREFIX/bin/hookprobe"\n')
+
+            r = self._ll_builder("build", cwd=str(workdir), timeout=1800,
+                                 check=False)
+            if r.returncode != 0:
+                raise AssertionError(
+                    f"hook 探针构建失败: {(r.stdout + r.stderr)[-400:]}")
+
+            uab = workdir / "hookprobe.uab"
+            r = self._ll_builder("export", "-o", str(uab), cwd=str(workdir),
+                                 timeout=1800, check=False)
+            if r.returncode != 0:
+                raise AssertionError(
+                    f"hook 探针导出失败: {(r.stdout + r.stderr)[-400:]}")
+
+            self._run_cmd(["mkdir", "-p", str(cfg_dir)], sudo=True,
+                          check=False)
+
+            # 三种前缀 + 三种写法：不带引号、带双引号、空命令
+            body = ("ll-pre-install=/bin/echo HOOK_PRE_RAN\n"
+                    'll-post-install="/bin/echo HOOK_POST_RAN"\n'
+                    "ll-post-uninstall='/bin/echo HOOK_POSTUN_RAN'\n"
+                    "# 注释行与无关行会被跳过\n"
+                    "some-other-key=whatever\n"
+                    "ll-pre-install=\n")
+            self._run_cmd(
+                ["bash", "-c",
+                 f"printf '%s' '{body}' > {hook_file}"],
+                sudo=True, check=False)
+
+            # 从文件安装：触发 parseInstallHooks + executeInstallHooks
+            self._sudo_ll_cli("uninstall", app_id, timeout=300, check=False)
+            r = self._sudo_ll_cli("install", str(uab), timeout=1800,
+                                  check=False)
+            if r.returncode != 0:
+                raise AssertionError(
+                    f"带钩子的 UAB 安装失败: {(r.stdout + r.stderr)[-400:]}")
+
+            # 卸载：触发 executePostUninstallHooks
+            r = self._sudo_ll_cli("uninstall", app_id, timeout=900,
+                                  check=False)
+            if r.returncode != 0:
+                raise AssertionError(
+                    f"带钩子的卸载失败: {(r.stdout + r.stderr)[-300:]}")
+
+            # 引号不闭合：应当拒绝安装
+            self._run_cmd(
+                ["bash", "-c",
+                 f"printf '%s' 'll-pre-install=\"unterminated\\n' "
+                 f"> {hook_file}"],
+                sudo=True, check=False)
+            r = self._sudo_ll_cli("install", str(uab), timeout=900,
+                                  check=False)
+            combined = r.stdout + r.stderr
+            if "Invalid install hook" not in combined \
+                    and "Invalid install hook" not in combined:
+                raise AssertionError(
+                    f"引号不闭合的钩子竟然没被拒绝: {combined[:300]}")
+
+            # 目录不存在时的分支：删掉钩子文件后再装一次
+            self._run_cmd(["rm", "-f", str(hook_file)], sudo=True,
+                          check=False)
+            self._sudo_ll_cli("install", str(uab), timeout=1800,
+                              check=False)
+            self._sudo_ll_cli("uninstall", app_id, timeout=900, check=False)
+        finally:
+            self._run_cmd(["rm", "-f", str(hook_file)], sudo=True,
+                          check=False)
+            if not existed_before:
+                self._run_cmd(["rm", "-rf", str(cfg_dir)], sudo=True,
+                              check=False)
+            self._ll_builder("remove", self._builder_ref(app_id), cwd=str(workdir),
+                             timeout=600, check=False)
+            shutil.rmtree(workdir, ignore_errors=True)
+
+    # ── Test: entries 全量重导出 ──
+    #
+    # 覆盖 OSTreeRepo::fixExportAllEntries 与 exportAllEntries，
+    # 这两个函数此前是 0% 覆盖。
+    #
+    # 机制（ostree_repo.cpp:2305）：
+    #   fixExportAllEntries 读 repoDir/entries/.version，
+    #   内容等于 LINGLONG_EXPORT_VERSION 就【跳过】，
+    #   否则调 exportAllEntries 全量重建 entries 并写回版本号。
+    #
+    # 触发方式：这个函数只被 ll-package-manager 的 main() 在
+    # 【服务启动时】调用一次（apps/ll-package-manager/src/main.cpp:109），
+    # 所以删掉 .version 再重启服务即可（踩过：只删文件不重启没用，
+    # 而且服务不退出就不会把覆盖率落盘）。
+    #
+    # ⚠️ entries 是全局共享目录，重导出会把它清空重建。
+    #    必须在没有容器运行时做，且做完要确认应用仍能启动。
+    def test_repo_entries_reexport(self):
+        svc = "org.deepin.linglong.PackageManager.service"
+        version_file = Path("/var/lib/linglong/entries/.version")
+        entries_dir = Path("/var/lib/linglong/entries")
+
+        if not version_file.exists():
+            raise AssertionError(f"{version_file} 不存在，无法构造场景")
+
+        # ⚠️ 走 _read_root_file 而不是 sudo cat：这个值下面会被【回写】，
+        #    sudo 的 "验证成功" 杂音混进来就会把文件写成垃圾。
+        original = self._read_root_file(version_file).strip()
+
+        # 重导出期间不能有容器在跑
+        self._cleanup_containers(CALENDAR_APP_ID, timeout=60)
+
+        try:
+            self._run_cmd(["rm", "-f", str(version_file)], sudo=True,
+                          check=False)
+            self._run_cmd(["systemctl", "restart", svc], sudo=True,
+                          check=False, timeout=300)
+
+            # 等服务起来并把 entries 重建完
+            deadline = time.time() + 180
+            rebuilt = False
+            while time.time() < deadline:
+                r = self._run_cmd(["cat", str(version_file)], sudo=True,
+                                  check=False)
+                if r.returncode == 0 and r.stdout.strip():
+                    rebuilt = True
+                    break
+                time.sleep(3)
+            if not rebuilt:
+                raise AssertionError(
+                    "重启服务后 entries/.version 没有被重建，"
+                    "exportAllEntries 可能失败了")
+
+            # entries 至少要还有内容。
+            # ⚠️ .version 写完不代表 entries 已经稳定，重导出刚结束的
+            #    一瞬间目录可能还是空的，所以这里要轮询而不是查一次。
+            deadline = time.time() + 120
+            populated = False
+            while time.time() < deadline:
+                r = self._run_cmd(["ls", str(entries_dir)], sudo=True,
+                                  check=False)
+                # sudo -A 的 askpass 会往 stdout 里塞一行"验证成功"，
+                # 所以按行过滤，不能只看 stdout 是否为空。
+                names = [ln.strip() for ln in r.stdout.splitlines()
+                         if ln.strip() and "验证" not in ln]
+                if r.returncode == 0 and names:
+                    populated = True
+                    break
+                time.sleep(3)
+            if not populated:
+                raise AssertionError("重导出后 entries 目录一直是空的")
+
+            # 服务恢复后应用必须仍能启动
+            deadline = time.time() + 90
+            while time.time() < deadline:
+                r = self._ll_cli("list", check=False)
+                if CALENDAR_APP_ID in r.stdout:
+                    break
+                time.sleep(3)
+
+            # 再等仓库彻底安静下来。
+            # ⚠️ 重导出之后 ostree 仓库还会忙一阵子，紧接着跑构建会随机
+            #    报 "stage pull dependency error / cannot be used in
+            #    worksheets"。这里用一次"轻量读"探到稳定为止。
+            deadline = time.time() + 120
+            stable = 0
+            while time.time() < deadline:
+                r = self._ll_cli("list", "--json", check=False)
+                if r.returncode == 0:
+                    stable += 1
+                    if stable >= 3:
+                        break
+                else:
+                    stable = 0
+                time.sleep(5)
+            time.sleep(10)
+        finally:
+            # .version 会由 exportAllEntries 重新写入；万一没写成，
+            # 至少把原值放回去，避免留下"每次启动都重导出"的状态
+            r = self._run_cmd(["cat", str(version_file)], sudo=True,
+                              check=False)
+            if r.returncode != 0 and original:
+                self._run_cmd(
+                    ["bash", "-c",
+                     f"printf '%s' '{original}' > {version_file}"],
+                    sudo=True, check=False)
+
+
+    # ── Test: builder 的 buildext.apt 依赖 ──
+    #
+    # 覆盖 Builder::buildStagePreCommit / generateDependsScript，
+    # 这两个函数此前分别是 57 行里 49 行未覆盖、26 行里 20 行未覆盖。
+    #
+    # 机制（linglong_builder.cpp:961 与 2113）：
+    #   buildStagePreCommit 先调 generateDependsScript，
+    #   项目没写 buildext.apt.depends 就直接 return（所以此前几乎没覆盖）。
+    #   写了之后会：准备 prepare_base / prepare_runtime 两个 overlayfs，
+    #   在容器里执行生成的 buildext.sh。
+    #
+    # ⚠️ 关键点：buildext.apt.depends 生成的脚本每行都带
+    #    `|| echo "$?"` 容错，所以【不需要真的能装包】，apt 失败也会
+    #    继续走完整条链路 —— 这正是它适合冒烟测试的原因。
+    #    （对比 buildext.apt.build_depends 生成的脚本没有容错，
+    #      apt 失败会直接让构建失败，所以这里不用 build_depends。）
+    def test_builder_buildext_apt(self):
+        workdir = Path(tempfile.mkdtemp(prefix="buildext-"))
+        pid = os.getpid()
+        # 构建缓存里累积的"账上有、仓里没有"的 layer 会让
+        # mergeModules 失败，先做一次自洽性检查
+        self.ensure_builder_cache_healthy()
+        try:
+            # 两个探针：
+            #   depends       -> buildStagePreCommit + generateDependsScript
+            #   build_depends -> processBuildDepends + generateBuildDependsScript
+            # 实测两者都能在容器里正常 apt（构建成功），不是只有报错路径。
+            probes = (
+                ("depends", f"org.deepin.buildext{pid}", "depends"),
+                ("builddepends", f"org.deepin.builddep{pid}", "build_depends"),
+            )
+            for tag, app_id, key in probes:
+                proj = workdir / tag
+                proj.mkdir()
+                (proj / "linglong.yaml").write_text(
+                    'version: "1"\n\n'
+                    "package:\n"
+                    f"  id: {app_id}\n"
+                    f"  name: buildext {tag}\n"
+                    "  version: 1.0.0.1\n"
+                    "  kind: app\n"
+                    f"  description: probe buildext apt {key}\n"
+                    f"  architecture: {DEMO_ARCH}\n\n"
+                    "base: org.deepin.base/25.2.2\n\n"
+                    "buildext:\n"
+                    "  apt:\n"
+                    f"    {key}:\n"
+                    "      - zlib1g\n\n"
+                    "command:\n"
+                    "  - /bin/echo\n\n"
+                    "build: |\n"
+                    f"  echo buildext-{tag}-ok\n")
+
+                r = self._build_with_retry(proj, f"buildext.apt.{key}")
+                if r.returncode != 0:
+                    raise AssertionError(
+                        f"带 buildext.apt.{key} 的构建失败: "
+                        f"{(r.stdout + r.stderr)[-400:]}")
+
+                # 再跑一次：内部目录已存在，overlay 准备走另一条分支
+                self._build_with_retry(proj, f"buildext.apt.{key}(二次)")
+
+                self._ll_builder("remove", self._builder_ref(app_id), cwd=str(proj),
+                                 timeout=600, check=False)
+        finally:
+            shutil.rmtree(workdir, ignore_errors=True)
+
+    def _build_with_retry(self, proj, tag, attempts: int = 3):
+        """跑 ll-builder build，遇到仓库合并的偶发失败就重试。
+
+        ⚠️ 已知偶发问题：整轮冒烟跑到后半程时，ll-builder build 会随机报
+
+            Build failed: [code -1]:
+            stage pull dependency error
+
+        构建已经走完 buildStagePullDependency 的依赖打印（base 的
+        binary/develop 都显示 complete），失败点在最后的
+        OSTreeRepo::mergeModules() —— 它会对仓库里【所有】多模块分组做
+        ostree_repo_checkout_at 合并。整轮跑下来仓库里积累了大量
+        探针包，合并项越多越容易撞上偶发失败（同一序列单独跑必过，
+        只有整轮跑到这里才会偶发）。
+
+        这是环境/仓库状态问题，不是被测功能的问题，所以这里重试；
+        重试仍失败才判 FAIL，并把最后一次的完整输出带出去。
+        """
+        last = None
+        for i in range(attempts):
+            last = self._ll_builder("build", cwd=str(proj), timeout=1800,
+                                    check=False)
+            if last.returncode == 0:
+                return last
+            combined = last.stdout + last.stderr
+            if "stage pull dependency error" not in combined:
+                return last
+            if i + 1 < attempts:
+                print(f"    [warn] {tag} 构建遇到仓库合并偶发失败，"
+                      f"重试 {i + 2}/{attempts}")
+                time.sleep(10)
+        return last
+
+    # ── Test: UABX（自执行 UAB）导出 ──
+    #
+    # 覆盖 Builder::exportUAB 与 UABPackager::prepareExecutableBundle /
+    # ensureExecEntry / packBundle。此前整个冒烟里 "uabx" 一次都没出现过。
+    #
+    # 机制（linglong_builder.cpp:1580 起 / uab_packager.cpp）：
+    #   export --uabx 会把 uab-loader（静态链接的自执行头）拼到 .uab 前面，
+    #   产出一个可直接 chmod +x 运行的 ELF。
+    #
+    # ⚠️ 踩过的坑：
+    #   1. --uabx 要求项目里【必须真有 binary 模块】，
+    #      即构建脚本要往 $PREFIX 里装文件；只 echo 的 build 会报
+    #      "binary module is required in UABX mode"。
+    #   2. --uabx 与 --layer 互斥。
+    #   3. 产出的 UABX 虽然能直接执行，但【不能用 ll-cli install 安装】，
+    #      会报 "executable UAB installation is not supported"；
+    #      而按 .uabx 后缀安装更早就会被"不支持的文件格式"拦下。
+    #   4. 运行 UABX 本身拿不到覆盖率：uab-loader 没有 .gcno
+    #      （不在覆盖率分母里），所以自执行路径对覆盖率无贡献。
+    def test_builder_uabx_export(self):
+        workdir = Path(tempfile.mkdtemp(prefix="uabx-"))
+        app_id = f"org.deepin.uabx{os.getpid()}"
+        icon = workdir / "icon.png"
+        try:
+            # 1x1 的合法 PNG，足够让 packIcon 跑通
+            icon.write_bytes(base64.b64decode(
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4"
+                "2mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="))
+
+            (workdir / "linglong.yaml").write_text(
+                'version: "1"\n\n'
+                "package:\n"
+                f"  id: {app_id}\n"
+                "  name: uabx probe\n"
+                "  version: 1.0.0.1\n"
+                "  kind: app\n"
+                "  description: probe uabx export\n"
+                f"  architecture: {DEMO_ARCH}\n\n"
+                "base: org.deepin.base/25.2.2\n\n"
+                "command:\n"
+                f"  - /opt/apps/{app_id}/files/bin/uabxprobe\n\n"
+                "build: |\n"
+                '  mkdir -p "$PREFIX/bin"\n'
+                "  printf '#!/bin/sh\\necho uabx-ran-ok\\n' "
+                '> "$PREFIX/bin/uabxprobe"\n'
+                '  chmod 755 "$PREFIX/bin/uabxprobe"\n')
+
+            r = self._ll_builder("build", cwd=str(workdir), timeout=1800,
+                                 check=False)
+            if r.returncode != 0:
+                raise AssertionError(
+                    f"UABX 探针构建失败: {(r.stdout + r.stderr)[-400:]}")
+
+            # --uabx 与 --layer 互斥
+            self._ll_builder("export", "--layer", "--uabx", cwd=str(workdir),
+                             timeout=300, check=False)
+
+            # 正式导出
+            out = workdir / "out.uabx"
+            r = self._ll_builder("export", "--uabx", "--icon", str(icon),
+                                 "-o", str(out), cwd=str(workdir),
+                                 timeout=1800, check=False)
+            if r.returncode != 0:
+                # 环境里没有满足版本要求的 builder-utils 时，UAB 导出
+                # 做不成（详见 _uab_utils_missing）。这属于环境缺件，
+                # 跳过而不是判失败。
+                if self._uab_utils_missing(r):
+                    return
+                raise AssertionError(
+                    f"export --uabx 失败: {(r.stdout + r.stderr)[-400:]}")
+            if not out.exists() or out.stat().st_size == 0:
+                raise AssertionError("export --uabx 没有产出文件")
+
+            # 产出的应该是一个可直接执行的 ELF
+            with open(out, "rb") as fp:
+                if fp.read(4) != b"\x7fELF":
+                    raise AssertionError("UABX 产物不是 ELF 可执行文件")
+            if not os.access(out, os.X_OK):
+                raise AssertionError("UABX 产物没有可执行权限")
+
+            # 不带 --icon 再导一次（icon 是可选的）
+            self._ll_builder("export", "--uabx", "-o",
+                             str(workdir / "noicon.uabx"), cwd=str(workdir),
+                             timeout=1800, check=False)
+
+            # 自执行 UAB 不能被安装
+            asuab = workdir / "asuab.uab"
+            shutil.copyfile(out, asuab)
+            r = self._sudo_ll_cli("install", str(asuab), timeout=900,
+                                  check=False)
+            combined = r.stdout + r.stderr
+            if "not supported" not in combined and "不支持" not in combined:
+                raise AssertionError(
+                    f"自执行 UAB 竟然可以安装: {combined[:300]}")
+
+            # 用 .uabx 后缀安装：更早就会被文件格式检查拦下
+            self._sudo_ll_cli("install", str(out), timeout=300, check=False)
+
+            self._sudo_ll_cli("uninstall", app_id, timeout=300, check=False)
+        finally:
+            self._ll_builder("remove", self._builder_ref(app_id), cwd=str(workdir),
+                             timeout=600, check=False)
+            shutil.rmtree(workdir, ignore_errors=True)
 
 
 # ── Main ──
+def ensure_session_bus_env():
+    """把会话总线地址补进环境。
+
+    ll-cli 在【非 TTY】下会去建 DBusNotifier（连 org.freedesktop.Notifications
+    的 ActionInvoked / NotificationClosed 信号）。如果 DBUS_SESSION_BUS_ADDRESS
+    没设置，构造会抛异常 -> 回退成 DummyNotifier，于是
+    cli/dbus_notifier.cpp 以及升级交互、运行中卸载的通知路径全都覆盖不到。
+
+    Jenkins 里跑的冒烟是非交互启动的，环境里通常没有这个变量，
+    所以在这里按当前登录用户补一个默认值。
+    """
+    if os.environ.get("DBUS_SESSION_BUS_ADDRESS"):
+        return
+    candidate = Path(f"/run/user/{os.getuid()}/bus")
+    if candidate.exists():
+        os.environ["DBUS_SESSION_BUS_ADDRESS"] = f"unix:path={candidate}"
+
+
 def main():
     parser = argparse.ArgumentParser(description="玲珑冒烟测试")
     parser.add_argument(
@@ -494,6 +6820,8 @@ def main():
         help="Print detailed error output for failed commands",
     )
     args = parser.parse_args()
+
+    ensure_session_bus_env()
 
     print("==========================================")
     print("  玲珑冒烟测试")

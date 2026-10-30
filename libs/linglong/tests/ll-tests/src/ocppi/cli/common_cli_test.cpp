@@ -7,7 +7,9 @@
 #include <gtest/gtest.h>
 
 #include "../../common/tempdir.h"
+#include "ocppi/cli/CommandFailedError.hpp"
 #include "ocppi/cli/crun/Crun.hpp"
+#include "ocppi/runtime/ExecOption.hpp"
 #include "ocppi/runtime/ListOption.hpp"
 #include "ocppi/types/ContainerListItem.hpp"
 
@@ -19,7 +21,6 @@
 TEST(CommonCLITest, ListForcesJsonOutput)
 {
     TempDir tempDir("ocppi-common-cli-");
-    ASSERT_TRUE(tempDir.isValid());
 
     const auto runtimePath = tempDir.path() / "runtime";
     {
@@ -56,4 +57,38 @@ TEST(CommonCLITest, ListForcesJsonOutput)
         "--root", option.root->string(), "list", "--quiet", "-f", "json",
     };
     EXPECT_EQ(arguments, expectedArguments);
+}
+
+TEST(CommonCLITest, ExecPreservesCommandExitStatus)
+{
+    TempDir tempDir("ocppi-common-cli-");
+
+    const auto runtimePath = tempDir.path() / "runtime";
+    {
+        std::ofstream runtime(runtimePath);
+        ASSERT_TRUE(runtime.is_open());
+        runtime << "#!/bin/sh\n"
+                   "exit 42\n";
+    }
+    std::filesystem::permissions(runtimePath,
+                                 std::filesystem::perms::owner_read
+                                   | std::filesystem::perms::owner_write
+                                   | std::filesystem::perms::owner_exec,
+                                 std::filesystem::perm_options::replace);
+
+    auto cli = ocppi::cli::crun::Crun::New(runtimePath);
+    ASSERT_TRUE(cli.has_value());
+
+    ocppi::runtime::ExecOption option{};
+    auto result = cli.value()->exec(ocppi::runtime::ContainerID{ "test" }, "/bin/true", {}, option);
+    ASSERT_FALSE(result.has_value());
+
+    try {
+        std::rethrow_exception(result.error());
+        FAIL() << "expected CommandFailedError to be thrown";
+    } catch (const ocppi::cli::CommandFailedError &e) {
+        EXPECT_EQ(e.exitStatus(), 42);
+    } catch (...) {
+        FAIL() << "expected CommandFailedError";
+    }
 }

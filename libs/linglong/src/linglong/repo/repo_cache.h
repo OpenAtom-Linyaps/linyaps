@@ -56,6 +56,7 @@ public:
     ~RepoCache() = default;
 
     utils::error::Result<void> load();
+    utils::error::Result<void> updateConfig(const api::types::v1::RepoConfigV2 &config);
     utils::error::Result<void> rebuild(const api::types::v1::RepoConfigV2 &repoConfig,
                                        OstreeRepo &repo) noexcept;
 

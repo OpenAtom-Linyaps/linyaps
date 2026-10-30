@@ -76,7 +76,6 @@ protected:
 
 TEST_F(RepoCacheTest, loadFailsWhenCacheFileIsMissing)
 {
-    ASSERT_TRUE(tempDir.isValid());
 
     RepoCache cache(tempDir.path() / "states.json");
     auto result = cache.load();
@@ -86,7 +85,6 @@ TEST_F(RepoCacheTest, loadFailsWhenCacheFileIsMissing)
 
 TEST_F(RepoCacheTest, loadRejectsVersionMismatch)
 {
-    ASSERT_TRUE(tempDir.isValid());
 
     auto cacheFile = tempDir.path() / "states.json";
     writeCacheFile(cacheFile,
@@ -106,7 +104,6 @@ TEST_F(RepoCacheTest, loadRejectsVersionMismatch)
 
 TEST_F(RepoCacheTest, queryExistingLayerItemSkipsDeletedEntriesAfterLoad)
 {
-    ASSERT_TRUE(tempDir.isValid());
 
     auto cacheFile = tempDir.path() / "states.json";
     writeCacheFile(cacheFile,
@@ -130,7 +127,6 @@ TEST_F(RepoCacheTest, queryExistingLayerItemSkipsDeletedEntriesAfterLoad)
 
 TEST_F(RepoCacheTest, addAndDeleteLayerItemPersistAcrossReload)
 {
-    ASSERT_TRUE(tempDir.isValid());
 
     auto cacheFile = tempDir.path() / "states.json";
     RepoCache cache(cacheFile);
@@ -153,7 +149,6 @@ TEST_F(RepoCacheTest, addAndDeleteLayerItemPersistAcrossReload)
 
 TEST_F(RepoCacheTest, PersistedFilesUsePackageManagerUmask)
 {
-    ASSERT_TRUE(tempDir.isValid());
 
     auto cacheFile = tempDir.path() / "states.json";
     RepoCache cache(cacheFile);
@@ -199,6 +194,28 @@ TEST_F(RepoCacheTest, QueryUsesEachFilter)
     EXPECT_EQ(notDeleted.size(), 3);
 }
 
+TEST_F(RepoCacheTest, QueryByIdExcludesDeletedLayer)
+{
+    auto cacheFile = tempDir.path() / "states.json";
+    RepoCache cache(cacheFile);
+
+    // simulate the lazy-uninstall scenario: old version kept as deleted=true,
+    // new version is the live install (same id, two versions)
+    EXPECT_TRUE(
+      cache.addLayerItem(createLayerItem("c-old", "app.editor", "1.0.0", true)).has_value());
+    EXPECT_TRUE(cache.addLayerItem(createLayerItem("c-new", "app.editor", "2.0.0")).has_value());
+
+    // without the deleted filter, both versions are returned (the pre-fix behavior)
+    auto all = cache.queryLayerItem(repoCacheQuery{ .id = "app.editor" });
+    ASSERT_EQ(all.size(), 2);
+
+    // the uninstall entry query explicitly excludes deleted layers
+    auto active = cache.queryLayerItem(repoCacheQuery{ .id = "app.editor", .deleted = false });
+    ASSERT_EQ(active.size(), 1);
+    EXPECT_EQ(active.front().commit, "c-new");
+    EXPECT_EQ(active.front().info.version, "2.0.0");
+}
+
 TEST_F(RepoCacheTest, UpdateMergedItemsPersists)
 {
     auto cacheFile = tempDir.path() / "states.json";
@@ -219,6 +236,63 @@ TEST_F(RepoCacheTest, UpdateMergedItemsPersists)
     ASSERT_TRUE(merged.has_value());
     ASSERT_EQ(merged->size(), 1);
     EXPECT_EQ(merged->at(0).id, "app.merged");
+}
+
+TEST_F(RepoCacheTest, UpdateConfigPreservesLayerAndMergedState)
+{
+    auto cacheFile = tempDir.path() / "states.json";
+    RepoCache cache(cacheFile);
+    ASSERT_TRUE(cache.updateConfig(createRepoConfig()).has_value());
+    ASSERT_TRUE(cache.addLayerItem(createLayerItem("live", "app.live", "1.0.0")).has_value());
+    ASSERT_TRUE(
+      cache.addLayerItem(createLayerItem("deleted", "app.deleted", "1.0.0", true)).has_value());
+    std::vector<api::types::v1::RepositoryCacheMergedItem> merged = {
+        api::types::v1::RepositoryCacheMergedItem{
+          .commits = { "live" },
+          .id = "merged",
+          .modules = { "binary" },
+        },
+    };
+    ASSERT_TRUE(cache.updateMergedItems(merged).has_value());
+
+    std::ifstream before(cacheFile);
+    auto expected = nlohmann::json::parse(before);
+    auto config = createRepoConfig();
+    config.repos.front().url = "https://example.com/updated";
+    expected["config"] = config;
+
+    ASSERT_TRUE(cache.updateConfig(config).has_value());
+    RepoCache reloaded(cacheFile);
+    ASSERT_TRUE(reloaded.load().has_value());
+    ASSERT_TRUE(reloaded.writeToDisk().has_value());
+    std::ifstream after(cacheFile);
+    EXPECT_EQ(nlohmann::json::parse(after), expected);
+    EXPECT_EQ(reloaded.queryExistingLayerItem().size(), 1);
+    EXPECT_EQ(reloaded.queryLayerItem(repoCacheQuery{ .deleted = true }).size(), 1);
+}
+
+TEST_F(RepoCacheTest, UpdateConfigRestoresConfigWhenWriteFails)
+{
+    auto cacheFile = tempDir.path() / "states.json";
+    RepoCache cache(cacheFile);
+    ASSERT_TRUE(cache.updateConfig(createRepoConfig()).has_value());
+    ASSERT_TRUE(cache.addLayerItem(createLayerItem("live", "app.live", "1.0.0")).has_value());
+    std::ifstream before(cacheFile);
+    auto expected = nlohmann::json::parse(before);
+
+    // A directory at the temporary file path prevents writing even when running as root.
+    auto temporaryFile = tempDir.path() / "temp-states.json";
+    ASSERT_TRUE(fs::create_directory(temporaryFile));
+    auto config = createRepoConfig();
+    config.repos.front().url = "https://example.com/updated";
+    EXPECT_FALSE(cache.updateConfig(config).has_value());
+    std::ifstream failed(cacheFile);
+    EXPECT_EQ(nlohmann::json::parse(failed), expected);
+
+    ASSERT_TRUE(fs::remove(temporaryFile));
+    ASSERT_TRUE(cache.writeToDisk().has_value());
+    std::ifstream after(cacheFile);
+    EXPECT_EQ(nlohmann::json::parse(after), expected);
 }
 
 TEST_F(RepoCacheTest, AddItemFailsWhenParentMissing)

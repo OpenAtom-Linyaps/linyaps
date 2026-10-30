@@ -175,7 +175,7 @@ Then when starting the Linyaps application build project, it will default to usi
 
 According to the Linyaps application build project source file type, Linyaps application build projects can be divided into `local file builds` and `git source repository pull builds`. Different types require filling in different `linglong.yaml` content.
 The Linyaps application build project source file type `sources` mainly supports these types: `git` `local` `file` `archive`
-Complete description reference: [Build Configuration File Introduction](https://linyaps.org.cn/guide/ll-builder/manifests.html)
+Complete description reference: [Build Configuration File Introduction](https://linyaps.org.cn/guide/building/manifests.html)
 
 #### Git Pull Source Code Compilation Mode
 

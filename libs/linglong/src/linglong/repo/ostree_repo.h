@@ -147,6 +147,8 @@ public:
     fetchRefMetaData(const package::ReferenceWithRepo &refRepo,
                      const std::string &module = "binary",
                      bool fetchPackageInfo = false) noexcept;
+    virtual utils::error::Result<api::types::v1::PackageInfoV2> fetchRemotePackageInfo(
+      const package::ReferenceWithRepo &refRepo, const std::string &module = "binary") noexcept;
     virtual utils::error::Result<RefStatistics>
     getRefStatistics(const RefMetaData &meta) const noexcept;
 
@@ -219,7 +221,6 @@ private:
     std::filesystem::path repoDir;
     std::unique_ptr<linglong::repo::RepoCache> cache{ nullptr };
 
-    utils::error::Result<void> updateConfig(const api::types::v1::RepoConfigV2 &newCfg) noexcept;
     std::filesystem::path ostreeRepoDir() const noexcept;
     std::filesystem::path cacheFilePath() const noexcept;
     std::filesystem::path configFilePath() const noexcept;
@@ -272,7 +273,8 @@ protected:
     virtual std::filesystem::path getOverlayShareDir() const noexcept;
     utils::error::Result<void> exportDir(const std::string &appID,
                                          const std::filesystem::path &source,
-                                         const std::filesystem::path &destination,
+                                         const std::filesystem::path &rootEntriesDir,
+                                         const std::filesystem::path &relativeDestination,
                                          const int &max_depth);
     utils::error::Result<void> exportLayerEntries(
       const std::filesystem::path &, const api::types::v1::RepositoryCacheLayersItem &) noexcept;
@@ -281,6 +283,10 @@ protected:
     virtual utils::error::Result<bool> shouldExportSignData() const noexcept;
     utils::error::Result<void> exportAppEntries(
       const std::filesystem::path &, const api::types::v1::RepositoryCacheLayersItem &) noexcept;
+    // Export a single wrapper script named after the appid to entries/bin
+    utils::error::Result<void>
+    exportAppBinaries(const std::filesystem::path &rootEntriesDir,
+                      const api::types::v1::RepositoryCacheLayersItem &item) noexcept;
     utils::error::Result<void> unexportLayerSignData(
       const std::filesystem::path &, const api::types::v1::RepositoryCacheLayersItem &) noexcept;
     utils::error::Result<void> unexportAppEntries(

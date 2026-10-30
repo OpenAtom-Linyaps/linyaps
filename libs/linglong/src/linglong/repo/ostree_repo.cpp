@@ -7,15 +7,18 @@
 #include "ostree_repo.h"
 
 #include "api/ClientAPI.h"
+#include "configure.h"
 #include "linglong/api/types/v1/ExportDirs.hpp"
 #include "linglong/api/types/v1/Generators.hpp" // IWYU pragma: keep
 #include "linglong/api/types/v1/PackageInfoV2.hpp"
 #include "linglong/api/types/v1/Repo.hpp"
 #include "linglong/api/types/v1/RepositoryCacheLayersItem.hpp"
 #include "linglong/api/types/v1/RepositoryCacheMergedItem.hpp"
+#include "linglong/common/error.h"
 #include "linglong/common/formatter.h"
 #include "linglong/common/gkeyfile_wrapper.h"
 #include "linglong/common/strings.h"
+#include "linglong/common/version.h"
 #include "linglong/package/fuzzy_reference.h"
 #include "linglong/package/layer_dir.h"
 #include "linglong/package/reference.h"
@@ -29,6 +32,7 @@
 #include "linglong/utils/log/log.h"
 #include "linglong/utils/serialize/json.h"
 #include "linglong/utils/serialize/packageinfo_handler.h"
+#include "linglong/utils/temporary_directory.h"
 #include "linglong/utils/transaction.h"
 
 #include <gio/gio.h>
@@ -47,12 +51,14 @@
 #include <QtGlobal>
 
 #include <algorithm>
+#include <cerrno>
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
 #include <filesystem>
+#include <fstream>
 #include <map>
 #include <memory>
 #include <optional>
@@ -65,6 +71,7 @@
 #include <vector>
 
 #include <fcntl.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 namespace linglong::repo {
@@ -775,35 +782,6 @@ OSTreeRepo::getRepoByAlias(const std::string &alias) const noexcept
     return *it;
 }
 
-utils::error::Result<void>
-OSTreeRepo::updateConfig(const api::types::v1::RepoConfigV2 &newCfg) noexcept
-{
-    LINGLONG_TRACE("update underlying config")
-
-    auto result = saveConfig(newCfg, configFilePath());
-    if (!result) {
-        return LINGLONG_ERR(result);
-    }
-
-    utils::Transaction transaction;
-    result = updateOstreeRepoConfig(this->ostreeRepo.get(), newCfg);
-    transaction.addRollBack([this]() noexcept {
-        auto result = updateOstreeRepoConfig(this->ostreeRepo.get(), this->cfg);
-        if (!result) {
-            LogE("{}", result.error());
-        }
-    });
-    if (!result) {
-        return LINGLONG_ERR(result);
-    }
-
-    transaction.commit();
-
-    this->cfg = newCfg;
-
-    return LINGLONG_OK;
-}
-
 utils::error::Result<void> OSTreeRepo::setConfig(const api::types::v1::RepoConfigV2 &cfg) noexcept
 {
     LINGLONG_TRACE("set config");
@@ -833,8 +811,8 @@ utils::error::Result<void> OSTreeRepo::setConfig(const api::types::v1::RepoConfi
             LogE("{}", result.error());
         }
     });
-    LogI("rebuild repo cache");
-    if (auto ret = this->cache->rebuild(cfg, *(this->ostreeRepo)); !ret) {
+    LogI("update repo cache config");
+    if (auto ret = this->cache->updateConfig(cfg); !ret) {
         return LINGLONG_ERR(ret);
     }
 
@@ -1286,6 +1264,29 @@ OSTreeRepo::fetchRefMetaData(const package::ReferenceWithRepo &refRepo,
     return RefMetaData(resolved_rev, std::string_view(content, length));
 }
 
+utils::error::Result<api::types::v1::PackageInfoV2> OSTreeRepo::fetchRemotePackageInfo(
+  const package::ReferenceWithRepo &refRepo, const std::string &module) noexcept
+{
+    LINGLONG_TRACE(fmt::format("fetch remote package info for {}", refRepo.reference.toString()));
+
+    auto temporaryDirectory = utils::TemporaryDirectory::create("linglong-remote-info-");
+    if (!temporaryDirectory) {
+        return LINGLONG_ERR("failed to create temporary directory", temporaryDirectory);
+    }
+
+    auto temporaryRepo = OSTreeRepo::create(temporaryDirectory->path(), this->cfg);
+    if (!temporaryRepo) {
+        return LINGLONG_ERR("failed to create temporary repository", temporaryRepo);
+    }
+
+    auto meta = (*temporaryRepo)->fetchRefMetaData(refRepo, module, true);
+    if (!meta) {
+        return LINGLONG_ERR("failed to fetch remote package info", meta);
+    }
+
+    return meta->getPackageInfo();
+}
+
 utils::error::Result<RefStatistics>
 OSTreeRepo::getRefStatistics(const RefMetaData &meta) const noexcept
 {
@@ -1350,7 +1351,7 @@ GVariantBuilder OSTreeRepo::initOStreePullOptions(const std::string &ref) noexce
     std::array<const char *, 2> refs{ ref.c_str(), nullptr };
     GVariantBuilder builder;
     g_variant_builder_init(&builder, G_VARIANT_TYPE("a{sv}"));
-    std::string userAgent = "linglong/" LINGLONG_VERSION_FULL;
+    std::string userAgent = "linglong/" + std::string{ common::versionFull() };
     g_variant_builder_add(&builder,
                           "{s@v}",
                           "append-user-agent",
@@ -1776,7 +1777,9 @@ OSTreeRepo::unexportAppEntries(const std::filesystem::path &rootEntriesDir,
             // specify a directory. these files do not belong to the applications and should not be
             // printed in the log.
             if (info.absoluteFilePath().contains("share/mime")
-                || info.absoluteFilePath().contains("share/applications")) {
+                || info.absoluteFilePath().contains("share/applications")
+                || info.absoluteFilePath().startsWith(entriesDir.absoluteFilePath("bin") + "/")) {
+                // entries/bin holds regular wrapper script files that are not symlinks.
                 continue;
             }
 
@@ -1808,10 +1811,68 @@ OSTreeRepo::unexportAppEntries(const std::filesystem::path &rootEntriesDir,
         }
     }
 
+    // Clean up binary wrapper scripts in entries/bin at the appID level: the wrapper is
+    // removed only when no other undeleted layer with the same app id remains outside this
+    // unexport batch. This keeps the wrapper alive across upgrades and module-level
+    // uninstalls and removes it when the last layer of the app is uninstalled.
+    std::vector<std::string> handledAppIDs;
+    for (const auto &layerPath : layerDirs) {
+        package::LayerDir layerDir(layerPath);
+        auto infoResult = layerDir.info();
+        if (!infoResult) {
+            LogW("Failed to read info from {}: {}",
+                 layerPath.string(),
+                 infoResult.error().message());
+            continue;
+        }
+
+        auto appID = infoResult->id;
+        if (std::find(handledAppIDs.cbegin(), handledAppIDs.cend(), appID)
+            != handledAppIDs.cend()) {
+            continue;
+        }
+        handledAppIDs.emplace_back(appID);
+
+        // Is there still an undeleted layer with the same app id that is not part of this
+        // unexport batch?
+        auto remaining =
+          this->cache->queryLayerItem(repoCacheQuery{ .id = appID, .deleted = false });
+        auto hasOtherLayer =
+          std::any_of(remaining.cbegin(), remaining.cend(), [&](const auto &item) {
+              auto itemPath = this->layerPath(item.commit).lexically_normal();
+              return std::none_of(layerDirs.cbegin(), layerDirs.cend(), [&](const auto &p) {
+                  return p.lexically_normal() == itemPath;
+              });
+          });
+
+        auto binDir = rootEntriesDir / "bin";
+        if (hasOtherLayer) {
+            // Upgrade or module-level uninstall: another version/module of the app remains.
+            LogI("Keep binary wrapper for {}: another layer still exists", appID);
+            continue;
+        }
+
+        // The last layer of this app is being removed: delete the wrapper contents.
+        std::error_code ec;
+        std::filesystem::remove(binDir / appID, ec);
+        if (ec) {
+            LogW("Failed to remove binary wrapper {} for {}: {}",
+                 (binDir / appID).string(),
+                 appID,
+                 ec.message());
+        }
+        auto appBinDir = binDir / "apps" / appID;
+        std::filesystem::remove_all(appBinDir, ec);
+        if (ec) {
+            LogW("Failed to remove {}: {}", appBinDir.string(), ec.message());
+        }
+    }
+
     this->updateSharedInfo();
 
+    const QString entriesRoot = entriesDir.absolutePath();
     std::function<void(const QString &path)> removeEmptySubdirectories =
-      [&removeEmptySubdirectories](const QString &path) {
+      [&removeEmptySubdirectories, &entriesRoot](const QString &path) {
           QDir dir(path);
 
           // 获取目录下的所有子目录
@@ -1827,15 +1888,20 @@ OSTreeRepo::unexportAppEntries(const std::filesystem::path &rootEntriesDir,
               // 检查子目录是否为空
               QDir subDir(subDirPath);
               if (subDir.isEmpty()) {
+                  // Keep the top-level bin/share directories (referenced by the
+                  // PATH/XDG_DATA_DIRS injection, created by the export logic) so the injected
+                  // environment stays stable across uninstalls.
+                  bool topLevelBinShare = path == entriesRoot
+                    && (entry.fileName() == "bin" || entry.fileName() == "share");
                   // 如果子目录为空，则删除它
-                  if (!subDir.rmdir(subDirPath)) {
+                  if (!topLevelBinShare && !subDir.rmdir(subDirPath)) {
                       LogD("Failed to remove directory: {}", subDirPath.toStdString());
                       continue;
                   }
               }
           }
       };
-    removeEmptySubdirectories(entriesDir.absolutePath());
+    removeEmptySubdirectories(entriesRoot);
 
     return LINGLONG_OK;
 }
@@ -1971,7 +2037,8 @@ void OSTreeRepo::unexportLayerSignData(
 // 递归源目录所有文件，并在目标目录创建软链接，max_depth 控制递归深度以避免环形链接导致的无限递归
 utils::error::Result<void> OSTreeRepo::exportDir(const std::string &appID,
                                                  const std::filesystem::path &source,
-                                                 const std::filesystem::path &destination,
+                                                 const std::filesystem::path &rootEntriesDir,
+                                                 const std::filesystem::path &relativeDestination,
                                                  const int &max_depth)
 {
     LINGLONG_TRACE(fmt::format("export {}", source.string()));
@@ -1979,6 +2046,13 @@ utils::error::Result<void> OSTreeRepo::exportDir(const std::string &appID,
         LogW("max depth reached, skipping export for {}", source.c_str());
         return LINGLONG_OK;
     }
+
+    const auto normalizedDestination = relativeDestination.lexically_normal();
+    if (normalizedDestination.is_absolute()
+        || (!normalizedDestination.empty() && *normalizedDestination.begin() == "..")) {
+        return LINGLONG_ERR("export destination must be relative to the entries root");
+    }
+    const auto destination = rootEntriesDir / normalizedDestination;
 
     std::error_code ec;
     // 检查源目录是否存在
@@ -2008,7 +2082,8 @@ utils::error::Result<void> OSTreeRepo::exportDir(const std::string &appID,
             return LINGLONG_ERR("failed to check file status: " + source_path.string(), ec);
         }
 
-        const auto &target_path = destination / source_path.filename();
+        const auto relativeTarget = normalizedDestination / source_path.filename();
+        const auto target_path = rootEntriesDir / relativeTarget;
         // 如果是文件，创建符号链接
         if (std::filesystem::is_regular_file(status)) {
             // linyaps.original结尾的文件是重写之前的备份文件，不应该被导出
@@ -2069,48 +2144,39 @@ utils::error::Result<void> OSTreeRepo::exportDir(const std::string &appID,
                     return LINGLONG_ERR("rename new path", ec);
                 }
             }
-            auto oldAppDir = this->getDefaultSharedDir() / "applications";
-            auto newAppDir = this->getOverlayShareDir() / "applications";
-            LogD("oldAppDir: {}, newAppDir: {}, target: {}",
-                 oldAppDir,
-                 newAppDir,
-                 target_path.string());
-            // 如果配置了overlay并且是applications中的desktop文件，执行特殊的逻辑
-            if (oldAppDir != newAppDir
-                && common::strings::starts_with(target_path.string(), oldAppDir.string())
-                && common::strings::ends_with(target_path.string(), ".desktop")) {
-                auto desktopExists = false;
-                // 如果要导出的desktop已存在，则覆盖导出（无论是在default还是overlay中），避免桌面和任务栏的快捷方式失效
-                const std::array<std::string, 2> appDirs{ oldAppDir, newAppDir };
-                for (const auto &appDir : appDirs) {
-                    // 如果目标文件存在，删除再导出
-                    const std::filesystem::path linkpath =
-                      target_path.string().replace(0, oldAppDir.string().length(), appDir);
-                    std::ignore = std::filesystem::symlink_status(linkpath, ec);
-                    if (!ec) {
-                        desktopExists = true;
-                        auto target = source_path.lexically_relative(linkpath.parent_path());
-                        auto res = utils::relinkFileTo(linkpath, target);
-                        if (!res) {
-                            LogE("failed to link {} to {}", linkpath.string(), target.string());
-                        }
+            const auto oldAppDir = this->getDefaultSharedDir() / "applications";
+            const auto newAppDir = this->getOverlayShareDir() / "applications";
+            const auto relativePath = relativeTarget.lexically_relative("share/applications");
+            // Read the existing layout from the live entries tree, but write all links
+            // into this export's root (which may be a temporary tree during a rebuild).
+            if (oldAppDir != newAppDir && !relativePath.empty() && *relativePath.begin() != ".."
+                && !relativePath.is_absolute() && target_path.extension() == ".desktop") {
+                std::vector<std::filesystem::path> exportPaths;
+                for (const auto &appDir : { oldAppDir, newAppDir }) {
+                    const auto status = std::filesystem::symlink_status(appDir / relativePath, ec);
+                    if (ec && ec != std::errc::no_such_file_or_directory) {
+                        return LINGLONG_ERR("check existing desktop entry", ec);
+                    }
+                    if (std::filesystem::exists(status)) {
+                        exportPaths.push_back(appDir.lexically_relative(this->getEntriesDir())
+                                              / relativePath);
                     }
                 }
-                // 如果desktop在两个目录都不存在，则优先导出到overlay目录
-                if (!desktopExists) {
-                    std::filesystem::path linkpath =
-                      target_path.string().replace(0, oldAppDir.string().length(), newAppDir);
-                    LogD("create parent directories for {}", linkpath);
+                if (exportPaths.empty()) {
+                    exportPaths.push_back(newAppDir.lexically_relative(this->getEntriesDir())
+                                          / relativePath);
+                }
+                for (const auto &path : exportPaths) {
+                    const auto linkpath = rootEntriesDir / path;
                     auto ret = utils::ensureDirectory(linkpath.parent_path());
-                    if (!ret.has_value()) {
+                    if (!ret) {
                         return LINGLONG_ERR("create parent dir", ret);
                     }
-                    std::filesystem::create_symlink(
-                      source_path.lexically_relative(linkpath.parent_path()),
-                      linkpath,
-                      ec);
-                    if (ec) {
-                        return LINGLONG_ERR("create symlink failed: " + linkpath.string(), ec);
+                    auto result =
+                      utils::relinkFileTo(linkpath,
+                                          source_path.lexically_relative(linkpath.parent_path()));
+                    if (!result) {
+                        return LINGLONG_ERR("export desktop entry", result);
                     }
                 }
                 continue;
@@ -2128,7 +2194,8 @@ utils::error::Result<void> OSTreeRepo::exportDir(const std::string &appID,
         }
 
         if (std::filesystem::is_directory(status)) {
-            auto ret = this->exportDir(appID, source_path, target_path, max_depth - 1);
+            auto ret =
+              this->exportDir(appID, source_path, rootEntriesDir, relativeTarget, max_depth - 1);
             if (!ret.has_value()) {
                 return ret;
             }
@@ -2164,6 +2231,14 @@ OSTreeRepo::exportAppEntries(const std::filesystem::path &rootEntriesDir,
                              const api::types::v1::RepositoryCacheLayersItem &item) noexcept
 {
     LINGLONG_TRACE(fmt::format("export app entries for {}", item.info.id));
+
+    // Binary wrapper scripts are exported regardless of the white-listed app entries:
+    // the appid-named wrapper is generated even when the layer has no entries directory
+    // or the host lacks the export-dirs.json whitelist, so the script is always created.
+    auto binRet = this->exportAppBinaries(rootEntriesDir, item);
+    if (!binRet) {
+        return binRet;
+    }
 
     auto layerDir = getLayerDir(item);
     if (!layerDir.has_value()) {
@@ -2219,10 +2294,10 @@ OSTreeRepo::exportAppEntries(const std::filesystem::path &rootEntriesDir,
         }
 
         auto source = appEntriesDir / path;
-        auto destination = rootEntriesDir / path;
+        std::filesystem::path relativeDestination = path;
         // 将 share/systemd 目录下的文件导出到 lib/systemd 目录下
         if (path == "share/systemd/user") {
-            destination = rootEntriesDir / "lib/systemd/user";
+            relativeDestination = "lib/systemd/user";
         }
 
         // 检查源目录是否存在，跳过不存在的目录
@@ -2233,11 +2308,187 @@ OSTreeRepo::exportAppEntries(const std::filesystem::path &rootEntriesDir,
         if (!exists) {
             continue;
         }
-        auto ret = this->exportDir(item.info.id, source, destination, 10);
+        auto ret = this->exportDir(item.info.id, source, rootEntriesDir, relativeDestination, 10);
         if (!ret.has_value()) {
             return ret;
         }
     }
+
+    return LINGLONG_OK;
+}
+
+namespace {
+
+// Build the script content for a wrapper script: each element of command is
+// single-quoted for shell safety.
+std::string buildWrapperScriptContent(const std::string &appID,
+                                      const std::vector<std::string> &command)
+{
+    auto quotedAppID = common::strings::quoteBashArg(appID);
+
+    std::string cmdArgs;
+    for (const auto &arg : command) {
+        if (!cmdArgs.empty()) {
+            cmdArgs += ' ';
+        }
+        cmdArgs += common::strings::quoteBashArg(arg);
+    }
+    return fmt::format("#!/usr/bin/env sh\nexec ll-cli run {} -- {} \"$@\"\n",
+                       quotedAppID,
+                       cmdArgs);
+}
+
+// Content: #!/usr/bin/env sh\nexec ll-cli run <appID> -- <command...> "$@"
+// The wrapper is created atomically with O_EXCL. If the file already exists (e.g. a
+// previous version was installed), the creation is idempotent: identical content is a
+// no-op and different content is overwritten, so the script always tracks the latest command.
+utils::error::Result<void>
+createBinaryWrapperScript(const std::filesystem::path &path,
+                          const std::string &appID,
+                          const std::vector<std::string> &command) noexcept
+{
+    LINGLONG_TRACE(fmt::format("create binary wrapper script {}", path.string()));
+
+    auto dir = path.parent_path();
+    std::error_code ec;
+    std::filesystem::create_directories(dir, ec);
+    if (ec) {
+        return LINGLONG_ERR(
+          fmt::format("create directories for {}: {}", path.string(), ec.message()));
+    }
+
+    const std::string content = buildWrapperScriptContent(appID, command);
+
+    int fd = ::open(path.c_str(), O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, 0755);
+    if (fd < 0) {
+        if (errno != EEXIST) {
+            return LINGLONG_ERR(
+              fmt::format("open {}: {}", path.string(), common::error::errorString(errno)));
+        }
+
+        // The wrapper already exists. Keep it untouched when the content matches, otherwise
+        // overwrite so the exported command always reflects the latest version.
+        auto existing = linglong::utils::readFile(path);
+        if (existing && *existing == content) {
+            return LINGLONG_OK;
+        }
+        fd = ::open(path.c_str(), O_WRONLY | O_TRUNC | O_CLOEXEC);
+        if (fd < 0) {
+            return LINGLONG_ERR(fmt::format("open {} for overwrite: {}",
+                                            path.string(),
+                                            common::error::errorString(errno)));
+        }
+    }
+
+    // fchmod ensures executable bit regardless of process umask
+    if (::fchmod(fd, 0755) != 0) {
+        ::close(fd);
+        std::error_code rmEc;
+        std::filesystem::remove(path, rmEc);
+        return LINGLONG_ERR(
+          fmt::format("fchmod {}: {}", path.string(), common::error::errorString(errno)));
+    }
+
+    ssize_t written = ::write(fd, content.data(), content.size());
+    if (written < 0) {
+        ::close(fd);
+        std::error_code rmEc;
+        std::filesystem::remove(path, rmEc);
+        return LINGLONG_ERR(
+          fmt::format("write to {}: {}", path.string(), common::error::errorString(errno)));
+    }
+    if (static_cast<size_t>(written) != content.size()) {
+        ::close(fd);
+        std::error_code rmEc;
+        std::filesystem::remove(path, rmEc);
+        return LINGLONG_ERR(fmt::format("partial write to {}", path.string()));
+    }
+
+    if (::close(fd) != 0) {
+        std::error_code rmEc;
+        std::filesystem::remove(path, rmEc);
+        return LINGLONG_ERR(
+          fmt::format("close {}: {}", path.string(), common::error::errorString(errno)));
+    }
+
+    return LINGLONG_OK;
+}
+} // namespace
+
+utils::error::Result<void>
+OSTreeRepo::exportAppBinaries(const std::filesystem::path &rootEntriesDir,
+                              const api::types::v1::RepositoryCacheLayersItem &item) noexcept
+{
+    LINGLONG_TRACE(fmt::format("export app binaries for {}", item.info.id));
+
+    // The appid-named wrapper is owned by the binary module; other modules (e.g.
+    // develop) must not overwrite it.
+    if (item.info.packageInfoV2Module != "binary") {
+        return LINGLONG_OK;
+    }
+
+    // command is required for app kind; guard defensively
+    const auto &cmd = item.info.command.value_or(std::vector<std::string>{});
+    if (cmd.empty()) {
+        // A previous version may have exported a wrapper script. Drop it so entries/bin
+        // matches the current (command-less) layer, consistent with the cleanup that
+        // unexportAppEntries performs.
+        LogW("Skipping binary export for {}: command field is empty; removing stale wrapper",
+             item.info.id);
+        auto staleBinDir = rootEntriesDir / "bin";
+        auto staleAppBinDir = staleBinDir / "apps" / item.info.id;
+        std::error_code staleEc;
+        std::filesystem::remove(staleBinDir / item.info.id, staleEc);
+        std::filesystem::remove_all(staleAppBinDir, staleEc);
+        return LINGLONG_OK;
+    }
+
+    auto binDir = rootEntriesDir / "bin";
+    // Actual scripts live under entries/bin/apps/APPID/bin/
+    auto appBinDir = binDir / "apps" / item.info.id / "bin";
+
+    // The entries/bin and entries/share dirs are not pre-created by tmpfiles
+    // anymore; the wrapper script path below creates entries/bin/apps/<APPID>/bin,
+    // while entries/share (referenced by the environment injection) is ensured here.
+    std::error_code dirEc;
+    std::filesystem::create_directories(rootEntriesDir / "share", dirEc);
+    if (dirEc) {
+        return LINGLONG_ERR(
+          fmt::format("create {}: {}", (rootEntriesDir / "share").string(), dirEc.message()));
+    }
+
+    // Helper: create a wrapper script and a symlink in entries/bin/ pointing to it
+    auto exportOne = [&](const std::string &name, const std::vector<std::string> &command) -> void {
+        auto realScript = appBinDir / name;
+        auto ret = createBinaryWrapperScript(realScript, item.info.id, command);
+        if (!ret) {
+            LogW("Failed to create binary script {} for {}: {}",
+                 name,
+                 item.info.id,
+                 ret.error().message());
+            return;
+        }
+        // Create relative symlink: entries/bin/<name> → apps/APPID/bin/<name>
+        auto linkPath = binDir / name;
+        auto target = std::filesystem::path("apps") / item.info.id / "bin" / name;
+        std::error_code ec;
+        if (std::filesystem::exists(linkPath, ec) || std::filesystem::is_symlink(linkPath, ec)) {
+            // Already exists (e.g. upgrade); remove old link before creating new one
+            std::filesystem::remove(linkPath, ec);
+        }
+        std::filesystem::create_symlink(target, linkPath, ec);
+        if (ec) {
+            LogW("Failed to create symlink {} → {} for {}: {}",
+                 linkPath.string(),
+                 target.string(),
+                 item.info.id,
+                 ec.message());
+        }
+    };
+
+    // Always export a single script named after the appid, using the full command array
+    exportOne(item.info.id, cmd);
+
     return LINGLONG_OK;
 }
 
@@ -2270,8 +2521,8 @@ OSTreeRepo::exportLayerSignData(const std::filesystem::path &rootEntriesDir,
         return LINGLONG_OK;
     }
 
-    auto destination = rootEntriesDir / elfVerifyPath / item.commit;
-    return this->exportDir(item.info.id, source, destination, 10);
+    auto relativeDestination = std::filesystem::path(elfVerifyPath) / item.commit;
+    return this->exportDir(item.info.id, source, rootEntriesDir, relativeDestination, 10);
 }
 
 utils::error::Result<bool> OSTreeRepo::shouldExportSignData() const noexcept
@@ -2694,7 +2945,7 @@ utils::error::Result<package::LayerDir> OSTreeRepo::getMergedModuleDir(
     return LINGLONG_ERR("merged doesn't exist");
 }
 
-// this method creates a temporary merged module directory for debugging purposes
+// Select only the requested modules for a build or run context.
 // The returned TempLayerDir owns and removes the directory automatically.
 utils::error::Result<package::TempLayerDir> OSTreeRepo::createTempMergedModuleDir(
   const package::Reference &ref, const std::vector<std::string> &loadModules) const noexcept
@@ -2705,49 +2956,48 @@ utils::error::Result<package::TempLayerDir> OSTreeRepo::createTempMergedModuleDi
         return LINGLONG_ERR("failed to ensure merged directory", ret);
     }
 
-    auto layerItems = this->cache->queryExistingLayerItem();
     QCryptographicHash hash(QCryptographicHash::Sha256);
     std::vector<std::string> commits;
-    std::string findModules;
+    const auto layerItems = this->cache->queryExistingLayerItem();
 
-    // ADD_FILES keeps files from the first checkout. Keep binary first so the merged layer uses
-    // its info.json.
+    // ADD_FILES keeps files from the first checkout. Keep the main module first so its
+    // info.json describes the merged layer.
     auto orderedModules = loadModules;
     auto binaryModule = std::find(orderedModules.begin(), orderedModules.end(), "binary");
+    if (binaryModule == orderedModules.end()) {
+        binaryModule = std::find(orderedModules.begin(), orderedModules.end(), "runtime");
+    }
     if (binaryModule != orderedModules.end()) {
         std::iter_swap(orderedModules.begin(), binaryModule);
     }
 
     for (const auto &module : orderedModules) {
-        auto layer = std::find_if(layerItems.cbegin(), layerItems.cend(), [&](const auto &item) {
-            const auto arch = item.info.arch.empty() ? std::string{} : item.info.arch.front();
-            return item.info.id == ref.id && item.info.version == ref.version.toString()
-              && arch == ref.arch.toString() && item.info.packageInfoV2Module == module;
-        });
+        const auto layer =
+          std::find_if(layerItems.cbegin(), layerItems.cend(), [&](const auto &item) {
+              const auto arch = item.info.arch.empty() ? std::string{} : item.info.arch.front();
+              return item.info.id == ref.id && item.info.channel == ref.channel
+                && item.info.version == ref.version.toString() && arch == ref.arch.toString()
+                && item.info.packageInfoV2Module == module;
+          });
         if (layer == layerItems.cend()) {
-            continue;
+            return LINGLONG_ERR("failed to find module " + module + " for " + ref.toString());
         }
 
         commits.push_back(layer->commit);
-        findModules += layer->info.packageInfoV2Module + " ";
         hash.addData(QString::fromStdString(layer->commit).toUtf8());
     }
     if (commits.empty()) {
         return LINGLONG_ERR("not found any layer");
     }
-    // 模块未全部找到
-    if (commits.size() < loadModules.size()) {
-        return LINGLONG_ERR(fmt::format("missing module, only found: {}", findModules));
-    }
     // 合并layer，生成临时merged目录
     const QString mergeID = hash.result().toHex();
-    auto mergePattern = (mergedDir / ("tmp_" + mergeID + "_XXXXXX").toStdString()).string();
-    auto *temporaryDirectory = ::mkdtemp(mergePattern.data());
-    if (temporaryDirectory == nullptr) {
-        return LINGLONG_ERR("failed to create temporary merged module directory", errno);
+    auto temporaryDirectory =
+      utils::TemporaryDirectory::create("tmp_" + mergeID.toStdString() + "_", mergedDir);
+    if (!temporaryDirectory) {
+        return LINGLONG_ERR("failed to create temporary merged module directory",
+                            temporaryDirectory);
     }
-    auto mergeTmp = std::filesystem::path{ temporaryDirectory };
-    package::TempLayerDir tempLayerDir{ mergeTmp };
+    const auto mergeTmp = temporaryDirectory->path();
     for (const auto &commit : commits) {
         int root = open("/", O_DIRECTORY);
         auto _ = utils::finally::finally([root]() {
@@ -2769,7 +3019,7 @@ utils::error::Result<package::TempLayerDir> OSTreeRepo::createTempMergedModuleDi
         }
     }
 
-    return tempLayerDir;
+    return package::TempLayerDir{ std::move(*temporaryDirectory) };
 }
 
 utils::error::Result<void> OSTreeRepo::mergeModules() const noexcept
@@ -2792,10 +3042,9 @@ utils::error::Result<void> OSTreeRepo::mergeModules() const noexcept
         if (!layer.info.arch.empty()) {
             arch = layer.info.arch.front();
         }
-        // 将id、version和arch相同的item合并，不区分repo和channel
-        auto groupKey = QString("%1/%2/%3")
-                          .arg(layer.info.id.c_str(), layer.info.version.c_str(), arch.c_str())
-                          .toStdString();
+        // Group modules by channel, ID, version, and architecture.
+        const auto groupKey =
+          fmt::format("{}:{}/{}/{}", layer.info.channel, layer.info.id, layer.info.version, arch);
         layerGroup[groupKey].push_back(layer);
     }
 

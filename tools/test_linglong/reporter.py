@@ -10,6 +10,7 @@
 """
 
 import json
+import re
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -25,6 +26,20 @@ try:
     HAS_OPENPYXL = True
 except ImportError:
     HAS_OPENPYXL = False
+
+# Excel 单元格不允许出现 XML 1.0 的非字符（控制字符）。
+# 命令输出里常带 ANSI 转义序列与 \x00，直接写进去 openpyxl 会抛
+# IllegalCharacterError，导致【整份报告生成失败】——更糟的是它会把
+# 真正的失败原因盖掉（只看得到 openpyxl 的堆栈）。
+# 这里统一清洗后再写入。
+_ILLEGAL_XML_CHARS = re.compile("[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]")
+
+
+def sanitize_cell(value):
+    """去掉 Excel 不接受的控制字符，非字符串原样返回。"""
+    if not isinstance(value, str):
+        return value
+    return _ILLEGAL_XML_CHARS.sub("", value)
 
 
 def generate_report(
@@ -119,7 +134,7 @@ def generate_report(
     for ci, h in enumerate(
         ["序号", "模块", "测试用例", "执行状态", "耗时(ms)", "错误信息"], 1
     ):
-        c = ws.cell(row=3, column=ci, value=h)
+        c = ws.cell(row=3, column=ci, value=sanitize_cell(h))
         c.font = header_font
         c.fill = header_fill
         c.alignment = Alignment(horizontal="center", vertical="center")
@@ -138,7 +153,7 @@ def generate_report(
             (5, r.duration_ms),
             (6, r.error_message or ""),
         ]:
-            c = ws.cell(row=row, column=ci, value=val)
+            c = ws.cell(row=row, column=ci, value=sanitize_cell(val))
             c.border = thin_border
             c.alignment = Alignment(
                 horizontal="center" if ci in (1, 2, 4, 5) else "left",
@@ -163,5 +178,16 @@ def generate_report(
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
         output_name = str(p.parent / f"{p.stem}_{ts}{p.suffix}")
 
-    wb.save(output_name)
+    # 报告生成本身绝不应该让整轮冒烟崩掉：
+    # JSON 已经写出去了，Excel 失败只提示一声就好。
+    # （曾经因为错误信息里的控制字符让 openpyxl 抛异常，
+    #   结果真正的失败原因被堆栈盖掉。）
+    try:
+        wb.save(output_name)
+    except Exception as exc:  # noqa: BLE001
+        print(
+            f"Warning: failed to write Excel report {output_name}: {exc}",
+            file=sys.stderr,
+        )
+        return
     print(f"Excel report saved: {output_name}")

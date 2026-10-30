@@ -51,7 +51,10 @@ public:
                           std::uint64_t repoSize) override;
     void printDepends(const std::vector<DependsNode> &trees) override;
     void printMessage(const std::string &message) override;
-    void clearLine() override;
+    void finishProgress() override;
+
+private:
+    bool progressActive{ false };
 };
 
 } // namespace linglong::cli

@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025-2026 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2025 - 2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -21,7 +21,6 @@ protected:
     void SetUp() override
     {
         tempDir = std::make_unique<TempDir>("linglong-packageinfo-handler-test-");
-        ASSERT_TRUE(tempDir->isValid()) << "Failed to create temporary directory";
     }
 
     void TearDown() override { tempDir.reset(); }

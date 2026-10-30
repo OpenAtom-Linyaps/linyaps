@@ -16,7 +16,6 @@ namespace fs = std::filesystem;
 TEST(DirTest, ContainerCacheDirectoryUsesPackageManagerUmask)
 {
     TempDir tempDir;
-    ASSERT_TRUE(tempDir.isValid());
 
     const auto cacheDir = tempDir.path() / "cache";
     const auto commitDir = cacheDir / "commit";

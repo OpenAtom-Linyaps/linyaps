@@ -39,7 +39,6 @@ protected:
     static void SetUpTestCase()
     {
         testDir = std::make_unique<TempDir>("linglong-uab-file-test-");
-        ASSERT_TRUE(testDir->isValid()) << "Failed to create temporary directory";
         uabFile = (testDir->path() / "test.uab").string();
         ASSERT_EQ(linglongUabSignature.digest[0], '!');
         std::filesystem::copy_file("/proc/self/exe", uabFile);
@@ -225,7 +224,6 @@ TEST_F(UabFileTest, Verify)
 TEST_F(UabFileTest, VerifyRejectsMismatchedMetaSignature)
 {
     TempDir modifiedDir{ "linglong-uab-modified-" };
-    ASSERT_TRUE(modifiedDir.isValid());
     const auto modifiedUab = modifiedDir.path() / "mismatched-meta.uab";
     std::filesystem::copy_file(uabFile,
                                modifiedUab,
@@ -251,7 +249,6 @@ TEST_F(UabFileTest, VerifyRejectsMismatchedMetaSignature)
 TEST_F(UabFileTest, VerifyRejectsTamperedMetaSection)
 {
     TempDir modifiedDir{ "linglong-uab-modified-" };
-    ASSERT_TRUE(modifiedDir.isValid());
     const auto modifiedUab = modifiedDir.path() / "tampered-meta.uab";
     std::filesystem::copy_file(uabFile,
                                modifiedUab,
@@ -275,7 +272,6 @@ TEST_F(UabFileTest, VerifyRejectsTamperedMetaSection)
 TEST_F(UabFileTest, VerifyRejectsAuthenticatedInvalidBundleDigest)
 {
     TempDir modifiedDir{ "linglong-uab-modified-" };
-    ASSERT_TRUE(modifiedDir.isValid());
     const auto modifiedUab = modifiedDir.path() / "invalid-bundle-digest.uab";
     std::filesystem::copy_file(uabFile,
                                modifiedUab,
@@ -312,7 +308,6 @@ TEST_F(UabFileTest, VerifyRejectsAuthenticatedInvalidBundleDigest)
 TEST_F(UabFileTest, VerifyRejectsAuthenticatedMissingBundleSection)
 {
     TempDir modifiedDir{ "linglong-uab-modified-" };
-    ASSERT_TRUE(modifiedDir.isValid());
     const auto modifiedUab = modifiedDir.path() / "missing-bundle-section.uab";
     std::filesystem::copy_file(uabFile,
                                modifiedUab,
@@ -350,7 +345,6 @@ TEST_F(UabFileTest, VerifyRejectsAuthenticatedMissingBundleSection)
 TEST_F(UabFileTest, VerifyRejectsMismatchedBundleDigest)
 {
     TempDir modifiedDir{ "linglong-uab-modified-" };
-    ASSERT_TRUE(modifiedDir.isValid());
     const auto modifiedUab = modifiedDir.path() / "mismatched-bundle.uab";
     std::filesystem::copy_file(uabFile,
                                modifiedUab,
@@ -374,7 +368,6 @@ TEST_F(UabFileTest, VerifyRejectsMismatchedBundleDigest)
 TEST_F(UabFileTest, VerifyWithoutBundleSignSection)
 {
     TempDir unsignedDir{ "linglong-uab-unsigned-" };
-    ASSERT_TRUE(unsignedDir.isValid());
     const auto unsignedUab = unsignedDir.path() / "unsigned.uab";
     std::filesystem::copy_file("/proc/self/exe",
                                unsignedUab,

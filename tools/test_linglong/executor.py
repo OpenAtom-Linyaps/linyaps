@@ -59,6 +59,21 @@ class CommandExecutor:
         if sudo:
             flags = SUDO_FLAGS
             full_cmd = ["sudo"] + (flags.split() if flags else []) + full_cmd
+            # 覆盖率收集：sudo 后进程的身份是 root，让它写自己的 GCOV_PREFIX，
+            # 避免和当前用户身份争抢同一个 .gcda。
+            #
+            # .gcda 的权限取决于"谁先创建"：ll-package-manager 启动时会调用
+            # umask(0022)，它创建的 .gcda 是 644。而 sudo 调起的 ll-cli 与当前
+            # 用户调起的 ll-cli 链接同一个静态库、共用同一份 .gcno/.gcda，
+            # 非 owner 打开失败时 libgcov 只打印一行
+            # "profiling:...:Cannot open" 就丢掉整个进程的计数。
+            #
+            # 各身份写入各自的 GCOV_PREFIX 即可互不干扰，
+            # 报告阶段再用 gcov-tool merge 按计数累加合并。
+            # 未设置 GCOV_PREFIX_ROOT 时（即不做覆盖率收集）行为保持不变。
+            if run_env.get("GCOV_PREFIX_ROOT"):
+                run_env = dict(run_env)
+                run_env["GCOV_PREFIX"] = run_env["GCOV_PREFIX_ROOT"]
 
         try:
             result = subprocess.run(

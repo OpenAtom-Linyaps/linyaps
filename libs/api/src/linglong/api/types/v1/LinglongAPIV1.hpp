@@ -22,6 +22,12 @@
 #include "linglong/api/types/v1/ApplicationPermissionsRequest.hpp"
 #include "linglong/api/types/v1/BuilderConfig.hpp"
 #include "linglong/api/types/v1/BuilderProject.hpp"
+#include "linglong/api/types/v1/BuilderProjectLock.hpp"
+#include "linglong/api/types/v1/BuilderProjectLockDependency.hpp"
+#include "linglong/api/types/v1/BuilderProjectLockDependencyResolved.hpp"
+#include "linglong/api/types/v1/BuilderProjectSource.hpp"
+#include "linglong/api/types/v1/BuilderSourceLockEntry.hpp"
+#include "linglong/api/types/v1/BuilderSourceLockResolved.hpp"
 #include "linglong/api/types/v1/CdiDeviceEntry.hpp"
 #include "linglong/api/types/v1/CliContainer.hpp"
 #include "linglong/api/types/v1/CommonOptions.hpp"
@@ -44,7 +50,6 @@
 #include "linglong/api/types/v1/PackageInfoV2.hpp"
 #include "linglong/api/types/v1/PackageManager1GetRepoInfoResult.hpp"
 #include "linglong/api/types/v1/PackageManager1InstallParameters.hpp"
-#include "linglong/api/types/v1/PackageManager1JobInfo.hpp"
 #include "linglong/api/types/v1/PackageManager1ModifyRepoParameters.hpp"
 #include "linglong/api/types/v1/PackageManager1Package.hpp"
 #include "linglong/api/types/v1/PackageManager1PackageTaskResult.hpp"
@@ -98,6 +103,12 @@ std::optional<ApplicationConfigurationPermissions> applicationConfigurationPermi
 std::optional<ApplicationPermissionsRequest> applicationPermissionsRequest;
 std::optional<BuilderConfig> builderConfig;
 std::optional<BuilderProject> builderProject;
+std::optional<BuilderProjectLock> builderProjectLock;
+std::optional<BuilderProjectLockDependency> builderProjectLockDependency;
+std::optional<BuilderProjectLockDependencyResolved> builderProjectLockDependencyResolved;
+std::optional<BuilderProjectSource> builderProjectSource;
+std::optional<BuilderSourceLockEntry> builderSourceLockEntry;
+std::optional<BuilderSourceLockResolved> builderSourceLockResolved;
 std::optional<CdiDeviceEntry> cdiDeviceEntry;
 std::optional<CliContainer> cliContainer;
 std::optional<CommonOptions> commonOptions;
@@ -123,7 +134,6 @@ std::optional<PackageInfoV2> packageInfoV2;
 std::optional<PackageManager1GetRepoInfoResult> packageManager1GetRepoInfoResult;
 std::optional<CommonResult> packageManager1InstallLayerFDResult;
 std::optional<PackageManager1InstallParameters> packageManager1InstallParameters;
-std::optional<PackageManager1JobInfo> packageManager1JobInfo;
 std::optional<PackageManager1ModifyRepoParameters> packageManager1ModifyRepoParameters;
 std::optional<CommonResult> packageManager1ModifyRepoResult;
 std::optional<PackageManager1Package> packageManager1Package;

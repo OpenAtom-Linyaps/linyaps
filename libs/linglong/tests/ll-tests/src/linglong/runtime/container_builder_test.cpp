@@ -206,6 +206,28 @@ TEST(RunContainerOptionsTest, ApplyCliRunOptionsParsesEnvAndCaps)
     EXPECT_TRUE(options.isDevicePassthruEnabled());
 }
 
+TEST(RunContainerOptionsTest, RootUidAutomaticallyUsesPrivilegedMode)
+{
+    runtime::RunContainerOptions options;
+
+    EXPECT_TRUE(options.shouldUsePrivilegedMode(0));
+}
+
+TEST(RunContainerOptionsTest, NonRootUidDoesNotAutomaticallyUsePrivilegedMode)
+{
+    runtime::RunContainerOptions options;
+
+    EXPECT_FALSE(options.shouldUsePrivilegedMode(1000));
+}
+
+TEST(RunContainerOptionsTest, ExplicitPrivilegedModeIsPreservedForNonRootUid)
+{
+    runtime::RunContainerOptions options;
+    options.privileged = true;
+
+    EXPECT_TRUE(options.shouldUsePrivilegedMode(1000));
+}
+
 TEST(RunContainerOptionsTest, EnableSecurityContext)
 {
     runtime::RunContainerOptions options;

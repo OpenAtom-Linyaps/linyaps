@@ -54,6 +54,21 @@ utils::error::Result<void> RepoCache::load()
     return LINGLONG_OK;
 }
 
+utils::error::Result<void> RepoCache::updateConfig(const api::types::v1::RepoConfigV2 &config)
+{
+    LINGLONG_TRACE("update repo cache config");
+
+    auto originalConfig = cache.config;
+    cache.config = config;
+    auto result = writeToDisk();
+    if (!result) {
+        cache.config = std::move(originalConfig);
+        return LINGLONG_ERR(result);
+    }
+
+    return LINGLONG_OK;
+}
+
 utils::error::Result<void> RepoCache::rebuild(const api::types::v1::RepoConfigV2 &repoConfig,
                                               OstreeRepo &repo) noexcept
 {

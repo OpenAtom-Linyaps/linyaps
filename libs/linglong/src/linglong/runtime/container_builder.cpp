@@ -248,6 +248,11 @@ auto RunContainerOptions::isPrivileged() const noexcept -> bool
     return this->privileged;
 }
 
+auto RunContainerOptions::shouldUsePrivilegedMode(uid_t uid) const noexcept -> bool
+{
+    return this->privileged || uid == 0;
+}
+
 ContainerBuilder::ContainerBuilder(ocppi::cli::CLI &cli)
     : cli(cli)
 {
@@ -685,12 +690,14 @@ auto ContainerBuilder::configureRunContainer(PreparedContainer &prepared,
         prepared.cfgBuilder.appendEnv(options.getEnv());
     }
 
+    const auto uid = getuid();
     std::vector<std::string> capabilities;
-    if (options.isPrivileged()) {
-        if (getuid() != 0) {
+    if (options.shouldUsePrivilegedMode(uid)) {
+        if (uid != 0) {
             return LINGLONG_ERR("privileged mode requires running as root");
         }
 
+        LogI("uid {} enables privileged run mode (explicit: {})", uid, options.isPrivileged());
         prepared.cfgBuilder.disableUserNamespace();
         capabilities = { "CAP_CHOWN",    "CAP_DAC_OVERRIDE",     "CAP_FOWNER",     "CAP_FSETID",
                          "CAP_KILL",     "CAP_NET_BIND_SERVICE", "CAP_SETFCAP",    "CAP_SETGID",
@@ -738,8 +745,11 @@ auto ContainerBuilder::configureRunContainer(PreparedContainer &prepared,
         return LINGLONG_ERR(applyRes);
     }
 
-    const auto &mounts = runContext.getConfig().mounts;
-    if (mounts) {
+    auto addExtraMounts = [&prepared](const auto &mounts) {
+        if (!mounts) {
+            return;
+        }
+
         for (const auto &m : *mounts) {
             ocppi::runtime::config::types::Mount ociMount{
                 .destination = m.destination,
@@ -751,7 +761,11 @@ auto ContainerBuilder::configureRunContainer(PreparedContainer &prepared,
             };
             prepared.cfgBuilder.addExtraMount(ociMount);
         }
-    }
+    };
+
+    const auto &config = runContext.getConfig();
+    addExtraMounts(config.hostDynamic);
+    addExtraMounts(config.mounts);
 
     return LINGLONG_OK;
 }
@@ -769,7 +783,7 @@ auto ContainerBuilder::createRunContainer(runtime::RunContext &context,
 
     if (!options.lockName.empty()) {
         const auto lockPath = prepared->context->getBundleDir() / options.lockName;
-        prepared->cfgBuilder.addExtraMount({
+        prepared->cfgBuilder.addExtraMount(ocppi::runtime::config::types::Mount{
           .destination = common::dir::containerLockPath,
           .options = std::vector<std::string>{ "bind" },
           .source = lockPath.string(),

@@ -36,6 +36,10 @@ public:
 
     std::string str() const { return coutStream_.str() + cerrStream_.str(); }
 
+    std::string out() const { return coutStream_.str(); }
+
+    std::string err() const { return cerrStream_.str(); }
+
 private:
     std::ostringstream coutStream_;
     std::ostringstream cerrStream_;
@@ -299,13 +303,29 @@ TEST(CLIPrinter, PrintDepends)
     EXPECT_THAT(out, ::testing::HasSubstr("runtime"));
 }
 
-TEST(CLIPrinter, PrintMessageAndClearLine)
+TEST(CLIPrinter, FinishProgressClearsOnlyAnActiveProgressLine)
 {
     CaptureStdout capture;
     linglong::cli::CLIPrinter printer;
-    printer.printMessage("hello world");
-    printer.clearLine();
-    EXPECT_THAT(capture.str(), ::testing::HasSubstr("hello world"));
+    printer.finishProgress();
+    EXPECT_TRUE(capture.str().empty());
+
+    printer.printProgress(42.5, "downloading");
+    printer.finishProgress();
+    const auto output = capture.str();
+    EXPECT_THAT(output, ::testing::EndsWith("\r\33[K"));
+
+    printer.finishProgress();
+    EXPECT_EQ(capture.str(), output);
+}
+
+TEST(CLIPrinter, PrintMessageGoesToStderr)
+{
+    CaptureStdout capture;
+    linglong::cli::CLIPrinter printer;
+    printer.printMessage("hi");
+    EXPECT_THAT(capture.out(), ::testing::IsEmpty());
+    EXPECT_THAT(capture.err(), ::testing::HasSubstr("hi"));
 }
 
 // ---------------------------------------------------------------- JSONPrinter
@@ -477,7 +497,9 @@ TEST_F(JSONPrinterTest, PrintMessage)
 {
     CaptureStdout capture;
     printer.printMessage("hi");
-    EXPECT_THAT(capture.str(), ::testing::HasSubstr("hi"));
+    EXPECT_THAT(capture.out(), ::testing::IsEmpty());
+    EXPECT_THAT(capture.err(), ::testing::HasSubstr("hi"));
+    EXPECT_THAT(capture.err(), ::testing::HasSubstr("\"message\""));
 }
 
 } // namespace

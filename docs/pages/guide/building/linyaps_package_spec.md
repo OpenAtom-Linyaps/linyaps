@@ -544,7 +544,7 @@ sources:
     url: # app source url
     commit: # commit hash
   # 以下注释由插件生成并使用，从仓库中检索 libical-dev 分析其依赖，自动生成sources到注释的下面
-  # linglong:gen_deb_source sources amd64 https://ci.deepin.com/repo/deepin/deepin-community/backup/rc2 beige main
+  # linglong:gen_deb_source sources amd64 https://community-packages.deepin.com/deepin/beige/ beige main
   # linglong:gen_deb_source install libical-dev
 ```
 
@@ -595,7 +595,7 @@ deb的编译产物,安装前缀是`/usr`，`install_dep`脚本会自动处理其
 
 #### 安装位置
 
-在构建以及安装过程中过程中，玲珑的构建工具会设置`$PREFIX`环境变量。该环境变量的值**应当**为`/opt/apps/${APPID}/files`，但并不建议在编写构建以及安装过程中直接使用其常见值，**推荐**总是读取`$PREFIX`环境变量。
+在构建以及安装过程中，玲珑的构建工具会设置`$PREFIX`环境变量。该环境变量的值**应当**为`/opt/apps/${APPID}/files`，但并不建议在编写构建以及安装过程中直接使用其常见值，**推荐**总是读取`$PREFIX`环境变量。
 
 对应用程序的构建以及安装过程而言，可写的目录仅有
 

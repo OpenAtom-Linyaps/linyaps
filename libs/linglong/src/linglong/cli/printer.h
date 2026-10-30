@@ -94,7 +94,7 @@ public:
     virtual void printDepends(const std::vector<DependsNode> &trees) = 0;
     virtual void printMessage(const std::string &message) = 0;
 
-    virtual void clearLine() { }
+    virtual void finishProgress() { }
 };
 
 } // namespace linglong::cli

@@ -46,7 +46,6 @@ protected:
     void SetUp() override
     {
         tempDir = std::make_unique<TempDir>();
-        ASSERT_TRUE(tempDir->isValid());
         repoRoot = tempDir->path() / "repo-root";
         ASSERT_TRUE(fs::create_directories(repoRoot));
 
@@ -245,6 +244,37 @@ TEST_F(RealRepoTest, ConfigHelpersAndSetConfig)
     auto set = repo->setConfig(newCfg);
     ASSERT_TRUE(set.has_value()) << set.error().message();
     EXPECT_EQ(repo->getConfig().repos.size(), 2);
+}
+
+TEST_F(RealRepoTest, SetConfigPreservesDeletedLayersAcrossReload)
+{
+    ASSERT_TRUE(repo->markDeleted(*appRef, true).has_value());
+    auto before = repo->listLocalBy({});
+    ASSERT_TRUE(before.has_value());
+    auto expected = nlohmann::json(*before);
+
+    auto config = repo->getConfig();
+    config.repos.front().url = "https://example.com/updated";
+    ASSERT_TRUE(repo->setConfig(config).has_value());
+
+    auto checkLayers = [&]() {
+        auto items = repo->listLocalBy({});
+        ASSERT_TRUE(items.has_value());
+        EXPECT_EQ(nlohmann::json(*items), expected);
+        EXPECT_TRUE(repo->isMarkedDeleted(*appRef, "binary"));
+        auto visible = repo->listLocalBy(repoCacheQuery{ .deleted = false });
+        ASSERT_TRUE(visible.has_value());
+        ASSERT_EQ(visible->size(), 1);
+        EXPECT_EQ(visible->front().info.id, runtimeRef->id);
+        EXPECT_EQ(nlohmann::json(repo->getConfig()), nlohmann::json(config));
+    };
+    checkLayers();
+
+    repo.reset();
+    auto reopened = OSTreeRepo::loadFromPath(repoRoot);
+    ASSERT_TRUE(reopened.has_value());
+    repo = std::move(*reopened);
+    checkLayers();
 }
 
 TEST_F(RealRepoTest, GetMergedModuleDirFallsBackToLayerDir)

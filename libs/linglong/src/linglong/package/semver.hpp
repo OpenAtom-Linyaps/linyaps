@@ -1,6 +1,6 @@
 /*
 SPDX-FileCopyrightText: 2024 Peter Csajtai <peter.csajtai@outlook.com>
-SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+SPDX-FileCopyrightText: 2025-2026 UnionTech Software Technology Co., Ltd.
 
 SPDX-License-Identifier: MIT
 
@@ -474,9 +474,15 @@ public:
             }
             if (!match.captured(5).isNull()) {
                 build_meta = match.captured(5).toStdString();
+                constexpr auto security_token_size = sizeof("security.") - 1;
                 size_t security_pos = build_meta.find("security.");
+                while (security_pos != std::string::npos && security_pos != 0
+                       && build_meta[security_pos - 1] != '.') {
+                    security_pos = build_meta.find("security.", security_pos + security_token_size);
+                }
                 if (security_pos != std::string::npos) {
-                    std::string security_part = build_meta.substr(security_pos + 9);
+                    std::string security_part =
+                      build_meta.substr(security_pos + security_token_size);
 
                     if (security_part.empty()) {
                         throw semver_exception("Invalid security format: security. is empty");

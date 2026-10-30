@@ -73,6 +73,8 @@ public:
     [[nodiscard]] pid_t pid() const noexcept;
 
 private:
+    void release() noexcept;
+
     [[nodiscard]] utils::error::Result<void> lockCheck() const noexcept;
 
     [[nodiscard]] bool compatibleWith(LockType type) const noexcept
@@ -106,7 +108,11 @@ private:
 template <>
 struct fmt::formatter<linglong::utils::filelock::LockType>
 {
-    constexpr auto parse(fmt::format_parse_context &ctx) { return ctx.begin(); }
+    template <typename ParseContext>
+    constexpr auto parse(ParseContext &ctx)
+    {
+        return ctx.begin();
+    }
 
     template <typename FormatContext>
     auto format(const linglong::utils::filelock::LockType &p, FormatContext &ctx) const

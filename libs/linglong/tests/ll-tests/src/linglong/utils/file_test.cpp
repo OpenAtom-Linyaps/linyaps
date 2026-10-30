@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 - 2026 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2025-2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -55,6 +55,31 @@ protected:
     std::unique_ptr<TempDir> srcTempDir;
     std::unique_ptr<TempDir> destTempDir;
 };
+
+TEST(FileSizeTest, ReturnsErrorForFifoWithoutTerminating)
+{
+    TempDir directory;
+    const auto fifo = directory.path() / "pipe";
+    ASSERT_EQ(::mkfifo(fifo.c_str(), 0600), 0);
+
+    ASSERT_EXIT(
+      {
+          auto result = linglong::utils::calculateDirectorySize(directory.path());
+          ::_exit(result.has_value() ? 1 : 0);
+      },
+      ::testing::ExitedWithCode(0),
+      "");
+}
+
+TEST(FileSizeTest, ReturnsRegularFileSize)
+{
+    TempDir directory;
+    std::ofstream(directory.path() / "file") << "12345";
+
+    auto result = linglong::utils::calculateDirectorySize(directory.path());
+    ASSERT_TRUE(result) << result.error().message();
+    EXPECT_EQ(*result, 5U);
+}
 
 TEST_F(FileTest, CopyDirectory)
 {

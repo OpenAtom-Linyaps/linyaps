@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024 - 2026 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2024-2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -183,7 +183,11 @@ calculateDirectorySize(const std::filesystem::path &dir) noexcept
             return LINGLONG_ERR(fmt::format("failed to get entry type of {}", entry.path()), ec);
         }
 
-        size += entry.file_size();
+        const auto entrySize = entry.file_size(ec);
+        if (ec) {
+            return LINGLONG_ERR(fmt::format("failed to get file size of {}", entry.path()), ec);
+        }
+        size += entrySize;
     }
 
     return size;

@@ -34,7 +34,7 @@ ll-builder build
 2. Export as UAB format:
 
 ```bash
-ll-builder export --type=uab
+ll-builder export
 ```
 
 3. The generated UAB file will be saved in the current directory, with the file name format: `{app-id}_{version}_{arch}.uab`
@@ -64,7 +64,7 @@ You can directly distribute the generated UAB file to users through the followin
 Upload the UAB file to the Linyaps repository:
 
 ```bash
-ll-builder push --repo=your-repo
+ll-builder push --repo-name your-repo
 ```
 
 ### Method 3: App Store Publishing
@@ -96,7 +96,7 @@ ll-cli list
 ### Update Applications
 
 ```bash
-ll-cli update your-app-id
+ll-cli upgrade your-app-id
 ```
 
 ### Uninstall Applications

@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024 - 2026 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2024-2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 #include <gtest/gtest.h>
@@ -959,6 +959,93 @@ TEST_F(SourceFetcherTest, FetchFileSource)
     std::ofstream(cached, std::ios::trunc) << "corrupt";
     auto corrupt = offlineFetcher.fetch(temporary.path() / "corrupt", true);
     EXPECT_FALSE(corrupt.has_value());
+}
+
+TEST_F(SourceFetcherTest, RejectsInvalidOutputNamesBeforeUsingCache)
+{
+    TempDir temporary;
+    const auto cache = temporary.path() / "cache";
+    const auto destination = temporary.path() / "destination";
+    ASSERT_TRUE(prepareSourceDirectories(cache, { destination }));
+    for (const auto *kind : { "file", "archive", "dsc", "git" }) {
+        for (const auto *name : { "", ".", "..", "nested/name", "/absolute" }) {
+            SCOPED_TRACE(std::string(kind) + ": " + name);
+            api::types::v1::BuilderProjectSource source;
+            source.kind = kind;
+            source.url = "https://example.com/source";
+            source.name = name;
+            SourceFetcher fetcher(GenerateSourceRequest{ source }, SourceCacheLayout(cache));
+            auto result = fetcher.fetch(destination, true);
+            ASSERT_FALSE(result.has_value());
+            EXPECT_NE(result.error().message().find("source name must be a non-empty filename"),
+                      std::string::npos)
+              << result.error().message();
+        }
+    }
+}
+
+TEST_F(SourceFetcherTest, RejectsUrlWithoutOutputName)
+{
+    TempDir temporary;
+    api::types::v1::BuilderProjectSource source;
+    source.kind = "file";
+    source.url = "https://example.com/dir/";
+    SourceFetcher fetcher(GenerateSourceRequest{ source },
+                          SourceCacheLayout(temporary.path() / "cache"));
+    auto result = fetcher.fetch(temporary.path() / "destination", true);
+    ASSERT_FALSE(result.has_value());
+    EXPECT_NE(result.error().message().find("source name must be a non-empty filename"),
+              std::string::npos)
+      << result.error().message();
+}
+
+TEST_F(SourceFetcherTest, RejectsNestedNameWithVerifiedCache)
+{
+    TempDir temporary;
+    const auto artifact = temporary.path() / "artifact";
+    std::ofstream(artifact) << "file source";
+    const auto digest = fileHash(artifact);
+    ASSERT_TRUE(digest.has_value()) << digest.error().message();
+    const auto cache = temporary.path() / "cache";
+    const auto destination = temporary.path() / "destination";
+    ASSERT_TRUE(prepareSourceDirectories(cache, { destination }));
+    const auto cached = SourceCacheLayout(cache).object("file", *digest);
+    std::filesystem::create_directories(cached.parent_path());
+    std::filesystem::copy_file(artifact, cached);
+
+    api::types::v1::BuilderProjectSource source;
+    source.kind = "file";
+    source.url = "https://example.com/source";
+    source.name = "nested/name";
+    SourceFetcher fetcher(lockedRequest(source, *digest), SourceCacheLayout(cache));
+    auto result = fetcher.fetch(destination, true);
+    EXPECT_FALSE(result.has_value());
+    EXPECT_FALSE(std::filesystem::exists(destination / "nested/name"));
+}
+
+TEST_F(SourceFetcherTest, MaterializesValidPosixOutputNames)
+{
+    TempDir temporary;
+    const auto artifact = temporary.path() / "artifact";
+    std::ofstream(artifact) << "file source";
+    const auto digest = fileHash(artifact);
+    ASSERT_TRUE(digest.has_value()) << digest.error().message();
+    const auto cache = temporary.path() / "cache";
+    const auto destination = temporary.path() / "destination";
+    ASSERT_TRUE(prepareSourceDirectories(cache, { destination }));
+    const auto cached = SourceCacheLayout(cache).object("file", *digest);
+    std::filesystem::create_directories(cached.parent_path());
+    std::filesystem::copy_file(artifact, cached);
+    for (const auto *name : { "valid name.txt", "valid\\name.txt" }) {
+        api::types::v1::BuilderProjectSource source;
+        source.kind = "file";
+        source.url = "https://example.com/source";
+        source.name = name;
+        SourceFetcher fetcher(lockedRequest(source, *digest), SourceCacheLayout(cache));
+        auto result = fetcher.fetch(destination, true);
+        ASSERT_TRUE(result.has_value()) << result.error().message();
+        EXPECT_EQ(*fileHash(destination / name), *digest);
+    }
 }
 
 TEST_F(SourceFetcherTest, MaterializesCachedArchive)

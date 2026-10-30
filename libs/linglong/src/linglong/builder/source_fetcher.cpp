@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022 - 2026 UnionTech Software Technology Co., Ltd.
+ * SPDX-FileCopyrightText: 2022-2026 UnionTech Software Technology Co., Ltd.
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
@@ -957,6 +957,13 @@ auto SourceFetcher::fetch(const std::filesystem::path &destination, bool offline
     const auto &source = requestSource(request);
     if (!source.url) {
         return LINGLONG_ERR("source URL is missing");
+    }
+
+    const auto name = sourceOutputName(source);
+    const std::filesystem::path outputName(name);
+    if (name.empty() || name == "." || name == ".." || outputName.is_absolute()
+        || outputName.has_parent_path()) {
+        return LINGLONG_ERR("source name must be a non-empty filename");
     }
 
     auto handler = createSourceFetchHandler(source.kind);

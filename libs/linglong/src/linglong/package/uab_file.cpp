@@ -255,7 +255,15 @@ utils::error::Result<bool> UABFile::verify() noexcept
     }
 
     QCryptographicHash metaCryptor{ QCryptographicHash::Sha256 };
-    metaCryptor.addData(metaData->data(), static_cast<int>(metaData->size()));
+    metaCryptor.addData(
+#if QT_VERSION >= QT_VERSION_CHECK(6, 4, 0)
+      QByteArrayView{ metaData->data(), static_cast<int>(metaData->size()) }
+#else
+      metaData->data(),
+      static_cast<int>(metaData->size())
+#endif
+    );
+
     if (metaCryptor.result().toHex().toStdString() != *expectedMetaDigest) {
         return false;
     }

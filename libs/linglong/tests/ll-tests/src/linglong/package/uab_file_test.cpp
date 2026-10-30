@@ -10,7 +10,6 @@
 #include "linglong/common/uab_signature.h"
 #include "linglong/package/elf_handler.h"
 #include "linglong/package/uab_file.h"
-#include "linglong/package/uab_packager.h"
 #include "linglong/utils/cmd.h"
 
 #include <QCryptographicHash>
@@ -137,7 +136,14 @@ std::unique_ptr<TempDir> UabFileTest::testDir;
 std::string calculateDigest(std::string_view data)
 {
     QCryptographicHash cryptor{ QCryptographicHash::Sha256 };
-    cryptor.addData(data.data(), static_cast<int>(data.size()));
+    cryptor.addData(
+#if QT_VERSION >= QT_VERSION_CHECK(6, 4, 0)
+      QByteArrayView{ data.data(), static_cast<int>(data.size()) }
+#else
+      data.data(),
+      static_cast<int>(data.size())
+#endif
+    );
     return cryptor.result().toHex().toStdString();
 }
 

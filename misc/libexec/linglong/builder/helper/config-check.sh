@@ -8,13 +8,13 @@
 #config file type: desktop|context-menu|dbus service| systemd user service
 
 if [ -z "${LINGLONG_APPID:-}" ]; then
-        echo "LINGLONG_APPID is not set."
-        exit 255
+    echo "LINGLONG_APPID is not set."
+    exit 255
 fi
 
 if [ ! -d "/opt/apps/${LINGLONG_APPID}" ]; then
-        echo "/opt/apps/${LINGLONG_APPID} does not exist."
-        exit 255
+    echo "/opt/apps/${LINGLONG_APPID} does not exist."
+    exit 255
 fi
 
 PREFIX="/opt/apps/${LINGLONG_APPID}/files"
@@ -27,49 +27,49 @@ dbusService=$PREFIX/share/dbus-1/services
 systemdUserService=$PREFIX/lib/systemd/user
 
 if [ -d "$desktop" ]; then
-        results+=$(find "$desktop" -name "*.desktop")
-        results+="\n"
+    results+=$(find "$desktop" -name "*.desktop")
+    results+="\n"
 fi
 if [ -d "$contextMenu" ]; then
-        results+=$(find "$contextMenu" -name "*.conf")
-        results+="\n"
+    results+=$(find "$contextMenu" -name "*.conf")
+    results+="\n"
 fi
 if [ -d "$dbusService" ]; then
-        results+=$(find "$dbusService" -name "*.service")
-        results+="\n"
+    results+=$(find "$dbusService" -name "*.service")
+    results+="\n"
 fi
 if [ -d "$systemdUserService" ]; then
-        results+=$(
-                find "$systemdUserService" -name "*.service" \
-                        -o -name "*.socket" \
-                        -o -name "*.device" \
-                        -o -name "*.mount" \
-                        -o -name "*.automount" \
-                        -o -name "*.swap" \
-                        -o -name "*.target" \
-                        -o -name "*.path" \
-                        -o -name "*.timer" \
-                        -o -name "*.slice" \
-                        -o -name "*.scope"
-        )
+    results+=$(
+        find "$systemdUserService" -name "*.service" \
+            -o -name "*.socket" \
+            -o -name "*.device" \
+            -o -name "*.mount" \
+            -o -name "*.automount" \
+            -o -name "*.swap" \
+            -o -name "*.target" \
+            -o -name "*.path" \
+            -o -name "*.timer" \
+            -o -name "*.slice" \
+            -o -name "*.scope"
+    )
 fi
 
 for filePath in $(echo -e "$results"); do
-        fileName=${filePath##*/}
-        # Prefix match, not a regular expression: LINGLONG_APPID carries
-        # dots (org.deepin.foo); as a grep pattern those dots match any
-        # character, so orgXdeepinYfoo.desktop would be accepted.
-        case "$fileName" in
+    fileName=${filePath##*/}
+    # Prefix match, not a regular expression: LINGLONG_APPID carries
+    # dots (org.deepin.foo); as a grep pattern those dots match any
+    # character, so orgXdeepinYfoo.desktop would be accepted.
+    case "$fileName" in
         "${LINGLONG_APPID}"*) ;;
         *) invalidList+="$filePath\n" ;;
-        esac
+    esac
 done
 
 if [ "$invalidList" != "" ]; then
-        echo -e "These files have invalid file names:\n"
-        echo -e "$invalidList"
-        echo -e "We prefer to use \$LINGLONG_APPID as the prefix. Such as ${LINGLONG_APPID}.xxx."
-        exit 1
+    echo -e "These files have invalid file names:\n"
+    echo -e "$invalidList"
+    echo -e "We prefer to use \$LINGLONG_APPID as the prefix. Such as ${LINGLONG_APPID}.xxx."
+    exit 1
 fi
 
 exit 0

@@ -89,7 +89,7 @@ inline YAML::Node to_yaml(const nlohmann::json &json)
         }
 
         if (json.is_object()) {
-                YAML::Node object;
+                YAML::Node object(YAML::NodeType::Map);
                 for (auto it = json.begin(); it != json.end(); it++) {
                         object[it.key()] = to_yaml(it.value());
                 }
@@ -97,7 +97,7 @@ inline YAML::Node to_yaml(const nlohmann::json &json)
         }
 
         if (json.is_array()) {
-                YAML::Node array;
+                YAML::Node array(YAML::NodeType::Sequence);
                 for (const auto &item : json) {
                         array.push_back(to_yaml(item));
                 }

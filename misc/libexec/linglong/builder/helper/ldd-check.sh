@@ -84,15 +84,12 @@ processExecBin() {
 
 collectDependsLibs() {
         #support multiple path, split by ':'
-        local rawPaths="$1"
-        declare -a pathList=()
-        declare -a validPaths=()
-        local p
-
-        IFS=':' read -ra pathList <<<"${rawPaths}"
-        for p in "${pathList[@]}"; do
-                if [[ -n ${p} ]]; then
-                        validPaths+=("${p}")
+        local -a paths validPaths=()
+        local path
+        IFS=':' read -r -a paths <<< "$1"
+        for path in "${paths[@]}"; do
+                if [[ -n $path ]]; then
+                        validPaths+=("$path")
                 fi
         done
 
@@ -158,7 +155,7 @@ main() {
         else
             yamlContent+=" []"
         fi
-        echo -e "${yamlContent}" > "/project/linglong/depends.yaml"
+        echo -e "${yamlContent}" > "${LINGLONG_DEPENDS_FILE:-/project/linglong/depends.yaml}"
 
         logDbg "finish collecting library dependencies..."
         return 0

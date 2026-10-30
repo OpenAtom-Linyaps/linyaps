@@ -16,6 +16,8 @@
 
 #include <cstring>
 #include <fstream>
+#include <utility>
+#include <vector>
 
 using namespace linglong::repo;
 using namespace linglong::api::types::v1;
@@ -192,3 +194,60 @@ TEST(MigrateTest, RealOstreeRepoMigratesUnprefixedRefs)
 }
 
 } // namespace
+
+TEST(MigrateVersionTest, ParsesTheThreeComponents)
+{
+    const auto v = detail::parseVersion("1.7.3");
+    ASSERT_TRUE(v.has_value());
+    EXPECT_EQ(v->major, 1);
+    EXPECT_EQ(v->minor, 7);
+    EXPECT_EQ(v->patch, 3);
+}
+
+TEST(MigrateVersionTest, RejectsMalformedVersions)
+{
+    for (const auto *input : { "", "1", "1.7", "1.7.0.1", "1.7.x", "a.b.c" }) {
+        EXPECT_FALSE(detail::parseVersion(input).has_value()) << "input: " << input;
+    }
+}
+
+TEST(MigrateVersionTest, OrdersByComponentNotByLooseComparison)
+{
+    const auto threshold = detail::parseVersion("1.7.0");
+    ASSERT_TRUE(threshold.has_value());
+
+    const std::vector<std::pair<const char *, bool>> cases = {
+        // A repo older than 1.7.0 must migrate.
+        { "1.6.0", true },
+        { "0.9.9", true },
+        // Equal or newer must not.
+        { "1.7.0", false },
+        { "1.8.0", false },
+        { "1.10.0", false },
+        { "2.0.0", false },
+        { "2.3.4", false },
+        { "3.1.0", false },
+        { "10.0.0", false },
+    };
+
+    for (const auto &[input, expected] : cases) {
+        const auto from = detail::parseVersion(input);
+        ASSERT_TRUE(from.has_value()) << "input: " << input;
+        EXPECT_EQ(*from < *threshold, expected)
+          << input << " < 1.7.0 should be " << (expected ? "true" : "false");
+    }
+}
+
+TEST(MigrateVersionTest, ComparingPermutationsIsConsistent)
+{
+    // Whatever the pair is, exactly one of a<b, a==b, b<a holds.
+    for (const auto *lhs : { "1.6.0", "1.7.0", "1.8.0", "2.0.0", "10.0.0" }) {
+        for (const auto *rhs : { "1.6.0", "1.7.0", "1.8.0", "2.0.0", "10.0.0" }) {
+            const auto a = detail::parseVersion(lhs);
+            const auto b = detail::parseVersion(rhs);
+            ASSERT_TRUE(a && b);
+            const int holds = (*a < *b ? 1 : 0) + (*a == *b ? 1 : 0) + (*b < *a ? 1 : 0);
+            EXPECT_EQ(holds, 1) << lhs << " vs " << rhs;
+        }
+    }
+}

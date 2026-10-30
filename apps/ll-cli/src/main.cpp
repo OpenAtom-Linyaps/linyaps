@@ -12,6 +12,7 @@
 #include "linglong/cli/terminal_notifier.h"
 #include "linglong/common/error.h"
 #include "linglong/common/global/initialize.h"
+#include "linglong/common/version.h"
 #include "linglong/runtime/container_builder.h"
 #include "linglong/utils/finally/finally.h"
 #include "linglong/utils/gettext.h"
@@ -676,9 +677,10 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     // print version if --version flag is set
     if (*versionFlag) {
         if (*jsonFlag) {
-            std::cout << nlohmann::json{ { "version", LINGLONG_VERSION_FULL } } << std::endl;
+            std::cout << nlohmann::json{ { "version", linglong::common::versionFull() } }
+                      << std::endl;
         } else {
-            std::cout << _("linyaps CLI version ") << LINGLONG_VERSION_FULL << std::endl;
+            std::cout << _("linyaps CLI version ") << linglong::common::versionFull() << std::endl;
         }
         return 0;
     }

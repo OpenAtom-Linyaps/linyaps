@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
+ * SPDX-FileCopyrightText: 2022 - 2026 UnionTech Software Technology Co., Ltd.
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
@@ -7,10 +7,23 @@
 #include "client_factory.h"
 
 #include "api/ClientAPI.h"
+#include "linglong/common/version.h"
 
 #include <string>
 
 namespace linglong::repo {
+
+ClientAPIWrapper::ClientAPIWrapper(apiClient_t *client)
+    : client(client)
+    , m_user_agent("linglong/" + std::string{ common::versionFull() })
+{
+    client->userAgent = m_user_agent.c_str();
+}
+
+ClientAPIWrapper::~ClientAPIWrapper()
+{
+    apiClient_free(client);
+}
 
 ClientFactory::ClientFactory(std::string server)
     : m_server(std::move(server))

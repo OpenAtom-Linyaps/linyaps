@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
-cmake_minimum_required(VERSION 3.11.4)
+cmake_minimum_required(VERSION 3.14.0)
 
 project(
   linglong
@@ -158,15 +158,32 @@ set(LINGLONG_ENABLE_WAYLAND_SEC_CTX_SUPPORT
     CACHE BOOL "enable linglong wayland security context support")
 
 # harden the build
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+include(CheckPIESupported)
+check_pie_supported()
+
+if(CMAKE_CXX_LINK_PIE_SUPPORTED)
+    message(STATUS "enable position independent code")
+    set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+endif()
 
 set(CMAKE_EXE_LINKER_FLAGS
-    "${CMAKE_EXE_LINKER_FLAGS} -pie -Wl,-z,relro -Wl,-z,now")
+    "${CMAKE_EXE_LINKER_FLAGS} -Wl,-z,relro -Wl,-z,now")
 
 add_compile_options(-fstack-protector-strong)
 if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
   message(STATUS "Non-Debug build, enabling FORTIFY_SOURCE")
-  add_compile_definitions(_FORTIFY_SOURCE=2)
+  include(CheckCXXSourceCompiles)
+  check_cxx_source_compiles(
+        "
+#ifdef _FORTIFY_SOURCE
+#  error predefined FORTIFY_SOURCE
+#endif
+int main() { return 0; }"
+  FORTIFY_NOT_PREDEFINED)
+
+  if (FORTIFY_NOT_PREDEFINED)
+    add_compile_definitions(_FORTIFY_SOURCE=2)
+  endif()
 endif()
 
 string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}" SYSTEM_PROC_LOWER)
@@ -314,20 +331,29 @@ function(gen_library_target name)
   elseif("${name}" STREQUAL "fmt")
     set(output "fmt::fmt-lib")
     find_package(fmt 5.2.1 QUIET)
-    if(NOT fmt_FOUND)
-      message(STATUS "system fmt not found, using external fmt")
-      add_library(fmt-lib INTERFACE)
-      add_library(${output} ALIAS fmt-lib)
-      add_library(fmt::fmt-header-only ALIAS fmt-lib)
-      target_include_directories(fmt-lib INTERFACE external/fmt/include)
-      target_compile_definitions(fmt-lib INTERFACE FMT_HEADER_ONLY)
+    if(fmt_FOUND)
+      get_target_property(fmt_type fmt::fmt TYPE)
+    endif()
+
+    # ll-init always needs fmt without a shared-library dependency.
+    add_library(fmt-static INTERFACE)
+    add_library(fmt::fmt-static ALIAS fmt-static)
+    if(fmt_FOUND AND fmt_type STREQUAL "STATIC_LIBRARY")
+      message(STATUS "use static fmt library")
+      target_link_libraries(fmt-static INTERFACE fmt::fmt)
+    elseif(TARGET fmt::fmt-header-only)
+      message(STATUS "use fmt header only for static linking")
+      target_link_libraries(fmt-static INTERFACE fmt::fmt-header-only)
     else()
-      if(is_static)
-        message(STATUS "use fmt header only")
-        add_library(${output} ALIAS fmt::fmt-header-only)
-      else()
-        add_library(${output} ALIAS fmt::fmt)
-      endif()
+      message(STATUS "use external fmt header only for static linking")
+      target_include_directories(fmt-static INTERFACE external/fmt/include)
+      target_compile_definitions(fmt-static INTERFACE FMT_HEADER_ONLY)
+    endif()
+
+    if(is_static OR NOT fmt_FOUND)
+      add_library(${output} ALIAS fmt-static)
+    else()
+      add_library(${output} ALIAS fmt::fmt)
     endif()
   endif()
 

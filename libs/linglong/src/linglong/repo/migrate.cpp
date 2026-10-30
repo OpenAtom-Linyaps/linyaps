@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2024-2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -24,17 +24,7 @@ struct MigrateRefData
     std::string repoName;
 };
 
-struct Version
-{
-    int major{ 0 };
-    int minor{ 0 };
-    int patch{ 0 };
-
-    friend bool operator<(const Version &lhs, const Version &rhs) noexcept
-    {
-        return lhs.major < rhs.major || lhs.minor < rhs.minor || lhs.patch < rhs.patch;
-    }
-};
+namespace linglong::repo::detail {
 
 std::optional<Version> parseVersion(std::string_view version)
 try {
@@ -49,18 +39,23 @@ try {
     if (p2 == std::string::npos) {
         return std::nullopt;
     }
-    v.minor = std::stoi(std::string{ version.substr(p1 + 1, p2) });
+    v.minor = std::stoi(std::string{ version.substr(p1 + 1, p2 - p1 - 1) });
 
     if (version.find('.', p2 + 1) != std::string::npos) {
         return std::nullopt;
     }
-    v.patch = std::stoi(std::string{ version.substr(p2 + 1, version.size()) });
+    v.patch = std::stoi(std::string{ version.substr(p2 + 1) });
 
     return v;
 } catch (std::exception &e) {
     std::cerr << e.what() << " cause an exception" << std::endl;
     return std::nullopt;
 }
+
+} // namespace linglong::repo::detail
+
+using linglong::repo::detail::parseVersion;
+using linglong::repo::detail::Version;
 
 int migrateRef(OstreeRepo *repo, const MigrateRefData &data)
 {

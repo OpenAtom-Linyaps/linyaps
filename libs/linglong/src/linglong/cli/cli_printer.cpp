@@ -416,7 +416,7 @@ void CLIPrinter::printDepends(const std::vector<DependsNode> &trees)
 
 void CLIPrinter::printMessage(const std::string &message)
 {
-    std::cout << message << std::endl;
+    std::cerr << message << std::endl;
 }
 
 void CLIPrinter::finishProgress()

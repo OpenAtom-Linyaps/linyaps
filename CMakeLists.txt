@@ -506,6 +506,7 @@ pfl_add_libraries(
   cdi
   APPS
   ll-init
+  ll-dialog
   ll-builder
   ll-cli
   ll-package-manager

@@ -234,6 +234,93 @@ $defs:
             minified:
               description: Whether this layer file is minified or not.
               type: boolean
+  BuilderSourceLockResolved:
+    title: BuilderSourceLockResolved
+    description: resolved identity of a locked builder source
+    type: object
+    required: [hash]
+    properties:
+      hash:
+        type: string
+        description: "locked content identity: sha256:<digest> or git-commit:<commit SHA>"
+  BuilderProjectSource:
+    title: BuilderProjectSource
+    description: items of sources of builder project
+    type: object
+    required: [kind]
+    properties:
+      kind:
+        type: string
+        description: kind of source
+      url:
+        type: string
+        description: url of source
+      digest:
+        type: string
+        description: digest of source
+      name:
+        type: string
+        description: name of source
+      commit:
+        type: string
+        description: commit of source
+      version:
+        type: string
+        description: version of source
+      submodules:
+        type: boolean
+        description: whether to checkout submodules
+  BuilderSourceLockEntry:
+    title: BuilderSourceLockEntry
+    description: one source lock entry
+    type: object
+    required: [source, resolved]
+    properties:
+      source:
+        $ref: '#/$defs/BuilderProjectSource'
+      resolved:
+        $ref: '#/$defs/BuilderSourceLockResolved'
+  BuilderProjectLockDependency:
+    title: BuilderProjectLockDependency
+    description: requested and resolved builder dependency
+    type: object
+    required: [type, requested, resolved]
+    properties:
+      type:
+        type: string
+      requested:
+        type: string
+      resolved:
+        $ref: '#/$defs/BuilderProjectLockDependencyResolved'
+  BuilderProjectLockDependencyResolved:
+    title: BuilderProjectLockDependencyResolved
+    description: selected reference and modules of a builder dependency
+    type: object
+    required: [reference, modules]
+    properties:
+      reference:
+        type: string
+        description: "locked channel, package ID and exact version; architecture preserves the declaration or uses unknown when unspecified"
+      modules:
+        type: array
+        items:
+          type: string
+  BuilderProjectLock:
+    title: BuilderProjectLock
+    description: content lock for builder project sources and dependencies
+    type: object
+    required: [version, sources, dependencies]
+    properties:
+      version:
+        type: integer
+      sources:
+        type: array
+        items:
+          $ref: '#/$defs/BuilderSourceLockEntry'
+      dependencies:
+        type: array
+        items:
+          $ref: '#/$defs/BuilderProjectLockDependency'
   BuilderProject:
     title: BuilderProject
     description: Linglong project build file.
@@ -326,33 +413,7 @@ $defs:
         type: array
         description: sources of package
         items:
-          title: BuilderProjectSource
-          description: items of sources of builder project
-          type: object
-          required:
-            - kind
-          properties:
-            kind:
-              type: string
-              description: kind of source
-            url:
-              type: string
-              description: url of source
-            digest:
-              type: string
-              description: digest of source
-            name:
-              type: string
-              description: name of source
-            commit:
-              type: string
-              description: commit of source
-            version:
-              type: string
-              description: version of source
-            submodules:
-              type: boolean
-              description: whether to checkout submodules
+          $ref: '#/$defs/BuilderProjectSource'
       build:
         title: BuilderProjectBuildScript
         description: build script of builder project
@@ -836,7 +897,7 @@ $defs:
         description: default repo of package manager modify repo parameters
       repos:
         type: object
-        description: repos of of package manager modify repo
+        description: repos of package manager modify repo
         additionalProperties:
           type: string
   PackageManager1ModifyRepoResult:

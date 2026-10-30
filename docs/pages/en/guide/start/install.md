@@ -104,18 +104,9 @@ sudo apt install linglong-bin linglong-installer
 ### deepin 23
 
 ```sh
-echo "deb [trusted=yes] https://ci.deepin.com/repo/obs/linglong:/CI:/release/Deepin_23/ ./" | sudo tee /etc/apt/sources.list.d/linglong.list
+echo "deb [trusted=yes] https://ci.deepin.com/repo/obs/linglong:/CI:/release/Deepin_23.1/ ./" | sudo tee /etc/apt/sources.list.d/linglong.list
 sudo apt update
 sudo apt install linglong-bin linglong-installer
-```
-
-### Fedora 42
-
-```sh
-sudo dnf config-manager addrepo --from-repofile "https://ci.deepin.com/repo/obs/linglong:/CI:/release/Fedora_42/linglong%3ACI%3Arelease.repo"
-sudo sh -c "printf '\ngpgcheck=0\n' >> '/etc/yum.repos.d/linglong%3ACI%3Arelease.repo'"
-sudo dnf makecache --refresh
-sudo dnf install linglong-bin linyaps-web-store-installer
 ```
 
 ### Fedora 43
@@ -127,10 +118,25 @@ sudo dnf makecache --refresh
 sudo dnf install linglong-bin linyaps-web-store-installer
 ```
 
+### Fedora 44
+
+```sh
+sudo dnf config-manager addrepo --from-repofile "https://ci.deepin.com/repo/obs/linglong:/CI:/release/Fedora_44/linglong%3ACI%3Arelease.repo"
+sudo sh -c "printf '\ngpgcheck=0\n' >> '/etc/yum.repos.d/linglong%3ACI%3Arelease.repo'"
+sudo dnf makecache --refresh
+sudo dnf install linglong-bin linyaps-web-store-installer
+```
+
 ### Ubuntu 24.04
 
 ```sh
-echo "deb [trusted=yes] https://ci.deepin.com/repo/obs/linglong:/CI:/release/xUbuntu_24.04/ ./" | sudo tee /etc/apt/sources.list.d/linglong.list
+sudo rm -f /etc/apt/sources.list.d/linglong.list
+sudo tee /etc/apt/sources.list.d/linglong.sources <<'EOF'
+Types: deb
+URIs: https://ci.deepin.com/repo/obs/linglong:/CI:/release/Ubuntu_24.04/
+Suites: ./
+Trusted: yes
+EOF
 sudo apt update
 sudo apt install linglong-bin linglong-installer
 ```
@@ -196,7 +202,7 @@ sudo apt install linglong-bin linglong-installer
 ### Anolis OS 23.3
 
 ```sh
-sudo dnf config-manager --add-repo "https://ci.deepin.com/repo/obs/linglong:/CI:/release/AnolisOS_23.3/linglong%3ACI%3Arelease.repo"
+sudo dnf config-manager --add-repo "https://ci.deepin.com/repo/obs/linglong:/CI:/release/Anolis_23.3/linglong%3ACI%3Arelease.repo"
 sudo sh -c "printf '\ngpgcheck=0\n' >> '/etc/yum.repos.d/linglong%3ACI%3Arelease.repo'"
 sudo dnf makecache --refresh
 sudo dnf install linglong-bin linyaps-web-store-installer
@@ -205,7 +211,7 @@ sudo dnf install linglong-bin linyaps-web-store-installer
 ### Anolis OS 23.4
 
 ```sh
-sudo dnf config-manager --add-repo "https://ci.deepin.com/repo/obs/linglong:/CI:/release/AnolisOS_23.4/linglong%3ACI%3Arelease.repo"
+sudo dnf config-manager --add-repo "https://ci.deepin.com/repo/obs/linglong:/CI:/release/Anolis_23.4/linglong%3ACI%3Arelease.repo"
 sudo sh -c "printf '\ngpgcheck=0\n' >> '/etc/yum.repos.d/linglong%3ACI%3Arelease.repo'"
 sudo dnf makecache --refresh
 sudo dnf install linglong-bin linyaps-web-store-installer

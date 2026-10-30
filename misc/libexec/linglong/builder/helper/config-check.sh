@@ -1,13 +1,13 @@
 #!/bin/bash
 
-# SPDX-FileCopyrightText: 2023 - 2026 UnionTech Software Technology Co., Ltd.
+# SPDX-FileCopyrightText: 2023-2026 UnionTech Software Technology Co., Ltd.
 #
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
 #check app config file script
 #config file type: desktop|context-menu|dbus service| systemd user service
 
-if [ -z "${LINGLONG_APPID}" ]; then
+if [ -z "${LINGLONG_APPID:-}" ]; then
         echo "LINGLONG_APPID is not set."
         exit 255
 fi
@@ -56,10 +56,13 @@ fi
 
 for filePath in $(echo -e "$results"); do
         fileName=${filePath##*/}
-        ret=$(echo "$fileName" | grep "^${LINGLONG_APPID}")
-        if [ "$ret" == "" ]; then
-                invalidList+="$filePath\n"
-        fi
+        # Prefix match, not a regular expression: LINGLONG_APPID carries
+        # dots (org.deepin.foo); as a grep pattern those dots match any
+        # character, so orgXdeepinYfoo.desktop would be accepted.
+        case "$fileName" in
+        "${LINGLONG_APPID}"*) ;;
+        *) invalidList+="$filePath\n" ;;
+        esac
 done
 
 if [ "$invalidList" != "" ]; then

@@ -18,6 +18,8 @@
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/utils/error/error.h"
 
+#include <nlohmann/json.hpp>
+
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
@@ -324,6 +326,39 @@ TEST_F(RepoTest, exportAppEntriesDoesNotExportElfVerificationDataAgain)
     EXPECT_FALSE(fs::exists(tempDir.path() / "entries/share/deepin-elf-verify"));
 }
 
+TEST_F(RepoTest, exportAppEntriesExportsBinaryWrapperWithoutEntriesDir)
+{
+    TempDir tempDir;
+    auto config = api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 };
+    auto ostreeRepo = std::make_unique<MockOstreeRepo>(tempDir.path(), config);
+
+    const std::string commit = "no-entries-commit";
+    // Create the layer dir but no entries subtree: the white-listed entries export
+    // must early-return, but the appid binary wrapper must still be exported.
+    fs::create_directories(tempDir.path() / "layers" / commit);
+
+    api::types::v1::RepositoryCacheLayersItem item{
+        .commit = commit,
+        .info =
+          api::types::v1::PackageInfoV2{
+            .command = std::vector<std::string>{ "myapp" },
+            .id = "com.example.noentries",
+            .kind = "app",
+            .packageInfoV2Module = "binary",
+          },
+    };
+
+    auto result = ostreeRepo->exportAppEntries(tempDir.path() / "entries", item);
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+
+    // The wrapper is generated even though the layer has no entries directory.
+    auto binDir = tempDir.path() / "entries" / "bin";
+    EXPECT_TRUE(fs::exists(binDir / "com.example.noentries"));
+    EXPECT_TRUE(fs::is_symlink(binDir / "com.example.noentries"));
+    EXPECT_TRUE(
+      fs::exists(binDir / "apps" / "com.example.noentries" / "bin" / "com.example.noentries"));
+}
+
 TEST_F(RepoTest, moduleMergesUseBinaryInfo)
 {
     TempDir tempDir;
@@ -394,6 +429,90 @@ TEST_F(RepoTest, moduleMergesUseBinaryInfo)
     auto persistentMergedInfo = persistentMerged->info();
     ASSERT_TRUE(persistentMergedInfo.has_value()) << persistentMergedInfo.error().message();
     EXPECT_EQ(persistentMergedInfo->packageInfoV2Module, "binary");
+}
+
+TEST_F(RepoTest, moduleMergesKeepChannelsSeparate)
+{
+    for (const bool otherChannelHasMainModule : { false, true }) {
+        SCOPED_TRACE(otherChannelHasMainModule);
+        TempDir tempDir;
+        const auto repoRoot = tempDir.path() / "repo-root";
+        ASSERT_TRUE(fs::create_directories(repoRoot));
+        auto repo = OSTreeRepo::create(repoRoot, createRepoConfig());
+        ASSERT_TRUE(repo) << repo.error().message();
+
+        auto importModule = [&](const std::string &channel, const std::string &module) {
+            const auto name = channel + "-" + module;
+            const auto directory = tempDir.path() / name;
+            fs::create_directories(directory / "files");
+            const api::types::v1::PackageInfoV2 info{
+                .arch = { "x86_64" },
+                .channel = channel,
+                .id = "org.test.merge",
+                .kind = "app",
+                .packageInfoV2Module = module,
+                .version = "1.0.0",
+            };
+            std::ofstream(directory / "info.json") << nlohmann::json(info).dump();
+            std::ofstream(directory / "files" / name) << name;
+
+            auto imported = repo->get()->importLayerDir(package::LayerDir(directory));
+            ASSERT_TRUE(imported) << imported.error().message();
+        };
+
+        importModule("main", "binary");
+        importModule("main", "develop");
+        importModule("testing", "locale");
+        if (otherChannelHasMainModule) {
+            importModule("testing", "binary");
+            importModule("testing", "develop");
+        }
+
+        const auto mainRef = package::Reference::parse("main:org.test.merge/1.0.0/x86_64");
+        ASSERT_TRUE(mainRef);
+        fs::path mainMergedPath;
+        for (int merge = 0; merge < 2; ++merge) {
+            SCOPED_TRACE(merge);
+            auto merged = repo->get()->mergeModules();
+            ASSERT_TRUE(merged) << merged.error().message();
+
+            auto mainLayer = repo->get()->getMergedModuleDir(*mainRef, false);
+            ASSERT_TRUE(mainLayer) << mainLayer.error().message();
+            EXPECT_TRUE(fs::exists(mainLayer->path() / "files/main-binary"));
+            EXPECT_TRUE(fs::exists(mainLayer->path() / "files/main-develop"));
+            EXPECT_FALSE(fs::exists(mainLayer->path() / "files/testing-locale"));
+            EXPECT_FALSE(fs::exists(mainLayer->path() / "files/testing-binary"));
+            EXPECT_FALSE(fs::exists(mainLayer->path() / "files/testing-develop"));
+
+            auto mainInfo = mainLayer->info();
+            ASSERT_TRUE(mainInfo) << mainInfo.error().message();
+            EXPECT_EQ(mainInfo->channel, "main");
+            EXPECT_EQ(mainInfo->packageInfoV2Module, "binary");
+            if (merge == 0) {
+                mainMergedPath = mainLayer->path();
+            } else {
+                EXPECT_EQ(mainLayer->path(), mainMergedPath);
+            }
+
+            if (otherChannelHasMainModule) {
+                auto testingRef = package::Reference::parse("testing:org.test.merge/1.0.0/x86_64");
+                ASSERT_TRUE(testingRef);
+                auto testingLayer = repo->get()->getMergedModuleDir(*testingRef, false);
+                ASSERT_TRUE(testingLayer) << testingLayer.error().message();
+                EXPECT_NE(testingLayer->path(), mainLayer->path());
+                EXPECT_TRUE(fs::exists(testingLayer->path() / "files/testing-binary"));
+                EXPECT_TRUE(fs::exists(testingLayer->path() / "files/testing-develop"));
+                EXPECT_TRUE(fs::exists(testingLayer->path() / "files/testing-locale"));
+                EXPECT_FALSE(fs::exists(testingLayer->path() / "files/main-binary"));
+                EXPECT_FALSE(fs::exists(testingLayer->path() / "files/main-develop"));
+
+                auto testingInfo = testingLayer->info();
+                ASSERT_TRUE(testingInfo) << testingInfo.error().message();
+                EXPECT_EQ(testingInfo->channel, "testing");
+                EXPECT_EQ(testingInfo->packageInfoV2Module, "binary");
+            }
+        }
+    }
 }
 
 TEST_F(RepoTest, createPrefersRepoLocalConfigOverFallbackConfig)
@@ -1195,6 +1314,378 @@ TEST(OSTreeRepoTest, matchRemoteByPriority_UseHighestPriority)
 
 } // namespace
 
+namespace {
+
+TEST_F(RepoTest, exportAppBinariesCreatesDefaultAppidScript)
+{
+    TempDir tempDir;
+    auto config = api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 };
+    auto ostreeRepo = std::make_unique<MockOstreeRepo>(tempDir.path(), config);
+
+    api::types::v1::RepositoryCacheLayersItem item{
+        .commit = "bin-commit",
+        .info =
+          api::types::v1::PackageInfoV2{
+            .command = std::vector<std::string>{ "myapp" },
+            .id = "com.example.app",
+            .kind = "app",
+            .packageInfoV2Module = "binary",
+          },
+    };
+
+    auto entriesDir = tempDir.path() / "entries";
+    auto result = ostreeRepo->exportAppBinaries(entriesDir, item);
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+
+    auto binDir = entriesDir / "bin";
+    // A single script named after the appid is exported; nothing else.
+    EXPECT_TRUE(fs::exists(binDir / "com.example.app"));
+    EXPECT_FALSE(fs::exists(binDir / "mytool"));
+    // The entries/share dir referenced by the environment injection is ensured.
+    EXPECT_TRUE(fs::is_directory(entriesDir / "share"));
+
+    // Verify script content uses the full command array
+    std::ifstream defaultScript(binDir / "com.example.app");
+    std::string content((std::istreambuf_iterator<char>(defaultScript)),
+                        std::istreambuf_iterator<char>());
+    EXPECT_NE(content.find("exec ll-cli run 'com.example.app' -- 'myapp' \"$@\""),
+              std::string::npos);
+}
+
+TEST_F(RepoTest, exportAppBinariesExportsFullCommandArray)
+{
+    TempDir tempDir;
+    auto config = api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 };
+    auto ostreeRepo = std::make_unique<MockOstreeRepo>(tempDir.path(), config);
+
+    api::types::v1::RepositoryCacheLayersItem item{
+        .commit = "bin-commit",
+        .info =
+          api::types::v1::PackageInfoV2{
+            .command = std::vector<std::string>{ "myapp", "--no-gui", "--verbose" },
+            .id = "com.example.app",
+            .kind = "app",
+            .packageInfoV2Module = "binary",
+          },
+    };
+
+    auto entriesDir = tempDir.path() / "entries";
+    auto result = ostreeRepo->exportAppBinaries(entriesDir, item);
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+
+    auto binDir = entriesDir / "bin";
+    EXPECT_TRUE(fs::exists(binDir / "com.example.app"));
+
+    // Verify the entire command array is included in the script
+    std::ifstream defaultScript(binDir / "com.example.app");
+    std::string content((std::istreambuf_iterator<char>(defaultScript)),
+                        std::istreambuf_iterator<char>());
+    EXPECT_NE(
+      content.find("exec ll-cli run 'com.example.app' -- 'myapp' '--no-gui' '--verbose' \"$@\""),
+      std::string::npos);
+}
+
+TEST_F(RepoTest, exportAppBinariesSkipsWhenCommandEmpty)
+{
+    TempDir tempDir;
+    auto config = api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 };
+    auto ostreeRepo = std::make_unique<MockOstreeRepo>(tempDir.path(), config);
+
+    api::types::v1::RepositoryCacheLayersItem item{
+        .commit = "no-cmd-commit",
+        .info =
+          api::types::v1::PackageInfoV2{
+            .id = "com.example.nocmd",
+            .kind = "app",
+            .packageInfoV2Module = "binary",
+          },
+    };
+
+    auto entriesDir = tempDir.path() / "entries";
+    // A previous version of the layer exported a wrapper for this app; upgrading to
+    // a command-less layer must clean the stale wrapper up.
+    auto binDir = entriesDir / "bin";
+    auto appBinDir = binDir / "apps" / "com.example.nocmd" / "bin";
+    fs::create_directories(appBinDir);
+    std::ofstream(appBinDir / "com.example.nocmd")
+      << "#!/usr/bin/env sh\nexec ll-cli run com.example.nocmd -- 'myapp' \"$@\"\n";
+    fs::create_symlink("apps/com.example.nocmd/bin/com.example.nocmd",
+                       binDir / "com.example.nocmd");
+
+    auto result = ostreeRepo->exportAppBinaries(entriesDir, item);
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+
+    // No scripts should be created when command is empty, and the stale wrapper from a
+    // previous version must be removed along with its script directory.
+    EXPECT_FALSE(fs::exists(binDir / "com.example.nocmd"));
+    EXPECT_FALSE(fs::is_symlink(binDir / "com.example.nocmd"));
+    EXPECT_FALSE(fs::exists(appBinDir));
+}
+
+TEST_F(RepoTest, exportAppBinariesSkipsNonBinaryModule)
+{
+    TempDir tempDir;
+    auto config = api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 };
+    auto ostreeRepo = std::make_unique<MockOstreeRepo>(tempDir.path(), config);
+
+    api::types::v1::RepositoryCacheLayersItem item{
+        .commit = "develop-commit",
+        .info =
+          api::types::v1::PackageInfoV2{
+            .command = std::vector<std::string>{ "myapp" },
+            .id = "com.example.develop",
+            .kind = "app",
+            .packageInfoV2Module = "develop",
+          },
+    };
+
+    auto entriesDir = tempDir.path() / "entries";
+    auto result = ostreeRepo->exportAppBinaries(entriesDir, item);
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+
+    // The wrapper is owned by the binary module; non-binary modules must not create it.
+    EXPECT_FALSE(fs::exists(entriesDir / "bin" / "com.example.develop"));
+}
+
+TEST_F(RepoTest, exportAppBinariesIdempotentUpsert)
+{
+    TempDir tempDir;
+    auto config = api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 };
+    auto ostreeRepo = std::make_unique<MockOstreeRepo>(tempDir.path(), config);
+
+    auto entriesDir = tempDir.path() / "entries";
+    auto binDir = entriesDir / "bin";
+    const std::string scriptPath = (binDir / "com.example.upsert").string();
+
+    auto makeItem = [](const std::vector<std::string> &command) {
+        return api::types::v1::RepositoryCacheLayersItem{
+            .commit = "upsert-commit",
+            .info =
+              api::types::v1::PackageInfoV2{
+                .command = command,
+                .id = "com.example.upsert",
+                .kind = "app",
+                .packageInfoV2Module = "binary",
+              },
+        };
+    };
+
+    // First export creates the wrapper
+    auto result = ostreeRepo->exportAppBinaries(entriesDir, makeItem({ "myapp" }));
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+    ASSERT_TRUE(fs::exists(scriptPath));
+
+    // Same command again: idempotent no-op, content unchanged
+    result = ostreeRepo->exportAppBinaries(entriesDir, makeItem({ "myapp" }));
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+    {
+        std::ifstream script(scriptPath);
+        std::string content((std::istreambuf_iterator<char>(script)),
+                            std::istreambuf_iterator<char>());
+        EXPECT_NE(content.find("exec ll-cli run 'com.example.upsert' -- 'myapp' \"$@\""),
+                  std::string::npos);
+    }
+
+    // Changed command: the wrapper is overwritten to reflect the new command
+    result = ostreeRepo->exportAppBinaries(entriesDir, makeItem({ "newcmd", "--flag" }));
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+    {
+        std::ifstream script(scriptPath);
+        std::string content((std::istreambuf_iterator<char>(script)),
+                            std::istreambuf_iterator<char>());
+        EXPECT_NE(content.find("exec ll-cli run 'com.example.upsert' -- 'newcmd' '--flag' \"$@\""),
+                  std::string::npos);
+        // the old command must be gone
+        EXPECT_EQ(content.find("'myapp'"), std::string::npos);
+    }
+}
+
+TEST_F(RepoTest, unexportAppEntriesRemovesBinaryScripts)
+{
+    TempDir tempDir;
+    auto config = api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 };
+    auto ostreeRepo = std::make_unique<MockOstreeRepo>(tempDir.path(), config);
+
+    const std::string commit = "unexport-bin-commit";
+    auto layerDir = tempDir.path() / "layers" / commit;
+    fs::create_directories(layerDir);
+
+    // Write info.json (all required fields for PackageInfoV2) and a cache with a single
+    // layer for the app. Unexporting it is the last layer removal.
+    nlohmann::json infoJson = {
+        { "arch", nlohmann::json::array({ "x86_64" }) },
+        { "base", "org.deepin.base/23.0.0" },
+        { "channel", "main" },
+        { "command", nlohmann::json::array({ "myapp" }) },
+        { "id", "com.example.unexport" },
+        { "kind", "app" },
+        { "module", "binary" },
+        { "name", "Test Unexport" },
+        { "schema_version", "2" },
+        { "size", 0 },
+        { "version", "1.0.0" },
+    };
+    std::ofstream(layerDir / "info.json") << infoJson.dump();
+
+    nlohmann::json layer{ { "commit", commit }, { "repo", "stable" }, { "info", infoJson } };
+    nlohmann::json cache;
+    cache["config"] = nlohmann::json::object(
+      { { "defaultRepo", "" }, { "repos", nlohmann::json::array() }, { "version", 2 } });
+    cache["layers"] = nlohmann::json::array({ layer });
+    cache["ll-version"] = "1.0.0";
+    cache["version"] = "2";
+    std::ofstream(tempDir.path() / "states.json") << cache.dump();
+    ASSERT_TRUE(ostreeRepo->initCache(false).has_value());
+
+    auto entriesDir = tempDir.path() / "entries";
+    auto binDir = entriesDir / "bin";
+    auto appBinDir = binDir / "apps" / "com.example.unexport" / "bin";
+    fs::create_directories(appBinDir);
+
+    // Create the appid-named wrapper script and its symlink in entries/bin/
+    std::ofstream(appBinDir / "com.example.unexport")
+      << "#!/usr/bin/env sh\nexec ll-cli run com.example.unexport -- 'myapp' \"$@\"\n";
+    fs::create_symlink("apps/com.example.unexport/bin/com.example.unexport",
+                       binDir / "com.example.unexport");
+
+    EXPECT_TRUE(fs::exists(binDir / "com.example.unexport"));
+    EXPECT_TRUE(fs::is_symlink(binDir / "com.example.unexport"));
+    EXPECT_TRUE(fs::exists(appBinDir / "com.example.unexport"));
+
+    auto result = ostreeRepo->unexportAppEntries(entriesDir, { layerDir });
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+
+    // The wrapper symlink and the per-app script directory are removed.
+    EXPECT_FALSE(fs::exists(binDir / "com.example.unexport"));
+    EXPECT_FALSE(fs::is_symlink(binDir / "com.example.unexport"));
+    EXPECT_FALSE(fs::exists(appBinDir));
+}
+
+TEST_F(RepoTest, unexportKeepsWrapperWhenAnotherLayerOfSameAppRemains)
+{
+    TempDir tempDir;
+    auto config = api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 };
+    auto ostreeRepo = std::make_unique<MockOstreeRepo>(tempDir.path(), config);
+
+    // Two layers of the same app id (e.g. an upgrade from v1 to v2).
+    const std::string oldCommit = "unexport-old-commit";
+    const std::string newCommit = "unexport-new-commit";
+    auto oldLayerDir = tempDir.path() / "layers" / oldCommit;
+    auto newLayerDir = tempDir.path() / "layers" / newCommit;
+    fs::create_directories(oldLayerDir);
+    fs::create_directories(newLayerDir);
+
+    nlohmann::json infoJson = {
+        { "arch", nlohmann::json::array({ "x86_64" }) },
+        { "base", "org.deepin.base/23.0.0" },
+        { "channel", "main" },
+        { "command", nlohmann::json::array({ "newapp" }) },
+        { "id", "com.example.upgrade" },
+        { "kind", "app" },
+        { "module", "binary" },
+        { "name", "Test Upgrade" },
+        { "schema_version", "2" },
+        { "size", 0 },
+        { "version", "2.0.0" },
+    };
+    std::ofstream(oldLayerDir / "info.json") << infoJson.dump();
+
+    nlohmann::json oldLayer{ { "commit", oldCommit }, { "repo", "stable" }, { "info", infoJson } };
+    nlohmann::json newLayer{ { "commit", newCommit }, { "repo", "stable" }, { "info", infoJson } };
+    nlohmann::json cache;
+    cache["config"] = nlohmann::json::object(
+      { { "defaultRepo", "" }, { "repos", nlohmann::json::array() }, { "version", 2 } });
+    cache["layers"] = nlohmann::json::array({ oldLayer, newLayer });
+    cache["ll-version"] = "1.0.0";
+    cache["version"] = "2";
+    std::ofstream(tempDir.path() / "states.json") << cache.dump();
+    ASSERT_TRUE(ostreeRepo->initCache(false).has_value());
+
+    auto entriesDir = tempDir.path() / "entries";
+    auto binDir = entriesDir / "bin";
+    auto appBinDir = binDir / "apps" / "com.example.upgrade" / "bin";
+    fs::create_directories(appBinDir);
+    std::ofstream(appBinDir / "com.example.upgrade")
+      << "#!/usr/bin/env sh\nexec ll-cli run com.example.upgrade -- 'newapp' \"$@\"\n";
+    fs::create_symlink("apps/com.example.upgrade/bin/com.example.upgrade",
+                       binDir / "com.example.upgrade");
+
+    // Unexport only the old layer, as an upgrade does after apply(new).
+    auto result = ostreeRepo->unexportAppEntries(entriesDir, { oldLayerDir });
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+
+    // The wrapper must be kept because the new version still exists.
+    EXPECT_TRUE(fs::exists(binDir / "com.example.upgrade"));
+    EXPECT_TRUE(fs::is_symlink(binDir / "com.example.upgrade"));
+    EXPECT_TRUE(fs::exists(appBinDir / "com.example.upgrade"));
+}
+
+TEST_F(RepoTest, unexportRemovesWrapperWhenAllLayersOfAppRemoved)
+{
+    TempDir tempDir;
+    auto config = api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 };
+    auto ostreeRepo = std::make_unique<MockOstreeRepo>(tempDir.path(), config);
+
+    // Two modules (binary + develop) of one app, both removed in the same unexport batch.
+    const std::string binCommit = "unexport-bin-module";
+    const std::string devCommit = "unexport-develop-module";
+    auto binLayerDir = tempDir.path() / "layers" / binCommit;
+    auto devLayerDir = tempDir.path() / "layers" / devCommit;
+    fs::create_directories(binLayerDir);
+    fs::create_directories(devLayerDir);
+
+    auto makeInfo = [](const std::string &module) {
+        return nlohmann::json{
+            { "arch", nlohmann::json::array({ "x86_64" }) },
+            { "base", "org.deepin.base/23.0.0" },
+            { "channel", "main" },
+            { "command", nlohmann::json::array({ "myapp" }) },
+            { "id", "com.example.modules" },
+            { "kind", "app" },
+            { "module", module },
+            { "name", "Test Modules" },
+            { "schema_version", "2" },
+            { "size", 0 },
+            { "version", "1.0.0" },
+        };
+    };
+    std::ofstream(binLayerDir / "info.json") << makeInfo("binary").dump();
+    std::ofstream(devLayerDir / "info.json") << makeInfo("develop").dump();
+
+    nlohmann::json binLayer{ { "commit", binCommit },
+                             { "repo", "stable" },
+                             { "info", makeInfo("binary") } };
+    nlohmann::json devLayer{ { "commit", devCommit },
+                             { "repo", "stable" },
+                             { "info", makeInfo("develop") } };
+    nlohmann::json cache;
+    cache["config"] = nlohmann::json::object(
+      { { "defaultRepo", "" }, { "repos", nlohmann::json::array() }, { "version", 2 } });
+    cache["layers"] = nlohmann::json::array({ binLayer, devLayer });
+    cache["ll-version"] = "1.0.0";
+    cache["version"] = "2";
+    std::ofstream(tempDir.path() / "states.json") << cache.dump();
+    ASSERT_TRUE(ostreeRepo->initCache(false).has_value());
+
+    auto entriesDir = tempDir.path() / "entries";
+    auto binDir = entriesDir / "bin";
+    auto appBinDir = binDir / "apps" / "com.example.modules" / "bin";
+    fs::create_directories(appBinDir);
+    std::ofstream(appBinDir / "com.example.modules")
+      << "#!/usr/bin/env sh\nexec ll-cli run com.example.modules -- 'myapp' \"$@\"\n";
+    fs::create_symlink("apps/com.example.modules/bin/com.example.modules",
+                       binDir / "com.example.modules");
+
+    // Both layers are removed together: this is the last layer of the app.
+    auto result = ostreeRepo->unexportAppEntries(entriesDir, { binLayerDir, devLayerDir });
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+
+    EXPECT_FALSE(fs::exists(binDir / "com.example.modules"));
+    EXPECT_FALSE(fs::is_symlink(binDir / "com.example.modules"));
+    EXPECT_FALSE(fs::exists(appBinDir));
+}
+
+} // namespace
 } // namespace
 
 } // namespace linglong::repo::test

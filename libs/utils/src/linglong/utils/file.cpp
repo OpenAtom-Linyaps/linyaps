@@ -189,40 +189,86 @@ calculateDirectorySize(const std::filesystem::path &dir) noexcept
     return size;
 }
 
-// recursive copy src to dest with matcher
-// symlinks are preserved
-void copyDirectory(const std::filesystem::path &src,
-                   const std::filesystem::path &dest,
-                   std::function<bool(const std::filesystem::path &)> matcher,
-                   std::filesystem::copy_options options)
+linglong::utils::error::Result<void>
+copyDirectory(const std::filesystem::path &src,
+              const std::filesystem::path &dest,
+              std::function<bool(const std::filesystem::path &)> matcher)
 {
+    LINGLONG_TRACE("copy directory");
+
     std::error_code ec;
-    for (const auto &entry : std::filesystem::recursive_directory_iterator(
-           src,
-           std::filesystem::directory_options::skip_permission_denied,
-           ec)) {
-        const auto &fromPath = entry.path();
-        auto relativePath = fromPath.lexically_relative(src);
+    auto iterator = std::filesystem::recursive_directory_iterator(src, ec);
+    if (ec) {
+        return LINGLONG_ERR(fmt::format("failed to iterate directory {}", src), ec);
+    }
 
-        if (matcher && !matcher(relativePath)) {
-            continue;
-        }
-
-        const auto toPath = dest / relativePath;
-        LogD("{} -> {}", fromPath, toPath);
-
-        std::filesystem::create_directories(toPath.parent_path(), ec);
+    if (!dest.parent_path().empty()) {
+        std::filesystem::create_directories(dest.parent_path(), ec);
         if (ec) {
-            LogW("failed to create directory {}: {}", toPath.parent_path(), ec.message());
-            continue;
-        }
-        // preserve symlinks
-        std::filesystem::copy(fromPath, toPath, options, ec);
-        if (ec) {
-            LogW("failed to copy {} to {}: {}", fromPath, toPath, ec.message());
-            continue;
+            return LINGLONG_ERR(fmt::format("failed to create directory {}", dest.parent_path()),
+                                ec);
         }
     }
+    std::filesystem::create_directory(dest, src, ec);
+    if (ec) {
+        return LINGLONG_ERR(fmt::format("failed to create directory {}", dest), ec);
+    }
+
+    const auto end = std::filesystem::recursive_directory_iterator{};
+    while (iterator != end) {
+        const auto &fromPath = iterator->path();
+        const auto status = iterator->symlink_status(ec);
+        if (ec) {
+            return LINGLONG_ERR(fmt::format("failed to inspect source entry {}", fromPath), ec);
+        }
+        const auto relativePath = fromPath.lexically_relative(src);
+        if ((!matcher || matcher(relativePath))
+            && (std::filesystem::is_directory(status) || std::filesystem::is_regular_file(status)
+                || std::filesystem::is_symlink(status))) {
+            const auto toPath = dest / relativePath;
+            LogD("{} -> {}", fromPath, toPath);
+            std::filesystem::create_directories(toPath.parent_path(), ec);
+            if (ec) {
+                return LINGLONG_ERR(
+                  fmt::format("failed to create directory {}", toPath.parent_path()),
+                  ec);
+            }
+
+            if (std::filesystem::is_directory(status)) {
+                std::filesystem::create_directory(toPath, fromPath, ec);
+            } else {
+                // Inspect the link itself so dangling destination links are also kept.
+                const auto targetStatus = std::filesystem::symlink_status(toPath, ec);
+                if (ec == std::errc::no_such_file_or_directory) {
+                    ec.clear();
+                }
+                if (ec) {
+                    return LINGLONG_ERR(fmt::format("failed to inspect destination {}", toPath),
+                                        ec);
+                }
+                if (!std::filesystem::exists(targetStatus)) {
+                    if (std::filesystem::is_regular_file(status)) {
+                        std::filesystem::copy_file(fromPath,
+                                                   toPath,
+                                                   std::filesystem::copy_options::skip_existing,
+                                                   ec);
+                    } else if (std::filesystem::is_symlink(status)) {
+                        std::filesystem::copy_symlink(fromPath, toPath, ec);
+                    }
+                }
+            }
+            if (ec) {
+                return LINGLONG_ERR(fmt::format("failed to copy {} to {}", fromPath, toPath), ec);
+            }
+        }
+
+        iterator.increment(ec);
+        if (ec) {
+            return LINGLONG_ERR(fmt::format("failed to iterate directory {}", src), ec);
+        }
+    }
+
+    return LINGLONG_OK;
 }
 
 linglong::utils::error::Result<void>

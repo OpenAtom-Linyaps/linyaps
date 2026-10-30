@@ -25,6 +25,7 @@ configure_files(
   libexec/linglong/font-cache-generator
   libexec/linglong/ld-cache-generator
   lib/linglong/container/README.md
+  lib/linglong/generate-path.sh
   lib/linglong/generate-xdg-data-dirs.sh
   lib/systemd/system-environment-generators/61-linglong
   lib/systemd/system/org.deepin.linglong.PackageManager.service
@@ -42,13 +43,15 @@ configure_files(
   share/dbus-1/system.d/org.deepin.linglong.PackageManager1.conf
   share/dbus-1/system-services/org.deepin.linglong.PackageManager1.service
   share/linglong/export-dirs.json
-  share/linglong/builder/templates/example.yaml
   share/linglong/builder/uab/blacklist
   share/linglong/config.yaml
   share/mime/packages/vnd.linyaps.uab.xml
   share/polkit-1/actions/org.deepin.linglong.PackageManager1.policy
   share/icons/linyaps.svg
   share/applications/linyaps.desktop)
+
+configure_file(share/linglong/builder/templates/example.yaml
+               share/linglong/builder/templates/example.yaml COPYONLY)
 
 # bash-completion
 set(BASH_COMPLETIONS_DIR ${CMAKE_INSTALL_DATADIR}/bash-completion)
@@ -100,7 +103,8 @@ install(
 
 # linglong
 install(
-  PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/lib/linglong/generate-xdg-data-dirs.sh
+  PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/lib/linglong/generate-path.sh
+           ${CMAKE_CURRENT_BINARY_DIR}/lib/linglong/generate-xdg-data-dirs.sh
   DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/linglong)
 
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/lib/linglong/container/README.md
@@ -115,8 +119,8 @@ install(FILES ${CMAKE_CURRENT_LIST_DIR}/share/linglong/export-dirs.json
         DESTINATION ${CMAKE_INSTALL_PREFIX}/share/linglong)
 
 # builder templates
-install(DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/share/linglong/builder/templates/
-        DESTINATION ${CMAKE_INSTALL_PREFIX}/share/linglong/builder/templates)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/share/linglong/builder/templates/example.yaml
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/linglong/builder/templates)
 install(DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/share/linglong/builder/uab/
         DESTINATION ${CMAKE_INSTALL_PREFIX}/share/linglong/builder/uab)
 
@@ -137,6 +141,14 @@ install(
   PROGRAMS
     ${CMAKE_CURRENT_BINARY_DIR}/lib/systemd/system-environment-generators/61-linglong
   DESTINATION ${SYSTEMD_SYSTEM_GENERATOR_PATH})
+
+set(SYSTEMD_USER_GENERATOR_PATH
+    ${CMAKE_INSTALL_PREFIX}/lib/systemd/user-environment-generators)
+
+install(
+  PROGRAMS
+    ${CMAKE_CURRENT_BINARY_DIR}/lib/systemd/system-environment-generators/61-linglong
+  DESTINATION ${SYSTEMD_USER_GENERATOR_PATH})
 
 install(
   PROGRAMS
@@ -162,7 +174,7 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/share/applications/linyaps.desktop
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/share/icons/linyaps.svg
         DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps)
 
-# set linglong XDG_DATA_DIRS environment
+# Set PATH and XDG_DATA_DIRS for login shells and graphical sessions.
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/script/linglong.sh
         DESTINATION ${CMAKE_INSTALL_FULL_SYSCONFDIR}/profile.d)
 
@@ -170,6 +182,17 @@ install(
   FILES ${CMAKE_CURRENT_BINARY_DIR}/script/linglong.sh
   DESTINATION ${CMAKE_INSTALL_FULL_SYSCONFDIR}/X11/Xsession.d/
   RENAME 21linglong)
+
+if(ENABLE_TESTING)
+  add_test(NAME linglong_config_check
+           COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/tests/config_check_test.sh)
+  add_test(
+    NAME linglong_environment
+    COMMAND
+      ${CMAKE_COMMAND} -DSOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}
+      -DTEST_DIR=${CMAKE_CURRENT_BINARY_DIR}/tests/environment
+      -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/environment_test.cmake)
+endif()
 
 # polkit actions
 install(

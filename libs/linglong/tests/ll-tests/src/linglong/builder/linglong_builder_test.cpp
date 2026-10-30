@@ -226,3 +226,35 @@ TEST(LinglongBuilder, CleanWithPermissionIssue)
     ASSERT_TRUE(result.has_value()) << result.error().message();
     EXPECT_FALSE(fs::exists(linglongDir));
 }
+
+TEST(LinglongBuilder, CleanWithStatError)
+{
+    if (geteuid() == 0) {
+        GTEST_SKIP() << "root bypasses the parent directory search permission bits";
+    }
+
+    TempDir workingDir;
+
+    linglong::builder::BuilderMock builder(workingDir.path());
+
+    namespace fs = std::filesystem;
+    auto linglongDir = workingDir.path() / "linglong";
+    fs::create_directories(linglongDir);
+
+    // Strip every bit from the parent so the exists() query itself fails with EACCES
+    // instead of reporting "directory absent".
+    fs::permissions(workingDir.path(), fs::perms::none, fs::perm_options::replace);
+
+    auto result = builder.cleanBuildArtifacts();
+
+    // Restore access so TempDir can clean up behind us.
+    std::error_code restoreEc;
+    fs::permissions(workingDir.path(),
+                    fs::perms::owner_all,
+                    fs::perm_options::replace,
+                    restoreEc);
+
+    ASSERT_FALSE(result.has_value());
+    EXPECT_NE(result.error().message().find(linglongDir.string()), std::string::npos)
+      << result.error().message();
+}

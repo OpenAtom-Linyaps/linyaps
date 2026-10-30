@@ -6,6 +6,11 @@
 
 set -euo pipefail
 
+command -v eu-strip > /dev/null || {
+    echo 'symbols-strip test requires eu-strip from elfutils' >&2
+    exit 1
+}
+
 helper="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../libexec/linglong/builder/helper/symbols-strip.sh"
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT

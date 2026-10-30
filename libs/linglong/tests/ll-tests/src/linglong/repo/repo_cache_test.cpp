@@ -194,6 +194,28 @@ TEST_F(RepoCacheTest, QueryUsesEachFilter)
     EXPECT_EQ(notDeleted.size(), 3);
 }
 
+TEST_F(RepoCacheTest, QueryByIdExcludesDeletedLayer)
+{
+    auto cacheFile = tempDir.path() / "states.json";
+    RepoCache cache(cacheFile);
+
+    // simulate the lazy-uninstall scenario: old version kept as deleted=true,
+    // new version is the live install (same id, two versions)
+    EXPECT_TRUE(
+      cache.addLayerItem(createLayerItem("c-old", "app.editor", "1.0.0", true)).has_value());
+    EXPECT_TRUE(cache.addLayerItem(createLayerItem("c-new", "app.editor", "2.0.0")).has_value());
+
+    // without the deleted filter, both versions are returned (the pre-fix behavior)
+    auto all = cache.queryLayerItem(repoCacheQuery{ .id = "app.editor" });
+    ASSERT_EQ(all.size(), 2);
+
+    // the uninstall entry query explicitly excludes deleted layers
+    auto active = cache.queryLayerItem(repoCacheQuery{ .id = "app.editor", .deleted = false });
+    ASSERT_EQ(active.size(), 1);
+    EXPECT_EQ(active.front().commit, "c-new");
+    EXPECT_EQ(active.front().info.version, "2.0.0");
+}
+
 TEST_F(RepoCacheTest, UpdateMergedItemsPersists)
 {
     auto cacheFile = tempDir.path() / "states.json";

@@ -7,6 +7,7 @@
 #pragma once
 
 #include "linglong/api/types/v1/BuilderProject.hpp"
+#include "linglong/api/types/v1/BuilderProjectLock.hpp"
 #include "linglong/api/types/v1/ContainerProcessStateInfo.hpp"
 #include "linglong/api/types/v1/ExtensionDefine.hpp"
 #include "linglong/api/types/v1/Mount.hpp"
@@ -66,7 +67,8 @@ public:
                                        const ResolveOptions &opts = ResolveOptions{});
 
     utils::error::Result<void> resolve(const api::types::v1::BuilderProject &target,
-                                       const std::filesystem::path &buildOutput);
+                                       const std::filesystem::path &buildOutput,
+                                       const api::types::v1::BuilderProjectLock &lock);
 
     utils::error::Result<void> resolve(const api::types::v1::RunContextConfig &config);
 
@@ -119,8 +121,11 @@ protected:
       -> utils::error::Result<utils::OverlayMode>;
 
 private:
-    utils::error::Result<void> resolveLayer(bool depsExcludeDev,
-                                            const std::vector<std::string> &appModules);
+    utils::error::Result<void>
+    resolveLayer(bool depsExcludeDev,
+                 const std::vector<std::string> &appModules,
+                 const std::optional<std::vector<std::string>> &baseModules = std::nullopt,
+                 const std::optional<std::vector<std::string>> &runtimeModules = std::nullopt);
     utils::error::Result<void> resolveLayerExtensions(
       RuntimeLayer &layer,
       const std::vector<api::types::v1::ExtensionDefine> &externalExtensionDefs);

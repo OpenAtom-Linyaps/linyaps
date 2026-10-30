@@ -28,6 +28,9 @@ TEST(Repo, GetRepoMinPriority)
 {
     RepoConfigV2 cfg;
 
+    // empty repos must not dereference end()
+    EXPECT_EQ(getRepoMinPriority(cfg), 0);
+
     cfg.repos = { { std::nullopt, false, "repo1", 100, "http://example.com/repo1" } };
     EXPECT_EQ(getRepoMinPriority(cfg), 100);
 
@@ -50,6 +53,9 @@ TEST(Repo, GetRepoMinPriority)
 TEST(Repo, GetRepoMaxPriority)
 {
     RepoConfigV2 cfg;
+
+    // empty repos must not dereference end()
+    EXPECT_EQ(getRepoMaxPriority(cfg), 0);
 
     cfg.repos = { { std::nullopt, false, "repo1", 100, "http://example.com/repo1" } };
     EXPECT_EQ(getRepoMaxPriority(cfg), 100);

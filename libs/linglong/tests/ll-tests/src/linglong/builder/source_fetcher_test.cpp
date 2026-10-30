@@ -8,6 +8,7 @@
 #include "linglong/utils/cmd.h"
 #include "linglong/utils/env.h"
 #include "linglong/utils/error/error.h"
+#include "linglong/utils/file.h"
 #include "linglong/utils/filelock.h"
 #include "linglong/utils/unique_fd.h"
 
@@ -1002,6 +1003,66 @@ TEST_F(SourceFetcherTest, MaterializesCachedArchive)
     EXPECT_TRUE(
       std::filesystem::is_regular_file(temporary.path() / "destination/source/source.txt", ec));
     EXPECT_FALSE(ec);
+}
+
+TEST_F(SourceFetcherTest, MaterializesCachedZipArchive)
+{
+    if (!utils::Cmd("unzip").exists()) {
+        GTEST_SKIP() << "unzip is not available";
+    }
+    TempDir temporary;
+    const auto content = temporary.path() / "content";
+    std::filesystem::create_directories(content);
+    std::ofstream(content / "source.txt") << "ZIP source";
+    const auto artifact = temporary.path() / "source.zip";
+    auto archived = utils::Cmd("cmake").exec({ "-E",
+                                               "chdir",
+                                               content.string(),
+                                               "cmake",
+                                               "-E",
+                                               "tar",
+                                               "cf",
+                                               artifact.string(),
+                                               "--format=zip",
+                                               "--",
+                                               "source.txt" });
+    ASSERT_TRUE(archived) << archived.error().message();
+    auto digest = fileHash(artifact);
+    ASSERT_TRUE(digest) << digest.error().message();
+
+    api::types::v1::BuilderProjectSource source;
+    source.kind = "archive";
+    source.url = "https://example.com/source.zip";
+    source.name = "source";
+    const auto cache = temporary.path() / "cache";
+    const auto destination = temporary.path() / "destination";
+    ASSERT_TRUE(prepareSourceDirectories(cache, { destination }));
+    const auto cached = SourceCacheLayout(cache).object("archive", *digest);
+    std::filesystem::create_directories(cached.parent_path());
+    std::filesystem::copy_file(artifact, cached);
+
+    SourceFetcher fetcher(lockedRequest(source, *digest), SourceCacheLayout(cache));
+    auto fetched = fetcher.fetch(destination, true);
+    ASSERT_TRUE(fetched) << fetched.error().message();
+    EXPECT_EQ(fetched->hash, *digest);
+    auto extracted = utils::readFile(destination / "source/source.txt");
+    ASSERT_TRUE(extracted) << extracted.error().message();
+    EXPECT_EQ(*extracted, "ZIP source");
+
+    // A broken ZIP with a valid cache digest must not replace extracted sources.
+    std::ofstream(artifact, std::ios::binary | std::ios::trunc) << "PK\003\004broken ZIP";
+    digest = fileHash(artifact);
+    ASSERT_TRUE(digest) << digest.error().message();
+    const auto broken = SourceCacheLayout(cache).object("archive", *digest);
+    std::filesystem::copy_file(artifact, broken);
+    SourceFetcher brokenFetcher(lockedRequest(source, *digest), SourceCacheLayout(cache));
+    EXPECT_FALSE(brokenFetcher.fetch(destination, true));
+    extracted = utils::readFile(destination / "source/source.txt");
+    ASSERT_TRUE(extracted) << extracted.error().message();
+    EXPECT_EQ(*extracted, "ZIP source");
+    EXPECT_EQ(std::distance(std::filesystem::directory_iterator(destination),
+                            std::filesystem::directory_iterator{}),
+              1);
 }
 
 // 测试无效的source类型

@@ -463,7 +463,14 @@ def ensure_session_bus_env():
 
 
 def main():
-    parser = argparse.ArgumentParser(description="玲珑冒烟测试")
+    parser = argparse.ArgumentParser(
+        description="玲珑冒烟测试",
+        epilog=(
+            "Environment: SUDO_FLAGS controls the options passed to sudo "
+            "(default: -A, e.g. SUDO_FLAGS=-n for non-interactive CI, "
+            "SUDO_FLAGS='' to disable all sudo options)."
+        ),
+    )
     parser.add_argument(
         "--dated", action="store_true", help="Append timestamp to output filename"
     )

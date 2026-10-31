@@ -91,7 +91,7 @@ REPO_CONFIG_PATH = Path("/var/lib/linglong/config.yaml")
 
 # ── report ──
 RESULTS_FILE = os.path.join(os.getcwd(), "test-results.json")
-from .executor import SUDO_FLAGS, CommandExecutor
+from .executor import sudo_argv, CommandExecutor
 from .reporter import generate_report
 from .models import RepoState, StepResult, StepSkipped
 
@@ -4233,11 +4233,20 @@ class SmokeTest:
         才把计数写回 .gcda，SIGKILL 会丢掉这个进程的整份计数。
         """
         cmd = [LL_CLI, *args]
+        # 与 CommandExecutor 共用同一套 SUDO_FLAGS 解析：交互式步骤也必须
+        # 遵守同一个配置，否则同一轮冒烟里 executor 用 -n、PTY 用 -A。
+        pty_env = os.environ.copy()
+        if env:
+            for k, v in env.items():
+                if v is None:
+                    pty_env.pop(k, None)
+                else:
+                    pty_env[k] = v
         if sudo:
-            cmd = ["sudo", *SUDO_FLAGS.split(), *cmd]
+            cmd = sudo_argv(cmd, pty_env)
         pid, fd = pty.fork()
         if pid == 0:
-            run_env = os.environ.copy()
+            run_env = pty_env.copy()
             # 非 sudo 的 ll-cli 走当前用户的 prefix（见 executor.py 的说明）；
             # 提权后进程身份是 root，必须换成 root 的 prefix，
             # 否则两边争抢同一份 .gcda（权限不对时 libgcov 直接丢掉整份计数）。
@@ -4248,12 +4257,6 @@ class SmokeTest:
                 run_env.setdefault("GCOV_PREFIX", "/var/tmp/linglong-cov-user")
             run_env["GCOV_PREFIX_STRIP"] = "0"
             run_env.setdefault("DISPLAY", ":0")
-            if env:
-                for k, v in env.items():
-                    if v is None:
-                        run_env.pop(k, None)
-                    else:
-                        run_env[k] = v
             try:
                 os.execvpe(cmd[0], cmd, run_env)
             finally:
@@ -6809,7 +6812,14 @@ def ensure_session_bus_env():
 
 
 def main():
-    parser = argparse.ArgumentParser(description="玲珑冒烟测试")
+    parser = argparse.ArgumentParser(
+        description="玲珑冒烟测试",
+        epilog=(
+            "Environment: SUDO_FLAGS controls the options passed to sudo "
+            "(default: -A, e.g. SUDO_FLAGS=-n for non-interactive CI, "
+            "SUDO_FLAGS='' to disable all sudo options)."
+        ),
+    )
     parser.add_argument(
         "--dated", action="store_true", help="Append timestamp to output filename"
     )

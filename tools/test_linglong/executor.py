@@ -17,6 +17,23 @@ from typing import Optional
 
 SUDO_FLAGS = "-A"
 
+
+def sudo_argv(argv: list[str], env: Optional[dict] = None) -> list[str]:
+    """在 argv 前面加上 sudo，并按 SUDO_FLAGS 生成 sudo 自身的参数。
+
+    env 必须是"最终会传给子进程的完整环境"：未设置 SUDO_FLAGS 时回退到
+    模块默认值 -A，显式设置为空字符串表示不附加任何参数。交互式 UI 与
+    普通冒烟步骤都走这里，避免两条路径各自解析出不同的 sudo 参数。
+    """
+    source = os.environ if env is None else env
+    flags = source.get("SUDO_FLAGS", SUDO_FLAGS)
+    try:
+        tokens = shlex.split(flags) if flags else []
+    except ValueError as e:
+        raise RuntimeError(f"invalid SUDO_FLAGS value {flags!r}: {e}") from e
+    return ["sudo", *tokens, *argv]
+
+
 class CommandExecutor:
     """命令执行器，封装 subprocess.run 的调用细节。"""
 
@@ -59,9 +76,9 @@ class CommandExecutor:
             run_env.update(env)
         if sudo:
             # 允许通过 SUDO_FLAGS 环境变量覆盖默认的 -A（如 CI 环境的 -n），
-            # 显式设置为空字符串表示不附加任何 sudo 参数。
-            flags = os.environ.get("SUDO_FLAGS", SUDO_FLAGS)
-            full_cmd = ["sudo"] + (shlex.split(flags) if flags else []) + full_cmd
+            # 显式设置为空字符串表示不附加任何 sudo 参数。读取已合并的
+            # run_env，使 env= 传入的 SUDO_FLAGS 与进程级设置一致生效。
+            full_cmd = sudo_argv(full_cmd, run_env)
             # 覆盖率收集：sudo 后进程的身份是 root，让它写自己的 GCOV_PREFIX，
             # 避免和当前用户身份争抢同一个 .gcda。
             #

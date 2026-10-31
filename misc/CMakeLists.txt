@@ -190,6 +190,12 @@ if(ENABLE_TESTING)
       ${CMAKE_COMMAND} -DSOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}
       -DTEST_DIR=${CMAKE_CURRENT_BINARY_DIR}/tests/environment
       -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/environment_test.cmake)
+  add_test(
+    NAME linglong_main_check
+    COMMAND
+      ${CMAKE_COMMAND} -DSOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}
+      -DTEST_DIR=${CMAKE_CURRENT_BINARY_DIR}/tests/main-check
+      -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/main_check_test.cmake)
 endif()
 
 # polkit actions

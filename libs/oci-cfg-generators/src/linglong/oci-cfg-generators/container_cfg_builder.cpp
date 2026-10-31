@@ -970,15 +970,17 @@ utils::error::Result<void> ContainerCfgBuilder::buildMountHome() noexcept
     environment["HOME"] = containerHome;
 
     auto mountDir = [this](const std::filesystem::path &hostDir,
-                           const std::string &containerDir) -> bool {
+                           const std::string &containerDir) -> utils::error::Result<void> {
+        LINGLONG_TRACE("mount XDG directory");
+
         std::error_code ec;
         if (!std::filesystem::exists(hostDir, ec)) {
             if (ec) {
-                return false;
+                return LINGLONG_ERR(fmt::format("failed to check XDG directory {}", hostDir), ec);
             }
 
             if (!std::filesystem::create_directories(hostDir, ec) && ec) {
-                return false;
+                return LINGLONG_ERR(fmt::format("failed to create XDG directory {}", hostDir), ec);
             }
         }
 
@@ -989,7 +991,7 @@ utils::error::Result<void> ContainerCfgBuilder::buildMountHome() noexcept
           .type = "bind",
         });
 
-        return true;
+        return LINGLONG_OK;
     };
 
     // XDG base directory spec: empty or relative overrides are invalid, fall back
@@ -1011,8 +1013,8 @@ utils::error::Result<void> ContainerCfgBuilder::buildMountHome() noexcept
     auto XDG_DATA_HOME = xdgHomeDir("XDG_DATA_HOME", *homePath / ".local" / "share");
     std::string containerDataHome = containerHome + "/.local/share";
     if (XDG_DATA_HOME != containerDataHome) {
-        if (!mountDir(XDG_DATA_HOME, containerDataHome)) {
-            return LINGLONG_ERR(fmt::format("{} can't be mount", XDG_DATA_HOME));
+        if (auto result = mountDir(XDG_DATA_HOME, containerDataHome); !result) {
+            return LINGLONG_ERR(result);
         }
     }
     environment["XDG_DATA_HOME"] = containerDataHome;
@@ -1038,8 +1040,8 @@ utils::error::Result<void> ContainerCfgBuilder::buildMountHome() noexcept
     }
     std::string containerConfigHome = containerHome + "/.config";
     if (XDGConfigHome != containerConfigHome) {
-        if (!mountDir(XDGConfigHome, containerConfigHome)) {
-            return LINGLONG_ERR(fmt::format("{} can't be mount", XDGConfigHome));
+        if (auto result = mountDir(XDGConfigHome, containerConfigHome); !result) {
+            return LINGLONG_ERR(result);
         }
     }
     environment["XDG_CONFIG_HOME"] = containerConfigHome;
@@ -1052,8 +1054,8 @@ utils::error::Result<void> ContainerCfgBuilder::buildMountHome() noexcept
     }
     std::string containerCacheHome = containerHome + "/.cache";
     if (XDGCacheHome != containerCacheHome) {
-        if (!mountDir(XDGCacheHome, containerCacheHome)) {
-            return LINGLONG_ERR(fmt::format("{} can't be mount", XDGCacheHome));
+        if (auto result = mountDir(XDGCacheHome, containerCacheHome); !result) {
+            return LINGLONG_ERR(result);
         }
     }
     environment["XDG_CACHE_HOME"] = containerCacheHome;
@@ -1065,8 +1067,8 @@ utils::error::Result<void> ContainerCfgBuilder::buildMountHome() noexcept
     }
     std::string containerStateHome = containerHome + "/.local/state";
     if (XDG_STATE_HOME != containerStateHome) {
-        if (!mountDir(XDG_STATE_HOME, containerStateHome)) {
-            return LINGLONG_ERR(fmt::format("{} can't be mount", XDG_STATE_HOME));
+        if (auto result = mountDir(XDG_STATE_HOME, containerStateHome); !result) {
+            return LINGLONG_ERR(result);
         }
     }
     environment["XDG_STATE_HOME"] = containerStateHome;
@@ -1138,7 +1140,7 @@ utils::error::Result<void> ContainerCfgBuilder::buildPrivateDir() noexcept
     privateAppDir = privatePath / appId;
     std::error_code ec;
     if (!std::filesystem::create_directories(privateAppDir, ec) && ec) {
-        return LINGLONG_ERR(fmt::format("{} can't be created", privateAppDir));
+        return LINGLONG_ERR(fmt::format("{} can't be created", privateAppDir), ec);
     }
 
     // hide private directory

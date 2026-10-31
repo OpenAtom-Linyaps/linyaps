@@ -8,6 +8,7 @@
 #include <gtest/gtest.h>
 
 #include "linglong/oci-cfg-generators/container_cfg_builder.h"
+#include "linglong/utils/env.h"
 #include "ocppi/runtime/config/types/NamespaceType.hpp"
 
 #include <common/tempdir.h>
@@ -17,6 +18,7 @@
 #include <vector>
 
 using namespace linglong::generator;
+using linglong::utils::EnvironmentVariableGuard;
 using ocppi::runtime::config::types::Config;
 using ocppi::runtime::config::types::Mount;
 
@@ -472,6 +474,28 @@ TEST_F(ContainerCfgBuilderTest, BindHomeWritesToEmptyHomePathFails)
     // homePath empty -> error
     auto result = builder.build();
     ASSERT_FALSE(result.has_value());
+}
+
+TEST_F(ContainerCfgBuilderTest, BindHomeReportsXdgDirectoryCreationError)
+{
+    auto home = baseDir.path() / "home";
+    auto parentFile = baseDir.path() / "not-a-directory";
+    ASSERT_TRUE(std::filesystem::create_directories(home));
+    std::ofstream(parentFile) << "file";
+    EnvironmentVariableGuard xdgDataHome("XDG_DATA_HOME", (parentFile / "data").string());
+
+    ContainerCfgBuilder builder;
+    builder.setAppId("org.deepin.demo")
+      .setBasePath(baseDir.path())
+      .setBundlePath(bundleDir.path())
+      .bindHome(home);
+
+    auto result = builder.build();
+
+    ASSERT_FALSE(result.has_value());
+    EXPECT_THAT(result.error().message(), ::testing::HasSubstr("XDG directory"));
+    EXPECT_THAT(result.error().message(), ::testing::HasSubstr("not-a-directory"));
+    EXPECT_NE(result.error().code(), 0);
 }
 
 TEST_F(ContainerCfgBuilderTest, EnablePrivateDirAndMapPrivate)

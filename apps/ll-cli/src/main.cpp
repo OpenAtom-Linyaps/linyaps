@@ -470,6 +470,7 @@ void addAnalyzeCommand(CLI::App &commandParser,
 {
     auto *cliAnalyze = commandParser.add_subcommand("analyze", _("Analyze installed applications"))
                          ->group(group)
+                         ->fallthrough()
                          ->usage(_("Usage: ll-cli analyze SUBCOMMAND [OPTIONS]"));
     cliAnalyze->require_subcommand(1);
 
@@ -528,6 +529,7 @@ void addPruneCommand(CLI::App &commandParser, const std::string &group)
 {
     commandParser.add_subcommand("prune", _("Remove the unused base or runtime"))
       ->group(group)
+      ->fallthrough()
       ->usage(_("Usage: ll-cli prune [OPTIONS]"));
 }
 
@@ -541,6 +543,7 @@ void addInspectCommand(CLI::App &commandParser,
         .add_subcommand("inspect",
                         _("Display the inspect information of the installed application"))
         ->group(group)
+        ->fallthrough()
         ->usage(_("Usage: ll-cli inspect SUBCOMMAND [OPTIONS]"));
 
     cliInspect->require_subcommand(1);

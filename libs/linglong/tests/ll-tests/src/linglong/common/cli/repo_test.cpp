@@ -203,5 +203,47 @@ TEST_F(RepoCommandTest, ModifyReturnsError)
     EXPECT_EQ(setConfigCalls, 0);
 }
 
+TEST_F(RepoCommandTest, AcceptsGlobalOptionAfterSubcommand)
+{
+    // ll-cli and ll-builder declare --json, -v/--verbose, --no-progress and
+    // --version on the root command and rely on fallthrough so those options can
+    // also be written after a subcommand.
+    auto *jsonFlag = app.add_flag("--json");
+
+    ASSERT_NO_THROW(parse("repo show --json"));
+
+    auto ret = handle();
+
+    ASSERT_TRUE(ret.has_value()) << ret.error().message();
+    EXPECT_EQ(showConfigCalls, 1);
+    EXPECT_TRUE(jsonFlag->count() > 0);
+}
+
+TEST_F(RepoCommandTest, AcceptsGlobalOptionBetweenSubcommands)
+{
+    auto *jsonFlag = app.add_flag("--json");
+
+    ASSERT_NO_THROW(parse("repo --json show"));
+
+    auto ret = handle();
+
+    ASSERT_TRUE(ret.has_value()) << ret.error().message();
+    EXPECT_EQ(showConfigCalls, 1);
+    EXPECT_TRUE(jsonFlag->count() > 0);
+}
+
+TEST_F(RepoCommandTest, AcceptsVerboseFlagAfterSubcommand)
+{
+    int verbose{ 0 };
+    app.add_flag("-v,--verbose", verbose);
+
+    ASSERT_NO_THROW(parse("repo show -v"));
+
+    auto ret = handle();
+
+    ASSERT_TRUE(ret.has_value()) << ret.error().message();
+    EXPECT_EQ(verbose, 1);
+}
+
 } // namespace
 } // namespace linglong::common::cli

@@ -124,6 +124,19 @@ int handleCreate(const CreateCommandOptions &options)
 {
     LogI("Handling create for project: {}", options.projectName);
 
+    // NAME becomes both the directory created under the working directory and the
+    // project's package.id, which is later used as path components on the host
+    // (/opt/apps/<id>/files) and in generated build files. It therefore has to be
+    // usable as a single directory name: without this check `ll-builder create
+    // /tmp/x` creates an absolute path and `ll-builder create ../x` writes outside
+    // the working directory, both reported as success.
+    const auto &name = options.projectName;
+    if (name == "." || name == ".." || name.find('/') != std::string::npos
+        || name.find('\\') != std::string::npos) {
+        LogE("Invalid project name {}: it must be usable as a single directory name", name);
+        return -1;
+    }
+
     std::error_code ec;
     const auto currentDir = std::filesystem::current_path(ec);
     if (ec) {

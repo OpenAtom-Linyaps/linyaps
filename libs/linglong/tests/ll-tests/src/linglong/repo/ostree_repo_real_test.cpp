@@ -12,6 +12,7 @@
 #include "linglong/package/reference.h"
 #include "linglong/repo/ostree_repo.h"
 
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <memory>
@@ -453,6 +454,257 @@ TEST(RefMetaDataTest, GetPackageInfoRejectsInvalidContent)
 
     EXPECT_FALSE(result.has_value());
 }
+
+namespace {
+
+using linglong::api::types::v1::RepositoryCacheLayersItem;
+
+// Exposes the protected entry-export helpers so their behaviour can be verified
+// against a real OSTree repository and an isolated entries tree.
+class ExportRepo : public OSTreeRepo
+{
+public:
+    ExportRepo(const std::filesystem::path &root, RepoConfigV2 config)
+        : OSTreeRepo(root, std::move(config))
+    {
+        auto initialized = this->init(true);
+        EXPECT_TRUE(initialized.has_value()) << initialized.error().message();
+    }
+
+    using OSTreeRepo::buildPullRefCandidates;
+    using OSTreeRepo::exportAppBinaries;
+    using OSTreeRepo::exportAppEntries;
+    using OSTreeRepo::exportDir;
+    using OSTreeRepo::exportLayerEntries;
+    using OSTreeRepo::exportLayerSignData;
+    using OSTreeRepo::getDefaultSharedDir;
+    using OSTreeRepo::getEntriesDir;
+    using OSTreeRepo::getOverlayShareDir;
+    using OSTreeRepo::shouldFallbackToRuntimeBranch;
+
+    utils::error::Result<bool> shouldExportSignData() const noexcept override { return true; }
+};
+
+class RealRepoExportTest : public ::testing::Test
+{
+protected:
+    void SetUp() override
+    {
+        tempDir = std::make_unique<TempDir>();
+        repoRoot = tempDir->path() / "repo-root";
+        ASSERT_TRUE(std::filesystem::create_directories(repoRoot));
+
+        auto config = makeRepoConfig();
+        config.repos.push_back(Repo{ .name = "testing", .priority = 5, .url = "https://test" });
+        config.repos.push_back(Repo{ .name = "stable2", .priority = 0, .url = "https://two" });
+        repo = std::make_unique<ExportRepo>(repoRoot, config);
+    }
+
+    std::optional<RepositoryCacheLayersItem>
+    importLayer(const std::string &id,
+                const std::string &kind,
+                const std::string &module,
+                const std::vector<std::string> &files,
+                const std::vector<std::string> &command = {})
+    {
+        auto layerDir = tempDir->path() / ("export-" + id + "-" + module);
+        std::error_code ec;
+        std::filesystem::remove_all(layerDir, ec);
+        std::filesystem::create_directories(layerDir / "files", ec);
+        for (const auto &rel : files) {
+            auto path = layerDir / rel;
+            std::filesystem::create_directories(path.parent_path(), ec);
+            std::ofstream{ path } << "[Desktop Entry]\nName=Demo\nExec=/usr/bin/demo %U\n"
+                                     "Type=Application\n";
+        }
+
+        PackageInfoV2 info;
+        info.id = id;
+        info.version = "1.0.0";
+        info.kind = kind;
+        info.channel = "stable";
+        info.arch = { "x86_64" };
+        info.packageInfoV2Module = module;
+        info.command = command;
+        std::ofstream{ layerDir / "info.json" } << nlohmann::json(info).dump();
+
+        auto imported = repo->importLayerDir(LayerDir{ layerDir });
+        if (!imported) {
+            ADD_FAILURE() << imported.error().message();
+            return std::nullopt;
+        }
+        return *imported;
+    }
+
+    std::unique_ptr<TempDir> tempDir;
+    std::filesystem::path repoRoot;
+    std::unique_ptr<ExportRepo> repo;
+};
+
+TEST_F(RealRepoExportTest, ExportDirLinksFilesAndRecursesIntoDirectories)
+{
+    const auto source = tempDir->path() / "source";
+    std::filesystem::create_directories(source / "nested");
+    std::ofstream{ source / "plain.txt" } << "plain";
+    std::ofstream{ source / "nested" / "deep.txt" } << "deep";
+    std::ofstream{ source / "backup.linyaps.original" } << "backup";
+
+    const auto entries = tempDir->path() / "entries";
+    auto exported = repo->exportDir("com.example.app", source, entries, "files", 10);
+    ASSERT_TRUE(exported.has_value()) << exported.error().message();
+
+    EXPECT_TRUE(std::filesystem::is_symlink(entries / "files" / "plain.txt"));
+    EXPECT_TRUE(std::filesystem::is_symlink(entries / "files" / "nested" / "deep.txt"));
+    EXPECT_FALSE(std::filesystem::exists(entries / "files" / "backup.linyaps.original"));
+    EXPECT_EQ(std::filesystem::canonical(entries / "files" / "plain.txt"), source / "plain.txt");
+}
+
+TEST_F(RealRepoExportTest, ExportDirRejectsInvalidDestinationsAndSources)
+{
+    const auto source = tempDir->path() / "source";
+    std::filesystem::create_directories(source);
+    const auto entries = tempDir->path() / "entries";
+
+    auto absolute = repo->exportDir("com.example.app", source, entries, "/absolute", 10);
+    EXPECT_FALSE(absolute.has_value());
+
+    auto parent = repo->exportDir("com.example.app", source, entries, "../escape", 10);
+    EXPECT_FALSE(parent.has_value());
+
+    auto missing = repo->exportDir("com.example.app", source / "missing", entries, "files", 10);
+    EXPECT_FALSE(missing.has_value());
+}
+
+TEST_F(RealRepoExportTest, ExportDirStopsAtZeroDepth)
+{
+    const auto source = tempDir->path() / "source";
+    std::filesystem::create_directories(source);
+    std::ofstream{ source / "plain.txt" } << "plain";
+    const auto entries = tempDir->path() / "entries";
+
+    auto exported = repo->exportDir("com.example.app", source, entries, "files", 0);
+    ASSERT_TRUE(exported.has_value()) << exported.error().message();
+    EXPECT_FALSE(std::filesystem::exists(entries / "files"));
+}
+
+TEST_F(RealRepoExportTest, ExportDirRewritesApplicationEntriesInPlace)
+{
+    const auto source = tempDir->path() / "source";
+    std::filesystem::create_directories(source / "share" / "applications");
+    const auto desktop = source / "share" / "applications" / "com.example.app.desktop";
+    std::ofstream{ desktop } << "[Desktop Entry]\nName=Demo\nExec=/usr/bin/demo %U\n"
+                                "TryExec=/usr/bin/demo\nType=Application\n";
+
+    const auto entries = tempDir->path() / "entries";
+    auto exported = repo->exportDir("com.example.app", source / "share", entries, "share", 10);
+    ASSERT_TRUE(exported.has_value()) << exported.error().message();
+
+    EXPECT_TRUE(std::filesystem::exists(desktop));
+    EXPECT_TRUE(std::filesystem::exists(desktop.string() + ".linyaps.original"));
+    EXPECT_TRUE(
+      std::filesystem::exists(entries / "share" / "applications" / "com.example.app.desktop"));
+}
+
+TEST_F(RealRepoExportTest, ExportAppBinariesCreatesExecutableWrapperAndSkipsOtherModules)
+{
+    RepositoryCacheLayersItem item{};
+    item.info.id = "com.example.app";
+    item.info.packageInfoV2Module = "binary";
+    item.info.command = std::vector<std::string>{ "/usr/bin/demo", "--flag" };
+
+    const auto entries = tempDir->path() / "entries";
+    auto exported = repo->exportAppBinaries(entries, item);
+    ASSERT_TRUE(exported.has_value()) << exported.error().message();
+
+    const auto wrapper = entries / "bin" / "apps" / item.info.id / "bin" / item.info.id;
+    ASSERT_TRUE(std::filesystem::exists(wrapper));
+    EXPECT_TRUE(std::filesystem::is_symlink(entries / "bin" / item.info.id));
+    EXPECT_EQ(std::filesystem::status(wrapper).permissions() & std::filesystem::perms::owner_exec,
+              std::filesystem::perms::owner_exec);
+    std::ifstream script{ wrapper };
+    std::string content{ std::istreambuf_iterator<char>{ script },
+                         std::istreambuf_iterator<char>{} };
+    EXPECT_NE(content.find("/usr/bin/demo"), std::string::npos);
+
+    RepositoryCacheLayersItem develop = item;
+    develop.info.packageInfoV2Module = "develop";
+    EXPECT_TRUE(repo->exportAppBinaries(entries, develop).has_value());
+
+    RepositoryCacheLayersItem empty = item;
+    empty.info.command = std::vector<std::string>{};
+    EXPECT_TRUE(repo->exportAppBinaries(entries, empty).has_value());
+    EXPECT_FALSE(std::filesystem::exists(entries / "bin" / item.info.id));
+}
+
+TEST_F(RealRepoExportTest, ExportAppEntriesExportsWrapperForImportedLayer)
+{
+    auto item = importLayer("com.example.export",
+                            "app",
+                            "binary",
+                            { "entries/share/applications/com.example.export.desktop" },
+                            { "/usr/bin/export" });
+    ASSERT_TRUE(item.has_value());
+
+    const auto entries = tempDir->path() / "entries";
+    auto exported = repo->exportAppEntries(entries, *item);
+    ASSERT_TRUE(exported.has_value()) << exported.error().message();
+    EXPECT_TRUE(std::filesystem::exists(entries / "bin" / "com.example.export"));
+
+    auto noEntries = importLayer("com.example.noentries", "app", "binary", {});
+    ASSERT_TRUE(noEntries.has_value());
+    EXPECT_TRUE(repo->exportAppEntries(entries, *noEntries).has_value());
+}
+
+TEST_F(RealRepoExportTest, ExportLayerSignDataCopiesVerifyEntries)
+{
+    auto item = importLayer("com.example.signed",
+                            "app",
+                            "binary",
+                            { "entries/share/deepin-elf-verify/sign.json" },
+                            { "/usr/bin/signed" });
+    ASSERT_TRUE(item.has_value());
+
+    const auto entries = tempDir->path() / "entries";
+    auto exported = repo->exportLayerSignData(entries, *item);
+    ASSERT_TRUE(exported.has_value()) << exported.error().message();
+    EXPECT_TRUE(std::filesystem::exists(entries / "share" / "deepin-elf-verify" / item->commit
+                                        / "sign.json"));
+
+    RepositoryCacheLayersItem missing = *item;
+    missing.commit = "missing-commit";
+    EXPECT_FALSE(repo->exportLayerSignData(entries, missing).has_value());
+}
+
+TEST_F(RealRepoExportTest, PriorityGroupsAliasesAndFallbackCandidates)
+{
+    auto groups = repo->getPriorityGroupedRepos();
+    ASSERT_EQ(groups.size(), 2);
+    auto testingGroup = std::find_if(groups.begin(), groups.end(), [](const auto &group) {
+        return group.size() == 1 && group.front().name == "testing";
+    });
+    ASSERT_NE(testingGroup, groups.end());
+
+    auto alias = repo->getRepoByAlias("stable2");
+    ASSERT_TRUE(alias.has_value()) << alias.error().message();
+    EXPECT_EQ(alias->name, "stable2");
+    EXPECT_FALSE(repo->getRepoByAlias("missing").has_value());
+
+    const auto binaryRef = Reference::parse("stable:com.example.app/1.0.0/x86_64");
+    ASSERT_TRUE(binaryRef.has_value()) << binaryRef.error().message();
+    EXPECT_EQ(repo->buildPullRefCandidates(*binaryRef, "binary").size(), 2);
+    EXPECT_EQ(repo->buildPullRefCandidates(*binaryRef, "develop").size(), 1);
+
+    EXPECT_FALSE(repo->shouldFallbackToRuntimeBranch("develop", nullptr));
+    EXPECT_FALSE(repo->shouldFallbackToRuntimeBranch("binary", nullptr));
+    GError noBranch{ G_FILE_ERROR, G_FILE_ERROR_FAILED, nullptr };
+    noBranch.message = const_cast<gchar *>("No such branch");
+    EXPECT_TRUE(repo->shouldFallbackToRuntimeBranch("binary", &noBranch));
+    GError otherError{ G_FILE_ERROR, G_FILE_ERROR_FAILED, nullptr };
+    otherError.message = const_cast<gchar *>("other");
+    EXPECT_FALSE(repo->shouldFallbackToRuntimeBranch("binary", &otherError));
+}
+
+} // namespace
 
 } // namespace
 

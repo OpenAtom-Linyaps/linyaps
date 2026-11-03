@@ -12,6 +12,7 @@
 #include "linglong/package/fuzzy_reference.h"
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/runtime/run_context.h"
+#include "linglong/utils/env.h"
 #include "linglong/utils/temporary_directory.h"
 
 #include <QCryptographicHash>
@@ -1395,4 +1396,162 @@ TEST(ResolveOptionsTest, ApplyCliRunOptionsSkipsEmptyExtensions)
     EXPECT_FALSE(opts.extensionRefs.has_value());
 }
 
+TEST_F(RunContextTest, LayerGettersFailBeforeResolve)
+{
+    RunContext context(*this->repo);
+
+    auto basePath = context.getBaseLayerPath();
+    EXPECT_FALSE(basePath.has_value());
+    EXPECT_THAT(basePath.error().message(), testing::HasSubstr("doesn't resolved"));
+
+    auto runtimePath = context.getRuntimeLayerPath();
+    EXPECT_FALSE(runtimePath.has_value());
+    EXPECT_THAT(runtimePath.error().message(), testing::HasSubstr("no runtime layer"));
+
+    auto targetLayer = context.getTargetLayer();
+    EXPECT_FALSE(targetLayer.has_value());
+    EXPECT_THAT(targetLayer.error().message(), testing::HasSubstr("no layer resolved"));
+
+    auto targetItem = context.getCachedTargetItem();
+    EXPECT_FALSE(targetItem.has_value());
+    EXPECT_THAT(targetItem.error().message(), testing::HasSubstr("no layer resolved"));
+
+    auto state = context.stateInfo();
+    EXPECT_TRUE(state.containerID.empty());
+    EXPECT_TRUE(state.base.empty());
+    EXPECT_TRUE(state.app.empty());
+    EXPECT_FALSE(state.runtime.has_value());
+    ASSERT_TRUE(state.extensions.has_value());
+    EXPECT_TRUE(state.extensions->empty());
+}
+
+TEST_F(RunContextTest, LayerGettersReportResolvedBase)
+{
+    LINGLONG_TRACE("LayerGettersReportResolvedBase");
+
+    auto baseRef = package::Reference::parse("stable:org.deepin.base/23.0.0/x86_64");
+    ASSERT_TRUE(baseRef.has_value());
+
+    api::types::v1::RepositoryCacheLayersItem baseItem;
+    baseItem.info.id = "org.deepin.base";
+    baseItem.info.version = "23.0.0";
+    baseItem.info.kind = "base";
+    baseItem.info.channel = "stable";
+    baseItem.info.arch = { std::string{ "x86_64" } };
+
+    EXPECT_CALL(*repo, getLayerItem(*baseRef, testing::_)).WillOnce(Return(baseItem));
+
+    package::LayerDir mockLayerDir(tempDir->path() / "merged");
+    EXPECT_CALL(*repo, getMergedModuleDir(*baseRef, testing::_))
+      .WillOnce(Return(utils::error::Result<package::LayerDir>(mockLayerDir)));
+
+    RunContext context(*this->repo);
+    auto result = context.resolve(*baseRef, ResolveOptions{});
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+
+    auto basePath = context.getBaseLayerPath();
+    ASSERT_TRUE(basePath.has_value());
+    EXPECT_EQ(*basePath, tempDir->path() / "merged");
+
+    auto runtimePath = context.getRuntimeLayerPath();
+    EXPECT_FALSE(runtimePath.has_value());
+    EXPECT_THAT(runtimePath.error().message(), testing::HasSubstr("no runtime layer"));
+
+    auto targetLayer = context.getTargetLayer();
+    ASSERT_TRUE(targetLayer.has_value());
+    EXPECT_EQ((*targetLayer).get().getReference().toString(),
+              "stable:org.deepin.base/23.0.0/x86_64");
+
+    auto targetItem = context.getCachedTargetItem();
+    ASSERT_TRUE(targetItem.has_value());
+    EXPECT_EQ(targetItem->info.id, "org.deepin.base");
+
+    auto state = context.stateInfo();
+    EXPECT_EQ(state.containerID, context.getContainerId());
+    EXPECT_EQ(state.base, "stable:org.deepin.base/23.0.0/x86_64");
+    EXPECT_TRUE(state.app.empty());
+    EXPECT_FALSE(state.runtime.has_value());
+}
+
+TEST_F(RunContextTest, FillContextCfgAppliesPermissionsEnvironmentAndDisplayHints)
+{
+    auto appRef = package::Reference::parse("stable:org.example.runnable/1.0.0/x86_64");
+    auto runtimeRef = package::Reference::parse("stable:org.deepin.runtime/23.0.0/x86_64");
+    auto baseRef = package::Reference::parse("stable:org.deepin.base/23.0.0/x86_64");
+    ASSERT_TRUE(appRef.has_value());
+    ASSERT_TRUE(runtimeRef.has_value());
+    ASSERT_TRUE(baseRef.has_value());
+
+    api::types::v1::RepositoryCacheLayersItem appItem;
+    appItem.info.id = "org.example.runnable";
+    appItem.info.version = "1.0.0";
+    appItem.info.kind = "app";
+    appItem.info.channel = "stable";
+    appItem.info.arch = { std::string{ "x86_64" } };
+    appItem.info.base = "org.deepin.base/23.0.0";
+    appItem.info.runtime = "org.deepin.runtime/23.0.0";
+    appItem.info.permissions = api::types::v1::ApplicationConfigurationPermissions{
+        .binds =
+          std::vector<api::types::v1::ApplicationConfigurationPermissionsBind>{
+            api::types::v1::ApplicationConfigurationPermissionsBind{ .destination = "/data",
+                                                                     .source = "/host/data" } },
+        .innerBinds =
+          std::vector<api::types::v1::ApplicationConfigurationPermissionsInnerBind>{
+            api::types::v1::ApplicationConfigurationPermissionsInnerBind{
+              .destination = "/etc/config",
+              .source = "/usr/share/config" } },
+    };
+
+    api::types::v1::RepositoryCacheLayersItem runtimeItem;
+    runtimeItem.info.id = "org.deepin.runtime";
+    runtimeItem.info.version = "23.0.0";
+    runtimeItem.info.kind = "runtime";
+    runtimeItem.info.channel = "stable";
+    runtimeItem.info.arch = { std::string{ "x86_64" } };
+    runtimeItem.info.base = "org.deepin.base/23.0.0";
+
+    api::types::v1::RepositoryCacheLayersItem baseItem;
+    baseItem.info.id = "org.deepin.base";
+    baseItem.info.version = "23.0.0";
+    baseItem.info.kind = "base";
+    baseItem.info.channel = "stable";
+    baseItem.info.arch = { std::string{ "x86_64" } };
+
+    EXPECT_CALL(*repo, getLayerItem(*appRef, testing::_)).WillOnce(Return(appItem));
+    EXPECT_CALL(*repo, clearReferenceLocal(testing::_, testing::_))
+      .WillOnce(Return(*runtimeRef))
+      .WillOnce(Return(*baseRef));
+    EXPECT_CALL(*repo, getLayerItem(*runtimeRef, testing::_)).WillOnce(Return(runtimeItem));
+    EXPECT_CALL(*repo, getLayerItem(*baseRef, testing::_)).WillOnce(Return(baseItem));
+
+    package::LayerDir appDir(tempDir->path() / "app");
+    package::LayerDir runtimeDir(tempDir->path() / "runtime");
+    package::LayerDir baseDir(tempDir->path() / "base");
+    EXPECT_CALL(*repo, getMergedModuleDir(*appRef, testing::_))
+      .WillOnce(Return(utils::error::Result<package::LayerDir>(appDir)));
+    EXPECT_CALL(*repo, getMergedModuleDir(*runtimeRef, testing::_))
+      .WillOnce(Return(utils::error::Result<package::LayerDir>(runtimeDir)));
+    EXPECT_CALL(*repo, getMergedModuleDir(*baseRef, testing::_))
+      .WillOnce(Return(utils::error::Result<package::LayerDir>(baseDir)));
+
+    RunContext context(*this->repo);
+    auto resolved = context.resolve(*appRef);
+    ASSERT_TRUE(resolved.has_value()) << resolved.error().message();
+
+    const auto xauth = tempDir->path() / "Xauthority";
+    const auto wayland = tempDir->path() / "wayland-0";
+    std::ofstream{ xauth } << "cookie";
+    std::ofstream{ wayland } << "socket";
+    utils::EnvironmentVariableGuard xauthEnv("XAUTHORITY", xauth.string());
+    utils::EnvironmentVariableGuard waylandEnv("WAYLAND_DISPLAY", wayland.string());
+
+    generator::ContainerCfgBuilder builder;
+    builder.setAppId("org.example.runnable");
+    builder.setBundlePath(tempDir->path() / "bundle");
+    auto filled = context.fillContextCfg(builder, tempDir->path() / "bundle");
+    EXPECT_TRUE(filled.has_value()) << filled.error().message();
+
+    auto unresolved = runtime::RunContext(*repo).fillContextCfg(builder, tempDir->path());
+    EXPECT_FALSE(unresolved.has_value());
+}
 } // namespace

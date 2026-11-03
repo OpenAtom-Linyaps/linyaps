@@ -288,7 +288,7 @@ TEST(SecurityContextTest, GetManagerReturnsNullForUnknownType)
 TEST(ContainerBuilderUtil, MakeBundleDirCreatesBundleDirectory)
 {
     TempDir tempDir;
-    ASSERT_TRUE(tempDir.isValid());
+    ASSERT_TRUE(std::filesystem::is_directory(tempDir.path()));
 
     linglong::utils::EnvironmentVariableGuard env("XDG_RUNTIME_DIR", tempDir.path().string());
 
@@ -302,7 +302,7 @@ TEST(ContainerBuilderUtil, MakeBundleDirCreatesBundleDirectory)
 TEST(ContainerBuilderUtil, MakeBundleDirAppendsSuffix)
 {
     TempDir tempDir;
-    ASSERT_TRUE(tempDir.isValid());
+    ASSERT_TRUE(std::filesystem::is_directory(tempDir.path()));
 
     linglong::utils::EnvironmentVariableGuard env("XDG_RUNTIME_DIR", tempDir.path().string());
 
@@ -315,7 +315,7 @@ TEST(ContainerBuilderUtil, MakeBundleDirAppendsSuffix)
 TEST(ContainerBuilderUtil, MakeBundleDirRemovesExistingContent)
 {
     TempDir tempDir;
-    ASSERT_TRUE(tempDir.isValid());
+    ASSERT_TRUE(std::filesystem::is_directory(tempDir.path()));
 
     linglong::utils::EnvironmentVariableGuard env("XDG_RUNTIME_DIR", tempDir.path().string());
 

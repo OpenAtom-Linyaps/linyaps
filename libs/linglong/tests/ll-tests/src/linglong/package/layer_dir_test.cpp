@@ -155,14 +155,17 @@ TEST_F(LayerDirTest, InfoWithEmptyJson)
 
 TEST_F(LayerDirTest, TempLayerDirMoveAssignmentTransfersOwnerShipAndRemovesOldPath)
 {
-    auto oldPath = testDir->path() / "old_path";
-    auto newPath = testDir->path() / "new_path";
-    std::filesystem::create_directories(oldPath);
-    std::filesystem::create_directories(newPath);
+    auto oldDirectory = linglong::utils::TemporaryDirectory::create("old_path-", testDir->path());
+    ASSERT_TRUE(oldDirectory.has_value()) << oldDirectory.error().message();
+    auto newDirectory = linglong::utils::TemporaryDirectory::create("new_path-", testDir->path());
+    ASSERT_TRUE(newDirectory.has_value()) << newDirectory.error().message();
+
+    auto oldPath = oldDirectory->path();
+    auto newPath = newDirectory->path();
 
     {
-        TempLayerDir oldDir(oldPath);
-        TempLayerDir newDir(newPath);
+        TempLayerDir oldDir(std::move(*oldDirectory));
+        TempLayerDir newDir(std::move(*newDirectory));
 
         newDir = std::move(oldDir);
 
@@ -177,10 +180,11 @@ TEST_F(LayerDirTest, TempLayerDirMoveAssignmentTransfersOwnerShipAndRemovesOldPa
 
 TEST_F(LayerDirTest, TempLayerDirSelfMoveAssignmentIsSafe)
 {
-    auto layerPath = testDir->path() / "self_path";
-    std::filesystem::create_directories(layerPath);
+    auto directory = linglong::utils::TemporaryDirectory::create("self_path-", testDir->path());
+    ASSERT_TRUE(directory.has_value()) << directory.error().message();
 
-    TempLayerDir dir(layerPath);
+    auto layerPath = directory->path();
+    TempLayerDir dir(std::move(*directory));
     dir = std::move(dir);
 
     EXPECT_TRUE(std::filesystem::exists(layerPath));

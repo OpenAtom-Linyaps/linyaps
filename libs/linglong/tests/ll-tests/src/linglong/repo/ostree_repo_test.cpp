@@ -1688,4 +1688,93 @@ TEST_F(RepoTest, unexportRemovesWrapperWhenAllLayersOfAppRemoved)
 } // namespace
 } // namespace
 
+TEST_F(RepoTest, exportDirRewritesDesktopDbusSystemdAndContextMenuEntries)
+{
+    TempDir tempDir("repo_export_rewrite_");
+    const auto root = tempDir.path();
+    const auto source = root / "src";
+    const auto anchors = root / "anchors";
+    fs::create_directories(anchors);
+
+    const auto addHardLinkedSource = [&](const fs::path &relative, const std::string &content) {
+        const auto path = source / relative;
+        fs::create_directories(path.parent_path());
+        const auto origin = fs::path{ path.string() + ".linyaps.original" };
+        std::ofstream(path) << content;
+        std::ofstream(origin) << content;
+        fs::create_hard_link(origin, anchors / path.filename());
+    };
+
+    addHardLinkedSource("share/applications/app.desktop",
+                        "[Desktop Entry]\n"
+                        "Name=Example App\n"
+                        "Exec=/bin/echo %F\n"
+                        "Type=Application\n");
+    addHardLinkedSource("share/dbus-1/services/org.test.service",
+                        "[D-BUS Service]\n"
+                        "Name=org.test\n"
+                        "Exec=/bin/test\n");
+    addHardLinkedSource("share/systemd/user/test.service",
+                        "[Unit]\n"
+                        "Description=Test Service\n\n"
+                        "[Service]\n"
+                        "ExecStart=/bin/test\n"
+                        "ExecReload=/bin/test reload\n");
+    addHardLinkedSource("share/applications/context-menus/org.test.conf",
+                        "[Desktop Entry]\n"
+                        "Exec=/bin/context %U\n");
+    const auto alreadyRewritten = source / "share/systemd/user/prefixed.service";
+    fs::create_directories(alreadyRewritten.parent_path());
+    const auto alreadyRewrittenOrigin = fs::path{ alreadyRewritten.string() + ".linyaps.original" };
+    std::ofstream(alreadyRewritten)
+      << "[Service]\nExecStart=/usr/bin/ll-cli run org.test.app -- /bin/test\n";
+    std::ofstream(alreadyRewrittenOrigin)
+      << "[Service]\nExecStart=/usr/bin/ll-cli run org.test.app -- /bin/test\n";
+    fs::create_hard_link(alreadyRewrittenOrigin, anchors / alreadyRewritten.filename());
+
+    const auto config =
+      api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 };
+    MockOstreeRepo repo(root / "repo", config);
+    const auto entries = root / "repo" / "entries";
+    fs::create_directories(entries);
+    repo.wrapGetOverlayShareDirFunc = [entries]() {
+        return entries / "share";
+    };
+
+    auto result = repo.exportDir("org.test.app", source, entries, "", 10);
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+
+    std::ifstream desktop(source / "share/applications/app.desktop");
+    const std::string desktopContent((std::istreambuf_iterator<char>(desktop)),
+                                     std::istreambuf_iterator<char>());
+    EXPECT_THAT(desktopContent, ::testing::HasSubstr("run org.test.app"));
+    EXPECT_THAT(desktopContent, ::testing::HasSubstr("--file %F"));
+    EXPECT_THAT(desktopContent, ::testing::HasSubstr("X-linglong=org.test.app"));
+    EXPECT_THAT(desktopContent, ::testing::HasSubstr("TryExec="));
+
+    std::ifstream dbus(source / "share/dbus-1/services/org.test.service");
+    const std::string dbusContent((std::istreambuf_iterator<char>(dbus)),
+                                  std::istreambuf_iterator<char>());
+    EXPECT_THAT(dbusContent, ::testing::HasSubstr("run org.test.app -- /bin/test"));
+
+    std::ifstream systemd(source / "share/systemd/user/test.service");
+    const std::string systemdContent((std::istreambuf_iterator<char>(systemd)),
+                                     std::istreambuf_iterator<char>());
+    EXPECT_THAT(systemdContent, ::testing::HasSubstr("ExecStart="));
+    EXPECT_THAT(systemdContent, ::testing::HasSubstr("run org.test.app -- /bin/test"));
+    EXPECT_THAT(systemdContent, ::testing::HasSubstr("ExecReload="));
+    EXPECT_THAT(systemdContent, ::testing::HasSubstr("run org.test.app -- /bin/test reload"));
+
+    std::ifstream contextMenu(source / "share/applications/context-menus/org.test.conf");
+    const std::string contextMenuContent((std::istreambuf_iterator<char>(contextMenu)),
+                                         std::istreambuf_iterator<char>());
+    EXPECT_THAT(contextMenuContent, ::testing::HasSubstr("run org.test.app"));
+    EXPECT_THAT(contextMenuContent, ::testing::HasSubstr("--url %U"));
+
+    std::ifstream prefixed(source / "share/systemd/user/prefixed.service");
+    const std::string prefixedContent((std::istreambuf_iterator<char>(prefixed)),
+                                      std::istreambuf_iterator<char>());
+    EXPECT_THAT(prefixedContent, ::testing::HasSubstr("run org.test.app -- /bin/test"));
+}
+
 } // namespace linglong::repo::test

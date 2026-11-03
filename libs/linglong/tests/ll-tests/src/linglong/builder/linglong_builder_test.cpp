@@ -1,10 +1,12 @@
 // SPDX-FileCopyrightText: 2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "../../common/tempdir.h"
 #include "../mocks/linglong_builder_mock.h"
+#include "configure.h"
 #include "linglong/builder/builder_directory.h"
 #include "linglong/builder/linglong_builder.h"
 #include "linglong/builder/source_cache.h"
@@ -15,6 +17,7 @@
 #include <cerrno>
 #include <filesystem>
 #include <fstream>
+#include <iterator>
 #include <optional>
 #include <string>
 #include <unordered_set>
@@ -912,4 +915,202 @@ TEST(LinglongBuilder, CleanWithPermissionIssue)
     auto result = builder.cleanBuildArtifacts();
     ASSERT_TRUE(result.has_value()) << result.error().message();
     EXPECT_FALSE(fs::exists(linglongDir));
+}
+
+namespace {
+
+linglong::api::types::v1::BuilderProject makeProjectForBuilderBehavior()
+{
+    linglong::api::types::v1::BuilderProject project;
+    project.build = "make demo";
+    project.version = "1";
+    project.package.id = "org.example.demo";
+    project.package.name = "Demo";
+    project.package.version = "1.0.0.0";
+    project.package.kind = "app";
+    project.package.description = "demo";
+    return project;
+}
+
+std::string readTextFile(const std::filesystem::path &path)
+{
+    std::ifstream input(path);
+    return { std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>() };
+}
+
+} // namespace
+
+TEST(LinglongBuilder, GenerateEntryScriptIncludesBuildAndStripStages)
+{
+    TempDir workingDir;
+    auto project = makeProjectForBuilderBehavior();
+    linglong::builder::BuilderMock builder(std::move(project), workingDir.path());
+    ASSERT_TRUE(builder.directories.ensureRoot());
+
+    auto result = builder.generateEntryScript();
+    ASSERT_TRUE(result) << result.error().message();
+
+    const auto entry = builder.directories.entryScript();
+    const auto content = readTextFile(entry);
+    EXPECT_NE(content.find("make demo"), std::string::npos);
+    EXPECT_NE(content.find("symbols-strip.sh"), std::string::npos);
+    EXPECT_NE(std::filesystem::status(entry).permissions() & std::filesystem::perms::owner_exec,
+              std::filesystem::perms::none);
+
+    linglong::builder::BuilderBuildOptions options;
+    options.skipStripSymbols = true;
+    builder.setBuildOptions(options);
+    ASSERT_TRUE(builder.generateEntryScript());
+    const auto strippedContent = readTextFile(entry);
+    EXPECT_NE(strippedContent.find("make demo"), std::string::npos);
+    EXPECT_EQ(strippedContent.find("symbols-strip.sh"), std::string::npos);
+}
+
+TEST(LinglongBuilder, GenerateDependencyScriptsRequireConfiguredPackages)
+{
+    TempDir workingDir;
+    auto project = makeProjectForBuilderBehavior();
+    linglong::builder::BuilderMock builder(std::move(project), workingDir.path());
+    ASSERT_TRUE(builder.directories.ensureRoot());
+
+    auto noBuildDepends = builder.generateBuildDependsScript();
+    ASSERT_TRUE(noBuildDepends) << noBuildDepends.error().message();
+    EXPECT_FALSE(*noBuildDepends);
+    auto noDepends = builder.generateDependsScript();
+    ASSERT_TRUE(noDepends) << noDepends.error().message();
+    EXPECT_FALSE(*noDepends);
+
+    linglong::api::types::v1::BuilderProjectBuildEXT buildext;
+    buildext.apt = linglong::api::types::v1::Apt{};
+    builder.project->buildext = std::move(buildext);
+    noBuildDepends = builder.generateBuildDependsScript();
+    ASSERT_TRUE(noBuildDepends) << noBuildDepends.error().message();
+    EXPECT_FALSE(*noBuildDepends);
+    noDepends = builder.generateDependsScript();
+    ASSERT_TRUE(noDepends) << noDepends.error().message();
+    EXPECT_FALSE(*noDepends);
+
+    builder.project->buildext->apt->buildDepends = std::vector<std::string>{ "g++", "cmake" };
+    auto buildDepends = builder.generateBuildDependsScript();
+    ASSERT_TRUE(buildDepends) << buildDepends.error().message();
+    ASSERT_TRUE(*buildDepends);
+    auto content = readTextFile(builder.directories.buildExtScript());
+    EXPECT_NE(content.find("apt -y install g++ cmake"), std::string::npos);
+
+    builder.project->buildext->apt->depends = std::vector<std::string>{ "libdemo1" };
+    auto depends = builder.generateDependsScript();
+    ASSERT_TRUE(depends) << depends.error().message();
+    ASSERT_TRUE(*depends);
+    content = readTextFile(builder.directories.buildExtScript());
+    EXPECT_NE(content.find("-y install libdemo1"), std::string::npos);
+}
+
+TEST(LinglongBuilder, InstallFilesUsesDefaultModuleRulesAndRecordsInstalledPaths)
+{
+    TempDir workingDir;
+    auto project = makeProjectForBuilderBehavior();
+    linglong::builder::BuilderMock builder(std::move(project), workingDir.path());
+    ASSERT_TRUE(builder.directories.ensureRoot());
+
+    const auto output = builder.directories.buildOutput();
+    std::filesystem::create_directories(output / "bin");
+    std::filesystem::create_directories(output / "include");
+    std::filesystem::create_directories(output / "lib");
+    std::ofstream(output / "bin" / "demo") << "binary";
+    std::ofstream(output / "include" / "demo.h") << "header";
+    std::ofstream(output / "lib" / "libdemo.a") << "archive";
+
+    auto result = builder.installFiles();
+    ASSERT_TRUE(result) << result.error().message();
+
+    EXPECT_TRUE(
+      std::filesystem::exists(builder.directories.module("binary") / "files" / "bin" / "demo"));
+    EXPECT_TRUE(std::filesystem::exists(builder.directories.module("develop") / "files" / "include"
+                                        / "demo.h"));
+    EXPECT_TRUE(std::filesystem::exists(builder.directories.module("develop") / "files" / "lib"
+                                        / "libdemo.a"));
+
+    const auto binaryInstall = builder.directories.module("binary") / "org.example.demo.install";
+    const auto developInstall = builder.directories.module("develop") / "org.example.demo.install";
+    EXPECT_NE(readTextFile(binaryInstall).find("/bin/demo"), std::string::npos);
+    EXPECT_NE(readTextFile(developInstall).find("/include/demo.h"), std::string::npos);
+    EXPECT_THAT(builder.packageModules, ::testing::UnorderedElementsAre("binary", "develop"));
+}
+
+TEST(LinglongBuilder, GenerateAppConfSkipsNonAppProjects)
+{
+    TempDir workingDir;
+    auto project = makeProjectForBuilderBehavior();
+    project.package.kind = "runtime";
+    linglong::builder::BuilderMock builder(std::move(project), workingDir.path());
+
+    auto result = builder.generateAppConf();
+    EXPECT_TRUE(result) << result.error().message();
+}
+
+TEST(LinglongBuilder, GenerateEntriesRejectsMissingExportConfiguration)
+{
+    TempDir workingDir;
+    auto project = makeProjectForBuilderBehavior();
+    linglong::builder::BuilderMock builder(std::move(project), workingDir.path());
+
+    const auto configFile = std::filesystem::path{ LINGLONG_DATA_DIR "/export-dirs.json" };
+    if (std::filesystem::exists(configFile)) {
+        GTEST_SKIP() << "host provides " << configFile;
+    }
+
+    auto result = builder.generateEntries();
+    ASSERT_FALSE(result);
+    EXPECT_THAT(result.error().message(), ::testing::HasSubstr("export config file doesn't exist"));
+}
+
+TEST(LinglongBuilder, ProjectInfoHelpersReportConfiguredProjectState)
+{
+    TempDir workingDir;
+    auto project = makeProjectForBuilderBehavior();
+    linglong::builder::BuilderMock builder(std::move(project), workingDir.path());
+    auto ref = linglong::package::Reference::parse("main:org.example.demo/1.0.0.0/x86_64");
+    ASSERT_TRUE(ref) << ref.error().message();
+    builder.projectRef = std::move(ref).value();
+
+    EXPECT_NO_THROW(builder.printBasicInfo());
+    EXPECT_NO_THROW(builder.printRepo());
+
+    const auto deprecatedInstall = workingDir.path() / "org.example.demo.install";
+    EXPECT_TRUE(builder.checkDeprecatedInstallFile());
+    std::ofstream(deprecatedInstall) << "/usr/bin/demo\n";
+    EXPECT_FALSE(builder.checkDeprecatedInstallFile());
+}
+
+TEST(LinglongBuilder, ExportUABRejectsMissingProjectWithoutRef)
+{
+    TempDir workingDir;
+    linglong::builder::BuilderMock builder(workingDir.path());
+
+    auto result = builder.exportUAB({});
+    ASSERT_FALSE(result);
+    EXPECT_THAT(result.error().message(),
+                ::testing::HasSubstr("not under project and --ref is not specified"));
+}
+
+TEST(LinglongBuilder, ExportLayerRejectsProjectWithoutImportedModules)
+{
+    TempDir workingDir;
+    auto project = makeProjectForBuilderBehavior();
+    linglong::builder::BuilderMock builder(std::move(project), workingDir.path());
+
+    auto result = builder.exportLayer({});
+    ASSERT_FALSE(result);
+    EXPECT_THAT(result.error().message(), ::testing::HasSubstr("no "));
+}
+
+TEST(LinglongBuilder, RuntimeCheckSkipsNonAppProject)
+{
+    TempDir workingDir;
+    auto project = makeProjectForBuilderBehavior();
+    project.package.kind = "runtime";
+    linglong::builder::BuilderMock builder(std::move(project), workingDir.path());
+
+    auto result = builder.runtimeCheck();
+    EXPECT_TRUE(result) << result.error().message();
 }

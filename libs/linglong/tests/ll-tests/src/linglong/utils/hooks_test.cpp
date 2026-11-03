@@ -4,7 +4,9 @@
 
 #include <gtest/gtest.h>
 
+#define private public
 #include "linglong/utils/hooks.h"
+#undef private
 
 namespace linglong::utils::details {
 
@@ -107,6 +109,29 @@ TEST(InstallHookManagerTest, ParseInstallHooksMissingDirYieldsNoHooks)
     InstallHookManager manager;
     auto result = manager.parseInstallHooks();
     EXPECT_TRUE(result.has_value()) << result.error().message();
+}
+
+TEST(InstallHookManagerTest, ExecuteConfiguredHooksPassesExpectedEnvironment)
+{
+    InstallHookManager manager;
+    manager.preInstallCommands = { "test -n \"$LINGLONG_UAB_PATH\"" };
+    manager.postInstallCommands = { "test \"$LINGLONG_APPID\" = org.deepin.demo",
+                                    "test -n \"$LINGLONG_APP_INSTALL_PATH\"" };
+    manager.postUninstallCommands = { "test \"$LINGLONG_APPID\" = org.deepin.demo" };
+
+    EXPECT_TRUE(manager.executeInstallHooks("/tmp/test.uab").has_value());
+    EXPECT_TRUE(manager.executePostInstallHooks("org.deepin.demo", "/tmp/install").has_value());
+    EXPECT_TRUE(manager.executePostUninstallHooks("org.deepin.demo").has_value());
+}
+
+TEST(InstallHookManagerTest, ExecuteHookCommandFailureIsReported)
+{
+    InstallHookManager manager;
+    manager.postInstallCommands = { "exit 3" };
+
+    auto result = manager.executePostInstallHooks("org.deepin.demo", "/tmp/install");
+    EXPECT_FALSE(result.has_value());
+    EXPECT_NE(result.error().message().find("exit 3"), std::string::npos);
 }
 
 } // namespace linglong::utils

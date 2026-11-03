@@ -15,23 +15,32 @@
 #include "linglong/api/types/v1/RepositoryCacheLayersItem.hpp"
 #include "linglong/common/serialize/json.h"
 #include "linglong/package/fuzzy_reference.h"
+#include "linglong/package/layer_dir.h"
 #include "linglong/package/reference.h"
+#define private public
 #include "linglong/package_manager/package_manager.h"
+#undef private
 #include "linglong/package_manager/package_task.h"
 #include "linglong/repo/remote_packages.h"
 #include "linglong/utils/error/error.h"
+#include "linglong/utils/finally/finally.h"
 
+#include <QDBusUnixFileDescriptor>
 #include <QString>
 #include <QVariant>
 #include <QVariantMap>
 
 #include <filesystem>
+#include <fstream>
 #include <functional>
 #include <memory>
 #include <optional>
 #include <string>
 #include <utility>
 #include <vector>
+
+#include <fcntl.h>
+#include <unistd.h>
 
 namespace {
 
@@ -147,6 +156,9 @@ public:
     std::function<utils::error::Result<v1::RepositoryCacheLayersItem>(const package::Reference &,
                                                                       std::string)>
       onGetLayerItem;
+    std::function<utils::error::Result<std::vector<v1::RepositoryCacheLayersItem>>(
+      const linglong::repo::repoCacheQuery &)>
+      onListLocalBy;
 
     utils::error::Result<package::Reference> clearReferenceLocal(
       const package::FuzzyReference &fuzzyRef, bool semanticMatching) const noexcept override
@@ -204,6 +216,16 @@ public:
         LINGLONG_TRACE("getLayerItem");
         if (onGetLayerItem) {
             return onGetLayerItem(ref, std::move(module));
+        }
+        return LINGLONG_ERR("not mocked");
+    }
+
+    utils::error::Result<std::vector<v1::RepositoryCacheLayersItem>>
+    listLocalBy(const linglong::repo::repoCacheQuery &query) const noexcept override
+    {
+        LINGLONG_TRACE("listLocalBy");
+        if (onListLocalBy) {
+            return onListLocalBy(query);
         }
         return LINGLONG_ERR("not mocked");
     }
@@ -657,6 +679,523 @@ TEST_F(PackageManagerTest, Uninstall_WhenUninstallingNonAppModule_Completes)
 
     EXPECT_TRUE(result.has_value());
     EXPECT_EQ(taskPlaceholder.state(), linglong::api::types::v1::State::Succeed);
+}
+
+TEST_F(PackageManagerTest, InstallFromFile_WhenDaemonNotInitialized_ReturnsError)
+{
+    auto result = pm->InstallFromFile(QDBusUnixFileDescriptor{ -1 }, "layer", QVariantMap{});
+
+    EXPECT_NE(replyCode(result), 0);
+    EXPECT_THAT(replyMessage(result).toStdString(), HasSubstr("daemon mode not initialized"));
+}
+
+TEST_F(PackageManagerTest, Prune_WhenDaemonNotInitialized_ReturnsError)
+{
+    auto result = pm->Prune();
+
+    EXPECT_NE(replyCode(result), 0);
+    EXPECT_THAT(replyMessage(result).toStdString(), HasSubstr("daemon mode not initialized"));
+}
+
+TEST_F(PackageManagerTest, InitRunContext_WhenDaemonNotInitialized_ReturnsError)
+{
+    auto result = pm->InitRunContext(QStringLiteral("{}"), QStringLiteral("id1"));
+
+    EXPECT_NE(replyCode(result), 0);
+    EXPECT_THAT(replyMessage(result).toStdString(), HasSubstr("daemon mode not initialized"));
+}
+
+api::types::v1::RepositoryCacheLayersItem makeLayerItemFor(const package::Reference &ref,
+                                                           const std::string &kind,
+                                                           const std::string &module)
+{
+    return api::types::v1::RepositoryCacheLayersItem{
+        .commit = "commit-" + ref.version.toString() + "-" + module,
+        .deleted = std::nullopt,
+        .info =
+          api::types::v1::PackageInfoV2{
+            .arch = std::vector<std::string>{ ref.arch.toString() },
+            .channel = ref.channel,
+            .id = ref.id,
+            .kind = kind,
+            .packageInfoV2Module = module,
+            .version = ref.version.toString(),
+          },
+        .repo = "stable",
+    };
+}
+
+QVariantMap makeUninstallParameters(bool force = false)
+{
+    api::types::v1::PackageManager1UninstallParameters parameters;
+    parameters.options = api::types::v1::CommonOptions{ .force = force,
+                                                        .noAutoPrune = false,
+                                                        .skipInteraction = false };
+    parameters.package.id = "org.example";
+    return common::serialize::toQVariantMap(parameters);
+}
+
+struct ImportedLayer
+{
+    package::Reference reference;
+    api::types::v1::RepositoryCacheLayersItem item;
+};
+
+std::optional<ImportedLayer> importLayer(repo::OSTreeRepo &targetRepo,
+                                         const std::filesystem::path &workspace,
+                                         const std::string &id,
+                                         const std::string &version,
+                                         const std::string &kind,
+                                         const std::string &module,
+                                         const std::optional<std::string> &base = std::nullopt,
+                                         const std::optional<std::string> &runtime = std::nullopt)
+{
+    const auto layerDir = workspace / (id + "-" + module);
+    std::error_code ec;
+    std::filesystem::remove_all(layerDir, ec);
+    ec.clear();
+    std::filesystem::create_directories(layerDir, ec);
+    if (ec) {
+        ADD_FAILURE() << "failed to create " << layerDir << ": " << ec.message();
+        return std::nullopt;
+    }
+
+    api::types::v1::PackageInfoV2 info;
+    info.arch = std::vector<std::string>{ "x86_64" };
+    info.base = base.value_or(std::string{});
+    info.channel = "stable";
+    info.command = std::vector<std::string>{ "echo", id };
+    info.id = id;
+    info.kind = kind;
+    info.packageInfoV2Module = module;
+    info.runtime = runtime;
+    info.version = version;
+    std::ofstream(layerDir / "info.json") << nlohmann::json(info).dump();
+
+    auto imported = targetRepo.importLayerDir(package::LayerDir{ layerDir });
+    if (!imported) {
+        ADD_FAILURE() << "failed to import " << id << "/" << module << ": "
+                      << imported.error().message();
+        return std::nullopt;
+    }
+
+    auto ref = package::Reference::parse("stable:" + id + "/" + version + "/x86_64");
+    if (!ref) {
+        ADD_FAILURE() << ref.error().message();
+        return std::nullopt;
+    }
+
+    return ImportedLayer{ .reference = *ref, .item = std::move(*imported) };
+}
+
+TEST_F(PackageManagerTest, Prune_WhenListingLayersFails_ReturnsError)
+{
+    repo->onListLocalBy = [](const linglong::repo::repoCacheQuery &)
+      -> utils::error::Result<std::vector<v1::RepositoryCacheLayersItem>> {
+        LINGLONG_TRACE("listLocalBy");
+        return LINGLONG_ERR("cannot list layers");
+    };
+
+    std::vector<v1::PackageInfoV2> removed;
+    auto result = pm->Prune(removed);
+
+    ASSERT_FALSE(result);
+    EXPECT_THAT(result.error().message(), HasSubstr("cannot list layers"));
+    EXPECT_TRUE(removed.empty());
+}
+
+TEST_F(PackageManagerTest, Prune_WhenNoLayersExist_OnlyPrunesRepository)
+{
+    repo->onListLocalBy = [](const linglong::repo::repoCacheQuery &)
+      -> utils::error::Result<std::vector<v1::RepositoryCacheLayersItem>> {
+        return std::vector<v1::RepositoryCacheLayersItem>{};
+    };
+    EXPECT_CALL(*repo, mergeModules()).Times(0);
+    EXPECT_CALL(*repo, prune()).WillOnce(Return(ok()));
+
+    std::vector<v1::PackageInfoV2> removed;
+    auto result = pm->Prune(removed);
+
+    ASSERT_TRUE(result) << result.error().message();
+    EXPECT_TRUE(removed.empty());
+}
+
+TEST_F(PackageManagerTest, Prune_ReservesAppBaseAndRuntimeDependencies)
+{
+    const auto workspace = tempDir->path() / "layer-sources";
+    auto appLayer = importLayer(*repo,
+                                workspace,
+                                "org.example.app",
+                                "1.0.0",
+                                "app",
+                                "binary",
+                                "org.deepin.base/23.0.0",
+                                "org.deepin.runtime/23.0.0");
+    auto baseLayer = importLayer(*repo, workspace, "org.deepin.base", "23.0.0", "base", "binary");
+    auto runtimeLayer =
+      importLayer(*repo, workspace, "org.deepin.runtime", "23.0.0", "runtime", "runtime");
+    ASSERT_TRUE(appLayer);
+    ASSERT_TRUE(baseLayer);
+    ASSERT_TRUE(runtimeLayer);
+
+    repo->onListLocalBy = [appItem = appLayer->item](const linglong::repo::repoCacheQuery &)
+      -> utils::error::Result<std::vector<v1::RepositoryCacheLayersItem>> {
+        return std::vector<v1::RepositoryCacheLayersItem>{ appItem };
+    };
+    repo->onClearReferenceLocal =
+      [baseRef = baseLayer->reference,
+       runtimeRef = runtimeLayer->reference](const package::FuzzyReference &fuzzy,
+                                             bool) -> utils::error::Result<package::Reference> {
+        if (fuzzy.id == "org.deepin.base") {
+            return baseRef;
+        }
+        if (fuzzy.id == "org.deepin.runtime") {
+            return runtimeRef;
+        }
+        LINGLONG_TRACE("clearReferenceLocal");
+        return LINGLONG_ERR("unexpected reference");
+    };
+    repo->onGetModuleList = [](const package::Reference &ref) {
+        if (ref.id == "org.deepin.runtime") {
+            return std::vector<std::string>{ "runtime" };
+        }
+        return std::vector<std::string>{ "binary" };
+    };
+    repo->onGetLayerItem =
+      [appItem = appLayer->item, baseItem = baseLayer->item, runtimeItem = runtimeLayer->item](
+        const package::Reference &ref,
+        std::string) -> utils::error::Result<v1::RepositoryCacheLayersItem> {
+        if (ref.id == "org.example.app") {
+            return appItem;
+        }
+        if (ref.id == "org.deepin.base") {
+            return baseItem;
+        }
+        if (ref.id == "org.deepin.runtime") {
+            return runtimeItem;
+        }
+        LINGLONG_TRACE("getLayerItem");
+        return LINGLONG_ERR("unexpected reference");
+    };
+    EXPECT_CALL(*repo, mergeModules()).WillOnce(Return(ok()));
+    EXPECT_CALL(*repo, prune()).WillOnce(Return(ok()));
+
+    std::vector<v1::PackageInfoV2> removed;
+    auto result = pm->Prune(removed);
+
+    ASSERT_TRUE(result) << result.error().message();
+    EXPECT_TRUE(removed.empty());
+    EXPECT_TRUE(repo->getLayerDir(appLayer->reference, "binary").has_value())
+      << "app layer must survive pruning as a reserved layer";
+    EXPECT_TRUE(repo->getLayerDir(baseLayer->reference, "binary").has_value())
+      << "base dependency must survive pruning as a reserved layer";
+    EXPECT_TRUE(repo->getLayerDir(runtimeLayer->reference, "runtime").has_value())
+      << "runtime dependency must survive pruning as a reserved layer";
+}
+
+TEST_F(PackageManagerTest, Prune_RemovesUnreferencedLayer)
+{
+    auto baseRef = package::Reference::parse("main:org.deepin.base/23.0.0/x86_64").value();
+    auto baseItem = makeLayerItemFor(baseRef, "base", "binary");
+
+    repo->onListLocalBy = [baseItem](const linglong::repo::repoCacheQuery &)
+      -> utils::error::Result<std::vector<v1::RepositoryCacheLayersItem>> {
+        return std::vector<v1::RepositoryCacheLayersItem>{ baseItem };
+    };
+    repo->onGetModuleList = [](const package::Reference &) {
+        return std::vector<std::string>{ "binary" };
+    };
+    repo->onGetLayerItem =
+      [baseItem](const package::Reference &,
+                 std::string) -> utils::error::Result<v1::RepositoryCacheLayersItem> {
+        return baseItem;
+    };
+    EXPECT_CALL(*repo, mergeModules()).WillOnce(Return(ok()));
+    EXPECT_CALL(*repo, prune()).WillOnce(Return(ok()));
+
+    std::vector<v1::PackageInfoV2> removed;
+    auto result = pm->Prune(removed);
+
+    ASSERT_TRUE(result) << result.error().message();
+    ASSERT_EQ(removed.size(), 1u);
+    EXPECT_EQ(removed.front().id, baseRef.id);
+}
+
+TEST_F(PackageManagerTest, Prune_SkipsNonMainAndInvalidLayers)
+{
+    auto ref = package::Reference::parse("main:org.example.app/1.0.0/x86_64").value();
+    auto developItem = makeLayerItemFor(ref, "app", "develop");
+
+    auto invalidItem = makeLayerItemFor(ref, "app", "binary");
+    invalidItem.info.arch.clear();
+
+    repo->onListLocalBy = [developItem, invalidItem](const linglong::repo::repoCacheQuery &)
+      -> utils::error::Result<std::vector<v1::RepositoryCacheLayersItem>> {
+        return std::vector<v1::RepositoryCacheLayersItem>{ developItem, invalidItem };
+    };
+    EXPECT_CALL(*repo, mergeModules()).Times(0);
+    EXPECT_CALL(*repo, prune()).WillOnce(Return(ok()));
+
+    std::vector<v1::PackageInfoV2> removed;
+    auto result = pm->Prune(removed);
+
+    ASSERT_TRUE(result) << result.error().message();
+    EXPECT_TRUE(removed.empty());
+}
+
+TEST_F(PackageManagerTest, Prune_IgnoresInvalidDependencyReferences)
+{
+    auto appRef = package::Reference::parse("main:org.example.app/1.0.0/x86_64").value();
+    auto appItem = makeLayerItemFor(appRef, "app", "binary");
+    appItem.info.base = "not a reference";
+    appItem.info.runtime = "also not a reference";
+
+    repo->onListLocalBy = [appItem](const linglong::repo::repoCacheQuery &)
+      -> utils::error::Result<std::vector<v1::RepositoryCacheLayersItem>> {
+        return std::vector<v1::RepositoryCacheLayersItem>{ appItem };
+    };
+    repo->onGetModuleList = [](const package::Reference &) {
+        return std::vector<std::string>{ "binary" };
+    };
+    repo->onGetLayerItem =
+      [appItem](const package::Reference &,
+                std::string) -> utils::error::Result<v1::RepositoryCacheLayersItem> {
+        return appItem;
+    };
+    EXPECT_CALL(*repo, mergeModules()).WillOnce(Return(ok()));
+    EXPECT_CALL(*repo, prune()).WillOnce(Return(ok()));
+
+    std::vector<v1::PackageInfoV2> removed;
+    auto result = pm->Prune(removed);
+
+    ASSERT_TRUE(result) << result.error().message();
+    EXPECT_TRUE(removed.empty());
+}
+
+TEST_F(PackageManagerTest, UninstallImpl_RejectsMalformedParameters)
+{
+    auto result = pm->uninstallImpl(QVariantMap{}, service::CallerContext{});
+
+    EXPECT_NE(replyCode(result), 0);
+    EXPECT_EQ(replyCode(result),
+              static_cast<long long>(utils::error::ErrorCode::AppUninstallFailed));
+}
+
+TEST_F(PackageManagerTest, UninstallImpl_ReportsPackageNotInstalled)
+{
+    repo->onListLocalBy = [](const linglong::repo::repoCacheQuery &)
+      -> utils::error::Result<std::vector<v1::RepositoryCacheLayersItem>> {
+        return std::vector<v1::RepositoryCacheLayersItem>{};
+    };
+
+    auto result = pm->uninstallImpl(makeUninstallParameters(), service::CallerContext{});
+
+    EXPECT_EQ(replyCode(result),
+              static_cast<long long>(utils::error::ErrorCode::AppUninstallNotFoundFromLocal));
+    EXPECT_THAT(replyMessage(result).toStdString(), HasSubstr("not installed"));
+}
+
+TEST_F(PackageManagerTest, UninstallImpl_RejectsBaseWithoutForce)
+{
+    auto baseRef = package::Reference::parse("main:org.deepin.base/23.0.0/x86_64").value();
+    auto baseItem = makeLayerItemFor(baseRef, "base", "binary");
+    repo->onListLocalBy = [baseItem](const linglong::repo::repoCacheQuery &)
+      -> utils::error::Result<std::vector<v1::RepositoryCacheLayersItem>> {
+        return std::vector<v1::RepositoryCacheLayersItem>{ baseItem };
+    };
+
+    auto result = pm->uninstallImpl(makeUninstallParameters(false), service::CallerContext{});
+
+    EXPECT_EQ(replyCode(result),
+              static_cast<long long>(utils::error::ErrorCode::AppUninstallBaseOrRuntime));
+    EXPECT_THAT(replyMessage(result).toStdString(), HasSubstr("cannot be uninstalled"));
+}
+
+TEST_F(PackageManagerTest, UninstallImpl_ReportsMultipleInstalledVersions)
+{
+    auto ref1 = package::Reference::parse("main:org.example/1.0.0/x86_64").value();
+    auto ref2 = package::Reference::parse("main:org.example/2.0.0/x86_64").value();
+    auto item1 = makeLayerItemFor(ref1, "app", "binary");
+    auto item2 = makeLayerItemFor(ref2, "app", "binary");
+    repo->onListLocalBy = [item1, item2](const linglong::repo::repoCacheQuery &)
+      -> utils::error::Result<std::vector<v1::RepositoryCacheLayersItem>> {
+        return std::vector<v1::RepositoryCacheLayersItem>{ item1, item2 };
+    };
+
+    auto result = pm->uninstallImpl(makeUninstallParameters(), service::CallerContext{});
+
+    EXPECT_EQ(replyCode(result),
+              static_cast<long long>(utils::error::ErrorCode::AppUninstallMultipleVersions));
+    EXPECT_THAT(replyMessage(result).toStdString(), HasSubstr("main:org.example"));
+}
+
+TEST_F(PackageManagerTest, UninstallImpl_IgnoresInvalidPackageInfo)
+{
+    auto ref = package::Reference::parse("main:org.example/1.0.0/x86_64").value();
+    auto item = makeLayerItemFor(ref, "app", "binary");
+    item.info.arch.clear();
+    repo->onListLocalBy = [item](const linglong::repo::repoCacheQuery &)
+      -> utils::error::Result<std::vector<v1::RepositoryCacheLayersItem>> {
+        return std::vector<v1::RepositoryCacheLayersItem>{ item };
+    };
+
+    auto result = pm->uninstallImpl(makeUninstallParameters(), service::CallerContext{});
+
+    EXPECT_EQ(replyCode(result),
+              static_cast<long long>(utils::error::ErrorCode::AppUninstallNotFoundFromLocal));
+}
+
+TEST_F(PackageManagerTest, UpdateImpl_RejectsMalformedParameters)
+{
+    auto result = pm->updateImpl(QVariantMap{}, service::CallerContext{});
+
+    EXPECT_EQ(replyCode(result), static_cast<long long>(utils::error::ErrorCode::AppUpgradeFailed));
+}
+
+TEST_F(PackageManagerTest, InstallImpl_RejectsMalformedParameters)
+{
+    auto result = pm->installImpl(QVariantMap{}, service::CallerContext{});
+
+    EXPECT_EQ(replyCode(result), static_cast<long long>(utils::error::ErrorCode::AppInstallFailed));
+}
+
+TEST_F(PackageManagerTest, InstallFromFileImpl_RejectsInvalidDescriptor)
+{
+    auto result = pm->installFromFileImpl(QDBusUnixFileDescriptor{ -1 },
+                                          QStringLiteral("layer"),
+                                          QVariantMap{},
+                                          service::CallerContext{});
+
+    EXPECT_NE(replyCode(result), 0);
+    EXPECT_THAT(replyMessage(result).toStdString(), HasSubstr("invalid file descriptor"));
+}
+
+TEST_F(PackageManagerTest, InstallFromFileImpl_RejectsMalformedOptions)
+{
+    auto fd = ::open("/dev/null", O_RDONLY | O_CLOEXEC);
+    ASSERT_NE(fd, -1);
+    auto closeFd = utils::finally::finally([fd] {
+        ::close(fd);
+    });
+
+    auto result = pm->installFromFileImpl(QDBusUnixFileDescriptor{ fd },
+                                          QStringLiteral("layer"),
+                                          QVariantMap{},
+                                          service::CallerContext{});
+
+    EXPECT_EQ(replyCode(result), static_cast<long long>(utils::error::ErrorCode::Failed));
+    EXPECT_THAT(replyMessage(result).toStdString(), HasSubstr("failed to parse json"));
+}
+
+TEST_F(PackageManagerTest, InstallFromFileImpl_RejectsUnsupportedFileType)
+{
+    auto fd = ::open("/dev/null", O_RDONLY | O_CLOEXEC);
+    ASSERT_NE(fd, -1);
+    auto closeFd = utils::finally::finally([fd] {
+        ::close(fd);
+    });
+    auto options =
+      common::serialize::toQVariantMap(api::types::v1::CommonOptions{ .force = false,
+                                                                      .noAutoPrune = false,
+                                                                      .skipInteraction = false });
+
+    auto result = pm->installFromFileImpl(QDBusUnixFileDescriptor{ fd },
+                                          QStringLiteral("zip"),
+                                          options,
+                                          service::CallerContext{});
+
+    EXPECT_EQ(replyCode(result),
+              static_cast<long long>(utils::error::ErrorCode::AppInstallUnsupportedFileFormat));
+    EXPECT_THAT(replyMessage(result).toStdString(), HasSubstr("unsupported fileType"));
+}
+
+TEST_F(PackageManagerTest, ApplyUnapplyAndSwitchAppUpdateExports)
+{
+    const auto workspace = tempDir->path() / "layer-sources";
+    auto oldLayer = importLayer(*repo, workspace, "org.example.old", "1.0.0", "app", "binary");
+    auto newLayer = importLayer(*repo, workspace, "org.example.new", "2.0.0", "app", "binary");
+    ASSERT_TRUE(oldLayer);
+    ASSERT_TRUE(newLayer);
+
+    const auto entries = repoDir / "entries" / "bin" / "apps";
+    const auto oldWrapper = entries / "org.example.old" / "bin" / "org.example.old";
+    const auto newWrapper = entries / "org.example.new" / "bin" / "org.example.new";
+
+    ASSERT_TRUE(pm->applyApp(oldLayer->reference))
+      << "applyApp should export the old reference entries";
+    EXPECT_TRUE(std::filesystem::is_regular_file(oldWrapper));
+
+    ASSERT_TRUE(pm->unapplyApp(oldLayer->reference))
+      << "unapplyApp should unexport the old reference entries";
+    EXPECT_FALSE(std::filesystem::exists(oldWrapper));
+
+    ASSERT_TRUE(pm->applyApp(newLayer->reference));
+    EXPECT_TRUE(std::filesystem::is_regular_file(newWrapper));
+
+    EXPECT_CALL(*repo, mergeModules()).WillOnce(Return(ok()));
+    ASSERT_TRUE(pm->switchAppVersion(oldLayer->reference, newLayer->reference, false));
+    EXPECT_TRUE(std::filesystem::is_regular_file(newWrapper));
+    EXPECT_FALSE(std::filesystem::exists(entries / "org.example.old"));
+}
+
+TEST_F(PackageManagerTest, RemoveCache_WhenLayerItemMissing_ReturnsError)
+{
+    auto ref = package::Reference::parse("main:org.example/1.0.0/x86_64").value();
+    repo->onGetLayerItem = [](const package::Reference &,
+                              std::string) -> utils::error::Result<v1::RepositoryCacheLayersItem> {
+        LINGLONG_TRACE("getLayerItem");
+        return LINGLONG_ERR("missing layer");
+    };
+
+    auto result = pm->removeCache(ref);
+
+    EXPECT_FALSE(result);
+}
+
+TEST_F(PackageManagerTest, RemoveCache_WhenCacheIsAbsent_Succeeds)
+{
+    auto ref = package::Reference::parse("main:org.example/1.0.0/x86_64").value();
+    auto item = makeLayerItemFor(ref, "app", "binary");
+    repo->onGetLayerItem =
+      [item](const package::Reference &,
+             std::string) -> utils::error::Result<v1::RepositoryCacheLayersItem> {
+        return item;
+    };
+
+    auto result = pm->removeCache(ref);
+
+    EXPECT_TRUE(result);
+}
+
+TEST_F(PackageManagerTest, UninstallRef_ContinuesWhenModuleRemovalFails)
+{
+    auto layer = importLayer(*repo,
+                             tempDir->path() / "layer-sources",
+                             "org.example",
+                             "1.0.0",
+                             "app",
+                             "develop");
+    ASSERT_TRUE(layer);
+    const auto layerPath = repoDir / "layers" / layer->item.commit;
+    ASSERT_TRUE(std::filesystem::exists(layerPath));
+
+    repo->onGetModuleList = [](const package::Reference &) {
+        return std::vector<std::string>{ "binary", "develop" };
+    };
+    repo->onGetLayerItem = [item = layer->item](const package::Reference &, std::string module)
+      -> utils::error::Result<v1::RepositoryCacheLayersItem> {
+        if (module == "develop") {
+            return item;
+        }
+        LINGLONG_TRACE("getLayerItem");
+        return LINGLONG_ERR("missing binary layer");
+    };
+
+    auto result = pm->uninstallRef(layer->reference);
+
+    ASSERT_TRUE(result) << result.error().message();
+    EXPECT_FALSE(std::filesystem::exists(layerPath))
+      << "develop module must still be removed after the missing binary module fails";
 }
 
 } // namespace

@@ -2,9 +2,14 @@
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "linglong/common/display.h"
+#include "linglong/utils/finally/finally.h"
+#include "linglong/utils/temporary_directory.h"
+
+#include <fstream>
 
 namespace linglong::common::display {
 
@@ -197,6 +202,93 @@ TEST(DisplayTest, GetXOrgDisplay_NoDisplayNo)
 {
     auto result = getXOrgDisplay("test:");
     ASSERT_FALSE(result.has_value());
+}
+
+TEST(DisplayTest, GetWaylandDisplay_AbsoluteExistingPath)
+{
+    linglong::utils::TemporaryDirectory tempDir =
+      linglong::utils::TemporaryDirectory::create("display-test").value();
+    auto socketPath = tempDir.path() / "wayland-0";
+    std::ofstream(socketPath).close();
+    ASSERT_TRUE(std::filesystem::exists(socketPath));
+
+    auto result = getWaylandDisplay(socketPath.string());
+    ASSERT_TRUE(result.has_value());
+    EXPECT_EQ(result.value(), socketPath);
+}
+
+TEST(DisplayTest, GetWaylandDisplay_AbsoluteMissingPath)
+{
+    auto missing = std::filesystem::temp_directory_path() / "no-such-wayland-socket-xyz";
+    auto result = getWaylandDisplay(missing.string());
+    ASSERT_FALSE(result.has_value());
+    EXPECT_THAT(result.error(), ::testing::HasSubstr("not found"));
+}
+
+TEST(DisplayTest, GetWaylandDisplay_RelativePathResolvedUnderXdgRuntimeDir)
+{
+    linglong::utils::TemporaryDirectory tempDir =
+      linglong::utils::TemporaryDirectory::create("display-test").value();
+    auto old = ::getenv("XDG_RUNTIME_DIR");
+    auto rdir = tempDir.path();
+    ::setenv("XDG_RUNTIME_DIR", rdir.string().c_str(), 1);
+    auto restore = linglong::utils::finally::finally([old]() {
+        if (old) {
+            ::setenv("XDG_RUNTIME_DIR", old, 1);
+        } else {
+            ::unsetenv("XDG_RUNTIME_DIR");
+        }
+    });
+
+    auto socketPath = rdir / "wayland-1";
+    std::ofstream(socketPath).close();
+    ASSERT_TRUE(std::filesystem::exists(socketPath));
+
+    auto result = getWaylandDisplay("wayland-1");
+    ASSERT_TRUE(result.has_value());
+    EXPECT_EQ(result.value(), rdir / "wayland-1");
+}
+
+TEST(DisplayTest, GetXOrgAuthFile_ProvidedExistingFile)
+{
+    linglong::utils::TemporaryDirectory tempDir =
+      linglong::utils::TemporaryDirectory::create("display-test").value();
+    auto authFile = tempDir.path() / "Xauthority";
+    std::ofstream(authFile).close();
+
+    auto result = getXOrgAuthFile(authFile.string());
+    ASSERT_TRUE(result.has_value());
+    EXPECT_EQ(result.value(), authFile);
+}
+
+TEST(DisplayTest, GetXOrgAuthFile_ProvidedMissingFile)
+{
+    auto missing = std::filesystem::temp_directory_path() / "no-such-xauthority-xyz";
+    auto result = getXOrgAuthFile(missing.string());
+    ASSERT_FALSE(result.has_value());
+    EXPECT_THAT(result.error(), ::testing::HasSubstr("not found"));
+}
+
+TEST(DisplayTest, GetXOrgAuthFile_EmptyFallsBackToHomeWhenFileExists)
+{
+    auto homeDir = std::filesystem::temp_directory_path() / "display-test-home-xyz";
+    std::filesystem::create_directories(homeDir);
+    auto authFile = homeDir / ".Xauthority";
+    std::ofstream(authFile).close();
+
+    auto old = ::getenv("HOME");
+    ::setenv("HOME", homeDir.string().c_str(), 1);
+    auto restore = linglong::utils::finally::finally([old]() {
+        if (old) {
+            ::setenv("HOME", old, 1);
+        } else {
+            ::unsetenv("HOME");
+        }
+    });
+
+    auto result = getXOrgAuthFile("");
+    ASSERT_TRUE(result.has_value());
+    EXPECT_EQ(result.value(), authFile);
 }
 
 } // namespace linglong::common::display

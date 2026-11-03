@@ -15,7 +15,7 @@ if [ "$action" != "checkout" ]; then
     exit 1
 fi
 
-if ! command -v git >/dev/null 2>&1; then
+if ! command -v git > /dev/null 2>&1; then
     echo "git not found, please install git first" >&2
     exit 1
 fi
@@ -24,7 +24,7 @@ mkdir "$workdir"
 git -C "$workdir" init
 git -C "$workdir" remote add origin "$url"
 
-git -C "$workdir" fetch origin "$ref" --depth 1 -n
+git -C "$workdir" fetch --depth 1 -n origin -- "$ref"
 git -C "$workdir" reset --hard FETCH_HEAD
 
 if [ -n "${GIT_SUBMODULES:-}" ]; then

@@ -150,6 +150,14 @@ utils::error::Result<std::string> resolveCallerSession(const std::string &system
     std::string session{ sessionId };
     ::free(sessionId);
 
+    // Only active sessions have auth_admin_keep in the installed policy.
+    // Inactive sessions require auth_admin for each request, so retain the
+    // process subject for those callers.
+    if (::sd_session_is_active(session.c_str()) <= 0) {
+        return LINGLONG_ERR(
+          fmt::format("the caller {} does not belong to an active login session", systemBusName));
+    }
+
     return session;
 }
 

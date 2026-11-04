@@ -469,6 +469,58 @@ TEST_F(ContainerCfgBuilderTest, EnvScriptRoundTripsSpecialCharacters)
     }
 }
 
+TEST_F(ContainerCfgBuilderTest, EnvScriptSkipsInvalidKeys)
+{
+    const std::vector<std::string> validKeys = { "FOO", "_OK", "OK1" };
+    const std::vector<std::string> invalidKeys = { "",        "1BAD",     "BAD-KEY",
+                                                   "BAD KEY", "BAD.KEY",  "BAD;KEY",
+                                                   "BAD=KEY", "BAD\"KEY", "BAD'KEY" };
+
+    ContainerCfgBuilder builder;
+    builder.setAppId("org.deepin.demo").setBasePath(baseDir.path()).setBundlePath(bundleDir.path());
+    for (const auto &key : validKeys) {
+        builder.appendEnv(key, "valid-" + key);
+    }
+    for (const auto &key : invalidKeys) {
+        builder.appendEnv(key, "invalid-" + key);
+    }
+
+    auto result = builder.build();
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+
+    ASSERT_TRUE(builder.getConfig().process.has_value());
+    ASSERT_TRUE(builder.getConfig().process->env.has_value());
+    const auto &ociEnv = *builder.getConfig().process->env;
+    for (const auto &key : validKeys) {
+        EXPECT_THAT(ociEnv, ::testing::Contains(key + "=valid-" + key)) << key;
+    }
+    for (const auto &key : invalidKeys) {
+        EXPECT_THAT(ociEnv, ::testing::Each(::testing::Not(::testing::StartsWith(key + "="))))
+          << "invalid key: " << key;
+    }
+
+    const auto envScript = bundleDir.path() / "00env.sh";
+    std::ifstream envFile{ envScript };
+    ASSERT_TRUE(envFile.is_open());
+    std::string content((std::istreambuf_iterator<char>(envFile)),
+                        std::istreambuf_iterator<char>());
+    for (const auto &key : validKeys) {
+        EXPECT_THAT(content, ::testing::HasSubstr("export " + key + "='valid-" + key + "'")) << key;
+    }
+    for (const auto &key : invalidKeys) {
+        EXPECT_EQ(content.find("export " + key + "="), std::string::npos) << "invalid key: " << key;
+    }
+
+    for (const auto &key : validKeys) {
+        const auto script = "set -e; . "
+          + linglong::common::strings::quoteBashArg(envScript.string()) + "; printf '%s' \"$" + key
+          + "\"";
+        auto output = linglong::utils::Cmd("sh").exec({ "-c", script });
+        ASSERT_TRUE(output.has_value()) << key << ": " << output.error().message();
+        EXPECT_EQ(*output, "valid-" + key) << key;
+    }
+}
+
 TEST_F(ContainerCfgBuilderTest, EnableXDPWritesContainerInfo)
 {
     ContainerCfgBuilder builder;

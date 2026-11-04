@@ -65,6 +65,26 @@ using ocppi::runtime::config::types::RootfsPropagation;
 
 namespace {
 
+// 00env.sh is sourced by the container shell, so only names accepted by
+// `export` may be serialized; an invalid name would break the whole script.
+bool isValidEnvKey(std::string_view key) noexcept
+{
+    const auto isAlpha = [](char c) {
+        return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
+    };
+    const auto isDigit = [](char c) {
+        return c >= '0' && c <= '9';
+    };
+
+    if (key.empty() || (!isAlpha(key.front()) && key.front() != '_')) {
+        return false;
+    }
+
+    return std::all_of(key.begin() + 1, key.end(), [&](char c) {
+        return isAlpha(c) || isDigit(c) || c == '_';
+    });
+}
+
 bool bindIfExist(std::vector<Mount> &mounts,
                  std::filesystem::path source,
                  std::string destination = "",
@@ -1553,6 +1573,10 @@ utils::error::Result<void> ContainerCfgBuilder::buildEnv() noexcept
 
     auto env = std::vector<std::string>{};
     for (const auto &[key, value] : environment) {
+        if (!isValidEnvKey(key)) {
+            continue;
+        }
+
         env.emplace_back(key + "=" + value);
 
         // Serialize the value as one shell argument; quoting rules are owned by

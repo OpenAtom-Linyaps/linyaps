@@ -101,10 +101,12 @@ collectDependsLibs() {
                 has_start="$(nm -D ${filePath} /dev/null 2>&1 | grep "__libc_start_main" || true)"
                 if [[ -n ${has_start} ]]; then
                         recordPath=$(mktemp)
+                        trap 'rm -f "$recordPath"' EXIT
                         processExecBin "${filePath}" "${recordPath}"
-                        if [[ -s ${recordPath} ]]; then
-                                records="$(cat $recordPath)"
-                                rm "$recordPath"
+                        records="$(<"$recordPath")"
+                        rm -f "$recordPath"
+                        trap - EXIT
+                        if [[ -n ${records} ]]; then
                                 logErr "\n$records"
                         fi
                 fi

@@ -49,6 +49,9 @@ Advanced users can use the [`ll-cli` runtime configuration](../../../extra/runti
 **--enable-pipewire**
 : Mount the PipeWire socket in the sandbox
 
+**--enable-atspi**
+: Mount the AT SPI socket in the sandbox
+
 **--cdi-spec-dir** _DIR_...
 : Specify CDI specification directories, defaulting to `/etc/cdi,/var/run/cdi`; separate multiple directories with commas
 

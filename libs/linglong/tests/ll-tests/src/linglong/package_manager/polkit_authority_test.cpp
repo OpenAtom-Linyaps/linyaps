@@ -24,13 +24,34 @@ TEST(PolkitAuthorityTest, KeepActionsUseLoginSession)
     }
 }
 
+TEST(PolkitAuthorityTest, SeparateCliProcessesShareTheSameKeepSubject)
+{
+    constexpr auto action = "org.deepin.linglong.PackageManager1.install";
+
+    // Each ll-cli invocation opens a new bus connection, but both are in the
+    // same login session. polkit must see the same subject for both checks.
+    const auto first = selectPolkitSubject(action, ":1.42", "c3");
+    const auto second = selectPolkitSubject(action, ":1.99", "c3");
+    EXPECT_EQ(first.kind, "unix-session");
+    EXPECT_EQ(second.kind, first.kind);
+    EXPECT_EQ(second.value, first.value);
+
+    // A different login session must not inherit that authorization.
+    const auto otherSession = selectPolkitSubject(action, ":1.100", "c4");
+    EXPECT_EQ(otherSession.kind, "unix-session");
+    EXPECT_NE(otherSession.value, first.value);
+}
+
 TEST(PolkitAuthorityTest, PlainAdminActionUsesCallerBusName)
 {
-    const auto subject = selectPolkitSubject("org.deepin.linglong.PackageManager1.prune",
-                                             ":1.42",
-                                             "c3");
-    EXPECT_EQ(subject.kind, "system-bus-name");
-    EXPECT_EQ(subject.value, ":1.42");
+    for (const auto *action : {
+           "org.deepin.linglong.PackageManager1.prune",
+           "org.deepin.linglong.PackageManager1.set-configuration",
+         }) {
+        const auto subject = selectPolkitSubject(action, ":1.42", "c3");
+        EXPECT_EQ(subject.kind, "system-bus-name");
+        EXPECT_EQ(subject.value, ":1.42");
+    }
 }
 
 TEST(PolkitAuthorityTest, MissingSessionFallsBackToCallerBusName)

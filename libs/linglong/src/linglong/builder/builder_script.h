@@ -21,7 +21,8 @@ namespace detail {
 
 auto findBuilderFileForExecutable(const std::filesystem::path &executable,
                                   const std::filesystem::path &buildRelative,
-                                  const std::filesystem::path &installed) noexcept
+                                  const std::filesystem::path &installed,
+                                  const std::filesystem::path &installedBinDir = {}) noexcept
   -> utils::error::Result<std::filesystem::path>;
 
 } // namespace detail

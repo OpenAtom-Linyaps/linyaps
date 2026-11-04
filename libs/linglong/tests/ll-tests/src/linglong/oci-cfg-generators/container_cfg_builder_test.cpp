@@ -7,7 +7,9 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "linglong/common/strings.h"
 #include "linglong/oci-cfg-generators/container_cfg_builder.h"
+#include "linglong/utils/cmd.h"
 #include "ocppi/runtime/config/types/NamespaceType.hpp"
 
 #include <common/tempdir.h>
@@ -409,6 +411,62 @@ TEST_F(ContainerCfgBuilderTest, ForwardAndAppendEnv)
                         std::istreambuf_iterator<char>());
     EXPECT_THAT(content, ::testing::HasSubstr("export FOO='bar'"));
     EXPECT_THAT(content, ::testing::HasSubstr(R"(QUOTED='a'\''b')"));
+}
+
+TEST_F(ContainerCfgBuilderTest, EnvScriptRoundTripsSpecialCharacters)
+{
+    struct EnvCase
+    {
+        std::string key;
+        std::string value;
+        std::string expectedLine;
+    };
+
+    const std::vector<EnvCase> cases = {
+        { "PLAIN", "bar", "export PLAIN='bar'" },
+        { "QUOTED", "a'b", R"(export QUOTED='a'\''b')" },
+        { "SPACES", "a b", "export SPACES='a b'" },
+        { "DOLLAR", "$HOME", "export DOLLAR='$HOME'" },
+        { "BACKTICK", "`id`", "export BACKTICK='`id`'" },
+        { "DQUOTE", "\"x\"", "export DQUOTE='\"x\"'" },
+        { "EMPTY", "", "export EMPTY=''" },
+        { "CONSECUTIVE", "a''b", R"(export CONSECUTIVE='a'\'''\''b')" },
+    };
+
+    ContainerCfgBuilder builder;
+    builder.setAppId("org.deepin.demo").setBasePath(baseDir.path()).setBundlePath(bundleDir.path());
+    for (const auto &envCase : cases) {
+        builder.appendEnv(envCase.key, envCase.value);
+    }
+
+    auto result = builder.build();
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+
+    // The OCI process environment must keep unquoted KEY=VALUE entries.
+    ASSERT_TRUE(builder.getConfig().process.has_value());
+    ASSERT_TRUE(builder.getConfig().process->env.has_value());
+    const auto &ociEnv = *builder.getConfig().process->env;
+    EXPECT_THAT(ociEnv, ::testing::Contains("QUOTED=a'b"));
+    EXPECT_THAT(ociEnv, ::testing::Contains("DOLLAR=$HOME"));
+    EXPECT_THAT(ociEnv, ::testing::Contains("EMPTY="));
+
+    const auto envScript = bundleDir.path() / "00env.sh";
+    std::ifstream envFile{ envScript };
+    ASSERT_TRUE(envFile.is_open());
+    std::string content((std::istreambuf_iterator<char>(envFile)),
+                        std::istreambuf_iterator<char>());
+    for (const auto &envCase : cases) {
+        EXPECT_THAT(content, ::testing::HasSubstr(envCase.expectedLine + "\n")) << envCase.key;
+    }
+
+    for (const auto &envCase : cases) {
+        const auto script = "set -e; . "
+          + linglong::common::strings::quoteBashArg(envScript.string()) + "; printf '%s' \"$"
+          + envCase.key + "\"";
+        auto output = linglong::utils::Cmd("sh").exec({ "-c", script });
+        ASSERT_TRUE(output.has_value()) << envCase.key << ": " << output.error().message();
+        EXPECT_EQ(*output, envCase.value) << envCase.key;
+    }
 }
 
 TEST_F(ContainerCfgBuilderTest, EnableXDPWritesContainerInfo)

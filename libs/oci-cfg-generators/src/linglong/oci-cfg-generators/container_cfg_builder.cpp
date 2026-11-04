@@ -1555,17 +1555,9 @@ utils::error::Result<void> ContainerCfgBuilder::buildEnv() noexcept
     for (const auto &[key, value] : environment) {
         env.emplace_back(key + "=" + value);
 
-        // here we process environment variables with single quotes.
-        // A=a'b ===> A='a'\''b'
-        std::string escaped;
-        for (auto it = value.begin(); it != value.end(); ++it) {
-            if (*it == '\'') {
-                escaped.append(R"('\'')");
-            } else {
-                escaped.push_back(*it);
-            }
-        }
-        ofs << "export " << key << "='" << escaped << "'" << std::endl;
+        // Serialize the value as one shell argument; quoting rules are owned by
+        // quoteBashArg so they cannot drift from other shell call sites.
+        ofs << "export " << key << '=' << common::strings::quoteBashArg(value) << std::endl;
     }
     ofs.close();
 

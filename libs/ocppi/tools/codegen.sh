@@ -25,7 +25,7 @@ quicktype() {
 		npx quicktype "$@"
 		popd
 	else
-		exec $QUICKTYPE "$@"
+		exec "$QUICKTYPE" "$@"
 
 	fi
 }

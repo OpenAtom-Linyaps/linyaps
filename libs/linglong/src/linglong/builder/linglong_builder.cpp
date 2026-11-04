@@ -32,6 +32,7 @@
 #include "linglong/utils/serialize/json.h"
 #include "linglong/utils/serialize/packageinfo_handler.h"
 #include "linglong/utils/temporary_directory.h"
+#include "linglong/utils/xdp.h"
 #include "ocppi/runtime/RunOption.hpp"
 #include "project_lock.h"
 
@@ -565,10 +566,7 @@ utils::error::Result<void> Builder::buildStagePrepare() noexcept
     }
     projectRef = std::move(ref).value();
 
-    static QRegularExpression appIDReg(
-      "[a-zA-Z0-9][-a-zA-Z0-9]{0,62}(\\.[a-zA-Z0-9][-a-zA-Z0-9]{0,62})+");
-    auto matches = appIDReg.match(QString::fromStdString(projectRef->id));
-    if (not(matches.isValid() && matches.hasMatch())) {
+    if (!utils::isValidXdgDesktopPortalId(projectRef->id)) {
         LogW("This app id does not follow the reverse domain name notation convention. "
              "See https://wikipedia.org/wiki/Reverse_domain_name_notation");
     }

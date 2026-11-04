@@ -28,6 +28,8 @@ pfl_add_library(
   src/linglong/builder/source_fetcher.h
   src/linglong/builder/project_lock.cpp
   src/linglong/builder/project_lock.h
+  src/linglong/builder/project_validation.cpp
+  src/linglong/builder/project_validation.h
   src/linglong/cli/cli.cpp
   src/linglong/cli/cli.h
   src/linglong/cli/cli_printer.cpp

@@ -254,7 +254,7 @@ modules:
 | Name    | Description                                                                                                        | Required                      |
 | ------- | ------------------------------------------------------------------------------------------------------------------ | ----------------------------- |
 | modules | List of rules defining application module splitting.                                                               | No                            |
-| name    | Name of the module. Each module needs a unique name.                                                               | Yes (within each module item) |
+| name    | Name of the module. Each module needs a unique name. Allowed characters are letters, digits, underscores, and hyphens; the name must not be empty. | Yes (within each module item) |
 | files   | A list of strings, listing files or directories belonging to this module. Paths are relative to `${PREFIX}` paths. | Yes (within each module item) |
 
 **Note:** All files installed to `${PREFIX}` will be assigned to a module. When `modules` are not defined, the build system will automatically generate default `binary` and `develop` modules.

@@ -14,17 +14,17 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ```yaml
 modules:
-  - name: 模块1
+  - name: module1
     files:
       - /path/to/file1
       - /path/to/file2
       - ^/path/to/dir1/.*
-  - name: 模块2
+  - name: module2
     files:
       - /path/to/files
 ```
 
-模块名可自定义，但不能重复，并且有一些保留的模块名有特殊含义，例如 `binary`、`develop`、`lang-*` 等，建议开发者自定义的模块以`x-`开头，以避免冲突。
+模块名可自定义，但不能重复，只能由字母、数字、下划线和连字符组成，且不能为空。例如 `lang-zh_CN` 和 `extra-data` 都是合法的模块名。另外有一些保留的模块名有特殊含义，例如 `binary`、`develop`、`lang-*` 等，建议开发者自定义的模块以 `x-` 开头，以避免冲突。
 
 files 是一个字符串数组，每列写一个文件路径，支持正则表达式。文件路径会自动添加应用安装路径 `$PREFIX` 作为前缀，所以如果模块要包含 `$PREFIX/bin/demo` 文件，仅需写 /bin/demo，如意玲珑会自动转换成 /opt/apps/org.deepin.demo/files/bin/demo 这种路径。
 

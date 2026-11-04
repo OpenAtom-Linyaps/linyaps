@@ -24,7 +24,7 @@ modules:
       - /path/to/files
 ```
 
-Module names can be customized but cannot be duplicated. Some reserved module names have special meanings, such as `binary`, `develop`, `lang-*`, etc. It is recommended that developer-customized modules start with `x-` to avoid conflicts.
+Module names can be customized but cannot be duplicated. Names may contain only letters, digits, underscores, and hyphens, and must not be empty. For example, `lang-zh_CN` and `extra-data` are valid module names. Some reserved module names have special meanings, such as `binary`, `develop`, `lang-*`, etc. It is recommended that developer-customized modules start with `x-` to avoid conflicts.
 
 `files` is a string array, each entry writes one file path, supporting regular expressions. File paths will automatically have the application installation path `$PREFIX` added as a prefix. So if a module wants to include the `$PREFIX/bin/demo` file, only `/bin/demo` needs to be written, and Linyaps will automatically convert it to paths like `/opt/apps/org.deepin.demo/files/bin/demo`.
 

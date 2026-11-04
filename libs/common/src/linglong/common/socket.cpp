@@ -38,7 +38,7 @@ tl::expected<SocketData, std::string> recvFdWithPayload(int socketFd, std::size_
 
     ssize_t n;
     while (true) {
-        n = recvmsg(socketFd, &msg, 0);
+        n = recvmsg(socketFd, &msg, MSG_CMSG_CLOEXEC);
         if (n < 0 && errno == EINTR) {
             continue;
         }

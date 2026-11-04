@@ -346,6 +346,16 @@ TEST_F(JSONPrinterTest, PrintErr)
     EXPECT_THAT(out, ::testing::HasSubstr("boom"));
 }
 
+TEST_F(JSONPrinterTest, PrintErrGoesToStderr)
+{
+    auto err = linglong::utils::error::Error::Err("file.cpp", 42, "trace", "boom", -7);
+    CaptureStdout capture;
+    printer.printErr(err);
+    EXPECT_THAT(capture.out(), ::testing::IsEmpty());
+    EXPECT_THAT(capture.err(), ::testing::HasSubstr("\"code\""));
+    EXPECT_THAT(capture.err(), ::testing::HasSubstr("boom"));
+}
+
 TEST_F(JSONPrinterTest, PrintPackage)
 {
     auto pkg = makePackage("org.deepin.demo", "Demo", "1.0.0", "stable", "binary", "a demo app");

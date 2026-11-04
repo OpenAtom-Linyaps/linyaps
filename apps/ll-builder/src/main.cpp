@@ -11,6 +11,7 @@
 #include "linglong/builder/config.h"
 #include "linglong/builder/linglong_builder.h"
 #include "linglong/builder/project_lock.h"
+#include "linglong/builder/project_validation.h"
 #include "linglong/cli/cli.h"
 #include "linglong/cli/cli_printer.h"
 #include "linglong/common/global/initialize.h"
@@ -70,6 +71,20 @@ parseProjectConfig(const std::filesystem::path &filename)
                             "'MAJOR.MINOR.PATCH.TWEAK'");
     }
 
+    auto packageIdRet = linglong::builder::validatePackageId(project->package.id);
+    if (!packageIdRet) {
+        return LINGLONG_ERR(packageIdRet);
+    }
+
+    if (project->modules.has_value()) {
+        for (const auto &module : *project->modules) {
+            auto moduleRet = linglong::builder::validateModuleName(module.name);
+            if (!moduleRet) {
+                return LINGLONG_ERR(moduleRet);
+            }
+        }
+    }
+
     if (project->modules.has_value()) {
         if (std::any_of(project->modules->begin(), project->modules->end(), [](const auto &module) {
                 return module.name == "binary";
@@ -123,6 +138,12 @@ parseProjectConfig(const std::filesystem::path &filename)
 int handleCreate(const CreateCommandOptions &options)
 {
     LogI("Handling create for project: {}", options.projectName);
+
+    auto packageIdRet = linglong::builder::validatePackageId(options.projectName);
+    if (!packageIdRet) {
+        LogE("{}", packageIdRet.error());
+        return -1;
+    }
 
     std::error_code ec;
     const auto currentDir = std::filesystem::current_path(ec);

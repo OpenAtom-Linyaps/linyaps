@@ -212,6 +212,30 @@ TEST_F(RealRepoTest, ClearReferenceAndLatestLocal)
     EXPECT_EQ(latest->version.toString(), "1.0.0");
 }
 
+TEST_F(RealRepoTest, ClearLegacyReferenceWithTwoComponentDependency)
+{
+    auto legacy = importLayer("org.example.legacy",
+                              "23.1.4.2",
+                              "runtime",
+                              "binary",
+                              { "files/usr/lib/liblegacy.so" });
+    ASSERT_TRUE(legacy.has_value());
+    ASSERT_TRUE(package::Version::validateDependVersion("23.1").has_value());
+
+    auto fuzzy = FuzzyReference::parse("org.example.legacy/23.1");
+    ASSERT_TRUE(fuzzy.has_value());
+    auto cleared = repo->clearReferenceLocal(*fuzzy, true);
+    ASSERT_TRUE(cleared.has_value()) << cleared.error().message();
+    EXPECT_EQ(*cleared, *legacy);
+    EXPECT_FALSE(repo->clearReferenceLocal(*fuzzy, false).has_value());
+
+    for (const auto &version : { "23.2", "24.1", "23.1.5" }) {
+        auto other = FuzzyReference::parse(std::string("org.example.legacy/") + version);
+        ASSERT_TRUE(other.has_value());
+        EXPECT_FALSE(repo->clearReferenceLocal(*other, true).has_value()) << version;
+    }
+}
+
 TEST_F(RealRepoTest, ListLocalAppsReturnsLatestVersionPerApp)
 {
     importLayer("com.example.app", "2.0.0", "app", "binary", { "files/usr/bin/hello2" });

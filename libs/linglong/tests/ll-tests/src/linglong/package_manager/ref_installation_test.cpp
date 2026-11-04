@@ -63,6 +63,11 @@ public:
 
     MOCK_METHOD(utils::error::Result<void>, pruneUnused, (), (override, noexcept));
 
+    MOCK_METHOD(utils::error::Result<bool>,
+                tryUninstallRef,
+                (const package::Reference &ref, std::optional<std::vector<std::string>> modules),
+                (override, noexcept));
+
     MOCK_METHOD(utils::error::Result<void>,
                 executePostInstallHooks,
                 (const package::Reference &ref),
@@ -314,6 +319,69 @@ TEST_F(RefInstallationTest, InstallExtraOnly)
     service::PackageTask task({});
     ASSERT_TRUE(action->prepare());
     ASSERT_TRUE(action->doAction(task));
+}
+
+TEST_F(RefInstallationTest, InstallExtraOnlyFailureKeepsExistingModules)
+{
+    LINGLONG_TRACE("InstallExtraOnlyFailureKeepsExistingModules");
+
+    auto fuzzy = package::FuzzyReference::parse("main:id/1.0.0/x86_64").value();
+    std::vector<std::string> modules{ "develop", "debug" };
+    api::types::v1::CommonOptions opts{ .force = false, .skipInteraction = true };
+    auto action =
+      service::RefInstallationAction::create(fuzzy, modules, *pm, *repo, opts, std::nullopt);
+
+    auto localRef = package::Reference::parse("main:id/1.0.0/x86_64").value();
+    EXPECT_CALL(*repo, latestLocalReference(_)).WillOnce(Return(localRef));
+    EXPECT_CALL(*repo, getLayerItem(localRef, "develop"))
+      .WillOnce(Return(LINGLONG_ERR("not found")));
+    EXPECT_CALL(*repo, getLayerItem(localRef, "debug")).WillOnce(Return(LINGLONG_ERR("not found")));
+
+    api::types::v1::PackageInfoV2 infoDevelop{
+        .arch = { "x86_64" },
+        .base = "base",
+        .channel = "main",
+        .id = "id",
+        .kind = "app",
+        .packageInfoV2Module = "develop",
+        .runtime = "runtime",
+        .version = "1.0.0",
+    };
+    auto infoDebug = infoDevelop;
+    infoDebug.packageInfoV2Module = "debug";
+
+    repo::RemotePackages remote;
+    remote.addPackages(api::types::v1::Repo{ .name = "repo" },
+                       std::vector<api::types::v1::PackageInfoV2>{ infoDevelop, infoDebug });
+    EXPECT_CALL(*repo, matchRemoteByPriority(_, _)).WillOnce(Return(std::move(remote)));
+
+    EXPECT_CALL(*repo, fetchRefMetaData(_, "develop", true))
+      .WillOnce(Return(repo::RefMetaData{ "rev123", nlohmann::json(infoDevelop).dump() }));
+    EXPECT_CALL(*repo, fetchRefMetaData(_, "debug", false))
+      .WillOnce(Return(repo::RefMetaData{ "rev124", nlohmann::json(infoDebug).dump() }));
+    EXPECT_CALL(*repo, getRefStatistics(_)).WillRepeatedly([](const repo::RefMetaData &) {
+        return utils::error::Result<repo::RefStatistics>{
+            repo::RefStatistics{ .archived = 1000, .needed_archived = 500 }
+        };
+    });
+
+    EXPECT_CALL(*pm, needToInstall("base", _)).WillOnce(Return(std::nullopt));
+    EXPECT_CALL(*pm, needToInstall("runtime", _)).WillOnce(Return(std::nullopt));
+    EXPECT_CALL(*pm, installRefModule(_, _, "develop"))
+      .WillOnce(Return(utils::error::Result<void>{}));
+    EXPECT_CALL(*pm, installRefModule(_, _, "debug")).WillOnce(Return(LINGLONG_ERR("pull failed")));
+    EXPECT_CALL(*pm, tryUninstallRef(localRef, _))
+      .WillOnce([&](const package::Reference &,
+                    const std::optional<std::vector<std::string>> &rollbackModules) {
+          EXPECT_EQ(rollbackModules, std::vector<std::string>{ "develop" });
+          return utils::error::Result<bool>{ true };
+      });
+    EXPECT_CALL(*repo, mergeModules()).Times(0);
+    EXPECT_CALL(*pm, applyApp(_, _)).Times(0);
+
+    service::PackageTask task({});
+    ASSERT_TRUE(action->prepare());
+    ASSERT_FALSE(action->doAction(task));
 }
 
 TEST_F(RefInstallationTest, InstallMultipleModules)

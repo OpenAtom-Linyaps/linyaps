@@ -1,6 +1,6 @@
 #!/bin/env bash
 
-# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
+# SPDX-FileCopyrightText: 2023-2026 UnionTech Software Technology Co., Ltd.
 #
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -26,7 +26,7 @@ openapi-generator-cli() {
                 npm install @openapitools/openapi-generator-cli
                 npx openapi-generator-cli "$@"
         else
-                $OPENAPI_GENERATOR_CLI "$@"
+                "$OPENAPI_GENERATOR_CLI" "$@"
         fi
 }
 

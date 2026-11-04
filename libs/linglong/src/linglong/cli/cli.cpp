@@ -3145,6 +3145,15 @@ std::vector<std::string> Cli::filePathMapping(const std::vector<std::string> &co
             continue;
         }
 
+        // The desktop entry spec defines "%%" as a literal percent sign, so an
+        // Exec line of "foo %%" has to reach the application as a single "%".
+        // Without this the argument fell into the unknown-code branch below and
+        // was logged and dropped.
+        if (arg == "%%") {
+            execArgs.emplace_back("%");
+            continue;
+        }
+
         LogW("unknown command argument {}", arg);
     }
 

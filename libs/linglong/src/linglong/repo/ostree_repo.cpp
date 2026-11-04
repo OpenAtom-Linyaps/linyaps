@@ -80,6 +80,44 @@ namespace {
 
 constexpr std::string_view elfVerifyPath = "share/deepin-elf-verify";
 
+// Sync children before their directory so a published checkout cannot contain
+// directory entries whose file data was lost in a power failure.
+std::error_code syncCheckout(const std::filesystem::path &path, bool recursive = true)
+{
+    std::error_code ec;
+    const auto status = std::filesystem::symlink_status(path, ec);
+    if (ec) {
+        return ec;
+    }
+    if (std::filesystem::is_symlink(status)) {
+        return {};
+    }
+    if (recursive && std::filesystem::is_directory(status)) {
+        for (const auto &entry : std::filesystem::directory_iterator(path, ec)) {
+            if (auto childError = syncCheckout(entry.path()); childError) {
+                return childError;
+            }
+        }
+        if (ec) {
+            return ec;
+        }
+    } else if (!std::filesystem::is_regular_file(status)) {
+        return {};
+    }
+
+    const int fd = open(path.c_str(), O_RDONLY | O_CLOEXEC | O_NOFOLLOW);
+    if (fd == -1) {
+        return { errno, std::generic_category() };
+    }
+    if (fsync(fd) == -1) {
+        ec = { errno, std::generic_category() };
+    }
+    if (close(fd) == -1 && !ec) {
+        ec = { errno, std::generic_category() };
+    }
+    return ec;
+}
+
 struct ostreeUserData
 {
     guint last_bytes_transferred{ 0 };
@@ -592,6 +630,14 @@ utils::error::Result<void> OSTreeRepo::deployLayer(const std::string &commit,
           fmt::format("ostree_repo_checkout_at {} {}", staging.string(), ptr_view(gErr)));
     }
 
+    // The rename only publishes a name; it does not make checkout data durable.
+    if (auto syncError = syncCheckout(staging); syncError) {
+        return LINGLONG_ERR(fmt::format("failed to sync checkout {}", staging), syncError);
+    }
+    if (auto syncError = syncCheckout(target.parent_path().parent_path(), false); syncError) {
+        return LINGLONG_ERR("failed to sync the repository directory", syncError);
+    }
+
     // rename(2) refuses to replace a non-empty directory, so an already
     // deployed copy is moved aside first. Only the two rename calls below run
     // while the layer directory does not exist; should the machine lose power
@@ -622,6 +668,13 @@ utils::error::Result<void> OSTreeRepo::deployLayer(const std::string &commit,
             }
         }
         return LINGLONG_ERR(fmt::format("failed to deploy {}", target), ec);
+    }
+
+    // Cache updates must only follow a durable directory entry. This also
+    // persists the move aside when replacing an existing deployment.
+    if (auto syncError = syncCheckout(target.parent_path(), false); syncError) {
+        return LINGLONG_ERR(fmt::format("failed to sync layers directory {}", target.parent_path()),
+                            syncError);
     }
 
     if (replaced) {

@@ -11,11 +11,15 @@
 #include "linglong/package/layer_dir.h"
 #include "linglong/package/reference.h"
 #include "linglong/repo/ostree_repo.h"
+#include "linglong/utils/file.h"
+#include "linglong/utils/finally/finally.h"
 
 #include <filesystem>
 #include <fstream>
 #include <memory>
 #include <optional>
+
+#include <unistd.h>
 
 namespace linglong::repo::test {
 
@@ -75,7 +79,8 @@ protected:
                                          const std::string &version,
                                          const std::string &kind,
                                          const std::string &module,
-                                         const std::vector<std::string> &relFiles)
+                                         const std::vector<std::string> &relFiles,
+                                         const std::vector<std::string> &readOnlyDirs = {})
     {
         std::error_code ec;
         auto layerDir = repoRoot / ("layersrc-" + id);
@@ -100,6 +105,18 @@ protected:
         info.packageInfoV2Module = module;
         nlohmann::json j = info;
         std::ofstream{ layerDir / "info.json" } << j.dump();
+
+        for (const auto &rel : readOnlyDirs) {
+            fs::permissions(layerDir / rel,
+                            fs::perms::owner_write | fs::perms::group_write
+                              | fs::perms::others_write,
+                            fs::perm_options::remove,
+                            ec);
+            if (ec) {
+                ADD_FAILURE() << "set directory permissions failed: " << ec.message();
+                return std::nullopt;
+            }
+        }
 
         LayerDir ld(layerDir);
         if (!ld.valid()) {
@@ -351,6 +368,50 @@ TEST_F(RealRepoTest, CreateTempMergedModuleDirWorks)
 
     std::error_code ec;
     fs::remove_all(tmp->path(), ec);
+}
+
+TEST_F(RealRepoTest, TempMergedModuleDirCleansReadOnlyPackageDirectories)
+{
+    if (::geteuid() == 0) {
+        GTEST_SKIP() << "root bypasses the directory permissions under test";
+    }
+
+    // Restore fixture directories even when the original cleanup leaves files behind.
+    auto cleanup = utils::finally::finally([&] {
+        std::ignore = utils::makeDirectoryTreeRemovable(repoRoot);
+    });
+
+    auto develop = importLayer("com.example.readonly",
+                               "1.0.0",
+                               "app",
+                               "develop",
+                               { "files/usr/include/readonly.h" });
+    ASSERT_TRUE(develop.has_value());
+    const std::string readOnlyDir = "files/usr/share/readonly";
+    auto binary = importLayer("com.example.readonly",
+                              "1.0.0",
+                              "app",
+                              "binary",
+                              { readOnlyDir + "/data" },
+                              { readOnlyDir });
+    ASSERT_TRUE(binary.has_value());
+    auto originalLayer = repo->getLayerDir(*binary, "binary");
+    ASSERT_TRUE(originalLayer.has_value());
+    const auto originalFile = originalLayer->path() / readOnlyDir / "data";
+    const auto originalPermissions = fs::status(originalFile).permissions();
+
+    fs::path temporaryPath;
+    {
+        auto merged = repo->createTempMergedModuleDir(*binary, { "binary", "develop" });
+        ASSERT_TRUE(merged.has_value()) << merged.error().message();
+        temporaryPath = merged->path();
+        ASSERT_TRUE(fs::exists(temporaryPath / readOnlyDir / "data"));
+        ASSERT_EQ(fs::status(temporaryPath / readOnlyDir).permissions() & fs::perms::owner_write,
+                  fs::perms::none);
+    }
+
+    EXPECT_FALSE(fs::exists(temporaryPath));
+    EXPECT_EQ(fs::status(originalFile).permissions(), originalPermissions);
 }
 
 TEST_F(RealRepoTest, ListLocalByQuery)

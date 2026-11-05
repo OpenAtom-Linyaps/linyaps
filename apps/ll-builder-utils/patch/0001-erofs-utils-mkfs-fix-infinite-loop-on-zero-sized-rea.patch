@@ -1,0 +1,44 @@
+From 6fcb48f6867f9897e6de7af22797029fbce54104 Mon Sep 17 00:00:00 2001
+From: dengbo11 <dengbo@deepin.org>
+Date: Mon, 2 Nov 2026 15:41:42 +0800
+Subject: [PATCH] erofs-utils: mkfs: fix infinite loop on zero-sized reads
+
+z_erofs_need_refill() is needed if rx == 0, otherwise it will spin
+forever.
+
+Fixes: 66653ef10a7f ("erofs-utils: introduce compression for regular files")
+Closes: https://github.com/erofs/erofs-utils/issues/59
+Link: https://lore.kernel.org/r/tencent_239D034A4EAAFD04010DD24A@qq.com
+Signed-off-by: dengbo11 <dengbo@deepin.org>
+Signed-off-by: Gao Xiang <xiang@kernel.org>
+---
+ lib/compress.c | 13 +++++++++++++
+ 1 file changed, 13 insertions(+)
+
+diff --git a/lib/compress.c b/lib/compress.c
+index aa60f14..b079558 100644
+--- a/lib/compress.c
++++ b/lib/compress.c
+@@ -1368,6 +1368,19 @@ int z_erofs_compress_segment(struct z_erofs_compress_sctx *ctx,
+ 				     Z_EROFS_COMPR_QUEUE_SZ - ctx->tail);
+ 		int ret;
+ 
++		if (__erofs_unlikely(!rx)) {
++			/*
++			 * A zero-sized read cannot make progress. Drop already
++			 * consumed data first.
++			 */
++			if (z_erofs_need_refill(ctx))
++				continue;
++			DBG_BUGON(1);
++			erofs_err("Internal queue error on %s",
++				  inode->i_srcpath);
++			return -EFAULT;
++		}
++
+ 		ret = (offset == -1 ?
+ 			erofs_io_read(vf, ctx->queue + ctx->tail, rx) :
+ 			erofs_io_pread(vf, ctx->queue + ctx->tail, rx,
+-- 
+2.50.1
+

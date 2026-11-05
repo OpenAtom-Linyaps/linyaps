@@ -1,16 +1,16 @@
 # SPDX-FileCopyrightText: 2025 - 2026 UnionTech Software Technology Co., Ltd.
 #
 # SPDX-License-Identifier: LGPL-3.0-or-later
-version: '1'
+version: "1"
 package:
   id: cn.org.linyaps.builder.utils
   name: ll-builder-utils
-  version: 0.0.4.0
+  version: 0.0.4.1
   kind: app
   description: |
     Utils for ll-builder
 command: [/opt/apps/cn.org.linyaps.builder.utils/files/bin/ll-builder-export]
-base: org.deepin.base/25.2.0
+base: org.deepin.base/25.2.2
 sources:
   - kind: archive
     url: https://github.com/erofs/erofs-utils/archive/refs/tags/v1.8.6.tar.gz
@@ -38,6 +38,7 @@ build: |
 
   # build erofsfuse static library
   cd /project/linglong/sources/erofs-utils/erofs-utils-1.8.6
+  patch lib/compress.c /project/apps/ll-builder-utils/patch/0001-erofs-utils-mkfs-fix-infinite-loop-on-zero-sized-rea.patch
   ./autogen.sh
   CFLAGS="-O2 -g0" ./configure -with-libzstd --enable-fuse --enable-static-fuse --with-libdeflate --without-xxhash libdeflate_LIBS=-ldeflate libdeflate_CFLAGS=-ldeflate
   make -j$(nproc)

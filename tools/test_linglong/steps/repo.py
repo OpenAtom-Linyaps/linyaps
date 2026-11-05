@@ -43,13 +43,49 @@ class RepoSteps:
         print(f"Current ll-builder default repo: {dr}")
         print(f"Current ll-builder highest priority repo: {hr} ({hp})")
 
+    # ── 隔离到冒烟仓库（只保留 smoketesting）──
+    #
+    # 冒烟期间必须只认 smoketesting 一个仓库：包集合固定、版本解析固定，
+    # 不会被 stable / nightly / 镜像上新发的包带偏。实测踩过：stable 上
+    # 新发了 dtk 6.7.0.52 和日历 6.5.x，用例按"最新版"解析时装到了
+    # 夹具之外的版本，收尾还原还删不掉被依赖拉进来的 runtime。
+    #
+    # 只用 repo 子命令完成，不手改配置文件：
+    #   1) add  冒烟仓库（已存在会报 already exist，忽略）
+    #   2) set-default 冒烟仓库（repo remove 不允许删掉唯一仓库，
+    #      所以必须先把新仓库加进来、设成默认，再删旧的）
+    #   3) remove 其余仓库
+    # ll-cli（/var/lib/linglong/config.yaml）和 ll-builder
+    # （~/.cache/linglong-builder/config.yaml）是两份独立配置，各做一遍。
     def configure_smoke_repositories(self):
-        p1 = self._next_repo_priority(self.ll_cli_state.highest_priority)
-        p2 = self._next_repo_priority(self.ll_builder_state.highest_priority)
-        self._sudo_ll_cli("repo", "add", SMOKE_REPO_NAME, SMOKE_REPO_URL)
-        self._sudo_ll_cli("repo", "set-priority", SMOKE_REPO_NAME, str(p1))
-        self._ll_builder("repo", "add", SMOKE_REPO_NAME, SMOKE_REPO_URL)
-        self._ll_builder("repo", "set-priority", SMOKE_REPO_NAME, str(p2))
+        for cmd_type, run in (("ll-cli", self._sudo_ll_cli),
+                              ("ll-builder", self._ll_builder)):
+            # 先确认冒烟仓库的 ostree remote 真的在。配置里有、remote 没有
+            # 时 add 会报 already exist、安装则报 Remote not found ——
+            # 这种半截状态是上一轮"写回配置文件"留下的，这里自愈：
+            # 垫一个临时仓库，把冒烟仓库删掉再加，remote 才会重建。
+            if SMOKE_REPO_NAME not in self._ostree_remote_names(cmd_type):
+                tmp = f"smoke-repin-{os.getpid()}"
+                run("repo", "add", tmp, SMOKE_REPO_URL, check=False)
+                run("repo", "remove", SMOKE_REPO_NAME, check=False)
+                run("repo", "add", SMOKE_REPO_NAME, SMOKE_REPO_URL, check=False)
+                run("repo", "remove", tmp, check=False)
+            run("repo", "add", SMOKE_REPO_NAME, SMOKE_REPO_URL, check=False)
+            run("repo", "set-default", SMOKE_REPO_NAME, check=False)
+            for name in self._repo_names(cmd_type):
+                if name != SMOKE_REPO_NAME:
+                    run("repo", "remove", name, check=False)
+
+            remaining = self._repo_names(cmd_type)
+            if remaining != [SMOKE_REPO_NAME]:
+                raise AssertionError(
+                    f"{cmd_type} 仓库隔离失败，期望只剩 {SMOKE_REPO_NAME}，"
+                    f"实际: {remaining}")
+            default, _, _ = self._parse_repo_show(cmd_type)
+            if default != SMOKE_REPO_NAME:
+                raise AssertionError(
+                    f"{cmd_type} 默认仓库应为 {SMOKE_REPO_NAME}，"
+                    f"实际: {default}")
 
     def test_cache_write_failure(self):
         app_id = CALENDAR_APP_ID

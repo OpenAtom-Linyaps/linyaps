@@ -88,4 +88,4 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 20. 应用启动后，为什么不显示应用托盘？
 
-    这可能是由应用注册托盘使用了相同的服务名，按照 KDE/freedesktop StatusNotifierItem 规范应用注册服务名为 org.kdeStatusNotifierItem-`<process id>`-`<instance number>`，在如意玲珑应用中，应用运行时的 pid 为19，可以通过以下命令查看是否有注册过的服务，`dbus-send --session --print-reply --dest=org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus.NameHasOwner string:org.kde.StatusNotifierItem-19-1`，如果存在 `boolean true` 说明服务被注册过。
+    这可能是由应用注册托盘使用了相同的服务名，按照 KDE/freedesktop StatusNotifierItem 规范应用注册服务名为 org.kde.StatusNotifierItem-`<process id>`-`<instance number>`，在如意玲珑应用中，应用运行时的 pid 为19，可以通过以下命令查看是否有注册过的服务，`dbus-send --session --print-reply --dest=org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus.NameHasOwner string:org.kde.StatusNotifierItem-19-1`，如果存在 `boolean true` 说明服务被注册过。

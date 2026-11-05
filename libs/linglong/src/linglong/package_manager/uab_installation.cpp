@@ -158,7 +158,7 @@ utils::error::Result<void> UabInstallationAction::loadUABFile(const std::filesys
         return LINGLONG_ERR(res);
     }
     if (!*res) {
-        return LINGLONG_ERR("failed to verify uab file");
+        return LINGLONG_ERR(fmt::format("failed to verify uab file {}", path));
     }
 
     auto metaInfoRet = uabFile->getMetaInfo();

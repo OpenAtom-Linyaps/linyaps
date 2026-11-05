@@ -34,7 +34,7 @@ class SmokeTest(
         ("清理并重置仓库", "reset_repositories", "仓库管理"),
         ("记录 ll-cli 和 ll-builder 当前仓库状态", "record_current_repo_state", "仓库管理"),
         (
-            "配置冒烟测试仓库",
+            "确保冒烟仓库为默认（smoketesting）",
             "configure_smoke_repositories",
             "仓库管理",
             ("record_current_repo_state",),

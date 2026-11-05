@@ -43,13 +43,53 @@ class RepoSteps:
         print(f"Current ll-builder default repo: {dr}")
         print(f"Current ll-builder highest priority repo: {hr} ({hp})")
 
+    # ── 冒烟仓库（smoketesting）──
+    #
+    # 冒烟期间解析到的包必须固定、可重现：夹具仓库 smoketesting 里的 34 个
+    # ref 是专门给冒烟用的（日历 5.13.1.1 / 5.14.4.101 / 5.14.4.102 /
+    # 5.14.5.1，base 23.1.0.3 / 25.2.0.92 / 25.2.2.6，dtk 23.1.0.1 …）。
+    # 实测踩过：stable 上新发了 dtk 6.7.0.52 和日历 6.5.x，用例按"最新版"
+    # 解析时装到了夹具之外的版本，收尾还原还删不掉被依赖拉进来的 runtime。
+    #
+    # 隔离（只保留这一个仓库）由 Jenkins job 在跑冒烟前做；套件这边只把
+    # 它设成默认仓库 —— set-default 会把优先级顶到 max+100，取包一定先
+    # 走它，所以在共享机器上手工跑也不会动别人的配置。
     def configure_smoke_repositories(self):
-        p1 = self._next_repo_priority(self.ll_cli_state.highest_priority)
-        p2 = self._next_repo_priority(self.ll_builder_state.highest_priority)
-        self._sudo_ll_cli("repo", "add", SMOKE_REPO_NAME, SMOKE_REPO_URL)
-        self._sudo_ll_cli("repo", "set-priority", SMOKE_REPO_NAME, str(p1))
-        self._ll_builder("repo", "add", SMOKE_REPO_NAME, SMOKE_REPO_URL)
-        self._ll_builder("repo", "set-priority", SMOKE_REPO_NAME, str(p2))
+        """确保 ll-cli / ll-builder 都配好冒烟仓库，并把它设成默认仓库。
+
+        ⚠️ 这里【只保证有、且是默认】，不删别人的仓库：仓库的隔离
+        （只保留 smoketesting）由 Jenkins job 在跑冒烟之前做，套件不负责
+        动机器上别人的配置。专用冒烟机上配合 job 的隔离，效果就是"只从
+        夹具仓库取包"；共享机器上手工跑也不会把别人的 stable 删掉。
+        """
+        for cmd_type, run in (("ll-cli", self._sudo_ll_cli),
+                              ("ll-builder", self._ll_builder)):
+            # 先确认冒烟仓库的 ostree remote 真的在。配置里有、remote 没有
+            # 时 add 会报 already exist、安装则报 Remote not found ——
+            # 这种半截状态是历史上"直接写回配置文件"留下的，这里自愈：
+            # 垫一个临时仓库，把冒烟仓库删掉再加，remote 才会重建。
+            if SMOKE_REPO_NAME not in self._ostree_remote_names(cmd_type):
+                tmp = f"smoke-repin-{os.getpid()}"
+                run("repo", "add", tmp, SMOKE_REPO_URL, check=False)
+                run("repo", "remove", SMOKE_REPO_NAME, check=False)
+                run("repo", "add", SMOKE_REPO_NAME, SMOKE_REPO_URL, check=False)
+                run("repo", "remove", tmp, check=False)
+            if SMOKE_REPO_NAME not in self._repo_names(cmd_type):
+                run("repo", "add", SMOKE_REPO_NAME, SMOKE_REPO_URL, check=True)
+
+            # set-default 会把它的优先级顶到 max+100，于是冒烟仓库一定排在
+            # 最前面 —— 即使机器上还留着 stable/nightly，包也先从这个仓库取。
+            run("repo", "set-default", SMOKE_REPO_NAME, check=True)
+
+            default, _, _ = self._parse_repo_show(cmd_type)
+            if default != SMOKE_REPO_NAME:
+                raise AssertionError(
+                    f"{cmd_type} 默认仓库应为 {SMOKE_REPO_NAME}，"
+                    f"实际: {default}")
+            if SMOKE_REPO_NAME not in self._repo_names(cmd_type):
+                raise AssertionError(
+                    f"{cmd_type} 仓库列表里没有 {SMOKE_REPO_NAME}: "
+                    f"{self._repo_names(cmd_type)}")
 
     def test_cache_write_failure(self):
         app_id = CALENDAR_APP_ID

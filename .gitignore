@@ -27,3 +27,7 @@
 /obj-x86_64-linux-gnu
 
 /linglong/
+
+# Python 冒烟套件的字节码缓存
+__pycache__/
+*.pyc

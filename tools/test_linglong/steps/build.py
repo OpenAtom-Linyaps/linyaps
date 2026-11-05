@@ -33,6 +33,31 @@ class BuildSteps:
     def create_demo_project(self):
         self._remove_demo_project_dir()
         self._ll_builder("create", DEMO_APP_ID)
+        # ⚠️ `ll-builder create` 的模板写的是 base: org.deepin.base/25.2.1，
+        #    而冒烟仓库（smoketesting）里没有 25.2.1 这条线（夹具只有
+        #    23.1.0.3 / 25.2.0.92 / 25.2.2.6）。不改成 25.2.2 的话，构建会
+        #    从构建缓存里拿旧的 25.2.1.4，导出的 UAB 再安装时服务端要去
+        #    远端解析 base 25.2.1 —— 一个都找不到，直接
+        #    "packages is empty"（实测 demo 与 entries 两处都栽在这）。
+        self._pin_project_base(DEMO_PROJECT_DIR)
+
+    @staticmethod
+    def _pin_project_base(project_dir: str,
+                          want: str = "org.deepin.base/25.2.2") -> None:
+        """把工程 linglong.yaml 里的 base 固定成冒烟仓库里有的版本。"""
+        yaml_path = Path(project_dir) / "linglong.yaml"
+        text = yaml_path.read_text()
+        lines = []
+        replaced = False
+        for line in text.splitlines(keepends=True):
+            if line.startswith("base:"):
+                lines.append(f"base: {want}\n")
+                replaced = True
+            else:
+                lines.append(line)
+        if not replaced:
+            raise AssertionError(f"{yaml_path} 里没有 base 字段，无法固定 base 版本")
+        yaml_path.write_text("".join(lines))
 
     # ── Test: 构建并导出 demo 应用 ──
     def test_demo_build_and_export(self):
@@ -680,7 +705,7 @@ class BuildSteps:
             "  description: |\n"
             "    probe project for entry file rewrites\n\n"
             "command: [echo, -e, smoke-entries]\n\n"
-            "base: org.deepin.base/25.2.1\n\n"
+            "base: org.deepin.base/25.2.2\n\n"
             "build: |\n"
             + "\n".join(("  " + ln) if ln.strip() else "" for ln in script.splitlines())
             + "\n"

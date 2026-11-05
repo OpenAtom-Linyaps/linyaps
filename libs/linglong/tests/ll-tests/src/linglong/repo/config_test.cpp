@@ -327,3 +327,35 @@ TEST(Repo, SaveConfigMissingDefaultRepoFails)
     auto file = dir.path() / "saved.yaml";
     EXPECT_FALSE(saveConfig(cfg, file).has_value());
 }
+
+TEST(Repo, GetRepoByName)
+{
+    RepoConfigV2 cfg;
+    cfg.defaultRepo = "stable";
+    cfg.repos = {
+        Repo{ .alias = std::nullopt,
+              .name = "stable",
+              .priority = 0,
+              .url = "https://example.com/stable" },
+        Repo{ .alias = "hub", .name = "myhub", .priority = 100, .url = "https://example.com/hub" },
+    };
+
+    auto stable = getRepoByName(cfg, "stable");
+    ASSERT_TRUE(stable.has_value());
+    EXPECT_EQ(stable->url, "https://example.com/stable");
+
+    // 没有别名的仓库用仓库名匹配
+    auto myhubByName = getRepoByName(cfg, "myhub");
+    ASSERT_TRUE(myhubByName.has_value());
+    EXPECT_EQ(myhubByName->url, "https://example.com/hub");
+
+    // 有别名的仓库可以用别名或仓库名匹配
+    auto myhubByAlias = getRepoByName(cfg, "hub");
+    ASSERT_TRUE(myhubByAlias.has_value());
+    EXPECT_EQ(myhubByAlias->name, "myhub");
+
+    EXPECT_FALSE(getRepoByName(cfg, "missing").has_value());
+
+    RepoConfigV2 emptyCfg;
+    EXPECT_FALSE(getRepoByName(emptyCfg, "stable").has_value());
+}

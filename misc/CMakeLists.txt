@@ -184,6 +184,8 @@ install(
   RENAME 21linglong)
 
 if(ENABLE_TESTING)
+  add_test(NAME linglong_symbols_strip
+           COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/tests/symbols_strip_test.sh)
   add_test(
     NAME linglong_environment
     COMMAND

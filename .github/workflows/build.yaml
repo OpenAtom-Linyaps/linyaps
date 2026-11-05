@@ -46,7 +46,7 @@ jobs:
             libfuse3-dev libglib2.0-dev libgmock-dev libgtest-dev liblz4-dev liblzma-dev
             libostree-dev libpcre2-dev libselinux1-dev libssl-dev libsystemd-dev libyaml-cpp-dev
             libzstd-dev nlohmann-json3-dev pkg-config zlib1g-dev libwayland-dev wayland-protocols libgl1-mesa-dev
-            qt6-base-dev qt6-base-private-dev
+            qt6-base-dev qt6-base-private-dev elfutils
           version: 1.0
       - name: Configure CMake
         run: |
@@ -75,7 +75,7 @@ jobs:
             libfuse3-dev libglib2.0-dev libgmock-dev libgtest-dev liblz4-dev liblzma-dev
             libostree-dev libpcre2-dev libselinux1-dev libssl-dev libsystemd-dev libyaml-cpp-dev
             libzstd-dev nlohmann-json3-dev pkg-config zlib1g-dev libwayland-dev wayland-protocols libgl1-mesa-dev
-            qt6-base-dev qt6-base-private-dev
+            qt6-base-dev qt6-base-private-dev elfutils
           version: 1.0
       - name: Configure CMake
         run: |

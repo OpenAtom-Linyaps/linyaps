@@ -99,22 +99,12 @@ class SmokeTestBase:
         print(f"{c}[{status}]\033[0m {title}")
 
 
-    # 整轮开始前的仓库配置快照，供 cleanup() 校验"改了要还原"。
-    _repo_config_at_start = None
+    # 整轮开始前的已装应用集合，cleanup() 用它把夹具卸载后的机器补回来。
+    # 仓库配置【不还原】：冒烟机专机专用，整轮跑完仍留在只剩
+    # smoketesting 的状态，下一轮看到的包集合和这一轮完全一样。
     _installed_refs_at_start = None
 
-    # ── repo 配置快照 / 还原 ──
-    @staticmethod
-    def _normalize_repo_config(text: str) -> list:
-        """把仓库配置归一化成一个"行的多重集合"，用来做还原校验。
-
-        故意【不做逐字节比较】：服务/CLI 重写这个文件时，键的顺序、
-        缩进、空行都可能变，但语义没变，逐字节比会误报。
-        排序后逐行比：值的任何变化、仓库的增删都会露出来，
-        而纯粹的排版差异不会。
-        """
-        return sorted(ln.strip() for ln in text.splitlines() if ln.strip())
-
+    # ── 仓库配置快照 / 还原（用例级，见 REPO_CONFIG_STEPS）──
     def _read_root_file(self, path) -> str:
         """读一个通常需要 root 的文件，返回【干净】的内容。
 
@@ -212,34 +202,46 @@ class SmokeTestBase:
                 f"重启服务后 {REPO_CONFIG_PATH} 又和快照不一致了"
                 "（说明还有别的进程在按旧配置回写）")
 
-    def _verify_repo_config_restored(self) -> bool:
-        """整轮结束后，仓库配置必须和开始前语义一致。
+    def _repo_names(self, cmd_type: str = "ll-cli") -> list[str]:
+        """`repo show` 里列出的仓库名（按显示顺序）。
 
-        为什么单靠 _verify_repo_state_restored 不够：它只看默认仓库和
-        最高优先级仓库，镜像开关 / region / 仓库地址被改是查不出来的。
-        实测就漏过 —— test_repo_mirror_management 收尾停在
-        disable-mirror stable，把机器上原本 mirror_enabled: true 的
-        stable 关掉了，而校验一路绿灯。
+        用来做"只剩冒烟仓库"的隔离与自检。表格列是 名称/地址/别名/优先级，
+        所以只认第二列像 URL 的行，表头和 "Default: xxx" 自然被排除。
         """
-        if self._repo_config_at_start is None:
-            return True
-        try:
-            now = self._snapshot_repo_config()
-        except Exception as exc:  # noqa: BLE001
-            print(f"  Error: 读取仓库配置失败，无法校验还原: {exc}",
-                  file=sys.stderr)
-            return False
-        before = self._normalize_repo_config(self._repo_config_at_start)
-        after = self._normalize_repo_config(now)
-        if before == after:
-            return True
-        print(f"  Error: 冒烟结束后 {REPO_CONFIG_PATH} 与开始前不一致",
-              file=sys.stderr)
-        for ln in sorted(set(before) - set(after)):
-            print(f"    丢失: {ln!r}", file=sys.stderr)
-        for ln in sorted(set(after) - set(before)):
-            print(f"    多出/被改: {ln!r}", file=sys.stderr)
-        return False
+        if cmd_type == "ll-cli":
+            result = self._ll_cli("repo", "show")
+        else:
+            result = self._ll_builder("repo", "show")
+        output = re.sub(r"\033\[[0-9;]*m", "", result.stdout or "")
+        names = []
+        for line in output.splitlines():
+            parts = line.split()
+            if len(parts) >= 2 and parts[1].startswith("http"):
+                names.append(parts[0])
+        return names
+
+    def _ostree_remote_names(self, cmd_type: str = "ll-cli") -> set:
+        """ostree 里实际存在的 remote 名。
+
+        ⚠️ 仓库的 ostree remote 是在 CLI 的 setConfig 里重建的
+        （ostree_repo.cpp 的 updateOstreeRepoConfig：先删光再按配置重建）。
+        所以【直接写配置文件】会留下"配置里有仓库、remote 不存在"的半截
+        状态，之后安装直接报 `Remote "xxx" not found` —— 实测踩过。
+        仓库的增删只能走 repo 子命令，add 的时候 remote 才会建回来。
+        """
+        if cmd_type == "ll-cli":
+            r = self._run_cmd(
+                ["ostree", "remote", "list", "--repo", "/var/lib/linglong/repo"],
+                sudo=True, check=False)
+        else:
+            # ll-builder 的仓库根是 ~/.cache/linglong-builder，
+            # ostree 库在它下面的 repo/ 子目录里。
+            base = Path.home() / ".cache/linglong-builder"
+            repo_dir = base / "repo" if (base / "repo").is_dir() else base
+            r = self._run_cmd(
+                ["ostree", "remote", "list", "--repo", str(repo_dir)],
+                check=False)
+        return {ln.strip() for ln in (r.stdout or "").splitlines() if ln.strip()}
 
     @staticmethod
     def _builder_ref(app_id: str, version: str = "1.0.0.1",
@@ -410,14 +412,13 @@ class SmokeTestBase:
         except Exception as exc:  # noqa: BLE001
             print(f"Warning: 设置服务覆盖率环境失败: {exc}")
 
-        # 记下仓库配置的原样，cleanup() 结束时校验它没被改坏。
-        # 冒烟会加一个临时仓库 smoketesting，cleanup 里的
-        # reset_repositories() 会把它删掉，所以首尾应当一致。
+        # 记下整轮开始前的已装应用集合：cleanup() 会把夹具卸掉，最后按
+        # 这份快照补装回去。仓库配置【不做还原】——冒烟机专机专用，
+        # 整轮跑完仍留在只剩 smoketesting 的仓库上。
         try:
-            self._repo_config_at_start = self._snapshot_repo_config()
             self._installed_refs_at_start = self._installed_refs()
         except Exception as exc:  # noqa: BLE001
-            print(f"Warning: 读取仓库配置失败，跳过还原校验: {exc}")
+            print(f"Warning: 读取已装应用集合失败，跳过补装: {exc}")
 
         try:
             for i in range(len(self.STEPS)):
@@ -475,10 +476,6 @@ class SmokeTestBase:
             raise RuntimeError(f"Failed to parse repo show: {output}")
         return default_repo, highest_priority_repo, highest_priority
 
-    # ── Test: 配置冒烟测试仓库 ──
-    def _next_repo_priority(self, current: int) -> int:
-        return current + 100
-
     # ── Test: 创建 demo 项目 ──
     def _remove_demo_project_dir(self):
         demo_dir = Path(DEMO_PROJECT_DIR)
@@ -525,44 +522,6 @@ class SmokeTestBase:
         self._assert_calendar_module_absent("lang-ja")
 
     # ── Cleanup ──
-    def _verify_repo_state_restored(self, cmd_type: str) -> bool:
-        if cmd_type == "ll-cli":
-            expected = self.ll_cli_state
-        else:
-            expected = self.ll_builder_state
-
-        if not expected.default_repo or not expected.highest_priority_repo:
-            return True  # 初始状态未记录，跳过检查
-
-        try:
-            actual_default, actual_hr, actual_hp = self._parse_repo_show(cmd_type)
-        except RuntimeError:
-            return False
-
-        ok = True
-        if actual_default != expected.default_repo:
-            print(
-                f"{cmd_type} default repo changed: "
-                f"{expected.default_repo} -> {actual_default}",
-                file=sys.stderr,
-            )
-            ok = False
-        if actual_hr != expected.highest_priority_repo:
-            print(
-                f"{cmd_type} highest priority repo changed: "
-                f"{expected.highest_priority_repo} -> {actual_hr}",
-                file=sys.stderr,
-            )
-            ok = False
-        if actual_hp != expected.highest_priority:
-            print(
-                f"{cmd_type} highest priority changed: "
-                f"{expected.highest_priority} -> {actual_hp}",
-                file=sys.stderr,
-            )
-            ok = False
-        return ok
-
     # ── Helper: 在伪终端里执行命令 ──
     #
     # ll-cli enter 最终会调用 ll-box exec --tty，必须有真实 TTY，
@@ -1227,16 +1186,14 @@ class SmokeTestBase:
         self._sudo_ll_cli("uninstall", SEMVER_APP_ID, check=False)
         self._sudo_ll_cli("uninstall", TESTSUITE_BASELINE_APP_ID, check=False)
         self._remove_demo_project_dir()
-        self.reset_repositories()
 
         # ⚠️ 上面这几句会把套件当夹具用的应用卸掉（demo / 日历 / semver /
         # baseline）。但机器上原本就【预装】了其中一些 —— 例如日历，以及它
         # 依赖的 org.deepin.runtime.dtk 和 base —— 卸掉之后它们就回不来了：
         # 实测整轮跑完机器会少 3 个 ref（run52 之后只剩 3 个）。
-        # 这里按【整轮开始前的已装集合】兜底还原一次，语义与上面仓库配置的
-        # 兜底一致：让机器回到开跑前的样子，而不是留下被清理过的状态。
-        # 注意这里【不】判 has_failed：cleanup 卸载夹具是设计如此，还原失败
-        # 属于环境问题（装不回来），不该把一个跑得没问题的整轮判失败。
+        # 这里按【整轮开始前的已装集合】补装一次，让机器回到开跑前的样子。
+        # 注意这里【不】判 has_failed：cleanup 卸载夹具是设计如此，补装失败
+        # 属于环境问题，不该把一个跑得没问题的整轮判失败。
         if self._installed_refs_at_start:
             try:
                 self._restore_installed_refs(self._installed_refs_at_start)
@@ -1244,27 +1201,11 @@ class SmokeTestBase:
                 print(f"  Error: 还原整轮开始前的已装应用集合失败: {exc}",
                       file=sys.stderr)
 
-        if not self._verify_repo_state_restored("ll-cli"):
-            self.has_failed = True
-        if not self._verify_repo_state_restored("ll-builder"):
-            self.has_failed = True
-        # 逐项核对整个仓库配置（镜像开关 / region / 地址 / 优先级…）
-        if not self._verify_repo_config_restored():
-            # 有步骤漏了还原：这里用整轮开始前的快照【兜底还原】一次，
-            # 保证机器不会留在被污染的状态；但这一轮仍然判 FAIL ——
-            # "改了配置没还原"是脚本的 bug，必须暴露出来而不是被兜底掩盖。
-            print("  Error: 有步骤没还原仓库配置，尝试用开始前的快照兜底还原",
-                  file=sys.stderr)
-            try:
-                self._restore_repo_config(self._repo_config_at_start)
-                if self._verify_repo_config_restored():
-                    print("  兜底还原成功，机器配置已回到开始前的样子",
-                          file=sys.stderr)
-            except Exception as exc:  # noqa: BLE001
-                print(f"  Error: 兜底还原也失败了: {exc}", file=sys.stderr)
-            self.has_failed = True
+        # 仓库配置【不还原】：冒烟机专机专用，整轮结束仍留在只剩
+        # smoketesting 的仓库上（configure_smoke_repositories 隔离的，
+        # 下一轮开头还会再隔离一次，重复执行是幂等的）。
 
-        # 最后再把服务端计数落盘一次：上面这些卸载/仓库重置同样发生在
+        # 最后再把服务端计数落盘一次：上面这些卸载同样发生在
         # PackageManager 服务里，不重启就收集不到。
         # 这是整轮冒烟服务端覆盖率的最后一道保障。
         self.flush_service_coverage()

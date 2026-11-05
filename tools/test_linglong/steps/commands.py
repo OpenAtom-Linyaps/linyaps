@@ -17,6 +17,7 @@ import time
 from pathlib import Path
 
 from ..constants import (
+    SMOKE_REPO_NAME,
     SMOKE_REPO_URL,
     DEMO_APP_ID,
     CALENDAR_APP_ID,
@@ -555,9 +556,10 @@ class CommandSteps:
                 f"rc={r.returncode} {out[-300:]}")
 
         # peer 模式下的写操作（root 有权），走 peer 的权限校验分支
-        for args in (["repo", "set-default", "stable"],
-                     ["repo", "enable-mirror", "stable"],
-                     ["repo", "disable-mirror", "stable"]):
+        # ⚠️ 冒烟期间仓库隔离成只剩 SMOKE_REPO_NAME，这里只能动它。
+        for args in (["repo", "set-default", SMOKE_REPO_NAME],
+                     ["repo", "enable-mirror", SMOKE_REPO_NAME],
+                     ["repo", "disable-mirror", SMOKE_REPO_NAME]):
             r = self._sudo_ll_cli("--no-dbus", *args, timeout=180, check=False)
             if r.returncode != 0:
                 raise AssertionError(
@@ -569,7 +571,8 @@ class CommandSteps:
     # enable-mirror / disable-mirror / update 之前完全没被调用，
     # 对应 repo 子命令里的镜像与 URL 更新分支。
     def test_repo_mirror_management(self):
-        for args in (["enable-mirror", "stable"], ["disable-mirror", "stable"]):
+        for args in (["enable-mirror", SMOKE_REPO_NAME],
+                     ["disable-mirror", SMOKE_REPO_NAME]):
             r = self._sudo_ll_cli("repo", *args, timeout=120, check=False)
             if r.returncode != 0:
                 raise AssertionError(
@@ -577,8 +580,8 @@ class CommandSteps:
                     f"rc={r.returncode} {r.stderr[:200]}")
 
         # update 需要 <alias> <url> 两个参数
-        r = self._sudo_ll_cli("repo", "update", "stable", SMOKE_REPO_URL,
-                              timeout=180, check=False)
+        r = self._sudo_ll_cli("repo", "update", SMOKE_REPO_NAME,
+                              SMOKE_REPO_URL, timeout=180, check=False)
         if r.returncode not in (0, 255):
             raise AssertionError(
                 f"repo update 异常退出: rc={r.returncode} {r.stderr[:200]}")
@@ -605,9 +608,9 @@ class CommandSteps:
     #   - enable-mirror --region：写 mirrorEnabled 与 region
     #   - modify：整条子命令已废弃，必须明确报错
     #
-    # ⚠️ 全程只动一个临时仓库，绝不去改 stable。
-    #    已有的 test_repo_mirror_management 会 enable/disable stable 的镜像，
-    #    如果这里再用 stable 验证 region，就会把机器上原有的镜像配置改掉。
+    # ⚠️ 全程只动一个临时仓库，绝不去改冒烟仓库。
+    #    已有的 test_repo_mirror_management 会 enable/disable 冒烟仓库的镜像，
+    #    如果这里再用它验证 region，就会把冒烟仓库的镜像配置改掉。
     #
     # 判据落在【落盘的配置文件】/var/lib/linglong/config.yaml 上，
     # 而不是只看 rc —— 写分支的语义就是"配置真的被改了"。
@@ -730,14 +733,14 @@ class CommandSteps:
         finally:
             cleanup()
 
-        # 收尾：临时仓库必须清干净，且 stable 不能被顺手改坏
+        # 收尾：临时仓库必须清干净，且冒烟仓库不能被顺手改坏
         final = repo_cfg()
         if name in final or alias in final:
             raise AssertionError(
                 f"临时仓库没有清理干净: {final[:400]!r}")
-        if "name: stable" not in final:
+        if f"name: {SMOKE_REPO_NAME}" not in final:
             raise AssertionError(
-                f"stable 仓库不应被本用例影响: {final[:400]!r}")
+                f"{SMOKE_REPO_NAME} 仓库不应被本用例影响: {final[:400]!r}")
 
     # ── Test: --json 输出格式 ──
     #

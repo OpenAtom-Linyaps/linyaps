@@ -99,12 +99,15 @@ class SmokeTestBase:
         print(f"{c}[{status}]\033[0m {title}")
 
 
-    # 整轮开始前的已装应用集合，cleanup() 用它把夹具卸载后的机器补回来。
-    # 仓库配置【不还原】：冒烟机专机专用，整轮跑完仍留在只剩
-    # smoketesting 的状态，下一轮看到的包集合和这一轮完全一样。
+    # 整轮开始前的仓库配置 / 已装应用集合，cleanup() 结束时还原回去：
+    # 冒烟会把仓库隔离成只剩夹具仓库（smoketesting），跑完必须还原成
+    # 原来的样子，否则这台机器上别的活儿（别人手动装包、别的 job）就
+    # 找不到原来的仓库了。
+    _repo_config_at_start = None
+    _builder_repo_config_at_start = None
     _installed_refs_at_start = None
 
-    # ── 仓库配置快照 / 还原（用例级，见 REPO_CONFIG_STEPS）──
+    # ── 仓库配置快照 / 还原 ──
     def _read_root_file(self, path) -> str:
         """读一个通常需要 root 的文件，返回【干净】的内容。
 
@@ -159,8 +162,13 @@ class SmokeTestBase:
             time.sleep(2)
         raise RuntimeError(f"重启后 PackageManager 服务未回到 active: {state!r}")
 
-    def _restore_repo_config(self, snapshot: str) -> None:
+    def _restore_repo_config(self, snapshot: str, path=None,
+                             restart_service: bool = True) -> None:
         """把仓库配置写回快照内容；已经一致就跳过。
+
+        path 默认是 ll-cli 的那份（REPO_CONFIG_PATH）；ll-builder 那份
+        （~/.cache/linglong-builder/config.yaml）跑在用户态、没有服务可重启，
+        所以 restart_service=False。
 
         ⚠️ 不能靠 `repo enable-mirror` / `disable-mirror` 之类的命令拼回原状：
         disable-mirror 并不会清掉 region，优先级顺序也被改动过，
@@ -178,29 +186,188 @@ class SmokeTestBase:
         又把它冲掉了。
         所以写完文件必须让服务重新加载（重启），否则还原等于没做。
         """
-        if self._snapshot_repo_config() == snapshot:
+        target = Path(path) if path is not None else Path(REPO_CONFIG_PATH)
+        if self._read_root_file(target) == snapshot:
             return
         tmpdir = Path(tempfile.mkdtemp(prefix="ll-repocfg-"))
         try:
             tmp = tmpdir / "config.yaml"
             tmp.write_text(snapshot)
             # 目标文件已存在，cp 是就地截断写入，属主/权限保持不变
-            r = self._run_cmd(["cp", str(tmp), str(REPO_CONFIG_PATH)],
-                              sudo=True, check=False)
+            r = self._run_cmd(["cp", str(tmp), str(target)],
+                              sudo=(target == Path(REPO_CONFIG_PATH)),
+                              check=False)
             if r.returncode != 0:
                 raise RuntimeError(
-                    f"写回 {REPO_CONFIG_PATH} 失败: rc={r.returncode} "
-                    f"{r.stderr[:200]}")
+                    f"写回 {target} 失败: rc={r.returncode} {r.stderr[:200]}")
         finally:
             shutil.rmtree(tmpdir, ignore_errors=True)
-        if self._snapshot_repo_config() != snapshot:
-            raise RuntimeError(f"写回后 {REPO_CONFIG_PATH} 与快照仍不一致")
+        if self._read_root_file(target) != snapshot:
+            raise RuntimeError(f"写回后 {target} 与快照仍不一致")
+        if not restart_service:
+            return
         # 让服务丢掉内存里的旧配置，重新从文件加载
         self._restart_package_manager()
-        if self._snapshot_repo_config() != snapshot:
+        if self._read_root_file(target) != snapshot:
             raise RuntimeError(
-                f"重启服务后 {REPO_CONFIG_PATH} 又和快照不一致了"
+                f"重启服务后 {target} 又和快照不一致了"
                 "（说明还有别的进程在按旧配置回写）")
+
+    def _builder_repo_config_path(self) -> Path:
+        """ll-builder 的仓库配置文件路径。
+
+        ll-builder 和 ll-cli 各有一份独立的仓库配置：ll-cli 在
+        /var/lib/linglong/config.yaml，ll-builder 在
+        ~/.config/linglong/builder/config.yaml 里 `repo:` 指向的目录下
+        （apps/ll-builder/src/main.cpp 读这个 key，取不到就退回
+        LINGLONG_DATA_DIR），也就是 ~/.cache/linglong-builder/config.yaml。
+        """
+        builder_cfg = Path.home() / ".config/linglong/builder/config.yaml"
+        text = builder_cfg.read_text() if builder_cfg.exists() else ""
+        for line in text.splitlines():
+            if line.startswith("repo:"):
+                return Path(line.split(":", 1)[1].strip()) / "config.yaml"
+        return Path.home() / ".cache/linglong-builder/config.yaml"
+
+    @staticmethod
+    def _parse_repo_snapshot(text: str) -> tuple:
+        """把 config.yaml 快照解析成 (defaultRepo, [repo 字典])。
+
+        只认这个文件的实际格式（顶层 defaultRepo，repos 下一个 `- ` 开头的
+        列表，每项若干 key: value）。用途是【用命令行】把快照还原回去：
+        逐个 repo add（顺带重建 ostree remote）、摆优先级与镜像、设默认仓库。
+        只读快照文本，不写配置文件。
+        """
+        default = ""
+        repos: list[dict] = []
+        cur = None
+        for raw in text.splitlines():
+            if not raw.strip() or raw.lstrip().startswith("#"):
+                continue
+            indented = raw[:1].isspace()
+            line = raw.strip()
+            if line.startswith("defaultRepo:"):
+                default = line.split(":", 1)[1].strip().strip("\"'")
+                cur = None
+                continue
+            if line.startswith("- "):
+                if cur:
+                    repos.append(cur)
+                cur = {}
+                line = line[2:].strip()
+            elif not indented:
+                # 顶层键（repos: / version: ...）：当前列表项到此结束
+                if cur:
+                    repos.append(cur)
+                cur = None
+                continue
+            if cur is None or ":" not in line:
+                continue
+            key, value = line.split(":", 1)
+            cur[key.strip()] = value.strip().strip("\"'")
+        if cur:
+            repos.append(cur)
+        return default, [r for r in repos if r.get("name")]
+
+    def _restore_repo_config_cli(self, snapshot: str, cmd_type: str) -> None:
+        """用 repo 子命令把仓库配置还原成快照的样子。
+
+        比写回配置文件可靠：命令行会同时把 ostree remote 建回来
+        （见 _ostree_remote_names 的说明），机器不会留下"配置里有仓库、
+        remote 不存在"的半截状态，之后装包也不会报 Remote not found。
+        """
+        default, repos = self._parse_repo_snapshot(snapshot)
+        if not repos:
+            raise RuntimeError("快照里没有解析到任何仓库，拒绝还原")
+        run = self._sudo_ll_cli if cmd_type == "ll-cli" else self._ll_builder
+
+        names = set(self._repo_names(cmd_type))
+        remotes = self._ostree_remote_names(cmd_type)
+        for repo in repos:
+            name = repo["name"]
+            url = repo.get("url", "")
+            priority = repo.get("priority", "0")
+            if name in names and name in remotes:
+                run("repo", "set-priority", name, priority, check=False)
+                continue
+            if name in names:
+                # 配置里有、remote 没有：先删再加，remote 才会重建。
+                # repo remove 不允许删掉唯一仓库，所以必要时先垫一个临时的。
+                if not (names - {name}):
+                    tmp = f"smoke-restore-tmp-{os.getpid()}"
+                    run("repo", "add", tmp, url, check=False)
+                    names.add(tmp)
+                run("repo", "remove", name, check=False)
+                names.discard(name)
+            run("repo", "add", name, url, check=False)
+            names.add(name)
+            run("repo", "set-priority", name, priority, check=False)
+            mirror = str(repo.get("mirror_enabled", "")).lower()
+            if mirror == "true":
+                args = ["repo", "enable-mirror", name]
+                if repo.get("region"):
+                    args += ["--region", repo["region"]]
+                run(*args, check=False)
+            elif mirror == "false":
+                run("repo", "disable-mirror", name, check=False)
+
+        # 默认仓库最后设：set-default 会把它的优先级顶到 max+100，再改回来
+        if default:
+            run("repo", "set-default", default, check=False)
+            for repo in repos:
+                if repo["name"] == default:
+                    run("repo", "set-priority", default,
+                        repo.get("priority", "0"), check=False)
+
+        keep = {repo["name"] for repo in repos}
+        for name in self._repo_names(cmd_type):
+            if name not in keep:
+                run("repo", "remove", name, check=False)
+
+    @staticmethod
+    def _normalize_repo_config(text: str) -> list:
+        """把仓库配置归一化成一个"行的多重集合"，用来做还原校验。
+
+        故意【不做逐字节比较】：服务/CLI 重写这个文件时，键的顺序、缩进、
+        空行都可能变，但语义没变，逐字节比会误报。排序后逐行比：值的任何
+        变化、仓库的增删都会露出来，而纯粹的排版差异不会。
+        """
+        return sorted(ln.strip() for ln in text.splitlines() if ln.strip())
+
+    def _verify_repo_config_restored(self) -> bool:
+        """整轮结束后，ll-cli / ll-builder 两份仓库配置都要和开始前一致。
+
+        单看默认仓库和最高优先级是不够的：镜像开关 / region / 仓库地址
+        被改是查不出来的（实测漏过 test_repo_mirror_management 把
+        mirror_enabled 关掉的情况）。
+        """
+        ok = True
+        for snapshot, path, label in (
+            (self._repo_config_at_start, REPO_CONFIG_PATH, "ll-cli"),
+            (self._builder_repo_config_at_start,
+             self._builder_repo_config_path(), "ll-builder"),
+        ):
+            if snapshot is None:
+                continue
+            try:
+                now = self._read_root_file(path)
+            except Exception as exc:  # noqa: BLE001
+                print(f"  Error: 读取 {label} 仓库配置失败，无法校验还原: {exc}",
+                      file=sys.stderr)
+                ok = False
+                continue
+            before = self._normalize_repo_config(snapshot)
+            after = self._normalize_repo_config(now)
+            if before == after:
+                continue
+            print(f"  Error: 冒烟结束后 {label} 仓库配置 {path} 与开始前不一致",
+                  file=sys.stderr)
+            for ln in sorted(set(before) - set(after)):
+                print(f"    丢失: {ln!r}", file=sys.stderr)
+            for ln in sorted(set(after) - set(before)):
+                print(f"    多出/被改: {ln!r}", file=sys.stderr)
+            ok = False
+        return ok
 
     def _repo_names(self, cmd_type: str = "ll-cli") -> list[str]:
         """`repo show` 里列出的仓库名（按显示顺序）。
@@ -412,13 +579,16 @@ class SmokeTestBase:
         except Exception as exc:  # noqa: BLE001
             print(f"Warning: 设置服务覆盖率环境失败: {exc}")
 
-        # 记下整轮开始前的已装应用集合：cleanup() 会把夹具卸掉，最后按
-        # 这份快照补装回去。仓库配置【不做还原】——冒烟机专机专用，
-        # 整轮跑完仍留在只剩 smoketesting 的仓库上。
+        # 记下整轮开始前的仓库配置和已装应用集合：冒烟会把仓库隔离成
+        # 只剩夹具仓库、还会卸载夹具，cleanup() 结束时按这两份快照还原，
+        # 机器（可能是别人也在用的）要回到开跑前的样子。
         try:
+            self._repo_config_at_start = self._snapshot_repo_config()
+            self._builder_repo_config_at_start = self._read_root_file(
+                self._builder_repo_config_path())
             self._installed_refs_at_start = self._installed_refs()
         except Exception as exc:  # noqa: BLE001
-            print(f"Warning: 读取已装应用集合失败，跳过补装: {exc}")
+            print(f"Warning: 读取仓库配置/已装集合失败，跳过还原: {exc}")
 
         try:
             for i in range(len(self.STEPS)):
@@ -1187,6 +1357,28 @@ class SmokeTestBase:
         self._sudo_ll_cli("uninstall", TESTSUITE_BASELINE_APP_ID, check=False)
         self._remove_demo_project_dir()
 
+        # ⚠️ 还原顺序不能反：冒烟期间仓库被隔离成只剩 smoketesting，
+        # 开跑前那批应用（stable 里的 25.2.x 之类）在隔离状态下根本
+        # 装不回来。所以先把仓库配置还原，再补装应用。
+        for snapshot, cmd_type, path, restart in (
+            (self._repo_config_at_start, "ll-cli", REPO_CONFIG_PATH, True),
+            (self._builder_repo_config_at_start, "ll-builder",
+             self._builder_repo_config_path(), False),
+        ):
+            if snapshot is None:
+                continue
+            try:
+                self._restore_repo_config_cli(snapshot, cmd_type)
+            except Exception as exc:  # noqa: BLE001
+                print(f"  Error: 用命令行还原 {cmd_type} 仓库配置失败，"
+                      f"退回写回快照: {exc}", file=sys.stderr)
+                try:
+                    self._restore_repo_config(snapshot, path,
+                                              restart_service=restart)
+                except Exception as exc2:  # noqa: BLE001
+                    print(f"  Error: 写回 {path} 也失败: {exc2}", file=sys.stderr)
+                    self.has_failed = True
+
         # ⚠️ 上面这几句会把套件当夹具用的应用卸掉（demo / 日历 / semver /
         # baseline）。但机器上原本就【预装】了其中一些 —— 例如日历，以及它
         # 依赖的 org.deepin.runtime.dtk 和 base —— 卸掉之后它们就回不来了：
@@ -1201,9 +1393,10 @@ class SmokeTestBase:
                 print(f"  Error: 还原整轮开始前的已装应用集合失败: {exc}",
                       file=sys.stderr)
 
-        # 仓库配置【不还原】：冒烟机专机专用，整轮结束仍留在只剩
-        # smoketesting 的仓库上（configure_smoke_repositories 隔离的，
-        # 下一轮开头还会再隔离一次，重复执行是幂等的）。
+        # 逐项核对整个仓库配置（镜像开关 / region / 地址 / 优先级…）：
+        # 有步骤漏了还原或上面还原没成功，机器就被污染了，必须判 FAIL。
+        if not self._verify_repo_config_restored():
+            self.has_failed = True
 
         # 最后再把服务端计数落盘一次：上面这些卸载同样发生在
         # PackageManager 服务里，不重启就收集不到。

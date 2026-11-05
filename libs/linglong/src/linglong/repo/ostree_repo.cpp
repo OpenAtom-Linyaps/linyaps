@@ -2661,7 +2661,6 @@ void OSTreeRepo::updateSharedInfo() noexcept
     auto desktopExportPath = std::string{ LINGLONG_EXPORT_PATH } + "/applications";
     auto customApplicationDir = this->repoDir / "entries" / desktopExportPath;
     auto mimeDataDir = this->repoDir / "entries/share/mime";
-    auto glibSchemasDir = this->repoDir / "entries/share/glib-2.0/schemas";
 
     std::vector<std::string> desktopDirs;
     std::error_code ec;
@@ -2691,14 +2690,6 @@ void OSTreeRepo::updateSharedInfo() noexcept
         auto ret = utils::Cmd("update-mime-database").exec({ mimeDataDir });
         if (!ret) {
             LogW("failed to update mime type database in {}: {}", mimeDataDir, ret.error());
-        }
-    }
-
-    // 更新 glib-2.0/schemas
-    if (std::filesystem::exists(glibSchemasDir, ec)) {
-        auto ret = utils::Cmd("glib-compile-schemas").exec({ glibSchemasDir });
-        if (!ret) {
-            LogW("failed to update schemas in {}: {}", glibSchemasDir, ret.error());
         }
     }
 }

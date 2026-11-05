@@ -9,6 +9,7 @@
 #include "linglong/runtime/security_context.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/filelock.h"
+#include "linglong/utils/runtime_directory.h"
 #include "ocppi/cli/CLI.hpp"
 #include "ocppi/runtime/config/types/Config.hpp"
 #include "ocppi/runtime/config/types/Process.hpp"
@@ -40,6 +41,7 @@ public:
     {
         std::string bundleSuffix;
         std::optional<std::filesystem::path> appCache;
+        utils::runtime_directory::RuntimeLayout runtimeLayout;
     };
 
     static auto create(RunContext &context, CreateOptions options)
@@ -47,6 +49,7 @@ public:
     ContainerContext(constract_passkey key,
                      std::string containerID,
                      std::filesystem::path bundleDir,
+                     utils::runtime_directory::RuntimeLayout runtimeLayout,
                      std::optional<std::filesystem::path> appCache = std::nullopt);
     ~ContainerContext();
 
@@ -57,6 +60,7 @@ public:
 
     [[nodiscard]] auto getContainerID() const -> const std::string &;
     [[nodiscard]] auto getBundleDir() const -> const std::filesystem::path &;
+    [[nodiscard]] auto getRuntimeLayout() const -> const utils::runtime_directory::RuntimeLayout &;
     [[nodiscard]] auto getContainerCache() const -> const std::optional<std::filesystem::path> &;
     void addSecurityContext(std::unique_ptr<SecurityContext> securityContext);
     auto setupOverlayFS(RunContext &context, bool persistent) -> utils::error::Result<void>;
@@ -65,6 +69,7 @@ public:
 private:
     std::string containerID;
     std::filesystem::path bundleDir;
+    utils::runtime_directory::RuntimeLayout runtimeLayout;
     std::optional<std::filesystem::path> appCache;
     std::vector<std::unique_ptr<SecurityContext>> securityContexts;
     std::unique_ptr<utils::OverlayFS> overlayFS;

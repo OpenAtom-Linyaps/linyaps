@@ -15,7 +15,6 @@
 
 #include <cstdlib>
 #include <fstream>
-#include <sstream>
 
 #include <pwd.h>
 #include <sched.h>

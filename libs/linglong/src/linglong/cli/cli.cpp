@@ -51,6 +51,8 @@
 #include "linglong/utils/xdp.h"
 #include "ocppi/cli/CommandFailedError.hpp"
 #include "ocppi/runtime/ExecOption.hpp"
+#include "ocppi/runtime/KillOption.hpp"
+#include "ocppi/runtime/ListOption.hpp"
 #include "ocppi/runtime/RunOption.hpp" // IWYU pragma: keep
 #include "ocppi/types/ContainerListItem.hpp"
 
@@ -124,11 +126,8 @@ struct ContainerStatus
     bool shouldRetry{ false };
 };
 
-ContainerStatus checkContainerStatus(const std::string &id,
-                                     linglong::utils::filelock::FileLock &lock) noexcept
+ContainerStatus checkContainerStatus(linglong::utils::filelock::FileLock &lock) noexcept
 {
-    auto containerLock = linglong::common::dir::getBundleDir(id) / ".lock";
-
     auto ret = lock.tryLock(linglong::utils::filelock::LockType::Read);
     if (!ret) {
         return { false, true };
@@ -172,7 +171,8 @@ struct IOSetup
     linglong::utils::fd::UniqueFd listenFd;
 };
 
-linglong::utils::error::Result<IOSetup> setupIOChannels() noexcept
+linglong::utils::error::Result<IOSetup>
+setupIOChannels(const linglong::utils::runtime_directory::RuntimeLayout &runtimeLayout) noexcept
 {
     LINGLONG_TRACE("setup IO channels");
 
@@ -180,12 +180,18 @@ linglong::utils::error::Result<IOSetup> setupIOChannels() noexcept
     setup.option.uid = ::getuid();
     setup.option.gid = ::getgid();
     setup.option.tty = false;
+    setup.option.GlobalOption::root = runtimeLayout.containerStateDir();
 
     if (isatty(STDIN_FILENO) != 0 && isatty(STDOUT_FILENO) != 0) {
         setup.option.tty = true;
 
-        setup.consoleSocket = linglong::common::dir::getRuntimeDir()
-          / ("socket-" + linglong::common::strings::generateRandomString(6));
+        auto prepareResult = runtimeLayout.prepareRuntimeDir();
+        if (!prepareResult) {
+            return LINGLONG_ERR(prepareResult);
+        }
+
+        setup.consoleSocket = runtimeLayout.consoleSocket(
+          "socket-" + linglong::common::strings::generateRandomString(6));
 
         auto socketRet = linglong::common::socket::createUnixSocket(setup.consoleSocket.c_str());
         if (!socketRet) {
@@ -1151,8 +1157,10 @@ Cli::initializeDBusPackageManager()
                                                            QCoreApplication::instance());
 }
 
-utils::error::Result<int> Cli::reuseContainer(const std::string &id,
-                                              const std::vector<std::string> &commands) noexcept
+utils::error::Result<int>
+Cli::reuseContainer(const std::string &id,
+                    const std::vector<std::string> &commands,
+                    const utils::runtime_directory::RuntimeLayout &runtimeLayout) noexcept
 {
     LINGLONG_TRACE(fmt::format("reuse container {}", id));
 
@@ -1161,7 +1169,7 @@ utils::error::Result<int> Cli::reuseContainer(const std::string &id,
         return LINGLONG_ERR("empty command");
     }
 
-    auto containerLock = common::dir::getBundleDir(id) / ".lock";
+    auto containerLock = runtimeLayout.bundleDir(id) / ".lock";
     auto lockRet =
       utils::filelock::FileLock::create(containerLock, utils::filelock::LockType::Read, false);
     if (!lockRet) {
@@ -1170,12 +1178,12 @@ utils::error::Result<int> Cli::reuseContainer(const std::string &id,
     }
     auto lock = std::move(lockRet).value();
 
-    auto status = checkContainerStatus(id, lock);
+    auto status = checkContainerStatus(lock);
     if (!status.canReuse) {
         return status.shouldRetry ? 0 : -1;
     }
 
-    auto ioSetup = setupIOChannels();
+    auto ioSetup = setupIOChannels(runtimeLayout);
     if (!ioSetup) {
         return LINGLONG_ERR(ioSetup);
     }
@@ -1530,6 +1538,13 @@ int Cli::run(const RunOptions &options)
 {
     LINGLONG_TRACE("command run");
 
+    auto runtimeLayoutResult = utils::runtime_directory::RuntimeLayout::current();
+    if (!runtimeLayoutResult) {
+        this->printer.printErr(runtimeLayoutResult.error());
+        return -1;
+    }
+    const auto &runtimeLayout = *runtimeLayoutResult;
+
     auto userContainerDir = std::filesystem::path{ "/run/linglong" } / std::to_string(getuid());
     if (auto ret = utils::ensureDirectory(userContainerDir, common::shared_directory_permissions);
         !ret) {
@@ -1652,7 +1667,7 @@ int Cli::run(const RunOptions &options)
             break;
         }
 
-        auto ret = reuseContainer(containerID, commands);
+        auto ret = reuseContainer(containerID, commands, runtimeLayout);
         if (!ret) {
             LogW("unexpected reuse error: {}", ret.error());
             return -1;
@@ -1771,7 +1786,7 @@ int Cli::run(const RunOptions &options)
         return *runRes;
     }
 
-    return this->runResolvedContext(*runContext, options, std::move(runtimeConfig));
+    return this->runResolvedContext(*runContext, options, std::move(runtimeConfig), runtimeLayout);
 }
 
 int Cli::runWithContext(const RunOptions &options)
@@ -1811,7 +1826,13 @@ int Cli::runWithContext(const RunOptions &options)
         return -1;
     }
 
-    return this->runResolvedContext(runContext, options, std::move(runtimeConfig));
+    auto runtimeLayout = utils::runtime_directory::RuntimeLayout::current();
+    if (!runtimeLayout) {
+        this->printer.printErr(runtimeLayout.error());
+        return -1;
+    }
+
+    return this->runResolvedContext(runContext, options, std::move(runtimeConfig), *runtimeLayout);
 }
 
 utils::error::Result<void> Cli::ensureBaseDevelopModule(runtime::RunContext &runContext)
@@ -1847,7 +1868,8 @@ utils::error::Result<void> Cli::ensureBaseDevelopModule(runtime::RunContext &run
 
 int Cli::runResolvedContext(runtime::RunContext &runContext,
                             const RunOptions &options,
-                            std::optional<api::types::v1::RuntimeConfigure> runtimeConfig)
+                            std::optional<api::types::v1::RuntimeConfigure> runtimeConfig,
+                            const utils::runtime_directory::RuntimeLayout &runtimeLayout)
 {
     LINGLONG_TRACE("run resolved context");
 
@@ -1878,6 +1900,7 @@ int Cli::runResolvedContext(runtime::RunContext &runContext,
     runtime::RunContainerOptions runOptions;
     runOptions.enableSecurityContext(runtime::getDefaultSecurityContexts());
     runOptions.common.containerCachePath = appCache;
+    runOptions.common.runtimeLayout = runtimeLayout;
     runOptions.lockName = ".lock";
     if (runtimeConfig) {
         auto runtimeConfigRes = runOptions.applyRuntimeConfig(*runtimeConfig);
@@ -1985,6 +2008,12 @@ int Cli::enter(const EnterOptions &options)
     }
 
     auto opt = ocppi::runtime::ExecOption{ .tty = true, .uid = ::getuid(), .gid = ::getgid() };
+    auto runtimeLayout = utils::runtime_directory::RuntimeLayout::current();
+    if (!runtimeLayout) {
+        this->printer.printErr(runtimeLayout.error());
+        return -1;
+    }
+    opt.root = runtimeLayout->containerStateDir();
 
     auto result =
       this->ociCLI.exec(containerID, commands[0], { commands.begin() + 1, commands.end() }, opt);
@@ -2007,7 +2036,14 @@ Cli::getCurrentContainers() const noexcept
 {
     LINGLONG_TRACE("get current running containers")
 
-    auto containersRet = this->ociCLI.list();
+    auto runtimeLayout = utils::runtime_directory::RuntimeLayout::current();
+    if (!runtimeLayout) {
+        return LINGLONG_ERR(runtimeLayout);
+    }
+
+    auto listOption = ocppi::runtime::ListOption{};
+    listOption.root = runtimeLayout->containerStateDir();
+    auto containersRet = this->ociCLI.list(listOption);
     if (!containersRet) {
         return LINGLONG_ERR(containersRet);
     }
@@ -2161,10 +2197,19 @@ int Cli::kill(const KillOptions &options)
     }
 
     auto ret = 0;
+    auto runtimeLayout = utils::runtime_directory::RuntimeLayout::current();
+    if (!runtimeLayout) {
+        this->printer.printErr(runtimeLayout.error());
+        return -1;
+    }
+
     for (const auto &containerID : *containerIDList) {
         LogI("select container id {}", containerID);
+        auto killOption = ocppi::runtime::KillOption{};
+        killOption.root = runtimeLayout->containerStateDir();
         auto result = this->ociCLI.kill(ocppi::runtime::ContainerID(containerID),
-                                        ocppi::runtime::Signal(options.signal));
+                                        ocppi::runtime::Signal(options.signal),
+                                        killOption);
         if (!result) {
             auto err = LINGLONG_ERRV(result);
             this->printer.printErr(err);
@@ -3447,7 +3492,13 @@ int Cli::getBundleDir(const InspectOptions &options)
         return -1;
     }
 
-    auto bundleDir = linglong::common::dir::getBundleDir(containerIDList->front());
+    auto runtimeLayout = utils::runtime_directory::RuntimeLayout::current();
+    if (!runtimeLayout) {
+        this->printer.printErr(runtimeLayout.error());
+        return -1;
+    }
+
+    auto bundleDir = runtimeLayout->bundleDir(containerIDList->front());
 
     std::cout << bundleDir.string() << std::endl;
 

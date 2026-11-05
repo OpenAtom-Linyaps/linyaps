@@ -29,6 +29,7 @@
 #include "linglong/utils/file.h"
 #include "linglong/utils/finally/finally.h"
 #include "linglong/utils/log/log.h"
+#include "linglong/utils/runtime_directory.h"
 #include "linglong/utils/serialize/json.h"
 #include "linglong/utils/serialize/packageinfo_handler.h"
 #include "linglong/utils/temporary_directory.h"
@@ -1138,6 +1139,11 @@ utils::error::Result<void> Builder::processBuildDepends() noexcept
 {
     LINGLONG_TRACE("process build depends");
 
+    auto runtimeLayout = utils::runtime_directory::RuntimeLayout::current();
+    if (!runtimeLayout) {
+        return LINGLONG_ERR(runtimeLayout);
+    }
+
     // processing buildext.apt.buildDepends
     auto res = generateBuildDependsScript();
     if (!res) {
@@ -1162,6 +1168,7 @@ utils::error::Result<void> Builder::processBuildDepends() noexcept
                   .type = "bind",
                 },
               },
+            .runtimeLayout = *runtimeLayout,
           },
         .basePath = baseOverlay->mergedDirPath(),
     };
@@ -1276,6 +1283,11 @@ utils::error::Result<bool> Builder::buildStageBuild(std::vector<std::string> arg
         return LINGLONG_ERR("failed to generate entry script", res);
     }
 
+    auto runtimeLayout = utils::runtime_directory::RuntimeLayout::current();
+    if (!runtimeLayout) {
+        return LINGLONG_ERR(runtimeLayout);
+    }
+
     runtime::BuilderContainerOptions containerOptions{
         .common =
           runtime::CommonContainerOptions{
@@ -1292,6 +1304,7 @@ utils::error::Result<bool> Builder::buildStageBuild(std::vector<std::string> arg
                                                     .source = LINGLONG_BUILDER_HELPER,
                                                     .type = "bind" },
             },
+            .runtimeLayout = *runtimeLayout,
           },
         .basePath = baseOverlay->mergedDirPath(),
         .isolateNetWork = this->buildOptions.isolateNetWork,
@@ -1392,6 +1405,11 @@ utils::error::Result<void> Builder::buildStagePreCommit() noexcept
         }
     }
 
+    auto runtimeLayout = utils::runtime_directory::RuntimeLayout::current();
+    if (!runtimeLayout) {
+        return LINGLONG_ERR(runtimeLayout);
+    }
+
     runtime::BuilderContainerOptions containerOptions{
         .common =
           runtime::CommonContainerOptions{
@@ -1405,6 +1423,7 @@ utils::error::Result<void> Builder::buildStagePreCommit() noexcept
                   .type = "bind",
                 },
               },
+            .runtimeLayout = *runtimeLayout,
           },
         .basePath = baseOverlay->mergedDirPath(),
     };
@@ -2256,6 +2275,11 @@ utils::error::Result<void> Builder::run(std::vector<std::string> modules,
 {
     LINGLONG_TRACE("run application");
 
+    auto runtimeLayout = utils::runtime_directory::RuntimeLayout::current();
+    if (!runtimeLayout) {
+        return LINGLONG_ERR(runtimeLayout);
+    }
+
     auto locked = lockProject();
     if (!locked) {
         return LINGLONG_ERR(locked);
@@ -2303,7 +2327,8 @@ utils::error::Result<void> Builder::run(std::vector<std::string> modules,
         auto container = this->containerBuilder.createInitContainer(
           runContext,
           runtime::CommonContainerOptions{ .containerCachePath = appCache,
-                                           .extraMounts = applicationMounts });
+                                           .extraMounts = applicationMounts,
+                                           .runtimeLayout = *runtimeLayout });
         if (!container) {
             return LINGLONG_ERR(container);
         }
@@ -2354,6 +2379,7 @@ utils::error::Result<void> Builder::run(std::vector<std::string> modules,
     runOptions.common = runtime::CommonContainerOptions{
         .containerCachePath = appCache,
         .extraMounts = applicationMounts,
+        .runtimeLayout = *runtimeLayout,
     };
 
     auto container = this->containerBuilder.createRunContainer(runContext, runOptions);
@@ -2391,6 +2417,11 @@ utils::error::Result<void> Builder::runFromRepo(const package::Reference &ref,
 {
     LINGLONG_TRACE("run with ref " + ref.toString());
 
+    auto runtimeLayout = utils::runtime_directory::RuntimeLayout::current();
+    if (!runtimeLayout) {
+        return LINGLONG_ERR(runtimeLayout);
+    }
+
     runtime::RunContext runContext(this->repo);
     auto res = runContext.resolve(ref);
     if (!res) {
@@ -2405,7 +2436,8 @@ utils::error::Result<void> Builder::runFromRepo(const package::Reference &ref,
     {
         auto container = this->containerBuilder.createInitContainer(
           runContext,
-          runtime::CommonContainerOptions{ .containerCachePath = appCache });
+          runtime::CommonContainerOptions{ .containerCachePath = appCache,
+                                           .runtimeLayout = *runtimeLayout });
         if (!container) {
             return LINGLONG_ERR(container);
         }
@@ -2434,6 +2466,7 @@ utils::error::Result<void> Builder::runFromRepo(const package::Reference &ref,
               .type = "bind",
             },
           },
+        .runtimeLayout = *runtimeLayout,
     };
 
     auto container = this->containerBuilder.createRunContainer(runContext, runOptions);

@@ -85,6 +85,7 @@ pfl_add_executable(
   src/linglong/utils/overlayfs_test.cpp
   src/linglong/utils/packageinfo_handler_test.cpp
   src/linglong/utils/runtime_config_test.cpp
+  src/linglong/utils/runtime_directory_test.cpp
   src/linglong/utils/sha256_test.cpp
   src/linglong/utils/temporary_directory_test.cpp
   src/linglong/utils/transaction_test.cpp

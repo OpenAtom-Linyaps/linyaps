@@ -15,12 +15,6 @@ constexpr auto containerLockPath = "/run/linglong/.lock";
 
 constexpr auto repoLockPath = "/run/linglong/lock";
 
-std::filesystem::path getRuntimeDir() noexcept;
-
-std::filesystem::path getAppRuntimeDir(const std::string &appId) noexcept;
-
-std::filesystem::path getBundleDir(std::string_view containerId) noexcept;
-
 // container cache directory used by both CLI and PM
 std::filesystem::path getContainerCacheDir(const std::string &commit,
                                            const std::string &containerId) noexcept;

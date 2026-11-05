@@ -10,6 +10,7 @@
 #include "linglong/common/strings.h"
 #include "linglong/oci-cfg-generators/container_cfg_builder.h"
 #include "linglong/utils/cmd.h"
+#include "linglong/utils/runtime_directory.h"
 #include "ocppi/runtime/config/types/NamespaceType.hpp"
 
 #include <common/tempdir.h>
@@ -117,6 +118,34 @@ TEST_F(ContainerCfgBuilderTest, CheckValidRejectsEmptyAppId)
     auto result = builder.build();
     ASSERT_FALSE(result.has_value());
     EXPECT_THAT(result.error().message(), ::testing::HasSubstr("app id is empty"));
+}
+
+TEST_F(ContainerCfgBuilderTest, RejectsUnsafeAppIdBeforePreparingRuntimeDirectory)
+{
+    auto runtimeDirValue = baseDir.path().string();
+    ScopedEnvVar xdgRuntimeDir("XDG_RUNTIME_DIR", runtimeDirValue.c_str());
+
+    const std::vector<std::string> invalidAppIds{
+        ".", "..", "../escape", "foo/bar", "/absolute", "foo\\bar", std::string("foo\0bar", 7),
+    };
+
+    for (const auto &appId : invalidAppIds) {
+        SCOPED_TRACE(appId);
+        ContainerCfgBuilder builder;
+        builder.setAppId(appId)
+          .setBasePath(baseDir.path())
+          .setBundlePath(bundleDir.path())
+          .setContainerId("fake-container-id")
+          .bindRun()
+          .bindXDGRuntime()
+          .disablePatch();
+
+        auto result = builder.build();
+        ASSERT_FALSE(result);
+        EXPECT_THAT(result.error().message(), ::testing::HasSubstr("invalid app id"));
+    }
+
+    EXPECT_FALSE(std::filesystem::exists(baseDir.path() / "escape"));
 }
 
 TEST_F(ContainerCfgBuilderTest, CheckValidRejectsEmptyBasePath)
@@ -767,11 +796,15 @@ TEST_F(ContainerCfgBuilderTest, PipewireAndAtSpiSocketMounts)
 {
     auto socket = baseDir.path() / "socket";
     std::ofstream{ socket } << "data";
+    auto runtimeDirValue = baseDir.path().string();
+    ScopedEnvVar xdgRuntimeDir("XDG_RUNTIME_DIR", runtimeDirValue.c_str());
+    const auto layout = linglong::utils::runtime_directory::RuntimeLayout::forUser(baseDir.path());
 
     ContainerCfgBuilder builder;
     builder.setAppId("org.deepin.demo")
       .setBasePath(baseDir.path())
       .setBundlePath(bundleDir.path())
+      .setRuntimeLayout(layout)
       .bindRun()
       .bindXDGRuntime()
       .enablePipewireSocketMount(PipewireMountOption{ .hostSocketPath = socket })
@@ -782,9 +815,15 @@ TEST_F(ContainerCfgBuilderTest, PipewireAndAtSpiSocketMounts)
 
     ASSERT_TRUE(builder.getConfig().mounts.has_value());
     const auto runtimeDir = std::filesystem::path{ "/run/user" } / std::to_string(::geteuid());
+    const auto appRuntimeDir = baseDir.path() / "linglong/apps/org.deepin.demo";
+    bool hasAppRuntimeMount = false;
     bool hasPipewireMount = false;
     bool hasAtSpiMount = false;
     for (const auto &m : *builder.getConfig().mounts) {
+        if (m.destination == runtimeDir) {
+            hasAppRuntimeMount = true;
+            EXPECT_EQ(m.source.value_or(""), appRuntimeDir);
+        }
         if (m.destination == runtimeDir / "pipewire-0") {
             hasPipewireMount = true;
             EXPECT_EQ(m.source.value_or(""), socket);
@@ -793,8 +832,40 @@ TEST_F(ContainerCfgBuilderTest, PipewireAndAtSpiSocketMounts)
             hasAtSpiMount = true;
         }
     }
+    EXPECT_TRUE(hasAppRuntimeMount);
     EXPECT_TRUE(hasPipewireMount);
     EXPECT_TRUE(hasAtSpiMount);
+}
+
+TEST_F(ContainerCfgBuilderTest, UsesInjectedPrivilegedRuntimeLayout)
+{
+    const auto runtimeRoot = baseDir.path() / "privileged-runtime";
+    const auto layout =
+      linglong::utils::runtime_directory::RuntimeLayout::forPrivilegedHost(runtimeRoot);
+
+    ContainerCfgBuilder builder;
+    builder.setAppId("org.deepin.demo")
+      .setBasePath(baseDir.path())
+      .setBundlePath(bundleDir.path())
+      .setRuntimeLayout(layout)
+      .bindRun()
+      .bindXDGRuntime()
+      .disablePatch();
+
+    auto result = builder.build();
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+
+    ASSERT_TRUE(builder.getConfig().mounts.has_value());
+    const auto runtimeDir = std::filesystem::path{ "/run/user" } / std::to_string(::geteuid());
+    const auto expectedSource = runtimeRoot / "linglong/apps/org.deepin.demo";
+    bool hasAppRuntimeMount = false;
+    for (const auto &mount : *builder.getConfig().mounts) {
+        if (mount.destination == runtimeDir) {
+            hasAppRuntimeMount = true;
+            EXPECT_EQ(mount.source.value_or(""), expectedSource);
+        }
+    }
+    EXPECT_TRUE(hasAppRuntimeMount);
 }
 
 TEST_F(ContainerCfgBuilderTest, LdConfContainsAppAndRuntimePaths)
@@ -1304,12 +1375,16 @@ TEST_F(ContainerCfgBuilderTest, EnableIPCMountBindsUnixSocket)
            ("unix:path=" + busSocket.string() + ",guid=deadbeef").c_str(),
            1);
     setenv("DBUS_SYSTEM_BUS_ADDRESS", "unix:path=/no/such/system/bus", 1);
+    auto runtimeDirValue = baseDir.path().string();
+    ScopedEnvVar xdgRuntimeDir("XDG_RUNTIME_DIR", runtimeDirValue.c_str());
+    const auto layout = linglong::utils::runtime_directory::RuntimeLayout::forUser(baseDir.path());
 
     auto runtime = std::filesystem::path{ "/run/user" } / std::to_string(::geteuid());
     ContainerCfgBuilder builder;
     builder.setAppId("org.deepin.demo")
       .setBasePath(baseDir.path())
       .setBundlePath(bundleDir.path())
+      .setRuntimeLayout(layout)
       .bindRun()
       .bindXDGRuntime()
       .bindIPC();
@@ -1334,12 +1409,16 @@ TEST_F(ContainerCfgBuilderTest, EnableIPCMountNoValidSocket)
 {
     // A TCP transport is not a unix socket and must be ignored.
     setenv("DBUS_SESSION_BUS_ADDRESS", "tcp:host=127.0.0.1,port=9999", 1);
+    auto runtimeDirValue = baseDir.path().string();
+    ScopedEnvVar xdgRuntimeDir("XDG_RUNTIME_DIR", runtimeDirValue.c_str());
+    const auto layout = linglong::utils::runtime_directory::RuntimeLayout::forUser(baseDir.path());
 
     auto runtime = std::filesystem::path{ "/run/user" } / std::to_string(::geteuid());
     ContainerCfgBuilder builder;
     builder.setAppId("org.deepin.demo")
       .setBasePath(baseDir.path())
       .setBundlePath(bundleDir.path())
+      .setRuntimeLayout(layout)
       .bindRun()
       .bindXDGRuntime()
       .bindIPC();

@@ -10,6 +10,7 @@
 #include "linglong/common/dir.h"
 #include "linglong/runtime/container_builder.h"
 #include "linglong/utils/env.h"
+#include "linglong/utils/runtime_directory.h"
 
 #include <filesystem>
 #include <fstream>
@@ -291,8 +292,9 @@ TEST(ContainerBuilderUtil, MakeBundleDirCreatesBundleDirectory)
     ASSERT_TRUE(std::filesystem::is_directory(tempDir.path()));
 
     linglong::utils::EnvironmentVariableGuard env("XDG_RUNTIME_DIR", tempDir.path().string());
+    const auto layout = linglong::utils::runtime_directory::RuntimeLayout::forUser(tempDir.path());
 
-    auto bundle = linglong::runtime::makeBundleDir("test-container");
+    auto bundle = linglong::runtime::makeBundleDir(layout, "test-container");
     ASSERT_TRUE(bundle.has_value()) << bundle.error().message();
 
     EXPECT_EQ(*bundle, tempDir.path() / "linglong" / "test-container");
@@ -305,8 +307,9 @@ TEST(ContainerBuilderUtil, MakeBundleDirAppendsSuffix)
     ASSERT_TRUE(std::filesystem::is_directory(tempDir.path()));
 
     linglong::utils::EnvironmentVariableGuard env("XDG_RUNTIME_DIR", tempDir.path().string());
+    const auto layout = linglong::utils::runtime_directory::RuntimeLayout::forUser(tempDir.path());
 
-    auto bundle = linglong::runtime::makeBundleDir("test-container", "-build");
+    auto bundle = linglong::runtime::makeBundleDir(layout, "test-container", "-build");
     ASSERT_TRUE(bundle.has_value()) << bundle.error().message();
 
     EXPECT_EQ(*bundle, tempDir.path() / "linglong" / "test-container-build");
@@ -318,13 +321,14 @@ TEST(ContainerBuilderUtil, MakeBundleDirRemovesExistingContent)
     ASSERT_TRUE(std::filesystem::is_directory(tempDir.path()));
 
     linglong::utils::EnvironmentVariableGuard env("XDG_RUNTIME_DIR", tempDir.path().string());
+    const auto layout = linglong::utils::runtime_directory::RuntimeLayout::forUser(tempDir.path());
 
-    auto first = linglong::runtime::makeBundleDir("test-container");
+    auto first = linglong::runtime::makeBundleDir(layout, "test-container");
     ASSERT_TRUE(first.has_value()) << first.error().message();
     std::ofstream{ *first / "stale.txt" } << "stale content";
     ASSERT_TRUE(std::filesystem::exists(*first / "stale.txt"));
 
-    auto bundle = linglong::runtime::makeBundleDir("test-container");
+    auto bundle = linglong::runtime::makeBundleDir(layout, "test-container");
     ASSERT_TRUE(bundle.has_value()) << bundle.error().message();
 
     EXPECT_TRUE(std::filesystem::is_directory(*bundle));

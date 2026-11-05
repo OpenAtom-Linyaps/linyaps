@@ -13,6 +13,7 @@
 #include "linglong/runtime/container.h"
 #include "linglong/runtime/security_context.h"
 #include "linglong/utils/error/error.h"
+#include "linglong/utils/runtime_directory.h"
 #include "ocppi/cli/CLI.hpp"
 
 #include <QCryptographicHash>
@@ -33,8 +34,10 @@ namespace linglong::runtime {
 class RunContext;
 
 // Used to obtain a clean container bundle directory.
-utils::error::Result<std::filesystem::path> makeBundleDir(const std::string &containerID,
-                                                          const std::string &bundleSuffix = "");
+utils::error::Result<std::filesystem::path>
+makeBundleDir(const utils::runtime_directory::RuntimeLayout &layout,
+              const std::string &containerID,
+              const std::string &bundleSuffix = "");
 
 std::string genContainerID(const api::types::v1::RunContextConfig &config) noexcept;
 
@@ -42,6 +45,7 @@ struct CommonContainerOptions
 {
     std::optional<std::filesystem::path> containerCachePath;
     std::vector<ocppi::runtime::config::types::Mount> extraMounts;
+    std::optional<utils::runtime_directory::RuntimeLayout> runtimeLayout;
 };
 
 struct RunContainerOptions
@@ -95,7 +99,7 @@ public:
       -> utils::error::Result<std::unique_ptr<Container>>;
 
     auto createInitContainer(runtime::RunContext &context,
-                             const CommonContainerOptions &options = {}) noexcept
+                             const CommonContainerOptions &options) noexcept
       -> utils::error::Result<std::unique_ptr<Container>>;
 
     auto createRunContainer(runtime::RunContext &context,
@@ -122,7 +126,7 @@ private:
       -> utils::error::Result<std::unique_ptr<Container>>;
     auto prepareContainer(runtime::RunContext &context,
                           ContainerMode mode,
-                          const CommonContainerOptions &options = {}) noexcept
+                          const CommonContainerOptions &options) noexcept
       -> utils::error::Result<PreparedContainer>;
     static auto bundleSuffixFor(ContainerMode mode) -> std::string;
     static auto overlayReadOnlyFor(ContainerMode mode) -> bool;

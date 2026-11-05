@@ -2045,9 +2045,16 @@ utils::error::Result<void> PackageManager::initRunContext(const std::string &run
         return LINGLONG_OK;
     }
 
-    auto container = this->containerBuilder->createInitContainer(
-      ctx,
-      runtime::CommonContainerOptions{ .containerCachePath = appCache });
+    auto runtimeLayout = utils::runtime_directory::RuntimeLayout::current();
+    if (!runtimeLayout) {
+        return LINGLONG_ERR(runtimeLayout);
+    }
+
+    auto container = this->containerBuilder->createInitContainer(ctx,
+                                                                 runtime::CommonContainerOptions{
+                                                                   .containerCachePath = appCache,
+                                                                   .runtimeLayout = *runtimeLayout,
+                                                                 });
     if (!container) {
         return LINGLONG_ERR(container);
     }
@@ -2058,7 +2065,7 @@ utils::error::Result<void> PackageManager::initRunContext(const std::string &run
     process.args = std::vector<std::string>{ "/sbin/ldconfig" };
 
     ocppi::runtime::RunOption opt{};
-    opt.GlobalOption::root = common::dir::getRuntimeDir() / "ll-box";
+    opt.GlobalOption::root = runtimeLayout->runtimeDir() / "ll-box";
     auto result = (*container)->run(process, opt);
     if (!result) {
         return LINGLONG_ERR(result);

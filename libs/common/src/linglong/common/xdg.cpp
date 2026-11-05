@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2025 - 2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -18,6 +18,11 @@ std::filesystem::path getXDGRuntimeDir() noexcept
     // fallback to default
     // /tmp/linglong-runtime-$UID
     return std::filesystem::path{ "/tmp" } / ("linglong-runtime-" + std::to_string(::getuid()));
+}
+
+std::filesystem::path getXDGRuntimeDirForUid(uid_t uid) noexcept
+{
+    return std::filesystem::path{ "/run/user" } / std::to_string(uid);
 }
 
 std::filesystem::path getXDGCacheHomeDir() noexcept

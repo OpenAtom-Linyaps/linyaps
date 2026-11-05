@@ -16,12 +16,6 @@
 
 #include <variant>
 
-#if QT_VERSION < QT_VERSION_CHECK(5, 14, 0)
-namespace Qt {
-static auto SkipEmptyParts = QString::SkipEmptyParts;
-} // namespace Qt
-#endif
-
 namespace linglong::package {
 
 utils::error::Result<Version> Version::parse(const std::string &raw,

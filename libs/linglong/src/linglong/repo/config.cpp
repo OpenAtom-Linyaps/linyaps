@@ -160,6 +160,20 @@ const api::types::v1::Repo &getDefaultRepo(const api::types::v1::RepoConfigV2 &c
     return *defaultRepo;
 }
 
+std::optional<api::types::v1::Repo> getRepoByName(const api::types::v1::RepoConfigV2 &cfg,
+                                                  const std::string &name) noexcept
+{
+    auto repo = std::find_if(cfg.repos.cbegin(), cfg.repos.cend(), [&name](const auto &repo) {
+        return repo.alias.value_or(repo.name) == name || repo.name == name;
+    });
+
+    if (repo == cfg.repos.cend()) {
+        return std::nullopt;
+    }
+
+    return *repo;
+}
+
 std::vector<api::types::v1::Repo> getPrioritySortedRepos(api::types::v1::RepoConfigV2 cfg) noexcept
 {
     std::stable_sort(cfg.repos.begin(), cfg.repos.end(), [](const auto &repo1, const auto &repo2) {

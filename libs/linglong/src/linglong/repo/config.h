@@ -11,6 +11,7 @@
 #include "linglong/utils/error/error.h"
 
 #include <filesystem>
+#include <optional>
 
 namespace linglong::repo {
 
@@ -23,6 +24,10 @@ utils::error::Result<void> saveConfig(const api::types::v1::RepoConfigV2 &cfg,
 int64_t getRepoMinPriority(const api::types::v1::RepoConfigV2 &cfg) noexcept;
 int64_t getRepoMaxPriority(const api::types::v1::RepoConfigV2 &cfg) noexcept;
 const api::types::v1::Repo &getDefaultRepo(const api::types::v1::RepoConfigV2 &cfg) noexcept;
+
+// 按仓库名或别名查找仓库，找不到时返回 std::nullopt
+std::optional<api::types::v1::Repo> getRepoByName(const api::types::v1::RepoConfigV2 &cfg,
+                                                  const std::string &name) noexcept;
 
 std::vector<api::types::v1::Repo> getPrioritySortedRepos(api::types::v1::RepoConfigV2 cfg) noexcept;
 std::vector<std::vector<api::types::v1::Repo>>

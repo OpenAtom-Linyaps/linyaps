@@ -2202,11 +2202,28 @@ linglong::utils::error::Result<void> Builder::push(const std::string &module,
         return LINGLONG_ERR(ref);
     }
 
-    if (repoName.empty() || repoUrl.empty()) {
+    if (repoName.empty() && repoUrl.empty()) {
         return repo.push(*ref, module);
     }
 
-    return repo.pushToRemote(repoName, repoUrl, *ref, module);
+    if (repoName.empty()) {
+        return LINGLONG_ERR("--repo-name is required when --repo-url is specified");
+    }
+
+    // 只给了仓库名时，从仓库配置里解析出对应的 URL，而不是静默回落到默认仓库
+    auto remoteUrl = repoUrl;
+    if (remoteUrl.empty()) {
+        auto remote = repo::getRepoByName(repo.getConfig(), repoName);
+        if (!remote) {
+            return LINGLONG_ERR(fmt::format(
+              "repository {} is not found in repo config, specify --repo-url or add it with "
+              "'ll-builder repo add'",
+              repoName));
+        }
+        remoteUrl = remote->url;
+    }
+
+    return repo.pushToRemote(repoName, remoteUrl, *ref, module);
 }
 
 utils::error::Result<void> Builder::importLayer(repo::OSTreeRepo &ostree,

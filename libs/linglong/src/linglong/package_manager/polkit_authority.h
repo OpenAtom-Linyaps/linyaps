@@ -20,7 +20,8 @@ struct PolkitSubjectIdentity
 
 [[nodiscard]] PolkitSubjectIdentity selectPolkitSubject(std::string_view actionId,
                                                          std::string_view busName,
-                                                         std::string_view sessionId);
+                                                         std::string_view sessionId,
+                                                         bool sessionActive);
 
 class PolkitAuthority
 {

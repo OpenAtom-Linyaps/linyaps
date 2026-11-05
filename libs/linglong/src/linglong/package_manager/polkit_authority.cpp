@@ -150,14 +150,6 @@ utils::error::Result<std::string> resolveCallerSession(const std::string &system
     std::string session{ sessionId };
     ::free(sessionId);
 
-    // Only active sessions have auth_admin_keep in the installed policy.
-    // Inactive sessions require auth_admin for each request, so retain the
-    // process subject for those callers.
-    if (::sd_session_is_active(session.c_str()) <= 0) {
-        return LINGLONG_ERR(
-          fmt::format("the caller {} does not belong to an active login session", systemBusName));
-    }
-
     return session;
 }
 
@@ -172,9 +164,12 @@ constexpr std::array<std::string_view, 4> keepActions{
 
 PolkitSubjectIdentity selectPolkitSubject(std::string_view actionId,
                                           std::string_view busName,
-                                          std::string_view sessionId)
+                                          std::string_view sessionId,
+                                          bool sessionActive)
 {
-    if (!sessionId.empty()
+    // The policy only retains authorization for active sessions. Preserve
+    // process-scoped checks when logind reports an inactive or unknown state.
+    if (sessionActive && !sessionId.empty()
         && std::find(keepActions.cbegin(), keepActions.cend(), actionId) != keepActions.cend()) {
         return { "unix-session", std::string{ sessionId } };
     }
@@ -192,10 +187,12 @@ void PolkitAuthority::checkAuthorizationAsync(
     register_type();
 
     std::string sessionId;
+    bool sessionActive = false;
     if (std::find(keepActions.cbegin(), keepActions.cend(), actionId) != keepActions.cend()) {
         auto resolved = resolveCallerSession(systemBusName);
         if (resolved) {
             sessionId = std::move(*resolved);
+            sessionActive = ::sd_session_is_active(sessionId.c_str()) > 0;
         } else {
             LogD("can't resolve the login session of {}: {}",
                  systemBusName,
@@ -211,7 +208,7 @@ void PolkitAuthority::checkAuthorizationAsync(
                                               QStringLiteral("CheckAuthorization"));
 
     PolkitSubject subject;
-    const auto selected = selectPolkitSubject(actionId, systemBusName, sessionId);
+    const auto selected = selectPolkitSubject(actionId, systemBusName, sessionId, sessionActive);
     subject.kind = QString::fromLatin1(selected.kind.data(), selected.kind.size());
     subject.details.insert(selected.kind == "unix-session" ? QStringLiteral("session-id")
                                                             : QStringLiteral("name"),

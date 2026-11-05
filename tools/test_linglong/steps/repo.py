@@ -70,7 +70,8 @@ class RepoSteps:
                 run("repo", "remove", SMOKE_REPO_NAME, check=False)
                 run("repo", "add", SMOKE_REPO_NAME, SMOKE_REPO_URL, check=False)
                 run("repo", "remove", tmp, check=False)
-            run("repo", "add", SMOKE_REPO_NAME, SMOKE_REPO_URL, check=False)
+            if SMOKE_REPO_NAME not in self._repo_names(cmd_type):
+                run("repo", "add", SMOKE_REPO_NAME, SMOKE_REPO_URL, check=False)
             run("repo", "set-default", SMOKE_REPO_NAME, check=False)
             for name in self._repo_names(cmd_type):
                 if name != SMOKE_REPO_NAME:

@@ -184,6 +184,8 @@ install(
   RENAME 21linglong)
 
 if(ENABLE_TESTING)
+  add_test(NAME linglong_ldd_check_paths
+           COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/tests/ldd_check_paths_test.sh)
   add_test(
     NAME linglong_environment
     COMMAND

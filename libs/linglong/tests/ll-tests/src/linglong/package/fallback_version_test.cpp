@@ -114,15 +114,15 @@ TEST(FallbackVersionTest, parse)
     EXPECT_EQ(result->list[2], "3-日本語");
 }
 
-// 测试兜底版本号比较
+// Fallback version comparison
 TEST(FallbackVersionTest, compare)
 {
-    // 包含字母的
+    // With letters
     EXPECT_EQ(FallbackVersion::parse("1.2.a").value(), FallbackVersion::parse("1.2.a").value());
     EXPECT_NE(FallbackVersion::parse("1.2.a").value(), FallbackVersion::parse("1.2.b").value());
     EXPECT_LT(FallbackVersion::parse("1.2.a").value(), FallbackVersion::parse("1.2.b").value());
     EXPECT_GT(FallbackVersion::parse("1.2.b").value(), FallbackVersion::parse("1.2.a").value());
-    // 包含特殊字符的版本号
+    // With special characters
     EXPECT_EQ(FallbackVersion::parse("1.2.3_alpha").value(),
               FallbackVersion::parse("1.2.3_alpha").value());
     EXPECT_NE(FallbackVersion::parse("1.2.3_alpha").value(),
@@ -131,7 +131,7 @@ TEST(FallbackVersionTest, compare)
               FallbackVersion::parse("1.2.3_beta").value());
     EXPECT_GT(FallbackVersion::parse("1.2.3_beta").value(),
               FallbackVersion::parse("1.2.3_alpha").value());
-    // 超长版本号
+    // Long version
     EXPECT_EQ(FallbackVersion::parse("1.2.3.4.5.6.7").value(),
               FallbackVersion::parse("1.2.3.4.5.6.7").value());
     EXPECT_NE(FallbackVersion::parse("1.2.3.4.5.6.7").value(),
@@ -141,7 +141,7 @@ TEST(FallbackVersionTest, compare)
     EXPECT_GT(FallbackVersion::parse("1.2.3.4.5.6.8").value(),
               FallbackVersion::parse("1.2.3.4.5.6.7").value());
 
-    // 包含各种特殊字符的版本号
+    // With various special characters
     EXPECT_EQ(FallbackVersion::parse("1.2.3@#$%^&*()").value(),
               FallbackVersion::parse("1.2.3@#$%^&*()").value());
     EXPECT_NE(FallbackVersion::parse("1.2.3@#$%^&*()").value(),
@@ -151,7 +151,7 @@ TEST(FallbackVersionTest, compare)
     EXPECT_GT(FallbackVersion::parse("1.2.3@#$%^&*()_+").value(),
               FallbackVersion::parse("1.2.3@#$%^&*()").value());
 
-    // 包含空格的版本号
+    // With spaces
     EXPECT_EQ(FallbackVersion::parse("1.2.3 alpha").value(),
               FallbackVersion::parse("1.2.3 alpha").value());
     EXPECT_NE(FallbackVersion::parse("1.2.3 alpha").value(),
@@ -161,7 +161,7 @@ TEST(FallbackVersionTest, compare)
     EXPECT_GT(FallbackVersion::parse("1.2.3 beta").value(),
               FallbackVersion::parse("1.2.3 alpha").value());
 
-    // 包含中文字符的版本号
+    // With Chinese characters
     EXPECT_EQ(FallbackVersion::parse("1.2.3-测试").value(),
               FallbackVersion::parse("1.2.3-测试").value());
     EXPECT_NE(FallbackVersion::parse("1.2.3-测试").value(),
@@ -171,7 +171,7 @@ TEST(FallbackVersionTest, compare)
     EXPECT_GT(FallbackVersion::parse("1.2.3-版本").value(),
               FallbackVersion::parse("1.2.3-测试").value());
 
-    // 包含表情符号的版本号
+    // With emoji
     EXPECT_EQ(FallbackVersion::parse("1.2.3-😊").value(),
               FallbackVersion::parse("1.2.3-😊").value());
     EXPECT_NE(FallbackVersion::parse("1.2.3-😊").value(),
@@ -181,18 +181,61 @@ TEST(FallbackVersionTest, compare)
     EXPECT_GT(FallbackVersion::parse("1.2.3-🚀").value(),
               FallbackVersion::parse("1.2.3-😊").value());
 
-    // 空字符串和只有分隔符的版本号
+    // Leading-zero variants are distinct; order them by their raw spelling
+    EXPECT_NE(FallbackVersion::parse("1.02.0003").value(), FallbackVersion::parse("1.2.3").value());
+    EXPECT_LT(FallbackVersion::parse("1.02.0003").value(), FallbackVersion::parse("1.2.3").value());
+    EXPECT_LT(FallbackVersion::parse("3").value(), FallbackVersion::parse("2147483648").value());
+    EXPECT_LT(FallbackVersion::parse("18446744073709551616").value(),
+              FallbackVersion::parse("18446744073709551617").value());
+
+    // Large numbers with different digit counts (string comparison gets this wrong)
+    EXPECT_LT(FallbackVersion::parse("1.9999999999999").value(),
+              FallbackVersion::parse("1.10000000000000").value());
+    EXPECT_LT(FallbackVersion::parse("9").value(), FallbackVersion::parse("10000000000").value());
+
+    // Leading-zero variants are distinct and ordered deterministically under strict weak order
+    const auto zeroPadded = FallbackVersion::parse("1.09.alpha").value();
+    const auto canonical = FallbackVersion::parse("1.9.alpha").value();
+    const auto other = FallbackVersion::parse("1.8x.alpha").value();
+    EXPECT_NE(zeroPadded, canonical);
+    EXPECT_LT(zeroPadded, canonical);
+    EXPECT_LT(other, zeroPadded);
+    EXPECT_GT(zeroPadded, other);
+    EXPECT_GT(canonical, other);
+
+    // Parts with numeric prefixes compare numerically
+    EXPECT_LT(FallbackVersion::parse("1.2.3_alpha").value(),
+              FallbackVersion::parse("1.2.4").value());
+    EXPECT_GT(FallbackVersion::parse("1.10_alpha").value(),
+              FallbackVersion::parse("1.9_zzz").value());
+
+    // Empty versions and versions with only separators
     EXPECT_FALSE(FallbackVersion::parse("").has_value());
     EXPECT_FALSE(FallbackVersion::parse("...").has_value());
-    // 极端超长版本号
+    // Extremely long version
     EXPECT_TRUE(
       FallbackVersion::parse("1.2.3.4.5.6.7.8.9.10.11.12.13.14.15.16.17.18.19.20").has_value());
 
-    // 2. 包含换行符和制表符的版本号
+    // Version with a newline and a tab
     EXPECT_TRUE(FallbackVersion::parse("1.2.3\n4\t5").has_value());
 
-    // 3. 包含 Unicode 字符的版本号
+    // Version with Unicode characters
     EXPECT_TRUE(FallbackVersion::parse("1.2.3-日本語").has_value());
     EXPECT_TRUE(FallbackVersion::parse("1.2.3-한국어").has_value());
     EXPECT_TRUE(FallbackVersion::parse("1.2.3-русский").has_value());
+}
+
+TEST(FallbackVersionTest, semanticMatch)
+{
+    EXPECT_TRUE(FallbackVersion::parse("1.2.3").value().semanticMatch("1.2"));
+    EXPECT_TRUE(FallbackVersion::parse("1.2.3").value().semanticMatch("1.2.3"));
+
+    // Leading-zero forms stay distinct here, consistent with operator==
+    EXPECT_FALSE(FallbackVersion::parse("1.02.0003").value().semanticMatch("1.2.3"));
+    EXPECT_FALSE(FallbackVersion::parse("1.02.0003").value().semanticMatch("1.2"));
+    EXPECT_TRUE(FallbackVersion::parse("1.02.0003").value().semanticMatch("1.02"));
+
+    EXPECT_FALSE(FallbackVersion::parse("1.2.3").value().semanticMatch("1.3"));
+    EXPECT_FALSE(FallbackVersion::parse("1.2.3").value().semanticMatch("1.2.4"));
+    EXPECT_FALSE(FallbackVersion::parse("1.2.3").value().semanticMatch("1.2.3.4"));
 }

@@ -12,19 +12,94 @@
 
 #include <fmt/format.h>
 
-#include <charconv>
-
-#if QT_VERSION < QT_VERSION_CHECK(5, 14, 0)
-namespace Qt {
-static auto SkipEmptyParts = QString::SkipEmptyParts;
-} // namespace Qt
-#endif
+#include <cctype>
+#include <string_view>
 
 namespace {
-bool parse_int_strict(const std::string &s, int &out)
+bool isDigit(char ch) noexcept
 {
-    auto [ptr, ec] = std::from_chars(s.data(), s.data() + s.size(), out);
-    return ec == std::errc() && ptr == s.data() + s.size();
+    return std::isdigit(static_cast<unsigned char>(ch)) != 0;
+}
+
+// "000" -> "0", "0021" -> "21"; value must be non-empty and contain only digits.
+std::string_view stripLeadingZeros(std::string_view digits) noexcept
+{
+    const auto firstNonZero = digits.find_first_not_of('0');
+    if (firstNonZero == std::string_view::npos) {
+        return digits.empty() ? digits : digits.substr(digits.size() - 1);
+    }
+
+    return digits.substr(firstNonZero);
+}
+
+// Natural ordering: runs of digits are compared numerically (unbounded, leading
+// zeros ignored), everything else is compared byte by byte. At a position where
+// one side is a digit and the other is not, the digit sorts first. Two runs with
+// the same numeric value are ordered by their raw spelling, so different textual
+// forms (e.g. "02" and "2") stay distinct. This makes compare()==0 equivalent to
+// plain string equality, which the version comparators and hash containers rely
+// on.
+int comparePart(std::string_view lhs, std::string_view rhs) noexcept
+{
+    std::size_t i = 0;
+    std::size_t j = 0;
+    while (i < lhs.size() && j < rhs.size()) {
+        const bool lhsDigit = isDigit(lhs[i]);
+        const bool rhsDigit = isDigit(rhs[j]);
+
+        if (lhsDigit && rhsDigit) {
+            auto lhsEnd = i;
+            while (lhsEnd < lhs.size() && isDigit(lhs[lhsEnd])) {
+                ++lhsEnd;
+            }
+            auto rhsEnd = j;
+            while (rhsEnd < rhs.size() && isDigit(rhs[rhsEnd])) {
+                ++rhsEnd;
+            }
+
+            const auto lhsRaw = lhs.substr(i, lhsEnd - i);
+            const auto rhsRaw = rhs.substr(j, rhsEnd - j);
+            const auto lhsNumber = stripLeadingZeros(lhsRaw);
+            const auto rhsNumber = stripLeadingZeros(rhsRaw);
+
+            if (lhsNumber.size() != rhsNumber.size()) {
+                return lhsNumber.size() < rhsNumber.size() ? -1 : 1;
+            }
+            if (const int cmp = lhsNumber.compare(rhsNumber); cmp != 0) {
+                return cmp < 0 ? -1 : 1;
+            }
+            // Same numeric value: order by the raw spelling so that "02" and "2"
+            // are not considered equal.
+            if (lhsRaw != rhsRaw) {
+                return lhsRaw.compare(rhsRaw) < 0 ? -1 : 1;
+            }
+
+            i = lhsEnd;
+            j = rhsEnd;
+            continue;
+        }
+
+        if (lhsDigit != rhsDigit) {
+            return lhsDigit ? -1 : 1;
+        }
+
+        if (lhs[i] != rhs[j]) {
+            const auto lhsChar = static_cast<unsigned char>(lhs[i]);
+            const auto rhsChar = static_cast<unsigned char>(rhs[j]);
+            return lhsChar < rhsChar ? -1 : 1;
+        }
+
+        ++i;
+        ++j;
+    }
+
+    if (i < lhs.size()) {
+        return 1;
+    }
+    if (j < rhs.size()) {
+        return -1;
+    }
+    return 0;
 }
 
 } // namespace
@@ -59,7 +134,7 @@ bool FallbackVersion::semanticMatch(const std::string &versionStr) const noexcep
 
 bool FallbackVersion::operator==(const FallbackVersion &that) const
 {
-    return this->list == that.list;
+    return compare(that) == 0;
 }
 
 bool FallbackVersion::operator!=(const FallbackVersion &that) const
@@ -93,22 +168,8 @@ int FallbackVersion::compare(const FallbackVersion &other) const noexcept
     auto otherPart = other.list.cbegin();
 
     while (thisPart != this->list.cend() && otherPart != other.list.cend()) {
-        int thisNumber{ -1 };
-        int otherNumber{ -1 };
-        const bool thisIsNum = parse_int_strict(*thisPart, thisNumber);
-        const bool otherIsNum = parse_int_strict(*otherPart, otherNumber);
-
-        // all numbers
-        if (thisIsNum && otherIsNum) {
-            if (thisNumber != otherNumber) {
-                return (thisNumber < otherNumber) ? -1 : 1;
-            }
-        } else {
-            // if the one of them is not a number
-            // compare as strings
-            if (*thisPart != *otherPart) {
-                return thisPart->compare(*otherPart);
-            }
+        if (const int result = comparePart(*thisPart, *otherPart); result != 0) {
+            return result;
         }
 
         ++thisPart;
@@ -118,16 +179,7 @@ int FallbackVersion::compare(const FallbackVersion &other) const noexcept
     if (thisPart == this->list.cend() && otherPart == other.list.cend()) {
         return 0;
     }
-    if (thisPart == this->list.cend()) {
-        return -1;
-    }
-    if (otherPart == other.list.cend()) {
-        return 1;
-    }
-
-    // unreachable
-    assert(false);
-    return 0;
+    return thisPart == this->list.cend() ? -1 : 1;
 }
 
 std::string FallbackVersion::toString() const noexcept

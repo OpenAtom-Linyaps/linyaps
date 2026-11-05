@@ -219,3 +219,22 @@ TEST(Package, ReferenceHashWorksInUnorderedMap)
     EXPECT_EQ(it->second, 10);
     EXPECT_EQ(refs.at(*other), 20);
 }
+
+TEST(Package, ReferenceHashKeepsLeadingZeroVersionsDistinct)
+{
+    const auto zeroPadded = Reference::parse("main:com.example.App/1.02/x86_64");
+    ASSERT_TRUE(zeroPadded.has_value());
+
+    const auto canonical = Reference::parse("main:com.example.App/1.2/x86_64");
+    ASSERT_TRUE(canonical.has_value());
+
+    EXPECT_NE(*zeroPadded, *canonical);
+
+    std::unordered_map<Reference, int> refs;
+    refs.emplace(*zeroPadded, 10);
+    refs.emplace(*canonical, 20);
+
+    EXPECT_EQ(refs.size(), 2u);
+    EXPECT_EQ(refs.at(*zeroPadded), 10);
+    EXPECT_EQ(refs.at(*canonical), 20);
+}

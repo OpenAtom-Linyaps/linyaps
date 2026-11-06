@@ -1876,7 +1876,10 @@ OSTreeRepo::unexportAppEntries(const std::filesystem::path &rootEntriesDir,
           QDir dir(path);
 
           // 获取目录下的所有子目录
-          const QFileInfoList entries = dir.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot);
+          // Directory symlinks can point into another layer or back to entries.
+          // Only recurse into directories owned by the export tree itself.
+          const QFileInfoList entries =
+            dir.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot | QDir::NoSymLinks);
 
           // 遍历子目录
           for (const QFileInfo &entry : entries) {

@@ -19,12 +19,15 @@ complete -c ll-builder -s h -l help
 complete -c ll-builder -l help-all
 
 # 3. Subcommands
-set -l cmds create build run export push import extract clean repo remove list
+set -l cmds create build generate-lockfile update-lockfile run export push import extract clean repo remove list
 complete -c ll-builder -f -n "__fish_use_subcommand" -a "$cmds"
 
 # 4. Build options
-complete -c ll-builder -f -n "__fish_seen_subcommand_from build" -s f -l file -l offline -l isolate-network
+complete -c ll-builder -f -n "__fish_seen_subcommand_from build" -s f -l file -l offline -l locked -l isolate-network
 complete -c ll-builder -f -n "__fish_seen_subcommand_from build" -l skip-fetch-source -l skip-pull-depend -l skip-run-container -l skip-commit-output -l skip-output-check -l skip-strip-symbols
+
+# Lockfile options
+complete -c ll-builder -f -n "__fish_seen_subcommand_from generate-lockfile update-lockfile" -s f -l file
 
 # 5. Run options
 complete -c ll-builder -f -n "__fish_seen_subcommand_from run" -s f -l file -l modules -l workdir -l debug

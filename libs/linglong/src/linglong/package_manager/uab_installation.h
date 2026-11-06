@@ -31,6 +31,7 @@ public:
                                     std::vector<linglong::api::types::v1::UabLayer>>;
     static utils::error::Result<CheckedLayers> checkDistributionModeUABLayers(
       repo::OSTreeRepo &repo, const std::vector<linglong::api::types::v1::UabLayer> &layers);
+    static utils::error::Result<void> validateUabLayer(const api::types::v1::UabLayer &layer);
     static utils::error::Result<void> checkUABLayersConstrain(
       repo::OSTreeRepo &repo, const std::vector<api::types::v1::UabLayer> &layers);
     static bool extraModuleOnly(const std::vector<api::types::v1::UabLayer> &layers);

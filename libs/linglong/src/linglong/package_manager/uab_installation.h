@@ -14,6 +14,7 @@
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/utils/transaction.h"
 
+#include <filesystem>
 #include <optional>
 #include <string_view>
 #include <vector>
@@ -35,6 +36,9 @@ public:
     static utils::error::Result<void> checkUABLayersConstrain(
       repo::OSTreeRepo &repo, const std::vector<api::types::v1::UabLayer> &layers);
     static utils::error::Result<void> validateUABLayerModule(std::string_view module);
+    static utils::error::Result<void> validateUABLayerId(std::string_view id);
+    static utils::error::Result<void> validateUABLayerPath(const std::filesystem::path &layersRoot,
+                                                           const std::filesystem::path &layerDir);
     static bool extraModuleOnly(const std::vector<api::types::v1::UabLayer> &layers);
 
     virtual ~UabInstallationAction();

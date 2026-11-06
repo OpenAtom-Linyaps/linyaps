@@ -151,7 +151,7 @@ sources:
 
 | Name   | Description                                                                                           | Required (within single source) |
 | ------ | ----------------------------------------------------------------------------------------------------- | ------------------------------- |
-| kind   | `archive`, download compressed package and automatically extract. Supports common compressed formats. | Yes                             |
+| kind   | `archive`, downloads and extracts tar or ZIP archives. ZIP extraction requires `unzip`.                | Yes                             |
 | url    | Compressed package download address                                                                   | Yes                             |
 | digest | Optional, sha256 hash value of the compressed package file, used for verification.                    | No                              |
 | name   | Optional, specify the directory name in `linglong/sources` directory after extraction.                | No                              |

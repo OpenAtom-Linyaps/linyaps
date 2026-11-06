@@ -202,8 +202,14 @@ int dispatchMigrations(const Version &from,
     int ret{ std::numeric_limits<int>::max() };
     auto version_1_7_0 = parseVersion("1.7.0");
     if (from < *version_1_7_0) {
-        const auto &defaultRepo = linglong::repo::getDefaultRepo(cfg);
-        ret = migrateRef(repo, MigrateRefData{ .root = root, .repoName = defaultRepo.name });
+        auto defaultRepo = linglong::repo::getDefaultRepo(cfg);
+        if (!defaultRepo) {
+            std::cerr << "couldn't get default repo: " << defaultRepo.error().message()
+                      << std::endl;
+            return -1;
+        }
+
+        ret = migrateRef(repo, MigrateRefData{ .root = root, .repoName = defaultRepo->name });
     }
 
     return ret;

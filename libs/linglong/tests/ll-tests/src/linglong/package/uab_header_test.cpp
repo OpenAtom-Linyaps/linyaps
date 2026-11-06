@@ -9,7 +9,6 @@
 #include "light_elf.h"
 
 #include <common/tempdir.h>
-
 #include <elf.h>
 
 #include <cstdint>
@@ -37,9 +36,7 @@ struct ElfImage
 // Writes a minimal ELF64 image whose section header table starts right after
 // the ELF header and whose section name table follows the headers.  Only the
 // second section header is completed for the string table itself.
-std::filesystem::path writeElfImage(const TempDir &dir,
-                                    const std::string &name,
-                                    ElfImage image)
+std::filesystem::path writeElfImage(const TempDir &dir, const std::string &name, ElfImage image)
 {
     constexpr std::size_t elfHeaderSize = sizeof(Elf64_Ehdr);
 
@@ -67,8 +64,8 @@ std::filesystem::path writeElfImage(const TempDir &dir,
     elfHeader.e_version = EV_CURRENT;
     elfHeader.e_shoff = elfHeaderSize;
     elfHeader.e_shentsize = image.sectionHeaderEntrySize;
-    elfHeader.e_shnum = static_cast<std::uint16_t>(
-      image.sectionCount != 0 ? image.sectionCount : image.headers.size());
+    elfHeader.e_shnum = static_cast<std::uint16_t>(image.sectionCount != 0 ? image.sectionCount
+                                                                           : image.headers.size());
     elfHeader.e_shstrndx = image.stringTableIndex;
 
     std::vector<char> bytes(elfHeaderSize, '\0');

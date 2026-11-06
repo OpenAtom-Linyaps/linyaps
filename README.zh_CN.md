@@ -135,11 +135,11 @@ ll-cli run cn.org.linyaps.demo
 - [如意玲珑打包工具 - ll-killer-go](https://github.com/System233/ll-killer-go)
 - [如意玲珑网页商店](https://github.com/yoloke/Linglong-Shop)
 
-更多课程可参考如意玲珑官网：<https://linyaps.org.cn/learn>
+更多文档可参考如意玲珑官网：<https://linyaps.org.cn/learn>
 
 ## :hammer_and_pick: 参与
 
-我们鼓励您报告问题并贡献更改。查看 [开发者指南](./开发者指南.md) 以获取从源代码构建 linyaps 的说明。
+我们鼓励您报告问题并贡献更改。查看 [开发者指南](./DEVELOPER_GUIDE.md) 以获取从源代码构建 linyaps 的说明。
 
 您可以在 [Discussions](https://github.com/OpenAtom-Linyaps/linyaps/discussions) 上发起话题讨论。
 

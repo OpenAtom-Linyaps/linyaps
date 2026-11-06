@@ -5,7 +5,23 @@
 
 #include <gtest/gtest.h>
 
+#include "linglong/utils/cmd.h"
 #include "linglong/utils/namespace.h"
+
+#include <sys/capability.h>
+
+#include <cerrno>
+#include <csignal>
+#include <cstdlib>
+#include <filesystem>
+#include <optional>
+#include <string>
+#include <vector>
+
+#include <sched.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
 TEST(NamespaceTest, ParseSubuidRanges)
 {
@@ -70,4 +86,137 @@ TEST(NamespaceTest, GetUserNameWithUnknownUid)
 
     EXPECT_FALSE(userName.has_value());
     EXPECT_NE(userName.error().message().find("entry not found"), std::string::npos);
+}
+
+namespace {
+
+bool canCreateUserNamespace()
+{
+    pid_t child = ::fork();
+    if (child == -1) {
+        return false;
+    }
+    if (child == 0) {
+        ::_exit(::unshare(CLONE_NEWUSER | CLONE_NEWNS) == 0 ? 0 : 1);
+    }
+
+    int status = 0;
+    while (::waitpid(child, &status, 0) == -1) {
+        if (errno != EINTR) {
+            return false;
+        }
+    }
+
+    return WIFEXITED(status) && WEXITSTATUS(status) == 0;
+}
+
+bool canAutoMapCurrentUser()
+{
+    if (!canCreateUserNamespace()) {
+        return false;
+    }
+    if (!linglong::utils::Cmd{ "newuidmap" }.exists()
+        || !linglong::utils::Cmd{ "newgidmap" }.exists()) {
+        return false;
+    }
+
+    auto uidRanges = linglong::utils::detail::getSubuidRange(::geteuid(), true);
+    auto gidRanges = linglong::utils::detail::getSubuidRange(::getegid(), false);
+    return uidRanges && !uidRanges->empty() && gidRanges && !gidRanges->empty();
+}
+
+int runInNamespaceCommand(std::vector<std::string> arguments,
+                          std::optional<uid_t> uid = std::nullopt,
+                          std::optional<gid_t> gid = std::nullopt)
+{
+    std::vector<char *> argv;
+    argv.reserve(arguments.size() + 1);
+    for (auto &argument : arguments) {
+        argv.push_back(argument.data());
+    }
+    argv.push_back(nullptr);
+
+    auto result =
+      linglong::utils::runInNamespace(static_cast<int>(arguments.size()), argv.data(), uid, gid);
+    EXPECT_TRUE(result.has_value()) << result.error().message();
+    return result.value_or(-1);
+}
+
+} // namespace
+
+TEST(NamespaceTest, GetSelfExeReturnsCurrentExecutable)
+{
+    auto self = linglong::utils::getSelfExe();
+
+    ASSERT_TRUE(self.has_value()) << self.error().message();
+    EXPECT_TRUE(std::filesystem::exists(*self));
+    EXPECT_TRUE(std::filesystem::is_regular_file(*self));
+}
+
+TEST(NamespaceTest, NeedRunInNamespaceReportsCapabilityState)
+{
+    auto needed = linglong::utils::needRunInNamespace();
+
+    ASSERT_TRUE(needed.has_value()) << needed.error().message();
+
+    auto *caps = cap_get_proc();
+    ASSERT_NE(caps, nullptr);
+    cap_flag_value_t admin = CAP_CLEAR;
+    ASSERT_EQ(cap_get_flag(caps, CAP_SYS_ADMIN, CAP_EFFECTIVE, &admin), 0);
+    cap_free(caps);
+    EXPECT_EQ(*needed, admin != CAP_SET);
+}
+
+TEST(NamespaceTest, RunInNamespaceReturnsChildExitCode)
+{
+    if (!canCreateUserNamespace()) {
+        GTEST_SKIP() << "user and mount namespaces are not available";
+    }
+    EXPECT_EQ(runInNamespaceCommand({ "/bin/sh", "-c", "exit 7" }, geteuid(), getegid()), 7);
+}
+
+TEST(NamespaceTest, RunInNamespaceReturnsSignalExitCode)
+{
+    if (!canCreateUserNamespace()) {
+        GTEST_SKIP() << "user and mount namespaces are not available";
+    }
+    EXPECT_EQ(runInNamespaceCommand({ "/bin/sh", "-c", "kill -TERM $$" }, geteuid(), getegid()),
+              128 + SIGTERM);
+}
+
+TEST(NamespaceTest, RunInNamespaceReportsMissingExecutableAsFailure)
+{
+    if (!canCreateUserNamespace()) {
+        GTEST_SKIP() << "user and mount namespaces are not available";
+    }
+    EXPECT_EQ(runInNamespaceCommand({ "/nonexistent/linglong-test-command" }, geteuid(), getegid()),
+              255);
+}
+
+TEST(NamespaceTest, RunInNamespaceAutoMapsCurrentUserWhenIdsAreOmitted)
+{
+    if (!canAutoMapCurrentUser()) {
+        GTEST_SKIP() << "newuidmap/newgidmap or subuid/subgid ranges are not available";
+    }
+    EXPECT_EQ(runInNamespaceCommand({ "/bin/sh", "-c", "exit 0" }), 0);
+}
+
+TEST(NamespaceTest, GetSubuidRangeUsesCurrentUser)
+{
+    auto ranges = linglong::utils::detail::getSubuidRange(geteuid(), true);
+
+    ASSERT_TRUE(ranges.has_value()) << ranges.error().message();
+    ASSERT_FALSE(ranges->empty()) << "/etc/subuid has no range for the current user";
+    for (const auto &range : *ranges) {
+        EXPECT_FALSE(range.subuid.empty());
+        EXPECT_FALSE(range.count.empty());
+    }
+}
+
+TEST(NamespaceTest, GetSubuidRangeRejectsUnknownUser)
+{
+    auto ranges = linglong::utils::detail::getSubuidRange(static_cast<uid_t>(-1), false);
+
+    EXPECT_FALSE(ranges.has_value());
+    EXPECT_NE(ranges.error().message().find("failed to get user name"), std::string::npos);
 }

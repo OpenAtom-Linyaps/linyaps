@@ -76,6 +76,11 @@ package::Reference makeRef(const std::string &version = "1.0.0")
     return package::Reference::parse("main:org.example/" + version + "/x86_64").value();
 }
 
+std::string hostArch()
+{
+    return package::Architecture::currentCPUArchitecture().toString();
+}
+
 package::FuzzyReference makeFuzzyRef()
 {
     return package::FuzzyReference::parse("main:org.example/1.0.0/x86_64").value();
@@ -765,7 +770,7 @@ std::optional<ImportedLayer> importLayer(repo::OSTreeRepo &targetRepo,
     }
 
     api::types::v1::PackageInfoV2 info;
-    info.arch = std::vector<std::string>{ "x86_64" };
+    info.arch = std::vector<std::string>{ hostArch() };
     info.base = base.value_or(std::string{});
     info.channel = "stable";
     info.command = std::vector<std::string>{ "echo", id };
@@ -783,7 +788,7 @@ std::optional<ImportedLayer> importLayer(repo::OSTreeRepo &targetRepo,
         return std::nullopt;
     }
 
-    auto ref = package::Reference::parse("stable:" + id + "/" + version + "/x86_64");
+    auto ref = package::Reference::parse("stable:" + id + "/" + version + "/" + hostArch());
     if (!ref) {
         ADD_FAILURE() << ref.error().message();
         return std::nullopt;
@@ -797,7 +802,7 @@ std::optional<std::filesystem::path> packLayer(const std::filesystem::path &work
                                                const std::string &version,
                                                const std::string &kind,
                                                const std::string &module,
-                                               const std::string &arch = "x86_64")
+                                               const std::string &arch = hostArch())
 {
     const auto layerDir = workspace / (id + "-" + version + "-" + module);
     std::error_code ec;

@@ -132,3 +132,22 @@ ll-cli run --help-all
 - [Manage Runtimes with the CLI](./manage-runtimes-with-cli.md) covers dependency and disk-usage analysis, removal of unused runtimes, and forced operations.
 - The [FAQ](../tips-and-faq/faq.md) covers common issues involving application execution, data directories, desktop integration, and dependencies.
 - When diagnosing a problem, add `--verbose` after the command to obtain detailed logs. Provide the community with the complete command, logs, system version, and output of `ll-cli --version`.
+
+## Permissions and polkit troubleshooting
+
+Since 1.14, `ll-package-manager` uses polkit for install, uninstall, and similar operations. On non-deepin distributions you need:
+
+1. A running polkit authentication agent.
+2. An admin-capable user (typically the `wheel` or `sudo` group), or an existing polkit rule that allows the action.
+
+If the CLI reports `PermissionDenied`, or the authentication dialog flashes and closes without a password prompt, check the following:
+
+1. Confirm an authentication agent is running (usually provided by the desktop session).
+2. Inspect system logs:
+
+```bash
+journalctl -u polkit -b
+```
+
+3. Review the PAM stack for modules that write extra text to stdout and disrupt the polkit agent/helper protocol.
+4. Temporary workaround: `sudo ll-cli install ...` bypasses polkit (root is always allowed).

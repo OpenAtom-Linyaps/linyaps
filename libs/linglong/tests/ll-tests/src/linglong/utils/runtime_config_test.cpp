@@ -13,6 +13,7 @@
 #include <filesystem>
 #include <fstream>
 #include <string>
+#include <system_error>
 
 namespace fs = std::filesystem;
 using namespace linglong::api::types::v1;
@@ -442,4 +443,55 @@ TEST(RuntimeConfigTest, LoadRuntimeConfigWithConfigD)
     EXPECT_EQ(loadedConfig.devices->at(0), "vendor.com/device=base");
     EXPECT_EQ(loadedConfig.devices->at(1), "vendor.com/device=10");
     EXPECT_EQ(loadedConfig.devices->at(2), "vendor.com/device=20");
+}
+
+TEST(RuntimeConfigTest, LoadRuntimeConfigWithSymlinkLoop)
+{
+    TempDir tempDir;
+
+    // A config.json pointing at itself makes the exists() probe fail with
+    // ELOOP, which must be reported as an error.
+    fs::path configDir = tempDir.path() / "linglong" / "apps" / "test-app";
+    fs::create_directories(configDir);
+
+    fs::path configFile = configDir / "config.json";
+    std::error_code ec;
+    fs::create_symlink(configFile, configFile, ec);
+    ASSERT_EQ(ec.value(), 0);
+
+    std::vector<std::filesystem::path> configDirs = { tempDir.path() / "linglong" };
+    auto result = linglong::utils::loadRuntimeConfig(configDirs, "test-app", "");
+    EXPECT_FALSE(result);
+}
+
+TEST(RuntimeConfigTest, LoadRuntimeConfigWithoutConfig)
+{
+    TempDir tempDir;
+
+    fs::path configDir = tempDir.path() / "linglong";
+    fs::create_directories(configDir);
+
+    std::vector<std::filesystem::path> configDirs = { configDir };
+    auto result = linglong::utils::loadRuntimeConfig(configDirs, "test-app", "");
+    ASSERT_TRUE(result.has_value());
+    EXPECT_FALSE(result->has_value());
+}
+
+TEST(RuntimeConfigTest, LoadRuntimeConfigWithConfigDSymlinkLoop)
+{
+    TempDir tempDir;
+
+    // A config.d pointing at itself makes the is_directory() probe fail with
+    // ELOOP, which must be reported as an error.
+    fs::path configDir = tempDir.path() / "linglong";
+    fs::create_directories(configDir);
+
+    fs::path configDPath = configDir / "config.d";
+    std::error_code ec;
+    fs::create_symlink(configDPath, configDPath, ec);
+    ASSERT_EQ(ec.value(), 0);
+
+    std::vector<std::filesystem::path> configDirs = { configDir };
+    auto result = linglong::utils::loadRuntimeConfig(configDirs, "", "");
+    EXPECT_FALSE(result);
 }

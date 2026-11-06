@@ -12,6 +12,7 @@ docs/pages/guide/
 ├── extra/                       # 额外文档
 ├── lessons/                     # 精选课程
 ├── linyaps-devel/               # 开发者文档
+├── ai-enhanced-assistance/      # AI辅助工具文档
 ├── publishing/                  # 发布相关文档
 ├── reference/                   # 参考文档
 ├── start/                       # 入门指南
@@ -57,6 +58,7 @@ docs/pages/guide/
 | 高级 | 调试如意玲珑应用 | `debug/debug.md` | 介绍调试示例的准备，以及使用 gdb 调试应用的方法 |
 | 高级 | 模块管理 | `building/modules.md` | 说明模块拆分、模块文件、保留模块及模块的构建和安装 |
 | 高级 | 多架构支持 | `building/multiarch.md` | 介绍支持的架构、项目配置、构建命令和交叉构建方法 |
+| 高级 | 如意玲珑打包 Agents 工具集 | `ai-enhanced-assistance/linyaps-packaging-agents-toolset.md` | 介绍如意玲珑打包 Agents 工具集各个SKILLS的能力、使用方法 |
 
 ## 推荐阅读顺序
 

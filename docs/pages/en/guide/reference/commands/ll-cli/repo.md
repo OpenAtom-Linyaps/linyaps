@@ -36,7 +36,7 @@ ll-cli repo add myrepo https://repo.example.com
 
 Remove a repository.
 
-**Usage**: `ll-cli repo remove [OPTIONS] NAME`
+**Usage**: `ll-cli repo remove [OPTIONS] ALIAS`
 
 **Parameters**:
 
@@ -52,7 +52,7 @@ ll-cli repo remove myrepo
 
 Update repository URL.
 
-**Usage**: `ll-cli repo update [OPTIONS] NAME URL`
+**Usage**: `ll-cli repo update [OPTIONS] ALIAS URL`
 
 **Parameters**:
 
@@ -69,11 +69,11 @@ ll-cli repo update myrepo https://updated-repo.example.com
 
 Set default repository name.
 
-**Usage**: `ll-cli repo set-default [OPTIONS] NAME`
+**Usage**: `ll-cli repo set-default [OPTIONS] ALIAS`
 
 **Parameters**:
 
-- **Alias** _TEXT_ _REQUIRED_: Repository name alias
+- **ALIAS** _TEXT_ _REQUIRED_: Repository name alias
 
 **Examples**:
 

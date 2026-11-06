@@ -42,7 +42,7 @@ from .constants import (
     RESULTS_FILE,
     JUNIT_FILE,
 )
-from .executor import SUDO_FLAGS, CommandExecutor
+from .executor import sudo_argv, CommandExecutor
 from .models import RepoState, StepResult, StepSkipped
 from .reporter import generate_report, generate_junit_xml
 
@@ -799,8 +799,17 @@ class SmokeTestBase:
         才把计数写回 .gcda，SIGKILL 会丢掉这个进程的整份计数。
         """
         cmd = [LL_CLI, *args]
+        # 与 CommandExecutor 共用同一套 SUDO_FLAGS 解析：交互式步骤也必须
+        # 遵守同一个配置，否则同一轮冒烟里 executor 用 -n、PTY 用 -A。
+        pty_env = os.environ.copy()
+        if env:
+            for k, v in env.items():
+                if v is None:
+                    pty_env.pop(k, None)
+                else:
+                    pty_env[k] = v
         if sudo:
-            cmd = ["sudo", *SUDO_FLAGS.split(), *cmd]
+            cmd = sudo_argv(cmd, pty_env)
         pid, fd = pty.fork()
         if pid == 0:
             run_env = os.environ.copy()

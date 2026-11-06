@@ -7,14 +7,25 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "../../common/scoped_runtime_paths.h"
 #include "../../common/tempdir.h"
+#include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/api/types/v1/PackageInfoV2.hpp"
 #include "linglong/api/types/v1/UabLayer.hpp"
 #include "linglong/package/architecture.h"
+#include "linglong/package/layer_dir.h"
 #include "linglong/package/reference.h"
+#include "linglong/package/uab_packager.h"
+#include "linglong/package_manager/package_task.h"
 #include "linglong/package_manager/uab_installation.h"
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/utils/error/error.h"
+#include "linglong/utils/finally/finally.h"
+
+#include <fstream>
+
+#include <fcntl.h>
+#include <unistd.h>
 
 using namespace linglong;
 using linglong::service::UabInstallationAction;
@@ -309,3 +320,183 @@ TEST(CheckDistributionModeUABLayers, ConstrainFailOnOtherLayers)
     auto result = UabInstallationAction::checkDistributionModeUABLayers(repo, layers);
     EXPECT_FALSE(result.has_value());
 }
+
+namespace {
+
+using linglong::api::types::v1::CommonOptions;
+using linglong::api::types::v1::PackageInfoV2;
+
+class UabInstallationFlowTest : public ::testing::Test
+{
+protected:
+    void SetUp() override
+    {
+        staging = std::make_unique<test::ScopedStagingDir>();
+        if (!staging->ok()) {
+            GTEST_SKIP() << staging->error();
+        }
+
+        tempDir = std::make_unique<TempDir>();
+        repoRoot = tempDir->path() / "repo";
+        ASSERT_TRUE(std::filesystem::create_directories(repoRoot));
+
+        auto created = repo::OSTreeRepo::create(
+          repoRoot,
+          api::types::v1::RepoConfigV2{
+            .defaultRepo = "stable",
+            .repos = { api::types::v1::Repo{ .name = "stable",
+                                             .url = "https://example.com/repo" } },
+            .version = 2,
+          });
+        ASSERT_TRUE(created) << created.error().message();
+        repo = created->get();
+        packageManager =
+          std::make_unique<service::PackageManager>(std::move(*created), nullptr, nullptr);
+    }
+
+    std::filesystem::path createLayer(const std::string &id,
+                                      const std::string &version,
+                                      const std::string &kind,
+                                      const std::string &module,
+                                      const std::optional<std::string> &base = std::nullopt)
+    {
+        auto layerDir = tempDir->path() / "layers" / (id + "-" + module);
+        std::error_code ec;
+        std::filesystem::create_directories(layerDir / "files" / "usr" / "bin", ec);
+        EXPECT_FALSE(ec) << ec.message();
+        std::ofstream{ layerDir / "files" / "usr" / "bin" / id } << id;
+
+        PackageInfoV2 info;
+        info.id = id;
+        info.version = version;
+        info.channel = "main";
+        info.kind = kind;
+        info.packageInfoV2Module = module;
+        info.arch = { package::Architecture::currentCPUArchitecture().toString() };
+        if (base) {
+            info.base = *base;
+        }
+        std::ofstream{ layerDir / "info.json" } << nlohmann::json(info).dump();
+        return layerDir;
+    }
+
+    std::filesystem::path createUab(const std::string &name,
+                                    const std::vector<std::filesystem::path> &layerDirs)
+    {
+        auto header = tempDir->path() / "uab-header";
+        std::filesystem::copy_file("/proc/self/exe", header);
+
+        auto buildDir = tempDir->path() / ("build-" + name);
+        std::filesystem::create_directories(buildDir);
+        package::UABPackager packager(buildDir);
+        packager.setDefaultHeader(header);
+        packager.setCompressor("lz4");
+        for (const auto &layerDir : layerDirs) {
+            auto appended = packager.appendLayer(package::LayerDir{ layerDir });
+            EXPECT_TRUE(appended) << appended.error().message();
+        }
+
+        auto output = tempDir->path() / (name + ".uab");
+        auto packed = packager.pack(output, package::UABPackagerMode::Distribution);
+        EXPECT_TRUE(packed) << packed.error().message();
+        return output;
+    }
+
+    utils::error::Result<void> runAction(const std::filesystem::path &uabPath,
+                                         service::PackageTask &task,
+                                         CommonOptions options = {})
+    {
+        LINGLONG_TRACE("run uab installation action");
+        int fd = ::open(uabPath.c_str(), O_RDONLY | O_CLOEXEC);
+        if (fd == -1) {
+            return LINGLONG_ERR("failed to open uab file");
+        }
+        auto closeFd = linglong::utils::finally::finally([fd] {
+            ::close(fd);
+        });
+
+        auto action = UabInstallationAction::create(fd, *packageManager, *repo, options);
+        if (!action) {
+            return LINGLONG_ERR("failed to create uab action");
+        }
+
+        auto prepared = action->prepare();
+        if (!prepared) {
+            return prepared;
+        }
+
+        return action->doAction(task);
+    }
+
+    std::unique_ptr<test::ScopedStagingDir> staging;
+    std::unique_ptr<TempDir> tempDir;
+    std::filesystem::path repoRoot;
+    repo::OSTreeRepo *repo{ nullptr };
+    std::unique_ptr<service::PackageManager> packageManager;
+};
+
+TEST_F(UabInstallationFlowTest, InstallsDistributionUabWithBaseLayer)
+{
+    auto baseLayer = createLayer("org.deepin.base", "1.0.0", "base", "binary");
+    auto uab = createUab("base-only", { baseLayer });
+
+    service::PackageTask task([](service::Task &) { }, nullptr);
+    auto result = runAction(uab, task);
+
+    ASSERT_TRUE(result) << result.error().message();
+    EXPECT_EQ(task.state(), api::types::v1::State::Succeed);
+
+    auto installed = repo->listLocalBy(repo::repoCacheQuery{ .id = "org.deepin.base" });
+    ASSERT_TRUE(installed) << installed.error().message();
+    ASSERT_EQ(installed->size(), 1);
+    EXPECT_EQ(installed->front().info.packageInfoV2Module, "binary");
+    EXPECT_TRUE(std::filesystem::exists(
+      repo
+        ->getLayerDir(
+          package::Reference::parse("main:org.deepin.base/1.0.0/"
+                                    + package::Architecture::currentCPUArchitecture().toString())
+            .value(),
+          "binary")
+        .value()
+        .path()
+      / "info.json"));
+}
+
+TEST_F(UabInstallationFlowTest, InstallsAppUabWhenBaseIsAlreadyInstalled)
+{
+    auto baseLayer = createLayer("org.deepin.base", "1.0.0", "base", "binary");
+    auto imported = repo->importLayerDir(package::LayerDir{ baseLayer });
+    ASSERT_TRUE(imported) << imported.error().message();
+
+    const auto baseRef =
+      "org.deepin.base/1.0.0/" + package::Architecture::currentCPUArchitecture().toString();
+    auto appLayer = createLayer("org.example.app", "1.0.0", "app", "binary", baseRef);
+    auto uab = createUab("app-only", { appLayer });
+
+    service::PackageTask task([](service::Task &) { }, nullptr);
+    auto result = runAction(uab, task);
+
+    ASSERT_TRUE(result) << result.error().message();
+    EXPECT_EQ(task.state(), api::types::v1::State::Succeed);
+
+    auto installed = repo->listLocalBy(repo::repoCacheQuery{ .id = "org.example.app" });
+    ASSERT_TRUE(installed) << installed.error().message();
+    ASSERT_EQ(installed->size(), 1);
+    EXPECT_EQ(installed->front().info.kind, "app");
+}
+
+TEST_F(UabInstallationFlowTest, RejectsMalformedUabBeforeInstallingAnything)
+{
+    auto malformed = tempDir->path() / "malformed.uab";
+    std::ofstream{ malformed } << "not an elf file";
+
+    service::PackageTask task([](service::Task &) { }, nullptr);
+    auto result = runAction(malformed, task);
+
+    EXPECT_FALSE(result.has_value());
+    auto installed = repo->listLocal();
+    ASSERT_TRUE(installed) << installed.error().message();
+    EXPECT_TRUE(installed->empty());
+}
+
+} // namespace

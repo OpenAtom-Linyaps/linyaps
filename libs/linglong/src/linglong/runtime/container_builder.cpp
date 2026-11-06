@@ -574,7 +574,6 @@ auto ContainerBuilder::configureInitContainer(PreparedContainer &prepared) noexc
     prepared.cfgBuilder.bindUserGroup()
       .bindXDGRuntime()
       .bindHostRoot()
-      .bindHostStatics()
       .forwardDefaultEnv()
       .appendEnv("LINYAPS_INIT_SKIP_LOCK", "YES");
 
@@ -637,7 +636,6 @@ auto ContainerBuilder::configureRunContainer(PreparedContainer &prepared,
       .bindXDGRuntime()
       .bindRemovableStorageMounts()
       .bindHostRoot()
-      .bindHostStatics()
       .bindHome(homePath)
       .enablePrivateDir()
       .mapPrivate((homePath / ".ssh").string(), true)

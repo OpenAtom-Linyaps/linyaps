@@ -389,7 +389,10 @@ utils::error::Result<void> RunContext::resolve(const api::types::v1::BuilderProj
         return LINGLONG_ERR("failed to resolve network configuration", networkConfRet);
     }
 
-    resolveHostDynamic();
+    // Build containers must not carry host runtime mounts. Reset any value left by a
+    // previous resolve; leaving hostDynamic unset also keeps normalizeContainerRootfs
+    // from pre-creating host-only mount points.
+    contextCfg.hostDynamic.reset();
 
     return resolveLayer(false,
                         {},
@@ -855,7 +858,16 @@ void RunContext::resolveHostDynamic()
 {
     LINGLONG_TRACE("resolve host dynamic paths");
 
-    constexpr std::array<const char *, 0> paths{};
+    constexpr std::array<const char *, 7> paths{
+        "/etc/machine-id",
+        // FIXME: support for host /etc/ssl, ref https://github.com/p11-glue/p11-kit
+        "/usr/lib/locale",
+        "/usr/share/fonts",
+        "/usr/share/icons",
+        "/usr/share/themes",
+        "/var/cache/fontconfig",
+        "/usr/local/share/fonts",
+    };
 
     std::vector<api::types::v1::Mount> hostDynamic;
     hostDynamic.reserve(paths.size());

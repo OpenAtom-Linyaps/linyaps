@@ -133,7 +133,6 @@ public:
                                    bool overwrite = false) noexcept;
 
     ContainerCfgBuilder &bindHostRoot() noexcept;
-    ContainerCfgBuilder &bindHostStatics() noexcept;
     ContainerCfgBuilder &bindHome(std::filesystem::path hostHome) noexcept;
 
     ContainerCfgBuilder &bindXAuthFile(const std::filesystem::path &authFile) noexcept;
@@ -302,7 +301,6 @@ private:
     std::optional<bool> UGBind{ std::nullopt };
     std::optional<std::vector<ocppi::runtime::config::types::Mount>> removableStorageMounts;
     std::optional<std::vector<ocppi::runtime::config::types::Mount>> hostRootMount;
-    std::optional<std::vector<ocppi::runtime::config::types::Mount>> hostStaticsMount;
     std::optional<std::vector<ocppi::runtime::config::types::Mount>> ipcMount;
     std::optional<std::vector<ocppi::runtime::config::types::Mount>> displayMount;
     std::optional<std::vector<ocppi::runtime::config::types::Mount>> timeZoneMount;

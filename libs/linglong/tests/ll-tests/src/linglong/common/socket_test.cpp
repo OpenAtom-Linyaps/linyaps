@@ -6,7 +6,13 @@
 
 #include "linglong/common/socket.h"
 
+#include <cstdlib>
+#include <filesystem>
+#include <fstream>
+#include <string>
+
 #include <sys/socket.h>
+#include <unistd.h>
 
 class SocketFdTest : public ::testing::Test
 {
@@ -192,4 +198,77 @@ TEST_F(SocketFdTest, LargePayloadHandling)
     }
 
     waitpid(child, nullptr, 0);
+}
+
+namespace {
+
+std::filesystem::path makeTempSocketPath()
+{
+    auto base = std::filesystem::temp_directory_path()
+      / ("ll-socket-test-" + std::to_string(::getpid()) + "-" + std::to_string(std::rand()));
+    return base;
+}
+
+} // namespace
+
+TEST(CreateUnixSocketTest, ReplacesStaleSocket)
+{
+    auto path = makeTempSocketPath();
+    std::filesystem::remove(path);
+
+    auto first = createUnixSocket(path.string());
+    ASSERT_TRUE(first.has_value()) << first.error();
+    close(*first);
+
+    auto second = createUnixSocket(path.string());
+    ASSERT_TRUE(second.has_value()) << second.error();
+    EXPECT_GT(*second, 0);
+    close(*second);
+
+    std::filesystem::remove(path);
+}
+
+TEST(CreateUnixSocketTest, RejectsRegularFile)
+{
+    auto path = makeTempSocketPath();
+    {
+        std::ofstream out(path);
+        out << "do not delete me";
+    }
+
+    auto res = createUnixSocket(path.string());
+    EXPECT_FALSE(res.has_value());
+
+    ASSERT_TRUE(std::filesystem::exists(path));
+    std::ifstream in(path);
+    std::string content;
+    std::getline(in, content);
+    EXPECT_EQ(content, "do not delete me");
+
+    std::filesystem::remove(path);
+}
+
+TEST(CreateUnixSocketTest, RejectsDirectory)
+{
+    auto path = makeTempSocketPath();
+    std::filesystem::create_directory(path);
+
+    auto res = createUnixSocket(path.string());
+    EXPECT_FALSE(res.has_value());
+    EXPECT_TRUE(std::filesystem::is_directory(path));
+
+    std::filesystem::remove(path);
+}
+
+TEST(CreateUnixSocketTest, CreatesFreshSocket)
+{
+    auto path = makeTempSocketPath();
+    std::filesystem::remove(path);
+
+    auto res = createUnixSocket(path.string());
+    ASSERT_TRUE(res.has_value()) << res.error();
+    EXPECT_GT(*res, 0);
+    close(*res);
+
+    std::filesystem::remove(path);
 }

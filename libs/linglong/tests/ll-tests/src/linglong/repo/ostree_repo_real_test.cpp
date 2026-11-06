@@ -10,6 +10,7 @@
 #include "linglong/package/fuzzy_reference.h"
 #include "linglong/package/layer_dir.h"
 #include "linglong/package/reference.h"
+#include "linglong/package_manager/task.h"
 #include "linglong/repo/ostree_repo.h"
 
 #include <algorithm>
@@ -408,6 +409,236 @@ TEST_F(RealRepoTest, UpgradableAppsDetectsNewerRemote)
     ASSERT_EQ(upgradeList->size(), 1);
     EXPECT_EQ(upgradeList->at(0).first.version.toString(), "1.0.0");
     EXPECT_EQ(upgradeList->at(0).second.reference.version.toString(), "2.0.0");
+}
+
+class LocalRemoteRepoTest : public ::testing::Test
+{
+protected:
+    void SetUp() override
+    {
+        tempDir = std::make_unique<TempDir>();
+        sourceRoot = tempDir->path() / "source";
+        remoteRoot = tempDir->path() / "remote";
+        consumerRoot = tempDir->path() / "consumer";
+        ASSERT_TRUE(fs::create_directories(sourceRoot));
+
+        auto sourceConfig = makeRepoConfig();
+        auto created = OSTreeRepo::create(sourceRoot, sourceConfig);
+        ASSERT_TRUE(created.has_value()) << created.error().message();
+        source = std::move(*created);
+
+        appRef =
+          importLayer("org.example.remote",
+                      "2.0.0",
+                      "app",
+                      "binary",
+                      { "files/usr/bin/remote-app", "files/share/applications/remote.desktop" });
+        ASSERT_TRUE(appRef.has_value());
+        legacyRuntimeRef =
+          importLayer("org.example.remote",
+                      "2.0.0",
+                      "app",
+                      "runtime",
+                      { "files/usr/bin/remote-app", "files/share/applications/remote.desktop" });
+        ASSERT_TRUE(legacyRuntimeRef.has_value());
+    }
+
+    std::optional<Reference> importLayer(const std::string &id,
+                                         const std::string &version,
+                                         const std::string &kind,
+                                         const std::string &module,
+                                         const std::vector<std::string> &relFiles)
+    {
+        auto layerDir = sourceRoot / ("layersrc-" + id + "-" + module);
+        std::error_code ec;
+        fs::remove_all(layerDir, ec);
+        ec.clear();
+        for (const auto &rel : relFiles) {
+            auto path = layerDir / rel;
+            fs::create_directories(path.parent_path(), ec);
+            if (ec) {
+                ADD_FAILURE() << "create dirs failed: " << ec.message();
+                return std::nullopt;
+            }
+            std::ofstream{ path } << "remote content";
+        }
+
+        PackageInfoV2 info;
+        info.id = id;
+        info.version = version;
+        info.kind = kind;
+        info.channel = "stable";
+        info.arch = { "x86_64" };
+        info.packageInfoV2Module = module;
+        std::ofstream{ layerDir / "info.json" } << nlohmann::json(info).dump();
+
+        auto imported = source->importLayerDir(LayerDir{ layerDir });
+        if (!imported) {
+            ADD_FAILURE() << imported.error().message();
+            return std::nullopt;
+        }
+
+        auto ref = Reference::parse("stable:" + id + "/" + version + "/x86_64");
+        if (!ref) {
+            ADD_FAILURE() << ref.error().message();
+            return std::nullopt;
+        }
+        return *ref;
+    }
+
+    void publishRemote(const std::vector<std::pair<std::string, std::string>> &refs = {})
+    {
+        const auto remoteRepo = remoteRoot / "repos" / "stable";
+        std::error_code ec;
+        fs::create_directories(remoteRepo.parent_path(), ec);
+        ASSERT_FALSE(ec) << ec.message();
+        fs::copy(sourceRoot / "repo", remoteRepo, fs::copy_options::recursive, ec);
+        ASSERT_FALSE(ec) << ec.message();
+
+        const auto localRefs = remoteRepo / "refs" / "remotes" / "local";
+        ASSERT_TRUE(fs::exists(localRefs));
+        fs::copy(localRefs,
+                 remoteRepo / "refs" / "heads",
+                 fs::copy_options::recursive | fs::copy_options::overwrite_existing,
+                 ec);
+        ASSERT_FALSE(ec) << ec.message();
+
+        for (const auto &[from, to] : refs) {
+            const auto sourceRef = remoteRepo / "refs" / "heads" / from;
+            ASSERT_TRUE(fs::exists(sourceRef)) << sourceRef;
+            fs::create_directories((remoteRepo / "refs" / "heads" / to).parent_path(), ec);
+            ASSERT_FALSE(ec) << ec.message();
+            fs::copy_file(sourceRef, remoteRepo / "refs" / "heads" / to, ec);
+            ASSERT_FALSE(ec) << ec.message();
+        }
+
+        auto consumerConfig = makeRepoConfig();
+        consumerConfig.repos.front().url = "file://" + remoteRoot.string();
+        fs::create_directories(consumerRoot, ec);
+        ASSERT_FALSE(ec) << ec.message();
+        auto loaded = OSTreeRepo::create(consumerRoot, consumerConfig);
+        ASSERT_TRUE(loaded.has_value()) << loaded.error().message();
+        consumer = std::move(*loaded);
+        remoteRepoConfig = consumerConfig.repos.front();
+    }
+
+    void regenerateRemoteSummary(const fs::path &repoPath)
+    {
+        g_autoptr(GError) error = nullptr;
+        g_autoptr(GFile) repoFile = g_file_new_for_path(repoPath.c_str());
+        g_autoptr(OstreeRepo) repo = ostree_repo_new(repoFile);
+        ASSERT_TRUE(ostree_repo_open(repo, nullptr, &error))
+          << (error != nullptr ? error->message : "failed to open remote ostree repo");
+        ASSERT_TRUE(ostree_repo_regenerate_summary(repo, nullptr, nullptr, &error))
+          << (error != nullptr ? error->message : "failed to regenerate remote summary");
+    }
+
+    package::ReferenceWithRepo remoteReference() const
+    {
+        return package::ReferenceWithRepo{ .repo = remoteRepoConfig, .reference = *appRef };
+    }
+
+    std::unique_ptr<TempDir> tempDir;
+    fs::path sourceRoot;
+    fs::path remoteRoot;
+    fs::path consumerRoot;
+    std::unique_ptr<OSTreeRepo> source;
+    std::unique_ptr<OSTreeRepo> consumer;
+    std::optional<Reference> appRef;
+    std::optional<Reference> legacyRuntimeRef;
+    Repo remoteRepoConfig;
+};
+
+TEST_F(LocalRemoteRepoTest, PullImportsLayerAndFetchesMetadata)
+{
+    publishRemote();
+    const auto refRepo = remoteReference();
+
+    service::Task pullTask;
+    auto pulled = consumer->pull(pullTask, refRepo, "binary");
+    ASSERT_TRUE(pulled) << pulled.error().message();
+
+    auto local = consumer->listLocal();
+    ASSERT_TRUE(local) << local.error().message();
+    ASSERT_EQ(local->size(), 1);
+    EXPECT_EQ(local->front().id, "org.example.remote");
+
+    auto item = consumer->getLayerItem(*appRef, "binary");
+    ASSERT_TRUE(item) << item.error().message();
+    EXPECT_EQ(item->info.version, "2.0.0");
+    EXPECT_TRUE(
+      fs::exists(consumerRoot / "layers" / item->commit / "files" / "usr" / "bin" / "remote-app"));
+
+    auto metadata = consumer->fetchRefMetaData(refRepo, "binary", true);
+    ASSERT_TRUE(metadata) << metadata.error().message();
+    EXPECT_FALSE(metadata->getRev().empty());
+    auto metadataInfo = metadata->getPackageInfo();
+    ASSERT_TRUE(metadataInfo) << metadataInfo.error().message();
+    EXPECT_EQ(metadataInfo->id, "org.example.remote");
+
+    auto remoteInfo = consumer->fetchRemotePackageInfo(refRepo, "binary");
+    ASSERT_TRUE(remoteInfo) << remoteInfo.error().message();
+    EXPECT_EQ(remoteInfo->packageInfoV2Module, "binary");
+}
+
+TEST_F(LocalRemoteRepoTest, GetRefStatisticsWithoutObjectSizeMetadataReturnsError)
+{
+    publishRemote();
+    auto metadata = consumer->fetchRefMetaData(remoteReference(), "binary", true);
+    ASSERT_TRUE(metadata) << metadata.error().message();
+
+    auto statistics = consumer->getRefStatistics(*metadata);
+    if (statistics.has_value()) {
+        GTEST_SKIP() << "OSTree commit exposes object size metadata; this test covers the "
+                        "missing-metadata error path";
+    }
+
+    EXPECT_THAT(statistics.error().message(),
+                ::testing::HasSubstr("ostree_commit_get_object_sizes"))
+      << "OSTree version or commit metadata changed; update the precondition if this is no "
+         "longer the missing-object-size error";
+}
+
+TEST_F(LocalRemoteRepoTest, PullFallsBackToLegacyRuntimeBranch)
+{
+    const std::string v2Ref = "stable/org.example.remote/2.0.0/x86_64/binary";
+    const std::string legacyRef = "stable/org.example.remote/2.0.0/x86_64/runtime";
+    publishRemote();
+
+    const auto remoteHeads = remoteRoot / "repos" / "stable" / "refs" / "heads";
+    std::error_code ec;
+    ASSERT_TRUE(fs::exists(remoteHeads / legacyRef));
+    ASSERT_TRUE(fs::remove(remoteHeads / v2Ref, ec)) << ec.message();
+    EXPECT_FALSE(fs::exists(remoteHeads / v2Ref))
+      << "binary candidate must be absent so pull has to fall back";
+    regenerateRemoteSummary(remoteRoot / "repos" / "stable");
+
+    service::Task pullTask;
+    auto pulled = consumer->pull(pullTask, remoteReference(), "binary");
+
+    ASSERT_TRUE(pulled) << pulled.error().message();
+    EXPECT_FALSE(fs::exists(remoteHeads / v2Ref));
+    auto item = consumer->getLayerItem(*appRef, "runtime");
+    ASSERT_TRUE(item) << item.error().message();
+    EXPECT_EQ(item->info.packageInfoV2Module, "runtime")
+      << "fallback must install the layer published on the legacy runtime branch";
+}
+
+TEST_F(LocalRemoteRepoTest, PullAndMetadataReportMissingRemoteBranch)
+{
+    publishRemote();
+    auto missingRef = Reference::parse("stable:org.example.remote/9.9.9/x86_64");
+    ASSERT_TRUE(missingRef.has_value());
+    const auto missing =
+      package::ReferenceWithRepo{ .repo = remoteRepoConfig, .reference = *missingRef };
+
+    service::Task pullTask;
+    auto pulled = consumer->pull(pullTask, missing, "binary");
+    EXPECT_FALSE(pulled.has_value());
+    EXPECT_THAT(pulled.error().message(), ::testing::HasSubstr("ostree_repo_pull_with_options"));
+
+    auto metadata = consumer->fetchRefMetaData(missing, "binary", false);
+    EXPECT_FALSE(metadata.has_value());
 }
 
 TEST(RefMetaDataTest, GetPackageInfoWhenEmptyReturnsError)

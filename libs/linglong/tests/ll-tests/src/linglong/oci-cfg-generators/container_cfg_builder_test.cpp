@@ -847,14 +847,13 @@ TEST_F(ContainerCfgBuilderTest, ResolvConfWithoutHostRoot)
     EXPECT_TRUE(hasResolv);
 }
 
-TEST_F(ContainerCfgBuilderTest, BindHostRootAndStatics)
+TEST_F(ContainerCfgBuilderTest, BindHostRootAddsMounts)
 {
     ContainerCfgBuilder builder;
     builder.setAppId("org.deepin.demo")
       .setBasePath(baseDir.path())
       .setBundlePath(bundleDir.path())
-      .bindHostRoot()
-      .bindHostStatics();
+      .bindHostRoot();
 
     auto result = builder.build();
     ASSERT_TRUE(result.has_value()) << result.error().message();
@@ -872,10 +871,6 @@ TEST_F(ContainerCfgBuilderTest, BindHostRootAndStatics)
     // bindHostRoot
     EXPECT_TRUE(findDest("/run/host"));
     EXPECT_TRUE(findDest("/run/host/rootfs"));
-    // bindHostStatics (only for paths that exist in the environment; the
-    // settings/tools path set varies between distro rootfs images)
-    EXPECT_TRUE(findDest("/etc/machine-id"));
-    EXPECT_TRUE(findDest("/usr/lib/locale"));
 }
 
 TEST_F(ContainerCfgBuilderTest, BindCgroupAddsMount)

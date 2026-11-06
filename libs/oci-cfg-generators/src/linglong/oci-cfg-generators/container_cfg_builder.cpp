@@ -614,26 +614,6 @@ ContainerCfgBuilder &ContainerCfgBuilder::bindHostRoot() noexcept
     return *this;
 }
 
-ContainerCfgBuilder &ContainerCfgBuilder::bindHostStatics() noexcept
-{
-    std::vector<std::filesystem::path> statics{
-        "/etc/machine-id",
-        // FIXME: support for host /etc/ssl, ref https://github.com/p11-glue/p11-kit
-        "/usr/lib/locale",
-        "/usr/share/fonts",
-        "/usr/share/icons",
-        "/usr/share/themes",
-        "/var/cache/fontconfig",
-    };
-
-    hostStaticsMount = std::vector<Mount>{};
-    for (const auto &loc : statics) {
-        bindIfExist(*hostStaticsMount, loc);
-    }
-
-    return *this;
-}
-
 ContainerCfgBuilder &ContainerCfgBuilder::bindHome(std::filesystem::path hostHome) noexcept
 {
     homePath = hostHome;
@@ -1933,10 +1913,6 @@ utils::error::Result<void> ContainerCfgBuilder::mergeMount() noexcept
 
     if (hostRootMount) {
         std::move(hostRootMount->begin(), hostRootMount->end(), std::back_inserter(mounts));
-    }
-
-    if (hostStaticsMount) {
-        std::move(hostStaticsMount->begin(), hostStaticsMount->end(), std::back_inserter(mounts));
     }
 
     if (homeMount) {

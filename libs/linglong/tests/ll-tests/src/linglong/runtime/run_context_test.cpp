@@ -17,9 +17,13 @@
 #include <QCryptographicHash>
 #include <QFile>
 
+#include <algorithm>
+#include <array>
+#include <filesystem>
 #include <fstream>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 using namespace linglong;
 using ::testing::AtLeast;
@@ -186,6 +190,7 @@ TEST(RunContextBuildModules, UsesExactBaseAndRuntimeModulesIncludingLegacyMainMo
         };
         runtime::RunContext defaultContext(**repo);
         ASSERT_TRUE(defaultContext.resolve(project, output, complete));
+        EXPECT_FALSE(defaultContext.getConfig().hostDynamic.has_value());
         const auto defaultLayer = defaultContext.getBaseLayerPath();
         ASSERT_TRUE(defaultLayer);
         EXPECT_TRUE(std::filesystem::exists(*defaultLayer / "files/locale"));
@@ -711,6 +716,85 @@ TEST_F(RunContextTest, resolveRunnableWithInvalidKind)
     EXPECT_FALSE(result.has_value()) << "Expected resolve to fail for invalid kind";
     EXPECT_TRUE(result.error().message().find("kind") != std::string::npos
                 || result.error().message().find("not runnable") != std::string::npos);
+}
+
+TEST_F(RunContextTest, resolveHostDynamicPaths)
+{
+    LINGLONG_TRACE("resolveHostDynamicPaths");
+
+    auto baseRef = package::Reference::parse("stable:org.deepin.base/23.0.0/x86_64");
+    ASSERT_TRUE(baseRef.has_value())
+      << "Failed to create base reference: " << baseRef.error().message();
+
+    api::types::v1::RepositoryCacheLayersItem baseItem;
+    baseItem.info.id = "org.deepin.base";
+    baseItem.info.version = "23.0.0";
+    baseItem.info.kind = "base";
+    baseItem.info.channel = "stable";
+    baseItem.info.arch = { std::string{ "x86_64" } };
+
+    EXPECT_CALL(*repo, getLayerItem(*baseRef, testing::_)).WillOnce(Return(baseItem));
+
+    package::LayerDir mockLayerDir(tempDir->path() / "merged");
+    EXPECT_CALL(*repo, getMergedModuleDir(*baseRef, testing::_))
+      .WillOnce(Return(utils::error::Result<package::LayerDir>(mockLayerDir)));
+
+    RunContext context(*this->repo);
+    auto result = context.resolve(*baseRef);
+    ASSERT_TRUE(result.has_value()) << "Failed to resolve runnable: " << result.error().message();
+
+    constexpr std::array<const char *, 7> candidates{
+        "/etc/machine-id",   "/usr/lib/locale",       "/usr/share/fonts",       "/usr/share/icons",
+        "/usr/share/themes", "/var/cache/fontconfig", "/usr/local/share/fonts",
+    };
+
+    const auto &config = context.getConfig();
+    auto findMount = [&config](std::string_view destination) -> const api::types::v1::Mount * {
+        if (!config.hostDynamic) {
+            return nullptr;
+        }
+        auto it = std::find_if(config.hostDynamic->begin(),
+                               config.hostDynamic->end(),
+                               [destination](const auto &mount) {
+                                   return mount.destination == destination;
+                               });
+        return it == config.hostDynamic->end() ? nullptr : &*it;
+    };
+
+    std::size_t expectedCount = 0;
+    for (const auto *path : candidates) {
+        SCOPED_TRACE(path);
+        std::error_code ec;
+        const bool exists = std::filesystem::exists(path, ec);
+        ASSERT_FALSE(ec) << ec.message();
+
+        const auto *mount = findMount(path);
+        if (!exists) {
+            EXPECT_EQ(mount, nullptr);
+            continue;
+        }
+
+        ++expectedCount;
+        ASSERT_NE(mount, nullptr);
+        EXPECT_EQ(mount->destination, path);
+        EXPECT_EQ(mount->source, path);
+        EXPECT_EQ(mount->type, "bind");
+        ASSERT_TRUE(mount->options.has_value());
+        EXPECT_EQ(*mount->options, (std::vector<std::string>{ "rbind", "ro", "rslave" }));
+        ASSERT_TRUE(mount->srcType.has_value());
+        EXPECT_EQ(*mount->srcType, std::filesystem::is_directory(path) ? "dir" : "file");
+    }
+
+    if (expectedCount == 0) {
+        EXPECT_FALSE(config.hostDynamic.has_value());
+        return;
+    }
+
+    ASSERT_TRUE(config.hostDynamic.has_value());
+    EXPECT_EQ(config.hostDynamic->size(), expectedCount);
+    for (const auto &mount : *config.hostDynamic) {
+        EXPECT_TRUE(mount.srcType.has_value());
+    }
 }
 
 TEST_F(RunContextTest, toConfig)

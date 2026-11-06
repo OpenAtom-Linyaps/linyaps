@@ -160,7 +160,7 @@ SPDX-FileCopyrightText = "UnionTech Software Technology Co., Ltd."
 SPDX-License-Identifier = "LGPL-3.0-only"
 
 [[annotations]]
-path = "tools/layer-icon-checker.sh"
+path = ["tools/layer-icon-checker.sh", "tools/tests/layer-icon-checker.test.sh"]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "None"
 SPDX-License-Identifier = "CC0-1.0"

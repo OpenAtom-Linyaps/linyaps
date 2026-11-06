@@ -156,11 +156,15 @@ LayerPackager::pack(const LayerDir &dir, const QString &layerFilePath) const
     const auto &compressedFilePath = this->workDir / "tmp.erofs";
     // 使用-b统一指定block size为4096(2^12), 避免不同系统的兼容问题
     // loongarch64默认使用(16384)2^14, 在x86和arm64不受支持, 会导致无法推包
+    // mkfs.erofs matches --exclude-regex against each path relative to the layer directory
+    // without anchoring it, and "minified*" means "minifie" followed by any number of "d".
+    // Anchor the pattern so that only the top-level "minified" entries are skipped, not
+    // application files such as files/lib/node_modules/html-minifier/index.js.
     auto ret = utils::Cmd("mkfs.erofs")
                  .exec(std::vector<std::string>{ "-z" + compressor.toStdString(),
                                                  "-b4096",
                                                  compressedFilePath.string(),
-                                                 "--exclude-regex=minified*",
+                                                 "--exclude-regex=^minified",
                                                  dir.path() });
     if (!ret) {
         return LINGLONG_ERR(ret);

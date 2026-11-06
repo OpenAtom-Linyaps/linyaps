@@ -19,6 +19,7 @@
 #include <fstream>
 #include <memory>
 #include <string>
+#include <vector>
 
 using namespace linglong;
 
@@ -164,6 +165,53 @@ TEST_F(LayerPackagerTest, LayerPackagerUnpackFsck)
     auto filesDir = ret->filesDirPath();
     ASSERT_TRUE(std::filesystem::exists(filesDir / "hello"))
       << "'hello' not found in unpack dir" << filesDir;
+}
+
+TEST_F(LayerPackagerTest, PackOnlyExcludesTopLevelMinifiedEntries)
+{
+    TempDir layerTempDir("linglong-layer-packager-test-");
+    const auto &layerDirPath = layerTempDir.path();
+
+    // Files whose paths merely contain "minified" belong to the application and must be kept.
+    const std::vector<std::filesystem::path> keptFiles{
+        "files/share/demo/jquery.minified.js",
+        "files/share/demo/unminified.css",
+        "files/lib/node_modules/html-minifier/index.js",
+        "files/lib/node_modules/demo/minified/index.js",
+    };
+    for (const auto &file : keptFiles) {
+        std::filesystem::create_directories((layerDirPath / file).parent_path());
+        std::ofstream{ layerDirPath / file } << file.string();
+    }
+    // Top-level minified entries of the layer directory are still skipped.
+    std::ofstream{ layerDirPath / "minified.json" } << "{}";
+
+    api::types::v1::PackageInfoV2 packageInfo;
+    packageInfo.name = "demo";
+    packageInfo.version = "1";
+    packageInfo.description = "demo";
+    packageInfo.id = "demo";
+    std::ofstream{ layerDirPath / "info.json" } << nlohmann::json(packageInfo).dump();
+
+    TempDir outputDir("linglong-test-");
+    const auto layerFilePath = outputDir.path() / "demo.layer";
+    package::LayerPackager packager;
+    packager.setCompressor("lz4");
+    auto layerFile = packager.pack(package::LayerDir(layerDirPath),
+                                   QString::fromStdString(layerFilePath.string()));
+    ASSERT_TRUE(layerFile.has_value()) << layerFile.error().message();
+
+    MockLayerPackager unpacker;
+    unpacker.wrapCheckErofsFuseExistsFunc = []() {
+        return false;
+    };
+    auto unpacked = unpacker.unpack(**layerFile);
+    ASSERT_TRUE(unpacked.has_value()) << unpacked.error().message();
+
+    for (const auto &file : keptFiles) {
+        EXPECT_TRUE(std::filesystem::exists(unpacked->path() / file)) << file << " is missing";
+    }
+    EXPECT_FALSE(std::filesystem::exists(unpacked->path() / "minified.json"));
 }
 
 TEST_F(LayerPackagerTest, InitWorkDir)

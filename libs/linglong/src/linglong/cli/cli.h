@@ -18,6 +18,7 @@
 #include "linglong/runtime/container_builder.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/log/log.h"
+#include "linglong/utils/runtime_directory.h"
 
 #include <CLI/CLI.hpp>
 
@@ -246,8 +247,10 @@ private:
       std::map<std::string, std::vector<api::types::v1::PackageInfoV2>> &list) noexcept;
     [[nodiscard]] utils::error::Result<std::vector<api::types::v1::CliContainer>>
     getCurrentContainers() const noexcept;
-    utils::error::Result<int> reuseContainer(const std::string &id,
-                                             const std::vector<std::string> &command) noexcept;
+    utils::error::Result<int>
+    reuseContainer(const std::string &id,
+                   const std::vector<std::string> &command,
+                   const utils::runtime_directory::RuntimeLayout &runtimeLayout) noexcept;
     int installFromFile(const QFileInfo &fileInfo,
                         const api::types::v1::CommonOptions &commonOptions);
     int setRepoConfig(const QVariantMap &config);
@@ -262,7 +265,8 @@ private:
     void detectDrivers();
     int runResolvedContext(runtime::RunContext &runContext,
                            const RunOptions &options,
-                           std::optional<api::types::v1::RuntimeConfigure> runtimeConfig);
+                           std::optional<api::types::v1::RuntimeConfigure> runtimeConfig,
+                           const utils::runtime_directory::RuntimeLayout &runtimeLayout);
 
     template <typename T>
     utils::error::Result<T> waitDBusReply(QDBusPendingReply<QVariantMap> &reply)

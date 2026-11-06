@@ -1371,41 +1371,81 @@ class RuntimeSteps:
     def test_hidden_options(self):
         app = CALENDAR_APP_ID
         inst = f"smokehidden{os.getpid()}"
+        user_runtime_dir = Path(tempfile.mkdtemp(prefix=f"ll-hidden-runtime-{os.getpid()}-"))
+        user_runtime_env = {"XDG_RUNTIME_DIR": str(user_runtime_dir)}
+        user_app_runtime = user_runtime_dir / "linglong" / "apps" / app
+        privileged_app_runtime = Path("/run/user/0/linglong/apps") / app
 
-        # --privileged 必须 root：先以非 root 拿"拒绝"分支，
-        # 再以 root 走真正启用的分支。
+        def cleanup_runtime_dirs():
+            shutil.rmtree(user_runtime_dir, ignore_errors=True)
+            self._run_cmd(["rm", "-rf", str(privileged_app_runtime)], sudo=True, check=False)
+
+        cleanup_runtime_dirs()
+
+        # --privileged 需要 privileged 身份：先用普通用户走"拒绝"分支，
+        # 再用 privileged 身份走真正启用的分支。
         r = self._ll_cli("run", app, "--instance", inst, "--privileged",
                          "--", "/bin/echo", "PRIV", timeout=120, check=False)
         if r.returncode == 0:
-            raise AssertionError("非 root + --privileged 居然成功了")
+            raise AssertionError("普通用户 + --privileged 居然成功了")
         if "privileged mode requires running as root" not in (r.stdout + r.stderr):
             raise AssertionError(
-                f"非 root + --privileged 报错不对: {(r.stdout + r.stderr)[:300]}")
+                f"普通用户 + --privileged 报错不对: {(r.stdout + r.stderr)[:300]}")
 
-        r = self._sudo_ll_cli("run", app, "--instance", inst,
-                              "--privileged", "--", "/bin/echo", "PRIVROOT",
-                              timeout=180, check=False)
-        if r.returncode != 0:
-            raise AssertionError(
-                f"root + --privileged 失败: {(r.stdout + r.stderr)[:300]}")
+        try:
+            # privileged app runtime 必须忽略继承的 XDG_RUNTIME_DIR；
+            # 用户会话 IPC 仍按既有设计使用调用者环境。
+            r = self._run_cmd(
+                ["env", f"XDG_RUNTIME_DIR={user_runtime_dir}", LL_CLI,
+                 "run", app, "--instance", inst, "--privileged", "--",
+                 "/bin/echo", "PRIVROOT"],
+                sudo=True, timeout=180, check=False)
+            if r.returncode != 0:
+                raise AssertionError(
+                    f"privileged run 失败: {(r.stdout + r.stderr)[:300]}")
+            if user_app_runtime.exists():
+                raise AssertionError(
+                    f"privileged run 污染了普通用户 runtime: {user_app_runtime}")
 
-        # root 不显式传 --privileged 也必须自动进入 privileged 模式：
-        # 与宿主机共享 user namespace，并获得原有的 privilege capabilities。
-        hostUserNs = self._run_cmd(["readlink", "/proc/self/ns/user"], sudo=True)
-        r = self._sudo_ll_cli(
-            "run", app, "--instance", inst + "auto", "--", "/bin/sh", "-c",
-            "printf 'USERNS=%s\\n' \"$(readlink /proc/self/ns/user)\"; "
-            "awk '/^CapEff:/{printf \"CAPEFF=%s\\n\", $2}' /proc/self/status",
-            timeout=180, check=False)
-        if r.returncode != 0:
-            raise AssertionError(
-                f"root 自动 privileged 失败: {(r.stdout + r.stderr)[:300]}")
-        if f"USERNS={hostUserNs.stdout.strip()}" not in r.stdout:
-            raise AssertionError(
-                f"root 自动 privileged 未共享宿主机 user namespace: {r.stdout[:300]}")
-        if "CAPEFF=00000000800435fb" not in r.stdout:
-            raise AssertionError(
-                f"root 自动 privileged capabilities 不匹配: {r.stdout[:300]}")
+            r = self._run_cmd(
+                ["stat", "-c", "%u %a", str(privileged_app_runtime)],
+                sudo=True, check=False)
+            if r.returncode != 0:
+                raise AssertionError(
+                    f"privileged app runtime 未创建: {privileged_app_runtime}")
+            if r.stdout.strip().split() != ["0", "700"]:
+                raise AssertionError(
+                    f"privileged app runtime 权限不对: {r.stdout.strip()!r}")
+
+            # privileged 退出后，普通用户必须仍能使用同一应用。
+            r = self._ll_cli(
+                "run", app, "--instance", inst + "normal", "--",
+                "/bin/echo", "NORMALAFTER", timeout=180, check=False,
+                env=user_runtime_env)
+            if r.returncode != 0 or "NORMALAFTER" not in r.stdout:
+                raise AssertionError(
+                    f"privileged 后普通用户运行失败: {(r.stdout + r.stderr)[:300]}")
+
+            # privileged 身份不显式传 --privileged 也必须自动进入 privileged 模式：
+            # 与宿主机共享 user namespace，并获得原有的 privilege capabilities。
+            hostUserNs = self._run_cmd(["readlink", "/proc/self/ns/user"], sudo=True)
+            r = self._sudo_ll_cli(
+                "run", app, "--instance", inst + "auto", "--", "/bin/sh", "-c",
+                "printf 'USERNS=%s\\n' \"$(readlink /proc/self/ns/user)\"; "
+                "awk '/^CapEff:/{printf \"CAPEFF=%s\\n\", $2}' /proc/self/status",
+                timeout=180, check=False)
+            if r.returncode != 0:
+                raise AssertionError(
+                    f"自动 privileged 失败: {(r.stdout + r.stderr)[:300]}")
+            if f"USERNS={hostUserNs.stdout.strip()}" not in r.stdout:
+                raise AssertionError(
+                    f"自动 privileged 未共享宿主机 user namespace: {r.stdout[:300]}")
+            if "CAPEFF=00000000800435fb" not in r.stdout:
+                raise AssertionError(
+                    f"自动 privileged capabilities 不匹配: {r.stdout[:300]}")
+        finally:
+            self._cleanup_containers(app, timeout=40)
+            cleanup_runtime_dirs()
 
         # --caps-add（delimiter 为逗号）
         r = self._ll_cli("run", app, "--instance", inst + "c",

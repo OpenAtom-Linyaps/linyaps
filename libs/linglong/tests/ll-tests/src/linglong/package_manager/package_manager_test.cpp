@@ -7,15 +7,18 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "../../common/scoped_runtime_paths.h"
 #include "../../common/tempdir.h"
 #include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/api/types/v1/PackageInfoV2.hpp"
 #include "linglong/api/types/v1/Repo.hpp"
 #include "linglong/api/types/v1/RepoConfigV2.hpp"
 #include "linglong/api/types/v1/RepositoryCacheLayersItem.hpp"
+#include "linglong/common/dir.h"
 #include "linglong/common/serialize/json.h"
 #include "linglong/package/fuzzy_reference.h"
 #include "linglong/package/layer_dir.h"
+#include "linglong/package/layer_packager.h"
 #include "linglong/package/reference.h"
 #define private public
 #include "linglong/package_manager/package_manager.h"
@@ -30,6 +33,7 @@
 #include <QVariant>
 #include <QVariantMap>
 
+#include <array>
 #include <filesystem>
 #include <fstream>
 #include <functional>
@@ -788,6 +792,43 @@ std::optional<ImportedLayer> importLayer(repo::OSTreeRepo &targetRepo,
     return ImportedLayer{ .reference = *ref, .item = std::move(*imported) };
 }
 
+std::optional<std::filesystem::path> packLayer(const std::filesystem::path &workspace,
+                                               const std::string &id,
+                                               const std::string &version,
+                                               const std::string &kind,
+                                               const std::string &module,
+                                               const std::string &arch = "x86_64")
+{
+    const auto layerDir = workspace / (id + "-" + version + "-" + module);
+    std::error_code ec;
+    std::filesystem::create_directories(layerDir / "files", ec);
+    if (ec) {
+        ADD_FAILURE() << ec.message();
+        return std::nullopt;
+    }
+    std::ofstream{ layerDir / "files" / "payload" } << version;
+
+    api::types::v1::PackageInfoV2 info;
+    info.arch = { arch };
+    info.channel = "stable";
+    info.id = id;
+    info.kind = kind;
+    info.packageInfoV2Module = module;
+    info.version = version;
+    std::ofstream{ layerDir / "info.json" } << nlohmann::json(info).dump();
+
+    const auto output = workspace / (id + "-" + version + "-" + module + ".layer");
+    std::ofstream{ output };
+    package::LayerPackager packager;
+    packager.setCompressor("lz4");
+    auto packed = packager.pack(package::LayerDir{ layerDir }, QString::fromStdString(output));
+    if (!packed) {
+        ADD_FAILURE() << packed.error().message();
+        return std::nullopt;
+    }
+    return output;
+}
+
 TEST_F(PackageManagerTest, Prune_WhenListingLayersFails_ReturnsError)
 {
     repo->onListLocalBy = [](const linglong::repo::repoCacheQuery &)
@@ -1197,5 +1238,453 @@ TEST_F(PackageManagerTest, UninstallRef_ContinuesWhenModuleRemovalFails)
     EXPECT_FALSE(std::filesystem::exists(layerPath))
       << "develop module must still be removed after the missing binary module fails";
 }
+
+namespace {
+
+class ScopedContainerStates
+{
+public:
+    ScopedContainerStates()
+    {
+        if (!test::isIsolatedRuntime()) {
+            failure = test::isolatedRuntimeRequirement();
+            return;
+        }
+
+        root = std::filesystem::path{ "/run/linglong" };
+        dir = root / std::to_string(::getuid());
+        std::error_code ec;
+        rootExisted = std::filesystem::exists(root, ec);
+        if (ec) {
+            failure = "failed to inspect " + root.string() + ": " + ec.message();
+            return;
+        }
+
+        dirExisted = std::filesystem::exists(dir, ec);
+        if (ec) {
+            failure = "failed to inspect " + dir.string() + ": " + ec.message();
+            return;
+        }
+
+        std::filesystem::create_directories(dir, ec);
+        if (ec) {
+            failure = "failed to create " + dir.string() + ": " + ec.message();
+            return;
+        }
+        dirCreated = !dirExisted;
+        rootCreated = !rootExisted;
+
+        const auto probe = dir / (".ll-tests-probe-" + std::to_string(::getpid()));
+        int fd = ::open(probe.c_str(), O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, 0600);
+        if (fd == -1) {
+            failure = "container state directory " + dir.string() + " is not writable";
+            return;
+        }
+        ::close(fd);
+        std::filesystem::remove(probe, ec);
+    }
+
+    ~ScopedContainerStates()
+    {
+        std::error_code ec;
+        for (const auto &file : files) {
+            std::filesystem::remove(file, ec);
+        }
+        if (dirCreated) {
+            std::filesystem::remove(dir, ec);
+        }
+        if (rootCreated) {
+            std::filesystem::remove(root, ec);
+        }
+    }
+
+    bool write(pid_t pid,
+               const std::string &app,
+               const std::string &base = "",
+               const std::optional<std::string> &runtime = std::nullopt,
+               const std::optional<std::vector<std::string>> &extensions = std::nullopt)
+    {
+        nlohmann::json content{ { "app", app }, { "base", base }, { "containerID", "container" } };
+        if (runtime) {
+            content["runtime"] = *runtime;
+        }
+        if (extensions) {
+            content["extensions"] = *extensions;
+        }
+
+        return writeRaw(pid, content.dump());
+    }
+
+    bool writeRaw(pid_t pid, const std::string &content)
+    {
+        if (!failure.empty()) {
+            return false;
+        }
+
+        auto file = dir / std::to_string(pid);
+        int fd = ::open(file.c_str(), O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, 0600);
+        if (fd == -1) {
+            failure = "failed to create " + file.string() + " without overwriting existing state";
+            return false;
+        }
+
+        const char *data = content.data();
+        size_t remaining = content.size();
+        while (remaining > 0) {
+            auto written = ::write(fd, data, remaining);
+            if (written == -1) {
+                failure = "failed to write " + file.string();
+                break;
+            }
+            data += written;
+            remaining -= static_cast<size_t>(written);
+        }
+        ::close(fd);
+        if (!failure.empty()) {
+            std::error_code ec;
+            std::filesystem::remove(file, ec);
+            return false;
+        }
+
+        files.push_back(file);
+        return true;
+    }
+
+    [[nodiscard]] bool ok() const noexcept { return failure.empty(); }
+
+    [[nodiscard]] const std::string &error() const noexcept { return failure; }
+
+private:
+    std::filesystem::path root;
+    std::filesystem::path dir;
+    std::vector<std::filesystem::path> files;
+    bool rootExisted{ false };
+    bool dirExisted{ false };
+    bool rootCreated{ false };
+    bool dirCreated{ false };
+    std::string failure;
+};
+
+TEST_F(PackageManagerTest, GetAllRunningContainersReadsLiveProcessesOnly)
+{
+    ScopedContainerStates states;
+    if (!states.ok()) {
+        GTEST_SKIP() << states.error();
+    }
+    if (!states.write(::getpid(), "stable:org.example/1.0.0/x86_64")
+        || !states.write(2147483647, "stable:org.example/2.0.0/x86_64")) {
+        GTEST_SKIP() << states.error();
+    }
+
+    auto running = service::PackageManager::getAllRunningContainers();
+
+    ASSERT_TRUE(running) << running.error().message();
+    ASSERT_EQ(running->size(), 1);
+    EXPECT_EQ(running->front().app, "stable:org.example/1.0.0/x86_64");
+}
+
+TEST_F(PackageManagerTest, GetAllRunningContainersRejectsMalformedStateFiles)
+{
+    ScopedContainerStates states;
+    if (!states.ok()) {
+        GTEST_SKIP() << states.error();
+    }
+    if (!states.writeRaw(::getpid(), "{not-json")) {
+        GTEST_SKIP() << states.error();
+    }
+
+    auto running = service::PackageManager::getAllRunningContainers();
+
+    EXPECT_FALSE(running.has_value());
+}
+
+TEST_F(PackageManagerTest, IsRefBusyDetectsAllTrackedReferences)
+{
+    const auto appRef = makeRef("1.0.0");
+    const auto baseRef = package::Reference::parse("stable:org.example.base/1.0.0/x86_64").value();
+    const auto runtimeRef =
+      package::Reference::parse("stable:org.example.runtime/1.0.0/x86_64").value();
+    const auto extensionRef =
+      package::Reference::parse("stable:org.example.extension/1.0.0/x86_64").value();
+
+    ScopedContainerStates states;
+    if (!states.ok()) {
+        GTEST_SKIP() << states.error();
+    }
+    if (!states.write(::getpid(),
+                      appRef.toString(),
+                      baseRef.toString(),
+                      runtimeRef.toString(),
+                      std::vector<std::string>{ extensionRef.toString() })) {
+        GTEST_SKIP() << states.error();
+    }
+
+    auto appBusy = pm->isRefBusy(appRef);
+    ASSERT_TRUE(appBusy) << appBusy.error().message();
+    EXPECT_TRUE(*appBusy);
+
+    for (const auto &ref : { baseRef, runtimeRef, extensionRef }) {
+        auto busy = pm->isRefBusy(ref);
+        ASSERT_TRUE(busy) << busy.error().message();
+        EXPECT_TRUE(*busy) << ref.toString();
+    }
+}
+
+TEST_F(PackageManagerTest, IsRefBusyReturnsFalseWithoutMatchingContainers)
+{
+    if (!test::isIsolatedRuntime()) {
+        GTEST_SKIP() << test::isolatedRuntimeRequirement();
+    }
+
+    auto busy = pm->isRefBusy(makeRef());
+
+    ASSERT_TRUE(busy) << busy.error().message();
+    EXPECT_FALSE(*busy);
+}
+
+TEST_F(PackageManagerTest, LockRepoCanBeReleasedIdempotently)
+{
+    test::ScopedRepoLockFile lockFile;
+    if (!lockFile.ok()) {
+        GTEST_SKIP() << lockFile.error();
+    }
+
+    auto locked = pm->lockRepo();
+    ASSERT_TRUE(locked) << locked.error().message();
+
+    auto unlocked = pm->unlockRepo();
+    ASSERT_TRUE(unlocked) << unlocked.error().message();
+
+    auto unlockedAgain = pm->unlockRepo();
+    EXPECT_TRUE(unlockedAgain) << unlockedAgain.error().message();
+}
+
+TEST_F(PackageManagerTest, CopyToStagingCopiesRegularFilesAndCleansStaging)
+{
+    test::ScopedStagingDir staging;
+    if (!staging.ok()) {
+        GTEST_SKIP() << staging.error();
+    }
+
+    const auto source = tempDir->path() / "package.layer";
+    std::ofstream{ source } << "layer payload";
+    int fd = ::open(source.c_str(), O_RDONLY | O_CLOEXEC);
+    ASSERT_NE(fd, -1);
+    auto closeSource = utils::finally::finally([fd] {
+        ::close(fd);
+    });
+
+    auto staged = pm->copyToStaging(fd);
+    ASSERT_TRUE(staged) << staged.error().message();
+    EXPECT_EQ(std::filesystem::path(staged->parent_path()).filename(), "staging");
+    std::ifstream stagedInput{ *staged };
+    std::string payload;
+    std::getline(stagedInput, payload);
+    EXPECT_EQ(payload, "layer payload");
+
+    auto cleaned = pm->cleanStaging();
+    ASSERT_TRUE(cleaned) << cleaned.error().message();
+    EXPECT_FALSE(std::filesystem::exists(*staged)) << "staged file must be deleted";
+    EXPECT_FALSE(std::filesystem::exists(staging.stagingPath()))
+      << "staging directory must be deleted";
+}
+
+TEST_F(PackageManagerTest, CopyToStagingRejectsInvalidAndNonRegularDescriptors)
+{
+    test::ScopedStagingDir staging;
+    if (!staging.ok()) {
+        GTEST_SKIP() << staging.error();
+    }
+
+    auto invalid = pm->copyToStaging(-1);
+    EXPECT_FALSE(invalid.has_value());
+    EXPECT_THAT(invalid.error().message(), HasSubstr("failed to stat source file"));
+
+    std::array<int, 2> pipeFds{ -1, -1 };
+    ASSERT_EQ(::pipe2(pipeFds.data(), O_CLOEXEC), 0);
+    auto closePipes = utils::finally::finally([pipeFds] {
+        ::close(pipeFds[0]);
+        ::close(pipeFds[1]);
+    });
+
+    auto nonRegular = pm->copyToStaging(pipeFds[0]);
+    EXPECT_FALSE(nonRegular.has_value());
+    EXPECT_THAT(nonRegular.error().message(), HasSubstr("not a regular file"));
+}
+
+TEST_F(PackageManagerTest, DeferredUninstallRemovesMarkedLayers)
+{
+    test::ScopedRepoLockFile lockFile;
+    if (!lockFile.ok()) {
+        GTEST_SKIP() << lockFile.error();
+    }
+
+    auto layer = importLayer(*repo,
+                             tempDir->path() / "deferred-layers",
+                             "org.example.deferred",
+                             "1.0.0",
+                             "app",
+                             "binary");
+    ASSERT_TRUE(layer);
+    repo->onGetLayerItem = [item = layer->item](const package::Reference &, std::string) {
+        return utils::error::Result<v1::RepositoryCacheLayersItem>{ item };
+    };
+    repo->onListLocalBy = [item = layer->item](const repo::repoCacheQuery &) {
+        auto deletedItem = item;
+        deletedItem.deleted = true;
+        return utils::error::Result<std::vector<v1::RepositoryCacheLayersItem>>{
+            std::vector<v1::RepositoryCacheLayersItem>{ deletedItem }
+        };
+    };
+    const auto layerPath = repoDir / "layers" / layer->item.commit;
+    ASSERT_TRUE(std::filesystem::exists(layerPath));
+    ASSERT_TRUE(repo->markDeleted(layer->reference, true, "binary"));
+
+    pm->deferredUninstall();
+
+    EXPECT_FALSE(std::filesystem::exists(layerPath));
+}
+
+TEST_F(PackageManagerTest, DeferredUninstallKeepsLayersUsedByRunningContainers)
+{
+    test::ScopedRepoLockFile lockFile;
+    if (!lockFile.ok()) {
+        GTEST_SKIP() << lockFile.error();
+    }
+
+    auto layer = importLayer(*repo,
+                             tempDir->path() / "deferred-busy-layers",
+                             "org.example.busy",
+                             "1.0.0",
+                             "app",
+                             "binary");
+    ASSERT_TRUE(layer);
+    repo->onGetLayerItem = [item = layer->item](const package::Reference &, std::string) {
+        return utils::error::Result<v1::RepositoryCacheLayersItem>{ item };
+    };
+    repo->onListLocalBy = [item = layer->item](const repo::repoCacheQuery &) {
+        auto deletedItem = item;
+        deletedItem.deleted = true;
+        return utils::error::Result<std::vector<v1::RepositoryCacheLayersItem>>{
+            std::vector<v1::RepositoryCacheLayersItem>{ deletedItem }
+        };
+    };
+    const auto layerPath = repoDir / "layers" / layer->item.commit;
+    ASSERT_TRUE(std::filesystem::exists(layerPath));
+    ASSERT_TRUE(repo->markDeleted(layer->reference, true, "binary"));
+
+    {
+        ScopedContainerStates states;
+        if (!states.ok()) {
+            GTEST_SKIP() << states.error();
+        }
+        if (!states.write(::getpid(), layer->reference.toString())) {
+            GTEST_SKIP() << states.error();
+        }
+
+        pm->deferredUninstall();
+
+        EXPECT_TRUE(std::filesystem::exists(layerPath));
+    }
+
+    pm->deferredUninstall();
+
+    EXPECT_FALSE(std::filesystem::exists(layerPath));
+}
+
+TEST_F(PackageManagerTest, InstallFromLayerRejectsAlreadyInstalledAndDowngrade)
+{
+    auto local = importLayer(*repo,
+                             tempDir->path() / "installed-layers",
+                             "org.example.install",
+                             "2.0.0",
+                             "app",
+                             "binary");
+    ASSERT_TRUE(local);
+    repo->onClearReferenceLocal = [this](const package::FuzzyReference &fuzzy,
+                                         bool semanticMatching) {
+        return repo->OSTreeRepo::clearReferenceLocal(fuzzy, semanticMatching);
+    };
+    repo->onGetLayerItem = [item = local->item](const package::Reference &, std::string) {
+        return utils::error::Result<v1::RepositoryCacheLayersItem>{ item };
+    };
+
+    const auto workspace = tempDir->path() / "packed-layers";
+    auto sameVersion = packLayer(workspace, "org.example.install", "2.0.0", "app", "binary");
+    ASSERT_TRUE(sameVersion);
+    int sameFd = ::open(sameVersion->c_str(), O_RDONLY | O_CLOEXEC);
+    ASSERT_NE(sameFd, -1);
+    auto closeSame = utils::finally::finally([sameFd] {
+        ::close(sameFd);
+    });
+
+    auto sameResult =
+      pm->installFromFileImpl(QDBusUnixFileDescriptor{ sameFd },
+                              "layer",
+                              common::serialize::toQVariantMap(api::types::v1::CommonOptions{}),
+                              service::CallerContext{});
+    EXPECT_NE(replyCode(sameResult), 0);
+    EXPECT_THAT(replyMessage(sameResult).toStdString(), HasSubstr("already installed"));
+
+    auto olderVersion = packLayer(workspace, "org.example.install", "1.0.0", "app", "binary");
+    ASSERT_TRUE(olderVersion);
+    int olderFd = ::open(olderVersion->c_str(), O_RDONLY | O_CLOEXEC);
+    ASSERT_NE(olderFd, -1);
+    auto closeOlder = utils::finally::finally([olderFd] {
+        ::close(olderFd);
+    });
+
+    auto olderResult =
+      pm->installFromFileImpl(QDBusUnixFileDescriptor{ olderFd },
+                              "layer",
+                              common::serialize::toQVariantMap(api::types::v1::CommonOptions{}),
+                              service::CallerContext{});
+    EXPECT_NE(replyCode(olderResult), 0);
+    EXPECT_THAT(replyMessage(olderResult).toStdString(), HasSubstr("latest version"));
+}
+
+TEST_F(PackageManagerTest, InstallFromLayerRejectsArchitectureMismatch)
+{
+    const auto workspace = tempDir->path() / "packed-layers";
+    const auto foreignArch =
+      package::Architecture::currentCPUArchitecture().toString() == "x86_64" ? "arm64" : "x86_64";
+    auto layer = packLayer(workspace, "org.example.foreign", "1.0.0", "app", "binary", foreignArch);
+    ASSERT_TRUE(layer);
+    int fd = ::open(layer->c_str(), O_RDONLY | O_CLOEXEC);
+    ASSERT_NE(fd, -1);
+    auto closeFd = utils::finally::finally([fd] {
+        ::close(fd);
+    });
+
+    auto result =
+      pm->installFromFileImpl(QDBusUnixFileDescriptor{ fd },
+                              "layer",
+                              common::serialize::toQVariantMap(api::types::v1::CommonOptions{}),
+                              service::CallerContext{});
+
+    EXPECT_NE(replyCode(result), 0);
+    EXPECT_THAT(replyMessage(result).toStdString(), HasSubstr("not match host architecture"));
+}
+
+TEST_F(PackageManagerTest, InstallFromLayerRejectsMalformedArchive)
+{
+    const auto malformed = tempDir->path() / "malformed.layer";
+    std::ofstream{ malformed } << "not an erofs image";
+    int fd = ::open(malformed.c_str(), O_RDONLY | O_CLOEXEC);
+    ASSERT_NE(fd, -1);
+    auto closeFd = utils::finally::finally([fd] {
+        ::close(fd);
+    });
+
+    auto result =
+      pm->installFromFileImpl(QDBusUnixFileDescriptor{ fd },
+                              "layer",
+                              common::serialize::toQVariantMap(api::types::v1::CommonOptions{}),
+                              service::CallerContext{});
+
+    EXPECT_NE(replyCode(result), 0);
+}
+
+} // namespace
 
 } // namespace

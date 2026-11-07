@@ -693,8 +693,8 @@ utils::error::Result<void> OSTreeRepo::deployLayer(const std::string &commit,
 // example by an unexpected power failure.
 //
 // Two kinds of leftovers are handled:
-//   * the staging and backup directories of the atomic deployment, which are
-//     never needed again and can be removed unconditionally;
+//   * the staging and backup directories of the atomic deployment. A backup
+//     restores a missing target before any remaining leftovers are removed;
 //   * a layer recorded in the repository cache whose directory is missing or
 //     does not contain a usable info.json. Its commit is still stored in the
 //     ostree repository, so the layer is deployed again instead of leaving the
@@ -732,18 +732,28 @@ utils::error::Result<void> OSTreeRepo::repairLayers() noexcept
         return LINGLONG_ERR(fmt::format("failed to scan {}", layersDir.string()), ec);
     }
 
-    for (const auto &leftover : leftovers) {
-        std::error_code removeEc;
-        std::filesystem::remove_all(leftover, removeEc);
-        if (removeEc) {
-            LogW("failed to remove the leftover of an interrupted deployment {}: {}",
-                 leftover.string(),
-                 removeEc.message());
-        }
-    }
-
     for (const auto &item : this->cache->queryExistingLayerItem()) {
         const auto layerDir = this->layerPath(item.commit);
+        if (!std::filesystem::exists(layerDir, ec) && !ec) {
+            const auto backupPrefix = fmt::format(".old-{}-", item.commit);
+            for (const auto &leftover : leftovers) {
+                if (leftover.filename().string().rfind(backupPrefix, 0) != 0
+                    || !std::filesystem::is_regular_file(leftover / "info.json", ec)) {
+                    ec.clear();
+                    continue;
+                }
+                // A crash between the two renames leaves the previous complete
+                // deployment here; keep it usable even if the ref was pruned.
+                std::filesystem::rename(leftover, layerDir, ec);
+                if (ec) {
+                    return LINGLONG_ERR(fmt::format("failed to restore {}", layerDir), ec);
+                }
+                break;
+            }
+        }
+        if (ec) {
+            return LINGLONG_ERR(fmt::format("failed to check {}", layerDir), ec);
+        }
         if (std::filesystem::exists(layerDir / "info.json", ec)) {
             ec.clear();
             continue;
@@ -783,6 +793,16 @@ utils::error::Result<void> OSTreeRepo::repairLayers() noexcept
             }
         }
         ec.clear();
+    }
+
+    for (const auto &leftover : leftovers) {
+        std::error_code removeEc;
+        std::filesystem::remove_all(leftover, removeEc);
+        if (removeEc) {
+            LogW("failed to remove the leftover of an interrupted deployment {}: {}",
+                 leftover.string(),
+                 removeEc.message());
+        }
     }
 
     return LINGLONG_OK;

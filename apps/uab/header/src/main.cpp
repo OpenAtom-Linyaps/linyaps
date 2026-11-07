@@ -20,6 +20,7 @@
 #include <filesystem>
 #include <iomanip>
 #include <iostream>
+#include <memory>
 #include <string>
 #include <string_view>
 
@@ -716,8 +717,17 @@ int main(int argc, char **argv)
         return 0;
     }
 
-    lightElf::native_elf elf(selfBin);
-    auto metaInfoRet = getVerifiedMetaInfo(elf);
+    // The parser rejects malformed ELFs in its constructor; report that as a normal error
+    // instead of letting the exception escape and terminate the process.
+    std::unique_ptr<lightElf::native_elf> elf;
+    try {
+        elf = std::make_unique<lightElf::native_elf>(selfBin);
+    } catch (const std::exception &e) {
+        std::cerr << "failed to parse " << selfBin << ": " << e.what() << std::endl;
+        return -1;
+    }
+
+    auto metaInfoRet = getVerifiedMetaInfo(*elf);
     if (!metaInfoRet) {
         std::cerr << "couldn't verify metaInfo of this uab file" << std::endl;
         return -1;
@@ -740,7 +750,7 @@ int main(int argc, char **argv)
         std::abort();
     });
 
-    if (auto ret = mountSelf(elf, metaInfo, opts.mountPath); ret != 0) {
+    if (auto ret = mountSelf(*elf, metaInfo, opts.mountPath); ret != 0) {
         return ret;
     }
 

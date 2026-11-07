@@ -517,6 +517,36 @@ TEST_F(RealRepoTest, RepairRedeploysLayerWithoutInfoFile)
     EXPECT_TRUE(fs::exists(layerDir / "files" / "usr" / "lib" / "libruntime.so"));
 }
 
+// A crash after moving the old deployment aside must preserve that complete
+// copy even when the new checkout has not reached its final name.
+TEST_F(RealRepoTest, RepairRestoresBackupWhenTargetIsMissing)
+{
+    auto item = repo->getLayerItem(*appRef, "binary");
+    ASSERT_TRUE(item.has_value()) << item.error().message();
+
+    std::error_code ec;
+    const auto layerDir = repoRoot / "layers" / item->commit;
+    const auto backup = repoRoot / "layers" / (".old-" + item->commit + "-interrupted");
+    std::ofstream{ layerDir / "recovery-marker" } << "preserve this deployment";
+    fs::rename(layerDir, backup, ec);
+    ASSERT_FALSE(ec) << ec.message();
+
+    repo.reset();
+    auto reopened = OSTreeRepo::create(repoRoot, makeRepoConfig());
+    ASSERT_TRUE(reopened.has_value()) << reopened.error().message();
+    repo = std::move(*reopened);
+
+    EXPECT_TRUE(fs::exists(layerDir / "recovery-marker"));
+    EXPECT_TRUE(fs::exists(layerDir / "info.json"));
+    EXPECT_FALSE(fs::exists(backup));
+
+    repo.reset();
+    reopened = OSTreeRepo::create(repoRoot, makeRepoConfig());
+    ASSERT_TRUE(reopened.has_value()) << reopened.error().message();
+    repo = std::move(*reopened);
+    EXPECT_TRUE(fs::exists(layerDir / "recovery-marker"));
+}
+
 // The temporary directories of the deployment must not pile up, and the layers
 // that are deployed correctly must be kept.
 TEST_F(RealRepoTest, RepairRemovesStaleDeploymentDirectories)

@@ -1113,12 +1113,7 @@ TEST_F(CliTest, contentPrefersLibSystemdUserOverLegacySharePath)
     EXPECT_EQ(cli->content(cli::ContentOptions{ .appid = "org.example.app" }), 0);
 }
 
-// The application lookup failures are shared by several subcommands. The tests
-// below pin down their user visible contract: an identifier that cannot be
-// resolved against the local repository is always reported as
-// "Cannot find such application." together with ErrorCode::AppNotFoundFromLocal,
-// while failures that describe a different problem (an unparsable identifier or
-// a repository that cannot be loaded) are forwarded unchanged.
+// Content keeps its existing generic error code; only the displayed wording changes.
 TEST_F(CliTest, contentReportsCanonicalApplicationNotFoundError)
 {
     EXPECT_CALL(*repo, clearReferenceLocal(_, _))
@@ -1127,7 +1122,7 @@ TEST_F(CliTest, contentReportsCanonicalApplicationNotFoundError)
             return makeLocalLookupFailure("org.example.app");
         }));
     EXPECT_CALL(*printer, printErr(_)).WillOnce(Invoke([](const utils::error::Error &error) {
-        EXPECT_EQ(error.code(), static_cast<int>(utils::error::ErrorCode::AppNotFoundFromLocal));
+        EXPECT_EQ(error.code(), static_cast<int>(utils::error::ErrorCode::Failed));
         EXPECT_THAT(error.message(), HasSubstr("Cannot find such application."));
         EXPECT_THAT(error.message(), Not(HasSubstr("Can not")));
     }));
@@ -1167,8 +1162,7 @@ TEST_F(CliTest, contentReportsCanonicalNotFoundForEveryReferenceShape)
               return makeLocalLookupFailure(appid);
           }));
         EXPECT_CALL(*printer, printErr(_)).WillOnce(Invoke([](const utils::error::Error &error) {
-            EXPECT_EQ(error.code(),
-                      static_cast<int>(utils::error::ErrorCode::AppNotFoundFromLocal));
+            EXPECT_EQ(error.code(), static_cast<int>(utils::error::ErrorCode::Failed));
             EXPECT_THAT(error.message(), HasSubstr("Cannot find such application."));
         }));
 

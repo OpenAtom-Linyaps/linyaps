@@ -622,6 +622,16 @@ TEST_F(FileTest, ReadFile)
     EXPECT_EQ(*result_subdir, subdir_content);
 }
 
+TEST_F(FileTest, ReadFileRejectsDirectory)
+{
+    // A directory can be opened as an input stream on Linux, but reading it fails.
+    auto result = linglong::utils::readFile(dest_dir);
+
+    ASSERT_FALSE(result.has_value());
+    EXPECT_NE(result.error().message().find(dest_dir.string()), std::string::npos)
+      << result.error().message();
+}
+
 // readFile must report which file it could not find or open, for the same reason
 // the other helpers in this file do.
 TEST_F(FileTest, ReadFileNotFoundErrorReportsPath)

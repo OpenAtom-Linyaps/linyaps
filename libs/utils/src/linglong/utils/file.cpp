@@ -60,8 +60,13 @@ linglong::utils::error::Result<std::string> readFile(const std::filesystem::path
           fmt::format("failed to open file {}: {}", filepath, common::error::errorString(errno)));
     }
     std::stringstream buffer;
-    buffer << in.rdbuf();
-    if (buffer.bad()) {
+    char chunk[4096];
+    // Copying rdbuf() does not report a source read failure on the input stream.
+    // Read through the stream so a failed read cannot be returned as truncated content.
+    while (in.read(chunk, sizeof(chunk)) || in.gcount() != 0) {
+        buffer.write(chunk, in.gcount());
+    }
+    if (in.bad()) {
         return LINGLONG_ERR(
           fmt::format("failed to read file {}: {}", filepath, common::error::errorString(errno)));
     }

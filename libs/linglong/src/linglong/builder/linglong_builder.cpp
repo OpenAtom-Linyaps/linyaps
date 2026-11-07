@@ -1231,7 +1231,8 @@ utils::error::Result<void> Builder::buildStagePreBuild() noexcept
 
     baseOverlay = makeOverlay(*baseLayerPath / "files", directories.buildBaseOverlay());
     if (!baseOverlay) {
-        return LINGLONG_ERR("failed to mount build base overlayfs");
+        return LINGLONG_ERR(
+          fmt::format("failed to mount build base overlayfs from {}", *baseLayerPath / "files"));
     }
     fixLocaltimeInOverlay(baseOverlay);
 
@@ -1239,7 +1240,8 @@ utils::error::Result<void> Builder::buildStagePreBuild() noexcept
         runtimeOverlay =
           makeOverlay(*runtimeLayerPath / "files", directories.buildRuntimeOverlay());
         if (!runtimeOverlay) {
-            return LINGLONG_ERR("failed to mount build runtime overlayfs");
+            return LINGLONG_ERR(fmt::format("failed to mount build runtime overlayfs from {}",
+                                            *runtimeLayerPath / "files"));
         }
     }
 
@@ -1374,7 +1376,8 @@ utils::error::Result<void> Builder::buildStagePreCommit() noexcept
     }
     baseOverlay = makeOverlay(*baseLayerPath / "files", directories.prepareBaseOverlay());
     if (!baseOverlay) {
-        return LINGLONG_ERR("failed to mount prepare base overlayfs");
+        return LINGLONG_ERR(
+          fmt::format("failed to mount prepare base overlayfs from {}", *baseLayerPath / "files"));
     }
     fixLocaltimeInOverlay(baseOverlay);
 
@@ -1386,7 +1389,8 @@ utils::error::Result<void> Builder::buildStagePreCommit() noexcept
         runtimeOverlay =
           makeOverlay(*runtimeLayerPath / "files", directories.prepareRuntimeOverlay());
         if (!runtimeOverlay) {
-            return LINGLONG_ERR("failed to mount prepare runtime overlayfs");
+            return LINGLONG_ERR(fmt::format("failed to mount prepare runtime overlayfs from {}",
+                                            *runtimeLayerPath / "files"));
         }
     }
 

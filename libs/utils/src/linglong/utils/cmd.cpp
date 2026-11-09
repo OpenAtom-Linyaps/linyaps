@@ -10,13 +10,14 @@
 #include "linglong/common/error.h"
 #include "linglong/common/strings.h"
 #include "linglong/utils/finally/finally.h"
+#include "linglong/utils/io/pipe.h"
 #include "linglong/utils/log/log.h"
 
 #include <fmt/ranges.h>
 #include <sys/epoll.h>
 
 #include <algorithm>
-#include <array>
+#include <csignal>
 #include <cstdlib>
 #include <filesystem>
 #include <iostream>
@@ -26,6 +27,50 @@
 #include <unistd.h>
 
 namespace linglong::utils {
+
+namespace {
+
+// Writing to a pipe (or socket) whose reader has already gone away normally
+// raises SIGPIPE, and its default disposition terminates the process from
+// inside write(2), before the failing call has a chance to return EPIPE.
+// Cmd::exec feeds a child that is free to exit without draining stdin - an
+// executable OCI config patch that skips its input, for instance - so without
+// this guard an ordinary child could kill its caller instead of producing a
+// failed Result.
+//
+// The previous disposition is saved and restored around the call so that
+// running a command does not permanently change the signal setup of the
+// process; when SIGPIPE is already ignored (applicationInitialize() does that)
+// the guard is effectively a no-op.
+class ScopedIgnoreSIGPIPE
+{
+public:
+    ScopedIgnoreSIGPIPE() noexcept
+    {
+        struct sigaction action{};
+        action.sa_handler = SIG_IGN;
+        sigemptyset(&action.sa_mask);
+        action.sa_flags = 0;
+
+        installed_ = (sigaction(SIGPIPE, &action, &previous_) == 0);
+    }
+
+    ScopedIgnoreSIGPIPE(const ScopedIgnoreSIGPIPE &) = delete;
+    ScopedIgnoreSIGPIPE &operator=(const ScopedIgnoreSIGPIPE &) = delete;
+
+    ~ScopedIgnoreSIGPIPE() noexcept
+    {
+        if (installed_) {
+            sigaction(SIGPIPE, &previous_, nullptr);
+        }
+    }
+
+private:
+    bool installed_{ false };
+    struct sigaction previous_{};
+};
+
+} // namespace
 
 Cmd::Cmd(std::string command) noexcept
     : m_command(std::move(command))
@@ -69,38 +114,56 @@ std::filesystem::path Cmd::getCommandPath()
     return {};
 }
 
+// Run the command and capture its stdout.
+//
+// stdin and stdout are connected through pipes whose ownership is split across
+// fork(): the parent keeps the read end of stdout and the write end of stdin,
+// while the child gets the write end of stdout and the read end of stdin. Each
+// side closes the end it does not use, so the child observes EOF on stdin once
+// m_stdinContent has been written, and the parent observes EOF on stdout once
+// the child is gone.
 utils::error::Result<std::string> Cmd::exec(const std::vector<std::string> &args) noexcept
 {
     LINGLONG_TRACE(fmt::format("exec cmd: {} args: {}", m_command, fmt::join(args, " ")));
+
+    // The child is free to stop reading (or close) its stdin before we finish
+    // writing m_stdinContent into it: an executable OCI config patch, for
+    // example, may exit right away or bail out on malformed input long before
+    // an input that is larger than the pipe buffer has been drained. The
+    // resulting write(2) to the orphaned pipe raises SIGPIPE, whose default
+    // disposition kills the caller from inside write(2) before EPIPE can be
+    // observed. Ignore it for the duration of the call and restore the previous
+    // disposition on return, so exec() always reports a failed Result instead of
+    // terminating a caller that treats a failing command as a skippable item.
+    ScopedIgnoreSIGPIPE sigpipeGuard;
 
     auto commandPath = getCommandPath();
     if (commandPath.empty()) {
         return LINGLONG_ERR(fmt::format("command not found: {}", m_command));
     }
 
-    std::array<int, 2> stdoutPipe{ -1, -1 };
-    if (pipe2(stdoutPipe.data(), O_CLOEXEC) == -1) {
+    // Pipe ownership is split across fork():
+    //   * stdoutPipe: the parent owns the read end and collects the child
+    //     output, the child owns the write end which becomes its STDOUT_FILENO.
+    //     The parent closes the write end, otherwise read() on the parent side
+    //     never sees EOF because the parent itself keeps a writer open.
+    //   * stdinPipe: the parent owns the write end and feeds m_stdinContent,
+    //     the child owns the read end which becomes its STDIN_FILENO. The parent
+    //     closes the read end so the child stays the only reader: as soon as the
+    //     child stops reading, write() fails with EPIPE instead of silently
+    //     filling the pipe buffer forever.
+    // io::Pipe is backed by UniqueFd, so every descriptor is closed exactly once
+    // and a descriptor number released earlier cannot be closed again after
+    // another thread recycled it.
+    auto stdoutPipe = utils::io::Pipe::create(O_CLOEXEC);
+    if (!stdoutPipe) {
         return LINGLONG_ERR(fmt::format("pipe error: {}", common::error::errorString(errno)));
     }
-    auto stdoutPipeCloser = utils::finally::finally([&stdoutPipe]() {
-        for (auto fd : stdoutPipe) {
-            if (fd >= 0) {
-                close(fd);
-            }
-        }
-    });
 
-    std::array<int, 2> stdinPipe{ -1, -1 };
-    if (pipe2(stdinPipe.data(), O_CLOEXEC) == -1) {
+    auto stdinPipe = utils::io::Pipe::create(O_CLOEXEC);
+    if (!stdinPipe) {
         return LINGLONG_ERR(fmt::format("pipe error: {}", common::error::errorString(errno)));
     }
-    auto stdinPipeCloser = utils::finally::finally([&stdinPipe]() {
-        for (auto fd : stdinPipe) {
-            if (fd >= 0) {
-                close(fd);
-            }
-        }
-    });
 
     // Pre-allocate environment variables before fork to avoid memory allocation issues
     std::vector<std::string> envStrings;
@@ -159,14 +222,16 @@ utils::error::Result<std::string> Cmd::exec(const std::vector<std::string> &args
 
     // child process
     if (pid == 0) {
-        // Redirect stdout and stdin
-        close(stdoutPipe[0]);
-        close(stdinPipe[1]);
-        if (dup2(stdoutPipe[1], STDOUT_FILENO) == -1 || dup2(stdinPipe[0], STDIN_FILENO) == -1) {
+        // Redirect stdout and stdin, then drop the ends that belong to the
+        // parent so that EOF reaches the peer exactly once.
+        stdoutPipe->closeReadEnd();
+        stdinPipe->closeWriteEnd();
+        if (dup2(stdoutPipe->writeEnd(), STDOUT_FILENO) == -1
+            || dup2(stdinPipe->readEnd(), STDIN_FILENO) == -1) {
             _exit(EXIT_FAILURE);
         }
-        close(stdoutPipe[1]);
-        close(stdinPipe[0]);
+        stdoutPipe->closeWriteEnd();
+        stdinPipe->closeReadEnd();
 
         std::vector<char *> argv;
         auto filename = commandPath.filename();
@@ -183,11 +248,9 @@ utils::error::Result<std::string> Cmd::exec(const std::vector<std::string> &args
         _exit(EXIT_FAILURE);
     }
 
-    // parent process
-    close(stdoutPipe[1]);
-    stdoutPipe[1] = -1;
-    close(stdinPipe[0]);
-    stdinPipe[0] = -1;
+    // parent process: keep only the ends this process reads from and writes to
+    stdoutPipe->closeWriteEnd();
+    stdinPipe->closeReadEnd();
 
     auto setNonBlock = [](int fd) {
         int flags = fcntl(fd, F_GETFL, 0);
@@ -196,7 +259,7 @@ utils::error::Result<std::string> Cmd::exec(const std::vector<std::string> &args
         }
         return false;
     };
-    if (!setNonBlock(stdoutPipe[0]) || !setNonBlock(stdinPipe[1])) {
+    if (!setNonBlock(stdoutPipe->readEnd()) || !setNonBlock(stdinPipe->writeEnd())) {
         return LINGLONG_ERR(
           fmt::format("set non block error: {}", common::error::errorString(errno)));
     }
@@ -213,27 +276,36 @@ utils::error::Result<std::string> Cmd::exec(const std::vector<std::string> &args
     struct epoll_event ev;
     int activeFds = 0;
 
+    const int stdoutFd = stdoutPipe->readEnd();
+    const int stdinFd = stdinPipe->writeEnd();
+
     ev.events = EPOLLIN;
-    ev.data.fd = stdoutPipe[0];
-    if (epoll_ctl(epfd, EPOLL_CTL_ADD, stdoutPipe[0], &ev) == -1) {
+    ev.data.fd = stdoutFd;
+    if (epoll_ctl(epfd, EPOLL_CTL_ADD, stdoutFd, &ev) == -1) {
         return LINGLONG_ERR(
           fmt::format("epoll_ctl stdout error: {}", common::error::errorString(errno)));
     }
     activeFds++;
 
     size_t writtenBytes = 0;
+    // Set when the child stops reading (or closes) its stdin before all of
+    // m_stdinContent could be handed over; reported once the child is reaped.
+    bool brokenPipe = false;
+    // errno of the failing write, so the error below can tell a reader that
+    // vanished (EPIPE) apart from any other write error.
+    int stdinWriteError = 0;
+
     if (!m_stdinContent.empty()) {
         ev.events = EPOLLOUT;
-        ev.data.fd = stdinPipe[1];
-        if (epoll_ctl(epfd, EPOLL_CTL_ADD, stdinPipe[1], &ev) == -1) {
+        ev.data.fd = stdinFd;
+        if (epoll_ctl(epfd, EPOLL_CTL_ADD, stdinFd, &ev) == -1) {
             return LINGLONG_ERR(
               fmt::format("epoll_ctl stdin error: {}", common::error::errorString(errno)));
         }
         activeFds++;
     } else {
         // If no input, close write end immediately to send EOF to child
-        close(stdinPipe[1]);
-        stdinPipe[1] = -1;
+        stdinPipe->closeWriteEnd();
     }
 
     std::string output;
@@ -252,7 +324,7 @@ utils::error::Result<std::string> Cmd::exec(const std::vector<std::string> &args
 
         for (int i = 0; i < nfds; ++i) {
             int fd = events[i].data.fd;
-            if (fd == stdoutPipe[0]) {
+            if (fd == stdoutFd) {
                 while (true) {
                     ssize_t n = read(fd, buffer.data(), buffer.size());
                     if (n > 0) {
@@ -271,28 +343,54 @@ utils::error::Result<std::string> Cmd::exec(const std::vector<std::string> &args
                     }
                     break;
                 }
-            } else if (fd == stdinPipe[1]) {
-                if (writtenBytes < m_stdinContent.size()) {
-                    ssize_t n = write(fd,
-                                      m_stdinContent.data() + writtenBytes,
-                                      m_stdinContent.size() - writtenBytes);
-                    if (n > 0) {
-                        writtenBytes += n;
-                    } else if (n == -1) {
-                        if (errno == EINTR) {
+            } else if (fd == stdinFd) {
+                // The child can close its stdin, or simply stop reading it, at
+                // any moment. A pipe without a reader reports EPOLLERR/EPOLLHUP
+                // in addition to EPOLLOUT, so look at the event mask first and
+                // never write into a pipe that has no reader left.
+                if ((events[i].events & (EPOLLERR | EPOLLHUP)) != 0) {
+                    stdinWriteError = EPIPE;
+                    brokenPipe = true;
+                } else {
+                    while (writtenBytes < m_stdinContent.size()) {
+                        ssize_t n = write(fd,
+                                          m_stdinContent.data() + writtenBytes,
+                                          m_stdinContent.size() - writtenBytes);
+                        if (n > 0) {
+                            writtenBytes += static_cast<size_t>(n);
                             continue;
                         }
 
-                        if (errno != EAGAIN && errno != EWOULDBLOCK) {
-                            epoll_ctl(epfd, EPOLL_CTL_DEL, fd, nullptr);
-                            activeFds--;
+                        if (n == -1 && errno == EINTR) {
+                            continue;
                         }
+
+                        if (n == -1 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+                            // The pipe buffer is full; come back once the child
+                            // has read enough for another write to progress.
+                            break;
+                        }
+
+                        if (n == 0) {
+                            // A zero length write on a pipe cannot make any
+                            // progress, treat it like a vanished reader instead
+                            // of spinning forever.
+                            stdinWriteError = EPIPE;
+                        } else {
+                            stdinWriteError = errno;
+                        }
+
+                        brokenPipe = true;
+                        break;
                     }
                 }
 
-                if (writtenBytes >= m_stdinContent.size()) {
+                if (brokenPipe || writtenBytes >= m_stdinContent.size()) {
+                    // Stop monitoring the write end and close it. io::Pipe owns
+                    // the descriptor, so it is closed exactly once; closing it
+                    // is also what sends EOF to a child that read everything.
                     epoll_ctl(epfd, EPOLL_CTL_DEL, fd, nullptr);
-                    close(fd);
+                    stdinPipe->closeWriteEnd();
                     activeFds--;
                 }
             }
@@ -304,6 +402,32 @@ utils::error::Result<std::string> Cmd::exec(const std::vector<std::string> &args
         if (errno == EINTR)
             continue;
         return LINGLONG_ERR(fmt::format("waitpid error: {}", common::error::errorString(errno)));
+    }
+
+    if (brokenPipe) {
+        // The child stopped reading stdin before we could hand over all of
+        // m_stdinContent. Report it as a failed Result together with the child
+        // state and the output it did produce: callers like the executable OCI
+        // config patches treat a failing command as a skippable item, and that
+        // must remain a normal failure instead of a crash or a silent success.
+        std::string childState = "abnormal exit";
+        if (WIFEXITED(status)) {
+            childState = fmt::format("exit code {}", WEXITSTATUS(status));
+        } else if (WIFSIGNALED(status)) {
+            childState = fmt::format("killed by signal {}", WTERMSIG(status));
+        }
+
+        const std::string reason = stdinWriteError == EPIPE
+          ? std::string{ "child closed stdin (broken pipe)" }
+          : fmt::format("failed to write to child stdin: {}",
+                        common::error::errorString(stdinWriteError));
+
+        return LINGLONG_ERR(fmt::format("{} while writing {} of {} bytes, {}: {}",
+                                        reason,
+                                        writtenBytes,
+                                        m_stdinContent.size(),
+                                        childState,
+                                        output));
     }
 
     if (WIFEXITED(status)) {

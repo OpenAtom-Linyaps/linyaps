@@ -71,7 +71,7 @@ processExecBin() {
                 elif [[ ${elementSize} -eq 4 ]]; then
                         rawStr="${elements[2]} ${elements[3]}"
                         if [[ ${rawStr} == "not found" ]]; then
-                                echo "couldn't find dependency \"${elements[0]}\" of ${filePath}" >> $recordPath
+                                echo "couldn't find dependency \"${elements[0]}\" of ${filePath}" >>"${recordPath}"
                         fi
 
                          # clean path
@@ -91,24 +91,27 @@ collectDependsLibs() {
                 logErr "No paths provided"
         fi
 
-        filePaths=$(find "${paths}" -type f)
+        # NUL separated so a path containing a space or a newline survives the
+        # walk intact. $paths is still word-split on purpose: it is a
+        # ':' separated list of directories that was already translated above.
+        local filePath has_start recordPath records
+        while IFS= read -r -d '' filePath; do
+                # We can't find executable binaries just by mimeType. Some elf files are of type shared object file
+                # and it also can be executed. Therefore, try to find the executable binary with the symbol __libc_start_main
+                has_start="$(nm -D "${filePath}" 2>/dev/null | grep "__libc_start_main" || true)"
+                [[ -n ${has_start} ]] || continue
 
-        IFS=$'\n'
-        for filePath in ${filePaths}; do
-                local has_start
-                # We can't find executable binaries just by mimeType. Some elf files are of type “shared object file” or otherwise
-                # and it also can be executed. Therefore, try to find the executable binary with the symbol “__libc_start_main”
-                has_start="$(nm -D ${filePath} /dev/null 2>&1 | grep "__libc_start_main" || true)"
-                if [[ -n ${has_start} ]]; then
-                        recordPath=$(mktemp)
-                        processExecBin "${filePath}" "${recordPath}"
-                        if [[ -s ${recordPath} ]]; then
-                                records="$(cat $recordPath)"
-                                rm "$recordPath"
-                                logErr "\n$records"
-                        fi
+                recordPath=$(mktemp)
+                processExecBin "${filePath}" "${recordPath}"
+                if [[ -s ${recordPath} ]]; then
+                        records="$(cat "${recordPath}")"
+                        rm -f "${recordPath}"
+                        logErr "\n$records"
                 fi
-        done
+                # A clean binary leaves no record behind, so remove it here as
+                # well; previously one temporary file survived per executable.
+                rm -f "${recordPath}"
+        done < <(find $paths -type f -print0)
 
         # remove duplicates
         local oldIFS="${IFS}"

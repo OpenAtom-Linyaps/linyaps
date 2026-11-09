@@ -98,7 +98,10 @@ std::size_t getChunkSize(std::size_t bundleSize) noexcept
 
     std::size_t block_size{ 0 };
     struct statvfs fs_info{};
-    if (statvfs(".", &fs_info) > 0) {
+    // statvfs() returns 0 on success and -1 on failure, never a positive value,
+    // so "> 0" left block_size at 0 and the chunk size silently ignored the
+    // filesystem block size on every platform.
+    if (statvfs(".", &fs_info) == 0) {
         block_size = fs_info.f_bsize;
     }
 

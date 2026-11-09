@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
+# SPDX-FileCopyrightText: 2023-2026 UnionTech Software Technology Co., Ltd.
 #
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -12,4 +12,8 @@ GIT=${GIT:="git"}
 repoRoot="$("$GIT" rev-parse --show-toplevel)"
 cd "$repoRoot"
 
-wget -O cmake/CPM.cmake https://github.com/cpm-cmake/CPM.cmake/releases/latest/download/CPM.cmake
+tmpfile=$(mktemp cmake/CPM.cmake.XXXXXX)
+trap 'rm -f "$tmpfile"' EXIT
+wget -O "$tmpfile" https://github.com/cpm-cmake/CPM.cmake/releases/latest/download/CPM.cmake
+mv "$tmpfile" cmake/CPM.cmake
+trap - EXIT

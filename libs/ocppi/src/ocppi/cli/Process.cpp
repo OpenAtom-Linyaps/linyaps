@@ -38,10 +38,12 @@ int runProcess(const std::string &binaryPath,
         if (childId == 0) {
                 ::close(pipes[0]);
                 ::dup2(pipes[1], 1);
+                ::close(pipes[1]);
 
                 ret = execvp(binaryPath.data(), (char **)(cArgs.get()));
-                throw std::system_error(errno, std::generic_category(),
-                                        "execvp");
+                // the child must not throw: an escaping exception calls
+                // std::terminate and aborts the process (SIGABRT)
+                _exit(127);
         }
 
         ::close(pipes[1]);
@@ -55,6 +57,7 @@ int runProcess(const std::string &binaryPath,
                                 continue;
                         }
 
+                        ::close(pipes[0]);
                         throw std::system_error(errno, std::generic_category(),
                                                 "read");
                 }
@@ -68,7 +71,10 @@ int runProcess(const std::string &binaryPath,
 
         int interruptTimes = 0;
         while (true) {
-                if (::wait(&ret) != -1) {
+                // wait() reaps ANY child; helpers spawned concurrently by the
+                // same process would be reaped here, losing this child's exit
+                // status and leaving it as a zombie
+                if (::waitpid(childId, &ret, 0) == childId) {
                         break;
                 }
 
@@ -106,13 +112,17 @@ int runProcess(const std::string &binaryPath,
         int ret{ 0 };
         if (childId == 0) {
                 ret = execvp(binaryPath.data(), (char **)(cArgs.get()));
-                throw std::system_error(errno, std::generic_category(),
-                                        "execvp");
+                // the child must not throw: an escaping exception calls
+                // std::terminate and aborts the process (SIGABRT)
+                _exit(127);
         }
 
         int interruptTimes = 0;
         while (true) {
-                if (::wait(&ret) != -1) {
+                // wait() reaps ANY child; helpers spawned concurrently by the
+                // same process would be reaped here, losing this child's exit
+                // status and leaving it as a zombie
+                if (::waitpid(childId, &ret, 0) == childId) {
                         break;
                 }
 

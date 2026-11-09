@@ -1093,4 +1093,12 @@ TEST_F(CliTest, contentPrefersLibSystemdUserOverLegacySharePath)
     EXPECT_EQ(cli->content(cli::ContentOptions{ .appid = "org.example.app" }), 0);
 }
 
+TEST(Cli, ErrorCodeFromDBusMapsAccessDeniedOnly)
+{
+    EXPECT_EQ(cli::errorCodeFromDBus(QDBusError::AccessDenied),
+              utils::error::ErrorCode::PermissionDenied);
+    EXPECT_EQ(cli::errorCodeFromDBus(QDBusError::Failed), utils::error::ErrorCode::Failed);
+    EXPECT_EQ(cli::errorCodeFromDBus(QDBusError::NoMemory), utils::error::ErrorCode::Failed);
+}
+
 } // namespace

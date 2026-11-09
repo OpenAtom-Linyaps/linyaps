@@ -32,7 +32,7 @@ using nlohmann::json;
 */
 struct ApplicationConfigurationPermissionsInnerBind {
 /**
-* mount source file to the another position of container
+* mount source file to another position of the container
 */
 std::string destination;
 /**

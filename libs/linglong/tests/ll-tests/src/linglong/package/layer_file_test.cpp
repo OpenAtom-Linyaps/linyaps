@@ -14,6 +14,7 @@
 #include <QIODevice>
 #include <QSharedPointer>
 
+#include <cstdint>
 #include <filesystem>
 #include <fstream>
 
@@ -39,6 +40,26 @@ void writeLayerArchive(const std::filesystem::path &path, const QByteArray &meta
 
     file.write(sizeBytes);
     file.write(metaJson);
+    file.close();
+}
+
+// Writes a header that declares the full metadata size while only a prefix of
+// that payload reaches the file, producing a genuine short read.
+void writeShortLayerArchive(const std::filesystem::path &path,
+                            const QByteArray &declaredMetaJson,
+                            const QByteArray &writtenPayload)
+{
+    QFile file(QString::fromStdString(path.string()));
+    file.open(QIODevice::WriteOnly);
+    file.write(magicNumber());
+
+    QByteArray sizeBytes;
+    QDataStream sizeStream(&sizeBytes, QIODevice::WriteOnly);
+    sizeStream.setByteOrder(QDataStream::LittleEndian);
+    sizeStream << quint32(declaredMetaJson.size());
+
+    file.write(sizeBytes);
+    file.write(writtenPayload);
     file.close();
 }
 
@@ -129,10 +150,18 @@ TEST_F(LayerFileTest, MetaInfoRejectsTruncatedPayload)
 {
     auto layerPath = tempDir.path() / "truncated.layer";
     const auto metaJson = QByteArray(VALID_META_JSON);
-    writeLayerArchive(layerPath, metaJson.left(metaJson.size() / 2));
+    writeShortLayerArchive(layerPath, metaJson, metaJson.left(metaJson.size() / 2));
+
+    const auto declaredSize =
+      static_cast<std::uintmax_t>(magicNumber().size() + sizeof(quint32) + metaJson.size());
+    ASSERT_LT(std::filesystem::file_size(layerPath), declaredSize);
 
     auto layer = LayerFile::New(QString::fromStdString(layerPath.string()));
     ASSERT_TRUE(layer.has_value());
+
+    auto offset = (*layer)->binaryDataOffset();
+    ASSERT_TRUE(offset.has_value());
+    EXPECT_EQ(static_cast<std::uintmax_t>(*offset), declaredSize);
 
     auto info = (*layer)->metaInfo();
     ASSERT_FALSE(info.has_value());

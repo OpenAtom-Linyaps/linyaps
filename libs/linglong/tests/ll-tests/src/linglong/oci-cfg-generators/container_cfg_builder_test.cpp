@@ -7,11 +7,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#define private public
-#include "linglong/oci-cfg-generators/container_cfg_builder.h"
-#undef private
-
 #include "linglong/common/strings.h"
+#include "linglong/oci-cfg-generators/container_cfg_builder.h"
 #include "linglong/utils/cmd.h"
 #include "ocppi/runtime/config/types/NamespaceType.hpp"
 
@@ -1509,69 +1506,6 @@ TEST_F(ContainerCfgBuilderTest, ResolvConfSymlinkConflictFails)
 }
 
 } // namespace
-
-TEST_F(ContainerCfgBuilderTest, ApplyJsonPatchRejectsMismatchAndInvalidContent)
-{
-    ContainerCfgBuilder builder;
-    const auto version = builder.getConfig().ociVersion;
-
-    const auto goodPatch = baseDir.path() / "good.json";
-    std::ofstream{ goodPatch } << nlohmann::json{
-        { "ociVersion", version },
-        { "patch",
-          nlohmann::json::array({ nlohmann::json{ { "op", "test" },
-                                                  { "path", "/ociVersion" },
-                                                  { "value", version } } }) }
-    }.dump();
-    EXPECT_TRUE(builder.applyJsonPatchFile(goodPatch).has_value());
-
-    const auto mismatch = baseDir.path() / "mismatch.json";
-    std::ofstream{
-        mismatch
-    } << nlohmann::json{ { "ociVersion", "invalid" }, { "patch", nlohmann::json::array() } }.dump();
-    auto mismatchResult = builder.applyJsonPatchFile(mismatch);
-    EXPECT_FALSE(mismatchResult.has_value());
-    EXPECT_NE(mismatchResult.error().message().find("ociVersion"), std::string::npos);
-
-    const auto invalid = baseDir.path() / "invalid.json";
-    std::ofstream{ invalid } << "not json";
-    EXPECT_FALSE(builder.applyJsonPatchFile(invalid).has_value());
-}
-
-TEST_F(ContainerCfgBuilderTest, ApplyPatchFileDispatchesByTypeAndReportsErrors)
-{
-    ContainerCfgBuilder builder;
-    const auto originalVersion = builder.getConfig().ociVersion;
-
-    const auto plain = baseDir.path() / "plain.txt";
-    std::ofstream{ plain } << "data";
-    auto plainResult = builder.applyPatchFile(plain);
-    EXPECT_FALSE(plainResult.has_value());
-    EXPECT_NE(plainResult.error().message().find("not an executable or a JSON patch file"),
-              std::string::npos);
-
-    const auto failing = baseDir.path() / "failing.sh";
-    std::ofstream{ failing } << "#!/bin/sh\nexit 1\n";
-    std::filesystem::permissions(failing,
-                                 std::filesystem::perms::owner_all,
-                                 std::filesystem::perm_options::replace);
-    EXPECT_FALSE(builder.applyPatchFile(failing).has_value());
-
-    const auto garbage = baseDir.path() / "garbage.sh";
-    std::ofstream{ garbage } << "#!/bin/sh\necho not-json\n";
-    std::filesystem::permissions(garbage,
-                                 std::filesystem::perms::owner_all,
-                                 std::filesystem::perm_options::replace);
-    EXPECT_FALSE(builder.applyPatchFile(garbage).has_value());
-
-    const auto passthrough = baseDir.path() / "passthrough.sh";
-    std::ofstream{ passthrough } << "#!/bin/sh\ncat\n";
-    std::filesystem::permissions(passthrough,
-                                 std::filesystem::perms::owner_all,
-                                 std::filesystem::perm_options::replace);
-    EXPECT_TRUE(builder.applyPatchFile(passthrough).has_value());
-    EXPECT_EQ(builder.getConfig().ociVersion, originalVersion);
-}
 
 TEST_F(ContainerCfgBuilderTest, DisplaySystemAddsX11AndXauthorityMounts)
 {

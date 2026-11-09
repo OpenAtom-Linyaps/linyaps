@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+# SPDX-FileCopyrightText: 2023 - 2026 UnionTech Software Technology Co., Ltd.
+#
+# SPDX-License-Identifier: LGPL-3.0-or-later
+
 # 该工具用于检查.layer文件中，图标是否有效
 # 退出状态
 #   0：
@@ -26,21 +30,29 @@ prepareEnv() {
 }
 
 getLayerOffset() {
-	layerPath=$1
-	layerHeader="<<< deepin linglong layer archive >>>"
+	local layerPath=$1
+	local layerHeader="<<< deepin linglong layer archive >>>"
 
-	declare -i layerHeaderLength=40
-	declare -i infoLength=4
-	declare -i infoSize offset
+	local -i layerHeaderLength=40
+	local -i infoLength=4
+	local infoSize offset
 
-	fileHeader=$(hexdump -n ${layerHeaderLength} -e '1/40 "%s\n"' ${layerPath})
+	local fileHeader
+	if ! fileHeader=$(hexdump -n ${layerHeaderLength} -e '1/40 "%s\n"' "${layerPath}"); then
+		echo "${layerPath} cannot be read, exit checking process ..."
+		exit 255
+	fi
 	if [ "${fileHeader}" != "${layerHeader}" ]; then
 		echo "${layerPath} is not a layer file, exit checking process ..."
 		exit 255
 	fi
 
-	infoSize=$(hexdump -n ${infoLength} -s ${layerHeaderLength} -e '1/4 "%u\n"' ${layerPath})
-	if [ ! ${infoSize} -gt 0 ]; then
+	# A truncated archive carries the magic but no 4-byte info length after it.
+	# hexdump then prints nothing, and `[ ! -gt 0 ]` on an empty string is a
+	# syntax error that `if` reads as false, so the caller used to continue with
+	# an offset built from an empty number instead of reporting a broken archive.
+	infoSize=$(hexdump -n ${infoLength} -s ${layerHeaderLength} -e '1/4 "%u\n"' "${layerPath}" 2>/dev/null || true)
+	if ! [[ "${infoSize}" =~ ^[0-9]+$ ]] || [ "${infoSize}" -le 0 ]; then
 		echo "broken layer file, exit checking process ..."
 		exit 255
 	fi

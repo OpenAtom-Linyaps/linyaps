@@ -68,7 +68,7 @@ int runProcess(const std::string &binaryPath,
 
         int interruptTimes = 0;
         while (true) {
-                if (::wait(&ret) != -1) {
+                if (::waitpid(childId, &ret, 0) != -1) {
                         break;
                 }
 
@@ -112,7 +112,7 @@ int runProcess(const std::string &binaryPath,
 
         int interruptTimes = 0;
         while (true) {
-                if (::wait(&ret) != -1) {
+                if (::waitpid(childId, &ret, 0) != -1) {
                         break;
                 }
 

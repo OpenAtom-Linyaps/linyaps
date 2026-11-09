@@ -437,6 +437,10 @@ protected:
 
 TEST_F(UabInstallationFlowTest, InstallsDistributionUabWithBaseLayer)
 {
+    if (!std::filesystem::exists("/dev/fuse")) {
+        GTEST_SKIP() << "fuse device is not available";
+    }
+
     auto baseLayer = createLayer("org.deepin.base", "1.0.0", "base", "binary");
     auto uab = createUab("base-only", { baseLayer });
 
@@ -464,6 +468,10 @@ TEST_F(UabInstallationFlowTest, InstallsDistributionUabWithBaseLayer)
 
 TEST_F(UabInstallationFlowTest, InstallsAppUabWhenBaseIsAlreadyInstalled)
 {
+    if (!std::filesystem::exists("/dev/fuse")) {
+        GTEST_SKIP() << "fuse device is not available";
+    }
+
     auto baseLayer = createLayer("org.deepin.base", "1.0.0", "base", "binary");
     auto imported = repo->importLayerDir(package::LayerDir{ baseLayer });
     ASSERT_TRUE(imported) << imported.error().message();

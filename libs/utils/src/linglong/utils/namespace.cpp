@@ -109,8 +109,10 @@ utils::error::Result<void> writeMapFile(pid_t pid, bool isUid, const std::string
     }
 
     file << content;
+    file.close();
     if (!file) {
-        return LINGLONG_ERR(fmt::format("failed to write {}", path));
+        return LINGLONG_ERR(
+          fmt::format("failed to write {}: {}", path, common::error::errorString(errno)));
     }
 
     return LINGLONG_OK;
@@ -127,8 +129,10 @@ utils::error::Result<void> denySetGroups(pid_t pid)
     }
 
     file << "deny";
+    file.close();
     if (!file) {
-        return LINGLONG_ERR(fmt::format("failed to write {}", path));
+        return LINGLONG_ERR(
+          fmt::format("failed to write {}: {}", path, common::error::errorString(errno)));
     }
 
     return LINGLONG_OK;
@@ -433,6 +437,17 @@ runInNamespace(int argc, char **argv, std::optional<uid_t> uid, std::optional<gi
     if (pid < 0) {
         return LINGLONG_ERR(fmt::format("clone failed: {}", common::error::errorString(errno)));
     }
+
+    auto reapOnSetupFailure = linglong::utils::finally::finally([&pair, pid]() {
+        if (pair[0] == -1) {
+            return;
+        }
+
+        // The child is waiting for the mapping handshake. Terminate it before
+        // waiting, including when it has not reached its socket read yet.
+        kill(pid, SIGKILL);
+        while (waitpid(pid, nullptr, 0) == -1 && errno == EINTR) { }
+    });
 
     LogD("waiting child {}", pid);
 

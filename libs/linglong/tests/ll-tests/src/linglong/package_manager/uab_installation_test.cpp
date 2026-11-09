@@ -238,6 +238,110 @@ TEST(CheckUABLayersConstrain, ExtraModuleWithBinary)
     EXPECT_TRUE(result.has_value());
 }
 
+TEST(UABLayerModuleValidation, AcceptsSinglePathComponents)
+{
+    for (const auto *module : { "binary", "runtime", "develop", "extra.module" }) {
+        auto result = UabInstallationAction::validateUABLayerModule(module);
+        EXPECT_TRUE(result.has_value()) << "module was rejected: " << module;
+    }
+}
+
+TEST(UABLayerModuleValidation, RejectsUnsafePathValues)
+{
+    for (const auto *module : { "", ".", "..", "../x", "module/subdir", "/tmp/layer", "a\\b" }) {
+        auto result = UabInstallationAction::validateUABLayerModule(module);
+        EXPECT_FALSE(result.has_value()) << "module was accepted: " << module;
+    }
+}
+
+TEST(UABLayerModuleValidation, RejectsEmbeddedNul)
+{
+    // std::string keeps the trailing bytes, but a later C API call would stop at the NUL.
+    const std::string module("a\0b", 3);
+    auto result = UabInstallationAction::validateUABLayerModule(module);
+    EXPECT_FALSE(result.has_value());
+}
+
+TEST(UABLayerIdValidation, AcceptsSinglePathComponents)
+{
+    for (const auto *id : { "org.example.app", "id1", "a_b-c" }) {
+        auto result = UabInstallationAction::validateUABLayerId(id);
+        EXPECT_TRUE(result.has_value()) << "id was rejected: " << id;
+    }
+}
+
+TEST(UABLayerIdValidation, RejectsUnsafePathValues)
+{
+    for (const auto *id : { "", ".", "..", "../x", "id/subdir", "/tmp/id", "a\\b" }) {
+        auto result = UabInstallationAction::validateUABLayerId(id);
+        EXPECT_FALSE(result.has_value()) << "id was accepted: " << id;
+    }
+
+    const std::string withNul("a\0b", 3);
+    EXPECT_FALSE(UabInstallationAction::validateUABLayerId(withNul).has_value());
+}
+
+TEST(UABLayerPathValidation, AcceptsPathUnderLayersRoot)
+{
+    TempDir tempDir;
+    const auto layersRoot = tempDir.path() / "layers";
+    const auto layerDir = layersRoot / "org.example.app" / "binary";
+
+    auto result = UabInstallationAction::validateUABLayerPath(layersRoot, layerDir);
+    EXPECT_TRUE(result.has_value()) << result.error().message();
+}
+
+TEST(UABLayerPathValidation, RejectsDotDotTraversal)
+{
+    TempDir tempDir;
+    const auto layersRoot = tempDir.path() / "layers";
+    const auto layerDir = layersRoot / "org.example.app" / ".." / ".." / "outside";
+
+    auto result = UabInstallationAction::validateUABLayerPath(layersRoot, layerDir);
+    EXPECT_FALSE(result.has_value());
+}
+
+TEST(UABLayerPathValidation, RejectsAbsoluteEscape)
+{
+    TempDir tempDir;
+    const auto layersRoot = tempDir.path() / "layers";
+
+    auto result = UabInstallationAction::validateUABLayerPath(layersRoot, "/etc");
+    EXPECT_FALSE(result.has_value());
+}
+
+TEST(UABLayerPathValidation, RejectsSiblingWithCommonPrefix)
+{
+    TempDir tempDir;
+    const auto layersRoot = tempDir.path() / "layers";
+    // "layers-escape" shares the textual prefix "layers" but is not inside it.
+    const auto layerDir = tempDir.path() / "layers-escape" / "id" / "binary";
+
+    auto result = UabInstallationAction::validateUABLayerPath(layersRoot, layerDir);
+    EXPECT_FALSE(result.has_value());
+}
+
+TEST(UABLayerPathValidation, RejectsSymlinkEscape)
+{
+    TempDir tempDir;
+    std::error_code ec;
+    const auto layersRoot = tempDir.path() / "layers";
+    const auto outside = tempDir.path() / "outside";
+    std::filesystem::create_directories(layersRoot, ec);
+    ASSERT_FALSE(ec) << ec.message();
+    std::filesystem::create_directories(outside, ec);
+    ASSERT_FALSE(ec) << ec.message();
+
+    const auto link = layersRoot / "org.example.app";
+    std::filesystem::create_directory_symlink(outside, link, ec);
+    if (ec) {
+        GTEST_SKIP() << "cannot create directory symlink: " << ec.message();
+    }
+
+    auto result = UabInstallationAction::validateUABLayerPath(layersRoot, link / "binary");
+    EXPECT_FALSE(result.has_value());
+}
+
 // checkDistributionModeUABLayers tests
 TEST(CheckDistributionModeUABLayers, NoLayers)
 {

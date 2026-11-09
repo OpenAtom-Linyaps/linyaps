@@ -6,6 +6,9 @@
 
 #include "linglong/common/strings.h"
 
+#include <ctype.h>
+#include <locale.h>
+
 namespace linglong::common::strings {
 
 TEST(StringsTest, StringEqual)
@@ -163,6 +166,43 @@ TEST(StringsTest, EncodeUrl)
     EXPECT_EQ(encode_url("\t"), "%09");
     EXPECT_EQ(encode_url("\x01"), "%01");
     EXPECT_EQ(encode_url("\xFF"), "%FF");
+}
+
+TEST(StringsTest, EncodeUrlIsLocaleIndependent)
+{
+    static constexpr const char *singleByteLocales[] = {
+        "en_US.ISO-8859-1", "en_US.ISO8859-1",  "en_US.iso88591",  "de_DE.ISO-8859-1",
+        "de_DE.ISO8859-1",  "fr_FR.ISO-8859-1", "fr_FR.ISO8859-1", "C.ISO-8859-1",
+    };
+
+    locale_t locale{ nullptr };
+    for (const auto *name : singleByteLocales) {
+        locale_t candidate = ::newlocale(LC_CTYPE_MASK, name, nullptr);
+        if (candidate == nullptr) {
+            continue;
+        }
+
+        locale_t previous = ::uselocale(candidate);
+        const bool isExtended = ::isalnum(0xE9) != 0;
+        ::uselocale(previous);
+
+        if (isExtended) {
+            locale = candidate;
+            break;
+        }
+        ::freelocale(candidate);
+    }
+
+    if (locale == nullptr) {
+        GTEST_SKIP() << "no single-byte ISO-8859-1 locale is available";
+    }
+
+    locale_t previous = ::uselocale(locale);
+    EXPECT_EQ(encode_url("\xE9"), "%E9");
+    EXPECT_EQ(encode_url("\xFF"), "%FF");
+    EXPECT_EQ(encode_url("a\xE9z"), "a%E9z");
+    ::uselocale(previous);
+    ::freelocale(locale);
 }
 
 TEST(StringsTest, DecodeUrl)

@@ -4,9 +4,7 @@
 #include <gtest/gtest.h>
 
 #include "common/tempdir.h"
-#define private public
 #include "linglong/builder/linglong_builder.h"
-#undef private
 #include "ocppi/cli/crun/Crun.hpp"
 
 #include <memory>

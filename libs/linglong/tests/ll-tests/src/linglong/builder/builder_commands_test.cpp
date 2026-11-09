@@ -9,17 +9,22 @@
 
 #include "../mocks/linglong_builder_mock.h"
 #include "common/tempdir.h"
+#include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/builder/linglong_builder.h"
+#include "linglong/package/layer_dir.h"
 #include "linglong/package/reference.h"
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/utils/error/error.h"
 
+#include <fstream>
+#include <optional>
 #include <sstream>
 #include <string>
 #include <vector>
 
 using namespace linglong;
 using ::testing::_;
+using ::testing::IsEmpty;
 using ::testing::Return;
 
 namespace {
@@ -54,6 +59,53 @@ api::types::v1::PackageInfoV2 makePkg(const std::string &id,
     return pkg;
 }
 
+api::types::v1::RepoConfigV2 makeRepoConfig()
+{
+    api::types::v1::RepoConfigV2 config;
+    config.defaultRepo = "stable";
+    config.version = 2;
+    api::types::v1::Repo repo;
+    repo.name = "stable";
+    repo.priority = 0;
+    repo.url = "https://example.com/repo";
+    config.repos.push_back(std::move(repo));
+    return config;
+}
+
+std::optional<package::Reference> importLayer(repo::OSTreeRepo &repo,
+                                              const std::filesystem::path &workspace,
+                                              const std::string &id,
+                                              const std::string &version,
+                                              const std::string &module)
+{
+    const auto layerDir = workspace / (id + "-" + module);
+    std::filesystem::create_directories(layerDir);
+
+    api::types::v1::PackageInfoV2 info;
+    info.arch = { "x86_64" };
+    info.channel = "stable";
+    info.command = std::vector<std::string>{ "echo", id };
+    info.id = id;
+    info.kind = "app";
+    info.packageInfoV2Module = module;
+    info.version = version;
+    std::ofstream(layerDir / "info.json") << nlohmann::json(info).dump();
+
+    auto imported = repo.importLayerDir(package::LayerDir{ layerDir });
+    if (!imported) {
+        ADD_FAILURE() << "failed to import layer: " << imported.error().message();
+        return std::nullopt;
+    }
+
+    auto ref = package::Reference::parse("stable:" + id + "/" + version + "/x86_64");
+    if (!ref) {
+        ADD_FAILURE() << ref.error().message();
+        return std::nullopt;
+    }
+
+    return *ref;
+}
+
 class MockRepo : public repo::OSTreeRepo
 {
 public:
@@ -74,18 +126,7 @@ public:
     MOCK_METHOD(utils::error::Result<void>, mergeModules, (), (override, const, noexcept));
 
 private:
-    static api::types::v1::RepoConfigV2 makeConfig()
-    {
-        api::types::v1::RepoConfigV2 config;
-        config.defaultRepo = "stable";
-        config.version = 2;
-        api::types::v1::Repo repo;
-        repo.name = "stable";
-        repo.priority = 0;
-        repo.url = "https://example.com/repo";
-        config.repos.push_back(std::move(repo));
-        return config;
-    }
+    static api::types::v1::RepoConfigV2 makeConfig() { return makeRepoConfig(); }
 };
 
 TEST(BuilderCommands, SetConfigGetConfigRoundTrip)
@@ -113,14 +154,11 @@ TEST(BuilderCommands, CmdListAppPrintsSortedUniqueRefs)
 
     CaptureStdout capture;
     auto result = linglong::builder::cmdListApp(repo);
-    EXPECT_TRUE(result.has_value());
-    auto out = capture.str();
+    ASSERT_TRUE(result.has_value()) << result.error().message();
 
-    auto first = out.find("main:org.example.a");
-    auto second = out.find("main:org.example.b");
-    EXPECT_NE(first, std::string::npos);
-    EXPECT_NE(second, std::string::npos);
-    EXPECT_LT(first, second);
+    EXPECT_EQ(capture.str(),
+              "main:org.example.a/1.0.0.1/x86_64\n"
+              "main:org.example.b/1.0.0.1/x86_64\n");
 }
 
 TEST(BuilderCommands, CmdListAppReturnsErrorOnListFailure)
@@ -135,23 +173,28 @@ TEST(BuilderCommands, CmdListAppReturnsErrorOnListFailure)
     EXPECT_FALSE(result.has_value());
 }
 
-TEST(BuilderCommands, CmdRemoveAppWithValidRefPrunesAndMerges)
+TEST(BuilderCommands, CmdRemoveAppWithValidRefRemovesLayerAndClearsModules)
 {
     TempDir dir;
-    MockRepo repo(dir.path());
+    const auto repoDir = dir.path() / "repo";
+    std::filesystem::create_directories(repoDir);
 
-    auto ref = package::Reference::parse("main:org.example.app/1.0.0.0/x86_64");
-    ASSERT_TRUE(ref.has_value()) << ref.error().message();
+    auto created = repo::OSTreeRepo::create(repoDir, makeRepoConfig());
+    ASSERT_TRUE(created.has_value()) << created.error().message();
+    auto repo = std::move(*created);
 
-    // No modules means no real remove() call; prune and mergeModules are still
-    // invoked so the success path is exercised without touching the filesystem.
-    const std::vector<std::string> modules{};
-    EXPECT_CALL(repo, getModuleList(_)).WillOnce(Return(modules));
-    EXPECT_CALL(repo, prune()).WillOnce(Return(utils::error::Result<void>{}));
-    EXPECT_CALL(repo, mergeModules()).WillOnce(Return(utils::error::Result<void>{}));
+    auto ref =
+      importLayer(*repo, dir.path() / "layer-sources", "org.example.app", "1.0.0.1", "binary");
+    ASSERT_TRUE(ref.has_value()) << "failed to import layer fixture";
 
-    auto result = linglong::builder::cmdRemoveApp(repo, { ref->toString() }, true);
-    EXPECT_TRUE(result.has_value());
+    auto before = repo->getLayerItem(*ref, "binary");
+    ASSERT_TRUE(before.has_value()) << before.error().message();
+
+    auto result = linglong::builder::cmdRemoveApp(*repo, { ref->toString() }, true);
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+
+    EXPECT_FALSE(repo->getLayerItem(*ref, "binary").has_value());
+    EXPECT_THAT(repo->getModuleList(*ref), IsEmpty());
 }
 
 TEST(BuilderCommands, CmdRemoveAppSkipsInvalidRef)

@@ -203,6 +203,10 @@ TEST(NamespaceTest, RunInNamespaceAutoMapsCurrentUserWhenIdsAreOmitted)
 
 TEST(NamespaceTest, GetSubuidRangeUsesCurrentUser)
 {
+    if (!canAutoMapCurrentUser()) {
+        GTEST_SKIP() << "newuidmap/newgidmap or subuid/subgid ranges are not available";
+    }
+
     auto ranges = linglong::utils::detail::getSubuidRange(geteuid(), true);
 
     ASSERT_TRUE(ranges.has_value()) << ranges.error().message();

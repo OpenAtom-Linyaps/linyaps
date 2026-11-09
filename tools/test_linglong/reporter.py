@@ -154,6 +154,9 @@ def generate_report(
             (6, r.error_message or ""),
         ]:
             c = ws.cell(row=row, column=ci, value=sanitize_cell(val))
+            # Report strings are literal diagnostics, never formulas or Excel errors.
+            if isinstance(val, str):
+                c.data_type = "s"
             c.border = thin_border
             c.alignment = Alignment(
                 horizontal="center" if ci in (1, 2, 4, 5) else "left",

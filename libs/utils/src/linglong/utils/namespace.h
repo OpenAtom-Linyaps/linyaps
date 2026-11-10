@@ -6,6 +6,7 @@
 
 #include "linglong/utils/error/error.h"
 
+#include <istream>
 #include <optional>
 
 namespace linglong::utils {

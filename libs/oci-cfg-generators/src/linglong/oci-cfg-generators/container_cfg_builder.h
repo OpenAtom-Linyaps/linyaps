@@ -8,6 +8,7 @@
 
 #include "linglong/cdi/types/ContainerEdits.hpp"
 #include "linglong/utils/error/error.h"
+#include "linglong/utils/runtime_directory.h"
 #include "ocppi/runtime/config/types/Config.hpp"
 #include "ocppi/runtime/config/types/IdMapping.hpp"
 #include "ocppi/runtime/config/types/Mount.hpp"
@@ -85,6 +86,12 @@ public:
     ContainerCfgBuilder &setBundlePath(const std::filesystem::path &path) noexcept
     {
         bundlePath = path;
+        return *this;
+    }
+
+    ContainerCfgBuilder &setRuntimeLayout(utils::runtime_directory::RuntimeLayout layout) noexcept
+    {
+        runtimeLayout = std::move(layout);
         return *this;
     }
 
@@ -273,6 +280,7 @@ private:
     std::filesystem::path basePath;
     std::filesystem::path bundlePath;
     std::optional<std::filesystem::path> appCache;
+    std::optional<utils::runtime_directory::RuntimeLayout> runtimeLayout;
     std::optional<std::filesystem::path> containerXDGRuntimeDir;
     std::optional<std::string> timezone;
     std::optional<std::filesystem::path> resolvConf;

@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2025 - 2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -52,4 +52,10 @@ TEST_F(XDGTest, GetXDGRuntimeDir)
         auto runtimeDir = linglong::common::xdg::getXDGRuntimeDir();
         checkRuntimeDir(runtimeDir);
     }
+}
+
+TEST_F(XDGTest, GetXDGRuntimeDirForUid)
+{
+    EXPECT_EQ(linglong::common::xdg::getXDGRuntimeDirForUid(0), "/run/user/0");
+    EXPECT_EQ(linglong::common::xdg::getXDGRuntimeDirForUid(1234), "/run/user/1234");
 }

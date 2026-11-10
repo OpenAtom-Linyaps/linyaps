@@ -93,14 +93,19 @@ auto getXDPDocumentsMountPoint() noexcept -> utils::error::Result<std::filesyste
 
 } // namespace
 
-utils::error::Result<std::filesystem::path> makeBundleDir(const std::string &containerID,
-                                                          const std::string &bundleSuffix)
+utils::error::Result<std::filesystem::path>
+makeBundleDir(const utils::runtime_directory::RuntimeLayout &layout,
+              const std::string &containerID,
+              const std::string &bundleSuffix)
 {
     LINGLONG_TRACE("get bundle dir");
-    auto bundle = common::dir::getBundleDir(containerID);
-    if (!bundleSuffix.empty()) {
-        bundle += bundleSuffix;
+
+    auto prepareResult = layout.prepareRuntimeDir();
+    if (!prepareResult) {
+        return LINGLONG_ERR(prepareResult);
     }
+
+    auto bundle = layout.bundleDir(containerID, bundleSuffix);
     std::error_code ec;
     if (std::filesystem::exists(bundle, ec)) {
         std::filesystem::remove_all(bundle, ec);
@@ -340,10 +345,16 @@ auto ContainerBuilder::prepareContainer(runtime::RunContext &context,
 {
     LINGLONG_TRACE("prepare container");
 
+    if (!options.runtimeLayout) {
+        return LINGLONG_ERR("runtime layout is not set");
+    }
+    const auto &runtimeLayout = *options.runtimeLayout;
+
     auto containerContext = ContainerContext::create(context,
                                                      ContainerContext::CreateOptions{
                                                        .bundleSuffix = bundleSuffixFor(mode),
                                                        .appCache = options.containerCachePath,
+                                                       .runtimeLayout = runtimeLayout,
                                                      });
     if (!containerContext) {
         return LINGLONG_ERR("failed to create container context of " + context.getContainerId(),
@@ -370,6 +381,7 @@ auto ContainerBuilder::prepareContainer(runtime::RunContext &context,
 
     prepared.cfgBuilder.setAppId(prepared.runContext->getTargetID())
       .setBundlePath(prepared.context->getBundleDir())
+      .setRuntimeLayout(runtimeLayout)
       .addUIdMapping(uid, uid, 1)
       .addGIdMapping(gid, gid, 1)
       .bindDefault()

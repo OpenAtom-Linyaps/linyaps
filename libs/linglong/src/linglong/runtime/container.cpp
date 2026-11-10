@@ -142,7 +142,7 @@ auto ContainerContext::create(RunContext &context, CreateOptions options)
     LINGLONG_TRACE("create container context");
 
     auto containerID = context.getContainerId();
-    auto bundleDir = makeBundleDir(containerID, options.bundleSuffix);
+    auto bundleDir = makeBundleDir(options.runtimeLayout, containerID, options.bundleSuffix);
     if (!bundleDir) {
         return LINGLONG_ERR("create bundle dir", bundleDir);
     }
@@ -162,6 +162,7 @@ auto ContainerContext::create(RunContext &context, CreateOptions options)
     auto ret = std::make_unique<ContainerContext>(constract_passkey{},
                                                   std::move(containerID),
                                                   std::move(bundleDir).value(),
+                                                  options.runtimeLayout,
                                                   std::move(options.appCache));
     return ret;
 }
@@ -169,9 +170,11 @@ auto ContainerContext::create(RunContext &context, CreateOptions options)
 ContainerContext::ContainerContext([[maybe_unused]] constract_passkey key,
                                    std::string containerID,
                                    std::filesystem::path bundleDir,
+                                   utils::runtime_directory::RuntimeLayout runtimeLayout,
                                    std::optional<std::filesystem::path> appCache)
     : containerID(std::move(containerID))
     , bundleDir(std::move(bundleDir))
+    , runtimeLayout(std::move(runtimeLayout))
     , appCache(std::move(appCache))
 {
 }
@@ -222,6 +225,11 @@ auto ContainerContext::getContainerID() const -> const std::string &
 auto ContainerContext::getBundleDir() const -> const std::filesystem::path &
 {
     return this->bundleDir;
+}
+
+auto ContainerContext::getRuntimeLayout() const -> const utils::runtime_directory::RuntimeLayout &
+{
+    return this->runtimeLayout;
 }
 
 auto ContainerContext::getContainerCache() const -> const std::optional<std::filesystem::path> &
@@ -358,6 +366,9 @@ utils::error::Result<void> Container::run(const ocppi::runtime::config::types::P
     LogD("run container with bundle {}", bundleDir);
     // 禁用crun自己创建cgroup，便于AM识别和管理玲珑应用
     opt.GlobalOption::extra.emplace_back("--cgroup-manager=disabled");
+    if (!opt.GlobalOption::root) {
+        opt.GlobalOption::root = this->context->getRuntimeLayout().containerStateDir();
+    }
 
     auto result = this->cli.run(this->context->getContainerID(), bundleDir, opt);
     if (!result) {

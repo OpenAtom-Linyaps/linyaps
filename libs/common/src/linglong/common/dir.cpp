@@ -9,21 +9,6 @@
 
 namespace linglong::common::dir {
 
-std::filesystem::path getRuntimeDir() noexcept
-{
-    return xdg::getXDGRuntimeDir() / "linglong";
-}
-
-std::filesystem::path getAppRuntimeDir(const std::string &appId) noexcept
-{
-    return getRuntimeDir() / "apps" / appId;
-}
-
-std::filesystem::path getBundleDir(std::string_view containerId) noexcept
-{
-    return getRuntimeDir() / containerId;
-}
-
 std::filesystem::path getContainerCacheDir(const std::string &commit,
                                            const std::string &containerId) noexcept
 {

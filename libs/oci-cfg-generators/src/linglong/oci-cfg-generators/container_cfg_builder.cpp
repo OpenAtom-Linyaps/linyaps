@@ -10,14 +10,15 @@
 #include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/api/types/v1/OciConfigurationPatch.hpp"
 #include "linglong/cdi/types/Generators.hpp"
-#include "linglong/common/dir.h"
 #include "linglong/common/display.h"
 #include "linglong/common/strings.h"
 #include "linglong/common/xdg.h"
 #include "linglong/utils/cmd.h"
 #include "linglong/utils/file.h"
 #include "linglong/utils/log/log.h"
+#include "linglong/utils/namespace.h"
 #include "linglong/utils/overlayfs.h"
+#include "linglong/utils/runtime_directory.h"
 #include "linglong/utils/sha256.h"
 #include "ocppi/runtime/config/types/Generators.hpp"
 
@@ -34,7 +35,6 @@
 
 #include <grp.h>
 #include <pwd.h>
-#include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
 
@@ -334,7 +334,7 @@ ContainerCfgBuilder &ContainerCfgBuilder::bindRun() noexcept
 
 ContainerCfgBuilder &ContainerCfgBuilder::bindXDGRuntime() noexcept
 {
-    containerXDGRuntimeDir = std::filesystem::path{ "/run/user" } / std::to_string(::geteuid());
+    containerXDGRuntimeDir = common::xdg::getXDGRuntimeDirForUid(::geteuid());
 
     return *this;
 }
@@ -351,21 +351,23 @@ utils::error::Result<void> ContainerCfgBuilder::buildXDGRuntime() noexcept
         return LINGLONG_ERR("/run is not bind");
     }
 
-    auto hostXDGRuntimeMountPoint = common::dir::getAppRuntimeDir(appId);
-    std::error_code ec;
-    std::filesystem::create_directories(hostXDGRuntimeMountPoint, ec);
-    if (ec) {
-        return LINGLONG_ERR("failed to create directories for container XDG_RUNTIME_DIR", ec);
+    auto appIdResult = utils::runtime_directory::validateAppId(appId);
+    if (!appIdResult) {
+        return LINGLONG_ERR(appIdResult);
     }
 
-    std::filesystem::permissions(hostXDGRuntimeMountPoint, std::filesystem::perms::owner_all, ec);
-    if (ec) {
-        return LINGLONG_ERR("failed to set permissions for container XDG_RUNTIME_DIR", ec);
+    if (!runtimeLayout) {
+        return LINGLONG_ERR("runtime layout is not set");
+    }
+
+    auto hostXDGRuntimeMountPoint = runtimeLayout->prepareAppRuntimeDir(appId);
+    if (!hostXDGRuntimeMountPoint) {
+        return LINGLONG_ERR(hostXDGRuntimeMountPoint);
     }
 
     runMount->emplace_back(Mount{ .destination = *containerXDGRuntimeDir,
                                   .options = string_list{ "bind", "rslave" },
-                                  .source = hostXDGRuntimeMountPoint,
+                                  .source = *hostXDGRuntimeMountPoint,
                                   .type = "bind" });
     environment["XDG_RUNTIME_DIR"] = *containerXDGRuntimeDir;
 

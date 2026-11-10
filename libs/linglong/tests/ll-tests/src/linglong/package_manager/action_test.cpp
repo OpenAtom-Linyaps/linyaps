@@ -14,6 +14,9 @@
 #include "linglong/runtime/container_builder.h"
 #include "ocppi/cli/crun/Crun.hpp"
 
+#include <atomic>
+#include <thread>
+
 namespace linglong::runtime {
 class ContainerBuilder;
 }
@@ -46,6 +49,9 @@ public:
 class MockAction : public service::Action
 {
 public:
+    using Action::getTaskMessage;
+    using Action::setTaskMessage;
+
     MockAction(service::PackageManager &pm,
                repo::OSTreeRepo &repo,
                api::types::v1::CommonOptions opts)
@@ -122,6 +128,38 @@ TEST_F(ActionTest, InstallNewApp)
     EXPECT_EQ(result->kind, "app");
     EXPECT_EQ(result->oldRef, std::nullopt);
     EXPECT_EQ(result->newRef->reference.toString(), "main:id1/1.0.0/x86_64");
+}
+
+TEST_F(ActionTest, ConcurrentTaskMessagesAreCompleteSnapshots)
+{
+    const std::string installing(512, 'i');
+    const std::string updating(4096, 'u');
+    mockAction->setTaskMessage(installing);
+    std::atomic<bool> start{ false };
+    std::atomic<bool> invalidSnapshot{ false };
+
+    std::thread writer([&] {
+        while (!start.load()) {
+            std::this_thread::yield();
+        }
+        for (int i = 0; i < 10000; ++i) {
+            mockAction->setTaskMessage(i % 2 == 0 ? updating : installing);
+        }
+    });
+    std::thread reader([&] {
+        start.store(true);
+        for (int i = 0; i < 10000; ++i) {
+            const auto message = mockAction->getTaskMessage();
+            if (message != installing && message != updating) {
+                invalidSnapshot.store(true);
+            }
+        }
+    });
+    writer.join();
+    reader.join();
+
+    EXPECT_FALSE(invalidSnapshot.load());
+    EXPECT_EQ(mockAction->getTaskMessage(), installing);
 }
 
 TEST_F(ActionTest, OverwriteApp)

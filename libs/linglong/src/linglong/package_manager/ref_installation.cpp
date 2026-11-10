@@ -75,7 +75,7 @@ utils::error::Result<void> RefInstallationAction::doAction(PackageTask &task)
 
     DataMonitor monitor(5, 1, [this](DataMonitor &m) {
         mainTask->updateStateMessage(
-          fmt::format("{} {:>9}", taskMessage, fmt::format("[{}]", m.getHumanSpeed())));
+          fmt::format("{} {:>9}", getTaskMessage(), fmt::format("[{}]", m.getHumanSpeed())));
     });
 
     QObject::connect(mainTask, &service::PackageTask::DataArrived, [this, &monitor](uint arrived) {
@@ -355,8 +355,9 @@ utils::error::Result<void> RefInstallationAction::install(Task &task)
     for (const auto &item : refsToInstall) {
         const auto &[refRepo, module, meta] = item;
 
-        taskMessage = fmt::format("Installing {}/{}", refRepo.reference.toString(), module);
-        task.updateStateMessage(taskMessage);
+        auto message = fmt::format("Installing {}/{}", refRepo.reference.toString(), module);
+        setTaskMessage(message);
+        task.updateStateMessage(message);
 
         auto res = pm.installRefModule(task, refRepo, module);
         if (!res) {

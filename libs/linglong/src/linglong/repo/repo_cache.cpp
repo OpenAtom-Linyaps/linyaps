@@ -19,6 +19,19 @@
 
 namespace linglong::repo {
 
+namespace {
+
+bool sameArchitecture(const api::types::v1::PackageInfoV2 &lhs,
+                      const api::types::v1::PackageInfoV2 &rhs) noexcept
+{
+    if (lhs.arch.empty() || rhs.arch.empty()) {
+        return lhs.arch.empty() && rhs.arch.empty();
+    }
+    return lhs.arch.front() == rhs.arch.front();
+}
+
+} // namespace
+
 RepoCache::RepoCache(std::filesystem::path cacheFile)
     : cacheFile(std::move(cacheFile))
 {
@@ -171,7 +184,7 @@ RepoCache::findMatchingItem(const api::types::v1::RepositoryCacheLayersItem &ite
           return !(item.commit != val.commit || item.repo != val.repo
                    || item.info.channel != val.info.channel || item.info.id != val.info.id
                    || item.info.version != val.info.version
-                   || item.info.arch.front() != val.info.arch.front()
+                   || !sameArchitecture(item.info, val.info)
                    || item.info.packageInfoV2Module != val.info.packageInfoV2Module);
       });
 
@@ -241,7 +254,8 @@ RepoCache::queryLayerItem(const repoCacheQuery &query) const noexcept
             continue;
         }
 
-        if (query.architecture && query.architecture.value() != layer.info.arch.front()) {
+        if (query.architecture
+            && (layer.info.arch.empty() || query.architecture.value() != layer.info.arch.front())) {
             continue;
         }
 

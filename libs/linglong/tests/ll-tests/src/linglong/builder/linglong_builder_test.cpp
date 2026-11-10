@@ -6,6 +6,7 @@
 
 #include "../../common/tempdir.h"
 #include "../mocks/linglong_builder_mock.h"
+#include "common/test_process.h"
 #include "configure.h"
 #include "linglong/builder/builder_directory.h"
 #include "linglong/builder/linglong_builder.h"
@@ -17,6 +18,7 @@
 #include <cerrno>
 #include <filesystem>
 #include <fstream>
+#include <iostream>
 #include <iterator>
 #include <optional>
 #include <string>
@@ -24,22 +26,9 @@
 #include <utility>
 #include <vector>
 
-#include <sys/wait.h>
 #include <unistd.h>
 
-static void expectProjectProcessSuccess(pid_t pid)
-{
-    ASSERT_GT(pid, 0);
-    int status = 0;
-    pid_t waited;
-    do {
-        waited = ::waitpid(pid, &status, 0);
-    } while (waited < 0 && errno == EINTR);
-
-    ASSERT_EQ(waited, pid);
-    ASSERT_TRUE(WIFEXITED(status));
-    EXPECT_EQ(WEXITSTATUS(status), 0);
-}
+using linglong::test::TestProcess;
 
 TEST(LinglongBuilder, YamlPathPreservesFileSymlinksForExplicitAndDefaultLookup)
 {
@@ -124,18 +113,9 @@ TEST(LinglongBuilder, BuilderLocksYamlEntryDirectoryAcrossWorkingDirectories)
         ASSERT_TRUE(builder.cleanBuildArtifacts());
 
         for (const auto &directory : { workingDir.path(), yamlDirectory }) {
-            const auto pid = ::fork();
-            if (pid == 0) {
-                ::alarm(10);
-                linglong::builder::BuilderMock competing(directory);
-                competing.projectYamlFile = manifest.string();
-                auto result = competing.cleanBuildArtifacts();
-                ::_exit(!result
-                            && result.error().message().find("already in use") != std::string::npos
-                          ? 0
-                          : 1);
-            }
-            expectProjectProcessSuccess(pid);
+            TestProcess competing(
+              { "builder", "operation-conflict", directory.string(), manifest.string(), "clean" });
+            ASSERT_EQ(competing.wait(), 0) << competing.stderrOutput();
         }
 
         // The target's directory has its own resource lock and remains independent.
@@ -170,23 +150,10 @@ TEST(LinglongBuilder, BuilderReleasesWorkingDirectoryLockWhenYamlDirectoryIsBusy
     std::filesystem::create_directory(yamlDirectory);
     auto held = linglong::builder::BuilderDirectoryLayout(yamlDirectory).lockProject();
     ASSERT_TRUE(held);
-    // Initialize shared mock resources before forking.
-    linglong::builder::BuilderMock builder(workingDir.path());
-    builder.projectYamlFile = (yamlDirectory / "linglong.yaml").string();
 
-    const auto pid = ::fork();
-    if (pid == 0) {
-        ::alarm(10);
-        auto result = builder.cleanBuildArtifacts();
-        if (result || result.error().message().find("already in use") == std::string::npos) {
-            ::_exit(1);
-        }
-
-        // The failed Builder is still alive; it must not retain the first lock.
-        auto released = linglong::builder::BuilderDirectoryLayout(workingDir.path()).lockProject();
-        ::_exit(released && released->isLocked() ? 0 : 2);
-    }
-    expectProjectProcessSuccess(pid);
+    TestProcess competing(
+      { "builder", "yaml-conflict", workingDir.path().string(), yamlDirectory.string() });
+    ASSERT_EQ(competing.wait(), 0) << competing.stderrOutput();
 }
 
 TEST(LinglongBuilder, ProjectLockRejectsConcurrentProcessesAndDirectoryAliases)
@@ -203,20 +170,9 @@ TEST(LinglongBuilder, ProjectLockRejectsConcurrentProcessesAndDirectoryAliases)
     ASSERT_TRUE(lock->isLocked());
 
     for (const auto &path : { project, project / ".", alias }) {
-        const auto pid = ::fork();
-        if (pid == 0) {
-            ::alarm(10);
-            auto conflicting = linglong::builder::BuilderDirectoryLayout(path).lockProject();
-            if (conflicting
-                || conflicting.error().message().find("already in use") == std::string::npos) {
-                ::_exit(1);
-            }
-
-            auto independent =
-              linglong::builder::BuilderDirectoryLayout(otherProject.path()).lockProject();
-            ::_exit(independent && independent->isLocked() ? 0 : 2);
-        }
-        expectProjectProcessSuccess(pid);
+        TestProcess competing(
+          { "builder", "check-conflict", path.string(), otherProject.path().string() });
+        ASSERT_EQ(competing.wait(), 0) << competing.stderrOutput();
     }
 }
 
@@ -236,16 +192,8 @@ TEST(LinglongBuilder, ProjectLockSurvivesCleanAndCanBeAcquiredAfterRelease)
     EXPECT_FALSE(std::filesystem::exists(directories.root()));
     EXPECT_TRUE(std::filesystem::is_regular_file(workingDir.path() / ".ll-builder.lock"));
 
-    const auto pid = ::fork();
-    if (pid == 0) {
-        ::alarm(10);
-        auto conflicting = directories.lockProject();
-        ::_exit(!conflicting
-                    && conflicting.error().message().find("already in use") != std::string::npos
-                  ? 0
-                  : 1);
-    }
-    expectProjectProcessSuccess(pid);
+    TestProcess competing({ "builder", "check-conflict", workingDir.path().string() });
+    ASSERT_EQ(competing.wait(), 0) << competing.stderrOutput();
 
     held.reset();
     auto acquired = directories.lockProject();
@@ -257,13 +205,8 @@ TEST(LinglongBuilder, ProjectLockIsReleasedWhenProcessExits)
 {
     TempDir workingDir;
     linglong::builder::BuilderDirectoryLayout directories(workingDir.path());
-    const auto pid = ::fork();
-    if (pid == 0) {
-        auto lock = directories.lockProject();
-        // Exit without destructors to verify that a leftover file does not keep the project busy.
-        ::_exit(lock && lock->isLocked() ? 0 : 1);
-    }
-    expectProjectProcessSuccess(pid);
+    TestProcess child({ "builder", "lock-and-exit", workingDir.path().string() });
+    ASSERT_EQ(child.wait(), 0) << child.stderrOutput();
 
     ASSERT_TRUE(std::filesystem::is_regular_file(workingDir.path() / ".ll-builder.lock"));
     auto acquired = directories.lockProject();
@@ -274,49 +217,21 @@ TEST(LinglongBuilder, ProjectLockIsReleasedWhenProcessExits)
 TEST(LinglongBuilder, ProjectOperationsRejectBusyProjectBeforeDoingWork)
 {
     TempDir workingDir;
-    linglong::builder::BuilderMock builder(linglong::api::types::v1::BuilderProject{},
-                                           workingDir.path());
     auto lock = linglong::builder::BuilderDirectoryLayout(workingDir.path()).lockProject();
     ASSERT_TRUE(lock);
 
-    for (int operation = 0; operation < 8; ++operation) {
+    for (const auto *operation : { "build",
+                                   "clean",
+                                   "run",
+                                   "export-uab",
+                                   "export-layer",
+                                   "push",
+                                   "generate-lock",
+                                   "update-lock" }) {
         SCOPED_TRACE(operation);
-        const auto pid = ::fork();
-        if (pid == 0) {
-            ::alarm(10);
-            linglong::utils::error::Result<void> result;
-            switch (operation) {
-            case 0:
-                result = builder.build();
-                break;
-            case 1:
-                result = builder.cleanBuildArtifacts();
-                break;
-            case 2:
-                result = builder.run({}, {});
-                break;
-            case 3:
-                result = builder.exportUAB({});
-                break;
-            case 4:
-                result = builder.exportLayer({});
-                break;
-            case 5:
-                result = builder.push("binary");
-                break;
-            case 6:
-                result = builder.processProjectLock(linglong::builder::ProjectLockMode::Generate);
-                break;
-            case 7:
-                result = builder.processProjectLock(linglong::builder::ProjectLockMode::Update);
-                break;
-            }
-
-            ::_exit(!result && result.error().message().find("already in use") != std::string::npos
-                      ? 0
-                      : 1);
-        }
-        expectProjectProcessSuccess(pid);
+        TestProcess competing(
+          { "builder", "operation-conflict", workingDir.path().string(), "", operation });
+        ASSERT_EQ(competing.wait(), 0) << competing.stderrOutput();
     }
     EXPECT_FALSE(std::filesystem::exists(workingDir.path() / "linglong"));
     EXPECT_FALSE(std::filesystem::exists(workingDir.path() / ".uabBuild"));
@@ -334,16 +249,8 @@ TEST(LinglongBuilder, BuilderReusesProjectLockUntilItsResourcesAreDestroyed)
         ASSERT_TRUE(builder.cleanBuildArtifacts());
         ASSERT_TRUE(builder.cleanBuildArtifacts());
 
-        const auto pid = ::fork();
-        if (pid == 0) {
-            ::alarm(10);
-            auto conflicting = directories.lockProject();
-            ::_exit(!conflicting
-                        && conflicting.error().message().find("already in use") != std::string::npos
-                      ? 0
-                      : 1);
-        }
-        expectProjectProcessSuccess(pid);
+        TestProcess competing({ "builder", "check-conflict", workingDir.path().string() });
+        ASSERT_EQ(competing.wait(), 0) << competing.stderrOutput();
     }
 
     auto acquired = directories.lockProject();
@@ -972,3 +879,97 @@ TEST(LinglongBuilder, RuntimeCheckSkipsNonAppProject)
     auto result = builder.runtimeCheck();
     EXPECT_TRUE(result) << result.error().message();
 }
+
+namespace linglong::test {
+
+int runBuilderHelper(const std::vector<std::string> &arguments)
+{
+    using namespace linglong::builder;
+    utils::EnvironmentVariableGuard backtrace("LINYAPS_BACKTRACE", "1");
+    const auto expectConflict = [](const auto &result) {
+        if (result) {
+            std::cerr << "operation succeeded while the project was locked\n";
+            return false;
+        }
+        const auto message = result.error().message();
+        if (message.find("already in use") == std::string::npos) {
+            std::cerr << message << '\n';
+            return false;
+        }
+        return true;
+    };
+
+    if ((arguments.size() == 2 || arguments.size() == 3) && arguments[0] == "check-conflict") {
+        if (!expectConflict(BuilderDirectoryLayout(arguments[1]).lockProject())) {
+            return 1;
+        }
+        if (arguments.size() == 3) {
+            auto independent = BuilderDirectoryLayout(arguments[2]).lockProject();
+            if (!independent) {
+                std::cerr << independent.error().message() << '\n';
+                return 1;
+            }
+            return independent->isLocked() ? 0 : 1;
+        }
+        return 0;
+    }
+
+    if (arguments.size() == 2 && arguments[0] == "lock-and-exit") {
+        auto lock = BuilderDirectoryLayout(arguments[1]).lockProject();
+        if (!lock || !lock->isLocked()) {
+            std::cerr << "failed to acquire project lock\n";
+            return 1;
+        }
+        // Verify kernel cleanup without running any destructors.
+        ::_exit(0);
+    }
+
+    if (arguments.size() == 3 && arguments[0] == "yaml-conflict") {
+        BuilderMock builder(arguments[1]);
+        builder.projectYamlFile = (std::filesystem::path(arguments[2]) / "linglong.yaml").string();
+        if (!expectConflict(builder.cleanBuildArtifacts())) {
+            return 1;
+        }
+
+        // The failed Builder is still alive; it must not retain the first lock.
+        auto released = BuilderDirectoryLayout(arguments[1]).lockProject();
+        if (!released) {
+            std::cerr << released.error().message() << '\n';
+            return 1;
+        }
+        return released->isLocked() ? 0 : 1;
+    }
+
+    if (arguments.size() == 4 && arguments[0] == "operation-conflict") {
+        BuilderMock builder(api::types::v1::BuilderProject{}, arguments[1]);
+        builder.projectYamlFile = arguments[2];
+        utils::error::Result<void> result;
+        const auto &operation = arguments[3];
+        if (operation == "build") {
+            result = builder.build();
+        } else if (operation == "clean") {
+            result = builder.cleanBuildArtifacts();
+        } else if (operation == "run") {
+            result = builder.run({}, {});
+        } else if (operation == "export-uab") {
+            result = builder.exportUAB({});
+        } else if (operation == "export-layer") {
+            result = builder.exportLayer({});
+        } else if (operation == "push") {
+            result = builder.push("binary");
+        } else if (operation == "generate-lock") {
+            result = builder.processProjectLock(ProjectLockMode::Generate);
+        } else if (operation == "update-lock") {
+            result = builder.processProjectLock(ProjectLockMode::Update);
+        } else {
+            std::cerr << "invalid builder operation\n";
+            return 2;
+        }
+        return expectConflict(result) ? 0 : 1;
+    }
+
+    std::cerr << "invalid builder helper arguments\n";
+    return 2;
+}
+
+} // namespace linglong::test

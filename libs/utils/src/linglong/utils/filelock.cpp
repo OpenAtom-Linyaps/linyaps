@@ -18,23 +18,14 @@
 
 namespace linglong::utils::filelock {
 
-pid_t FileLock::pid() const noexcept
-{
-    return pid_;
-}
-
 utils::error::Result<FileLock> FileLock::create(std::filesystem::path path,
                                                 LockType type,
                                                 bool create_if_missing) noexcept
 {
     LINGLONG_TRACE("create file lock");
 
-    auto cur_pid = ::getpid();
-    auto &[global_pid, locked_paths] = process_locked_paths;
-    if (global_pid != cur_pid) {
-        global_pid = cur_pid;
-        locked_paths.clear();
-    }
+    std::lock_guard<std::mutex> guard(process_paths_mutex);
+    auto &locked_paths = process_locked_paths;
 
     std::error_code ec;
     auto abs_path = std::filesystem::absolute(path, ec);
@@ -84,6 +75,11 @@ FileLock::~FileLock() noexcept
 
 void FileLock::release() noexcept
 {
+    // A moved-from local may be destroyed while create() still holds the registry mutex.
+    if (fd < 0) {
+        return;
+    }
+
     if (isLocked()) {
         auto ret = unlock();
         if (!ret) {
@@ -91,15 +87,16 @@ void FileLock::release() noexcept
         }
     }
 
-    if (fd >= 0 && ::close(fd) < 0) {
+    if (::close(fd) < 0) {
         LogW("close file failed: {}", common::error::errorString(errno));
     }
 
     fd = -1;
     locked.store(false, std::memory_order_relaxed);
-    auto it = process_locked_paths.second.find(path);
-    if (it != process_locked_paths.second.end()) {
-        process_locked_paths.second.erase(it);
+    std::lock_guard<std::mutex> guard(process_paths_mutex);
+    auto it = process_locked_paths.find(path);
+    if (it != process_locked_paths.end()) {
+        process_locked_paths.erase(it);
     }
     path.clear();
 }
@@ -116,10 +113,6 @@ FileLock::FileLock(FileLock &&other) noexcept
     , fd(other.fd)
     , path(std::move(other.path))
 {
-    if (other.pid_ != pid()) {
-        LogF("move lock to different process");
-    }
-
     locked.store(other.locked.load(std::memory_order_relaxed), std::memory_order_relaxed);
     other.locked.store(false, std::memory_order_relaxed);
     other.fd = -1;
@@ -129,10 +122,6 @@ FileLock &FileLock::operator=(FileLock &&other) noexcept
 {
     if (this == &other) {
         return *this;
-    }
-
-    if (other.pid_ != pid()) {
-        LogF("move lock to different process");
     }
 
     release();
@@ -148,25 +137,9 @@ FileLock &FileLock::operator=(FileLock &&other) noexcept
     return *this;
 }
 
-utils::error::Result<void> FileLock::lockCheck() const noexcept
-{
-    LINGLONG_TRACE("validating file lock");
-
-    if (pid_ != ::getpid()) {
-        return LINGLONG_ERR("cannot operate on lock from forked process");
-    }
-
-    return LINGLONG_OK;
-}
-
 utils::error::Result<void> FileLock::lock(LockType type) noexcept
 {
     LINGLONG_TRACE("lock file");
-
-    auto ret = lockCheck();
-    if (!ret) {
-        return LINGLONG_ERR(ret);
-    }
 
     auto isCompatible = compatibleWith(type);
     if (isLocked()) {
@@ -208,11 +181,6 @@ utils::error::Result<void> FileLock::lock(LockType type) noexcept
 utils::error::Result<bool> FileLock::tryLock(LockType type) noexcept
 {
     LINGLONG_TRACE("try lock file");
-
-    auto ret = lockCheck();
-    if (!ret) {
-        return LINGLONG_ERR(ret);
-    }
 
     auto isCompatible = compatibleWith(type);
     if (isLocked()) {
@@ -259,11 +227,6 @@ utils::error::Result<void> FileLock::unlock() noexcept
 {
     LINGLONG_TRACE("unlock file");
 
-    auto ret = lockCheck();
-    if (!ret) {
-        return LINGLONG_ERR(ret);
-    }
-
     if (!isLocked()) {
         return LINGLONG_OK;
     }
@@ -289,7 +252,7 @@ utils::error::Result<void> FileLock::unlock() noexcept
 
 bool FileLock::isLocked() const noexcept
 {
-    return locked.load(std::memory_order_relaxed) && pid() == ::getpid();
+    return locked.load(std::memory_order_relaxed);
 }
 
 } // namespace linglong::utils::filelock

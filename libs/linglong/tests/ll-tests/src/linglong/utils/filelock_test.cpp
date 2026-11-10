@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025-2026 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2025 - 2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -6,16 +6,20 @@
 #include <gtest/gtest.h>
 
 #include "common/tempdir.h"
+#include "common/test_process.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/filelock.h"
 #include "linglong/utils/log/formatter.h"
 
+#include <atomic>
 #include <chrono>
 #include <filesystem>
 #include <fstream>
-
-#include <sys/wait.h>
-#include <unistd.h>
+#include <future>
+#include <iostream>
+#include <thread>
+#include <utility>
+#include <vector>
 
 using namespace linglong::utils::filelock;
 using namespace linglong::utils::error;
@@ -24,6 +28,57 @@ using namespace linglong::utils::error;
 class FileLockTest : public ::testing::Test
 {
 };
+
+using linglong::test::TestProcess;
+
+TEST_F(FileLockTest, TryLockFailureInterProcess)
+{
+    TempDir temporary;
+    const auto path = temporary.path() / "test_filelock.lock";
+    auto lock = FileLock::create(path, LockType::Write);
+    ASSERT_TRUE(lock);
+    ASSERT_TRUE(lock->lock(LockType::Write));
+
+    TestProcess child({ "filelock", "write-busy", path.string() });
+    ASSERT_EQ(child.wait(), 0) << child.stderrOutput();
+    EXPECT_TRUE(lock->isLocked());
+}
+
+TEST_F(FileLockTest, TryLockForFailure)
+{
+    TempDir temporary;
+    const auto path = temporary.path() / "test_filelock.lock";
+    auto lock = FileLock::create(path, LockType::Write);
+    ASSERT_TRUE(lock);
+    ASSERT_TRUE(lock->lock(LockType::Write));
+
+    TestProcess child({ "filelock", "timeout", path.string() });
+    ASSERT_EQ(child.wait(), 0) << child.stderrOutput();
+}
+
+TEST_F(FileLockTest, MultipleReadLocks)
+{
+    TempDir temporary;
+    const auto path = temporary.path() / "test_filelock.lock";
+    auto lock = FileLock::create(path, LockType::Read);
+    ASSERT_TRUE(lock);
+    ASSERT_TRUE(lock->lock(LockType::Read));
+
+    TestProcess child({ "filelock", "read-shared", path.string() });
+    ASSERT_EQ(child.wait(), 0) << child.stderrOutput();
+}
+
+TEST_F(FileLockTest, WriteLockExclusive)
+{
+    TempDir temporary;
+    const auto path = temporary.path() / "test_filelock.lock";
+    auto lock = FileLock::create(path, LockType::Write);
+    ASSERT_TRUE(lock);
+    ASSERT_TRUE(lock->lock(LockType::Write));
+
+    TestProcess child({ "filelock", "write-exclusive", path.string() });
+    ASSERT_EQ(child.wait(), 0) << child.stderrOutput();
+}
 
 // Test creating FileLock with create_if_missing = true
 TEST_F(FileLockTest, CreateWithMissingFile)
@@ -118,41 +173,6 @@ TEST_F(FileLockTest, TryLockSuccess)
     EXPECT_TRUE(lock.unlock());
 }
 
-// Test tryLock failure when already locked by another process
-TEST_F(FileLockTest, TryLockFailureInterProcess)
-{
-    TempDir temp_dir;
-    auto temp_path = temp_dir.path() / "test_filelock.lock";
-    auto result = FileLock::create(temp_path, LockType::Write, true);
-    ASSERT_TRUE(result);
-    auto lock1 = std::move(result).value();
-
-    EXPECT_TRUE(lock1.lock(LockType::Write));
-    EXPECT_TRUE(lock1.isLocked());
-
-    const pid_t pid = fork();
-    if (pid == 0) { // Child process
-        auto result_child = FileLock::create(temp_path, LockType::Write, false);
-        if (!result_child) {
-            _exit(1);
-        }
-        auto lock_child = std::move(result_child).value();
-
-        auto try_result = lock_child.tryLock(LockType::Write);
-        if (!try_result || *try_result) {
-            _exit(1);
-        }
-
-        _exit(0);
-    } else if (pid > 0) { // Parent
-        int status{ 0 };
-        EXPECT_EQ(waitpid(pid, &status, 0), pid);
-        EXPECT_EQ(WEXITSTATUS(status), 0);
-    } else {
-        FAIL() << "Fork failed";
-    }
-}
-
 // Test tryLockFor with timeout success
 TEST_F(FileLockTest, TryLockForSuccess)
 {
@@ -168,142 +188,105 @@ TEST_F(FileLockTest, TryLockForSuccess)
     EXPECT_TRUE(lock.isLocked());
 }
 
-// Test tryLockFor with timeout failure
-TEST_F(FileLockTest, TryLockForFailure)
+TEST_F(FileLockTest, ConcurrentIndependentInstancesKeepTheirRegistrations)
 {
-    TempDir temp_dir;
-    auto temp_path = temp_dir.path() / "test_filelock.lock";
-    auto result = FileLock::create(temp_path, LockType::Write, true);
-    ASSERT_TRUE(result);
-    auto lock1 = std::move(result).value();
-
-    EXPECT_TRUE(lock1.lock(LockType::Write));
-    EXPECT_TRUE(lock1.isLocked());
-
-    const pid_t pid = fork();
-    if (pid == 0) { // Child
-        auto result_child = FileLock::create(temp_path, LockType::Write, false);
-        if (!result_child) {
-            _exit(1);
-        }
-        auto lock_child = std::move(result_child).value();
-
-        auto try_for_result =
-          lock_child.tryLockFor(LockType::Write, std::chrono::milliseconds(100));
-        if (!try_for_result || *try_for_result) {
-            _exit(1);
-        }
-        _exit(0);
-    } else if (pid > 0) {
-        int status{ 0 };
-        EXPECT_EQ(waitpid(pid, &status, 0), pid);
-        EXPECT_EQ(WEXITSTATUS(status), 0);
-    } else {
-        FAIL() << "Fork failed";
+    TempDir tempDir;
+    constexpr int workerCount = 8;
+    constexpr int iterations = 100;
+    std::promise<void> start;
+    auto started = start.get_future().share();
+    std::atomic_int failures{ 0 };
+    std::vector<std::thread> workers;
+    for (int worker = 0; worker < workerCount; ++worker) {
+        workers.emplace_back([&, worker] {
+            const auto path = tempDir.path() / (std::to_string(worker) + ".lock");
+            started.wait();
+            for (int iteration = 0; iteration < iterations; ++iteration) {
+                auto lock = FileLock::create(path, LockType::Write);
+                if (!lock) {
+                    ++failures;
+                    continue;
+                }
+                if (!lock->lock(LockType::Write)) {
+                    ++failures;
+                }
+                if (FileLock::create(path, LockType::Write, false)) {
+                    ++failures;
+                }
+                std::this_thread::yield();
+                auto moved = std::move(*lock);
+                if (!moved.isLocked()) {
+                    ++failures;
+                }
+            }
+        });
+    }
+    start.set_value();
+    for (auto &worker : workers) {
+        worker.join();
+    }
+    EXPECT_EQ(failures.load(), 0);
+    for (int worker = 0; worker < workerCount; ++worker) {
+        EXPECT_TRUE(FileLock::create(tempDir.path() / (std::to_string(worker) + ".lock"),
+                                     LockType::Write,
+                                     false));
     }
 }
 
-// Test multiple read locks possible (shared)
-TEST_F(FileLockTest, MultipleReadLocks)
+TEST_F(FileLockTest, ConcurrentSamePathCreationHasExactlyOneOwner)
 {
-    TempDir temp_dir;
-    auto temp_path = temp_dir.path() / "test_filelock.lock";
-    auto result1 = FileLock::create(temp_path, LockType::Read, true);
-    ASSERT_TRUE(result1);
-    auto lock1 = std::move(result1).value();
-    EXPECT_TRUE(lock1.lock(LockType::Read));
-
-    const auto pid = ::fork();
-    if (pid == 0) {
-        auto result2 = FileLock::create(temp_path, LockType::Read, false);
-        if (!result2) {
-            _exit(1);
-        }
-
-        auto lock2 = std::move(result2).value();
-        if (auto ret = lock2.lock(LockType::Read); !ret) {
-            _exit(2);
-        }
-
-        _exit(0);
-    } else if (pid > 0) {
-        int status{ 0 };
-        EXPECT_EQ(waitpid(pid, &status, 0), pid);
-        EXPECT_EQ(WEXITSTATUS(status), 0);
-    } else {
-        FAIL() << "Fork failed";
+    TempDir tempDir;
+    const auto path = tempDir.path() / "shared.lock";
+    constexpr int workerCount = 8;
+    std::promise<void> start;
+    auto started = start.get_future().share();
+    std::promise<void> release;
+    auto released = release.get_future().share();
+    std::promise<void> attempted;
+    auto allAttempted = attempted.get_future();
+    std::atomic_int attempts{ 0 };
+    std::atomic_int owners{ 0 };
+    std::vector<std::thread> workers;
+    for (int worker = 0; worker < workerCount; ++worker) {
+        workers.emplace_back([&] {
+            started.wait();
+            auto lock = FileLock::create(path, LockType::Write);
+            if (lock) {
+                ++owners;
+            }
+            if (++attempts == workerCount) {
+                attempted.set_value();
+            }
+            released.wait();
+        });
     }
+    start.set_value();
+    const auto status = allAttempted.wait_for(std::chrono::seconds(5));
+    release.set_value();
+    for (auto &worker : workers) {
+        worker.join();
+    }
+    EXPECT_EQ(status, std::future_status::ready);
+    EXPECT_EQ(owners.load(), 1);
+    EXPECT_TRUE(FileLock::create(path, LockType::Write, false));
 }
 
-// Test write lock exclusive
-TEST_F(FileLockTest, WriteLockExclusive)
+TEST_F(FileLockTest, InstanceCanBeTransferredToAnotherThread)
 {
-    TempDir temp_dir;
-    auto temp_path = temp_dir.path() / "test_filelock.lock";
-    auto result1 = FileLock::create(temp_path, LockType::Write, true);
-    ASSERT_TRUE(result1);
-    auto lock1 = std::move(result1).value();
-    EXPECT_TRUE(lock1.lock(LockType::Write));
+    TempDir tempDir;
+    const auto path = tempDir.path() / "transferred.lock";
+    auto lock = FileLock::create(path, LockType::Write);
+    ASSERT_TRUE(lock);
+    ASSERT_TRUE(lock->lock(LockType::Write));
 
-    const auto pid = ::fork();
-    if (pid == 0) {
-        auto result2 = FileLock::create(temp_path, LockType::ReadWrite, false);
-        if (!result2) {
-            _exit(1);
-        }
-        auto lock2 = std::move(result2).value();
+    std::thread worker([owned = std::move(*lock)] {
+        EXPECT_TRUE(owned.isLocked());
+    });
+    worker.join();
 
-        auto try_read = lock2.tryLock(LockType::Read);
-        if (!try_read || *try_read) {
-            _exit(2);
-        }
-
-        auto try_write = lock2.tryLock(LockType::Write);
-        if (!try_write || *try_write) {
-            _exit(3);
-        }
-
-        _exit(0);
-    } else if (pid > 0) {
-        int status{ 0 };
-        EXPECT_EQ(waitpid(pid, &status, 0), pid);
-        EXPECT_EQ(WEXITSTATUS(status), 0);
-    } else {
-        FAIL() << "Fork failed";
-    }
-}
-
-// Test behavior after fork
-TEST_F(FileLockTest, LockAfterFork)
-{
-    TempDir temp_dir;
-    auto temp_path = temp_dir.path() / "test_filelock.lock";
-    auto result = FileLock::create(temp_path, LockType::Write, true);
-    ASSERT_TRUE(result);
-    auto lock = std::move(result).value();
-    EXPECT_TRUE(lock.lock(LockType::Write));
-
-    const pid_t pid = fork();
-    if (pid == 0) { // Child
-        // In child, lock should not be considered locked because pid changed
-        if (lock.isLocked()) {
-            _exit(1);
-        }
-
-        auto lock_result = lock.lock(LockType::Write);
-        if (lock_result) { // Should fail because "cannot operate on lock from forked process"
-            _exit(2);
-        }
-
-        _exit(0);
-    } else if (pid > 0) {
-        int status{ 0 };
-        EXPECT_EQ(waitpid(pid, &status, 0), pid);
-        EXPECT_EQ(WEXITSTATUS(status), 0);
-        EXPECT_TRUE(lock.isLocked()); // Parent still locked
-    } else {
-        FAIL() << "Fork failed";
-    }
+    auto reopened = FileLock::create(path, LockType::Write, false);
+    ASSERT_TRUE(reopened);
+    EXPECT_TRUE(reopened->tryLock(LockType::Write).value_or(false));
 }
 
 // Test cannot create duplicate lock in same process
@@ -406,3 +389,49 @@ TEST_F(FileLockTest, LockAlreadyLockedDiffType)
     EXPECT_THAT(lock_result.error().message(),
                 ::testing::HasSubstr("failed to lock with different type"));
 }
+
+namespace linglong::test {
+
+int runFileLockHelper(const std::vector<std::string> &arguments)
+{
+    if (arguments.size() != 2
+        || (arguments[0] != "write-busy" && arguments[0] != "timeout"
+            && arguments[0] != "read-shared" && arguments[0] != "write-exclusive")) {
+        std::cerr << "invalid filelock helper arguments\n";
+        return 2;
+    }
+
+    const auto type = arguments[0] == "read-shared" ? LockType::Read : LockType::ReadWrite;
+    auto lock = FileLock::create(arguments[1], type, false);
+    if (!lock) {
+        std::cerr << lock.error().message() << '\n';
+        return 1;
+    }
+
+    const auto check = [](const auto &result, bool expected) {
+        if (!result) {
+            std::cerr << result.error().message() << '\n';
+            return false;
+        }
+        if (*result != expected) {
+            std::cerr << "unexpected lock availability\n";
+            return false;
+        }
+        return true;
+    };
+
+    if (arguments[0] == "timeout") {
+        return check(lock->tryLockFor(LockType::Write, std::chrono::milliseconds(100)), false) ? 0
+                                                                                               : 1;
+    }
+    if (arguments[0] == "read-shared") {
+        return check(lock->tryLock(LockType::Read), true) ? 0 : 1;
+    }
+    if (arguments[0] == "write-exclusive" && !check(lock->tryLock(LockType::Read), false)) {
+        return 1;
+    }
+
+    return check(lock->tryLock(LockType::Write), false) ? 0 : 1;
+}
+
+} // namespace linglong::test

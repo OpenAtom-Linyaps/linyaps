@@ -14,6 +14,9 @@ pfl_add_executable(
   # find -regex '\./src/.+\.[ch]\(pp\)?' -type f -printf '%P\n'| sort
   src/common/scoped_runtime_paths.h
   src/common/scoped_umask.h
+  src/common/test_process.cpp
+  src/common/test_process.h
+  src/common/test_process_test.cpp
   src/common/tempdir.h
   src/linglong/builder/builder_script_test.cpp
   src/linglong/builder/config_test.cpp

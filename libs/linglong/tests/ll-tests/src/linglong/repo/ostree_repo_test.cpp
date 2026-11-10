@@ -552,6 +552,21 @@ TEST_F(RepoTest, createFailsWhenRepoLocalConfigIsInvalid)
     EXPECT_FALSE(repo.has_value());
 }
 
+TEST_F(RepoTest, createRejectsInvalidFallbackConfigWhenRepoLocalConfigMissing)
+{
+    TempDir tempDir;
+
+    auto repoRoot = tempDir.path() / "repo-root";
+    ASSERT_TRUE(fs::create_directories(repoRoot));
+
+    auto invalidConfig =
+      api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 };
+    auto repo = OSTreeRepo::create(repoRoot, invalidConfig);
+
+    EXPECT_FALSE(repo.has_value());
+    EXPECT_FALSE(fs::exists(repoRoot / "config.yaml"));
+}
+
 TEST_F(RepoTest, loadFromPathFailsWhenCacheIsMissingButCreateCanRepairIt)
 {
     TempDir tempDir;

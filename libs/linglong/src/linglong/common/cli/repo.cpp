@@ -7,6 +7,7 @@
 #include "linglong/common/cli/repo.h"
 
 #include "linglong/api/types/v1/Repo.hpp"
+#include "linglong/repo/config.h"
 #include "linglong/utils/gettext.h"
 #include "linglong/utils/log/log.h"
 
@@ -16,20 +17,6 @@
 namespace linglong::common::cli {
 
 namespace {
-
-std::int64_t getRepoMaxPriority(const api::types::v1::RepoConfigV2 &cfg) noexcept
-{
-    if (cfg.repos.empty()) {
-        return 0;
-    }
-
-    auto repo =
-      std::max_element(cfg.repos.cbegin(), cfg.repos.cend(), [](const auto &lhs, const auto &rhs) {
-          return lhs.priority < rhs.priority;
-      });
-
-    return repo->priority;
-}
 
 std::string usage(const std::string &programName, const std::string &suffix)
 {
@@ -222,7 +209,7 @@ utils::error::Result<void> handleRepoCommand(CLI::App *app,
         cfgRef.repos.erase(existingRepo);
 
         if (cfgRef.defaultRepo == alias) {
-            auto maxPriority = getRepoMaxPriority(cfgRef);
+            auto maxPriority = repo::getRepoMaxPriority(cfgRef);
             for (auto &repo : cfgRef.repos) {
                 if (repo.priority == maxPriority) {
                     cfgRef.defaultRepo = repo.alias.value_or(repo.name);
@@ -276,7 +263,7 @@ utils::error::Result<void> handleRepoCommand(CLI::App *app,
     if (argsParsed("set-default")) {
         if (cfgRef.defaultRepo != alias) {
             cfgRef.defaultRepo = alias;
-            auto maxPriority = getRepoMaxPriority(cfgRef);
+            auto maxPriority = repo::getRepoMaxPriority(cfgRef);
             for (auto &repo : cfgRef.repos) {
                 if (repo.alias.value_or(repo.name) == alias) {
                     repo.priority = maxPriority + 100;

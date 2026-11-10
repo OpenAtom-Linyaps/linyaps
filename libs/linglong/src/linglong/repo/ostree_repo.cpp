@@ -725,6 +725,11 @@ OSTreeRepo::create(std::filesystem::path repoRoot, api::types::v1::RepoConfigV2 
         } else {
             return LINGLONG_ERR("failed to load config", res);
         }
+    } else {
+        auto validated = validateConfig(cfg);
+        if (!validated) {
+            return LINGLONG_ERR("invalid repo config", validated);
+        }
     }
 
     auto repo = std::unique_ptr<OSTreeRepo>(new OSTreeRepo(std::move(repoRoot), std::move(cfg)));

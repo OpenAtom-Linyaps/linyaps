@@ -44,7 +44,16 @@ loadConfig(const std::filesystem::path &file) noexcept
             }
 
             // 将旧版本配置转换为新版本
-            config = convertToV2(*configV1);
+            auto configV2 = convertToV2(*configV1);
+            if (!configV2) {
+                return LINGLONG_ERR(configV2);
+            }
+            config = std::move(*configV2);
+        }
+
+        auto validated = validateConfig(*config);
+        if (!validated) {
+            return LINGLONG_ERR(validated);
         }
 
         return config;
@@ -59,10 +68,20 @@ loadConfig(const std::vector<std::filesystem::path> &files) noexcept
     LINGLONG_TRACE("load repo config");
 
     for (const auto &file : files) {
+        std::error_code ec;
+        const auto exists = std::filesystem::exists(file, ec);
+        if (ec) {
+            return LINGLONG_ERR(fmt::format("failed to inspect repo config {}", file), ec);
+        }
+        if (!exists) {
+            LogD("repo config {} does not exist, trying next", file);
+            continue;
+        }
+
         auto config = loadConfig(file);
         if (!config.has_value()) {
-            LogD("Failed to load repo config from {}: {}", file, config.error());
-            continue;
+            return LINGLONG_ERR(
+              fmt::format("invalid repo config {}: {}", file, config.error().message()));
         }
 
         LogD("load repo config from {}", file);
@@ -72,19 +91,38 @@ loadConfig(const std::vector<std::filesystem::path> &files) noexcept
     return LINGLONG_ERR("all failed");
 }
 
+utils::error::Result<void> validateConfig(const api::types::v1::RepoConfigV2 &cfg) noexcept
+{
+    LINGLONG_TRACE("validate repo config");
+
+    if (cfg.repos.empty()) {
+        return LINGLONG_ERR("no repo configured");
+    }
+
+    if (cfg.defaultRepo.empty()) {
+        return LINGLONG_ERR("default repo is empty");
+    }
+
+    const auto defaultRepo =
+      std::find_if(cfg.repos.begin(), cfg.repos.end(), [&cfg](const auto &repo) {
+          return repo.alias.value_or(repo.name) == cfg.defaultRepo;
+      });
+    if (defaultRepo == cfg.repos.end()) {
+        return LINGLONG_ERR(fmt::format("default repo '{}' not found in repos", cfg.defaultRepo));
+    }
+
+    return LINGLONG_OK;
+}
+
 utils::error::Result<void> saveConfig(const api::types::v1::RepoConfigV2 &cfg,
                                       const std::filesystem::path &path) noexcept
 {
     LINGLONG_TRACE(fmt::format("save config to {}", path));
 
     try {
-        auto defaultRepoExists =
-          std::any_of(cfg.repos.begin(), cfg.repos.end(), [&cfg](const auto &repo) {
-              return repo.alias.value_or(repo.name) == cfg.defaultRepo;
-          });
-
-        if (!defaultRepoExists) {
-            return LINGLONG_ERR("default repo not found in repos");
+        auto validated = validateConfig(cfg);
+        if (!validated) {
+            return LINGLONG_ERR(validated);
         }
 
         std::error_code ec;
@@ -200,17 +238,24 @@ getPriorityGroupedRepos(api::types::v1::RepoConfigV2 cfg) noexcept
     return groupedRepos;
 }
 
-api::types::v1::RepoConfigV2 convertToV2(const api::types::v1::RepoConfig &cfg) noexcept
+utils::error::Result<api::types::v1::RepoConfigV2>
+convertToV2(const api::types::v1::RepoConfig &cfg) noexcept
 {
+    LINGLONG_TRACE("convert legacy repo config");
+
     api::types::v1::RepoConfigV2 configV2;
     configV2.version = 2;
     configV2.defaultRepo = cfg.defaultRepo;
     int64_t priority = 0;
 
-    const auto &defaultRepo =
+    const auto defaultRepo =
       std::find_if(cfg.repos.begin(), cfg.repos.end(), [&cfg](const auto &repo) {
           return repo.first == cfg.defaultRepo;
       });
+    if (defaultRepo == cfg.repos.end()) {
+        return LINGLONG_ERR(
+          fmt::format("default repo '{}' not found in legacy config", cfg.defaultRepo));
+    }
 
     api::types::v1::Repo repoV2{
         .name = defaultRepo->first,
@@ -234,20 +279,12 @@ api::types::v1::RepoConfigV2 convertToV2(const api::types::v1::RepoConfig &cfg) 
     return configV2;
 }
 
-int64_t getRepoMinPriority(const api::types::v1::RepoConfigV2 &cfg) noexcept
-{
-
-    auto minElement = std::min_element(cfg.repos.begin(),
-                                       cfg.repos.end(),
-                                       [](const auto &repo1, const auto &repo2) {
-                                           return repo1.priority < repo2.priority;
-                                       });
-
-    return minElement->priority;
-}
-
 int64_t getRepoMaxPriority(const api::types::v1::RepoConfigV2 &cfg) noexcept
 {
+    if (cfg.repos.empty()) {
+        return 0;
+    }
+
     auto maxElement = std::max_element(cfg.repos.begin(),
                                        cfg.repos.end(),
                                        [](const auto &repo1, const auto &repo2) {

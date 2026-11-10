@@ -24,32 +24,10 @@ using namespace linglong::api::types::v1;
 
 namespace fs = std::filesystem;
 
-TEST(Repo, GetRepoMinPriority)
-{
-    RepoConfigV2 cfg;
-
-    cfg.repos = { { std::nullopt, false, "repo1", 100, "http://example.com/repo1" } };
-    EXPECT_EQ(getRepoMinPriority(cfg), 100);
-
-    cfg.repos = { { std::nullopt, false, "repo1", 200, "http://example.com/repo1" },
-                  { std::nullopt, false, "repo2", 100, "http://example.com/repo2" },
-                  { std::nullopt, false, "repo3", 300, "http://example.com/repo3" } };
-    EXPECT_EQ(getRepoMinPriority(cfg), 100);
-
-    cfg.repos = { { std::nullopt, false, "repo1", -100, "http://example.com/repo1" },
-                  { std::nullopt, false, "repo2", 0, "http://example.com/repo2" },
-                  { std::nullopt, false, "repo3", 500, "http://example.com/repo3" } };
-    EXPECT_EQ(getRepoMinPriority(cfg), -100);
-
-    cfg.repos = { { "alias1", false, "repo1", 200, "http://example.com/repo1" },
-                  { "alias2", false, "repo2", 100, "http://example.com/repo2" },
-                  { "alias3", false, "repo3", 300, "http://example.com/repo3" } };
-    EXPECT_EQ(getRepoMinPriority(cfg), 100);
-}
-
 TEST(Repo, GetRepoMaxPriority)
 {
     RepoConfigV2 cfg;
+    EXPECT_EQ(getRepoMaxPriority(cfg), 0);
 
     cfg.repos = { { std::nullopt, false, "repo1", 100, "http://example.com/repo1" } };
     EXPECT_EQ(getRepoMaxPriority(cfg), 100);
@@ -77,26 +55,98 @@ TEST(Repo, ConventToV2)
     cfg.repos = { { "repo1", "http://example.com/repo1" } };
 
     auto configV2 = convertToV2(cfg);
+    ASSERT_TRUE(configV2.has_value()) << configV2.error().message();
 
-    EXPECT_EQ(configV2.defaultRepo, "repo1");
-    EXPECT_EQ(configV2.repos.size(), 1);
-    EXPECT_EQ(configV2.repos[0].name, "repo1");
-    EXPECT_EQ(configV2.repos[0].url, "http://example.com/repo1");
-    EXPECT_EQ(configV2.repos[0].priority, 0);
+    EXPECT_EQ(configV2->defaultRepo, "repo1");
+    EXPECT_EQ(configV2->repos.size(), 1);
+    EXPECT_EQ(configV2->repos[0].name, "repo1");
+    EXPECT_EQ(configV2->repos[0].url, "http://example.com/repo1");
+    EXPECT_EQ(configV2->repos[0].priority, 0);
 
     cfg.defaultRepo = "repo2";
     cfg.repos = { { "repo1", "http://example.com/repo1" },
                   { "repo2", "http://example.com/repo2" } };
     configV2 = convertToV2(cfg);
+    ASSERT_TRUE(configV2.has_value()) << configV2.error().message();
 
-    EXPECT_EQ(configV2.defaultRepo, "repo2");
-    EXPECT_EQ(configV2.repos.size(), 2);
-    EXPECT_EQ(configV2.repos[0].name, "repo2");
-    EXPECT_EQ(configV2.repos[0].url, "http://example.com/repo2");
-    EXPECT_EQ(configV2.repos[0].priority, 0);
-    EXPECT_EQ(configV2.repos[1].name, "repo1");
-    EXPECT_EQ(configV2.repos[1].url, "http://example.com/repo1");
-    EXPECT_EQ(configV2.repos[1].priority, -100);
+    EXPECT_EQ(configV2->defaultRepo, "repo2");
+    EXPECT_EQ(configV2->repos.size(), 2);
+    EXPECT_EQ(configV2->repos[0].name, "repo2");
+    EXPECT_EQ(configV2->repos[0].url, "http://example.com/repo2");
+    EXPECT_EQ(configV2->repos[0].priority, 0);
+    EXPECT_EQ(configV2->repos[1].name, "repo1");
+    EXPECT_EQ(configV2->repos[1].url, "http://example.com/repo1");
+    EXPECT_EQ(configV2->repos[1].priority, -100);
+}
+
+TEST(Repo, ConvertToV2MissingDefaultRepoFails)
+{
+    RepoConfig cfg;
+    cfg.defaultRepo = "missing";
+    cfg.repos = { { "repo1", "http://example.com/repo1" } };
+
+    auto configV2 = convertToV2(cfg);
+
+    EXPECT_FALSE(configV2.has_value());
+}
+
+TEST(Repo, ValidateConfigAcceptsDefaultRepoByNameAndAlias)
+{
+    RepoConfigV2 cfg{
+        .defaultRepo = "hub",
+        .repos = { Repo{ .alias = std::nullopt,
+                         .name = "stable",
+                         .priority = 0,
+                         .url = "https://example.com/stable" },
+                   Repo{ .alias = "hub",
+                         .name = "myhub",
+                         .priority = 100,
+                         .url = "https://example.com/hub" } },
+        .version = 2,
+    };
+
+    EXPECT_TRUE(validateConfig(cfg).has_value());
+
+    cfg.defaultRepo = "stable";
+    EXPECT_TRUE(validateConfig(cfg).has_value());
+
+    cfg.defaultRepo = "myhub";
+    EXPECT_FALSE(validateConfig(cfg).has_value());
+}
+
+TEST(Repo, ValidateConfigRejectsEmptyRepos)
+{
+    RepoConfigV2 cfg{ .defaultRepo = "stable", .version = 2 };
+
+    auto result = validateConfig(cfg);
+
+    EXPECT_FALSE(result.has_value());
+}
+
+TEST(Repo, ValidateConfigRejectsEmptyDefaultRepo)
+{
+    RepoConfigV2 cfg{
+        .defaultRepo = "",
+        .repos = { Repo{ .name = "stable", .priority = 0, .url = "https://example.com/stable" } },
+        .version = 2,
+    };
+
+    auto result = validateConfig(cfg);
+
+    EXPECT_FALSE(result.has_value());
+}
+
+TEST(Repo, ValidateConfigRejectsMissingDefaultRepo)
+{
+    RepoConfigV2 cfg{
+        .defaultRepo = "missing",
+        .repos = { Repo{ .name = "stable", .priority = 0, .url = "https://example.com/stable" } },
+        .version = 2,
+    };
+
+    auto result = validateConfig(cfg);
+
+    EXPECT_FALSE(result.has_value());
 }
 
 TEST(Repo, GetPrioritySortedRepos)
@@ -196,6 +246,68 @@ TEST(Repo, LoadConfigVectorAllFail)
 {
     TempDir dir;
     auto cfg = loadConfig(std::vector<fs::path>{ dir.path() / "a.yaml", dir.path() / "b.yaml" });
+    EXPECT_FALSE(cfg.has_value());
+}
+
+TEST(Repo, LoadConfigRejectsSemanticallyInvalidConfig)
+{
+    TempDir dir;
+    auto file = dir.path() / "config.yaml";
+    std::ofstream(file) << R"(
+defaultRepo: missing
+repos:
+  - name: stable
+    priority: 0
+    url: https://example.com/repo
+version: 2
+)";
+
+    auto cfg = loadConfig(file);
+
+    EXPECT_FALSE(cfg.has_value());
+}
+
+TEST(Repo, LoadConfigFromVectorFailsOnSemanticallyInvalidConfig)
+{
+    TempDir dir;
+    auto bad = dir.path() / "bad.yaml";
+    auto good = dir.path() / "good.yaml";
+    std::ofstream(bad) << R"(
+defaultRepo: missing
+repos:
+  - name: stable
+    priority: 0
+    url: https://example.com/bad
+version: 2
+)";
+    std::ofstream(good) << R"(
+defaultRepo: stable
+repos:
+  - name: stable
+    priority: 0
+    url: https://example.com/good
+version: 2
+)";
+
+    auto cfg = loadConfig(std::vector<fs::path>{ bad, good });
+
+    ASSERT_FALSE(cfg.has_value());
+    EXPECT_NE(cfg.error().message().find(bad.string()), std::string::npos) << cfg.error().message();
+}
+
+TEST(Repo, LoadConfigFromLegacyConfigMissingDefaultRepoFails)
+{
+    TempDir dir;
+    auto file = dir.path() / "config.yaml";
+    std::ofstream(file) << R"(
+defaultRepo: missing
+repos:
+  repo1: https://example.com/repo1
+version: 1
+)";
+
+    auto cfg = loadConfig(file);
+
     EXPECT_FALSE(cfg.has_value());
 }
 
@@ -326,6 +438,16 @@ TEST(Repo, SaveConfigMissingDefaultRepoFails)
     };
     auto file = dir.path() / "saved.yaml";
     EXPECT_FALSE(saveConfig(cfg, file).has_value());
+}
+
+TEST(Repo, SaveConfigEmptyReposFails)
+{
+    TempDir dir;
+    auto cfg = RepoConfigV2{ .defaultRepo = "stable", .version = 2 };
+    auto file = dir.path() / "saved.yaml";
+
+    EXPECT_FALSE(saveConfig(cfg, file).has_value());
+    EXPECT_FALSE(fs::exists(file));
 }
 
 TEST(Repo, GetRepoByName)

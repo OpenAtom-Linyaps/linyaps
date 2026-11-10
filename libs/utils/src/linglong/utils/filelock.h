@@ -11,6 +11,7 @@
 #include <atomic>
 #include <chrono>
 #include <filesystem>
+#include <mutex>
 #include <thread>
 #include <unordered_map>
 
@@ -22,6 +23,17 @@ namespace linglong::utils::filelock {
 
 enum class LockType : uint8_t { Read, Write, ReadWrite };
 
+// RAII wrapper for process-associated POSIX fcntl locks. Different instances may
+// be used concurrently by different threads; concurrent access to the same
+// instance requires external synchronization.
+// Only one instance may exist for an absolute path in a process, even if unlocked.
+// Another instance for that path is rejected instead of queued. Do not separately
+// open and close the same lock file while an instance exists: closing any fd for
+// that file releases this process's fcntl locks. nativeHandle() is borrowed.
+// After fork(), the parent may continue using FileLock. The child must not create,
+// access, move or destroy any FileLock before exec(), even after a single-threaded
+// fork. If exec() fails, use _exit() without unwinding inherited instances. Lock
+// descriptors use O_CLOEXEC and are closed by a successful exec().
 class FileLock
 {
 public:
@@ -70,12 +82,8 @@ public:
 
     [[nodiscard]] bool isLocked() const noexcept;
 
-    [[nodiscard]] pid_t pid() const noexcept;
-
 private:
     void release() noexcept;
-
-    [[nodiscard]] utils::error::Result<void> lockCheck() const noexcept;
 
     [[nodiscard]] bool compatibleWith(LockType type) const noexcept
     {
@@ -92,15 +100,13 @@ private:
 
     FileLock(int fd, std::filesystem::path path, LockType type) noexcept;
 
-    pid_t pid_{ ::getpid() };
     LockType type_;
     std::atomic_bool locked{ false };
     int fd{ -1 };
     std::filesystem::path path;
 
-    static inline std::pair<pid_t, std::unordered_map<std::string, bool>> process_locked_paths{
-        ::getpid(), {}
-    };
+    static inline std::mutex process_paths_mutex;
+    static inline std::unordered_map<std::string, bool> process_locked_paths;
 };
 
 } // namespace linglong::utils::filelock

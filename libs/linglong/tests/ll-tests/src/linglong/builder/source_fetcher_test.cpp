@@ -4,6 +4,8 @@
 #include <gtest/gtest.h>
 
 #include "common/tempdir.h"
+#include "common/test_process.h"
+#include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/builder/builder_script.h"
 #include "linglong/builder/source_fetcher.h"
 #include "linglong/utils/cmd.h"
@@ -15,90 +17,30 @@
 #include <algorithm>
 #include <array>
 #include <cerrno>
+#include <chrono>
 #include <cstdlib>
 #include <fstream>
-#include <functional>
 #include <initializer_list>
+#include <iostream>
 #include <memory>
+#include <optional>
 #include <stdexcept>
 #include <tuple>
+#include <vector>
 
 #include <fcntl.h>
 #include <poll.h>
-#include <signal.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/un.h>
-#include <sys/wait.h>
 #include <unistd.h>
 
 using namespace linglong;
+using linglong::test::TestProcess;
 
 namespace linglong::builder {
 
 namespace {
-
-class FetchProcess
-{
-public:
-    explicit FetchProcess(const std::function<int()> &fetch)
-    {
-        std::array<int, 2> completion;
-        if (::pipe2(completion.data(), O_CLOEXEC) != 0) {
-            throw std::runtime_error("failed to create fetch completion pipe");
-        }
-        completed.reset(completion[0]);
-        utils::fd::UniqueFd notify(completion[1]);
-
-        pid = ::fork();
-        if (pid < 0) {
-            throw std::runtime_error("failed to fork source fetch process");
-        }
-        if (pid == 0) {
-            ::setpgid(0, 0);
-            completed.reset();
-            const auto result = fetch();
-            const char done = '1';
-            if (::write(notify.get(), &done, 1) != 1) {
-                ::_exit(1);
-            }
-            ::_exit(result);
-        }
-        ::setpgid(pid, pid);
-    }
-
-    ~FetchProcess()
-    {
-        if (pid > 0) {
-            // Also stop helper commands if a test fails while a fetch is paused.
-            ::kill(-pid, SIGKILL);
-            while (::waitpid(pid, nullptr, 0) < 0 && errno == EINTR) { }
-        }
-    }
-
-    int wait()
-    {
-        pollfd event{ completed.get(), POLLIN, 0 };
-        if (::poll(&event, 1, 10000) != 1 || !(event.revents & POLLIN)) {
-            return -1;
-        }
-
-        int status = 0;
-        pid_t waited;
-        do {
-            waited = ::waitpid(pid, &status, 0);
-        } while (waited < 0 && errno == EINTR);
-        if (waited != pid) {
-            return -1;
-        }
-        pid = -1;
-        return WIFEXITED(status) ? WEXITSTATUS(status) : -1;
-    }
-
-private:
-    pid_t pid = -1;
-    utils::fd::UniqueFd completed;
-};
 
 class FetchGate
 {
@@ -229,29 +171,37 @@ exec "$LINGLONG_TEST_REAL_TAR" "$@"
           commands.string() + ":" + (originalPath ? originalPath : ""));
     }
 
-    int fetch(const FetchGate &gate,
-              const std::filesystem::path &destination,
-              bool offline,
-              bool failMaterialization = false,
-              bool locked = true)
+    std::vector<std::string> fetchArguments(const FetchGate &gate,
+                                            const std::filesystem::path &destination,
+                                            bool offline,
+                                            bool failMaterialization = false,
+                                            bool locked = true)
     {
-        utils::EnvironmentVariableGuard ready("LINGLONG_TEST_FETCH_READY", gate.readyPath.string());
-        utils::EnvironmentVariableGuard resume("LINGLONG_TEST_FETCH_RESUME",
-                                               gate.resumePath.string());
-        utils::EnvironmentVariableGuard tar("LINGLONG_TEST_REAL_TAR", realTar.string());
-        utils::EnvironmentVariableGuard failure("LINGLONG_TEST_FETCH_FAIL",
-                                                failMaterialization ? "1" : "0");
-        utils::EnvironmentVariableGuard phase("LINGLONG_TEST_FETCH_GATE",
-                                              source.kind == "archive" ? "materialize"
-                                                                       : "download");
-        SourceFetchRequest request = GenerateSourceRequest{ source };
-        if (locked) {
-            request = lockedRequest(source, hash);
+        const auto requestPath = gate.readyPath.parent_path() / "request.json";
+        const nlohmann::json request{
+            { "source", source },
+            { "hash", hash },
+            { "cache", cache.string() },
+            { "destination", destination.string() },
+            { "offline", offline },
+            { "locked", locked },
+            { "expectFailure", failMaterialization },
+            { "environment",
+              { { "LINGLONG_TEST_FETCH_READY", gate.readyPath.string() },
+                { "LINGLONG_TEST_FETCH_RESUME", gate.resumePath.string() },
+                { "LINGLONG_TEST_REAL_TAR", realTar.string() },
+                { "LINGLONG_TEST_FETCH_FAIL", failMaterialization ? "1" : "0" },
+                { "LINGLONG_TEST_FETCH_GATE",
+                  source.kind == "archive" ? "materialize" : "download" } } }
+        };
+        std::ofstream output(requestPath);
+        output << request;
+        output.close();
+        if (!output) {
+            throw std::runtime_error("failed to write fetch helper request");
         }
-        SourceFetcher fetcher(std::move(request), SourceCacheLayout(cache));
-        auto result = fetcher.fetch(destination, offline);
-        return result.has_value() == !failMaterialization && (!result || result->hash == hash) ? 0
-                                                                                               : 1;
+
+        return { "source-fetch", requestPath.string() };
     }
 
     TempDir temporary;
@@ -274,12 +224,8 @@ TEST_F(SourceCacheProcessTest, RechecksCacheAfterConcurrentDownloadsAndRepairsAc
 
     FetchGate firstGate(temporary.path() / "first-gate");
     FetchGate secondGate(temporary.path() / "second-gate");
-    FetchProcess first([&]() {
-        return fetch(firstGate, firstDestination, false);
-    });
-    FetchProcess second([&]() {
-        return fetch(secondGate, secondDestination, false);
-    });
+    TestProcess first(fetchArguments(firstGate, firstDestination, false));
+    TestProcess second(fetchArguments(secondGate, secondDestination, false));
     ASSERT_TRUE(firstGate.wait());
     ASSERT_TRUE(secondGate.wait());
 
@@ -294,20 +240,62 @@ TEST_F(SourceCacheProcessTest, RechecksCacheAfterConcurrentDownloadsAndRepairsAc
     }
 
     ASSERT_TRUE(secondGate.release());
-    ASSERT_EQ(second.wait(), 0);
+    ASSERT_EQ(second.wait(), 0) << second.stderrOutput();
     ASSERT_EQ(*fileHash(cached), hash);
     struct stat published{};
     ASSERT_EQ(::stat(cached.c_str(), &published), 0);
 
     // The first fetch observed corruption before downloading. It must now reuse the repair.
     ASSERT_TRUE(firstGate.release());
-    ASSERT_EQ(first.wait(), 0);
+    ASSERT_EQ(first.wait(), 0) << first.stderrOutput();
     struct stat reused{};
     ASSERT_EQ(::stat(cached.c_str(), &reused), 0);
     EXPECT_EQ(reused.st_ino, published.st_ino);
     EXPECT_EQ(*fileHash(cached), hash);
     EXPECT_EQ(*fileHash(firstDestination / "source"), hash);
     EXPECT_EQ(*fileHash(secondDestination / "source"), hash);
+}
+
+TEST_F(SourceCacheProcessTest, ReleasesLockWhenTimedOutFetchIsDestroyed)
+{
+    if (realTar.empty()) {
+        GTEST_SKIP() << "tar is not available";
+    }
+
+    const auto content = temporary.path() / "content";
+    std::filesystem::create_directories(content);
+    std::ofstream(content / "source.txt") << "archive contents";
+    auto archived =
+      utils::Cmd(realTar.string()).exec({ "-cf", artifact.string(), "-C", content.string(), "." });
+    ASSERT_TRUE(archived) << archived.error().message();
+    auto digest = fileHash(artifact);
+    ASSERT_TRUE(digest) << digest.error().message();
+    hash = *digest;
+    source.kind = "archive";
+    source.digest = hash;
+
+    FetchGate gate(temporary.path() / "materialize-gate");
+    std::optional<utils::filelock::FileLock> probe;
+    {
+        TestProcess reader(fetchArguments(gate, firstDestination, false));
+        ASSERT_TRUE(gate.wait()) << reader.stderrOutput();
+        auto lock =
+          utils::filelock::FileLock::create(layout.lockFile(layout.object(source.kind, hash)),
+                                            utils::filelock::LockType::Write,
+                                            false);
+        ASSERT_TRUE(lock) << lock.error().message();
+        probe.emplace(std::move(*lock));
+        auto busy = probe->tryLock(utils::filelock::LockType::Write);
+        ASSERT_TRUE(busy) << busy.error().message();
+        ASSERT_FALSE(*busy);
+
+        EXPECT_EQ(reader.wait(std::chrono::milliseconds(20)), -1);
+        // Destruction must terminate the helper even while its archive command is paused.
+    }
+
+    auto available = probe->tryLock(utils::filelock::LockType::Write);
+    ASSERT_TRUE(available) << available.error().message();
+    EXPECT_TRUE(*available);
 }
 
 class SourceCacheMaterializationTest
@@ -340,9 +328,8 @@ TEST_P(SourceCacheMaterializationTest, HoldsEntryLockThroughMaterializationAndRe
     }
 
     FetchGate gate(temporary.path() / "materialize-gate");
-    FetchProcess reader([&]() {
-        return fetch(gate, firstDestination, offline, failMaterialization, locked);
-    });
+    TestProcess reader(
+      fetchArguments(gate, firstDestination, offline, failMaterialization, locked));
     ASSERT_TRUE(gate.wait());
 
     // The archive helper is paused inside materialize; another process cannot replace the cache.
@@ -356,7 +343,7 @@ TEST_P(SourceCacheMaterializationTest, HoldsEntryLockThroughMaterializationAndRe
     EXPECT_FALSE(*busy);
 
     ASSERT_TRUE(gate.release());
-    ASSERT_EQ(reader.wait(), 0);
+    ASSERT_EQ(reader.wait(), 0) << reader.stderrOutput();
     auto available = probe->tryLock(utils::filelock::LockType::Write);
     ASSERT_TRUE(available) << available.error().message();
     EXPECT_TRUE(*available);
@@ -547,12 +534,20 @@ TEST(SourceCache, PublishesGitDirectoryAtomicallyAndCopiesItToBuildDirectory)
         SourceFetcher fetcher(GenerateSourceRequest{ source }, SourceCacheLayout(cache));
         return fetcher.fetch(destination);
     };
-    FetchProcess second([&]() {
-        auto result = fetch(secondDestination);
-        return result && result->hash == "git-commit:" + *commit ? 0 : 1;
-    });
+    const auto requestPath = temporary.path() / "second-fetch.json";
+    {
+        std::ofstream output(requestPath);
+        output << nlohmann::json{
+            { "source", source },        { "hash", "git-commit:" + *commit },
+            { "cache", cache.string() }, { "destination", secondDestination.string() },
+            { "offline", false },        { "locked", false },
+            { "expectFailure", false }
+        };
+        ASSERT_TRUE(output);
+    }
+    TestProcess second({ "source-fetch", requestPath.string() });
     auto firstResult = fetch(firstDestination);
-    ASSERT_EQ(second.wait(), 0);
+    ASSERT_EQ(second.wait(), 0) << second.stderrOutput();
     ASSERT_TRUE(firstResult.has_value()) << firstResult.error().message();
     EXPECT_EQ(firstResult->hash, "git-commit:" + *commit);
 
@@ -1176,3 +1171,53 @@ TEST_F(SourceFetcherTest, FetchNoSetName)
 }
 
 } // namespace linglong::builder
+
+namespace linglong::test {
+
+int runSourceFetchHelper(const std::vector<std::string> &arguments)
+{
+    using namespace linglong::builder;
+    if (arguments.size() != 1) {
+        std::cerr << "invalid source-fetch helper arguments\n";
+        return 2;
+    }
+
+    std::ifstream input(arguments[0]);
+    if (!input) {
+        std::cerr << "cannot open source-fetch helper request: " << arguments[0] << '\n';
+        return 2;
+    }
+    const auto request = nlohmann::json::parse(input);
+    std::vector<std::unique_ptr<utils::EnvironmentVariableGuard>> environment;
+    const auto variables = request.value("environment", nlohmann::json::object());
+    for (const auto &[name, value] : variables.items()) {
+        environment.push_back(
+          std::make_unique<utils::EnvironmentVariableGuard>(name, value.get<std::string>()));
+    }
+
+    const auto source = request.at("source").get<api::types::v1::BuilderProjectSource>();
+    const auto hash = request.at("hash").get<std::string>();
+    SourceFetchRequest fetchRequest = GenerateSourceRequest{ source };
+    if (request.at("locked").get<bool>()) {
+        fetchRequest = lockedRequest(source, hash);
+    }
+    SourceFetcher fetcher(std::move(fetchRequest),
+                          SourceCacheLayout(request.at("cache").get<std::string>()));
+    auto result = fetcher.fetch(request.at("destination").get<std::string>(),
+                                request.at("offline").get<bool>());
+    if (!result) {
+        if (request.at("expectFailure").get<bool>()) {
+            return 0;
+        }
+        std::cerr << result.error().message() << '\n';
+        return 1;
+    }
+    if (request.at("expectFailure").get<bool>() || result->hash != hash) {
+        std::cerr << "unexpected source-fetch result: " << result->hash << '\n';
+        return 1;
+    }
+
+    return 0;
+}
+
+} // namespace linglong::test

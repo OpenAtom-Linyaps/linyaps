@@ -466,8 +466,6 @@ set(ytj_ENABLE_INSTALL NO)
 
 pfl_init(AUTO)
 
-add_subdirectory(external/http)
-
 pfl_add_libraries(
   LIBS
   api

@@ -27,6 +27,7 @@
 #include "linglong/package_manager/polkit_authority.h"
 #include "linglong/package_manager/ref_installation.h"
 #include "linglong/package_manager/uab_installation.h"
+#include "linglong/repo/config.h"
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/runtime/container_builder.h"
 #include "linglong/runtime/run_context.h"
@@ -606,6 +607,12 @@ PackageManager::setConfigurationImpl(const QVariantMap &parameters) noexcept
     }
 
     const auto &cfgRef = *cfg;
+
+    auto validated = repo::validateConfig(cfgRef);
+    if (!validated) {
+        return LINGLONG_ERR(validated);
+    }
+
     const auto &curCfg = repo->getConfig();
 
     LogD("new config: {}", nlohmann::json(cfgRef).dump());
@@ -613,15 +620,6 @@ PackageManager::setConfigurationImpl(const QVariantMap &parameters) noexcept
     if (cfgRef == curCfg) {
         LogI("configuration not changed, ignore setting.");
         return LINGLONG_OK;
-    }
-    if (const auto &defaultRepo = cfg->defaultRepo;
-        std::find_if(cfg->repos.begin(),
-                     cfg->repos.end(),
-                     [&defaultRepo](const auto &repo) {
-                         return repo.alias.value_or(repo.name) == defaultRepo;
-                     })
-        == cfg->repos.end()) {
-        return LINGLONG_ERR("default repository is missing after updating configuration.");
     }
 
     auto result = this->repo->setConfig(*cfg);

@@ -69,3 +69,7 @@ pfl_add_library(
   LINK_LIBRARIES
   PUBLIC
   nlohmann_json::nlohmann_json)
+
+# Keep the generated C client separate from linglong::api to avoid exposing curl
+# and its global include namespace to all API type consumers.
+add_subdirectory(http)

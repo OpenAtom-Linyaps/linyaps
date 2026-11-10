@@ -311,4 +311,67 @@ TEST_F(ActionTest, InstallSameRuntime)
     EXPECT_EQ(result->newRef->reference.toString(), "main:id1/1.0.0/x86_64");
 }
 
+TEST(UninstallCandidateTest, SelectsStandaloneRequestedModule)
+{
+    const std::vector<api::types::v1::RepositoryCacheLayersItem> layers{
+        { .info = { .arch = { "x86_64" },
+                    .channel = "main",
+                    .id = "org.example.App",
+                    .kind = "app",
+                    .packageInfoV2Module = "develop",
+                    .version = "1.0.0" } },
+    };
+
+    const auto requested = service::selectUninstallCandidates(layers, "develop");
+    ASSERT_EQ(requested.size(), 1);
+    EXPECT_EQ(requested.front().ref.toString(), "main:org.example.App/1.0.0/x86_64");
+    EXPECT_EQ(requested.front().module, "develop");
+    EXPECT_TRUE(service::selectUninstallCandidates(layers, std::nullopt).empty());
+}
+
+TEST(UninstallCandidateTest, SelectsOnlyTheRequestedVersionAndModule)
+{
+    const std::vector<api::types::v1::RepositoryCacheLayersItem> layers{
+        { .info = { .arch = { "x86_64" },
+                    .channel = "main",
+                    .id = "org.example.App",
+                    .kind = "app",
+                    .packageInfoV2Module = "binary",
+                    .version = "1.0.0" } },
+        { .info = { .arch = { "x86_64" },
+                    .channel = "main",
+                    .id = "org.example.App",
+                    .kind = "app",
+                    .packageInfoV2Module = "develop",
+                    .version = "2.0.0" } },
+    };
+
+    const auto requested = service::selectUninstallCandidates(layers, "develop");
+    ASSERT_EQ(requested.size(), 1);
+    EXPECT_EQ(requested.front().ref.toString(), "main:org.example.App/2.0.0/x86_64");
+    EXPECT_EQ(requested.front().module, "develop");
+}
+
+TEST(UninstallCandidateTest, CountsMainModulesOfOneReferenceOnlyOnce)
+{
+    const std::vector<api::types::v1::RepositoryCacheLayersItem> layers{
+        { .info = { .arch = { "x86_64" },
+                    .channel = "main",
+                    .id = "org.example.App",
+                    .kind = "app",
+                    .packageInfoV2Module = "runtime",
+                    .version = "1.0.0" } },
+        { .info = { .arch = { "x86_64" },
+                    .channel = "main",
+                    .id = "org.example.App",
+                    .kind = "app",
+                    .packageInfoV2Module = "binary",
+                    .version = "1.0.0" } },
+    };
+
+    const auto matches = service::selectUninstallCandidates(layers, std::nullopt);
+    ASSERT_EQ(matches.size(), 1);
+    EXPECT_EQ(matches.front().module, "binary");
+}
+
 } // namespace

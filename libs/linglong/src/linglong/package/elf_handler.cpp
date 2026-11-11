@@ -167,24 +167,46 @@ addSectionImpl(int fd, Elf *e, const std::string &name, const char *data, size_t
 
     EndianSwapper swapper(is_lsb);
 
-    auto appended_offset = align_file(fd, 16);
-    if (appended_offset == -1) {
-        return LINGLONG_ERR("failed to align file");
-    }
-
-    if (!write_all(fd, data, size)) {
-        return LINGLONG_ERR("failed to append section data");
-    }
-
+    // Pre-validate ELF header, section header table bounds, and string table
+    // before making any modifications to the target file.
     EhdrT ehdr;
     if (pread(fd, &ehdr, sizeof(ehdr), 0) != sizeof(ehdr)) {
         return LINGLONG_ERR("failed to read elf header");
     }
     swapper.swap_header(ehdr);
 
-    size_t shstrndx;
+    if (ehdr.e_shentsize != sizeof(ShdrT)) {
+        return LINGLONG_ERR("unsupported section header entry size");
+    }
+
+    off_t fileSize = lseek(fd, 0, SEEK_END);
+    if (fileSize == -1) {
+        return LINGLONG_ERR("failed to query file size");
+    }
+    if (static_cast<uint64_t>(ehdr.e_shoff) > static_cast<uint64_t>(fileSize)) {
+        return LINGLONG_ERR("section header table exceeds file bounds");
+    }
+
+    size_t shstrndx{ 0 };
     if (elf_getshdrstrndx(e, &shstrndx) != 0) {
         return LINGLONG_ERR("failed to get elf section header string index");
+    }
+
+    size_t shnum{ 0 };
+    if (elf_getshdrnum(e, &shnum) != 0 || shnum == 0 || shstrndx >= shnum) {
+        return LINGLONG_ERR("invalid section header count or string table index");
+    }
+
+    // e_shnum is a 16-bit field. If the new section count reaches or exceeds
+    // SHN_LORESERVE (0xff00), ELF requires extended section numbering via section 0's
+    // sh_size, which is not supported here.
+    if (shnum >= 0xff00 - 1) {
+        return LINGLONG_ERR("section header count exceeds supported limit");
+    }
+
+    size_t old_sht_size = shnum * sizeof(ShdrT);
+    if (old_sht_size > static_cast<uint64_t>(fileSize) - static_cast<uint64_t>(ehdr.e_shoff)) {
+        return LINGLONG_ERR("section header table exceeds file bounds");
     }
 
     Elf_Scn *scn_str = elf_getscn(e, shstrndx);
@@ -195,13 +217,37 @@ addSectionImpl(int fd, Elf *e, const std::string &name, const char *data, size_t
     if (gelf_getshdr(scn_str, &shdr_str) != &shdr_str) {
         return LINGLONG_ERR("failed to get strtab header");
     }
+    if (shstrndx == SHN_UNDEF || shdr_str.sh_type != SHT_STRTAB) {
+        return LINGLONG_ERR("invalid section header string table type");
+    }
     if (shdr_str.sh_flags & SHF_COMPRESSED) {
         return LINGLONG_ERR("compressed string table not supported");
     }
 
+    if (shdr_str.sh_offset > static_cast<uint64_t>(fileSize)
+        || shdr_str.sh_size > static_cast<uint64_t>(fileSize) - shdr_str.sh_offset) {
+        return LINGLONG_ERR("section header string table exceeds file bounds");
+    }
+
     Elf_Data *data_str = elf_getdata(scn_str, nullptr);
-    if (data_str == nullptr) {
+    if (data_str == nullptr || (data_str->d_size > 0 && data_str->d_buf == nullptr)) {
         return LINGLONG_ERR("failed to get elf section header string data");
+    }
+
+    auto sht_buf = std::make_unique<ShdrT[]>(shnum);
+    size_t read = pread(fd, sht_buf.get(), old_sht_size, ehdr.e_shoff);
+    if (read != old_sht_size) {
+        return LINGLONG_ERR("failed to read sht");
+    }
+
+    // All preconditions and validations passed. Proceed to align and append section data.
+    auto appended_offset = align_file(fd, 16);
+    if (appended_offset == -1) {
+        return LINGLONG_ERR("failed to align file");
+    }
+
+    if (!write_all(fd, data, size)) {
+        return LINGLONG_ERR("failed to append section data");
     }
 
     size_t old_strtable_size = data_str->d_size;
@@ -222,16 +268,6 @@ addSectionImpl(int fd, Elf *e, const std::string &name, const char *data, size_t
     }
 
     size_t new_name_idx = old_strtable_size;
-
-    size_t shnum = 0;
-    elf_getshdrnum(e, &shnum);
-
-    size_t old_sht_size = shnum * sizeof(ShdrT);
-    auto sht_buf = std::make_unique<ShdrT[]>(shnum);
-    size_t read = pread(fd, sht_buf.get(), old_sht_size, ehdr.e_shoff);
-    if (read != old_sht_size) {
-        return LINGLONG_ERR("failed to read sht");
-    }
 
     for (size_t i = 0; i < shnum; ++i) {
         swapper.swap_shdr(sht_buf[i]);
@@ -311,7 +347,7 @@ utils::error::Result<void> ElfHandler::writeSectionData(const std::string &name,
         return LINGLONG_ERR("failed to initialize libelf");
     }
 
-    int fd = open(file_.c_str(), O_RDWR);
+    int fd = open(file_.c_str(), O_RDWR | O_CLOEXEC);
     if (fd < 0) {
         return LINGLONG_ERR("failed to open file: " + file_.string());
     }
@@ -371,24 +407,24 @@ utils::error::Result<void> ElfHandler::addSection(const std::string &name,
         return LINGLONG_ERR("file is empty: " + file.string());
     }
 
-    int fd = open(file.c_str(), O_RDONLY);
+    int fd = open(file.c_str(), O_RDONLY | O_CLOEXEC);
     if (fd < 0) {
         return LINGLONG_ERR("failed to open file: " + file.string());
     }
+    auto close_fd = utils::finally::finally([fd] {
+        close(fd);
+    });
 
     void *data = mmap(nullptr, size, PROT_READ, MAP_PRIVATE, fd, 0);
 
     if (data == MAP_FAILED) {
-        close(fd);
         return LINGLONG_ERR("failed to mmap file: " + file.string());
     }
+    auto clean_mmap = utils::finally::finally([data, size] {
+        munmap(data, size);
+    });
 
-    auto result = addSection(name, static_cast<const char *>(data), size);
-
-    munmap(data, size);
-    close(fd);
-
-    return result;
+    return addSection(name, static_cast<const char *>(data), size);
 }
 
 utils::error::Result<void> ElfHandler::addSection(const std::string &name,
@@ -405,7 +441,7 @@ utils::error::Result<void> ElfHandler::addSection(const std::string &name,
         return LINGLONG_ERR("failed to get elf version");
     }
 
-    int fd = open(file_.c_str(), O_RDWR);
+    int fd = open(file_.c_str(), O_RDWR | O_CLOEXEC);
     if (fd < 0) {
         return LINGLONG_ERR("failed to open file: " + file_.string());
     }

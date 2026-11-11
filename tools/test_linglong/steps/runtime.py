@@ -511,6 +511,114 @@ class RuntimeSteps:
             if workdir.exists():
                 raise AssertionError(f"临时运行配置没清干净: {workdir}")
 
+    # ── Test: 自定义 XDG 目录 ──
+    #
+    # buildMountHome 先读宿主机的 XDG_DATA_HOME / XDG_CONFIG_HOME /
+    # XDG_CACHE_HOME / XDG_STATE_HOME：只要不是容器内的默认位置，就用
+    # mountDir 把宿主目录 bind 到容器内的默认位置（~/.local/share、
+    # ~/.config、~/.cache、~/.local/state），宿主目录缺失时顺带
+    # create_directories 建出来。另外当 $XDG_CONFIG_HOME 下有
+    # systemd/user、dconf、user-dirs.dirs、user-dirs.locale，
+    # 或 $XDG_CACHE_HOME 下有 deepin/dde-api 时，还会给这几项单独再挂一份。
+    #
+    # 冒烟机上这些变量全是默认值，上面这些分支一直没被走到（覆盖率里
+    # buildMountHome 28 行、mountDir 若干行常年未覆盖），所以这里显式
+    # 改掉四个变量，把宿主目录和容器内的默认位置一一对上。
+    def test_run_custom_xdg_dirs(self):
+        app_id = DEMO_APP_ID
+        home = os.environ.get("HOME") or str(Path.home())
+        workdir = Path(tempfile.mkdtemp(prefix="ll-smoke-xdg-"))
+
+        data_dir = workdir / "data"
+        config_dir = workdir / "config"
+        cache_dir = workdir / "cache"
+        state_dir = workdir / "state"  # 故意不建：应被自动创建
+        fresh_dir = workdir / "fresh-data"  # 第二轮用：也不建
+
+        data_dir.mkdir(parents=True)
+        (data_dir / "ll-smoke-marker").write_text("DATA_OK")
+        (config_dir / "systemd" / "user").mkdir(parents=True)
+        (config_dir / "systemd" / "user" / "ll-smoke-marker").write_text("SYSTEMD_OK")
+        (config_dir / "dconf").mkdir()
+        (config_dir / "dconf" / "ll-smoke-marker").write_text("DCONF_OK")
+        (config_dir / "user-dirs.dirs").write_text('XDG_DESKTOP_DIR="$HOME/Desktop"\n')
+        (cache_dir / "deepin" / "dde-api").mkdir(parents=True)
+        (cache_dir / "deepin" / "dde-api" / "ll-smoke-marker").write_text("DDEAPI_OK")
+
+        # 容器内应当出现的位置：全部是默认目录
+        container_paths = {
+            "XDG_DATA_HOME": f"{home}/.local/share",
+            "XDG_CONFIG_HOME": f"{home}/.config",
+            "XDG_CACHE_HOME": f"{home}/.cache",
+            "XDG_STATE_HOME": f"{home}/.local/state",
+        }
+        env = {
+            "XDG_DATA_HOME": str(data_dir),
+            "XDG_CONFIG_HOME": str(config_dir),
+            "XDG_CACHE_HOME": str(cache_dir),
+            "XDG_STATE_HOME": str(state_dir),
+        }
+
+        try:
+            self._cleanup_containers(app_id)
+
+            script = (
+                'echo "XDG_DATA_HOME=$XDG_DATA_HOME"; '
+                'echo "XDG_CONFIG_HOME=$XDG_CONFIG_HOME"; '
+                'echo "XDG_CACHE_HOME=$XDG_CACHE_HOME"; '
+                'echo "XDG_STATE_HOME=$XDG_STATE_HOME"; '
+                f"cat {home}/.local/share/ll-smoke-marker; "
+                f"cat {home}/.config/systemd/user/ll-smoke-marker; "
+                f"cat {home}/.config/dconf/ll-smoke-marker; "
+                f"cat {home}/.cache/deepin/dde-api/ll-smoke-marker; "
+                f"cat {home}/.config/user-dirs.dirs"
+            )
+            code, out = self._pty_ll_cli(
+                "run", app_id, "--", "/bin/bash", "-c", script,
+                timeout=180, env=env)
+            if code != 0:
+                raise AssertionError(
+                    f"带自定义 XDG 目录运行失败: rc={code} {out[-400:]!r}")
+
+            for name, want in container_paths.items():
+                if f"{name}={want}" not in out:
+                    raise AssertionError(
+                        f"容器内 {name} 不是默认位置 {want}: {out[-400:]!r}")
+            for marker in ("DATA_OK", "SYSTEMD_OK", "DCONF_OK", "DDEAPI_OK"):
+                if marker not in out:
+                    raise AssertionError(
+                        f"宿主 XDG 目录没挂进容器（缺 {marker}）: {out[-400:]!r}")
+            if "XDG_DESKTOP_DIR" not in out:
+                raise AssertionError(
+                    f"user-dirs.dirs 没挂进容器: {out[-400:]!r}")
+
+            # 第二轮：把 XDG_DATA_HOME 指到一个不存在的目录，
+            # mountDir 应当自己 create_directories 建出来再挂。
+            fresh_marker = fresh_dir / "ll-smoke-fresh"
+            code, out = self._pty_ll_cli(
+                "run", app_id, "--", "/bin/bash", "-c",
+                'echo "XDG_DATA_HOME=$XDG_DATA_HOME"; '
+                'touch "$HOME/.local/share/ll-smoke-fresh"',
+                timeout=180, env={**env, "XDG_DATA_HOME": str(fresh_dir)})
+            if code != 0:
+                raise AssertionError(
+                    f"XDG_DATA_HOME 指向不存在的目录时运行失败: rc={code} "
+                    f"{out[-400:]!r}")
+            if not fresh_dir.is_dir():
+                raise AssertionError(
+                    f"不存在的 XDG_DATA_HOME 没被自动创建: {fresh_dir}")
+            if not fresh_marker.exists():
+                raise AssertionError(
+                    f"自动创建的 XDG_DATA_HOME 没挂进容器: {fresh_dir}")
+        finally:
+            self._cleanup_containers(app_id)
+            shutil.rmtree(workdir, ignore_errors=True)
+            if workdir.exists():
+                self._run_cmd(["rm", "-rf", str(workdir)], sudo=True,
+                              check=False)
+            if workdir.exists():
+                raise AssertionError(f"临时 XDG 目录没清干净: {workdir}")
+
     def test_runtime_config_env_injection(self):
         app_id = CALENDAR_APP_ID
         workdir = Path(tempfile.mkdtemp(prefix="rtenvprobe-"))

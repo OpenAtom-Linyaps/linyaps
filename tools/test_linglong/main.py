@@ -282,6 +282,8 @@ class SmokeTest(
             ("configure_smoke_repositories",),
         ),
         ("upgrade 的依赖与清理选项", "test_upgrade_deps_prune_options", "命令覆盖"),
+        # 错误码 -> 提示语的映射：只触发失败、不改系统状态，随时可跑。
+        ("错误码对应的提示语", "test_error_code_messages", "命令覆盖"),
         # ── 覆盖率补强用例（第三批）──
         # 这三个不依赖 demo 产物，也不改变已安装应用，放最后最安全。
         # peer 模式走 ll-cli 自建的 package-manager，与 dbus 服务是两套代码；

@@ -17,6 +17,7 @@ import time
 from pathlib import Path
 
 from ..constants import (
+    LL_CLI,
     SMOKE_REPO_NAME,
     SMOKE_REPO_URL,
     DEMO_APP_ID,
@@ -454,6 +455,108 @@ class CommandSteps:
                 raise AssertionError(f"upgrade {name} 崩溃了")
             if not (r.stderr.strip() or r.stdout.strip()):
                 raise AssertionError(f"upgrade {name} 失败但无任何输出")
+
+    # ── Test: 错误码到提示语的映射 ──
+    #
+    # cli.cpp 里 handleInstallError / handleUninstallError / handleUpgradeError
+    # 是按错误码查表给提示的（AppInstallNotFoundFromRemote、
+    # AppUninstallBaseOrRuntime、AppUpgradeFailed…），只有错误真的发生才会走到
+    # 对应的 case。已有用例只断言"非 0 退出、有输出、不崩"，提示语本身对不对
+    # 没人管，实测这几个 handler 的覆盖率只有 20%~47%：
+    # handleUpgradeError 20.0%、handleUninstallError 28.1%、handleCommonError 35.3%
+    #
+    # 顺带覆盖 Cli::content 的非 app 分支（只有 app 才有 exported contents）
+    # 和 Cli::info 的"找不到"分支。
+    #
+    # 统一加 LC_ALL=C.UTF-8：这些提示语都是可翻译串，断言中文等于把机器的
+    # 语言环境写死；C.UTF-8 下打出来的英文就是 po/ 里的 msgid，稳定，还能顺带
+    # 发现漏翻。别用纯 C：编码不是 UTF-8，Qt 会额外打一段 locale 警告。
+    def test_error_code_messages(self):
+        def cli_c(*args, **kwargs):
+            return self._run_cmd(["env", "LC_ALL=C.UTF-8", LL_CLI, *args],
+                                 sudo=True, **kwargs)
+
+        # 仓库服务器偶尔抽风，会把"应用不存在"变成"网络失败"
+        # （实测 5 次里 1 次）。这不是被测代码的问题，重试；还不行就按
+        # 环境问题跳过并写清原因，别让冒烟因为机房网络变红。
+        NET_FLAKE = "Network connection failed"
+
+        def expect_failure(args, *needles, timeout=600):
+            cmd = "ll-cli " + " ".join(args)
+            out = ""
+            for attempt in range(1, 4):
+                r = cli_c(*args, check=False, timeout=timeout)
+                out = "\n".join(x for x in (r.stdout, r.stderr) if x)
+                if r.returncode == 0:
+                    raise AssertionError(
+                        f"{cmd} 应该失败却返回 0：{out[-300:]!r}")
+                if r.returncode < 0:
+                    raise AssertionError(f"{cmd} 被信号杀死 (rc={r.returncode})")
+                if all(needle in out for needle in needles):
+                    return out
+                if NET_FLAKE not in out:
+                    break
+                print(f"  仓库服务器抖动，重试 {cmd}（第 {attempt} 次）")
+            if NET_FLAKE in out:
+                raise StepSkipped(
+                    f"{cmd} 连续报网络失败，属于环境问题（仓库服务器不稳），"
+                    f"不是被测代码的问题：{out[-200:]!r}")
+            raise AssertionError(
+                f"{cmd} 的提示里没有 {needles!r}：{out[-300:]!r}")
+
+        # 远端没有这个应用：AppInstallNotFoundFromRemote
+        expect_failure(["install", "org.deepin.nonexistent.app"],
+                       "is not found in remote repo")
+
+        # 装比已装版本旧的：AppInstallNeedDowngrade
+        # 提示语必须给出手动覆盖安装的办法（--force），否则用户没法自救。
+        installed = None
+        r = self._ll_cli("list", check=False, timeout=180)
+        for line in (r.stdout or "").splitlines():
+            if CALENDAR_APP_ID in line:
+                m = re.search(r"\b(\d+\.\d+\.\d+\.\d+)\b", line)
+                if m:
+                    installed = m.group(1)
+                    break
+        if installed is None:
+            print(f"  {CALENDAR_APP_ID} 当前未安装，跳过降级提示语")
+        else:
+            def vkey(v):
+                return tuple(int(x) for x in v.split("."))
+
+            older = [v for v in self._available_versions(CALENDAR_APP_ID)
+                     if vkey(v) < vkey(installed)]
+            if not older:
+                print(f"  仓库里没有比已装 {installed} 更旧的版本，跳过降级提示语")
+            else:
+                target = min(older, key=vkey)
+                expect_failure(["install", f"{CALENDAR_APP_ID}/{target}"],
+                               "latest version", "--force")
+                # 失败的这次安装不能把已装版本改掉
+                r = self._ll_cli("list", check=False, timeout=180)
+                if installed not in (r.stdout or ""):
+                    raise AssertionError(
+                        f"尝试安装旧版 {target} 后，已装版本应仍是 {installed}："
+                        f"{(r.stdout or '')[-300:]!r}")
+
+        # 卸载没装的应用：AppUninstallNotFoundFromLocal
+        expect_failure(["uninstall", "org.no.such.app"], "is not installed")
+
+        # 直接卸 base/runtime：AppUninstallBaseOrRuntime，提示指向 prune
+        # ⚠️ 别加 --force：实测会把 base 真的卸掉，后面的用例全废。
+        expect_failure(["uninstall", "org.deepin.base"],
+                       "cannot be uninstalled", "prune")
+
+        # 升级没装的应用：handleUpgradeError 的默认分支
+        expect_failure(["upgrade", "org.no.such.app"], "is not installed")
+
+        # content 传 base：Cli::content 里只允许 app
+        expect_failure(["content", "org.deepin.base"],
+                       "Only supports viewing app content")
+
+        # info 不存在的应用：Cli::info 的"找不到"分支
+        expect_failure(["info", "org.no.such.app"],
+                       "Cannot find such application")
 
     # ── Test: --no-dbus（peer-to-peer 模式）──
     #

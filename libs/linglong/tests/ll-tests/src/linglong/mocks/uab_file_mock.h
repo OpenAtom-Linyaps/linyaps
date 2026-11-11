@@ -5,6 +5,7 @@
 #include "linglong/package/uab_file.h"
 #include "linglong/utils/error/error.h"
 
+#include <filesystem>
 #include <functional>
 #include <string>
 
@@ -30,6 +31,24 @@ public:
         elf_version(EV_CURRENT);
         auto *elf = elf_begin(this->UABFile::fd, ELF_C_READ, nullptr);
         this->UABFile::e = elf;
+    }
+
+    explicit MockUabFile(const std::filesystem::path &path)
+        : MockUabFile(path.string())
+    {
+    }
+
+    [[nodiscard]] utils::error::Result<GElf_Shdr>
+    testGetSectionHeader(const QString &section) const noexcept
+    {
+        return UABFile::getSectionHeader(section);
+    }
+
+    [[nodiscard]] utils::error::Result<std::string> testReadSectionData(const QString &section,
+                                                                        std::size_t offset,
+                                                                        std::size_t size) noexcept
+    {
+        return UABFile::readSectionData(section, offset, size);
     }
 
 protected:

@@ -192,6 +192,12 @@ class SmokeTest(
             ("configure_smoke_repositories",),
         ),
         (
+            "自定义 XDG 目录映射到家目录",
+            "test_run_custom_xdg_dirs",
+            "运行时覆盖",
+            ("test_demo_install_and_run",),
+        ),
+        (
             "TTY 透传与信号转发",
             "test_tty_and_signal_forwarding",
             "运行时覆盖",

@@ -993,202 +993,206 @@ msgstr "Executar em modo de depuração (ativar módulo de desenvolvimento)"
 
 #: ../apps/ll-builder/src/main.cpp:586
 msgid "Specify extension(s) used by the app to run"
-msgstr ""
+msgstr "Especifique as extensões usadas pela aplicação para execução"
 
 #: ../apps/ll-builder/src/main.cpp:592
 msgid "List built linyaps app"
-msgstr ""
+msgstr "Listar as aplicações Linyaps criadas"
 
 #: ../apps/ll-builder/src/main.cpp:593
 msgid "Usage: ll-builder list [OPTIONS]"
-msgstr ""
+msgstr "Uso: ll-builder list [OPÇÕES]"
 
 #: ../apps/ll-builder/src/main.cpp:594
 msgid "Remove built linyaps app"
-msgstr ""
+msgstr "Remover aplicações Linyaps criadas"
 
 #: ../apps/ll-builder/src/main.cpp:595
 msgid "Usage: ll-builder remove [OPTIONS] [APP...]"
-msgstr ""
+msgstr "Uso: ll-builder remove [OPÇÕES] [APP...]"
 
 #: ../apps/ll-builder/src/main.cpp:598
 msgid "Do not clean objects files before remove apps"
-msgstr ""
+msgstr "Não limpar os ficheiros objeto antes de remover as aplicações"
 
 #. build export
 #: ../apps/ll-builder/src/main.cpp:602
 msgid "Export to linyaps layer or UAB"
-msgstr ""
+msgstr "Exportar para uma layer Linyaps ou UAB"
 
 #: ../apps/ll-builder/src/main.cpp:603
 msgid "Usage: ll-builder export [OPTIONS]"
-msgstr ""
+msgstr "Uso: ll-builder export [OPÇÕES]"
 
 #: ../apps/ll-builder/src/main.cpp:615
 msgid "Uab icon (optional)"
-msgstr ""
+msgstr "Ícone do Uab (opcional)"
 
 #: ../apps/ll-builder/src/main.cpp:620
 msgid "Export to linyaps layer file (deprecated)"
-msgstr ""
+msgstr "Exportar para ficheiro de layer Linyaps (obsoleto)"
 
 #: ../apps/ll-builder/src/main.cpp:623
 msgid "Export an executable UABX file"
-msgstr ""
+msgstr "Exportar um ficheiro UABX executável"
 
 #: ../apps/ll-builder/src/main.cpp:627
 msgid "Use custom loader"
-msgstr ""
+msgstr "Usar carregador personalizado"
 
 #: ../apps/ll-builder/src/main.cpp:635
 msgid "Don't export the develop module"
-msgstr ""
+msgstr "Não exportar o módulo de desenvolvimento"
 
 #: ../apps/ll-builder/src/main.cpp:637
 msgid "Output file"
-msgstr ""
+msgstr "Ficheiro de output"
 
 #: ../apps/ll-builder/src/main.cpp:641
 msgid "Reference of the package"
-msgstr ""
+msgstr "Referência do pacote"
 
 #: ../apps/ll-builder/src/main.cpp:646
 msgid "Modules to export"
-msgstr ""
+msgstr "Módulos para exportar"
 
 #: ../apps/ll-builder/src/main.cpp:654
 msgid "Push linyaps app to remote repo"
-msgstr ""
+msgstr "Enviar aplicação Linyaps para repositório remoto"
 
 #: ../apps/ll-builder/src/main.cpp:655
 msgid "Usage: ll-builder push [OPTIONS]"
-msgstr ""
+msgstr "Uso: ll-builder push [OPÇÕES]"
 
 #: ../apps/ll-builder/src/main.cpp:659
 msgid "Remote repo url"
-msgstr ""
+msgstr "URL do repositório remoto"
 
 #: ../apps/ll-builder/src/main.cpp:662
 msgid "Remote repo name"
-msgstr ""
+msgstr "Nome do repositório remoto"
 
 #: ../apps/ll-builder/src/main.cpp:665
 msgid "Push single module"
-msgstr ""
+msgstr "Enviar um único módulo"
 
 #: ../apps/ll-builder/src/main.cpp:669
 msgid "Import linyaps layer to build repo"
-msgstr ""
+msgstr "Importar layer linyaps para repositório de build"
 
 #: ../apps/ll-builder/src/main.cpp:670
 msgid "Usage: ll-builder import [OPTIONS] LAYER"
-msgstr ""
+msgstr "Uso: ll-builder import [OPÇÕES] CAMADA"
 
 #: ../apps/ll-builder/src/main.cpp:671 ../apps/ll-builder/src/main.cpp:688
 msgid "Layer file path"
-msgstr ""
+msgstr "Caminho do ficheiro layer"
 
 #: ../apps/ll-builder/src/main.cpp:678
 msgid "Import linyaps layer dir to build repo"
-msgstr ""
+msgstr "Importar pasta da layer linyaps para repositório de build"
 
 #: ../apps/ll-builder/src/main.cpp:680
 msgid "Usage: ll-builder import-dir PATH"
-msgstr ""
+msgstr "Uso: ll-builder import-dir PATH"
 
 #: ../apps/ll-builder/src/main.cpp:681
 msgid "Layer dir path"
-msgstr ""
+msgstr "Caminho da pasta layer"
 
 #. add build extract
 #: ../apps/ll-builder/src/main.cpp:686
 msgid "Extract linyaps layer to dir"
-msgstr ""
+msgstr "Extrair a layer Linyaps para um pasta"
 
 #: ../apps/ll-builder/src/main.cpp:687
 msgid "Usage: ll-builder extract [OPTIONS] LAYER DIR"
-msgstr ""
+msgstr "Uso: ll-builder extract [OPÇÕES] LAYER DIR"
 
 #: ../apps/ll-builder/src/main.cpp:691
 msgid "Destination directory"
-msgstr ""
+msgstr "Pasta de destino"
 
 #. add builder clean
 #: ../apps/ll-builder/src/main.cpp:695
 msgid "Clean build artifacts"
-msgstr ""
+msgstr "Limpar artefactos do build"
 
 #: ../apps/ll-builder/src/main.cpp:696
 msgid "Usage: ll-builder clean"
-msgstr ""
+msgstr "Uso: ll-builder clean"
 
 #: ../apps/ll-builder/src/main.cpp:710
 msgid "linyaps build tool version "
-msgstr ""
+msgstr "versão da ferramenta de build linyaps "
 
 #. Define command line options
 #: ../apps/ll-driver-detect/src/main.cpp:104
 msgid "Force installation even if recently reminded"
-msgstr ""
+msgstr "Forçar a instalação mesmo que tenha sido recentemente solicitada"
 
 #: ../apps/ll-driver-detect/src/main.cpp:107
 msgid "Check for drivers only without installing or notifying"
-msgstr ""
+msgstr "Verificar apenas os drivers sem instalar ou notificar"
 
 #: ../apps/ll-driver-detect/src/main.cpp:110
 msgid "Only install drivers without notifications"
-msgstr ""
+msgstr "Instalar apenas os drivers sem notificações"
 
 #: ../apps/ll-driver-detect/src/main.cpp:216
 msgid "Graphics Driver Available"
-msgstr ""
+msgstr "Driver Gráfico Disponível"
 
 #: ../apps/ll-driver-detect/src/main.cpp:217
 msgid ""
 "Graphics driver package is available that can improve performance for some Linyaps applications.\n"
 "Would you like to install it?"
 msgstr ""
+"Está disponível um pacote de driver gráfico que pode melhorar o desempenho de algumas aplicações Linyaps.\n"
+"Deseja instala-lo?"
 
 #: ../apps/ll-driver-detect/src/main.cpp:221
 msgid "Install Now"
-msgstr ""
+msgstr "Instalar Agora"
 
 #: ../apps/ll-driver-detect/src/main.cpp:221
 msgid "Don't Remind"
-msgstr ""
+msgstr "Não Relembrar"
 
 #: ../apps/ll-driver-detect/src/main.cpp:247
 msgid "Graphics Driver Installation Completed"
-msgstr ""
+msgstr "Instalação do Driver Gráfico Concluída"
 
 #: ../apps/ll-driver-detect/src/main.cpp:249
 msgid ""
 "Graphics driver package has been installed.\n"
 "Restart the Linyaps app to experience the performance improvement."
 msgstr ""
+"O pacote de driver gráfico foi instalado.\n"
+"Reinicie a aplicação Linyaps para utilizar a melhoria de desempenho."
 
 #: ../libs/linglong/src/linglong/common/cli/repo.cpp:36
 msgid "Usage: "
-msgstr ""
+msgstr "Uso: "
 
 #: ../libs/linglong/src/linglong/common/cli/repo.cpp:50
 msgid "Display or modify information of the repository currently using"
-msgstr ""
+msgstr "Mostrar ou modificar informações do repositório atualmente em uso"
 
 #: ../libs/linglong/src/linglong/common/cli/repo.cpp:55
 msgid "Add a new repository"
-msgstr ""
+msgstr "Adicionar um novo repositório"
 
 #: ../libs/linglong/src/linglong/common/cli/repo.cpp:57
 #: ../libs/linglong/src/linglong/common/cli/repo.cpp:68
 msgid "Specify the repo name"
-msgstr ""
+msgstr "Especifique o nome do repositório"
 
 #: ../libs/linglong/src/linglong/common/cli/repo.cpp:60
 #: ../libs/linglong/src/linglong/common/cli/repo.cpp:71
 #: ../libs/linglong/src/linglong/common/cli/repo.cpp:86
 msgid "Url of the repository"
-msgstr ""
+msgstr "Url do repositório"
 
 #: ../libs/linglong/src/linglong/common/cli/repo.cpp:63
 #: ../libs/linglong/src/linglong/common/cli/repo.cpp:77
@@ -1198,44 +1202,44 @@ msgstr ""
 #: ../libs/linglong/src/linglong/common/cli/repo.cpp:113
 #: ../libs/linglong/src/linglong/common/cli/repo.cpp:126
 msgid "Alias of the repo name"
-msgstr ""
+msgstr "Alias ​​do nome do repositório"
 
 #: ../libs/linglong/src/linglong/common/cli/repo.cpp:67
 msgid "Modify repository URL"
-msgstr ""
+msgstr "Modificar URL do repositório"
 
 #: ../libs/linglong/src/linglong/common/cli/repo.cpp:75
 msgid "Remove a repository"
-msgstr ""
+msgstr "Remover um repositório"
 
 #: ../libs/linglong/src/linglong/common/cli/repo.cpp:81
 msgid "Update the repository URL"
-msgstr ""
+msgstr "Atualizar a URL do repositório"
 
 #: ../libs/linglong/src/linglong/common/cli/repo.cpp:91
 msgid "Set a default repository name"
-msgstr ""
+msgstr "Defina um nome padrão para o repositório"
 
 #: ../libs/linglong/src/linglong/common/cli/repo.cpp:97
 msgid "Show repository information"
-msgstr ""
+msgstr "Mostrar informações do repositório"
 
 #: ../libs/linglong/src/linglong/common/cli/repo.cpp:101
 msgid "Set the priority of the repo"
-msgstr ""
+msgstr "Defina a prioridade do repositório"
 
 #: ../libs/linglong/src/linglong/common/cli/repo.cpp:106
 msgid "Priority of the repo"
-msgstr ""
+msgstr "Prioridade do repositório"
 
 #: ../libs/linglong/src/linglong/common/cli/repo.cpp:111
 msgid "Enable mirror for the repo"
-msgstr ""
+msgstr "Ativar mirror para o repositório"
 
 #: ../libs/linglong/src/linglong/common/cli/repo.cpp:119
 msgid "Region code for mirror selection, e.g. CN, US"
-msgstr ""
+msgstr "Código de região para seleção do mirror, ex: CN, US"
 
 #: ../libs/linglong/src/linglong/common/cli/repo.cpp:124
 msgid "Disable mirror for the repo"
-msgstr ""
+msgstr "Desativar mirror para o repositório"

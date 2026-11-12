@@ -6,7 +6,45 @@
 
 #include "linglong/common/socket.h"
 
+#include <linux/filter.h>
+#include <linux/seccomp.h>
+#include <sys/prctl.h>
+#include <sys/syscall.h>
+
+#include <cerrno>
+#include <cstddef>
+#include <filesystem>
+#include <iterator>
+
 #include <sys/socket.h>
+
+namespace {
+
+std::size_t countOpenFileDescriptors()
+{
+    return static_cast<std::size_t>(
+      std::distance(std::filesystem::directory_iterator{ "/proc/self/fd" },
+                    std::filesystem::directory_iterator{}));
+}
+
+bool denyIoctlWithSeccomp()
+{
+    struct sock_filter filter[] = {
+        BPF_STMT(BPF_LD | BPF_W | BPF_ABS, offsetof(struct seccomp_data, nr)),
+        BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, __NR_ioctl, 0, 1),
+        BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_ERRNO | (EIO & SECCOMP_RET_DATA)),
+        BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_ALLOW),
+    };
+
+    struct sock_fprog program{};
+    program.len = static_cast<unsigned short>(std::size(filter));
+    program.filter = filter;
+
+    return ::prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0) == 0
+      && ::prctl(PR_SET_SECCOMP, SECCOMP_MODE_FILTER, &program) == 0;
+}
+
+} // namespace
 
 class SocketFdTest : public ::testing::Test
 {
@@ -70,6 +108,80 @@ TEST_F(SocketFdTest, InvalidFileDescriptor)
     auto res = recvFdWithPayload(-1, 1024);
     EXPECT_FALSE(res.has_value());
     EXPECT_EQ(res.error(), "Invalid file descriptor");
+}
+
+TEST_F(SocketFdTest, EmptyPayloadTransferDoesNotLeakReceivedFileDescriptor)
+{
+    const auto child = fork();
+    ASSERT_NE(child, -1);
+
+    if (child == 0) {
+        close(sv[0]);
+        const auto descriptorsBefore = countOpenFileDescriptors();
+        const auto result = recvFdWithPayload(sv[1]);
+        if (!result.has_value()) {
+            _exit(1);
+        }
+        if (!result->payload.empty()) {
+            close(result->fd);
+            _exit(2);
+        }
+        if (countOpenFileDescriptors() != descriptorsBefore + 1) {
+            close(result->fd);
+            _exit(3);
+        }
+
+        close(result->fd);
+        if (countOpenFileDescriptors() != descriptorsBefore) {
+            _exit(4);
+        }
+
+        _exit(EXIT_SUCCESS);
+    }
+
+    close(sv[1]);
+    const auto result = sendFdWithPayload(sv[0], STDOUT_FILENO, {});
+    ASSERT_TRUE(result.has_value()) << result.error();
+
+    int status{ 0 };
+    ASSERT_EQ(waitpid(child, &status, 0), child);
+    ASSERT_TRUE(WIFEXITED(status));
+    EXPECT_EQ(WEXITSTATUS(status), EXIT_SUCCESS);
+}
+
+TEST_F(SocketFdTest, FionreadFailureDoesNotLeakReceivedFileDescriptor)
+{
+    const std::string payload{ "full" };
+    const auto child = fork();
+    ASSERT_NE(child, -1);
+
+    if (child == 0) {
+        close(sv[0]);
+        const auto descriptorsBefore = countOpenFileDescriptors();
+        if (!denyIoctlWithSeccomp()) {
+            _exit(1);
+        }
+
+        const auto result = recvFdWithPayload(sv[1], payload.size());
+        const auto descriptorsAfter = countOpenFileDescriptors();
+        if (result.has_value()
+            || result.error().find("FIONREAD socket failed") == std::string::npos) {
+            _exit(2);
+        }
+        if (descriptorsAfter != descriptorsBefore) {
+            _exit(3);
+        }
+
+        _exit(EXIT_SUCCESS);
+    }
+
+    const auto result = sendFdWithPayload(sv[0], STDOUT_FILENO, payload);
+    ASSERT_TRUE(result.has_value()) << result.error();
+
+    int status{ 0 };
+    ASSERT_EQ(waitpid(child, &status, 0), child);
+    ASSERT_TRUE(WIFEXITED(status));
+    EXPECT_EQ(WEXITSTATUS(status), EXIT_SUCCESS);
 }
 
 TEST_F(SocketFdTest, EmptyAncillaryData)

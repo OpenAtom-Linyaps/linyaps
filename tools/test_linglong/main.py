@@ -18,6 +18,7 @@ from .steps.runtime import RuntimeSteps
 from .steps.commands import CommandSteps
 from .steps.output import OutputSteps
 from .steps.service import ServiceSteps
+from .steps.signature import SignatureSteps
 
 
 class SmokeTest(
@@ -29,6 +30,7 @@ class SmokeTest(
     CommandSteps,
     OutputSteps,
     ServiceSteps,
+    SignatureSteps,
 ):
     STEPS = [
         ("清理并重置仓库", "reset_repositories", "仓库管理"),
@@ -87,6 +89,15 @@ class SmokeTest(
             "test_builder_push_errors",
             "构建器覆盖",
             ("create_demo_project",),
+        ),
+        # UAB 里的"签名"其实是两块东西：.note.uab.sig 是摘要（verify 自己重算
+        # 比对），linglong.bundle.sign 是外部签名包（我们只搬运不验签）。这条
+        # 用例用自制 tar 当载荷，覆盖 extractSignData 的读段/写盘/解包，不依赖
+        # 真实的签名工具，也不改动系统状态。
+        (
+            "UAB 外部签名数据的提取",
+            "test_uab_signature_data",
+            "签名与校验",
         ),
         (
             "安装并运行 demo 应用",

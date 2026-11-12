@@ -3642,6 +3642,8 @@ bool Cli::handleCommonError(const utils::error::Error &error)
 {
     auto presentation = commonPresentation(static_cast<utils::error::ErrorCode>(error.code()));
     if (!presentation) {
+        // 没登记提示语的码：保持原行为，把错误原样打出来
+        this->printer.printErr(error);
         return false;
     }
 

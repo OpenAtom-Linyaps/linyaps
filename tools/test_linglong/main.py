@@ -48,6 +48,14 @@ class SmokeTest(
             "应用构建",
             ("create_demo_project",),
         ),
+        # push 需要 demo 已经构建进本地仓库，所以要排在构建之后；
+        # 又因为要在项目目录里跑，必须早于「安装并运行 demo 应用」（那步会删项目目录）。
+        (
+            "push 到模拟仓库服务端",
+            "test_builder_push_to_mock_repo",
+            "应用构建",
+            ("test_demo_build_and_export",),
+        ),
         (
             "验证 demo DBus 环境变量",
             "test_demo_dbus_environment",

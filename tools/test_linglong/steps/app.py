@@ -69,7 +69,15 @@ class AppSteps:
         self._sudo_ll_cli("install", f"{CALENDAR_APP_ID}/{CALENDAR_VERSION}")
         self._sudo_ll_cli("upgrade", CALENDAR_APP_ID)
         proc = subprocess.Popen([LL_CLI, "run", CALENDAR_APP_ID])
-        time.sleep(5)
+        # 等容器真的起来再 kill：固定 sleep 5 秒在慢机器/覆盖率构建上不够，
+        # 容器还没建好就 kill 会报 "no container found"，这一步直接判失败，
+        # 后面依赖它的 7 个用例全被跳过。
+        deadline = time.time() + 60
+        while time.time() < deadline:
+            ps = self._ll_cli("ps", "--json", timeout=60, check=False)
+            if CALENDAR_APP_ID in (ps.stdout + ps.stderr):
+                break
+            time.sleep(2)
         self._run_cmd([LL_CLI, "kill", "-s", "9", CALENDAR_APP_ID], check=True)
         if proc.poll() is None:
             proc.kill()

@@ -1,0 +1,222 @@
+name: release publish
+
+on:
+  pull_request:
+    types: [labeled, closed]
+
+permissions: {}
+
+concurrency:
+  group: release-publish-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    if: >
+      (github.event.action == 'labeled' && startsWith(github.event.label.name, 'release/')) ||
+      (github.event.action == 'closed' && github.event.pull_request.merged == true && contains(join(github.event.pull_request.labels.*.name, ','), 'release/'))
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+      major: ${{ steps.release.outputs.major }}
+      minor: ${{ steps.release.outputs.minor }}
+      patch: ${{ steps.release.outputs.patch }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.action == 'closed' && github.event.pull_request.merge_commit_sha || github.event.pull_request.head.sha }}
+          fetch-depth: 1
+
+      - name: Determine release version
+        id: release
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t VERSIONS < <(
+            jq -r '.pull_request.labels[].name
+              | select(startswith("release/"))
+              | sub("^release/"; "")' "$GITHUB_EVENT_PATH"
+          )
+          if [[ "${#VERSIONS[@]}" -ne 1 ]]; then
+            echo "Exactly one release/X.Y.Z label is required." >&2
+            exit 1
+          fi
+          VERSION="${VERSIONS[0]}"
+          if [[ ! "$VERSION" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+            echo "Invalid release/X.Y.Z label: release/${VERSION}" >&2
+            exit 1
+          fi
+          {
+            echo "version=${VERSION}"
+            echo "major=${BASH_REMATCH[1]}"
+            echo "minor=${BASH_REMATCH[2]}"
+            echo "patch=${BASH_REMATCH[3]}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Validate release content
+        shell: bash
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+          MAJOR: ${{ steps.release.outputs.major }}
+          MINOR: ${{ steps.release.outputs.minor }}
+          PATCH: ${{ steps.release.outputs.patch }}
+        run: |
+          set -euo pipefail
+          CMAKE_VERSION="$(sed -n '/project(/,/)/p' CMakeLists.txt \
+            | sed -n 's/^[[:space:]]*VERSION[[:space:]]\+\([0-9.]\+\).*/\1/p' \
+            | head -n 1)"
+          RELEASE_FLAG="$(sed -n '/set(LINGLONG_RELEASE/,/)/p' CMakeLists.txt \
+            | sed -n 's/^[[:space:]]*\(ON\|OFF\)$/\1/p' \
+            | head -n 1)"
+          if [[ "$CMAKE_VERSION" != "$VERSION" ]]; then
+            echo "CMake version ${CMAKE_VERSION:-missing} does not match ${VERSION}." >&2
+            exit 1
+          fi
+          if [[ "$RELEASE_FLAG" != "ON" ]]; then
+            echo "LINGLONG_RELEASE must be ON." >&2
+            exit 1
+          fi
+
+          check_absent_ref() {
+            local kind="$1"
+            local ref="$2"
+            local description="$3"
+            local stderr_file
+            stderr_file="$(mktemp)"
+            set +e
+            git ls-remote --exit-code "$kind" origin "$ref" \
+              >/dev/null 2>"$stderr_file"
+            local status=$?
+            set -e
+            if [[ "$status" -eq 0 ]]; then
+              echo "${description} already exists." >&2
+              rm -f "$stderr_file"
+              return 1
+            fi
+            if [[ "$status" -ne 2 ]]; then
+              cat "$stderr_file" >&2
+              echo "Unable to query ${description}." >&2
+              rm -f "$stderr_file"
+              return 1
+            fi
+            rm -f "$stderr_file"
+          }
+
+          check_absent_ref --tags "refs/tags/${VERSION}" "tag ${VERSION}"
+          if [[ "$PATCH" == "0" ]]; then
+            check_absent_ref --heads "refs/heads/release/${MAJOR}.${MINOR}" \
+              "release branch release/${MAJOR}.${MINOR}"
+          fi
+
+          if [[ "$PATCH" == "0" ]]; then
+            NOTES_LABEL="${MAJOR}.${MINOR}"
+            ZH_HEADING="## ${NOTES_LABEL} 版本"
+            EN_HEADING="## Version ${NOTES_LABEL}"
+          else
+            ZH_HEADING="## ${VERSION} 版本"
+            EN_HEADING="## Version ${VERSION}"
+          fi
+
+          extract_section() {
+            local file="$1"
+            local heading="$2"
+            awk -v heading="$heading" '
+              $0 == heading { printing = 1 }
+              printing {
+                if (seen && /^## /) exit
+                print
+                seen = 1
+              }
+            ' "$file"
+          }
+
+          ZH_NOTES="$(extract_section docs/pages/guide/start/release_note.md "$ZH_HEADING")"
+          EN_NOTES="$(extract_section docs/pages/en/guide/start/release_note.md "$EN_HEADING")"
+          if [[ -z "$ZH_NOTES" || -z "$EN_NOTES" ]]; then
+            echo "Required release note section is missing." >&2
+            exit 1
+          fi
+
+  publish:
+    if: >
+      github.event.action == 'closed' &&
+      github.event.pull_request.merged == true
+    needs: validate
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          fetch-depth: 1
+
+      - name: Extract release notes
+        shell: bash
+        env:
+          VERSION: ${{ needs.validate.outputs.version }}
+          MAJOR: ${{ needs.validate.outputs.major }}
+          MINOR: ${{ needs.validate.outputs.minor }}
+          PATCH: ${{ needs.validate.outputs.patch }}
+        run: |
+          set -euo pipefail
+          if [[ "$PATCH" == "0" ]]; then
+            NOTES_LABEL="${MAJOR}.${MINOR}"
+            ZH_HEADING="## ${NOTES_LABEL} 版本"
+            EN_HEADING="## Version ${NOTES_LABEL}"
+          else
+            ZH_HEADING="## ${VERSION} 版本"
+            EN_HEADING="## Version ${VERSION}"
+          fi
+
+          extract_section() {
+            local file="$1"
+            local heading="$2"
+            awk -v heading="$heading" '
+              $0 == heading { printing = 1 }
+              printing {
+                if (seen && /^## /) exit
+                print
+                seen = 1
+              }
+            ' "$file"
+          }
+
+          ZH_NOTES="$(extract_section docs/pages/guide/start/release_note.md "$ZH_HEADING")"
+          EN_NOTES="$(extract_section docs/pages/en/guide/start/release_note.md "$EN_HEADING")"
+          printf '%s\n\n---\n\n%s\n' "$ZH_NOTES" "$EN_NOTES" > /tmp/release-notes.md
+
+      - name: Create release branch and tag
+        shell: bash
+        env:
+          VERSION: ${{ needs.validate.outputs.version }}
+          MAJOR: ${{ needs.validate.outputs.major }}
+          MINOR: ${{ needs.validate.outputs.minor }}
+          PATCH: ${{ needs.validate.outputs.patch }}
+        run: |
+          set -euo pipefail
+          SHA="$(git rev-parse HEAD)"
+          REFSPECS=("$VERSION")
+          if [[ "$PATCH" == "0" ]]; then
+            REFSPECS+=("${SHA}:refs/heads/release/${MAJOR}.${MINOR}")
+          fi
+          git tag -a "$VERSION" "$SHA" -m "release ${VERSION}"
+          git push --atomic origin "${REFSPECS[@]}"
+
+      - name: Create GitHub release
+        uses: actions/github-script@v8
+        env:
+          VERSION: ${{ needs.validate.outputs.version }}
+        with:
+          script: |
+            const fs = require('fs');
+            const version = process.env.VERSION;
+            await github.rest.repos.createRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: version,
+              name: version,
+              body: fs.readFileSync('/tmp/release-notes.md', 'utf8')
+            });

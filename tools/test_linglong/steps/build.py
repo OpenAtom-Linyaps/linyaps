@@ -17,6 +17,7 @@ import subprocess
 import sys
 import threading
 import time
+import urllib.request
 from pathlib import Path
 
 from ..constants import (
@@ -536,6 +537,141 @@ class BuildSteps:
             os.chdir(old_cwd)
             if workdir is not None:
                 shutil.rmtree(workdir, ignore_errors=True)
+
+    # ── Test: push 到模拟的仓库服务端 ──
+    #
+    # push 走的是固定的 HTTP 协议（api/http/client_swagger.json），CI 里没有
+    # 真实仓库服务端，所以原来只能覆盖"连不上"的失败分支。这里用
+    # mock_repo_server.py 起一个最小服务端，把登录、建上传任务、传 tar、
+    # 轮询状态四个接口实现掉：
+    #   - 正常路径能一路推完，pushToRemote 里那一大段分支才有覆盖；
+    #   - 再按需让它返回 code=500 / status=failed，把四个错误分支点出来。
+    # 断言不只看退出码：还要确认它真的把当前项目的 layer 打成 tar.gz 传上去，
+    # 否则"接口都调了但传了空包 / 传错 ref"这类问题会被漏掉。
+    def _mock_repo_start(self):
+        """启动 mock 仓库服务端，返回 (进程, 基址)。"""
+        script = Path(__file__).resolve().parent.parent / "mock_repo_server.py"
+        if not script.is_file():
+            raise RuntimeError(f"缺少 mock 仓库服务端脚本: {script}")
+        proc = subprocess.Popen(
+            [sys.executable, str(script), "--port", "0"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        deadline = time.time() + 15
+        while time.time() < deadline:
+            line = proc.stdout.readline()
+            if line.startswith("PORT="):
+                port = line.strip().split("=", 1)[1]
+                return proc, f"http://127.0.0.1:{port}"
+            if not line and proc.poll() is not None:
+                raise RuntimeError(
+                    f"mock 仓库服务端启动失败: {(proc.stderr.read() or '')[:400]}")
+        proc.kill()
+        proc.wait(timeout=10)
+        raise RuntimeError("mock 仓库服务端 15 秒内没打印端口")
+
+    @staticmethod
+    def _mock_repo_http(base, path, payload=None, timeout=10):
+        """GET（payload=None）或 POST 一个 JSON，返回解析后的 JSON。"""
+        data = json.dumps(payload).encode() if payload is not None else None
+        req = urllib.request.Request(
+            base + path,
+            data=data,
+            method="POST" if data is not None else "GET",
+            headers={"Content-Type": "application/json"} if data is not None else {},
+        )
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return json.loads(resp.read())
+
+    def test_builder_push_to_mock_repo(self):
+        old_cwd = os.getcwd()
+        proc = None
+        try:
+            proc, base = self._mock_repo_start()
+            os.chdir(DEMO_PROJECT_DIR)
+            push_env = {"LINGLONG_USERNAME": "smoke", "LINGLONG_PASSWORD": "smoke123"}
+
+            def push():
+                return self._ll_builder(
+                    "push", "--repo-url", base, "--repo-name", "smokemock",
+                    "--module", "binary", env=dict(push_env),
+                    timeout=300, check=False)
+
+            # ── 1) 正常路径：四个接口全走通 ──
+            r = push()
+            out = r.stdout + r.stderr
+            if r.returncode != 0:
+                raise AssertionError(
+                    f"push 到 mock 仓库失败: rc={r.returncode} {out[-400:]!r}")
+            if "pushed successfully" not in out.lower():
+                raise AssertionError(f"push 成功却没有成功提示: {out[-400:]!r}")
+
+            state = self._mock_repo_http(base, "/__state")
+            calls = state["calls"]
+            ops = [c["op"] for c in calls]
+            for need in ("sign-in", "upload-task", "upload-file", "task-status"):
+                if need not in ops:
+                    raise AssertionError(
+                        f"push 没走到 {need} 这一步，实际调用: {ops}")
+
+            sign_in = next(c for c in calls if c["op"] == "sign-in")
+            if sign_in["username"] != "smoke":
+                raise AssertionError(f"登录用户名没带上: {sign_in}")
+            if sign_in["password_len"] != len(push_env["LINGLONG_PASSWORD"]):
+                raise AssertionError(f"登录密码没带上: {sign_in}")
+
+            task = next(c for c in calls if c["op"] == "upload-task")
+            if task["repoName"] != "smokemock":
+                raise AssertionError(f"--repo-name 没送到服务端: {task}")
+            if not task["ref"].endswith("/x86_64/binary"):
+                raise AssertionError(f"上传的 ref 不对: {task['ref']!r}")
+
+            # 登录拿到的 token 要一路带到后续每个接口
+            issued = sign_in["token"]
+            if not issued:
+                raise AssertionError("sign-in 的服务端没发 token")
+            for c in calls:
+                if c["op"] == "sign-in":
+                    continue
+                if c.get("token") != issued:
+                    raise AssertionError(f"{c['op']} 没带上登录拿到的 token: {c}")
+
+            up = state["upload"]
+            # demo 项目只有一个可执行文件，打出来的 tar.gz 只有几百字节，
+            # 所以这里只校验"是 gzip 且有内容"，不设体积下限
+            if not up["gzip"] or up["size"] < 64:
+                raise AssertionError(f"上传的内容不像 tar.gz: {up}")
+            if up["filename"] != f"{DEMO_APP_ID}.tgz":
+                raise AssertionError(f"上传文件名不对: {up['filename']!r}")
+
+            # ── 2) 四个失败分支：服务端按需返回错误码 / failed 状态 ──
+            for mode, needle in (
+                ("signin-500", "sign error"),
+                ("task-500", "create task error"),
+                ("upload-500", "upload file error"),
+                ("status-failed", "An error occurred on the remote server"),
+            ):
+                self._mock_repo_http(base, "/__mode", {"mode": mode})
+                r = push()
+                out = r.stdout + r.stderr
+                if r.returncode == 0:
+                    raise AssertionError(f"服务端返回 {mode} 时 push 竟然成功了")
+                if r.returncode < 0:
+                    raise AssertionError(f"服务端返回 {mode} 时 push 崩溃了")
+                if needle not in out:
+                    raise AssertionError(
+                        f"{mode} 时没有给出预期提示 {needle!r}: {out[-400:]!r}")
+        finally:
+            os.chdir(old_cwd)
+            if proc is not None:
+                proc.terminate()
+                try:
+                    proc.wait(timeout=10)
+                except subprocess.TimeoutExpired:
+                    proc.kill()
+                    proc.wait(timeout=10)
 
 
     # ── Test: ll-builder remove --no-clean-objects ──

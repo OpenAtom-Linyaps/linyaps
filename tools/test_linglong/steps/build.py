@@ -1046,7 +1046,10 @@ class BuildSteps:
     # ⚠️ clean 在原来的冒烟里【一次都没跑过】（grep 结果为 0）。
     def test_builder_clean_create(self):
         workdir = Path(tempfile.mkdtemp(prefix="cleanprobe-"))
-        name = f"cleanprobe{os.getpid()}"
+        # create 的项目名会直接当 package.id 用，新版要求它是合法的 XDG
+        # desktop portal id（至少两段、点分隔）。以前光写 "cleanprobe<pid>"
+        # 会被 project_validation.cpp 的校验拒掉，create 直接失败。
+        name = f"org.deepin.smoke.cleanprobe{os.getpid()}"
         try:
             # create：生成模板项目
             r = self._ll_builder("create", name, cwd=str(workdir),

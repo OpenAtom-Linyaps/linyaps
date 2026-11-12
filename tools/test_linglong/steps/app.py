@@ -48,7 +48,8 @@ class AppSteps:
             self._sudo_ll_cli("install", uab_file)
             self._sudo_ll_cli("uninstall", DEMO_APP_ID, check=False)
             self._sudo_ll_cli("install", layer_file)
-            self._run_cmd([LL_CLI, "run", DEMO_APP_ID], timeout=10)
+            # 10 秒太紧：覆盖率插桩的二进制 + 首次容器冷启动，实测会擦线超时。
+            self._run_cmd([LL_CLI, "run", DEMO_APP_ID], timeout=30)
         finally:
             os.chdir(old_cwd)
             self._remove_demo_project_dir()

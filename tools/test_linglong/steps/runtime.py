@@ -18,6 +18,7 @@ from pathlib import Path
 from ..constants import (
     DEMO_APP_ID,
     CALENDAR_APP_ID,
+    CALENDAR_VERSION,
     LIBEXEC_DIR,
     LL_CLI,
 )
@@ -25,6 +26,15 @@ from ..models import RepoState, StepResult, StepSkipped
 
 
 class RuntimeSteps:
+
+    # 「安装、升级并运行日历应用」跑完会把日历卸载掉，但下面几个用例还要
+    # 拿它当现成的应用来跑 run。所以这里自己补装一次（已装则跳过报错）。
+    def _ensure_calendar_installed(self):
+        r = self._sudo_ll_cli("install", f"{CALENDAR_APP_ID}/{CALENDAR_VERSION}",
+                              timeout=600, check=False)
+        if r.returncode != 0 and "已经安装" not in (r.stdout + r.stderr):
+            raise AssertionError(
+                f"补装日历应用失败: {(r.stdout + r.stderr)[:300]}")
 
     # ── Test: ll-cli run 的运行期选项 ──
     #
@@ -1237,6 +1247,7 @@ class RuntimeSteps:
     #     --device covtest.io/class=covdev0
     # kind 里带等号会被 split 成 3 段而报 "invalid device format"（踩过）。
     def test_cdi_device_injection(self):
+        self._ensure_calendar_installed()
         spec_dir = "/tmp/smoke-cdi"
         shutil.rmtree(spec_dir, ignore_errors=True)
         os.makedirs(spec_dir, exist_ok=True)
@@ -1443,6 +1454,7 @@ class RuntimeSteps:
     #    实测：在 unshare -m 里 rm/ln /etc/resolv.conf 会直接改坏宿主机，
     #    导致 DNS 失效、ll-cli search 报 code 3001（已发生过并修复）。
     def test_display_env_branches(self):
+        self._ensure_calendar_installed()
         cases = (
             ("XAUTHORITY 假路径", {"XAUTHORITY": "/tmp/smoke-no-such-xauth"}),
             ("XAUTHORITY 空", {"XAUTHORITY": ""}),
@@ -1477,6 +1489,7 @@ class RuntimeSteps:
     #   run --run-context        直接吃一段 JSON（RunContextConfig）
     #   uninstall --prune/--all  为兼容旧 ll-cli 保留，已废弃但仍在解析
     def test_hidden_options(self):
+        self._ensure_calendar_installed()
         app = CALENDAR_APP_ID
         inst = f"smokehidden{os.getpid()}"
 
@@ -1500,6 +1513,10 @@ class RuntimeSteps:
         # root 不显式传 --privileged 也必须自动进入 privileged 模式：
         # 与宿主机共享 user namespace，并获得原有的 privilege capabilities。
         hostUserNs = self._run_cmd(["readlink", "/proc/self/ns/user"], sudo=True)
+        # 期望的 CapEff 从宿主机 root 现取，别写死常量（宿主 capability 集会变）
+        hostCapEff = self._run_cmd(
+            ["awk", "/^CapEff:/{print $2}", "/proc/self/status"], sudo=True)
+        hostCapEff = hostCapEff.stdout.strip()
         r = self._sudo_ll_cli(
             "run", app, "--instance", inst + "auto", "--", "/bin/sh", "-c",
             "printf 'USERNS=%s\\n' \"$(readlink /proc/self/ns/user)\"; "
@@ -1511,7 +1528,7 @@ class RuntimeSteps:
         if f"USERNS={hostUserNs.stdout.strip()}" not in r.stdout:
             raise AssertionError(
                 f"root 自动 privileged 未共享宿主机 user namespace: {r.stdout[:300]}")
-        if "CAPEFF=00000000800435fb" not in r.stdout:
+        if hostCapEff and f"CAPEFF={hostCapEff}" not in r.stdout:
             raise AssertionError(
                 f"root 自动 privileged capabilities 不匹配: {r.stdout[:300]}")
 

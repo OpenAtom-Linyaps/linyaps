@@ -18,6 +18,7 @@
 #include "ocppi/cli/crun/Crun.hpp"
 
 #include <CLI/CLI.hpp>
+#include <fmt/format.h>
 
 #include <QCoreApplication>
 #include <QDBusConnection>
@@ -258,6 +259,31 @@ auto runInitRunMode(ocppi::cli::CLI &cli, const CommandLineOptions &options) -> 
     return 0;
 }
 
+// The expected user is normally set by ll-package-manager.service. When the
+// daemon is started in another way (containers, CI runners, manual debugging)
+// the environment may not match, and the daemon used to exit without saying
+// why: log records only go to the journal here, and journald is frequently
+// unavailable in those environments. stderr is captured by systemd as well,
+// so report the misconfiguration there to keep it from being lost.
+auto checkRunningUser() -> bool
+{
+    const auto currentUser = qgetenv("USER");
+    if (currentUser == LINGLONG_USERNAME) {
+        return true;
+    }
+
+    fmt::print(stderr,
+               "ll-package-manager: must run as '{}', but the current USER is '{}'.\n"
+               "  - started by systemd: use ll-package-manager.service, which sets User={}\n"
+               "  - started manually:   run it as that user, e.g.\n"
+               "                        `sudo -u {} ll-package-manager`\n",
+               LINGLONG_USERNAME,
+               currentUser.isEmpty() ? "<unset>" : currentUser.constData(),
+               LINGLONG_USERNAME,
+               LINGLONG_USERNAME);
+    return false;
+}
+
 } // namespace
 
 auto main(int argc, char *argv[]) -> int
@@ -294,9 +320,7 @@ auto main(int argc, char *argv[]) -> int
     auto ret = QMetaObject::invokeMethod(
       QCoreApplication::instance(),
       [&ociRuntime, &options]() {
-          QString user = qgetenv("USER");
-          if (user != LINGLONG_USERNAME) {
-              LogE("PM is designed to run as {}", LINGLONG_USERNAME);
+          if (!checkRunningUser()) {
               QCoreApplication::exit(-1);
               return;
           }

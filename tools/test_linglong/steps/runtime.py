@@ -18,7 +18,6 @@ from pathlib import Path
 from ..constants import (
     DEMO_APP_ID,
     CALENDAR_APP_ID,
-    CALENDAR_VERSION,
     LIBEXEC_DIR,
     LL_CLI,
 )
@@ -30,11 +29,17 @@ class RuntimeSteps:
     # 「安装、升级并运行日历应用」跑完会把日历卸载掉，但下面几个用例还要
     # 拿它当现成的应用来跑 run。所以这里自己补装一次（已装则跳过报错）。
     def _ensure_calendar_installed(self):
-        r = self._sudo_ll_cli("install", f"{CALENDAR_APP_ID}/{CALENDAR_VERSION}",
-                              timeout=600, check=False)
-        if r.returncode != 0 and "已经安装" not in (r.stdout + r.stderr):
+        if CALENDAR_APP_ID in self._sudo_ll_cli("list", timeout=120,
+                                                check=False).stdout:
+            return
+
+        # 装最新版本即可：这些用例只需要一个能跑起来的现成应用。
+        # 指定旧版本会因为「已安装最新版本」之类的提示直接失败。
+        self._sudo_ll_cli("install", CALENDAR_APP_ID, timeout=600, check=False)
+        listed = self._sudo_ll_cli("list", timeout=120, check=False)
+        if CALENDAR_APP_ID not in listed.stdout:
             raise AssertionError(
-                f"补装日历应用失败: {(r.stdout + r.stderr)[:300]}")
+                f"补装日历应用失败: {(listed.stdout + listed.stderr)[:300]}")
 
     # ── Test: ll-cli run 的运行期选项 ──
     #

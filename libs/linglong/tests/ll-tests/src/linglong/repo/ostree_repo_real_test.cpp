@@ -6,6 +6,7 @@
 #include <gtest/gtest.h>
 
 #include "../../common/tempdir.h"
+#include "configure.h"
 #include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/package/fuzzy_reference.h"
 #include "linglong/package/layer_dir.h"
@@ -832,8 +833,10 @@ TEST_F(RealRepoExportTest, ExportDirRewritesApplicationEntriesInPlace)
 
     EXPECT_TRUE(std::filesystem::exists(desktop));
     EXPECT_TRUE(std::filesystem::exists(desktop.string() + ".linyaps.original"));
-    EXPECT_TRUE(
-      std::filesystem::exists(entries / "share" / "applications" / "com.example.app.desktop"));
+    // 导出的桌面文件落在哪个目录由构建期的 LINGLONG_EXPORT_PATH 决定：
+    // 默认是 share，deb 打包传的是 apps/share，这里不能写死。
+    const auto applicationsDir = std::string{ LINGLONG_EXPORT_PATH } + "/applications";
+    EXPECT_TRUE(std::filesystem::exists(entries / applicationsDir / "com.example.app.desktop"));
 }
 
 TEST_F(RealRepoExportTest, ExportAppBinariesCreatesExecutableWrapperAndSkipsOtherModules)

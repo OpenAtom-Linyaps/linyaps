@@ -26,7 +26,7 @@ parseInstallHookCommandLine(std::string_view line, std::string_view prefix);
 class InstallHookManager final
 {
 public:
-    InstallHookManager() = default;
+    explicit InstallHookManager(std::filesystem::path hooksDir = {});
     InstallHookManager(const InstallHookManager &) = delete;
     InstallHookManager(InstallHookManager &&) = delete;
     InstallHookManager &operator=(const InstallHookManager &) = delete;
@@ -40,6 +40,7 @@ public:
     utils::error::Result<void> executePostUninstallHooks(const std::string &appID) noexcept;
 
 private:
+    std::filesystem::path hooksDir_;
     std::vector<std::string> preInstallCommands;
     std::vector<std::string> postInstallCommands;
     std::vector<std::string> postUninstallCommands;

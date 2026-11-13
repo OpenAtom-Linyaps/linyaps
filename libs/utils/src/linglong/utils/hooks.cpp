@@ -37,6 +37,12 @@ constexpr std::string_view WHITESPACE_CHARS = " \t\n\r\f\v";
 
 } // namespace
 
+InstallHookManager::InstallHookManager(std::filesystem::path hooksDir)
+    : hooksDir_(hooksDir.empty() ? std::filesystem::path{ LINGLONG_INSTALL_HOOKS_DIR }
+                                 : std::move(hooksDir))
+{
+}
+
 utils::error::Result<std::optional<std::string>>
 details::parseInstallHookCommandLine(std::string_view line, std::string_view prefix)
 {
@@ -94,11 +100,10 @@ utils::error::Result<void> InstallHookManager::parseInstallHooks()
     LINGLONG_TRACE("Parsing install hooks");
 
     std::error_code ec;
-    for (const auto &entry : std::filesystem::directory_iterator(LINGLONG_INSTALL_HOOKS_DIR, ec)) {
+    for (const auto &entry : std::filesystem::directory_iterator(hooksDir_, ec)) {
         if (ec) {
-            return LINGLONG_ERR(
-              fmt::format("Failed to iterate directory {}", LINGLONG_INSTALL_HOOKS_DIR),
-              ec);
+            return LINGLONG_ERR(fmt::format("Failed to iterate directory {}", hooksDir_.string()),
+                                ec);
         }
 
         if (!std::filesystem::is_regular_file(entry.status(ec))) {

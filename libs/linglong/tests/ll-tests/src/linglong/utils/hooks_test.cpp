@@ -4,7 +4,12 @@
 
 #include <gtest/gtest.h>
 
+#include "common/tempdir.h"
 #include "linglong/utils/hooks.h"
+
+#include <filesystem>
+#include <fstream>
+#include <string>
 
 namespace linglong::utils::details {
 
@@ -107,6 +112,51 @@ TEST(InstallHookManagerTest, ParseInstallHooksMissingDirYieldsNoHooks)
     InstallHookManager manager;
     auto result = manager.parseInstallHooks();
     EXPECT_TRUE(result.has_value()) << result.error().message();
+}
+
+TEST(InstallHookManagerTest, ExecutesParsedHooksWithExpectedEnvironment)
+{
+    TempDir tempDir;
+    const auto hooksDir = tempDir.path() / "config.d";
+    std::filesystem::create_directories(hooksDir);
+
+    const auto hookFile = hooksDir / "ll-tests-hooks.conf";
+    std::ofstream out(hookFile);
+    ASSERT_TRUE(out.is_open()) << "cannot write install hook file " << hookFile;
+    out << "ll-pre-install=test \"$LINGLONG_UAB_PATH\" = /tmp/ll-tests.uab\n"
+        << "ll-post-install=test \"$LINGLONG_APPID\" = org.example.Hook && test "
+           "\"$LINGLONG_APP_INSTALL_PATH\" = /tmp/ll-tests-app\n"
+        << "ll-post-uninstall=test \"$LINGLONG_APPID\" = org.example.Hook\n";
+    out.close();
+
+    InstallHookManager manager(hooksDir);
+    auto parsed = manager.parseInstallHooks();
+    ASSERT_TRUE(parsed.has_value()) << parsed.error().message();
+    EXPECT_TRUE(manager.executeInstallHooks("/tmp/ll-tests.uab").has_value());
+    EXPECT_TRUE(
+      manager.executePostInstallHooks("org.example.Hook", "/tmp/ll-tests-app").has_value());
+    EXPECT_TRUE(manager.executePostUninstallHooks("org.example.Hook").has_value());
+}
+
+TEST(InstallHookManagerTest, ReportsFailingHookCommand)
+{
+    TempDir tempDir;
+    const auto hooksDir = tempDir.path() / "config.d";
+    std::filesystem::create_directories(hooksDir);
+
+    const auto hookFile = hooksDir / "ll-tests-failing-hooks.conf";
+    std::ofstream out(hookFile);
+    ASSERT_TRUE(out.is_open()) << "cannot write install hook file " << hookFile;
+    out << "ll-pre-install=false\n";
+    out.close();
+
+    InstallHookManager manager(hooksDir);
+    auto parsed = manager.parseInstallHooks();
+    ASSERT_TRUE(parsed.has_value()) << parsed.error().message();
+
+    auto result = manager.executeInstallHooks("/tmp/ll-tests.uab");
+    ASSERT_FALSE(result.has_value());
+    EXPECT_NE(result.error().message().find("Hook command 'false' failed"), std::string::npos);
 }
 
 } // namespace linglong::utils

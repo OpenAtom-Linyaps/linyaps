@@ -4,6 +4,7 @@
 
 #include "driver_detection_manager.h"
 
+#include "intel_media_driver_detector.h"
 #include "linglong/utils/cmd.h"
 #include "linglong/utils/log/log.h"
 #include "nvidia_driver_detector.h"
@@ -49,7 +50,8 @@ void DriverDetectionManager::registerDetectors()
     // Register NVIDIA detector
     detectors_.push_back(std::make_unique<NVIDIADriverDetector>());
 
-    // TODO: Add other driver detector
+    // Register Intel media (VAAPI) detector
+    detectors_.push_back(std::make_unique<IntelMediaDriverDetector>());
 
     LogD("Registered {} driver detectors", detectors_.size());
 }

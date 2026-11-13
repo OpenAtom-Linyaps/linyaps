@@ -792,8 +792,16 @@ TEST_F(RunContextTest, resolveHostDynamicPaths)
     }
 
     ASSERT_TRUE(config.hostDynamic.has_value());
-    EXPECT_EQ(config.hostDynamic->size(), expectedCount);
+    // resolveHostDynamic() mounts every existing entry of its internal paths
+    // array, and the packaging branch may add more directories to that list.
+    // Only assert a lower bound here and validate every produced mount below,
+    // so this test stays compatible with such patches.
+    EXPECT_GE(config.hostDynamic->size(), expectedCount);
     for (const auto &mount : *config.hostDynamic) {
+        EXPECT_EQ(mount.destination, mount.source);
+        EXPECT_EQ(mount.type, "bind");
+        ASSERT_TRUE(mount.options.has_value());
+        EXPECT_EQ(*mount.options, (std::vector<std::string>{ "rbind", "ro", "rslave" }));
         EXPECT_TRUE(mount.srcType.has_value());
     }
 }

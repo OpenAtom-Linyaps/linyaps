@@ -32,6 +32,8 @@ utils::error::Result<std::vector<SubuidRange>> parseSubuidRanges(std::istream &s
                                                                  uid_t uid,
                                                                  const std::string &name);
 utils::error::Result<std::vector<SubuidRange>> getSubuidRange(uid_t uid, bool isUid);
+utils::error::Result<std::vector<std::string>> buildIdMapArguments(
+  pid_t pid, uid_t hostID, uid_t namespaceID, const std::vector<SubuidRange> &ranges);
 
 } // namespace detail
 

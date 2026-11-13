@@ -48,13 +48,15 @@ OverlayFS::OverlayFS(std::vector<std::filesystem::path> lowerdirs,
                      std::optional<std::filesystem::path> upperdir,
                      std::optional<std::filesystem::path> workdir,
                      std::filesystem::path merged,
-                     OverlayMode mode)
+                     OverlayMode mode,
+                     std::string fuseOverlayfsCommand)
     : lowerdirs_(std::move(lowerdirs))
     , upperdir_(std::move(upperdir))
     , workdir_(std::move(workdir))
     , merged_(std::move(merged))
     , mounted_(false)
     , mode_(mode)
+    , fuseOverlayfsCommand_(std::move(fuseOverlayfsCommand))
 {
 }
 
@@ -157,7 +159,7 @@ bool OverlayFS::mountFUSEOverlay()
         options = fmt::format("lowerdir={}", lowerdirOption());
     }
 
-    auto res = utils::Cmd("fuse-overlayfs").exec({ "-o", options, merged_.string() });
+    auto res = utils::Cmd(fuseOverlayfsCommand_).exec({ "-o", options, merged_.string() });
     if (!res) {
         LogW("fuse-overlayfs mount failed: {}", res.error());
     }

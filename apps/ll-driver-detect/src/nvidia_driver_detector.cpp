@@ -17,8 +17,9 @@
 
 namespace linglong::driver::detect {
 
-NVIDIADriverDetector::NVIDIADriverDetector(std::string versionFilePath)
+NVIDIADriverDetector::NVIDIADriverDetector(std::string versionFilePath, std::string cliCommand)
     : versionFilePath_(std::move(versionFilePath))
+    , cliCommand_(std::move(cliCommand))
 {
 }
 
@@ -86,7 +87,7 @@ NVIDIADriverDetector::getPackageInfoFromRemoteRepo(const std::string &packageNam
     driverInfo.identify = getDriverIdentify();
     driverInfo.packageName = packageName;
     // Execute ll-cli search command to check driver package existence
-    auto ret = linglong::utils::Cmd("ll-cli").exec({ "--json", "search", packageName });
+    auto ret = linglong::utils::Cmd(cliCommand_).exec({ "--json", "search", packageName });
     if (!ret) {
         return LINGLONG_ERR("Search command failed: " + ret.error().message());
     }
@@ -198,7 +199,8 @@ NVIDIADriverDetector::getInstalledGraphicsDriverInfo(const std::string &packageN
     driverInfo.identify = getDriverIdentify();
     driverInfo.packageName = packageName;
 
-    auto listResult = linglong::utils::Cmd("ll-cli").exec({ "--json", "list", "--type=extension" });
+    auto listResult =
+      linglong::utils::Cmd(cliCommand_).exec({ "--json", "list", "--type=extension" });
     if (!listResult) {
         return LINGLONG_ERR(listResult);
     }

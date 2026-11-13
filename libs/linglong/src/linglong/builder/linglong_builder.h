@@ -141,8 +141,11 @@ protected:
     std::string layerExportFilename(const linglong::package::Reference &ref,
                                     const std::string &module);
     auto buildStageFetchSource() noexcept -> utils::error::Result<void>;
+    virtual std::filesystem::path builderHelperPath() const;
 
 private:
+    friend class BuilderMock;
+
     auto lockProject() noexcept -> utils::error::Result<void>;
     auto buildStagePrepare() noexcept -> utils::error::Result<void>;
     auto sourceCachePath() const -> std::filesystem::path;

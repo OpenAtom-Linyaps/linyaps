@@ -30,7 +30,8 @@ public:
               std::optional<std::filesystem::path> upperdir,
               std::optional<std::filesystem::path> workdir,
               std::filesystem::path merged,
-              OverlayMode mode);
+              OverlayMode mode,
+              std::string fuseOverlayfsCommand = "fuse-overlayfs");
     ~OverlayFS();
 
     bool mount();
@@ -61,6 +62,7 @@ private:
     std::filesystem::path merged_;
     bool mounted_;
     OverlayMode mode_;
+    std::string fuseOverlayfsCommand_;
 };
 
 } // namespace linglong::utils

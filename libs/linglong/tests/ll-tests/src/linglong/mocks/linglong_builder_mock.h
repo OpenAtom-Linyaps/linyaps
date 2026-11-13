@@ -14,8 +14,25 @@ namespace linglong::builder {
 class BuilderMock : public Builder
 {
 public:
+    using Builder::builderHelperPath;
+    using Builder::buildStageBuild;
+    using Builder::buildStageCommit;
     using Builder::buildStageFetchSource;
+    using Builder::buildStagePreBuild;
+    using Builder::buildStagePreCommit;
+    using Builder::buildStagePrepare;
+    using Builder::buildStagePullDependency;
+    using Builder::commitToLocalRepo;
+    using Builder::fixLocaltimeInOverlay;
+    using Builder::generateAppConf;
+    using Builder::generateBuildDependsScript;
+    using Builder::generateDependsScript;
+    using Builder::generateEntries;
+    using Builder::generateEntryScript;
+    using Builder::installFiles;
     using Builder::layerExportFilename;
+    using Builder::makeOverlay;
+    using Builder::processBuildDepends;
     using Builder::uabExportFilename;
 
     BuilderMock()

@@ -14,6 +14,7 @@
 #include <csignal>
 #include <cstdlib>
 #include <filesystem>
+#include <limits>
 #include <optional>
 #include <string>
 #include <vector>
@@ -223,4 +224,90 @@ TEST(NamespaceTest, GetSubuidRangeRejectsUnknownUser)
 
     EXPECT_FALSE(ranges.has_value());
     EXPECT_NE(ranges.error().message().find("failed to get user name"), std::string::npos);
+}
+
+TEST(NamespaceTest, BuildIdMapArgumentsSingleRange)
+{
+    auto args =
+      linglong::utils::detail::buildIdMapArguments(1234,
+                                                   1000,
+                                                   2000,
+                                                   { { .subuid = "100000", .count = "65536" } });
+
+    ASSERT_TRUE(args.has_value()) << args.error().message();
+    EXPECT_EQ(*args,
+              (std::vector<std::string>{ "1234", "2000", "1000", "1", "2001", "100000", "63536" }));
+}
+
+TEST(NamespaceTest, BuildIdMapArgumentsMultipleRanges)
+{
+    auto args = linglong::utils::detail::buildIdMapArguments(
+      42,
+      1000,
+      1000,
+      { { .subuid = "100000", .count = "2000" }, { .subuid = "200000", .count = "3000" } });
+
+    ASSERT_TRUE(args.has_value()) << args.error().message();
+    EXPECT_EQ(*args,
+              (std::vector<std::string>{ "42",
+                                         "1000",
+                                         "1000",
+                                         "1",
+                                         "1001",
+                                         "100000",
+                                         "1000",
+                                         "3001",
+                                         "200000",
+                                         "2000" }));
+}
+
+TEST(NamespaceTest, BuildIdMapArgumentsEmptyRanges)
+{
+    auto args = linglong::utils::detail::buildIdMapArguments(7, 1000, 1000, {});
+
+    ASSERT_TRUE(args.has_value()) << args.error().message();
+    EXPECT_EQ(*args, (std::vector<std::string>{ "7", "1000", "1000", "1" }));
+}
+
+TEST(NamespaceTest, BuildIdMapArgumentsRejectsInvalidCount)
+{
+    auto args = linglong::utils::detail::buildIdMapArguments(
+      1,
+      1000,
+      1000,
+      { { .subuid = "100000", .count = "not-a-number" } });
+
+    ASSERT_FALSE(args.has_value());
+    EXPECT_NE(args.error().message().find("invalid subuid count: not-a-number"), std::string::npos);
+}
+
+TEST(NamespaceTest, BuildIdMapArgumentsRejectsOutOfRangeCount)
+{
+    auto args = linglong::utils::detail::buildIdMapArguments(
+      1,
+      1000,
+      1000,
+      { { .subuid = "100000", .count = "999999999999999999999999999999" } });
+
+    ASSERT_FALSE(args.has_value());
+    EXPECT_NE(args.error().message().find("subuid count out of range"), std::string::npos);
+}
+
+TEST(NamespaceTest, BuildIdMapArgumentsKeepsExistingUnderflowBehavior)
+{
+    auto args =
+      linglong::utils::detail::buildIdMapArguments(1,
+                                                   1000,
+                                                   10,
+                                                   { { .subuid = "100000", .count = "5" } });
+
+    ASSERT_TRUE(args.has_value()) << args.error().message();
+    ASSERT_EQ(args->size(), 7);
+    EXPECT_EQ((*args)[0], "1");
+    EXPECT_EQ((*args)[1], "10");
+    EXPECT_EQ((*args)[2], "1000");
+    EXPECT_EQ((*args)[3], "1");
+    EXPECT_EQ((*args)[4], "11");
+    EXPECT_EQ((*args)[5], "100000");
+    EXPECT_EQ((*args)[6], std::to_string(std::numeric_limits<unsigned long>::max() - 4));
 }

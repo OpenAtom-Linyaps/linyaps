@@ -10,6 +10,7 @@
 #include "linglong/api/dbus/v1/task.h"
 #include "linglong/api/types/v1/CommonOptions.hpp"
 #include "linglong/api/types/v1/PackageInfoDisplay.hpp"
+#include "linglong/cli/error_presenter.h"
 #include "linglong/cli/interactive_notifier.h"
 #include "linglong/cli/printer.h"
 #include "linglong/common/cli/repo.h"
@@ -300,6 +301,9 @@ private:
     void handleUninstallError(const utils::error::Error &error);
     void handleUpgradeError(const utils::error::Error &error);
     bool handleCommonError(const utils::error::Error &error);
+    void presentError(ErrorOperation operation,
+                      const utils::error::Error &error,
+                      const std::string &packageId = {});
     bool handleSearchResult(const QVariantMap &result, const SearchOptions &options);
     bool printCommonResult(const QVariantMap &result);
 

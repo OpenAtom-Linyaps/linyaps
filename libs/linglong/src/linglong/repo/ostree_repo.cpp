@@ -2101,7 +2101,9 @@ utils::error::Result<void> OSTreeRepo::exportDir(const std::string &appID,
             auto info = QFileInfo(target_path.c_str());
             if ((info.path().contains("share/applications") && info.suffix() == "desktop")
                 || (info.path().contains("share/dbus-1") && info.suffix() == "service")
-                || (info.path().contains("share/systemd/user") && info.suffix() == "service")
+                || ((info.path().contains("share/systemd/user")
+                     || info.path().contains("lib/systemd/user"))
+                    && info.suffix() == "service")
                 || (info.path().contains("share/applications/context-menus"))) {
                 // We should not modify the files of the checked application directly, but
                 // should copy them and then modify.
@@ -3479,7 +3481,9 @@ utils::error::Result<void> OSTreeRepo::IniLikeFileRewrite(const QFileInfo &info,
 
     } else if (info.path().contains("share/dbus-1") && info.suffix() == "service") {
         return dbusServiceRewrite(info.absoluteFilePath(), id);
-    } else if (info.path().contains("share/systemd/user") && info.suffix() == "service") {
+    } else if ((info.path().contains("share/systemd/user")
+                || info.path().contains("lib/systemd/user"))
+               && info.suffix() == "service") {
         return systemdServiceRewrite(info.absoluteFilePath(), id);
     } else if (info.path().contains("share/applications/context-menus")
                && info.suffix() == "conf") {

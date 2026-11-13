@@ -86,7 +86,10 @@ NVIDIADriverDetector::getPackageInfoFromRemoteRepo(const std::string &packageNam
     driverInfo.identify = getDriverIdentify();
     driverInfo.packageName = packageName;
     // Execute ll-cli search command to check driver package existence
-    auto ret = linglong::utils::Cmd("ll-cli").exec({ "--json", "search", packageName });
+    // With --json, ll-cli prints every progress update as a separate JSON line on stdout
+    // before the result, which json::parse() below rejects; --no-progress leaves only the result.
+    auto ret =
+      linglong::utils::Cmd("ll-cli").exec({ "--json", "--no-progress", "search", packageName });
     if (!ret) {
         return LINGLONG_ERR("Search command failed: " + ret.error().message());
     }

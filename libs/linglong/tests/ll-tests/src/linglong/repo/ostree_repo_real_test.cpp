@@ -6,12 +6,14 @@
 #include <gtest/gtest.h>
 
 #include "../../common/tempdir.h"
+#include "configure.h"
 #include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/package/fuzzy_reference.h"
 #include "linglong/package/layer_dir.h"
 #include "linglong/package/reference.h"
 #include "linglong/package_manager/task.h"
 #include "linglong/repo/ostree_repo.h"
+#include "linglong/utils/finally/finally.h"
 
 #include <algorithm>
 #include <filesystem>
@@ -938,5 +940,141 @@ TEST_F(RealRepoExportTest, PriorityGroupsAliasesAndFallbackCandidates)
 } // namespace
 
 } // namespace
+
+TEST_F(RealRepoTest, FixExportAllEntriesRebuildsAndSkipsMatchingVersion)
+{
+    auto first = repo->fixExportAllEntries();
+    ASSERT_TRUE(first) << first.error().message();
+    EXPECT_TRUE(fs::exists(repoRoot / "entries"));
+    const auto versionFile = repoRoot / "entries" / ".version";
+    ASSERT_TRUE(fs::exists(versionFile));
+
+    // A matching version marker short-circuits the rebuild.
+    auto second = repo->fixExportAllEntries();
+    ASSERT_TRUE(second) << second.error().message();
+
+    // A stale marker forces another rebuild.
+    std::ofstream{ versionFile } << "stale-version";
+    auto third = repo->fixExportAllEntries();
+    ASSERT_TRUE(third) << third.error().message();
+    std::ifstream versionInput{ versionFile };
+    std::string version;
+    std::getline(versionInput, version);
+    EXPECT_FALSE(version.empty());
+    EXPECT_NE(version, "stale-version");
+}
+
+namespace {
+
+class RemoteModuleRepo : public OSTreeRepo
+{
+public:
+    RemoteModuleRepo(const std::filesystem::path &root, RepoConfigV2 config)
+        : OSTreeRepo(root, std::move(config))
+    {
+        auto initialized = this->init(true);
+        EXPECT_TRUE(initialized.has_value()) << initialized.error().message();
+    }
+
+    std::function<utils::error::Result<std::vector<PackageInfoV2>>(const FuzzyReference &,
+                                                                   const Repo &)>
+      onSearchRemote;
+
+    utils::error::Result<std::vector<PackageInfoV2>> searchRemote(const FuzzyReference &fuzzyRef,
+                                                                  const Repo &repo,
+                                                                  bool) const noexcept override
+    {
+        LINGLONG_TRACE("searchRemote");
+        if (onSearchRemote) {
+            return onSearchRemote(fuzzyRef, repo);
+        }
+        return LINGLONG_ERR("not mocked");
+    }
+};
+
+} // namespace
+
+TEST(RemoteModuleListTest, ReturnsSortedUniqueModulesFromRemoteSearch)
+{
+    TempDir tempDir;
+    auto root = tempDir.path() / "repo-root";
+    ASSERT_TRUE(fs::create_directories(root));
+    RemoteModuleRepo repo(root, makeRepoConfig());
+    auto ref = Reference::parse("stable:com.example.app/1.0.0/x86_64");
+    ASSERT_TRUE(ref) << ref.error().message();
+
+    repo.onSearchRemote = [](const FuzzyReference &, const Repo &) {
+        std::vector<PackageInfoV2> packages(3);
+        packages[0].packageInfoV2Module = "develop";
+        packages[1].packageInfoV2Module = "binary";
+        packages[2].packageInfoV2Module = "binary";
+        return packages;
+    };
+
+    auto modules = repo.getRemoteModuleList(*ref, makeRepoConfig().repos.front());
+
+    ASSERT_TRUE(modules) << modules.error().message();
+    EXPECT_EQ(*modules, (std::vector<std::string>{ "binary", "develop" }));
+}
+
+TEST(RemoteModuleListTest, EmptyRemoteSearchYieldsNoModules)
+{
+    TempDir tempDir;
+    auto root = tempDir.path() / "repo-root";
+    ASSERT_TRUE(fs::create_directories(root));
+    RemoteModuleRepo repo(root, makeRepoConfig());
+    auto ref = Reference::parse("stable:com.example.app/1.0.0/x86_64");
+    ASSERT_TRUE(ref) << ref.error().message();
+
+    repo.onSearchRemote = [](const FuzzyReference &, const Repo &) {
+        return std::vector<PackageInfoV2>{};
+    };
+
+    auto modules = repo.getRemoteModuleList(*ref, makeRepoConfig().repos.front());
+
+    ASSERT_TRUE(modules) << modules.error().message();
+    EXPECT_TRUE(modules->empty());
+}
+
+TEST_F(RealRepoExportTest, ExportAppEntriesExportsWhitelistedEntries)
+{
+    namespace fs = std::filesystem;
+    const fs::path dataDir{ LINGLONG_DATA_DIR };
+    const auto configFile = dataDir / "export-dirs.json";
+    std::error_code ec;
+    const bool dataDirExisted = fs::exists(dataDir, ec);
+    fs::create_directories(dataDir, ec);
+    if (ec) {
+        GTEST_SKIP() << "cannot create data directory " << dataDir << ": " << ec.message();
+    }
+    {
+        std::ofstream out(configFile);
+        out << R"({"export-paths":["share/applications"]})";
+        if (!out) {
+            GTEST_SKIP() << "cannot write " << configFile;
+        }
+    }
+
+    auto cleanup = linglong::utils::finally::finally([&] {
+        std::error_code cleanupEc;
+        fs::remove(configFile, cleanupEc);
+        if (!dataDirExisted) {
+            fs::remove(dataDir, cleanupEc);
+        }
+    });
+
+    auto item = importLayer("com.example.whitelist",
+                            "app",
+                            "binary",
+                            { "entries/share/applications/com.example.whitelist.desktop" },
+                            { "/usr/bin/whitelist" });
+    ASSERT_TRUE(item.has_value());
+
+    const auto entries = tempDir->path() / "entries";
+    auto exported = repo->exportAppEntries(entries, *item);
+    ASSERT_TRUE(exported.has_value()) << exported.error().message();
+    EXPECT_TRUE(std::filesystem::exists(entries / "share" / "applications"
+                                        / "com.example.whitelist.desktop"));
+}
 
 } // namespace linglong::repo::test

@@ -4,9 +4,14 @@
 
 #include <gtest/gtest.h>
 
+#include "common/tempdir.h"
 #include "linglong/common/socket.h"
 
+#include <filesystem>
+#include <string>
+
 #include <sys/socket.h>
+#include <unistd.h>
 
 class SocketFdTest : public ::testing::Test
 {
@@ -192,4 +197,70 @@ TEST_F(SocketFdTest, LargePayloadHandling)
     }
 
     waitpid(child, nullptr, 0);
+}
+
+TEST(SocketCreateTest, RejectsEmptyPath)
+{
+    auto res = createUnixSocket("");
+
+    EXPECT_FALSE(res.has_value());
+    EXPECT_EQ(res.error(), "Path cannot be empty");
+}
+
+TEST(SocketCreateTest, RejectsTooLongFilesystemPath)
+{
+    const std::string path(200, 'a');
+
+    auto res = createUnixSocket(path);
+
+    EXPECT_FALSE(res.has_value());
+    EXPECT_EQ(res.error(), "Path too long");
+}
+
+TEST(SocketCreateTest, RejectsTooLongAbstractPath)
+{
+    std::string path(200, 'a');
+    path.front() = '@';
+
+    auto res = createUnixSocket(path);
+
+    EXPECT_FALSE(res.has_value());
+    EXPECT_EQ(res.error(), "Path too long");
+}
+
+TEST(SocketCreateTest, CreatesFilesystemSocket)
+{
+    TempDir dir;
+    const auto path = dir.path() / "ll-socket";
+
+    auto res = createUnixSocket(path.string());
+
+    ASSERT_TRUE(res.has_value()) << res.error();
+    EXPECT_GE(*res, 0);
+    EXPECT_TRUE(std::filesystem::is_socket(path));
+    close(*res);
+    std::error_code ec;
+    std::filesystem::remove(path, ec);
+}
+
+TEST(SocketCreateTest, SupportsAbstractNamespace)
+{
+    const std::string path = "@ll-test-abstract-" + std::to_string(::getpid());
+
+    auto res = createUnixSocket(path);
+
+    ASSERT_TRUE(res.has_value()) << res.error();
+    EXPECT_GE(*res, 0);
+    close(*res);
+}
+
+TEST(SocketCreateTest, ReportsBindFailureForMissingParentDirectory)
+{
+    TempDir dir;
+    const auto path = dir.path() / "missing-parent" / "ll-socket";
+
+    auto res = createUnixSocket(path.string());
+
+    EXPECT_FALSE(res.has_value());
+    EXPECT_NE(res.error().find("Bind failed"), std::string::npos);
 }

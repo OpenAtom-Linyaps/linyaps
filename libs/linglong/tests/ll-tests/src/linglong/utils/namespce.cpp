@@ -149,8 +149,13 @@ TEST(NamespaceTest, GetSelfExeReturnsCurrentExecutable)
     auto self = linglong::utils::getSelfExe();
 
     ASSERT_TRUE(self.has_value()) << self.error().message();
-    EXPECT_TRUE(std::filesystem::exists(*self));
-    EXPECT_TRUE(std::filesystem::is_regular_file(*self));
+    EXPECT_FALSE(self->empty());
+    EXPECT_TRUE(std::filesystem::path(*self).is_absolute());
+
+    std::error_code ec;
+    auto procSelfExe = std::filesystem::read_symlink("/proc/self/exe", ec);
+    ASSERT_FALSE(ec) << "failed to read /proc/self/exe: " << ec.message();
+    EXPECT_EQ(std::filesystem::path(*self), procSelfExe);
 }
 
 TEST(NamespaceTest, NeedRunInNamespaceReportsCapabilityState)

@@ -477,6 +477,92 @@ protected:
 
 } // namespace
 
+TEST_F(ContainerBuilderCreateTest, CreateBuildContainerNormalizesTimezoneAndMountPoints)
+{
+    const auto baseRef = addBaseLayer("29.0.0");
+    runtime::RunContext context(*repo);
+
+    api::types::v1::RunContextConfig config;
+    config.version = "1";
+    config.base = baseRef.toString();
+    config.timezone = "Asia/Shanghai";
+    config.mounts = std::vector<api::types::v1::Mount>{
+        { .destination = "/etc/created-file",
+          .source = "/host/file",
+          .srcType = "file",
+          .type = "bind" },
+        { .destination = "/var/created-dir",
+          .source = "/host/dir",
+          .srcType = "dir",
+          .type = "bind" },
+        { .destination = "/etc/replaced-dir",
+          .source = "/host/file",
+          .srcType = "file",
+          .type = "bind" },
+        { .destination = "/var/replaced-file",
+          .source = "/host/dir",
+          .srcType = "dir",
+          .type = "bind" },
+    };
+    config.hostDynamic = std::vector<api::types::v1::Mount>{
+        { .destination = "/run/dynamic-file",
+          .source = "/host/dynamic",
+          .srcType = "file",
+          .type = "bind" },
+    };
+    auto resolved = context.resolve(config);
+    ASSERT_TRUE(resolved) << resolved.error().message();
+
+    const auto basePath = tempDir->path() / "build-base-normalized";
+    std::filesystem::create_directories(basePath / "files" / "etc" / "replaced-dir");
+    std::filesystem::create_directories(basePath / "files" / "var");
+    std::ofstream{ basePath / "files" / "var" / "replaced-file" } << "old";
+    std::filesystem::create_directories(basePath / "files" / "etc" / "localtime");
+
+    runtime::BuilderContainerOptions options;
+    options.basePath = basePath / "files";
+    options.common.containerCachePath = tempDir->path() / "build-cache-normalized";
+    std::filesystem::create_directories(*options.common.containerCachePath);
+
+    auto container = builder->createBuildContainer(context, options);
+    ASSERT_TRUE(container) << container.error().message();
+
+    const auto &rootfs = options.basePath;
+    EXPECT_TRUE(std::filesystem::is_regular_file(rootfs / "etc" / "created-file"));
+    EXPECT_TRUE(std::filesystem::is_directory(rootfs / "var" / "created-dir"));
+    EXPECT_TRUE(std::filesystem::is_regular_file(rootfs / "etc" / "replaced-dir"));
+    EXPECT_TRUE(std::filesystem::is_directory(rootfs / "var" / "replaced-file"));
+    EXPECT_TRUE(std::filesystem::is_regular_file(rootfs / "run" / "dynamic-file"));
+    EXPECT_TRUE(std::filesystem::is_symlink(rootfs / "etc" / "localtime"));
+}
+
+TEST_F(ContainerBuilderCreateTest, CreateBuildContainerRejectsMountOutsideRootfs)
+{
+    const auto baseRef = addBaseLayer("30.0.0");
+    runtime::RunContext context(*repo);
+
+    api::types::v1::RunContextConfig config;
+    config.version = "1";
+    config.base = baseRef.toString();
+    config.mounts = std::vector<api::types::v1::Mount>{
+        { .destination = "/../escaped", .source = "/host/file", .srcType = "file", .type = "bind" },
+    };
+    auto resolved = context.resolve(config);
+    ASSERT_TRUE(resolved) << resolved.error().message();
+
+    const auto basePath = tempDir->path() / "build-base-escaped";
+    std::filesystem::create_directories(basePath / "files");
+    runtime::BuilderContainerOptions options;
+    options.basePath = basePath / "files";
+    options.common.containerCachePath = tempDir->path() / "build-cache-escaped";
+    std::filesystem::create_directories(*options.common.containerCachePath);
+
+    auto container = builder->createBuildContainer(context, options);
+    ASSERT_FALSE(container);
+    EXPECT_THAT(container.error().message(), testing::HasSubstr("outside rootfs"));
+    EXPECT_FALSE(std::filesystem::exists(tempDir->path() / "escaped"));
+}
+
 TEST_F(ContainerBuilderCreateTest, CreateRunContainerBuildsBundleAndRunsRuntime)
 {
     const auto baseRef = addBaseLayer("23.0.0");

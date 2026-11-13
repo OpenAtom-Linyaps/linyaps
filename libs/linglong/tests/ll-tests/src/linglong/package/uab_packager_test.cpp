@@ -383,6 +383,103 @@ TEST(UABPackagerTest, PackEndToEndWithValidLayers)
     EXPECT_NE(permissions & std::filesystem::perms::owner_exec, std::filesystem::perms::none);
 }
 
+namespace {
+
+struct ExecLayerFixture
+{
+    TempDir dir;
+    std::filesystem::path path;
+
+    ExecLayerFixture(const std::string &kind, const std::string &id, bool withCommand)
+        : dir("uab-exec-layer-")
+    {
+        path = dir.path() / "layer";
+        std::filesystem::create_directories(path / "files" / "usr" / "bin");
+        std::ofstream{ path / "files" / "usr" / "bin" / "demo" } << "binary";
+
+        api::types::v1::PackageInfoV2 info;
+        info.id = id;
+        info.version = "1.0.0";
+        info.arch = { "x86_64" };
+        info.kind = kind;
+        info.packageInfoV2Module = "binary";
+        info.channel = "main";
+        if (withCommand) {
+            info.command = std::vector<std::string>{
+                "/opt/apps/" + id + "/files/usr/bin/demo",
+            };
+        }
+        std::ofstream{ path / "info.json" } << nlohmann::json(info).dump();
+    }
+};
+
+std::filesystem::path makeUabHeader(TempDir &dir)
+{
+    auto header = dir.path() / "header.elf";
+    std::filesystem::copy_file("/proc/self/exe", header);
+    return header;
+}
+
+} // namespace
+
+TEST(UABPackagerTest, PackExecModeUsesProvidedLoader)
+{
+    TempDir buildDir("uab-exec-build-");
+    TempDir headerDir("uab-exec-header-");
+    ExecLayerFixture base("base", "org.deepin.base", false);
+    ExecLayerFixture app("app", "com.example.app", false);
+
+    UABPackager packager(buildDir.path());
+    packager.setDefaultHeader(makeUabHeader(headerDir));
+    packager.setCompressor("lz4");
+    auto loader = buildDir.path() / "loader";
+    std::ofstream{ loader } << "custom loader";
+    packager.setLoader(loader);
+    ASSERT_TRUE(packager.appendLayer(LayerDir{ base.path }).has_value());
+    ASSERT_TRUE(packager.appendLayer(LayerDir{ app.path }).has_value());
+
+    auto output = buildDir.path() / "exec.uab";
+    auto result = packager.pack(output, UABPackagerMode::Exec);
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+    EXPECT_TRUE(std::filesystem::exists(output));
+}
+
+TEST(UABPackagerTest, PackExecModeGeneratesLoaderWhenAppHasCommand)
+{
+    TempDir buildDir("uab-exec-build-");
+    TempDir headerDir("uab-exec-header-");
+    ExecLayerFixture base("base", "org.deepin.base", false);
+    ExecLayerFixture app("app", "com.example.app", true);
+
+    UABPackager packager(buildDir.path());
+    packager.setDefaultHeader(makeUabHeader(headerDir));
+    packager.setCompressor("lz4");
+    ASSERT_TRUE(packager.appendLayer(LayerDir{ base.path }).has_value());
+    ASSERT_TRUE(packager.appendLayer(LayerDir{ app.path }).has_value());
+
+    auto output = buildDir.path() / "exec.uab";
+    auto result = packager.pack(output, UABPackagerMode::Exec);
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+    EXPECT_TRUE(std::filesystem::exists(output));
+}
+
+TEST(UABPackagerTest, PackExecModeRequiresAppLayerWithoutLoader)
+{
+    TempDir buildDir("uab-exec-build-");
+    TempDir headerDir("uab-exec-header-");
+    ExecLayerFixture base("base", "org.deepin.base", false);
+
+    UABPackager packager(buildDir.path());
+    packager.setDefaultHeader(makeUabHeader(headerDir));
+    packager.setCompressor("lz4");
+    ASSERT_TRUE(packager.appendLayer(LayerDir{ base.path }).has_value());
+
+    auto output = buildDir.path() / "exec.uab";
+    auto result = packager.pack(output, UABPackagerMode::Exec);
+    ASSERT_FALSE(result.has_value());
+    EXPECT_THAT(result.error().message(), ::testing::HasSubstr("app layer is required"));
+}
+
 } // namespace
 
 } // namespace linglong::package

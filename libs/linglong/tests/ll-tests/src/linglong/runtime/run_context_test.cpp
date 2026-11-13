@@ -1554,4 +1554,322 @@ TEST_F(RunContextTest, FillContextCfgAppliesPermissionsEnvironmentAndDisplayHint
     auto unresolved = runtime::RunContext(*repo).fillContextCfg(builder, tempDir->path());
     EXPECT_FALSE(unresolved.has_value());
 }
+
+TEST_F(RunContextTest, resolveRunnableRejectsMalformedRuntime)
+{
+    LINGLONG_TRACE("resolveRunnableRejectsMalformedRuntime");
+
+    auto runnableRef = package::Reference::parse("stable:org.example.app/1.0.0/x86_64");
+    ASSERT_TRUE(runnableRef.has_value()) << runnableRef.error().message();
+
+    api::types::v1::RepositoryCacheLayersItem appItem;
+    appItem.info.id = "org.example.app";
+    appItem.info.version = "1.0.0";
+    appItem.info.kind = "app";
+    appItem.info.channel = "stable";
+    appItem.info.arch = { std::string{ "x86_64" } };
+    appItem.info.base = "org.deepin.base/23.0.0";
+    appItem.info.runtime = "invalid/runtime/ref/extra";
+
+    EXPECT_CALL(*repo, getLayerItem(*runnableRef, testing::_)).WillOnce(Return(appItem));
+
+    RunContext context(*repo);
+    auto result = context.resolve(*runnableRef);
+    ASSERT_FALSE(result.has_value());
+    EXPECT_THAT(result.error().message(), ::testing::HasSubstr("invalid fuzzy reference"));
+}
+
+TEST_F(RunContextTest, resolveRunnableReportsMissingRuntimeLayer)
+{
+    LINGLONG_TRACE("resolveRunnableReportsMissingRuntimeLayer");
+
+    auto runnableRef = package::Reference::parse("stable:org.example.app/1.0.0/x86_64");
+    ASSERT_TRUE(runnableRef.has_value()) << runnableRef.error().message();
+
+    api::types::v1::RepositoryCacheLayersItem appItem;
+    appItem.info.id = "org.example.app";
+    appItem.info.version = "1.0.0";
+    appItem.info.kind = "app";
+    appItem.info.channel = "stable";
+    appItem.info.arch = { std::string{ "x86_64" } };
+    appItem.info.base = "org.deepin.base/23.0.0";
+    appItem.info.runtime = "org.deepin.runtime/23.0.0";
+
+    EXPECT_CALL(*repo, getLayerItem(*runnableRef, testing::_)).WillOnce(Return(appItem));
+    EXPECT_CALL(*repo, clearReferenceLocal(testing::_, testing::_))
+      .WillOnce(Return(LINGLONG_ERR("runtime is not installed")));
+
+    RunContext context(*repo);
+    auto result = context.resolve(*runnableRef);
+    ASSERT_FALSE(result.has_value());
+    EXPECT_THAT(result.error().message(), ::testing::HasSubstr("ref doesn't exist"));
+}
+
+TEST_F(RunContextTest, resolveRunnableFailsWhenRuntimeLayerItemMissing)
+{
+    LINGLONG_TRACE("resolveRunnableFailsWhenRuntimeLayerItemMissing");
+
+    auto runnableRef = package::Reference::parse("stable:org.example.app/1.0.0/x86_64");
+    ASSERT_TRUE(runnableRef.has_value()) << runnableRef.error().message();
+    auto runtimeRef = package::Reference::parse("stable:org.deepin.runtime/23.0.0/x86_64");
+    ASSERT_TRUE(runtimeRef.has_value()) << runtimeRef.error().message();
+
+    api::types::v1::RepositoryCacheLayersItem appItem;
+    appItem.info.id = "org.example.app";
+    appItem.info.version = "1.0.0";
+    appItem.info.kind = "app";
+    appItem.info.channel = "stable";
+    appItem.info.arch = { std::string{ "x86_64" } };
+    appItem.info.base = "org.deepin.base/23.0.0";
+    appItem.info.runtime = "org.deepin.runtime/23.0.0";
+
+    EXPECT_CALL(*repo, getLayerItem(*runnableRef, testing::_)).WillOnce(Return(appItem));
+    EXPECT_CALL(*repo, clearReferenceLocal(testing::_, testing::_)).WillOnce(Return(*runtimeRef));
+    EXPECT_CALL(*repo, getLayerItem(*runtimeRef, testing::_))
+      .WillOnce(Return(LINGLONG_ERR("no cached item found")));
+
+    RunContext context(*repo);
+    auto result = context.resolve(*runnableRef);
+    ASSERT_FALSE(result.has_value());
+    EXPECT_THAT(result.error().message(), ::testing::HasSubstr("failed to create runtime layer"));
+}
+
+TEST_F(RunContextTest, resolveRunnableRejectsMalformedBase)
+{
+    LINGLONG_TRACE("resolveRunnableRejectsMalformedBase");
+
+    auto runnableRef = package::Reference::parse("stable:org.example.app/1.0.0/x86_64");
+    ASSERT_TRUE(runnableRef.has_value()) << runnableRef.error().message();
+
+    api::types::v1::RepositoryCacheLayersItem appItem;
+    appItem.info.id = "org.example.app";
+    appItem.info.version = "1.0.0";
+    appItem.info.kind = "app";
+    appItem.info.channel = "stable";
+    appItem.info.arch = { std::string{ "x86_64" } };
+    appItem.info.base = "invalid/base/ref/extra";
+
+    EXPECT_CALL(*repo, getLayerItem(*runnableRef, testing::_)).WillOnce(Return(appItem));
+
+    RunContext context(*repo);
+    auto result = context.resolve(*runnableRef);
+    ASSERT_FALSE(result.has_value());
+    EXPECT_THAT(result.error().message(), ::testing::HasSubstr("invalid fuzzy reference"));
+}
+
+TEST_F(RunContextTest, resolveRunnableReportsMissingBaseLayer)
+{
+    LINGLONG_TRACE("resolveRunnableReportsMissingBaseLayer");
+
+    auto runnableRef = package::Reference::parse("stable:org.example.app/1.0.0/x86_64");
+    ASSERT_TRUE(runnableRef.has_value()) << runnableRef.error().message();
+
+    api::types::v1::RepositoryCacheLayersItem appItem;
+    appItem.info.id = "org.example.app";
+    appItem.info.version = "1.0.0";
+    appItem.info.kind = "app";
+    appItem.info.channel = "stable";
+    appItem.info.arch = { std::string{ "x86_64" } };
+    appItem.info.base = "org.deepin.base/23.0.0";
+
+    EXPECT_CALL(*repo, getLayerItem(*runnableRef, testing::_)).WillOnce(Return(appItem));
+    EXPECT_CALL(*repo, clearReferenceLocal(testing::_, testing::_))
+      .WillOnce(Return(LINGLONG_ERR("base is not installed")));
+
+    RunContext context(*repo);
+    auto result = context.resolve(*runnableRef);
+    ASSERT_FALSE(result.has_value());
+    EXPECT_THAT(result.error().message(), ::testing::HasSubstr("base is not installed"));
+}
+
+TEST_F(RunContextTest, resolveRunnableFailsWhenBaseLayerItemMissing)
+{
+    LINGLONG_TRACE("resolveRunnableFailsWhenBaseLayerItemMissing");
+
+    auto runnableRef = package::Reference::parse("stable:org.example.app/1.0.0/x86_64");
+    ASSERT_TRUE(runnableRef.has_value()) << runnableRef.error().message();
+    auto baseRef = package::Reference::parse("stable:org.deepin.base/23.0.0/x86_64");
+    ASSERT_TRUE(baseRef.has_value()) << baseRef.error().message();
+
+    api::types::v1::RepositoryCacheLayersItem appItem;
+    appItem.info.id = "org.example.app";
+    appItem.info.version = "1.0.0";
+    appItem.info.kind = "app";
+    appItem.info.channel = "stable";
+    appItem.info.arch = { std::string{ "x86_64" } };
+    appItem.info.base = "org.deepin.base/23.0.0";
+
+    EXPECT_CALL(*repo, getLayerItem(*runnableRef, testing::_)).WillOnce(Return(appItem));
+    EXPECT_CALL(*repo, clearReferenceLocal(testing::_, testing::_)).WillOnce(Return(*baseRef));
+    EXPECT_CALL(*repo, getLayerItem(*baseRef, testing::_))
+      .WillOnce(Return(LINGLONG_ERR("no cached item found")));
+
+    RunContext context(*repo);
+    auto result = context.resolve(*runnableRef);
+    ASSERT_FALSE(result.has_value());
+    EXPECT_THAT(result.error().message(), ::testing::HasSubstr("failed to create runtime layer"));
+}
+
+TEST_F(RunContextTest, resolveRunnableRejectsMalformedManualExtension)
+{
+    LINGLONG_TRACE("resolveRunnableRejectsMalformedManualExtension");
+
+    auto runnableRef = package::Reference::parse("stable:org.example.extbase/1.0.0/x86_64");
+    ASSERT_TRUE(runnableRef.has_value()) << runnableRef.error().message();
+
+    api::types::v1::RepositoryCacheLayersItem baseItem;
+    baseItem.info.id = "org.example.extbase";
+    baseItem.info.version = "1.0.0";
+    baseItem.info.kind = "base";
+    baseItem.info.channel = "stable";
+    baseItem.info.arch = { std::string{ "x86_64" } };
+
+    EXPECT_CALL(*repo, getLayerItem(*runnableRef, testing::_)).WillOnce(Return(baseItem));
+
+    ResolveOptions opts;
+    opts.extensionRefs = std::vector<std::string>{ "invalid/extension/ref/extra" };
+
+    RunContext context(*repo);
+    auto result = context.resolve(*runnableRef, opts);
+    ASSERT_FALSE(result.has_value());
+    EXPECT_THAT(result.error().message(), ::testing::HasSubstr("failed to parse extension ref"));
+}
+
+TEST_F(RunContextTest, resolveConfigRejectsVersionMismatch)
+{
+    api::types::v1::RunContextConfig config;
+    config.version = "999";
+
+    RunContext context(*repo);
+    auto result = context.resolve(config);
+    ASSERT_FALSE(result.has_value());
+    EXPECT_THAT(result.error().message(), ::testing::HasSubstr("version mismatch"));
+}
+
+TEST_F(RunContextTest, resolveConfigRequiresBaseLayer)
+{
+    api::types::v1::RunContextConfig config;
+    config.version = "1";
+    config.base = "";
+
+    RunContext context(*repo);
+    auto result = context.resolve(config);
+    ASSERT_FALSE(result.has_value());
+    EXPECT_THAT(result.error().message(), ::testing::HasSubstr("base layer is required"));
+}
+
+TEST_F(RunContextTest, resolveConfigRejectsInvalidBaseReference)
+{
+    api::types::v1::RunContextConfig config;
+    config.version = "1";
+    config.base = "not/a/valid/reference/at/all";
+
+    RunContext context(*repo);
+    auto result = context.resolve(config);
+    ASSERT_FALSE(result.has_value());
+    EXPECT_THAT(result.error().message(), ::testing::HasSubstr("failed to create base layer"));
+}
+
+TEST_F(RunContextTest, resolveConfigRejectsUnknownExtensionTarget)
+{
+    auto baseRef = package::Reference::parse("stable:org.dde.base/23.0.0/x86_64");
+    ASSERT_TRUE(baseRef.has_value()) << baseRef.error().message();
+
+    api::types::v1::RepositoryCacheLayersItem baseItem;
+    baseItem.info.id = "org.dde.base";
+    baseItem.info.version = "23.0.0";
+    baseItem.info.kind = "base";
+    baseItem.info.channel = "stable";
+    baseItem.info.arch = { std::string{ "x86_64" } };
+    EXPECT_CALL(*repo, getLayerItem(*baseRef, testing::_)).WillOnce(Return(baseItem));
+
+    api::types::v1::RunContextConfig config;
+    config.version = "1";
+    config.base = "stable:org.dde.base/23.0.0/x86_64";
+    config.extensions = std::map<std::string, std::vector<std::string>>{
+        { "stable:org.other.app/1.0.0/x86_64", { "stable:org.dde.extension/1.0.0/x86_64" } },
+    };
+
+    RunContext context(*repo);
+    auto result = context.resolve(config);
+    ASSERT_FALSE(result.has_value());
+    EXPECT_THAT(result.error().message(), ::testing::HasSubstr("target layer not found"));
+}
+
+TEST_F(RunContextTest, resolveConfigRejectsNonExtensionLayer)
+{
+    auto baseRef = package::Reference::parse("stable:org.dde.base/23.0.0/x86_64");
+    ASSERT_TRUE(baseRef.has_value()) << baseRef.error().message();
+    auto extRef = package::Reference::parse("stable:org.dde.extension/1.0.0/x86_64");
+    ASSERT_TRUE(extRef.has_value()) << extRef.error().message();
+
+    api::types::v1::RepositoryCacheLayersItem baseItem;
+    baseItem.info.id = "org.dde.base";
+    baseItem.info.version = "23.0.0";
+    baseItem.info.kind = "base";
+    baseItem.info.channel = "stable";
+    baseItem.info.arch = { std::string{ "x86_64" } };
+    EXPECT_CALL(*repo, getLayerItem(*baseRef, testing::_)).WillOnce(Return(baseItem));
+
+    api::types::v1::RepositoryCacheLayersItem wrongItem = baseItem;
+    wrongItem.info.id = "org.dde.extension";
+    wrongItem.info.version = "1.0.0";
+    wrongItem.info.kind = "app";
+    EXPECT_CALL(*repo, getLayerItem(*extRef, testing::_)).WillOnce(Return(wrongItem));
+
+    api::types::v1::RunContextConfig config;
+    config.version = "1";
+    config.base = "stable:org.dde.base/23.0.0/x86_64";
+    config.extensions = std::map<std::string, std::vector<std::string>>{
+        { "stable:org.dde.base/23.0.0/x86_64", { "stable:org.dde.extension/1.0.0/x86_64" } },
+    };
+
+    RunContext context(*repo);
+    auto result = context.resolve(config);
+    ASSERT_FALSE(result.has_value());
+    EXPECT_THAT(result.error().message(), ::testing::HasSubstr("invalid extension kind"));
+}
+
+TEST_F(RunContextTest, applyOptionsRejectsMalformedCdiDevice)
+{
+    cli::RunOptions runOptions;
+    runOptions.cdiDevices = { "no-equals-sign" };
+
+    ResolveOptions opts;
+    opts.cdiSpecDirs.clear();
+
+    auto result = opts.applyOptions(std::nullopt, runOptions);
+    ASSERT_FALSE(result.has_value());
+    EXPECT_THAT(result.error().message(), ::testing::HasSubstr("invalid device format"));
+}
+
+TEST_F(RunContextTest, applyOptionsRejectsUnknownCdiDevice)
+{
+    cli::RunOptions runOptions;
+    runOptions.cdiDevices = { "nvidia.com/gpu=missing" };
+
+    ResolveOptions opts;
+    opts.cdiSpecDirs.clear();
+
+    auto result = opts.applyOptions(std::nullopt, runOptions);
+    ASSERT_FALSE(result.has_value());
+    EXPECT_THAT(result.error().message(), ::testing::HasSubstr("device not found"));
+}
+
+TEST_F(RunContextTest, applyOptionsAcceptsExplicitEmptyCdiDeviceList)
+{
+    cli::RunOptions runOptions;
+    runOptions.cdiDevices.clear();
+
+    api::types::v1::RuntimeConfigure runtimeConfig;
+    runtimeConfig.devices = std::vector<std::string>{};
+
+    ResolveOptions opts;
+    opts.cdiSpecDirs.clear();
+
+    auto result = opts.applyOptions(runtimeConfig, runOptions);
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+    ASSERT_TRUE(opts.cdiDevices.has_value());
+    EXPECT_TRUE(opts.cdiDevices->empty());
+}
 } // namespace

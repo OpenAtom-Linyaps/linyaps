@@ -27,7 +27,10 @@ pfl_add_executable(
   src/linglong/builder/project_lock_test.cpp
   src/linglong/builder/project_validation_test.cpp
   src/linglong/cli/cli_printer_test.cpp
+  src/linglong/cli/cli_command_test.cpp
   src/linglong/cli/cli_test.cpp
+  src/linglong/cli/dbus_notifier_test.cpp
+  src/linglong/cli/notifier_test.cpp
   src/linglong/common/gkeyfile_wrapper_test.cpp
   src/linglong/common/global/initialize_test.cpp
   src/linglong/common/cli/repo_test.cpp
@@ -56,6 +59,7 @@ pfl_add_executable(
   src/linglong/package_manager/ref_installation_test.cpp
   src/linglong/package_manager/uab_installation_test.cpp
   src/linglong/package_manager/package_manager_test.cpp
+  src/linglong/package_manager/package_manager_command_test.cpp
   src/linglong/package/reference_test.cpp
   src/linglong/package/semver_compare_test.cpp
   src/linglong/package/semver_increment_test.cpp
@@ -91,6 +95,7 @@ pfl_add_executable(
   src/linglong/utils/overlayfs_test.cpp
   src/linglong/utils/packageinfo_handler_test.cpp
   src/linglong/utils/runtime_config_test.cpp
+  src/linglong/utils/utils_edge_test.cpp
   src/linglong/utils/sha256_test.cpp
   src/linglong/utils/temporary_directory_test.cpp
   src/linglong/utils/transaction_test.cpp

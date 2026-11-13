@@ -7,6 +7,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "../../common/scoped_runtime_paths.h"
+#include "configure.h"
 #include "linglong/common/strings.h"
 #include "linglong/oci-cfg-generators/container_cfg_builder.h"
 #include "linglong/utils/cmd.h"
@@ -1505,6 +1507,142 @@ TEST_F(ContainerCfgBuilderTest, ResolvConfSymlinkConflictFails)
     EXPECT_THAT(result.error().message(), ::testing::HasSubstr("Failed to create symlink"));
 }
 
+class ScopedContainerConfigDir
+{
+public:
+    ScopedContainerConfigDir()
+        : path(std::filesystem::path{ LINGLONG_INSTALL_PREFIX } / "lib/linglong/container/config.d")
+    {
+        if (!linglong::test::isIsolatedRuntime()) {
+            reason = linglong::test::isolatedRuntimeRequirement();
+            return;
+        }
+
+        std::error_code ec;
+        if (std::filesystem::exists(path, ec)) {
+            reason = "system container patch directory already exists: " + path.string();
+            return;
+        }
+
+        if (!std::filesystem::create_directories(path, ec)) {
+            reason = "failed to create " + path.string() + ": " + ec.message();
+            return;
+        }
+        created = true;
+    }
+
+    ~ScopedContainerConfigDir()
+    {
+        if (created) {
+            std::error_code ec;
+            std::filesystem::remove_all(path, ec);
+        }
+    }
+
+    [[nodiscard]] bool ok() const { return reason.empty(); }
+
+    [[nodiscard]] const std::string &error() const { return reason; }
+
+    [[nodiscard]] const std::filesystem::path &dir() const { return path; }
+
+private:
+    std::filesystem::path path;
+    bool created{ false };
+    std::string reason;
+};
+
+TEST_F(ContainerCfgBuilderTest, ApplyJsonPatchFileFromGlobalConfigDir)
+{
+    ScopedContainerConfigDir configDir;
+    if (!configDir.ok()) {
+        GTEST_SKIP() << configDir.error();
+    }
+
+    auto patch = nlohmann::json::parse(R"({
+        "ociVersion": "1.0.1",
+        "patch": [ { "op": "add", "path": "/annotations", "value": { "patched": "yes" } } ]
+    })");
+    {
+        std::ofstream(configDir.dir() / "10-global.json") << patch.dump();
+    }
+
+    ContainerCfgBuilder builder;
+    builder.setAppId("org.deepin.demo")
+      .setBasePath(baseDir.path())
+      .setBundlePath(bundleDir.path())
+      .setContainerId("fake-container-id");
+
+    auto result = builder.build();
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+    ASSERT_TRUE(builder.getConfig().annotations.has_value());
+    EXPECT_EQ(builder.getConfig().annotations->at("patched"), "yes");
+}
+
+TEST_F(ContainerCfgBuilderTest, ApplyExecutableAndAppSpecificPatches)
+{
+    ScopedContainerConfigDir configDir;
+    if (!configDir.ok()) {
+        GTEST_SKIP() << configDir.error();
+    }
+
+    const auto appDir = configDir.dir() / "org.deepin.demo";
+    ASSERT_TRUE(std::filesystem::create_directories(appDir));
+
+    auto script = appDir / "20-app-patch.sh";
+    {
+        std::ofstream out(script);
+        out << "#!/bin/sh\n";
+        out << "cat\n";
+    }
+    std::error_code ec;
+    std::filesystem::permissions(script,
+                                 std::filesystem::perms::owner_all,
+                                 std::filesystem::perm_options::replace,
+                                 ec);
+    ASSERT_FALSE(ec) << ec.message();
+
+    // A malformed JSON patch and a non-patch file must be skipped, not abort
+    // the whole build.
+    std::ofstream(appDir / "30-broken.json") << "{not json";
+    std::ofstream(appDir / "40-not-a-patch.txt") << "ignored";
+
+    ContainerCfgBuilder builder;
+    builder.setAppId("org.deepin.demo")
+      .setBasePath(baseDir.path())
+      .setBundlePath(bundleDir.path())
+      .setContainerId("fake-container-id");
+
+    auto result = builder.build();
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+    EXPECT_EQ(builder.getConfig().ociVersion, "1.0.1");
+}
+
+TEST_F(ContainerCfgBuilderTest, ApplyJsonPatchWithMismatchedOciVersionIsSkipped)
+{
+    ScopedContainerConfigDir configDir;
+    if (!configDir.ok()) {
+        GTEST_SKIP() << configDir.error();
+    }
+
+    auto patch = nlohmann::json::parse(R"({
+        "ociVersion": "9.9.9",
+        "patch": [ { "op": "add", "path": "/annotations/bad", "value": "x" } ]
+    })");
+    std::ofstream(configDir.dir() / "50-version.json") << patch.dump();
+
+    ContainerCfgBuilder builder;
+    builder.setAppId("org.deepin.demo")
+      .setBasePath(baseDir.path())
+      .setBundlePath(bundleDir.path())
+      .setContainerId("fake-container-id");
+
+    auto result = builder.build();
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+    if (builder.getConfig().annotations) {
+        EXPECT_EQ(builder.getConfig().annotations->count("bad"), 0U);
+    }
+}
+
 } // namespace
 
 TEST_F(ContainerCfgBuilderTest, DisplaySystemAddsX11AndXauthorityMounts)
@@ -1618,4 +1756,115 @@ TEST_F(ContainerCfgBuilderTest, BindHomeMountsXdgOverridesAndPrivateDirectories)
     EXPECT_TRUE(dconf);
     EXPECT_TRUE(userDirs);
     EXPECT_TRUE(ddeApi);
+}
+
+TEST_F(ContainerCfgBuilderTest, ApplyCDIPatchAddsEnvDevicesMountsAndHooks)
+{
+    ContainerCfgBuilder builder;
+    builder.setAppId("org.deepin.demo")
+      .setBasePath(baseDir.path())
+      .setBundlePath(bundleDir.path())
+      .disablePatch();
+
+    linglong::cdi::types::ContainerEdits edits;
+    edits.env = std::vector<std::string>{ "CDI_PLAIN=value", "CDI_EMPTY=" };
+    edits.deviceNodes = std::vector<linglong::cdi::types::DeviceNode>{
+        linglong::cdi::types::DeviceNode{ .hostPath = "/dev/dri/renderD128",
+                                          .path = "/dev/dri/renderD128" },
+        linglong::cdi::types::DeviceNode{ .path = "/dev/without-host" },
+    };
+    edits.mounts = std::vector<linglong::cdi::types::Mount>{
+        linglong::cdi::types::Mount{ .containerPath = "/data/explicit",
+                                     .hostPath = "/host/explicit",
+                                     .options = std::vector<std::string>{ "rbind", "ro" },
+                                     .type = "bind" },
+        linglong::cdi::types::Mount{ .containerPath = "/data/options",
+                                     .hostPath = "/host/options",
+                                     .options = std::vector<std::string>{ "bind" } },
+        linglong::cdi::types::Mount{ .containerPath = "/data/plain", .hostPath = "/host/plain" },
+    };
+    edits.hooks = std::vector<linglong::cdi::types::Hook>{
+        linglong::cdi::types::Hook{ .args = std::vector<std::string>{ "hook", "arg" },
+                                    .env = std::vector<std::string>{ "HOOK_ENV=1" },
+                                    .hookName = "prestart",
+                                    .path = "/usr/bin/hook",
+                                    .timeout = 7 },
+        linglong::cdi::types::Hook{ .hookName = "unknown-hook", .path = "/usr/bin/ignored" },
+    };
+
+    ASSERT_TRUE(builder.applyCDIPatch(edits));
+    auto result = builder.build();
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+
+    const auto &config = builder.getConfig();
+    ASSERT_TRUE(config.process.has_value());
+    ASSERT_TRUE(config.process->env.has_value());
+    EXPECT_THAT(*config.process->env, ::testing::Contains("CDI_PLAIN=value"));
+    EXPECT_THAT(*config.process->env, ::testing::Contains("CDI_EMPTY="));
+
+    ASSERT_TRUE(config.mounts.has_value());
+    const auto findMount = [&config](const std::string &destination) -> const Mount * {
+        for (const auto &mount : *config.mounts) {
+            if (mount.destination == destination) {
+                return &mount;
+            }
+        }
+        return nullptr;
+    };
+    const auto *explicitMount = findMount("/data/explicit");
+    ASSERT_NE(explicitMount, nullptr);
+    EXPECT_EQ(explicitMount->type, "bind");
+    EXPECT_EQ(explicitMount->source, "/host/explicit");
+
+    const auto *optionsMount = findMount("/data/options");
+    ASSERT_NE(optionsMount, nullptr);
+    EXPECT_EQ(optionsMount->type, "bind");
+
+    const auto *plainMount = findMount("/data/plain");
+    ASSERT_NE(plainMount, nullptr);
+    EXPECT_EQ(plainMount->type, "none");
+
+    ASSERT_TRUE(config.hooks.has_value());
+    ASSERT_TRUE(config.hooks->prestart.has_value());
+    ASSERT_EQ(config.hooks->prestart->size(), 1U);
+    EXPECT_EQ(config.hooks->prestart->front().path, "/usr/bin/hook");
+}
+
+TEST_F(ContainerCfgBuilderTest, ApplyCDIPatchPreservesExistingEnvironmentValue)
+{
+    ContainerCfgBuilder builder;
+    builder.setAppId("org.deepin.demo")
+      .setBasePath(baseDir.path())
+      .setBundlePath(bundleDir.path())
+      .appendEnv("SHARED", "original")
+      .disablePatch();
+
+    linglong::cdi::types::ContainerEdits edits;
+    edits.env = std::vector<std::string>{ "SHARED=patched", "NO_DELIMITER" };
+    ASSERT_TRUE(builder.applyCDIPatch(edits));
+
+    auto result = builder.build();
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+
+    ASSERT_TRUE(builder.getConfig().process.has_value());
+    ASSERT_TRUE(builder.getConfig().process->env.has_value());
+    EXPECT_THAT(*builder.getConfig().process->env, ::testing::Contains("SHARED=original"));
+    EXPECT_THAT(*builder.getConfig().process->env,
+                ::testing::Not(::testing::Contains("SHARED=patched")));
+}
+
+TEST_F(ContainerCfgBuilderTest, ApplyCDIPatchWithEmptyEditsKeepsConfigurationUsable)
+{
+    ContainerCfgBuilder builder;
+    builder.setAppId("org.deepin.demo")
+      .setBasePath(baseDir.path())
+      .setBundlePath(bundleDir.path())
+      .disablePatch();
+
+    linglong::cdi::types::ContainerEdits edits;
+    ASSERT_TRUE(builder.applyCDIPatch(edits));
+
+    auto result = builder.build();
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+    EXPECT_EQ(builder.getConfig().ociVersion, "1.0.1");
 }

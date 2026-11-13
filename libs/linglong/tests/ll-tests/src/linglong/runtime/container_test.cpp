@@ -215,4 +215,47 @@ TEST_F(ContainerTest, RunReportsRuntimeFailure)
     EXPECT_FALSE(result.has_value());
 }
 
+TEST_F(ContainerTest, RunMergesProcessConfigOverridesIntoBundle)
+{
+    auto runtimePath = temp_dir->path() / "runtime-merge";
+    {
+        std::ofstream runtime(runtimePath);
+        runtime << "#!/bin/sh\n"
+                   "exit 0\n";
+    }
+    fs::permissions(runtimePath, fs::perms::owner_all, fs::perm_options::replace);
+
+    auto cli = ocppi::cli::crun::Crun::New(runtimePath);
+    ASSERT_TRUE(cli.has_value());
+
+    auto createResult =
+      ContainerContext::create(*context,
+                               ContainerContext::CreateOptions{ .bundleSuffix = "-merge" });
+    ASSERT_TRUE(createResult.has_value());
+
+    auto cfg = makeConfig();
+    cfg.process->env = std::vector<std::string>{ "PATH=/usr/bin", "LL_MERGE_KEEP=old" };
+    Container container(std::move(cfg), std::move(*createResult), **cli);
+
+    ocppi::runtime::config::types::Process override;
+    override.args = std::vector<std::string>{ "echo", "merged" };
+    override.cwd = "/tmp";
+    override.env = std::vector<std::string>{ "LL_MERGE_KEEP=new", "LL_MERGE_ADDED=1", "NOEQUALS" };
+    override.user = ocppi::runtime::config::types::User{ .gid = 5, .uid = 6 };
+    override.noNewPrivileges = true;
+    override.terminal = false;
+
+    auto result = container.run(override, ocppi::runtime::RunOption{});
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+
+    std::ifstream input(container.bundle() / "config.json");
+    const std::string content{ std::istreambuf_iterator<char>(input),
+                               std::istreambuf_iterator<char>() };
+    EXPECT_THAT(content, testing::HasSubstr("LL_MERGE_KEEP=new"));
+    EXPECT_THAT(content, testing::HasSubstr("LL_MERGE_ADDED=1"));
+    EXPECT_THAT(content, testing::Not(testing::HasSubstr("LL_MERGE_KEEP=old")));
+    EXPECT_THAT(content, testing::HasSubstr("\"uid\":6"));
+    EXPECT_THAT(content, testing::HasSubstr("\"gid\":5"));
+    EXPECT_THAT(content, testing::HasSubstr("\"cwd\":\"/tmp\""));
+}
 } // namespace

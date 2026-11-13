@@ -1295,6 +1295,155 @@ TEST_F(PackageManagerTest, CopyToStagingRejectsInvalidAndNonRegularDescriptors)
     EXPECT_THAT(nonRegular.error().message(), HasSubstr("not a regular file"));
 }
 
+TEST_F(PackageManagerTest, ExecutePostInstallHooksReportsMissingMergedModuleDir)
+{
+    repo->onGetMergedModuleDir = [](const package::Reference &, bool) {
+        LINGLONG_TRACE("getMergedModuleDir");
+        return LINGLONG_ERR("merged module dir not found");
+    };
+
+    auto result = pm->executePostInstallHooks(makeRef());
+
+    ASSERT_FALSE(result);
+    EXPECT_THAT(result.error().message(), HasSubstr("merged module dir not found"));
+}
+
+TEST_F(PackageManagerTest, ExecutePostInstallHooksIgnoresMissingHookDirectory)
+{
+    if (std::filesystem::exists("/etc/linglong/config.d")) {
+        GTEST_SKIP() << "hook directory exists in this environment";
+    }
+
+    const auto merged = tempDir->path() / "merged";
+    std::filesystem::create_directories(merged);
+    repo->onGetMergedModuleDir = [merged](const package::Reference &, bool) {
+        return package::LayerDir{ merged };
+    };
+
+    auto result = pm->executePostInstallHooks(makeRef());
+
+    EXPECT_TRUE(result) << result.error().message();
+}
+
+TEST_F(PackageManagerTest, ExecuteInstallHooksIgnoresMissingHookDirectory)
+{
+    if (std::filesystem::exists("/etc/linglong/config.d")) {
+        GTEST_SKIP() << "hook directory exists in this environment";
+    }
+
+    auto result = pm->executeInstallHooks(tempDir->path() / "package.uab");
+
+    EXPECT_TRUE(result) << result.error().message();
+}
+
+TEST_F(PackageManagerTest, ExecutePostUninstallHooksIgnoresMissingHookDirectory)
+{
+    if (std::filesystem::exists("/etc/linglong/config.d")) {
+        GTEST_SKIP() << "hook directory exists in this environment";
+    }
+
+    auto result = pm->executePostUninstallHooks(makeRef());
+
+    EXPECT_TRUE(result) << result.error().message();
+}
+
+TEST_F(PackageManagerTest, SwitchAppVersionAppliesAndUnexportsReferences)
+{
+    auto oldRef = makeRef("1.0.0");
+    auto newRef = makeRef("2.0.0");
+    repo->onGetModuleList = [](const package::Reference &) {
+        return std::vector<std::string>{ "binary" };
+    };
+    EXPECT_CALL(*repo, mergeModules()).WillOnce(Return(ok()));
+
+    auto result = pm->switchAppVersion(oldRef, newRef, false);
+
+    ASSERT_TRUE(result) << result.error().message();
+}
+
+TEST_F(PackageManagerTest, TryUninstallRefWhenIdleRemovesInstalledModules)
+{
+    test::ScopedRepoLockFile lockFile;
+    if (!lockFile.ok()) {
+        GTEST_SKIP() << lockFile.error();
+    }
+
+    repo->onGetModuleList = [](const package::Reference &) {
+        return std::vector<std::string>{ "binary", "develop" };
+    };
+
+    auto result = pm->tryUninstallRef(makeRef());
+
+    ASSERT_TRUE(result) << result.error().message();
+    EXPECT_TRUE(*result) << "an idle reference reports that its layers were removed";
+}
+
+TEST_F(PackageManagerTest, UninstallRefWithExplicitModulesContinuesAfterRemovalFailure)
+{
+    auto result = pm->uninstallRef(makeRef(), std::vector<std::string>{ "binary", "develop" });
+
+    EXPECT_TRUE(result) << "individual removal failures are logged and skipped";
+}
+
+TEST_F(PackageManagerTest, InitRunContextRejectsMalformedJson)
+{
+    auto result = pm->initRunContext("not-a-json", "container-id");
+
+    ASSERT_FALSE(result);
+    EXPECT_THAT(result.error().message(), HasSubstr("failed to parse run context config"));
+}
+
+TEST_F(PackageManagerTest, InitRunContextRejectsUnresolvableConfig)
+{
+    auto result =
+      pm->initRunContext(R"({"id":"org.example.App","containerID":"other"})", "container-id");
+
+    ASSERT_FALSE(result);
+    EXPECT_FALSE(result.error().message().empty());
+}
+
 } // namespace
 
 } // namespace
+
+TEST_F(PackageManagerTest, TryUninstallRefMarksDeletedWhenApplicationIsRunning)
+{
+    ScopedContainerStates states;
+    if (!states.ok()) {
+        GTEST_SKIP() << states.error();
+    }
+    test::ScopedRepoLockFile lockFile;
+    if (!lockFile.ok()) {
+        GTEST_SKIP() << lockFile.error();
+    }
+    const auto ref = makeRef();
+    ASSERT_TRUE(states.write(::getpid(), ref.toString()));
+    repo->onGetModuleList = [](const package::Reference &) {
+        return std::vector<std::string>{ "binary", "develop" };
+    };
+
+    auto result = pm->tryUninstallRef(ref);
+
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+    EXPECT_FALSE(*result);
+}
+
+TEST_F(PackageManagerTest, TryUninstallRefRemovesWhenApplicationIsIdle)
+{
+    ScopedContainerStates states;
+    if (!states.ok()) {
+        GTEST_SKIP() << states.error();
+    }
+    test::ScopedRepoLockFile lockFile;
+    if (!lockFile.ok()) {
+        GTEST_SKIP() << lockFile.error();
+    }
+    repo->onGetModuleList = [](const package::Reference &) {
+        return std::vector<std::string>{ "binary" };
+    };
+
+    auto result = pm->tryUninstallRef(makeRef());
+
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+    EXPECT_TRUE(*result);
+}

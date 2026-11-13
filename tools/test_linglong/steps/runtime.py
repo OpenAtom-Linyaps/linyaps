@@ -8,6 +8,7 @@
 import json
 import os
 import pty
+import re
 import shutil
 import tempfile
 import socket
@@ -1533,9 +1534,22 @@ class RuntimeSteps:
         if f"USERNS={hostUserNs.stdout.strip()}" not in r.stdout:
             raise AssertionError(
                 f"root 自动 privileged 未共享宿主机 user namespace: {r.stdout[:300]}")
-        if hostCapEff and f"CAPEFF={hostCapEff}" not in r.stdout:
+        # 容器拿到的能力集是 ll-cli 固定的 13 项，而宿主机 root 的能力集
+        # 取决于内核和安全模块（这里就多出 CAP_MAC_OVERRIDE），不能要求逐位相等。
+        # 改成两条：承诺的 13 项一个不少，并且不超出宿主机 root 的范围。
+        # 0x800435fb = CAP_CHOWN|DAC_OVERRIDE|FOWNER|FSETID|KILL|SETGID|SETUID|
+        #              SETPCAP|NET_BIND_SERVICE|NET_RAW|NET_ADMIN|SYS_CHROOT|SETFCAP
+        privilegedCaps = 0x800435FB
+        matched = re.search(r"CAPEFF=([0-9a-fA-F]+)", r.stdout)
+        if matched is None:
+            raise AssertionError(f"没拿到容器 CapEff: {r.stdout[:300]}")
+        containerCaps = int(matched.group(1), 16)
+        if containerCaps & privilegedCaps != privilegedCaps:
             raise AssertionError(
-                f"root 自动 privileged capabilities 不匹配: {r.stdout[:300]}")
+                f"root 自动 privileged capabilities 缺项: {r.stdout[:300]}")
+        if hostCapEff and containerCaps & ~int(hostCapEff, 16):
+            raise AssertionError(
+                f"容器能力超出宿主机 root 的范围: {r.stdout[:300]}")
 
         # --caps-add（delimiter 为逗号）
         r = self._ll_cli("run", app, "--instance", inst + "c",

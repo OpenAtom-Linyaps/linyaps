@@ -8,6 +8,7 @@
 import json
 import os
 import pty
+import re
 import shutil
 import tempfile
 import socket
@@ -25,6 +26,21 @@ from ..models import RepoState, StepResult, StepSkipped
 
 
 class RuntimeSteps:
+
+    # 「安装、升级并运行日历应用」跑完会把日历卸载掉，但下面几个用例还要
+    # 拿它当现成的应用来跑 run。所以这里自己补装一次（已装则跳过报错）。
+    def _ensure_calendar_installed(self):
+        if CALENDAR_APP_ID in self._sudo_ll_cli("list", timeout=120,
+                                                check=False).stdout:
+            return
+
+        # 装最新版本即可：这些用例只需要一个能跑起来的现成应用。
+        # 指定旧版本会因为「已安装最新版本」之类的提示直接失败。
+        self._sudo_ll_cli("install", CALENDAR_APP_ID, timeout=600, check=False)
+        listed = self._sudo_ll_cli("list", timeout=120, check=False)
+        if CALENDAR_APP_ID not in listed.stdout:
+            raise AssertionError(
+                f"补装日历应用失败: {(listed.stdout + listed.stderr)[:300]}")
 
     # ── Test: ll-cli run 的运行期选项 ──
     #
@@ -1237,6 +1253,7 @@ class RuntimeSteps:
     #     --device covtest.io/class=covdev0
     # kind 里带等号会被 split 成 3 段而报 "invalid device format"（踩过）。
     def test_cdi_device_injection(self):
+        self._ensure_calendar_installed()
         spec_dir = "/tmp/smoke-cdi"
         shutil.rmtree(spec_dir, ignore_errors=True)
         os.makedirs(spec_dir, exist_ok=True)
@@ -1443,6 +1460,7 @@ class RuntimeSteps:
     #    实测：在 unshare -m 里 rm/ln /etc/resolv.conf 会直接改坏宿主机，
     #    导致 DNS 失效、ll-cli search 报 code 3001（已发生过并修复）。
     def test_display_env_branches(self):
+        self._ensure_calendar_installed()
         cases = (
             ("XAUTHORITY 假路径", {"XAUTHORITY": "/tmp/smoke-no-such-xauth"}),
             ("XAUTHORITY 空", {"XAUTHORITY": ""}),
@@ -1477,6 +1495,7 @@ class RuntimeSteps:
     #   run --run-context        直接吃一段 JSON（RunContextConfig）
     #   uninstall --prune/--all  为兼容旧 ll-cli 保留，已废弃但仍在解析
     def test_hidden_options(self):
+        self._ensure_calendar_installed()
         app = CALENDAR_APP_ID
         inst = f"smokehidden{os.getpid()}"
 
@@ -1500,6 +1519,10 @@ class RuntimeSteps:
         # root 不显式传 --privileged 也必须自动进入 privileged 模式：
         # 与宿主机共享 user namespace，并获得原有的 privilege capabilities。
         hostUserNs = self._run_cmd(["readlink", "/proc/self/ns/user"], sudo=True)
+        # 期望的 CapEff 从宿主机 root 现取，别写死常量（宿主 capability 集会变）
+        hostCapEff = self._run_cmd(
+            ["awk", "/^CapEff:/{print $2}", "/proc/self/status"], sudo=True)
+        hostCapEff = hostCapEff.stdout.strip()
         r = self._sudo_ll_cli(
             "run", app, "--instance", inst + "auto", "--", "/bin/sh", "-c",
             "printf 'USERNS=%s\\n' \"$(readlink /proc/self/ns/user)\"; "
@@ -1511,9 +1534,22 @@ class RuntimeSteps:
         if f"USERNS={hostUserNs.stdout.strip()}" not in r.stdout:
             raise AssertionError(
                 f"root 自动 privileged 未共享宿主机 user namespace: {r.stdout[:300]}")
-        if "CAPEFF=00000000800435fb" not in r.stdout:
+        # 容器拿到的能力集是 ll-cli 固定的 13 项，而宿主机 root 的能力集
+        # 取决于内核和安全模块（这里就多出 CAP_MAC_OVERRIDE），不能要求逐位相等。
+        # 改成两条：承诺的 13 项一个不少，并且不超出宿主机 root 的范围。
+        # 0x800435fb = CAP_CHOWN|DAC_OVERRIDE|FOWNER|FSETID|KILL|SETGID|SETUID|
+        #              SETPCAP|NET_BIND_SERVICE|NET_RAW|NET_ADMIN|SYS_CHROOT|SETFCAP
+        privilegedCaps = 0x800435FB
+        matched = re.search(r"CAPEFF=([0-9a-fA-F]+)", r.stdout)
+        if matched is None:
+            raise AssertionError(f"没拿到容器 CapEff: {r.stdout[:300]}")
+        containerCaps = int(matched.group(1), 16)
+        if containerCaps & privilegedCaps != privilegedCaps:
             raise AssertionError(
-                f"root 自动 privileged capabilities 不匹配: {r.stdout[:300]}")
+                f"root 自动 privileged capabilities 缺项: {r.stdout[:300]}")
+        if hostCapEff and containerCaps & ~int(hostCapEff, 16):
+            raise AssertionError(
+                f"容器能力超出宿主机 root 的范围: {r.stdout[:300]}")
 
         # --caps-add（delimiter 为逗号）
         r = self._ll_cli("run", app, "--instance", inst + "c",

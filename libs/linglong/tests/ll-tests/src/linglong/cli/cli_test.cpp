@@ -17,12 +17,14 @@
 #include "ocppi/cli/crun/Crun.hpp"
 
 #include <fmt/format.h>
+#include <sys/file.h>
 
 #include <filesystem>
 #include <fstream>
 #include <initializer_list>
 #include <vector>
 
+#include <fcntl.h>
 #include <unistd.h>
 
 using namespace linglong;
@@ -1719,6 +1721,16 @@ class RuntimeCliTest : public ::testing::Test
 protected:
     void SetUp() override
     {
+        // /run/linglong/<uid> 是全机共享的目录，这几个用例都会往里写 PID 文件。
+        // ctest 并行执行时彼此能看到对方的条目，ps 的数量、kill/enter 的匹配就都乱了
+        // （表现为 ps 打印出 3 个容器、kill 返回 -1）。这里用文件锁把它们串起来，
+        // 而不是为了测试去改产品的运行目录。
+        lockPath = std::filesystem::temp_directory_path()
+          / fmt::format("ll-tests-run-info-{}.lock", ::getuid());
+        lockFd = ::open(lockPath.c_str(), O_CREAT | O_RDWR, 0600);
+        ASSERT_GE(lockFd, 0) << "failed to open lock file " << lockPath;
+        ASSERT_EQ(::flock(lockFd, LOCK_EX), 0) << "failed to lock " << lockPath;
+
         tempDir = std::make_unique<TempDir>();
         printer = std::make_unique<MockPrinter>();
 
@@ -1757,6 +1769,12 @@ protected:
         }
         if (!runtimeInfoRootExisted) {
             std::filesystem::remove(runtimeInfoRoot, ec);
+        }
+
+        if (lockFd >= 0) {
+            ::flock(lockFd, LOCK_UN);
+            ::close(lockFd);
+            lockFd = -1;
         }
     }
 
@@ -1815,6 +1833,8 @@ protected:
     std::filesystem::path runtimePath;
     std::filesystem::path invocationLog;
     std::filesystem::path runtimeInfoDir;
+    std::filesystem::path lockPath;
+    int lockFd{ -1 };
     bool runtimeInfoDirExisted{ false };
     bool runtimeInfoRootExisted{ false };
     std::unique_ptr<MockPrinter> printer;

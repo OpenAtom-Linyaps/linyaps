@@ -236,11 +236,14 @@ protected:
 private:
     [[nodiscard]] static utils::error::Result<void>
     RequestDirectories(const api::types::v1::PackageInfoV2 &info) noexcept;
+
+protected:
     [[nodiscard]] std::vector<std::string> filePathMapping(
       const std::vector<std::string> &command, const RunOptions &options) const noexcept;
     static std::string mappingFile(const std::filesystem::path &file) noexcept;
     static std::string mappingUrl(std::string_view url) noexcept;
 
+private:
     static void filterPackageInfosByType(
       std::map<std::string, std::vector<api::types::v1::PackageInfoV2>> &list,
       const std::string &type) noexcept;

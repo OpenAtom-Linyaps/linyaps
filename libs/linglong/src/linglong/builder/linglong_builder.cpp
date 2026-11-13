@@ -529,6 +529,11 @@ auto Builder::lockProject() noexcept -> utils::error::Result<void>
     return LINGLONG_OK;
 }
 
+std::filesystem::path Builder::builderHelperPath() const
+{
+    return LINGLONG_BUILDER_HELPER;
+}
+
 utils::error::Result<void> Builder::buildStagePrepare() noexcept
 {
     LINGLONG_TRACE("build prepare");
@@ -582,7 +587,7 @@ utils::error::Result<void> Builder::buildStagePrepare() noexcept
         installPrefix = "/opt/extensions/" + this->project->package.id;
     }
 
-    if (!QFileInfo::exists(LINGLONG_BUILDER_HELPER)) {
+    if (!QFileInfo::exists(QString::fromStdString(builderHelperPath().string()))) {
         return LINGLONG_ERR("builder helper doesn't exists");
     }
 
@@ -1285,9 +1290,9 @@ utils::error::Result<bool> Builder::buildStageBuild(std::vector<std::string> arg
                 .source = directories.project(),
                 .type = "bind",
               },
-              ocppi::runtime::config::types::Mount{ .destination = LINGLONG_BUILDER_HELPER,
+              ocppi::runtime::config::types::Mount{ .destination = builderHelperPath(),
                                                     .options = { { "rbind", "ro" } },
-                                                    .source = LINGLONG_BUILDER_HELPER,
+                                                    .source = builderHelperPath(),
                                                     .type = "bind" },
             },
           },
@@ -2305,9 +2310,9 @@ utils::error::Result<void> Builder::run(std::vector<std::string> modules,
           .source = directories.project(),
           .type = "bind",
         },
-        ocppi::runtime::config::types::Mount{ .destination = LINGLONG_BUILDER_HELPER,
+        ocppi::runtime::config::types::Mount{ .destination = builderHelperPath(),
                                               .options = { { "rbind", "ro" } },
-                                              .source = LINGLONG_BUILDER_HELPER,
+                                              .source = builderHelperPath(),
                                               .type = "bind" },
     };
 
@@ -2478,8 +2483,7 @@ utils::error::Result<void> Builder::runtimeCheck()
     }
     printMessage("Start runtime check", 2);
     // 导出uab时需要使用main-check统计的信息，所以无论是否跳过检查，都需要执行main-check
-    auto args = std::vector<std::string>{ std::filesystem::path{ LINGLONG_BUILDER_HELPER }
-                                          / "main-check.sh" };
+    auto args = std::vector<std::string>{ builderHelperPath() / "main-check.sh" };
     if (package::Architecture::currentCPUArchitecture() != projectRef->arch) {
         args.push_back("--skip-ldd-check");
     }
@@ -2519,9 +2523,9 @@ set -e
     scriptContent.push_back('\n');
     scriptContent.append("# POST BUILD PROCESS\n");
     if (!this->buildOptions.skipStripSymbols) {
-        scriptContent.append(LINGLONG_BUILDER_HELPER "/symbols-strip.sh\n");
+        scriptContent.append((builderHelperPath() / "symbols-strip.sh").string() + "\n");
     }
-    scriptContent.append(LINGLONG_BUILDER_HELPER "/compile-schemas.sh\n");
+    scriptContent.append((builderHelperPath() / "compile-schemas.sh").string() + "\n");
 
     auto res = utils::writeFile(entry, scriptContent);
     if (!res) {

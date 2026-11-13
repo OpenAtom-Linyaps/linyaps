@@ -913,6 +913,25 @@ public:
                 fuzzySearch,
                 (request_fuzzy_search_req_t * req),
                 (override));
+    MOCK_METHOD((std::unique_ptr<sign_in_200_response_t, decltype(&sign_in_200_response_free)>),
+                signIn,
+                (request_auth_t * req),
+                (override));
+    MOCK_METHOD((std::unique_ptr<new_upload_task_id_200_response_t,
+                                 decltype(&new_upload_task_id_200_response_free)>),
+                newUploadTaskID,
+                (char *token, schema_new_upload_task_req_t *req),
+                (override));
+    MOCK_METHOD(
+      (std::unique_ptr<api_upload_task_file_resp_t, decltype(&api_upload_task_file_resp_free)>),
+      uploadTaskFile,
+      (char *token, char *taskID, binary_t *binary),
+      (override));
+    MOCK_METHOD((std::unique_ptr<upload_task_info_200_response_t,
+                                 decltype(&upload_task_info_200_response_free)>),
+                uploadTaskInfo,
+                (char *token, char *taskID),
+                (override));
 };
 
 TEST(OSTreeRepoTest, searchRemote_Search)
@@ -1775,6 +1794,466 @@ TEST_F(RepoTest, exportDirRewritesDesktopDbusSystemdAndContextMenuEntries)
     const std::string prefixedContent((std::istreambuf_iterator<char>(prefixed)),
                                       std::istreambuf_iterator<char>());
     EXPECT_THAT(prefixedContent, ::testing::HasSubstr("run org.test.app -- /bin/test"));
+}
+
+} // namespace linglong::repo::test
+
+namespace linglong::repo::test {
+
+namespace {
+
+using ::testing::_;
+using ::testing::Invoke;
+
+using SignInPtr = std::unique_ptr<sign_in_200_response_t, decltype(&sign_in_200_response_free)>;
+using NewTaskPtr = std::unique_ptr<new_upload_task_id_200_response_t,
+                                   decltype(&new_upload_task_id_200_response_free)>;
+using UploadFilePtr =
+  std::unique_ptr<api_upload_task_file_resp_t, decltype(&api_upload_task_file_resp_free)>;
+using UploadInfoPtr =
+  std::unique_ptr<upload_task_info_200_response_t, decltype(&upload_task_info_200_response_free)>;
+
+SignInPtr makeSignInResponse(int code, const std::string &msg = {})
+{
+    return SignInPtr{ sign_in_200_response_create(code,
+                                                  response_sign_in_create(strdup("test")),
+                                                  msg.empty() ? nullptr : strdup(msg.c_str()),
+                                                  nullptr),
+                      &sign_in_200_response_free };
+}
+
+NewTaskPtr makeNewTaskResponse(int code,
+                               const std::string &id = "task-1",
+                               const std::string &msg = {})
+{
+    return NewTaskPtr{ new_upload_task_id_200_response_create(
+                         code,
+                         response_new_upload_task_resp_create(strdup(id.c_str())),
+                         msg.empty() ? nullptr : strdup(msg.c_str()),
+                         nullptr),
+                       &new_upload_task_id_200_response_free };
+}
+
+UploadFilePtr makeUploadFileResponse(int code, const std::string &msg = {})
+{
+    return UploadFilePtr{ api_upload_task_file_resp_create(
+                            code,
+                            response_upload_task_resp_create(strdup("watch-1")),
+                            msg.empty() ? nullptr : strdup(msg.c_str()),
+                            nullptr),
+                          &api_upload_task_file_resp_free };
+}
+
+UploadInfoPtr makeUploadInfoResponse(int code,
+                                     const std::string &status = "complete",
+                                     const std::string &msg = {})
+{
+    return UploadInfoPtr{ upload_task_info_200_response_create(
+                            code,
+                            response_upload_task_status_info_create(strdup(status.c_str())),
+                            msg.empty() ? nullptr : strdup(msg.c_str()),
+                            nullptr),
+                          &upload_task_info_200_response_free };
+}
+
+class PushRepoMock : public repo::OSTreeRepo
+{
+public:
+    PushRepoMock(const std::filesystem::path &path,
+                 api::types::v1::RepoConfigV2 config =
+                   api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 })
+        : repo::OSTreeRepo(path, std::move(config))
+    {
+    }
+
+    MOCK_METHOD(utils::error::Result<package::LayerDir>,
+                getLayerDir,
+                (const package::Reference &ref, const std::string &module),
+                (override, const, noexcept));
+    MOCK_METHOD(std::unique_ptr<ClientAPIWrapper>,
+                createClientV2,
+                (const std::string &url),
+                (override, const));
+};
+
+class LatestRepoMock : public repo::OSTreeRepo
+{
+public:
+    LatestRepoMock(const std::filesystem::path &path)
+        : repo::OSTreeRepo(
+            path, api::types::v1::RepoConfigV2{ .defaultRepo = "", .repos = {}, .version = 2 })
+    {
+    }
+
+    MOCK_METHOD(utils::error::Result<repo::RemotePackages>,
+                matchRemoteByPriority,
+                (const package::FuzzyReference &fuzzyRef,
+                 const std::optional<api::types::v1::Repo> &repo),
+                (override, const, noexcept));
+};
+
+std::filesystem::path makeLayerDirectory(const TempDir &tempDir,
+                                         const std::string &name = "layer",
+                                         const std::string &id = "org.example.app",
+                                         const std::string &version = "1.0.0.0")
+{
+    const auto layer = tempDir.path() / name;
+    std::filesystem::create_directories(layer / "files");
+    std::ofstream(layer / "files" / "demo") << "demo";
+    api::types::v1::PackageInfoV2 info{
+        .arch = std::vector<std::string>{ "x86_64" },
+        .channel = "main",
+        .id = id,
+        .kind = "runtime",
+        .packageInfoV2Module = "binary",
+        .version = version,
+    };
+    std::ofstream(layer / "info.json") << nlohmann::json(info).dump();
+    return layer;
+}
+
+std::vector<std::string> listRefCommits(const std::filesystem::path &ostreeRepoDir)
+{
+    std::vector<std::string> commits;
+    g_autoptr(GError) gErr = nullptr;
+    g_autoptr(GFile) repoPath = g_file_new_for_path(ostreeRepoDir.c_str());
+    g_autoptr(OstreeRepo) ostreeRepo = ostree_repo_new(repoPath);
+    EXPECT_NE(ostree_repo_open(ostreeRepo, nullptr, &gErr), FALSE)
+      << (gErr == nullptr ? std::string{} : std::string{ gErr->message });
+
+    g_autoptr(GHashTable) refs = nullptr;
+    EXPECT_NE(ostree_repo_list_refs(ostreeRepo, nullptr, &refs, nullptr, &gErr), FALSE)
+      << (gErr == nullptr ? std::string{} : std::string{ gErr->message });
+    if (refs == nullptr) {
+        return commits;
+    }
+
+    GHashTableIter iter;
+    gpointer key = nullptr;
+    gpointer value = nullptr;
+    g_hash_table_iter_init(&iter, refs);
+    while (g_hash_table_iter_next(&iter, &key, &value) != FALSE) {
+        commits.emplace_back(static_cast<const char *>(value));
+    }
+    return commits;
+}
+
+apiClient_t *makeClient()
+{
+    return apiClient_create_with_base_path("http://localhost", nullptr, nullptr);
+}
+
+utils::error::Result<package::LayerDir> makeLayerResult(const std::filesystem::path &path)
+{
+    return package::LayerDir{ path };
+}
+
+} // namespace
+
+TEST(OSTreeRepoTest, PushToRemoteUploadsLayerAndWaitsForCompletion)
+{
+    TempDir tempDir;
+    PushRepoMock mockRepo(tempDir.path());
+    const auto layer = makeLayerDirectory(tempDir);
+    auto reference = package::Reference::parse("main:org.example.app/1.0.0/x86_64");
+    ASSERT_TRUE(reference) << reference.error().message();
+
+    auto clientAPI = new MockClientAPIWrapper(makeClient());
+    EXPECT_CALL(mockRepo, getLayerDir(_, "binary")).WillOnce(Invoke([layer]() {
+        return makeLayerResult(layer);
+    }));
+    EXPECT_CALL(*clientAPI, signIn(_)).WillOnce(Return(makeSignInResponse(200)));
+    EXPECT_CALL(*clientAPI, newUploadTaskID(_, _)).WillOnce(Return(makeNewTaskResponse(200)));
+    EXPECT_CALL(*clientAPI, uploadTaskFile(_, _, _)).WillOnce(Return(makeUploadFileResponse(200)));
+    EXPECT_CALL(*clientAPI, uploadTaskInfo(_, _)).WillOnce(Return(makeUploadInfoResponse(200)));
+    EXPECT_CALL(mockRepo, createClientV2("http://localhost"))
+      .WillOnce(Return(std::unique_ptr<ClientAPIWrapper>(clientAPI)));
+
+    auto result = mockRepo.pushToRemote("stable", "http://localhost", *reference, "binary");
+
+    ASSERT_TRUE(result) << result.error().message();
+}
+
+TEST(OSTreeRepoTest, PushToRemoteReportsMissingLayer)
+{
+    LINGLONG_TRACE("push missing layer test");
+    TempDir tempDir;
+    PushRepoMock mockRepo(tempDir.path());
+    auto reference = package::Reference::parse("main:org.example.app/1.0.0/x86_64");
+    ASSERT_TRUE(reference) << reference.error().message();
+
+    EXPECT_CALL(mockRepo, getLayerDir(_, "binary"))
+      .WillOnce(Return(LINGLONG_ERR("layer not found")));
+    EXPECT_CALL(mockRepo, createClientV2(_)).Times(0);
+
+    auto result = mockRepo.pushToRemote("stable", "http://localhost", *reference, "binary");
+
+    ASSERT_FALSE(result);
+    EXPECT_NE(result.error().message().find("layer not found"), std::string::npos);
+}
+
+TEST(OSTreeRepoTest, PushToRemoteReportsAuthenticationFailures)
+{
+    TempDir tempDir;
+    PushRepoMock mockRepo(tempDir.path());
+    const auto layer = makeLayerDirectory(tempDir);
+    auto reference = package::Reference::parse("main:org.example.app/1.0.0/x86_64");
+    ASSERT_TRUE(reference) << reference.error().message();
+
+    EXPECT_CALL(mockRepo, getLayerDir(_, "binary")).Times(2).WillRepeatedly(Invoke([layer]() {
+        return makeLayerResult(layer);
+    }));
+    EXPECT_CALL(mockRepo, createClientV2("http://localhost"))
+      .Times(2)
+      .WillOnce([](const std::string &) {
+          auto *client = new MockClientAPIWrapper(makeClient());
+          EXPECT_CALL(*client, signIn(_))
+            .WillOnce(Return(SignInPtr{ nullptr, &sign_in_200_response_free }));
+          return std::unique_ptr<ClientAPIWrapper>(client);
+      })
+      .WillOnce([](const std::string &) {
+          auto *client = new MockClientAPIWrapper(makeClient());
+          EXPECT_CALL(*client, signIn(_)).WillOnce(Return(makeSignInResponse(401, "denied")));
+          return std::unique_ptr<ClientAPIWrapper>(client);
+      });
+
+    auto nullResponse = mockRepo.pushToRemote("stable", "http://localhost", *reference, "binary");
+    ASSERT_FALSE(nullResponse);
+    EXPECT_NE(nullResponse.error().message().find("sign error"), std::string::npos);
+
+    auto denied = mockRepo.pushToRemote("stable", "http://localhost", *reference, "binary");
+    ASSERT_FALSE(denied);
+    const auto &deniedMessage = denied.error().message();
+    EXPECT_NE(deniedMessage.find("sign error("), std::string::npos);
+    EXPECT_NE(deniedMessage.find("): denied"), std::string::npos);
+}
+
+TEST(OSTreeRepoTest, PushToRemoteReportsTaskCreationAndUploadFailures)
+{
+    TempDir tempDir;
+    PushRepoMock mockRepo(tempDir.path());
+    const auto layer = makeLayerDirectory(tempDir);
+    auto reference = package::Reference::parse("main:org.example.app/1.0.0/x86_64");
+    ASSERT_TRUE(reference) << reference.error().message();
+
+    EXPECT_CALL(mockRepo, getLayerDir(_, "binary")).Times(4).WillRepeatedly(Invoke([layer]() {
+        return makeLayerResult(layer);
+    }));
+    EXPECT_CALL(mockRepo, createClientV2("http://localhost"))
+      .Times(4)
+      .WillOnce([](const std::string &) {
+          auto *client = new MockClientAPIWrapper(makeClient());
+          EXPECT_CALL(*client, signIn(_)).WillOnce(Return(makeSignInResponse(200)));
+          EXPECT_CALL(*client, newUploadTaskID(_, _))
+            .WillOnce(Return(NewTaskPtr{ nullptr, &new_upload_task_id_200_response_free }));
+          return std::unique_ptr<ClientAPIWrapper>(client);
+      })
+      .WillOnce([](const std::string &) {
+          auto *client = new MockClientAPIWrapper(makeClient());
+          EXPECT_CALL(*client, signIn(_)).WillOnce(Return(makeSignInResponse(200)));
+          EXPECT_CALL(*client, newUploadTaskID(_, _))
+            .WillOnce(Return(makeNewTaskResponse(500, "task-1", "server busy")));
+          return std::unique_ptr<ClientAPIWrapper>(client);
+      })
+      .WillOnce([](const std::string &) {
+          auto *client = new MockClientAPIWrapper(makeClient());
+          EXPECT_CALL(*client, signIn(_)).WillOnce(Return(makeSignInResponse(200)));
+          EXPECT_CALL(*client, newUploadTaskID(_, _)).WillOnce(Return(makeNewTaskResponse(200)));
+          EXPECT_CALL(*client, uploadTaskFile(_, _, _))
+            .WillOnce(Return(UploadFilePtr{ nullptr, &api_upload_task_file_resp_free }));
+          return std::unique_ptr<ClientAPIWrapper>(client);
+      })
+      .WillOnce([](const std::string &) {
+          auto *client = new MockClientAPIWrapper(makeClient());
+          EXPECT_CALL(*client, signIn(_)).WillOnce(Return(makeSignInResponse(200)));
+          EXPECT_CALL(*client, newUploadTaskID(_, _)).WillOnce(Return(makeNewTaskResponse(200)));
+          EXPECT_CALL(*client, uploadTaskFile(_, _, _))
+            .WillOnce(Return(makeUploadFileResponse(500, "disk full")));
+          return std::unique_ptr<ClientAPIWrapper>(client);
+      });
+
+    auto missingTask = mockRepo.pushToRemote("stable", "http://localhost", *reference, "binary");
+    ASSERT_FALSE(missingTask);
+    EXPECT_NE(missingTask.error().message().find("create task error"), std::string::npos);
+
+    auto taskError = mockRepo.pushToRemote("stable", "http://localhost", *reference, "binary");
+    ASSERT_FALSE(taskError);
+    EXPECT_NE(taskError.error().message().find("create task error: server busy"),
+              std::string::npos);
+
+    auto missingUpload = mockRepo.pushToRemote("stable", "http://localhost", *reference, "binary");
+    ASSERT_FALSE(missingUpload);
+    EXPECT_NE(missingUpload.error().message().find("upload file error(task-1)"), std::string::npos);
+
+    auto uploadError = mockRepo.pushToRemote("stable", "http://localhost", *reference, "binary");
+    ASSERT_FALSE(uploadError);
+    EXPECT_NE(uploadError.error().message().find("upload file error(task-1): disk full"),
+              std::string::npos);
+}
+
+TEST(OSTreeRepoTest, PushToRemoteReportsUploadStatusFailures)
+{
+    TempDir tempDir;
+    PushRepoMock mockRepo(tempDir.path());
+    const auto layer = makeLayerDirectory(tempDir);
+    auto reference = package::Reference::parse("main:org.example.app/1.0.0/x86_64");
+    ASSERT_TRUE(reference) << reference.error().message();
+
+    EXPECT_CALL(mockRepo, getLayerDir(_, "binary")).Times(3).WillRepeatedly(Invoke([layer]() {
+        return makeLayerResult(layer);
+    }));
+    EXPECT_CALL(mockRepo, createClientV2("http://localhost"))
+      .Times(3)
+      .WillOnce([](const std::string &) {
+          auto *client = new MockClientAPIWrapper(makeClient());
+          EXPECT_CALL(*client, signIn(_)).WillOnce(Return(makeSignInResponse(200)));
+          EXPECT_CALL(*client, newUploadTaskID(_, _)).WillOnce(Return(makeNewTaskResponse(200)));
+          EXPECT_CALL(*client, uploadTaskFile(_, _, _))
+            .WillOnce(Return(makeUploadFileResponse(200)));
+          EXPECT_CALL(*client, uploadTaskInfo(_, _))
+            .WillOnce(Return(UploadInfoPtr{ nullptr, &upload_task_info_200_response_free }));
+          return std::unique_ptr<ClientAPIWrapper>(client);
+      })
+      .WillOnce([](const std::string &) {
+          auto *client = new MockClientAPIWrapper(makeClient());
+          EXPECT_CALL(*client, signIn(_)).WillOnce(Return(makeSignInResponse(200)));
+          EXPECT_CALL(*client, newUploadTaskID(_, _)).WillOnce(Return(makeNewTaskResponse(200)));
+          EXPECT_CALL(*client, uploadTaskFile(_, _, _))
+            .WillOnce(Return(makeUploadFileResponse(200)));
+          EXPECT_CALL(*client, uploadTaskInfo(_, _))
+            .WillOnce(Return(makeUploadInfoResponse(500, "failed", "server error")));
+          return std::unique_ptr<ClientAPIWrapper>(client);
+      })
+      .WillOnce([](const std::string &) {
+          auto *client = new MockClientAPIWrapper(makeClient());
+          EXPECT_CALL(*client, signIn(_)).WillOnce(Return(makeSignInResponse(200)));
+          EXPECT_CALL(*client, newUploadTaskID(_, _)).WillOnce(Return(makeNewTaskResponse(200)));
+          EXPECT_CALL(*client, uploadTaskFile(_, _, _))
+            .WillOnce(Return(makeUploadFileResponse(200)));
+          EXPECT_CALL(*client, uploadTaskInfo(_, _))
+            .WillOnce(Return(makeUploadInfoResponse(200, "failed")));
+          return std::unique_ptr<ClientAPIWrapper>(client);
+      });
+
+    auto missingInfo = mockRepo.pushToRemote("stable", "http://localhost", *reference, "binary");
+    ASSERT_FALSE(missingInfo);
+    EXPECT_NE(missingInfo.error().message().find("get upload info error(task-1)"),
+              std::string::npos);
+
+    auto infoError = mockRepo.pushToRemote("stable", "http://localhost", *reference, "binary");
+    ASSERT_FALSE(infoError);
+    EXPECT_NE(infoError.error().message().find("get upload info error(task-1): server error"),
+              std::string::npos);
+
+    auto failed = mockRepo.pushToRemote("stable", "http://localhost", *reference, "binary");
+    ASSERT_FALSE(failed);
+    EXPECT_NE(failed.error().message().find("An error occurred on the remote server(task-1)"),
+              std::string::npos);
+}
+
+TEST(OSTreeRepoTest, CleanKeepsReservedRefsAndRemovesOthers)
+{
+    TempDir tempDir;
+    const auto repoRoot = tempDir.path() / "repo-root";
+    std::filesystem::create_directories(repoRoot);
+    auto repo = OSTreeRepo::create(repoRoot, createRepoConfig());
+    ASSERT_TRUE(repo) << repo.error().message();
+
+    const auto reservedLayer =
+      makeLayerDirectory(tempDir, "reserved-layer", "org.example.keep", "1.0.0.0");
+    const auto removedLayer =
+      makeLayerDirectory(tempDir, "removed-layer", "org.example.drop", "1.0.0.0");
+    auto reserved = repo->get()->importLayerDir(package::LayerDir{ reservedLayer });
+    ASSERT_TRUE(reserved) << reserved.error().message();
+    auto removed = repo->get()->importLayerDir(package::LayerDir{ removedLayer });
+    ASSERT_TRUE(removed) << removed.error().message();
+
+    const auto ostreeRepoDir = repo->get()->getRepoDir() / "repo";
+    auto before = listRefCommits(ostreeRepoDir);
+    ASSERT_EQ(before.size(), 2);
+    EXPECT_THAT(before, ::testing::UnorderedElementsAre(reserved->commit, removed->commit));
+
+    auto kept = repo->get()->clean({ *reserved });
+    ASSERT_TRUE(kept) << kept.error().message();
+    auto afterReservedClean = listRefCommits(ostreeRepoDir);
+    ASSERT_EQ(afterReservedClean.size(), 1);
+    EXPECT_EQ(afterReservedClean.front(), reserved->commit);
+
+    auto empty = repo->get()->clean({});
+    ASSERT_TRUE(empty) << empty.error().message();
+    EXPECT_TRUE(listRefCommits(ostreeRepoDir).empty());
+}
+
+TEST(OSTreeRepoTest, LatestRemoteReferenceReturnsNewestPackageRepo)
+{
+    TempDir tempDir;
+    LatestRepoMock mockRepo(tempDir.path());
+    const auto makePackage = [](const std::string &version) {
+        return api::types::v1::PackageInfoV2{
+            .arch = std::vector<std::string>{ "x86_64" },
+            .channel = "main",
+            .id = "org.example.app",
+            .kind = "app",
+            .version = version,
+        };
+    };
+    repo::RemotePackages packages;
+    packages.addPackages(api::types::v1::Repo{ .name = "stable", .url = "https://example.com" },
+                         { makePackage("1.0.0.0"), makePackage("3.0.0.0") });
+    packages.addPackages(api::types::v1::Repo{ .name = "beta", .url = "https://beta.example.com" },
+                         { makePackage("2.0.0.0") });
+    auto fuzzy = package::FuzzyReference::parse("org.example.app");
+    ASSERT_TRUE(fuzzy) << fuzzy.error().message();
+    EXPECT_CALL(mockRepo, matchRemoteByPriority(_, _))
+      .WillOnce(Return(::testing::ByMove(std::move(packages))));
+
+    auto result = mockRepo.latestRemoteReference(*fuzzy);
+
+    ASSERT_TRUE(result) << result.error().message();
+    EXPECT_EQ(result->repo.name, "stable");
+    EXPECT_EQ(result->reference.toString(), "main:org.example.app/3.0.0.0/x86_64");
+}
+
+TEST(OSTreeRepoTest, LatestRemoteReferencePropagatesErrors)
+{
+    LINGLONG_TRACE("latest remote reference error test");
+    TempDir tempDir;
+    LatestRepoMock mockRepo(tempDir.path());
+    auto fuzzy = package::FuzzyReference::parse("org.example.app");
+    ASSERT_TRUE(fuzzy) << fuzzy.error().message();
+    EXPECT_CALL(mockRepo, matchRemoteByPriority(_, _))
+      .WillOnce(Return(LINGLONG_ERR("remote unavailable")));
+
+    auto result = mockRepo.latestRemoteReference(*fuzzy);
+
+    ASSERT_FALSE(result);
+    EXPECT_NE(result.error().message().find("remote unavailable"), std::string::npos);
+}
+
+TEST(OSTreeRepoTest, LatestRemoteReferenceRejectsEmptyResultsAndInvalidPackages)
+{
+    TempDir tempDir;
+    LatestRepoMock mockRepo(tempDir.path());
+    auto fuzzy = package::FuzzyReference::parse("org.example.app");
+    ASSERT_TRUE(fuzzy) << fuzzy.error().message();
+
+    EXPECT_CALL(mockRepo, matchRemoteByPriority(_, _))
+      .WillOnce(Return(::testing::ByMove(repo::RemotePackages{})))
+      .WillOnce([](const package::FuzzyReference &, const std::optional<api::types::v1::Repo> &) {
+          repo::RemotePackages packages;
+          packages.addPackages(
+            api::types::v1::Repo{ .name = "stable" },
+            { api::types::v1::PackageInfoV2{ .id = "org.example.app", .version = "1.0.0.0" } });
+          return packages;
+      });
+
+    auto empty = mockRepo.latestRemoteReference(*fuzzy);
+    ASSERT_FALSE(empty);
+    EXPECT_NE(empty.error().message().find("packages is empty"), std::string::npos);
+
+    auto invalid = mockRepo.latestRemoteReference(*fuzzy);
+    ASSERT_FALSE(invalid);
+    EXPECT_NE(invalid.error().message().find("missing architecture"), std::string::npos);
 }
 
 } // namespace linglong::repo::test

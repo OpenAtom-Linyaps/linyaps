@@ -16,7 +16,8 @@ public:
     static constexpr auto kNvidiaPackageIdentify = "org.deepin.driver.display.nvidia";
     static constexpr auto kDefaultNvidiaVersionFile = "/sys/module/nvidia/version";
 
-    explicit NVIDIADriverDetector(std::string versionFilePath = kDefaultNvidiaVersionFile);
+    explicit NVIDIADriverDetector(std::string versionFilePath = kDefaultNvidiaVersionFile,
+                                  std::string cliCommand = "ll-cli");
     ~NVIDIADriverDetector() override = default;
 
     // Main detection method - returns driver info if detected
@@ -43,6 +44,7 @@ private:
     utils::error::Result<std::pair<bool, GraphicsDriverInfo>>
     getInstalledGraphicsDriverInfo(const std::string &packageName) const;
     std::string versionFilePath_;
+    std::string cliCommand_;
 };
 
 } // namespace linglong::driver::detect

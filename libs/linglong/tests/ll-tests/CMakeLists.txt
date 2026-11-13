@@ -96,6 +96,7 @@ pfl_add_executable(
   src/linglong/utils/transaction_test.cpp
   src/linglong/utils/xdg/directory_test.cpp
   src/linglong/utils/xdp_test.cpp
+  src/linglong/utils/testability_seams_test.cpp
   src/main.cpp
   src/ocppi/cli/common_cli_test.cpp
 

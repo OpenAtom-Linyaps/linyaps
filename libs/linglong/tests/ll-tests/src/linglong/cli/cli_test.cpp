@@ -122,6 +122,15 @@ public:
     MOCK_METHOD(utils::error::Result<api::dbus::v1::PackageManager *>, getPkgMan, (), (override));
 };
 
+class MappingCli : public cli::Cli
+{
+public:
+    using cli::Cli::Cli;
+    using cli::Cli::filePathMapping;
+    using cli::Cli::mappingFile;
+    using cli::Cli::mappingUrl;
+};
+
 class RepoAndPackageManagerCli : public cli::Cli
 {
 public:
@@ -1914,3 +1923,150 @@ TEST_F(RuntimeCliTest, EnterExecsCommandInMatchedContainer)
 }
 
 } // namespace
+
+namespace {
+
+class ScopedHome
+{
+public:
+    explicit ScopedHome(const std::filesystem::path &home)
+    {
+        const auto *current = ::getenv("HOME");
+        if (current != nullptr) {
+            previous = current;
+        }
+        ::setenv("HOME", home.c_str(), 1);
+    }
+
+    ~ScopedHome()
+    {
+        if (previous) {
+            ::setenv("HOME", previous->c_str(), 1);
+        } else {
+            ::unsetenv("HOME");
+        }
+    }
+
+    ScopedHome(const ScopedHome &) = delete;
+    ScopedHome &operator=(const ScopedHome &) = delete;
+
+private:
+    std::optional<std::string> previous;
+};
+
+class CliMappingTest : public ::testing::Test
+{
+protected:
+    void SetUp() override
+    {
+        tempDir = std::make_unique<TempDir>();
+        printer = std::make_unique<MockPrinter>();
+        ociCLI = ocppi::cli::crun::Crun::New("/bin/false").value();
+        containerBuilder = std::make_unique<runtime::ContainerBuilder>(*ociCLI);
+        auto notifier = std::make_unique<cli::DummyNotifier>();
+        cli = std::make_unique<MappingCli>(*printer,
+                                           *ociCLI,
+                                           *containerBuilder,
+                                           false,
+                                           std::move(notifier),
+                                           nullptr);
+    }
+
+    std::unique_ptr<TempDir> tempDir;
+    std::unique_ptr<MockPrinter> printer;
+    std::unique_ptr<ocppi::cli::crun::Crun> ociCLI;
+    std::unique_ptr<runtime::ContainerBuilder> containerBuilder;
+    std::unique_ptr<MappingCli> cli;
+};
+
+} // namespace
+
+TEST_F(CliMappingTest, MappingFileCoversRelativeHomeOutsideAndSymlinks)
+{
+    const auto home = tempDir->path() / "home";
+    const auto inside = home / "data.txt";
+    const auto outside = tempDir->path() / "outside" / "data.txt";
+    const auto link = tempDir->path() / "outside" / "link.txt";
+    const auto dangling = tempDir->path() / "outside" / "dangling.txt";
+    std::filesystem::create_directories(inside.parent_path());
+    std::filesystem::create_directories(outside.parent_path());
+    std::ofstream(inside) << "home";
+    std::ofstream(outside) << "outside";
+    std::filesystem::create_symlink(outside, link);
+    std::filesystem::create_symlink(outside.string() + ".missing", dangling);
+
+    ScopedHome scopedHome(home);
+    EXPECT_EQ(cli->mappingFile("relative/path"), "relative/path");
+    EXPECT_EQ(cli->mappingFile(inside), inside.string());
+    const auto hostRoot = std::filesystem::path{ "/run/host/rootfs" };
+    EXPECT_EQ(cli->mappingFile(outside), (hostRoot / outside.lexically_relative("/")).string());
+    EXPECT_EQ(cli->mappingFile(link), (hostRoot / outside.lexically_relative("/")).string());
+    EXPECT_EQ(cli->mappingFile(dangling), (hostRoot / dangling.lexically_relative("/")).string());
+}
+
+TEST_F(CliMappingTest, MappingFileWithoutHomeLeavesAbsolutePathUnchanged)
+{
+    const auto absolute = tempDir->path() / "outside.txt";
+    std::ofstream(absolute) << "data";
+
+    std::optional<std::string> previousHome;
+    if (const auto *home = ::getenv("HOME"); home != nullptr) {
+        previousHome = home;
+    }
+    ::unsetenv("HOME");
+    EXPECT_EQ(cli->mappingFile(absolute), absolute.string());
+    if (previousHome) {
+        ::setenv("HOME", previousHome->c_str(), 1);
+    } else {
+        ::unsetenv("HOME");
+    }
+}
+
+TEST_F(CliMappingTest, MappingUrlCoversPathsFileUrlsAndRemoteUrls)
+{
+    const auto outside = tempDir->path() / "outside.txt";
+    std::ofstream(outside) << "data";
+    const auto mapped =
+      (std::filesystem::path{ "/run/host/rootfs" } / outside.lexically_relative("/")).string();
+
+    EXPECT_EQ(cli->mappingUrl(outside.string()), mapped);
+    EXPECT_EQ(cli->mappingUrl("file://" + outside.string()), "file://" + mapped);
+    EXPECT_EQ(cli->mappingUrl("https://example.com/app"), "https://example.com/app");
+}
+
+TEST_F(CliMappingTest, FilePathMappingExpandsPlaceholdersInOrder)
+{
+    const auto home = tempDir->path() / "home";
+    const auto inside = home / "inside.txt";
+    const auto outside = tempDir->path() / "outside.txt";
+    std::filesystem::create_directories(home);
+    std::ofstream(inside) << "inside";
+    std::ofstream(outside) << "outside";
+
+    ScopedHome scopedHome(home);
+    cli::RunOptions options;
+    options.filePaths = { inside.string(), outside.string(), "" };
+    options.fileUrls = { outside.string(),
+                         "file://" + outside.string(),
+                         "https://example.com",
+                         "" };
+
+    const auto mappedOutside =
+      (std::filesystem::path{ "/run/host/rootfs" } / outside.lexically_relative("/")).string();
+    const auto result =
+      cli->filePathMapping({ "app", "%f", "%F", "%u", "%U", "%x", "plain" }, options);
+
+    EXPECT_EQ(result,
+              (std::vector<std::string>{ "app",
+                                         inside.string(),
+                                         mappedOutside,
+                                         inside.string(),
+                                         mappedOutside,
+                                         mappedOutside,
+                                         "file://" + mappedOutside,
+                                         "https://example.com",
+                                         mappedOutside,
+                                         "file://" + mappedOutside,
+                                         "https://example.com",
+                                         "plain" }));
+}

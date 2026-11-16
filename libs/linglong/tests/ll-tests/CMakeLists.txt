@@ -30,6 +30,7 @@ pfl_add_executable(
   src/linglong/cli/cli_command_test.cpp
   src/linglong/cli/cli_test.cpp
   src/linglong/cli/dbus_notifier_test.cpp
+  src/linglong/cli/error_presenter_test.cpp
   src/linglong/cli/notifier_test.cpp
   src/linglong/common/gkeyfile_wrapper_test.cpp
   src/linglong/common/global/initialize_test.cpp

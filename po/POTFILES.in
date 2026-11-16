@@ -3,6 +3,7 @@
 
 # ll-cli source files
 libs/linglong/src/linglong/cli/cli.cpp
+libs/linglong/src/linglong/cli/error_presenter.cpp
 apps/ll-cli/src/main.cpp
 libs/linglong/src/linglong/cli/cli_printer.cpp
 

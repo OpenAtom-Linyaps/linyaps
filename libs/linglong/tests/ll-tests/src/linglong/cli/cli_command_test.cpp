@@ -621,6 +621,19 @@ TEST_F(CliCommandTest, InstallFromFileRunsTaskAndPrintsSuccess)
     EXPECT_EQ(pkgManService->lastParams.value("fileType").toString(), QStringLiteral("layer"));
 }
 
+TEST_F(CliCommandTest, InstallFromFileMapsErrorCodeToUserMessage)
+{
+    const auto packagePath = tempDir->path() / "org.example.App_1.0_x86_64_binary.layer";
+    std::ofstream(packagePath) << "layer placeholder";
+    useError(static_cast<int>(utils::error::ErrorCode::AppInstallAlreadyInstalled));
+
+    EXPECT_CALL(*printer, printMessage("Application already installed"));
+    EXPECT_CALL(*printer, printErr(testing::_)).Times(0);
+
+    EXPECT_EQ(cli->install(cli::InstallOptions{ .appid = packagePath.string() }), -1);
+    EXPECT_EQ(pkgManService->lastMethod, QStringLiteral("InstallFromFile"));
+}
+
 TEST_F(CliCommandTest, InstallMapsKnownErrorCodesToUserMessages)
 {
     struct Case
@@ -707,6 +720,35 @@ TEST_F(CliCommandTest, InstallVerbosePrintsUnderlyingError)
     EXPECT_EQ(cli->install(cli::InstallOptions{ .appid = "org.example.App" }), -1);
 }
 
+// 表里没登记的码没有提示语可打，只能把错误原样交给用户，别再吞掉输出。
+TEST_F(CliCommandTest, InstallPrintsOriginalErrorWhenNoMessageIsRegistered)
+{
+    useError(static_cast<int>(utils::error::ErrorCode::AppInstallArchNotMatch), "arch mismatch");
+
+    EXPECT_CALL(*printer, printMessage(testing::_)).Times(0);
+    EXPECT_CALL(*printer, printErr(testing::_)).WillOnce([](const utils::error::Error &error) {
+        EXPECT_EQ(error.code(), static_cast<int>(utils::error::ErrorCode::AppInstallArchNotMatch));
+        EXPECT_THAT(error.message(), testing::HasSubstr("arch mismatch"));
+    });
+
+    EXPECT_EQ(cli->install(cli::InstallOptions{ .appid = "org.example.App" }), -1);
+}
+
+TEST_F(CliCommandTest, InstallFromFilePrintsOriginalErrorWhenNoMessageIsRegistered)
+{
+    const auto packagePath = tempDir->path() / "org.example.App_1.0_x86_64_binary.layer";
+    std::ofstream(packagePath) << "layer placeholder";
+    useError(static_cast<int>(utils::error::ErrorCode::AppInstallArchNotMatch), "arch mismatch");
+
+    EXPECT_CALL(*printer, printMessage(testing::_)).Times(0);
+    EXPECT_CALL(*printer, printErr(testing::_)).WillOnce([](const utils::error::Error &error) {
+        EXPECT_EQ(error.code(), static_cast<int>(utils::error::ErrorCode::AppInstallArchNotMatch));
+        EXPECT_THAT(error.message(), testing::HasSubstr("arch mismatch"));
+    });
+
+    EXPECT_EQ(cli->install(cli::InstallOptions{ .appid = packagePath.string() }), -1);
+}
+
 TEST_F(CliCommandTest, InstallReportsPackageManagerUnavailable)
 {
     cli->setPkgMan(nullptr);
@@ -762,6 +804,21 @@ TEST_F(CliCommandTest, UninstallReportsRunningApplicationThroughNotifier)
     useError(static_cast<int>(utils::error::ErrorCode::AppUninstallAppIsRunning));
     EXPECT_CALL(*notifier, notify(testing::_)).Times(1);
     EXPECT_CALL(*printer, printErr(testing::_)).Times(0);
+
+    EXPECT_EQ(cli->uninstall(cli::UninstallOptions{ .appid = "org.example.App" }), -1);
+}
+
+TEST_F(CliCommandTest, UninstallReportsNotifierFailureToPrinter)
+{
+    useError(static_cast<int>(utils::error::ErrorCode::AppUninstallAppIsRunning));
+    EXPECT_CALL(*notifier, notify(testing::_))
+      .WillOnce(testing::Invoke([](const v1::InteractionRequest &) -> utils::error::Result<void> {
+          LINGLONG_TRACE("notify");
+          return LINGLONG_ERR("the notification service is unavailable");
+      }));
+    EXPECT_CALL(*printer, printErr(testing::_)).WillOnce([](const utils::error::Error &error) {
+        EXPECT_THAT(error.message(), testing::HasSubstr("notification service is unavailable"));
+    });
 
     EXPECT_EQ(cli->uninstall(cli::UninstallOptions{ .appid = "org.example.App" }), -1);
 }
@@ -911,6 +968,18 @@ TEST_F(CliCommandTest, PruneReportsMalformedTaskResult)
     publishTask(QVariantMap{ { QStringLiteral("code"), QStringLiteral("not-a-number") } });
 
     EXPECT_CALL(*printer, printErr(testing::_));
+    EXPECT_EQ(cli->prune(), -1);
+}
+
+// handleCommonError 的兜底分支：通用表也没这个码，同样要把错误原样打出来。
+TEST_F(CliCommandTest, PrunePrintsOriginalErrorWhenNoMessageIsRegistered)
+{
+    useError(static_cast<int>(utils::error::ErrorCode::AppInstallArchNotMatch), "raw failure");
+
+    EXPECT_CALL(*printer, printMessage(testing::_)).Times(0);
+    EXPECT_CALL(*printer, printErr(testing::_)).WillOnce([](const utils::error::Error &error) {
+        EXPECT_THAT(error.message(), testing::HasSubstr("raw failure"));
+    });
     EXPECT_EQ(cli->prune(), -1);
 }
 

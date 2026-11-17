@@ -8,6 +8,30 @@
 
 namespace linglong::service {
 
+std::string Action::getTaskName() const
+{
+    std::lock_guard lock(taskTextMutex);
+    return taskName;
+}
+
+void Action::setTaskName(std::string name)
+{
+    std::lock_guard lock(taskTextMutex);
+    taskName = std::move(name);
+}
+
+void Action::setTaskMessage(std::string message)
+{
+    std::lock_guard lock(taskTextMutex);
+    taskMessage = std::move(message);
+}
+
+std::string Action::getTaskMessage() const
+{
+    std::lock_guard lock(taskTextMutex);
+    return taskMessage;
+}
+
 utils::error::Result<ActionOperation>
 Action::getActionOperation(const api::types::v1::PackageInfoV2 &target, bool extraModuleOnly)
 {

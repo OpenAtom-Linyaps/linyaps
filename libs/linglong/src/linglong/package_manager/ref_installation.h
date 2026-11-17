@@ -35,8 +35,6 @@ public:
 
     utils::error::Result<void> doAction(PackageTask &task) override;
 
-    std::string getTaskName() const override { return taskName; }
-
 private:
     utils::error::Result<void> preInstall(Task &task);
     utils::error::Result<void> install(Task &task);
@@ -56,8 +54,6 @@ private:
     bool installingExtraModulesOnly{ false };
 
     ActionOperation operation;
-    std::string taskName;
-    std::string taskMessage;
     utils::Transaction transaction;
     std::optional<api::types::v1::Repo> usedRepo;
     repo::RemotePackages candidates;

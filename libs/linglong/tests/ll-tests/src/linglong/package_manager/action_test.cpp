@@ -14,6 +14,10 @@
 #include "linglong/runtime/container_builder.h"
 #include "ocppi/cli/crun/Crun.hpp"
 
+#include <atomic>
+#include <thread>
+#include <vector>
+
 namespace linglong::runtime {
 class ContainerBuilder;
 }
@@ -51,7 +55,12 @@ public:
                api::types::v1::CommonOptions opts)
         : service::Action(pm, repo, opts)
     {
+        setTaskName("mock_action");
     }
+
+    using Action::getTaskMessage;
+    using Action::setTaskMessage;
+    using Action::setTaskName;
 
     utils::error::Result<service::ActionOperation>
     testActionOperation(const api::types::v1::PackageInfoV2 &target, bool extraModuleOnly)
@@ -65,8 +74,6 @@ public:
     {
         return utils::error::Result<void>();
     }
-
-    std::string getTaskName() const override { return "mock_action"; }
 };
 
 class ActionTest : public ::testing::Test
@@ -101,6 +108,64 @@ protected:
     std::unique_ptr<service::PackageManager> pm;
     std::unique_ptr<MockAction> mockAction;
 };
+
+TEST_F(ActionTest, TaskTextSnapshotsSurviveLaterUpdates)
+{
+    EXPECT_EQ(mockAction->getTaskName(), "mock_action");
+    EXPECT_TRUE(mockAction->getTaskMessage().empty());
+    mockAction->setTaskName("Install application");
+    mockAction->setTaskMessage(std::string(4096, 'a'));
+    const auto name = mockAction->getTaskName();
+    const auto message = mockAction->getTaskMessage();
+
+    mockAction->setTaskName("Update application");
+    mockAction->setTaskMessage(std::string(8192, 'b'));
+    EXPECT_EQ(name, "Install application");
+    EXPECT_EQ(message, std::string(4096, 'a'));
+    EXPECT_EQ(mockAction->getTaskName(), "Update application");
+    EXPECT_EQ(mockAction->getTaskMessage(), std::string(8192, 'b'));
+}
+
+TEST_F(ActionTest, TaskTextSupportsConcurrentReadersAndWriters)
+{
+    const std::string first(4096, 'a');
+    const std::string second(8192, 'b');
+    mockAction->setTaskName(first);
+    mockAction->setTaskMessage(first);
+    std::atomic<bool> start{ false };
+    std::atomic<bool> valid{ true };
+    std::vector<std::thread> threads;
+
+    threads.emplace_back([&] {
+        while (!start.load()) {
+            std::this_thread::yield();
+        }
+        for (int i = 0; i < 3000; ++i) {
+            const auto &text = i % 2 == 0 ? second : first;
+            mockAction->setTaskName(text);
+            mockAction->setTaskMessage(text);
+        }
+    });
+    for (int reader = 0; reader < 3; ++reader) {
+        threads.emplace_back([&] {
+            while (!start.load()) {
+                std::this_thread::yield();
+            }
+            for (int i = 0; i < 3000; ++i) {
+                const auto name = mockAction->getTaskName();
+                const auto message = mockAction->getTaskMessage();
+                if ((name != first && name != second) || (message != first && message != second)) {
+                    valid.store(false);
+                }
+            }
+        });
+    }
+    start.store(true);
+    for (auto &thread : threads) {
+        thread.join();
+    }
+    EXPECT_TRUE(valid.load());
+}
 
 TEST_F(ActionTest, InstallNewApp)
 {

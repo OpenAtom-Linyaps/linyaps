@@ -19,6 +19,8 @@
 
 #include <nlohmann/json.hpp>
 
+#include <QMetaMethod>
+
 namespace {
 
 using namespace linglong;
@@ -153,6 +155,41 @@ protected:
     MockRepo *repo{ nullptr };
     std::unique_ptr<MockPackageManager> pm;
 };
+
+class DownloadTrackingTask : public service::PackageTask
+{
+public:
+    DownloadTrackingTask()
+        : PackageTask({})
+    {
+    }
+
+    bool monitorsDownloads() const
+    {
+        return isSignalConnected(QMetaMethod::fromSignal(&service::PackageTask::DataArrived));
+    }
+};
+
+TEST_F(RefInstallationTest, DisconnectsDownloadMonitorWhenPreparationFails)
+{
+    LINGLONG_TRACE("release download monitor on preparation failure");
+    auto fuzzy = package::FuzzyReference::parse("main:id/1.0.0/x86_64").value();
+    auto action =
+      service::RefInstallationAction::create(fuzzy, { "binary" }, *pm, *repo, {}, std::nullopt);
+    DownloadTrackingTask task;
+    EXPECT_FALSE(task.monitorsDownloads());
+    EXPECT_CALL(*repo, latestLocalReference(_))
+      .WillOnce([&](const auto &) -> utils::error::Result<package::Reference> {
+          LINGLONG_TRACE("check monitor during preparation");
+          EXPECT_TRUE(task.monitorsDownloads());
+          return LINGLONG_ERR("not installed");
+      });
+    EXPECT_CALL(*repo, matchRemoteByPriority(_, _))
+      .WillOnce(Return(LINGLONG_ERR("remote unavailable")));
+
+    EXPECT_FALSE(action->doAction(task));
+    EXPECT_FALSE(task.monitorsDownloads());
+}
 
 TEST_F(RefInstallationTest, InstallApp)
 {

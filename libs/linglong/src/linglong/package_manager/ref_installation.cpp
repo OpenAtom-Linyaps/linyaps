@@ -7,6 +7,7 @@
 #include "linglong/package_manager/data_monitor.h"
 #include "linglong/package_manager/package_manager.h"
 #include "linglong/repo/ostree_repo.h"
+#include "linglong/utils/finally/finally.h"
 #include "linglong/utils/log/log.h"
 
 #include <algorithm>
@@ -64,7 +65,7 @@ RefInstallationAction::RefInstallationAction(package::FuzzyReference fuzzyRef,
     , taskNeededSize(0)
     , taskFetchedSize(0)
 {
-    taskName = fmt::format("Install {}", this->fuzzyRef.toString());
+    setTaskName(fmt::format("Install {}", this->fuzzyRef.toString()));
 }
 
 utils::error::Result<void> RefInstallationAction::doAction(PackageTask &task)
@@ -73,19 +74,26 @@ utils::error::Result<void> RefInstallationAction::doAction(PackageTask &task)
 
     mainTask = &task;
 
-    DataMonitor monitor(5, 1, [this](DataMonitor &m) {
-        mainTask->updateStateMessage(
-          fmt::format("{} {:>9}", taskMessage, fmt::format("[{}]", m.getHumanSpeed())));
+    DataMonitor monitor(5, 1, [this, &task](DataMonitor &m) {
+        task.updateStateMessage(
+          fmt::format("{} {:>9}", getTaskMessage(), fmt::format("[{}]", m.getHumanSpeed())));
     });
 
-    QObject::connect(mainTask, &service::PackageTask::DataArrived, [this, &monitor](uint arrived) {
-        monitor.dataArrived(arrived);
-        monitor.start();
+    const auto dataConnection =
+      QObject::connect(mainTask,
+                       &service::PackageTask::DataArrived,
+                       [this, &monitor](uint arrived) {
+                           monitor.dataArrived(arrived);
+                           monitor.start();
 
-        taskFetchedSize += arrived;
-        if (taskTotalSize > 0 && taskNeededSize > 0) {
-            mainTask->updateProgress(taskFetchedSize * 100.0 / taskNeededSize);
-        }
+                           taskFetchedSize += arrived;
+                           if (taskTotalSize > 0 && taskNeededSize > 0) {
+                               mainTask->updateProgress(taskFetchedSize * 100.0 / taskNeededSize);
+                           }
+                       });
+
+    auto disconnectData = utils::finally::finally([dataConnection] {
+        QObject::disconnect(dataConnection);
     });
 
     auto res = preInstall(task);
@@ -355,8 +363,9 @@ utils::error::Result<void> RefInstallationAction::install(Task &task)
     for (const auto &item : refsToInstall) {
         const auto &[refRepo, module, meta] = item;
 
-        taskMessage = fmt::format("Installing {}/{}", refRepo.reference.toString(), module);
-        task.updateStateMessage(taskMessage);
+        const auto message = fmt::format("Installing {}/{}", refRepo.reference.toString(), module);
+        setTaskMessage(message);
+        task.updateStateMessage(message);
 
         auto res = pm.installRefModule(task, refRepo, module);
         if (!res) {

@@ -10,6 +10,7 @@
 #include "linglong/package_manager/package_manager.h"
 #include "linglong/package_manager/package_task.h"
 #include "linglong/repo/ostree_repo.h"
+#include "linglong/utils/finally/finally.h"
 #include "linglong/utils/log/log.h"
 
 namespace linglong::service {
@@ -85,7 +86,7 @@ utils::error::Result<void> PackageUpdateAction::prepare()
     }
 
     prepared = true;
-    taskName = fmt::format("update apps");
+    setTaskName(fmt::format("update apps"));
     return LINGLONG_OK;
 }
 
@@ -120,21 +121,26 @@ utils::error::Result<void> PackageUpdateAction::update(PackageTask &task)
 
     DataMonitor monitor(5, 1, [this, &task](DataMonitor &m) {
         task.updateStateMessage(
-          fmt::format("{} {:>9}", taskMessage, fmt::format("[{}]", m.getHumanSpeed())));
+          fmt::format("{} {:>9}", getTaskMessage(), fmt::format("[{}]", m.getHumanSpeed())));
     });
 
-    QObject::connect(&task,
-                     &service::PackageTask::DataArrived,
-                     [this, &task, &monitor](uint arrived) {
-                         monitor.dataArrived(arrived);
-                         monitor.start();
-                         monitor.pause(false);
+    const auto dataConnection =
+      QObject::connect(&task,
+                       &service::PackageTask::DataArrived,
+                       [this, &task, &monitor](uint arrived) {
+                           monitor.dataArrived(arrived);
+                           monitor.start();
+                           monitor.pause(false);
 
-                         if (taskTotalSize > 0 && taskNeededSize > 0) {
-                             taskFetchedSize += arrived;
-                             task.updateProgress(taskFetchedSize * 100.0 / taskNeededSize);
-                         }
-                     });
+                           if (taskTotalSize > 0 && taskNeededSize > 0) {
+                               taskFetchedSize += arrived;
+                               task.updateProgress(taskFetchedSize * 100.0 / taskNeededSize);
+                           }
+                       });
+
+    auto disconnectData = utils::finally::finally([dataConnection] {
+        QObject::disconnect(dataConnection);
+    });
 
     bool allFailed = true;
     for (const auto &app : appsToUpgrade) {
@@ -186,8 +192,9 @@ utils::error::Result<void> PackageUpdateAction::updateApp(Task &task,
     taskNeededSize = 0;
     taskFetchedSize = 0;
 
-    taskMessage = fmt::format("Checking for updates {}", app.id);
-    task.resetProgress(taskMessage);
+    const auto message = fmt::format("Checking for updates {}", app.id);
+    setTaskMessage(message);
+    task.resetProgress(message);
 
     auto localRef = package::Reference::fromPackageInfo(app);
     if (!localRef) {
@@ -251,8 +258,10 @@ utils::error::Result<void> PackageUpdateAction::updateApp(Task &task,
     }
     for (const auto &[refRepo, modules] : refsToInstall) {
         for (const auto &[module, meta] : modules) {
-            taskMessage = fmt::format("Updating {}/{}", refRepo.reference.toString(), module);
-            task.updateStateMessage(taskMessage);
+            const auto message =
+              fmt::format("Updating {}/{}", refRepo.reference.toString(), module);
+            setTaskMessage(message);
+            task.updateStateMessage(message);
             auto res = pm.installRefModule(task, refRepo, module);
             if (!res) {
                 return LINGLONG_ERR(res);

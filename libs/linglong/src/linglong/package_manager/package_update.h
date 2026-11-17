@@ -37,8 +37,6 @@ public:
     virtual utils::error::Result<void> prepare() override;
     virtual utils::error::Result<void> doAction(PackageTask &task) override;
 
-    virtual std::string getTaskName() const override { return taskName; }
-
 protected:
     virtual utils::error::Result<void> update(PackageTask &task);
     virtual utils::error::Result<void> postUpdate(Task &task);
@@ -74,8 +72,6 @@ private:
     bool depsOnly;
     bool noAutoPrune;
 
-    std::string taskName;
-    std::string taskMessage;
     utils::Transaction transaction;
     bool prepared = false;
     std::vector<api::types::v1::PackageInfoV2> appsToUpgrade;

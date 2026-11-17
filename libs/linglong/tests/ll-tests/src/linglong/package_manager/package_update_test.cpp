@@ -16,6 +16,8 @@
 #include "linglong/runtime/container_builder.h"
 #include "ocppi/cli/crun/Crun.hpp"
 
+#include <QMetaMethod>
+
 namespace {
 
 using namespace linglong;
@@ -195,6 +197,11 @@ public:
     MockPackageTask()
         : service::PackageTask({})
     {
+    }
+
+    bool monitorsDownloads() const
+    {
+        return isSignalConnected(QMetaMethod::fromSignal(&service::PackageTask::DataArrived));
     }
 
     MOCK_METHOD(void, sendMessage, (const std::string &message), (override, noexcept));
@@ -507,14 +514,24 @@ TEST_F(PackageUpdateActionTest, SendMessageWhenAppUpdateFails)
     auto res = action->prepare();
     ASSERT_TRUE(res.has_value());
 
-    EXPECT_CALL(*pm, needToUpgrade(_, _, false)).WillOnce(Return(LINGLONG_ERR("update error")));
+    MockPackageTask task;
+    EXPECT_FALSE(task.monitorsDownloads());
+    EXPECT_CALL(*pm, needToUpgrade(_, _, false))
+      .WillOnce(
+        [&](const auto &, auto &, bool)
+          -> utils::error::Result<
+            std::optional<std::pair<package::ReferenceWithRepo, std::vector<std::string>>>> {
+            LINGLONG_TRACE("check monitor during update");
+            EXPECT_TRUE(task.monitorsDownloads());
+            return LINGLONG_ERR("update error");
+        });
     EXPECT_CALL(*pm, pruneUnused()).Times(0);
 
-    MockPackageTask task;
     EXPECT_CALL(task, sendMessage(HasSubstr("failed to update app id1: update error")));
 
     res = action->doAction(task);
     ASSERT_FALSE(res.has_value());
+    EXPECT_FALSE(task.monitorsDownloads());
 }
 
 } // namespace

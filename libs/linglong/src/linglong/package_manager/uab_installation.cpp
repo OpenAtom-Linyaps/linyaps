@@ -139,7 +139,7 @@ utils::error::Result<void> UabInstallationAction::prepare()
 {
     LINGLONG_TRACE("uab installation prepare");
 
-    taskName = "installing uab";
+    setTaskName("installing uab");
     return LINGLONG_OK;
 }
 

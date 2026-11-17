@@ -40,8 +40,6 @@ public:
     virtual utils::error::Result<void> prepare();
     virtual utils::error::Result<void> doAction(PackageTask &task);
 
-    virtual std::string getTaskName() const { return taskName; }
-
 protected:
     virtual utils::error::Result<void> preInstall(PackageTask &task);
     virtual utils::error::Result<void> install(PackageTask &task);
@@ -61,7 +59,6 @@ private:
     int fd;
     ActionOperation operation;
     bool installingExtraModulesOnly{ false };
-    std::string taskName;
     CheckedLayers checkedLayers;
     std::unique_ptr<package::UABFile> uabFile;
     utils::Transaction transaction;

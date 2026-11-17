@@ -276,6 +276,60 @@ TEST(CLIPrinter, PrintUpgradeList)
     EXPECT_THAT(out, ::testing::HasSubstr("2.0.0"));
 }
 
+TEST(CLIPrinter, PrintUpgradeListColumnWidthsIndependentOfItemCount)
+{
+    UpgradeListResult item;
+    item.id = "org.deepin.demo";
+    item.oldVersion = "1.0.0.123";
+    item.newVersion = "2.0.0.456";
+
+    for (const auto count : { 1, 100 }) {
+        SCOPED_TRACE(count);
+        CaptureStdout capture;
+        linglong::cli::CLIPrinter printer;
+        std::vector<UpgradeListResult> list(count, item);
+        printer.printUpgradeList(list);
+
+        std::istringstream output(capture.out());
+        std::string line;
+        ASSERT_TRUE(std::getline(output, line)); // Skip the translated header.
+        for (int i = 0; i < count; ++i) {
+            ASSERT_TRUE(std::getline(output, line));
+            ASSERT_EQ(line, item.id + "  " + item.oldVersion + "  " + item.newVersion);
+        }
+        EXPECT_FALSE(std::getline(output, line));
+    }
+}
+
+TEST(CLIPrinter, PrintUpgradeListPadsToLongestValues)
+{
+    UpgradeListResult longest;
+    longest.id = "org.deepin.longest";
+    longest.oldVersion = "1.0.0.123";
+    longest.newVersion = "2.0.0.456";
+    UpgradeListResult shortest;
+    shortest.id = "org.demo";
+    shortest.oldVersion = "1.0";
+    shortest.newVersion = "2.0";
+
+    CaptureStdout capture;
+    linglong::cli::CLIPrinter printer;
+    std::vector<UpgradeListResult> list{ longest, shortest };
+    printer.printUpgradeList(list);
+
+    std::istringstream output(capture.out());
+    std::string line;
+    ASSERT_TRUE(std::getline(output, line)); // Skip the translated header.
+    for (const auto &item : list) {
+        ASSERT_TRUE(std::getline(output, line));
+        EXPECT_EQ(line,
+                  item.id + std::string(longest.id.size() - item.id.size() + 2, ' ')
+                    + item.oldVersion
+                    + std::string(longest.oldVersion.size() - item.oldVersion.size() + 2, ' ')
+                    + item.newVersion);
+    }
+}
+
 TEST(CLIPrinter, PrintInspect)
 {
     InspectResult result;

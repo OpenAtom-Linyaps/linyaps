@@ -858,24 +858,32 @@ void RunContext::resolveHostDynamic()
 {
     LINGLONG_TRACE("resolve host dynamic paths");
 
-    constexpr std::array<const char *, 7> paths{
-        "/etc/machine-id",
-        // FIXME: support for host /etc/ssl, ref https://github.com/p11-glue/p11-kit
-        "/usr/lib/locale",
-        "/usr/share/fonts",
-        "/usr/share/icons",
-        "/usr/share/themes",
-        "/var/cache/fontconfig",
-        "/usr/local/share/fonts",
+    struct HostDynamicEntry
+    {
+        const char *path;
+        bool readOnly = true;
     };
 
+    // Default host paths mounted into the container; kept local because
+    // resolveHostDynamic() is the only consumer of this table.
+    constexpr std::array<HostDynamicEntry, 7> hostDynamicPaths{ {
+      { "/etc/machine-id" },
+      // FIXME: support for host /etc/ssl, ref https://github.com/p11-glue/p11-kit
+      { "/usr/lib/locale" },
+      { "/usr/share/fonts" },
+      { "/usr/share/icons" },
+      { "/usr/share/themes" },
+      { "/var/cache/fontconfig" },
+      { "/usr/local/share/fonts" },
+    } };
+
     std::vector<api::types::v1::Mount> hostDynamic;
-    hostDynamic.reserve(paths.size());
-    for (const auto *rawPath : paths) {
+    hostDynamic.reserve(hostDynamicPaths.size());
+    for (const auto &entry : hostDynamicPaths) {
         hostDynamic.emplace_back(api::types::v1::Mount{
-          .destination = rawPath,
-          .options = std::vector<std::string>{ "rbind", "ro", "rslave" },
-          .source = rawPath,
+          .destination = entry.path,
+          .options = std::vector<std::string>{ "rbind", entry.readOnly ? "ro" : "rw", "rslave" },
+          .source = entry.path,
           .srcType = std::nullopt,
           .type = "bind",
         });

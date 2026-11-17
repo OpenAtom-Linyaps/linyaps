@@ -4,8 +4,6 @@
 
 #include "intel_media_driver_detector.h"
 
-#include <string_view>
-
 #include "linglong/package/version.h"
 #include "linglong/utils/cmd.h"
 #include "linglong/utils/error/error.h"
@@ -15,6 +13,7 @@
 
 #include <algorithm>
 #include <filesystem>
+#include <string_view>
 
 namespace linglong::driver::detect {
 
@@ -246,7 +245,8 @@ IntelMediaDriverDetector::getInstalledGraphicsDriverInfo(const std::string &pack
     return std::make_pair(installed, driverInfo);
 }
 
-bool IntelMediaDriverDetector::compareVersions(std::string_view v1, std::string_view v2) const noexcept
+bool IntelMediaDriverDetector::compareVersions(std::string_view v1,
+                                               std::string_view v2) const noexcept
 {
     auto ver1 = package::Version::parse(std::string(v1));
     auto ver2 = package::Version::parse(std::string(v2));

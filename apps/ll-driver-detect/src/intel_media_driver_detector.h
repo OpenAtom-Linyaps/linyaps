@@ -27,9 +27,8 @@ public:
     // driver and the newer xe driver are probed so detection works on old and new
     // Intel hardware. The list is injectable, exactly like the NVIDIA version file
     // path, so tests never depend on the hardware of the machine running them.
-    explicit IntelMediaDriverDetector(
-      std::vector<std::filesystem::path> intelGpuModulePaths = { "/sys/module/i915",
-                                                                 "/sys/module/xe" });
+    explicit IntelMediaDriverDetector(std::vector<std::filesystem::path> intelGpuModulePaths = {
+                                        "/sys/module/i915", "/sys/module/xe" });
     ~IntelMediaDriverDetector() override = default;
 
     // Main detection method - returns driver info if detected

@@ -477,6 +477,61 @@ class AppSteps:
             self._sudo_ll_cli("install", f"{app}/{newest}",
                               timeout=NOTIF_INSTALL_TIMEOUT, check=False)
 
+    # ── Test: 通知交互的三条失败路径 ──
+    #
+    # 上一条只覆盖"通知正常回按钮"的 yes / no。真正的错误分支在
+    # cli/dbus_notifier.cpp 里：Notify 调用失败、服务回未定义关闭原因、
+    # 用户把通知关掉但没点按钮。这三条都必须【不升级】并给出提示，
+    # 否则用户点关窗就等于默认同意装了。
+    def test_install_interaction_failure(self):
+        app = NOTIF_APP_ID
+        versions = self._available_versions(app)
+        if len(versions) < 2:
+            raise AssertionError(
+                f"{app} 可用版本不足两个，无法构造升级场景: {versions}")
+        newest, older = versions[0], versions[1]
+
+        try:
+            for mode in ("error", "undefined", "closeonly"):
+                bus = self._start_notification_stub(mode)
+                try:
+                    self._sudo_ll_cli("uninstall", app, timeout=300, check=False)
+                    r = self._sudo_ll_cli("install", f"{app}/{older}",
+                                          timeout=NOTIF_INSTALL_TIMEOUT,
+                                          check=False)
+                    if r.returncode != 0:
+                        raise AssertionError(
+                            f"[{mode}] 安装旧版本 {older} 失败: "
+                            f"{(r.stdout + r.stderr)[:300]}")
+                    got = self._installed_app_version(app)
+                    if got != older:
+                        raise AssertionError(
+                            f"[{mode}] 装旧版后期望 {older}，实际 {got}")
+                    r = self._sudo_ll_cli_on_bus(
+                        bus, "install", f"{app}/{newest}",
+                        timeout=NOTIF_INSTALL_TIMEOUT, check=False)
+                    got = self._installed_app_version(app)
+                    combined = (r.stdout or "") + (r.stderr or "")
+                    if not self._notification_log():
+                        raise AssertionError(
+                            f"[{mode}] 桩没收到通知，说明没走到 dbus_notifier: "
+                            f"rc={r.returncode} {combined[:200]!r}")
+                    if got != older:
+                        raise AssertionError(
+                            f"[{mode}] 交互失败时不应该升级，实际版本 {got}")
+                    if r.returncode == 0:
+                        raise AssertionError(
+                            f"[{mode}] 交互失败却返回成功: {combined[:300]!r}")
+                    if not combined.strip():
+                        raise AssertionError(f"[{mode}] 交互失败但没有任何输出")
+                finally:
+                    self._stop_notification_stub()
+        finally:
+            self._stop_notification_stub()
+            self._sudo_ll_cli("uninstall", app, timeout=300, check=False)
+            self._sudo_ll_cli("install", f"{app}/{newest}",
+                              timeout=NOTIF_INSTALL_TIMEOUT, check=False)
+
     # ── Test: 运行中升级触发延迟卸载 ──
     #
     # 这是【延迟卸载】的完整链路，覆盖三个此前未覆盖的函数：

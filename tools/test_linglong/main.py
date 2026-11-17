@@ -136,6 +136,9 @@ class SmokeTest(
         ),
         ("run 的 debug 选项错误路径", "test_run_debug_options", "运行时覆盖"),
         ("全局选项与帮助输出", "test_global_options", "命令覆盖"),
+        # 每个子命令的 --help、缺参、非法取值、隐藏子命令（inspect 等）
+        # 走的是 cli.cpp 里各子命令自己的参数校验分支，此前几乎没跑过。
+        ("子命令参数矩阵", "test_cli_option_matrix", "命令覆盖"),
         ("清理未使用运行时（prune）", "test_prune", "命令覆盖"),
         (
             "search 筛选选项",
@@ -331,6 +334,14 @@ class SmokeTest(
             "运行时覆盖",
             ("test_calendar_install_upgrade_run",),
         ),
+        # 直接给容器 1 号进程（container-init / ll-init）发 SIGHUP/SIGINT/
+        # SIGTERM，覆盖它 signalfd + epoll 的转发与子进程回收循环。
+        (
+            "容器 init 直接收信号",
+            "test_container_init_signal_forwarding",
+            "运行时覆盖",
+            ("test_calendar_install_upgrade_run",),
+        ),
         (
             "--debug 的 gdb 附加提示",
             "test_debug_attach_hint",
@@ -378,6 +389,14 @@ class SmokeTest(
         (
             "通知交互：yes 升级 / no 取消",
             "test_install_interaction_notification",
+            "应用管理",
+            ("configure_smoke_repositories",),
+        ),
+        # 通知服务本身出问题时（Notify 报错 / 回未定义关闭原因 / 用户关掉
+        # 通知没点按钮），必须保持旧版本不升级并给出提示。
+        (
+            "通知交互失败路径",
+            "test_install_interaction_failure",
             "应用管理",
             ("configure_smoke_repositories",),
         ),

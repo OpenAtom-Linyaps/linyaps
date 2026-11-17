@@ -474,6 +474,84 @@ class RuntimeSteps:
         finally:
             self._cleanup_containers(app_id)
 
+    # ── Test: 直接给容器 init 发信号 ──
+    #
+    # 容器里的 1 号进程是 container-init（ll-init），它用 signalfd + epoll
+    # 把宿主送进来的 SIGHUP/SIGINT/SIGTERM 转发给应用子进程，再回收子进程。
+    # 之前的用例只用过 ll-cli kill（走服务端/pidfd 那条路），从没直接给
+    # init 发过信号，所以 apps/ll-init/src/ll-init.cpp 的转发循环整块未覆盖。
+    #
+    # 这里起一个长驻容器，从 ps --json 拿到 init 的 pid（宿主命名空间），
+    # 依次发三种信号，每种都要求：容器自己退出、ps 里消失、没有残留。
+    def test_container_init_signal_forwarding(self):
+        app_id = CALENDAR_APP_ID
+        r = self._ll_cli("list", check=False)
+        if app_id not in (r.stdout or ""):
+            self._sudo_ll_cli("install", app_id, timeout=900, check=False)
+        if app_id not in (self._ll_cli("list", check=False).stdout or ""):
+            raise AssertionError(f"{app_id} 未安装，无法测容器信号转发")
+
+        try:
+            for signame in ("HUP", "INT", "TERM"):
+                self._cleanup_containers(app_id)
+                proc = subprocess.Popen(
+                    [LL_CLI, "run", app_id, "--", "sleep", "300"],
+                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                try:
+                    cid = self._wait_container(timeout=40, app_id=app_id)
+                    if not cid:
+                        raise AssertionError(f"[SIG{signame}] 容器没出现在 ps 里")
+
+                    arr = json.loads(
+                        self._ll_cli("ps", "--json", check=False).stdout or "[]")
+                    entry = next((i for i in arr if i.get("id") == cid), None)
+                    pid = (entry or {}).get("pid")
+                    if not pid:
+                        raise AssertionError(
+                            f"[SIG{signame}] ps --json 里没有容器 pid: {entry!r}")
+
+                    # 确认这个 pid 真的是容器 1 号进程（container-init），
+                    # 否则杀的是一个无关进程，覆盖和断言都失去意义
+                    comm = self._run_cmd(
+                        ["cat", f"/proc/{pid}/comm"], sudo=True, check=False)
+                    if "container-init" not in (comm.stdout or ""):
+                        raise AssertionError(
+                            f"[SIG{signame}] {pid} 不是 container-init: "
+                            f"{comm.stdout!r}")
+
+                    self._run_cmd(["kill", f"-{signame}", str(pid)],
+                                  sudo=True, check=False)
+
+                    rc = None
+                    deadline = time.time() + 30
+                    while time.time() < deadline:
+                        rc = proc.poll()
+                        if rc is not None:
+                            break
+                        time.sleep(1)
+                    if rc is None:
+                        raise AssertionError(
+                            f"[SIG{signame}] 信号发出去 30 秒容器还没退出")
+
+                    # 容器必须从 ps 里消失（ll-init 回收了子进程）
+                    gone = False
+                    deadline = time.time() + 30
+                    while time.time() < deadline:
+                        out = self._ll_cli("ps", "--json", check=False).stdout or ""
+                        if cid not in out:
+                            gone = True
+                            break
+                        time.sleep(1)
+                    if not gone:
+                        raise AssertionError(
+                            f"[SIG{signame}] 容器退出后仍留在 ll-cli ps 里")
+                finally:
+                    if proc.poll() is None:
+                        proc.kill()
+                        proc.wait()
+        finally:
+            self._cleanup_containers(app_id)
+
     def test_runtime_config_mounts(self):
         app_id = CALENDAR_APP_ID
         workdir = Path(tempfile.mkdtemp(prefix="rtmount-"))

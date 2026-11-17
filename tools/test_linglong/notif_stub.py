@@ -20,6 +20,9 @@ ActionOperation::Policy::Upgrade 分支），会通过 org.freedesktop.Notificat
 用法: notif_stub.py <action|none> <log> [delay]
 
   action  ActionInvoked 里回的动作名（Y / N / ...）；none = 只记日志不回应
+          error     = Notify 直接抛 D-Bus 错误（测通知服务不可用的降级）
+          undefined = 只发 NotificationClosed(reason=4)，测"未定义关闭原因"
+          closeonly = 只发 NotificationClosed(reason=2)，测"用户关掉通知没点按钮"
   log     每收到一条通知追加一行 JSON（summary / body / actions / hints）
   delay   收到通知后多少秒回 ActionInvoked，默认 0.5
 """
@@ -40,6 +43,7 @@ DELAY = float(sys.argv[3]) if len(sys.argv) > 3 else 0.5
 # 关闭原因，取值同 org.freedesktop.Notifications 规范 / CloseReason 枚举
 REASON_DISMISSED = 2
 REASON_CLOSE_BY_CALL = 3
+REASON_UNDEFINED = 4
 
 
 class Notifications(dbus.service.Object):
@@ -66,6 +70,18 @@ class Notifications(dbus.service.Object):
                 }, ensure_ascii=False) + "\n")
         except OSError:
             pass
+        if ACTION == "error":
+            # 模拟通知服务拒绝请求：ll-cli 的 notify() 会拿到无效 reply，
+            # 走 "send notification error" -> request() 的 "failed to notify"
+            raise dbus.exceptions.DBusException(
+                "smoke stub: notify rejected",
+                name="org.freedesktop.Notifications.Error")
+        if ACTION == "undefined":
+            GLib.timeout_add(int(DELAY * 1000), self._close_undefined, nid)
+            return dbus.UInt32(nid)
+        if ACTION == "closeonly":
+            GLib.timeout_add(int(DELAY * 1000), self._close_dismissed, nid)
+            return dbus.UInt32(nid)
         if ACTION and ACTION != "none":
             GLib.timeout_add(int(DELAY * 1000), self._fire, nid)
         return dbus.UInt32(nid)
@@ -76,6 +92,14 @@ class Notifications(dbus.service.Object):
         return False
 
     def _close(self, nid):
+        self.NotificationClosed(dbus.UInt32(nid), dbus.UInt32(REASON_DISMISSED))
+        return False
+
+    def _close_undefined(self, nid):
+        self.NotificationClosed(dbus.UInt32(nid), dbus.UInt32(REASON_UNDEFINED))
+        return False
+
+    def _close_dismissed(self, nid):
         self.NotificationClosed(dbus.UInt32(nid), dbus.UInt32(REASON_DISMISSED))
         return False
 

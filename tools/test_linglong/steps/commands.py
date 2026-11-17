@@ -957,6 +957,75 @@ class CommandSteps:
         if r.returncode < 0:
             raise AssertionError("ll-cli 非法全局选项崩溃了")
 
+    # ── Test: 子命令参数矩阵（帮助 / 缺参 / 非法取值 / 隐藏子命令）──
+    #
+    # 之前 --help 只覆盖了 4 个子命令，cli.cpp 里每个子命令的参数校验
+    # 分支（缺位置参数、非法枚举值、不存在的仓库别名、隐藏的 inspect
+    # 与 repo 子命令）基本没被跑过。这里用两张表把它们过一遍：
+    #   - 帮助表：rc 必须 0，且真的有输出
+    #   - 非法表：不能崩溃（returncode < 0 表示被信号杀掉），
+    #             返回 0 的命令至少要有可读提示，不能静默成功
+    def test_cli_option_matrix(self):
+        help_cases = [
+            ["run"], ["ps"], ["enter"], ["kill"], ["prune"], ["install"],
+            ["uninstall"], ["upgrade"], ["list"], ["analyze"], ["info"],
+            ["content"], ["search"], ["repo"],
+            ["analyze", "size"], ["analyze", "depends"],
+            ["repo", "add"], ["repo", "modify"], ["repo", "remove"],
+            ["repo", "update"], ["repo", "set-default"], ["repo", "show"],
+            ["repo", "set-priority"],
+            # 隐藏子命令：不在 --help 列表里，只能直接调
+            ["inspect"],
+        ]
+        for argv in help_cases:
+            label = "ll-cli " + " ".join(argv) + " --help"
+            r = self._ll_cli(*argv, "--help", timeout=60, check=False)
+            if r.returncode != 0:
+                raise AssertionError(
+                    f"{label} 失败: rc={r.returncode} {r.stderr[:200]}")
+            if not (r.stdout.strip() or r.stderr.strip()):
+                raise AssertionError(f"{label} 没有任何输出")
+
+        reject_cases = [
+            ["definitely-not-a-subcommand"],
+            ["install"],
+            ["uninstall"],
+            ["upgrade"],
+            ["run"],
+            ["kill"],
+            ["enter"],
+            ["content"],
+            ["info"],
+            ["search"],
+            ["repo", "add"],
+            ["repo", "remove"],
+            ["repo", "update"],
+            ["repo", "set-priority"],
+            ["install", "org.deepin.demo", "org.deepin.calendar"],
+            ["list", "--type=not-a-type"],
+            ["run", "org.deepin.nonexistent.app"],
+            ["info", "org.deepin.nonexistent.app"],
+            ["uninstall", "org.deepin.nonexistent.app"],
+            ["upgrade", "org.deepin.nonexistent.app"],
+            ["content", "org.deepin.nonexistent.app"],
+            ["analyze", "size", "org.deepin.nonexistent.app"],
+            ["analyze", "depends", "org.deepin.nonexistent.app"],
+            ["repo", "remove", "org.deepin.nonexistent"],
+            ["repo", "set-priority", "org.deepin.nonexistent", "3"],
+            ["repo", "set-default", "org.deepin.nonexistent"],
+            ["repo", "update", "org.deepin.nonexistent", "http://127.0.0.1:1/"],
+            ["repo", "set-priority", SMOKE_REPO_NAME, "not-a-number"],
+        ]
+        for argv in reject_cases:
+            label = "ll-cli " + " ".join(argv)
+            r = self._ll_cli(*argv, timeout=120, check=False)
+            if r.returncode < 0:
+                raise AssertionError(
+                    f"{label} 崩溃了（信号 {-r.returncode}）")
+            combined = (r.stdout or "") + (r.stderr or "")
+            if r.returncode == 0 and not combined.strip():
+                raise AssertionError(f"{label} 成功但没有任何输出（静默失败）")
+
     # ── Test: 图形驱动检测工具（ll-driver-detect）──
     #
     # ll-driver-detect 装在 /usr/libexec/linglong/ 下（不在 PATH 里），

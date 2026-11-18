@@ -1103,6 +1103,9 @@ TEST(LinglongBuilder, ProcessProjectLockGenerateAndUpdateFetchGitSourceAndRecord
     ASSERT_TRUE(std::filesystem::create_directories(sourceDir));
     std::ofstream(sourceDir / "hello.txt") << "hello from git";
     linglong::utils::Cmd git("git");
+    if (!git.exists()) {
+        GTEST_SKIP() << "git is not available";
+    }
     ASSERT_TRUE(git.exec({ "-C", sourceDir.string(), "init", "-q" })) << "git init failed";
     ASSERT_TRUE(git.exec({ "-C",
                            sourceDir.string(),

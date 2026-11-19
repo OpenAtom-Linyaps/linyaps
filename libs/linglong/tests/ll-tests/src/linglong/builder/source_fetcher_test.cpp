@@ -547,7 +547,10 @@ TEST(SourceCache, PublishesGitDirectoryAtomicallyAndCopiesItToBuildDirectory)
     }
     TestProcess second({ "source-fetch", requestPath.string() });
     auto firstResult = fetch(firstDestination);
-    ASSERT_EQ(second.wait(), 0) << second.stderrOutput();
+    // The helper competes with this process for the same cache lock and performs a
+    // full git validation while holding it. Build workers can be slow enough to
+    // exceed the default 10s timeout, so allow for it explicitly.
+    ASSERT_EQ(second.wait(std::chrono::seconds(60)), 0) << second.stderrOutput();
     ASSERT_TRUE(firstResult.has_value()) << firstResult.error().message();
     EXPECT_EQ(firstResult->hash, "git-commit:" + *commit);
 

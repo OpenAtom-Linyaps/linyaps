@@ -2742,9 +2742,11 @@ int Cli::depends(const DependsOptions &options)
     });
 
     std::vector<DependsNode> trees;
+    runtime::ResolveOptions resolveOptions;
+    resolveOptions.resolveRuntimeEnvironment = false;
     for (const auto &appRef : appRefs) {
         runtime::RunContext runContext(**repo);
-        auto resolveResult = runContext.resolve(appRef);
+        auto resolveResult = runContext.resolve(appRef, resolveOptions);
         if (!resolveResult) {
             this->printer.printErr(resolveResult.error());
             return -1;

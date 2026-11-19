@@ -10,6 +10,7 @@
 #include <QDBusConnection>
 #include <QDBusContext>
 #include <QDBusMessage>
+#include <QElapsedTimer>
 #include <QTimer>
 #include <QVariantMap>
 
@@ -127,7 +128,9 @@ public Q_SLOTS:
             const bool action = emitAction;
             const bool close = emitClose;
             const QString key = actionKey;
-            QTimer::singleShot(10, this, [this, id, action, close, key]() {
+            // Queue the emission so it is delivered after Notify returns and the
+            // notifier has stored the notification id.
+            QTimer::singleShot(0, this, [this, id, action, close, key]() {
                 if (action) {
                     Q_EMIT ActionInvoked(id, key);
                 }
@@ -156,34 +159,42 @@ class DBusNotifierTest : public ::testing::Test
 protected:
     static void SetUpTestSuite()
     {
+        if (app != nullptr) {
+            return;
+        }
+
         static PrivateBus bus;
         static bool ready = bus.start();
         ASSERT_TRUE(ready) << "failed to start private dbus-daemon";
 
+        char programName[] = "dbus-notifier-test";
         int argc = 1;
-        const char *argv[] = { "test" };
-        app = new QCoreApplication(argc, const_cast<char **>(argv));
-        ASSERT_TRUE(QDBusConnection::connectToBus(QString::fromStdString(bus.busAddress()),
-                                                  "qt_default_session_bus")
-                      .isConnected());
+        char *argv[] = { programName, nullptr };
+        app = new QCoreApplication(argc, argv);
+
+        auto connection = QDBusConnection::connectToBus(QString::fromStdString(bus.busAddress()),
+                                                        "qt_default_session_bus");
+        ASSERT_TRUE(connection.isConnected())
+          << "failed to connect to private session bus at " << bus.busAddress() << ": "
+          << connection.lastError().message().toStdString();
+        injectedConnectionName = connection.name();
     }
 
-    static void TearDownTestSuite()
-    {
-        delete app;
-        app = nullptr;
-    }
+    static void TearDownTestSuite() { QCoreApplication::processEvents(); }
 
     void SetUp() override
     {
         connection = QDBusConnection::sessionBus();
         ASSERT_TRUE(connection.isConnected());
+        EXPECT_EQ(connection.name(), injectedConnectionName);
         fake = std::make_unique<FakeNotifications>();
         ASSERT_TRUE(connection.registerObject("/org/freedesktop/Notifications",
                                               fake.get(),
                                               QDBusConnection::ExportAllSlots
-                                                | QDBusConnection::ExportAllSignals));
-        ASSERT_TRUE(connection.registerService("org.freedesktop.Notifications"));
+                                                | QDBusConnection::ExportAllSignals))
+          << connection.lastError().message().toStdString();
+        ASSERT_TRUE(connection.registerService("org.freedesktop.Notifications"))
+          << connection.lastError().message().toStdString();
     }
 
     void TearDown() override
@@ -194,11 +205,13 @@ protected:
     }
 
     static QCoreApplication *app;
+    static QString injectedConnectionName;
     QDBusConnection connection{ QString() };
     std::unique_ptr<FakeNotifications> fake;
 };
 
 QCoreApplication *DBusNotifierTest::app = nullptr;
+QString DBusNotifierTest::injectedConnectionName;
 
 TEST_F(DBusNotifierTest, InitDoesNotCrash)
 {
@@ -212,7 +225,8 @@ TEST_F(DBusNotifierTest, InitDoesNotCrash)
 TEST_F(DBusNotifierTest, SendSimpleNotificationSucceeds)
 {
     DBusNotifier notifier;
-    ASSERT_TRUE(notifier.init().has_value());
+    auto initResult = notifier.init();
+    ASSERT_TRUE(initResult.has_value()) << initResult.error().message();
 
     DBusNotifier::NotificationRequest request;
     request.summary = "NVIDIA driver";
@@ -234,7 +248,8 @@ TEST_F(DBusNotifierTest, SendSimpleNotificationReportsServiceFailure)
     fake->failNotify = true;
 
     DBusNotifier notifier;
-    ASSERT_TRUE(notifier.init().has_value());
+    auto initResult = notifier.init();
+    ASSERT_TRUE(initResult.has_value()) << initResult.error().message();
 
     DBusNotifier::NotificationRequest request;
     request.summary = "NVIDIA driver";
@@ -253,11 +268,12 @@ TEST_F(DBusNotifierTest, InteractiveNotificationReturnsSelectedAction)
     fake->actionKey = "install";
 
     DBusNotifier notifier;
-    ASSERT_TRUE(notifier.init().has_value());
+    auto initResult = notifier.init();
+    ASSERT_TRUE(initResult.has_value()) << initResult.error().message();
 
     DBusNotifier::NotificationRequest request;
     request.summary = "NVIDIA driver";
-    request.actions = { "install", "Install", "ignore", "Ignore" };
+    request.actions = QStringList({ "install", "Install", "ignore", "Ignore" });
     request.timeout = 2000;
 
     auto result = notifier.sendInteractiveNotification(request);
@@ -271,18 +287,23 @@ TEST_F(DBusNotifierTest, InteractiveNotificationReturnsSelectedAction)
 TEST_F(DBusNotifierTest, InteractiveNotificationTimesOutWithoutInteraction)
 {
     DBusNotifier notifier;
-    ASSERT_TRUE(notifier.init().has_value());
+    auto initResult = notifier.init();
+    ASSERT_TRUE(initResult.has_value()) << initResult.error().message();
 
     DBusNotifier::NotificationRequest request;
     request.summary = "NVIDIA driver";
-    request.actions = { "install", "Install" };
-    request.timeout = 30;
+    request.actions = QStringList({ "install", "Install" });
+    request.timeout = 200;
 
+    QElapsedTimer timer;
+    timer.start();
     auto result = notifier.sendInteractiveNotification(request);
 
     ASSERT_TRUE(result.has_value()) << result.error().message();
     EXPECT_FALSE(result->success);
     EXPECT_TRUE(result->action.isEmpty());
+    // QTimer uses a coarse timer by default and may fire up to 5% early.
+    EXPECT_GE(timer.elapsed(), static_cast<qint64>(request.timeout) * 9 / 10);
 }
 
 TEST_F(DBusNotifierTest, InteractiveNotificationReportsServiceFailure)
@@ -290,16 +311,18 @@ TEST_F(DBusNotifierTest, InteractiveNotificationReportsServiceFailure)
     fake->failNotify = true;
 
     DBusNotifier notifier;
-    ASSERT_TRUE(notifier.init().has_value());
+    auto initResult = notifier.init();
+    ASSERT_TRUE(initResult.has_value()) << initResult.error().message();
 
     DBusNotifier::NotificationRequest request;
     request.summary = "NVIDIA driver";
-    request.actions = { "install", "Install" };
+    request.actions = QStringList({ "install", "Install" });
     request.timeout = 100;
 
     auto result = notifier.sendInteractiveNotification(request);
 
     EXPECT_FALSE(result.has_value());
+    EXPECT_NE(result.error().message().find("Failed to send notification"), std::string::npos);
 }
 
 TEST_F(DBusNotifierTest, InteractiveNotificationClosesWithoutAction)
@@ -307,11 +330,12 @@ TEST_F(DBusNotifierTest, InteractiveNotificationClosesWithoutAction)
     fake->emitClose = true;
 
     DBusNotifier notifier;
-    ASSERT_TRUE(notifier.init().has_value());
+    auto initResult = notifier.init();
+    ASSERT_TRUE(initResult.has_value()) << initResult.error().message();
 
     DBusNotifier::NotificationRequest request;
     request.summary = "NVIDIA driver";
-    request.actions = { "install", "Install" };
+    request.actions = QStringList({ "install", "Install" });
     request.timeout = 2000;
 
     auto result = notifier.sendInteractiveNotification(request);

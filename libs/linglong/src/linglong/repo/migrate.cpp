@@ -80,7 +80,7 @@ int migrateRef(OstreeRepo *repo, const MigrateRefData &data)
     }
 
     std::unordered_map<std::string_view, std::string_view> needMigrate;
-    auto refPrefix = data.repoName + ":";
+    const std::string refPrefix = data.repoName + ":";
     for (auto it = allRefs.begin(); it != allRefs.end();) {
         if (it->first.rfind(refPrefix, 0) == 0) {
             ++it;
@@ -90,8 +90,20 @@ int migrateRef(OstreeRepo *repo, const MigrateRefData &data)
         }
     }
 
+    // Drop every legacy ref whose prefixed counterpart already exists in the
+    // repository. Re-migrating such a ref would call
+    // ostree_repo_transaction_set_ref(repo, repoName, ref, legacyChecksum) and
+    // point the existing prefixed ref at the stale legacy commit, overwriting
+    // both the commit and the layer symlink that were already there. Every ref
+    // that still needs migration must therefore be checked against its real
+    // prefixed name before the transaction is prepared.
+    //
+    // Build the lookup key from scratch on every iteration. std::string::append
+    // mutates its receiver and returns a reference to it, so reusing a single
+    // growing buffer makes the prefix accumulate one ref per iteration and
+    // turns every lookup after the first into a key that can never exist.
     for (auto it = needMigrate.begin(); it != needMigrate.end();) {
-        auto tmpRef = refPrefix.append(it->first);
+        const std::string tmpRef = refPrefix + std::string{ it->first };
         if (allRefs.find(tmpRef) != allRefs.end()) {
             it = needMigrate.erase(it);
         } else {

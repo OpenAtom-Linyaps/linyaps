@@ -45,6 +45,10 @@ struct ResolveOptions
     std::optional<std::map<std::string, std::vector<api::types::v1::ExtensionDefine>>>
       externalExtensionDefs;
     std::optional<std::vector<api::types::v1::Mount>> mounts;
+    // Dependency inspection only needs the layer graph, not the host runtime
+    // configuration (overlayfs, timezone, resolv.conf). Keeping it optional lets
+    // `ll-cli depends` work in minimal build containers without overlayfs.
+    bool resolveRuntimeEnvironment{ true };
 
     auto applyRuntimeConfig(const api::types::v1::RuntimeConfigure &runtimeConfig)
       -> utils::error::Result<void>;

@@ -22,7 +22,6 @@
 #include "linglong/api/types/v1/PackageManager1SearchResult.hpp"
 #include "linglong/api/types/v1/PackageManager1UninstallParameters.hpp"
 #include "linglong/api/types/v1/State.hpp"
-#include "linglong/cli/error_presenter.h"
 #include "linglong/cli/printer.h"
 #include "linglong/common/constants.h"
 #include "linglong/common/dir.h"
@@ -3572,65 +3571,128 @@ utils::error::Result<QVariantMap> Cli::runTaskSync(QDBusPendingReply<QVariantMap
 void Cli::handleInstallError(const utils::error::Error &error,
                              const api::types::v1::PackageManager1InstallParameters &params)
 {
-    this->presentError(ErrorOperation::Install, error, params.package.id);
+    auto errorCode = static_cast<utils::error::ErrorCode>(error.code());
+    switch (errorCode) {
+    case utils::error::ErrorCode::AppInstallModuleRequireAppFirst:
+        this->printer.printMessage(_("To install the module, one must first install the app."));
+        break;
+    case utils::error::ErrorCode::AppInstallModuleAlreadyExists:
+        this->printer.printMessage(_("Module is already installed."));
+        break;
+    case utils::error::ErrorCode::AppInstallModuleNotFound:
+        this->printer.printMessage(_("The module could not be found remotely."));
+        break;
+    case utils::error::ErrorCode::AppInstallAlreadyInstalled:
+        this->printer.printMessage(_("Application already installed"));
+        break;
+    case utils::error::ErrorCode::AppInstallNotFoundFromRemote:
+        this->printer.printMessage(
+          fmt::format(_("Application {} is not found in remote repo."), params.package.id));
+        break;
+    case utils::error::ErrorCode::AppInstallModuleNoVersion:
+        this->printer.printMessage(_("Cannot specify a version when installing a module."));
+        break;
+    case utils::error::ErrorCode::AppInstallNeedDowngrade:
+        this->printer.printMessage(
+          fmt::format(_("The latest version has been installed. If you want to "
+                        "replace it, try using 'll-cli install {} --force'"),
+                      params.package.id));
+        break;
+    case utils::error::ErrorCode::Unknown:
+    case utils::error::ErrorCode::AppInstallFailed:
+        this->printer.printMessage(_("Install failed"));
+        break;
+    default:
+        if (!handleCommonError(error)) {
+            return;
+        }
+        break;
+    }
+
+    if (this->globalOptions.verbose) {
+        this->printer.printErr(error);
+    }
 }
 
 void Cli::handleInstallFromFileError(const utils::error::Error &error)
 {
-    this->presentError(ErrorOperation::InstallFromFile, error);
+    auto errorCode = static_cast<utils::error::ErrorCode>(error.code());
+    switch (errorCode) {
+    case utils::error::ErrorCode::AppInstallAlreadyInstalled:
+        this->printer.printMessage(_("Application already installed"));
+        break;
+    default:
+        if (!handleCommonError(error)) {
+            return;
+        }
+        break;
+    }
+
+    if (this->globalOptions.verbose) {
+        this->printer.printErr(error);
+    }
 }
 
 void Cli::handleUninstallError(const utils::error::Error &error)
 {
-    this->presentError(ErrorOperation::Uninstall, error);
+    auto errorCode = static_cast<utils::error::ErrorCode>(error.code());
+    switch (errorCode) {
+    case utils::error::ErrorCode::AppUninstallAppIsRunning: {
+
+        auto ret = this->notifier->notify(api::types::v1::InteractionRequest{
+          .appName = "ll-cli",
+          .summary = _("The application is currently running and cannot be "
+                       "uninstalled. Please turn off the application and try again.") });
+        if (!ret) {
+            this->printer.printErr(ret.error());
+        }
+        break;
+    }
+    case utils::error::ErrorCode::AppUninstallNotFoundFromLocal:
+        this->printer.printMessage(_("Application is not installed."));
+        break;
+    case utils::error::ErrorCode::AppUninstallMultipleVersions:
+        this->printer.printMessage(
+          fmt::format(_("Multiple versions of the package are installed. Please specify a single "
+                        "version to uninstall:\n{}"),
+                      error.message()));
+        break;
+    case utils::error::ErrorCode::AppUninstallBaseOrRuntime:
+        this->printer.printMessage(
+          _("Base or runtime cannot be uninstalled, please use 'll-cli prune'."));
+        break;
+    case utils::error::ErrorCode::AppUninstallFailed:
+    case utils::error::ErrorCode::Unknown:
+        this->printer.printMessage(_("Uninstall failed"));
+        break;
+    default:
+        if (!handleCommonError(error)) {
+            return;
+        }
+        break;
+    }
+
+    if (this->globalOptions.verbose) {
+        this->printer.printErr(error);
+    }
 }
 
 void Cli::handleUpgradeError(const utils::error::Error &error)
 {
-    this->presentError(ErrorOperation::Upgrade, error);
-}
-
-// 提示语本身在 error_presenter.cpp 的表里；这里只负责查表、填参数，
-// 再决定是打印还是发桌面通知。
-void Cli::presentError(ErrorOperation operation,
-                       const utils::error::Error &error,
-                       const std::string &packageId)
-{
-    auto code = static_cast<utils::error::ErrorCode>(error.code());
-
-    auto presentation = operationPresentation(operation, code);
-    if (!presentation) {
-        presentation = commonPresentation(code);
-    }
-
-    if (!presentation) {
-        // 没登记提示语的码：保持原行为，把错误原样打出来
-        this->printer.printErr(error);
-        return;
-    }
-
-    auto message = presentation->message;
-    switch (presentation->detail) {
-    case DetailSource::None:
+    auto errorCode = static_cast<utils::error::ErrorCode>(error.code());
+    switch (errorCode) {
+    case utils::error::ErrorCode::AppUpgradeLocalNotFound:
+        this->printer.printMessage(_("Application is not installed."));
         break;
-    case DetailSource::PackageId:
-        message = fmt::format(fmt::runtime(message), packageId);
+    case utils::error::ErrorCode::AppUpgradeFailed:
+    case utils::error::ErrorCode::Unknown:
+        this->printer.printMessage(_("Upgrade failed"));
         break;
-    case DetailSource::ErrorMessage:
-        message = fmt::format(fmt::runtime(message), error.message());
-        break;
-    }
-
-    if (presentation->viaNotifier) {
-        auto ret = this->notifier->notify(api::types::v1::InteractionRequest{
-          .appName = "ll-cli",
-          .summary = message,
-        });
-        if (!ret) {
-            this->printer.printErr(ret.error());
+    default:
+        if (!handleCommonError(error)) {
+            return;
         }
-    } else {
-        this->printer.printMessage(message);
+        break;
     }
 
     if (this->globalOptions.verbose) {
@@ -3640,14 +3702,27 @@ void Cli::presentError(ErrorOperation operation,
 
 bool Cli::handleCommonError(const utils::error::Error &error)
 {
-    auto presentation = commonPresentation(static_cast<utils::error::ErrorCode>(error.code()));
-    if (!presentation) {
-        // 没登记提示语的码：保持原行为，把错误原样打出来
+    auto errorCode = static_cast<utils::error::ErrorCode>(error.code());
+    switch (errorCode) {
+    case utils::error::ErrorCode::NetworkError:
+        this->printer.printMessage(_("Network connection failed. Please:"
+                                     "\n1. Check your internet connection"
+                                     "\n2. Verify network proxy settings if used"));
+        break;
+    case utils::error::ErrorCode::LayerCompatibilityError:
+        this->printer.printMessage(_("Package not found"));
+        break;
+    case utils::error::ErrorCode::Canceled:
+        this->printer.printMessage(_("Operation canceled"));
+        break;
+    case utils::error::ErrorCode::PermissionDenied:
+        this->printer.printMessage(_("Permission denied, authentication is required"));
+        break;
+    default:
         this->printer.printErr(error);
         return false;
     }
 
-    this->printer.printMessage(presentation->message);
     return true;
 }
 

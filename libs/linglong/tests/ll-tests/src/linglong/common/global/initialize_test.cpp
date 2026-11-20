@@ -9,6 +9,8 @@
 #include "linglong/common/global/initialize.h"
 #include "linglong/utils/env.h"
 
+#include <csignal>
+
 using namespace linglong::common::global;
 using linglong::utils::EnvironmentVariableGuard;
 
@@ -34,6 +36,25 @@ TEST(ApplicationInitialize, RunsWithoutCrashing)
     applicationInitialize();
     // Signal handlers were installed without terminating the process.
     SUCCEED();
+}
+
+TEST(ApplicationInitialize, IgnoresSigPipe)
+{
+    // Cmd::exec writes into pipes whose reader can vanish at any moment, for
+    // example an executable OCI config patch that exits without draining its
+    // input. Keeping the default disposition would terminate the application
+    // from inside write(2) instead of letting it observe EPIPE.
+    struct sigaction restore{};
+    restore.sa_handler = SIG_DFL;
+    sigemptyset(&restore.sa_mask);
+    restore.sa_flags = 0;
+    ASSERT_EQ(sigaction(SIGPIPE, &restore, nullptr), 0);
+
+    applicationInitialize();
+
+    struct sigaction current{};
+    ASSERT_EQ(sigaction(SIGPIPE, nullptr, &current), 0);
+    EXPECT_EQ(current.sa_handler, SIG_IGN);
 }
 
 TEST(InitLogSystem, ParsesEnvironment)

@@ -9,7 +9,11 @@
 #include "linglong/runtime/overlayfs_driver.h"
 #include "linglong/utils/cmd.h"
 
+#include <linux/magic.h>
+#include <sys/vfs.h>
+
 #include <filesystem>
+#include <fstream>
 
 namespace fs = std::filesystem;
 
@@ -86,6 +90,61 @@ TEST(OverlayFSDriverStatic, ResolveOverlayMode)
     } else {
         EXPECT_FALSE(resolvedMode);
     }
+}
+
+TEST_F(OverlayFSDriverTest, ResolvesMissingCacheUsingItsExistingParent)
+{
+    using linglong::runtime::OverlayFSDriver;
+    using linglong::utils::OverlayMode;
+    const auto cache = temp_dir.path() / "not-created" / "cache";
+    struct statfs info{};
+    ASSERT_EQ(statfs(temp_dir.path().c_str(), &info), 0);
+
+    const auto resolved = OverlayFSDriver::resolveOverlayMode(OverlayMode::Auto, cache);
+    if (info.f_type == OVERLAYFS_SUPER_MAGIC) {
+        if (OverlayFSDriver::canUseFUSEOverlay()) {
+            ASSERT_TRUE(resolved) << resolved.error().message();
+            EXPECT_EQ(*resolved, OverlayMode::FUSE);
+        } else {
+            ASSERT_FALSE(resolved);
+            EXPECT_THAT(resolved.error().message(), ::testing::HasSubstr("install fuse-overlayfs"));
+        }
+    } else {
+        const auto defaultMode = OverlayFSDriver::resolveOverlayMode(OverlayMode::Auto);
+        ASSERT_EQ(resolved.has_value(), defaultMode.has_value());
+        if (resolved) {
+            EXPECT_EQ(*resolved, *defaultMode);
+        }
+    }
+    EXPECT_FALSE(fs::exists(cache));
+}
+
+TEST_F(OverlayFSDriverTest, ExplicitKernelDoesNotSilentlySwitchOnOverlayStorage)
+{
+    using linglong::runtime::OverlayFSDriver;
+    using linglong::utils::OverlayMode;
+    struct statfs info{};
+    ASSERT_EQ(statfs(temp_dir.path().c_str(), &info), 0);
+    if (info.f_type != OVERLAYFS_SUPER_MAGIC) {
+        GTEST_SKIP() << "requires an OverlayFS-backed temporary directory";
+    }
+
+    const auto resolved = OverlayFSDriver::resolveOverlayMode(OverlayMode::Kernel, temp_dir.path());
+    ASSERT_FALSE(resolved);
+    EXPECT_THAT(resolved.error().message(), ::testing::HasSubstr("OverlayFS upper directory"));
+}
+
+TEST_F(OverlayFSDriverTest, InvalidCacheParentIsReported)
+{
+    const auto regularFile = temp_dir.path() / "regular-file";
+    std::ofstream(regularFile) << "not a cache directory";
+    const auto resolved =
+      linglong::runtime::OverlayFSDriver::resolveOverlayMode(linglong::utils::OverlayMode::Auto,
+                                                             regularFile / "cache");
+
+    ASSERT_FALSE(resolved);
+    EXPECT_THAT(resolved.error().message(),
+                ::testing::HasSubstr("inspect overlay backing filesystem"));
 }
 
 TEST_F(OverlayFSDriverTest, AutoModeSelection)

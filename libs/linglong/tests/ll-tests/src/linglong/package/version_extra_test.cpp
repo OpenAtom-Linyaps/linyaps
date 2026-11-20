@@ -13,6 +13,8 @@
 #include "linglong/package/versionv2.h"
 
 #include <string>
+#include <utility>
+#include <vector>
 
 using namespace linglong::package;
 
@@ -114,6 +116,36 @@ TEST(VersionTest, SemanticMatchOutsideFallback)
     ASSERT_TRUE(v2.has_value());
     EXPECT_TRUE(v2->semanticMatch("1.2.3"));
     EXPECT_FALSE(v2->semanticMatch("1.2.4"));
+}
+
+TEST(VersionTest, SemanticMatchLegacyTwoComponentDependencies)
+{
+    auto version = Version::parse("23.1.4.2");
+    ASSERT_TRUE(version.has_value());
+    ASSERT_TRUE(version->isVersionV1());
+
+    for (const auto &[raw, matches] : std::vector<std::pair<std::string, bool>>{
+           { "23.1", true },
+           { "23.2", false },
+           { "24.1", false },
+           { "23.1.4", true },
+           { "23.1.5", false },
+           { "23.1.4.2", true },
+           { "23.1.4.3", false },
+           { "23", false },
+           { "23.", false },
+           { ".1", false },
+           { "023.1", false },
+           { "23.01", false },
+           { "23.1-alpha", false },
+           { "23.1+metadata", false },
+           { "23.1.4.2.0", false },
+           { "9223372036854775808.1", false },
+         }) {
+        EXPECT_EQ(version->semanticMatch(raw), matches) << raw;
+    }
+
+    EXPECT_FALSE(VersionV1::parse("23.1").has_value());
 }
 
 TEST(VersionTest, IgnoreTweakAndVersionV1Checks)

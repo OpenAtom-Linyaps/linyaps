@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.:
+ * SPDX-FileCopyrightText: 2025-2026 UnionTech Software Technology Co., Ltd.:
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
@@ -13,6 +13,8 @@
 
 #include <QRegularExpression>
 #include <QRegularExpressionMatch>
+
+#include <algorithm>
 
 namespace linglong::package {
 utils::error::Result<VersionV1> VersionV1::parse(const std::string &raw) noexcept
@@ -63,7 +65,8 @@ VersionV1::VersionV1(const std::string &raw)
 
 bool VersionV1::semanticMatch(const std::string &versionStr) const noexcept
 {
-    auto fuzzyVerRet = parse(versionStr);
+    const auto hasPatch = std::count(versionStr.begin(), versionStr.end(), '.') != 1;
+    auto fuzzyVerRet = parse(hasPatch ? versionStr : versionStr + ".0");
     if (!fuzzyVerRet) {
         return false;
     }
@@ -74,7 +77,7 @@ bool VersionV1::semanticMatch(const std::string &versionStr) const noexcept
     if (fuzzyVer.minor != minor) {
         return false;
     }
-    if (fuzzyVer.patch != patch) {
+    if (hasPatch && fuzzyVer.patch != patch) {
         return false;
     }
 

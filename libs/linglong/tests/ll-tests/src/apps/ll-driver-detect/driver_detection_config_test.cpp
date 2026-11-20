@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+ * SPDX-FileCopyrightText: 2026 UnionTech Software Technology Co., Ltd.
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
@@ -68,4 +68,15 @@ TEST_F(DriverDetectionConfigTest, SaveAndLoadConfig)
     // Verify config was loaded correctly
     auto loadedConfig = manager2.getConfig();
     EXPECT_TRUE(loadedConfig.neverRemind);
+}
+
+TEST_F(DriverDetectionConfigTest, SaveConfigFailsOnWriteError)
+{
+    using namespace linglong::driver::detect;
+
+    // Opening /dev/full succeeds but every write fails with ENOSPC; if the
+    // device is unavailable the open itself fails, so the save must report
+    // failure either way instead of silently losing the user's choice
+    DriverDetectionConfigManager manager("/dev/full");
+    EXPECT_FALSE(manager.saveConfig());
 }

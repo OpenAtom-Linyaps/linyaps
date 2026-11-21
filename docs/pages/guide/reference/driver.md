@@ -22,4 +22,4 @@
 
 - 英伟达闭源驱动，通过 `sudo ll-cli install org.deepin.driver.display.nvidia.570-124-04` 安装。其中 `570-124-04` 是驱动版本号，需要与宿主机安装的驱动版本匹配，通过宿主机 `/sys/module/nvidia/version` 文件查看宿主机驱动的版本。
 - 格兰菲显卡驱动，通过 `sudo ll-cli install com.glenfly.driver.display.arise` 安装。
-- 英特尔视频编解码驱动（VAAPI），通过 `sudo ll-cli install org.deepin.driver.media.intel` 安装，包含了新/旧 Intel 显卡的支持。
+- 英特尔视频编解码驱动（VAAPI），通过 `sudo ll-cli install org.deepin.driver.media.intel` 安装，包含了新/旧 Intel 显卡的支持。当宿主机上检测到 Intel 显卡、且配置的远端仓库中存在该软件包时，`ll-driver-detect` 会检测该驱动并提示安装。

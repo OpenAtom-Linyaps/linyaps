@@ -4,7 +4,7 @@
 
 ## 功能概述
 
-- **可扩展的驱动检测**: 采用插件式架构 (`DriverDetectionManager`)，可以轻松扩展以支持多种类型的显卡驱动（目前已支持 NVIDIA）。
+- **可扩展的驱动检测**: 采用插件式架构 (`DriverDetectionManager`)，可以轻松扩展以支持多种类型的显卡驱动（目前已支持 NVIDIA 与 Intel 媒体驱动）。
 - **单例运行保证**: 通过文件锁 (`ApplicationSingleton`) 确保在任何时候只有一个检测进程在运行，避免资源浪费和重复通知。
 - **简化的用户配置**: 提供一个简单的配置选项，允许用户选择“不再提醒”，配置被保存在 `~/.config/linglong/driver_detection.json` 中。
 - **统一的用户通知**: 当检测到一个或多个可安装的驱动时，通过 DBus 向用户发送一个统一的通知。
@@ -57,7 +57,7 @@ ll-driver-detect --help
 
 1. **获取单例锁**: 程序启动时，`ApplicationSingleton` 会尝试在 `$XDG_CONFIG_HOME/linglong/ll-driver-detect.lock`（如果 `XDG_CONFIG_HOME` 未设置，则默认为 `~/.config/linglong/ll-driver-detect.lock`）获取文件锁。如果锁已被另一实例持有，则当前进程会安静地退出。
 2. **初始化驱动管理器**: 创建一个 `DriverDetectionManager` 实例。
-3. **注册与检测**: 管理器的构造函数会注册所有可用的 `DriverDetector` 子类（例如 `NVIDIADriverDetector`）。随后，管理器调用每个检测器的 `detect()` 方法。
+3. **注册与检测**: 管理器的构造函数会注册所有可用的 `DriverDetector` 子类（例如 `NVIDIADriverDetector`、`IntelMediaDriverDetector`）。随后，管理器调用每个检测器的 `detect()` 方法。
 4. **结果聚合**: `detect()` 方法返回驱动信息（如果检测成功），包括驱动标识、版本、玲珑包名和当前安装状态。管理器收集所有成功检测到的驱动信息。
 5. **执行操作**:
     - 如果没有检测到任何驱动，程序退出。
@@ -86,6 +86,7 @@ apps/ll-driver-detect/
 │   ├── driver_detection_manager.h/.cpp # 驱动检测协调器
 │   ├── driver_detector.h/.cpp          # 驱动检测器基类
 │   ├── nvidia_driver_detector.h/.cpp   # NVIDIA 驱动检测器实现
+│   ├── intel_media_driver_detector.h/.cpp # Intel 媒体驱动检测器实现
 │   ├── driver_detection_config.h/.cpp  # 配置管理
 │   └── dbus_notifier.h/.cpp            # DBus 通知实现
 ├── README.md                          # 本文档
@@ -98,6 +99,7 @@ apps/ll-driver-detect/
 - **`DriverDetectionManager`**: 负责注册和运行所有具体的驱动检测器。
 - **`DriverDetector`**: 驱动检测器的抽象基类，定义了 `detect()` 接口。
 - **`NVIDIADriverDetector`**: `DriverDetector` 的一个实现，专门用于检测 NVIDIA 驱动。
+- **`IntelMediaDriverDetector`**: `DriverDetector` 的一个实现，用于检测 Intel 视频编解码（VAAPI）驱动。
 - **`DriverDetectionConfigManager`**: 负责加载和保存 `driver_detection.json` 配置文件。
 - **`DBusNotifier`**: 封装了通过 DBus 发送通知的逻辑。
 

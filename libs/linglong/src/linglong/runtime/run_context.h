@@ -35,6 +35,7 @@ namespace linglong::runtime {
 struct ResolveOptions
 {
     bool depsExcludeDev{ false };
+    bool resolveRuntimeEnvironment{ true };
     std::optional<std::vector<std::string>> appModules;
     std::optional<std::string> baseRef;
     std::optional<std::vector<api::types::v1::CdiDeviceEntry>> cdiDevices;

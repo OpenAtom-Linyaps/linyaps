@@ -288,22 +288,24 @@ utils::error::Result<void> RunContext::resolve(const linglong::package::Referenc
         }
     }
 
-    auto overlayRet = resolveOverlayMode();
-    if (!overlayRet) {
-        return LINGLONG_ERR("failed to resolve overlayfs mode", overlayRet);
-    }
+    if (opts.resolveRuntimeEnvironment) {
+        auto overlayRet = resolveOverlayMode();
+        if (!overlayRet) {
+            return LINGLONG_ERR("failed to resolve overlayfs mode", overlayRet);
+        }
 
-    auto timezoneRet = resolveTimeZone();
-    if (!timezoneRet) {
-        return LINGLONG_ERR("failed to resolve timezone", timezoneRet);
-    }
+        auto timezoneRet = resolveTimeZone();
+        if (!timezoneRet) {
+            return LINGLONG_ERR("failed to resolve timezone", timezoneRet);
+        }
 
-    auto networkConfRet = resolveNetworkConf();
-    if (!networkConfRet) {
-        return LINGLONG_ERR("failed to resolve network configuration", networkConfRet);
-    }
+        auto networkConfRet = resolveNetworkConf();
+        if (!networkConfRet) {
+            return LINGLONG_ERR("failed to resolve network configuration", networkConfRet);
+        }
 
-    resolveHostDynamic();
+        resolveHostDynamic();
+    }
 
     if (opts.cdiDevices) {
         contextCfg.cdiDevices = opts.cdiDevices.value();

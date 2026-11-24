@@ -616,6 +616,77 @@ TEST_F(RunContextTest, resolveRunnableWithApp)
     EXPECT_FALSE(context.getConfig().timezone->empty());
 }
 
+TEST_F(RunContextTest, dependsResolveSkipsHostRuntimeEnvironment)
+{
+    LINGLONG_TRACE("dependsResolveSkipsHostRuntimeEnvironment");
+
+    auto runnableRef = package::Reference::parse("stable:org.example.runnable/1.0.0/x86_64");
+    ASSERT_TRUE(runnableRef.has_value())
+      << "Failed to create reference: " << runnableRef.error().message();
+
+    auto runtimeRef = package::Reference::parse("stable:org.deepin.runtime/23.0.0/x86_64");
+    ASSERT_TRUE(runtimeRef.has_value())
+      << "Failed to create runtime reference: " << runtimeRef.error().message();
+
+    auto baseRef = package::Reference::parse("stable:org.deepin.base/23.0.0/x86_64");
+    ASSERT_TRUE(baseRef.has_value())
+      << "Failed to create base reference: " << baseRef.error().message();
+
+    api::types::v1::RepositoryCacheLayersItem appItem;
+    appItem.info.id = "org.example.runnable";
+    appItem.info.version = "1.0.0";
+    appItem.info.kind = "app";
+    appItem.info.channel = "stable";
+    appItem.info.arch = { std::string{ "x86_64" } };
+    appItem.info.base = "org.deepin.base/23.0.0";
+    appItem.info.runtime = "org.deepin.runtime/23.0.0";
+
+    api::types::v1::RepositoryCacheLayersItem runtimeItem;
+    runtimeItem.info.id = "org.deepin.runtime";
+    runtimeItem.info.version = "23.0.0";
+    runtimeItem.info.kind = "runtime";
+    runtimeItem.info.channel = "stable";
+    runtimeItem.info.arch = { std::string{ "x86_64" } };
+    runtimeItem.info.base = "org.deepin.base/23.0.0";
+
+    api::types::v1::RepositoryCacheLayersItem baseItem;
+    baseItem.info.id = "org.deepin.base";
+    baseItem.info.version = "23.0.0";
+    baseItem.info.kind = "base";
+    baseItem.info.channel = "stable";
+    baseItem.info.arch = { std::string{ "x86_64" } };
+
+    EXPECT_CALL(*repo, getLayerItem(*runnableRef, testing::_)).WillOnce(Return(appItem));
+    EXPECT_CALL(*repo, clearReferenceLocal(testing::_, testing::_))
+      .WillOnce(Return(*runtimeRef))
+      .WillOnce(Return(*baseRef));
+
+    EXPECT_CALL(*repo, getLayerItem(*runtimeRef, testing::_)).WillOnce(Return(runtimeItem));
+    EXPECT_CALL(*repo, getLayerItem(*baseRef, testing::_)).WillOnce(Return(baseItem));
+
+    package::LayerDir mockLayerDir(tempDir->path() / "merged");
+    EXPECT_CALL(*repo, getMergedModuleDir(*runnableRef, testing::_))
+      .WillOnce(Return(utils::error::Result<package::LayerDir>(mockLayerDir)));
+    EXPECT_CALL(*repo, getMergedModuleDir(*runtimeRef, testing::_))
+      .WillOnce(Return(utils::error::Result<package::LayerDir>(mockLayerDir)));
+    EXPECT_CALL(*repo, getMergedModuleDir(*baseRef, testing::_))
+      .WillOnce(Return(utils::error::Result<package::LayerDir>(mockLayerDir)));
+
+    ResolveOptions opts;
+    opts.resolveRuntimeEnvironment = false;
+    RunContext context(*this->repo);
+    auto result = context.resolve(*runnableRef, opts);
+    ASSERT_TRUE(result.has_value()) << "Failed to resolve runnable: " << result.error().message();
+
+    EXPECT_TRUE(context.getAppLayer().has_value());
+    EXPECT_TRUE(context.getRuntimeLayer().has_value());
+    EXPECT_TRUE(context.getBaseLayer().has_value());
+    EXPECT_FALSE(context.getConfig().overlayfs.has_value());
+    EXPECT_FALSE(context.getConfig().timezone.has_value());
+    EXPECT_FALSE(context.getConfig().resolvConf.has_value());
+    EXPECT_FALSE(context.getConfig().hostDynamic.has_value());
+}
+
 TEST_F(RunContextTest, resolveRunnableWithRuntime)
 {
     LINGLONG_TRACE("resolveRunnableWithRuntime");

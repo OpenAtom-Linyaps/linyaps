@@ -1130,6 +1130,14 @@ class BuildSteps:
                              cwd=str(project), timeout=300, check=False)
 
             # import：把 layer 导回构建仓库
+            # ⚠️ 同样必须先 remove：commitDirToRepo 提交时不带 metadata，
+            #    commit 只由目录树决定，所以 build 提交的模块和 export --layer
+            #    打出来的内容是同一个 commit；构建仓库里已经有这条记录时，
+            #    RepoCache::addLayerItem() 的 findMatchingItem() 直接命中，
+            #    import 报 "item already exist"（1.14.x 上必现，见下一条）。
+            self._ll_builder("remove",
+                             self._builder_ref("org.deepin.layerprobe"),
+                             timeout=600, check=False)
             r = self._ll_builder("import", str(layer), timeout=900,
                                  check=False)
             if r.returncode != 0:

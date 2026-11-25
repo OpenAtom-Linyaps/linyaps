@@ -1,0 +1,14 @@
+# SPDX-FileCopyrightText: 2026 UnionTech Software Technology Co., Ltd.
+#
+# SPDX-License-Identifier: LGPL-3.0-or-later
+
+[Unit]
+Description=Watch pending CDI driver refresh requests
+
+[Path]
+PathExists=/run/linglong-cdi-drv/pending/refresh-all
+DirectoryNotEmpty=/run/linglong-cdi-drv/pending/refresh-single
+Unit=ll-cdi-drv-refresh.service
+
+[Install]
+WantedBy=multi-user.target

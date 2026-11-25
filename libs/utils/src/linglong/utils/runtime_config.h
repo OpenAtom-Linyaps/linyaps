@@ -17,6 +17,8 @@ linglong::api::types::v1::RuntimeConfigure
 MergeRuntimeConfig(const std::vector<linglong::api::types::v1::RuntimeConfigure> &configs);
 utils::error::Result<linglong::api::types::v1::RuntimeConfigure>
 loadRuntimeConfig(const std::filesystem::path &path);
+utils::error::Result<std::vector<linglong::api::types::v1::Device>>
+loadCdiDeviceDropIns(const std::filesystem::path &directory);
 utils::error::Result<std::optional<linglong::api::types::v1::RuntimeConfigure>>
 loadRuntimeConfig(const std::string &appId, const std::string &instance = "");
 

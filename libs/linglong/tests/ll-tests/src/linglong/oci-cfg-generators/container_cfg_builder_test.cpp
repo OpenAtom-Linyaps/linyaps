@@ -1772,6 +1772,7 @@ TEST_F(ContainerCfgBuilderTest, ApplyCDIPatchAddsEnvDevicesMountsAndHooks)
         linglong::cdi::types::DeviceNode{ .hostPath = "/dev/dri/renderD128",
                                           .path = "/dev/dri/renderD128" },
         linglong::cdi::types::DeviceNode{ .path = "/dev/without-host" },
+        linglong::cdi::types::DeviceNode{ .hostPath = "/dev/zero", .path = "/dev/dri/renderD128" },
     };
     edits.mounts = std::vector<linglong::cdi::types::Mount>{
         linglong::cdi::types::Mount{ .containerPath = "/data/explicit",
@@ -1782,6 +1783,9 @@ TEST_F(ContainerCfgBuilderTest, ApplyCDIPatchAddsEnvDevicesMountsAndHooks)
                                      .hostPath = "/host/options",
                                      .options = std::vector<std::string>{ "bind" } },
         linglong::cdi::types::Mount{ .containerPath = "/data/plain", .hostPath = "/host/plain" },
+        linglong::cdi::types::Mount{ .containerPath = "/data/explicit",
+                                     .hostPath = "/host/later",
+                                     .type = "bind" },
     };
     edits.hooks = std::vector<linglong::cdi::types::Hook>{
         linglong::cdi::types::Hook{ .args = std::vector<std::string>{ "hook", "arg" },
@@ -1815,6 +1819,19 @@ TEST_F(ContainerCfgBuilderTest, ApplyCDIPatchAddsEnvDevicesMountsAndHooks)
     ASSERT_NE(explicitMount, nullptr);
     EXPECT_EQ(explicitMount->type, "bind");
     EXPECT_EQ(explicitMount->source, "/host/explicit");
+
+    std::vector<std::string> deviceSources;
+    std::vector<std::string> fileSources;
+    for (const auto &mount : *config.mounts) {
+        if (mount.destination == "/dev/dri/renderD128") {
+            deviceSources.push_back(mount.source.value_or(""));
+        }
+        if (mount.destination == "/data/explicit") {
+            fileSources.push_back(mount.source.value_or(""));
+        }
+    }
+    EXPECT_EQ(deviceSources, (std::vector<std::string>{ "/dev/dri/renderD128", "/dev/zero" }));
+    EXPECT_EQ(fileSources, (std::vector<std::string>{ "/host/explicit", "/host/later" }));
 
     const auto *optionsMount = findMount("/data/options");
     ASSERT_NE(optionsMount, nullptr);

@@ -8,7 +8,9 @@
 
 #include "linglong/api/dbus/v1/package_manager.h"
 #include "linglong/api/dbus/v1/task.h"
+#include "linglong/api/types/v1/CdiDeviceRequest.hpp"
 #include "linglong/api/types/v1/CommonOptions.hpp"
+#include "linglong/api/types/v1/Device.hpp"
 #include "linglong/api/types/v1/PackageInfoDisplay.hpp"
 #include "linglong/cli/interactive_notifier.h"
 #include "linglong/cli/printer.h"
@@ -67,13 +69,15 @@ struct RunOptions
     bool privileged{ false };
     std::vector<std::string> capsAdd;
     std::vector<std::string> cdiSpecDir = { "/etc/linglong/cdi", "/etc/cdi", "/var/run/cdi" };
-    std::vector<std::string> cdiDevices;
+    std::vector<api::types::v1::Device> cdiDevices;
     std::vector<api::types::v1::DeviceOption> deviceOptions;
     std::optional<std::string> instance;
     bool debug{ false };
     std::string debugListen{ "127.0.0.1:2345" };
     std::optional<std::string> debugDebuginfod;
     std::optional<std::string> debugSymbolDir;
+
+    void addCdiOptions(CLI::App &app);
 };
 
 struct EnterOptions

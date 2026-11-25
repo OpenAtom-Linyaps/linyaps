@@ -278,6 +278,64 @@ TEST(ContainerBuilderUtil, GenContainerIDIsDeterministic)
     EXPECT_NE(runtime::genContainerID(cfg), runtime::genContainerID(different));
 }
 
+TEST(ContainerBuilderUtil, GenContainerIDIgnoresChecksummedCdiSpecPaths)
+{
+    api::types::v1::RunContextConfig cfg;
+    cfg.version = "1";
+    cfg.cdiDevices = std::vector<api::types::v1::CdiDeviceEntry>{
+        { "example.com/gpu", "render", { "checksum", "/run/cdi/generation-old/spec/gpu" } }
+    };
+
+    auto refreshed = cfg;
+    refreshed.cdiDevices->front().spec.path = "/run/cdi/generation-new/spec/gpu";
+    const auto original = nlohmann::json(cfg);
+    const auto updated = nlohmann::json(refreshed);
+
+    EXPECT_EQ(runtime::genContainerID(cfg), runtime::genContainerID(refreshed));
+    EXPECT_EQ(nlohmann::json(cfg), original);
+    EXPECT_EQ(nlohmann::json(refreshed), updated);
+}
+
+TEST(ContainerBuilderUtil, GenContainerIDTracksCdiContentAndDeviceSelection)
+{
+    api::types::v1::RunContextConfig cfg;
+    cfg.version = "1";
+    cfg.cdiDevices = std::vector<api::types::v1::CdiDeviceEntry>{
+        { "example.com/gpu", "render", { "checksum", "/run/cdi/generation-old/spec/gpu" } }
+    };
+    const auto originalID = runtime::genContainerID(cfg);
+
+    auto changed = cfg;
+    changed.cdiDevices->front().spec.checksum = "new-checksum";
+    EXPECT_NE(runtime::genContainerID(changed), originalID);
+
+    changed = cfg;
+    changed.cdiDevices->front().kind = "other.example/gpu";
+    EXPECT_NE(runtime::genContainerID(changed), originalID);
+
+    changed = cfg;
+    changed.cdiDevices->front().name = "display";
+    EXPECT_NE(runtime::genContainerID(changed), originalID);
+}
+
+TEST(ContainerBuilderUtil, GenContainerIDKeepsPathsForCdiSpecsWithoutChecksums)
+{
+    api::types::v1::RunContextConfig cfg;
+    cfg.version = "1";
+    cfg.cdiDevices = std::vector<api::types::v1::CdiDeviceEntry>{
+        { "example.com/gpu", "render", { "checksum", "/run/cdi/generation-old/spec/gpu" } },
+        { "other.example/gpu", "display", { "", "/etc/cdi/display.json" } }
+    };
+    const auto originalID = runtime::genContainerID(cfg);
+
+    auto changed = cfg;
+    changed.cdiDevices->front().spec.path = "/run/cdi/generation-new/spec/gpu";
+    EXPECT_EQ(runtime::genContainerID(changed), originalID);
+
+    changed.cdiDevices->back().spec.path = "/etc/cdi/other-display.json";
+    EXPECT_NE(runtime::genContainerID(changed), originalID);
+}
+
 TEST(ContainerBuilderUtil, RootfsBoundaryResolvesEscapingSymlinks)
 {
     TempDir tempDir("linglong-rootfs-boundary-");

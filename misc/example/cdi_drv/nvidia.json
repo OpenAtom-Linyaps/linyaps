@@ -1,0 +1,12 @@
+{
+    "version": "1",
+    "generator": "command",
+    "autoEnable": true,
+    "defaultDevice": "all",
+    "argv": ["/usr/bin/nvidia-ctk", "cdi", "generate"],
+    "watchPathChanged": [
+        "/usr/bin/nvidia-ctk",
+        "/lib/modules/%v/modules.dep",
+        "/lib/modules/%v/modules.dep.bin"
+    ]
+}

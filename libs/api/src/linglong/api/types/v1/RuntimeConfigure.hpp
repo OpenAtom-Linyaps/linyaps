@@ -14,9 +14,12 @@
 #pragma once
 
 #include <optional>
+#include <variant>
 #include <nlohmann/json.hpp>
 #include "linglong/api/types/v1/helper.hpp"
 
+#include "linglong/api/types/v1/Device.hpp"
+#include "linglong/api/types/v1/CdiDeviceRequest.hpp"
 #include "linglong/api/types/v1/ExtensionDefine.hpp"
 #include "linglong/api/types/v1/Mount.hpp"
 
@@ -38,7 +41,7 @@ using nlohmann::json;
 
 struct RuntimeConfigure {
 std::optional<std::vector<DeviceOption>> deviceMode;
-std::optional<std::vector<std::string>> devices;
+std::optional<std::vector<Device>> devices;
 std::optional<bool> disableXdp;
 std::optional<bool> enableAtspi;
 std::optional<bool> enablePipewire;

@@ -31,6 +31,7 @@
 #include "linglong/oci-cfg-generators/container_cfg_builder.h"
 #include "linglong/package/layer_file.h"
 #include "linglong/package/version.h"
+#include "linglong/runtime/cdi_config.h"
 #include "linglong/runtime/container_builder.h"
 #include "linglong/runtime/run_context.h"
 #include "linglong/utils/bash_command_helper.h"
@@ -867,6 +868,41 @@ void sortDependsTree(std::vector<DependsNode> &nodes)
 
 namespace linglong::cli {
 
+void RunOptions::addCdiOptions(CLI::App &app)
+{
+    app.add_option("--cdi-spec-dir", cdiSpecDir, _("CDI spec directory"))
+      ->delimiter(',')
+      ->capture_default_str()
+      ->allow_extra_args(false);
+
+    auto activeSpec = std::make_shared<std::optional<std::string>>();
+    app
+      .add_option_function<std::string>(
+        "--cdi-spec",
+        [activeSpec](const auto &path) {
+            *activeSpec = path;
+        },
+        _("Use a CDI spec file for subsequent --device options"))
+      ->type_name("FILE")
+      ->trigger_on_parse();
+    app
+      .add_option_function<std::vector<std::string>>(
+        "--device",
+        [this, activeSpec](const auto &names) {
+            for (const auto &name : names) {
+                if (*activeSpec) {
+                    cdiDevices.emplace_back(api::types::v1::CdiDeviceRequest{ name, **activeSpec });
+                } else {
+                    cdiDevices.emplace_back(name);
+                }
+            }
+        },
+        _("Add CDI devices"))
+      ->delimiter(',')
+      ->allow_extra_args(false)
+      ->trigger_on_parse();
+}
+
 utils::error::ErrorCode errorCodeFromDBus(QDBusError::ErrorType type) noexcept
 {
     if (type == QDBusError::AccessDenied) {
@@ -1566,19 +1602,25 @@ int Cli::run(const RunOptions &options)
         return -1;
     }
 
-    auto loaded = linglong::utils::loadRuntimeConfig(options.appid, options.instance.value_or(""));
+    const auto instance = options.instance.value_or("");
+    auto loaded = linglong::utils::loadRuntimeConfig(options.appid, instance);
     if (!loaded) {
         this->printer.printErr(loaded.error());
         return -1;
     }
-    auto runtimeConfig = std::move(loaded).value();
-
     linglong::runtime::ResolveOptions opts;
-    auto resolveOptionsRes = opts.applyOptions(runtimeConfig, options);
-    if (!resolveOptionsRes) {
-        this->printer.printErr(resolveOptionsRes.error());
+    auto applied = opts.applyOptions(*loaded, options);
+    if (!applied) {
+        this->printer.printErr(applied.error());
         return -1;
     }
+    const auto generation = runtime::loadCdiDriverGeneration(common::dir::cdiDriverRuntimeDir);
+    auto devices = runtime::resolveCdiDevices(generation, *loaded, options);
+    if (!devices) {
+        this->printer.printErr(devices.error());
+        return -1;
+    }
+    opts.cdiDevices = std::move(*devices);
     if (options.debug) {
         opts.instance = makeDebugInstanceID();
     }
@@ -1782,7 +1824,7 @@ int Cli::run(const RunOptions &options)
         return *runRes;
     }
 
-    return this->runResolvedContext(*runContext, options, std::move(runtimeConfig));
+    return this->runResolvedContext(*runContext, options, std::move(*loaded));
 }
 
 int Cli::runWithContext(const RunOptions &options)

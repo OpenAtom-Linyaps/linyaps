@@ -163,13 +163,7 @@ ll-cli run org.deepin.demo -- bash -x /path/to/bash/script)"));
       ->delimiter(',')
       ->allow_extra_args(false)
       ->group("");
-    cliRun->add_option("--cdi-spec-dir", runOptions.cdiSpecDir, _("CDI spec directory"))
-      ->delimiter(',')
-      ->capture_default_str()
-      ->allow_extra_args(false);
-    cliRun->add_option("--device", runOptions.cdiDevices, _("Add CDI devices"))
-      ->delimiter(',')
-      ->allow_extra_args(false);
+    runOptions.addCdiOptions(*cliRun);
     const std::map<std::string, linglong::api::types::v1::DeviceOption> deviceOptionMap = {
         { "passthru", linglong::api::types::v1::DeviceOption::Passthru },
     };

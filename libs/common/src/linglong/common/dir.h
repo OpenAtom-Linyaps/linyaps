@@ -15,6 +15,8 @@ constexpr auto containerLockPath = "/run/linglong/.lock";
 
 constexpr auto repoLockPath = "/run/linglong/lock";
 
+constexpr auto cdiDriverRuntimeDir = "/run/linglong-cdi-drv";
+
 std::filesystem::path getRuntimeDir() noexcept;
 
 std::filesystem::path getAppRuntimeDir(const std::string &appId) noexcept;

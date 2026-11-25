@@ -1592,8 +1592,32 @@
         "devices": {
           "type": "array",
           "items": {
-            "type": "string"
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "$ref": "#/$defs/CdiDeviceRequest"
+              }
+            ]
           }
+        }
+      }
+    },
+    "CdiDeviceRequest": {
+      "type": "object",
+      "required": [
+        "name",
+        "spec"
+      ],
+      "properties": {
+        "name": {
+          "description": "Qualified CDI device name",
+          "type": "string"
+        },
+        "spec": {
+          "description": "CDI spec file, relative to the runtime configuration file or absolute",
+          "type": "string"
         }
       }
     },
@@ -1890,6 +1914,9 @@
     },
     "RuntimeConfigure": {
       "$ref": "#/$defs/RuntimeConfigure"
+    },
+    "CdiDeviceRequest": {
+      "$ref": "#/$defs/CdiDeviceRequest"
     },
     "RunContextConfig": {
       "$ref": "#/$defs/RunContextConfig"

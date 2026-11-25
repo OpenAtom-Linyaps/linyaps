@@ -39,7 +39,6 @@ struct ResolveOptions
     std::optional<std::vector<std::string>> appModules;
     std::optional<std::string> baseRef;
     std::optional<std::vector<api::types::v1::CdiDeviceEntry>> cdiDevices;
-    std::vector<std::string> cdiSpecDirs{ "/etc/cdi", "/var/run/cdi" };
     std::optional<std::string> runtimeRef;
     std::optional<std::vector<std::string>> extensionRefs;
     std::optional<std::string> instance;

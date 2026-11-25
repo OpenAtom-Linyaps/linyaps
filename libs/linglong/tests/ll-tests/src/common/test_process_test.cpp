@@ -24,3 +24,13 @@ TEST(TestProcessTest, RejectsMissingSourceFetchRequest)
     EXPECT_NE(child.stderrOutput().find("cannot open source-fetch helper request"),
               std::string::npos);
 }
+
+TEST(TestProcessTest, CapturesExternalCommandOutputAndOverridesEnvironment)
+{
+    TestProcess child("/usr/bin/printenv",
+                      { "LINGLONG_TEST_PROCESS_VALUE" },
+                      { { "LINGLONG_TEST_PROCESS_VALUE", "custom value" } });
+    EXPECT_EQ(child.wait(), 0);
+    EXPECT_EQ(child.stdoutOutput(), "custom value\n");
+    EXPECT_TRUE(child.stderrOutput().empty());
+}

@@ -31,6 +31,8 @@ pfl_add_executable(
   src/linglong/cli/cli_test.cpp
   src/linglong/cli/dbus_notifier_test.cpp
   src/linglong/cli/notifier_test.cpp
+  src/linglong/cdi_drv/drm_test.cpp
+  src/linglong/cdi_drv/watch_test.cpp
   src/linglong/common/gkeyfile_wrapper_test.cpp
   src/linglong/common/global/initialize_test.cpp
   src/linglong/common/cli/repo_test.cpp
@@ -105,6 +107,7 @@ pfl_add_executable(
   src/main.cpp
   src/ocppi/cli/common_cli_test.cpp
 
+  src/apps/ll-cdi-drv/refresh_test.cpp
 
   # ll-driver-detect tests
   ${PROJECT_SOURCE_DIR}/apps/ll-driver-detect/src/nvidia_driver_detector.cpp
@@ -124,12 +127,18 @@ pfl_add_executable(
   PRIVATE
   GTest::gtest
   GTest::gmock
+  linglong::cdi_drv
   linglong::linglong
   linglong::oci-cfg-generators
   PkgConfig::CRYPTO)
 
 include(GoogleTest)
 get_real_target_name(tests linglong::linglong::ll-tests)
+add_dependencies(${tests} linglong::ll-cdi-drv)
+set_property(
+  SOURCE src/apps/ll-cdi-drv/refresh_test.cpp
+  APPEND PROPERTY COMPILE_DEFINITIONS
+                  "LL_CDI_DRV_BINARY=\"$<TARGET_FILE:linglong::ll-cdi-drv>\"")
 gtest_discover_tests(${tests} WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
 # FIXME: we should'n include header directly

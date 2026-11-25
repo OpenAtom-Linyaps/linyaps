@@ -14,6 +14,7 @@
 #pragma once
 
 #include <optional>
+#include <variant>
 #include <nlohmann/json.hpp>
 #include "linglong/api/types/v1/helper.hpp"
 
@@ -26,6 +27,7 @@
 #include "linglong/api/types/v1/TaskState.hpp"
 #include "linglong/api/types/v1/State.hpp"
 #include "linglong/api/types/v1/RuntimeConfigure.hpp"
+#include "linglong/api/types/v1/Device.hpp"
 #include "linglong/api/types/v1/RunContextConfig.hpp"
 #include "linglong/api/types/v1/RepositoryCache.hpp"
 #include "linglong/api/types/v1/RepositoryCacheMergedItem.hpp"
@@ -66,6 +68,7 @@
 #include "linglong/api/types/v1/CommonResult.hpp"
 #include "linglong/api/types/v1/CommonOptions.hpp"
 #include "linglong/api/types/v1/CliContainer.hpp"
+#include "linglong/api/types/v1/CdiDeviceRequest.hpp"
 #include "linglong/api/types/v1/CdiDeviceEntry.hpp"
 #include "linglong/api/types/v1/CdiSpec.hpp"
 #include "linglong/api/types/v1/BuilderProjectLock.hpp"
@@ -154,6 +157,9 @@ void to_json(json & j, const CdiSpec & x);
 
 void from_json(const json & j, CdiDeviceEntry & x);
 void to_json(json & j, const CdiDeviceEntry & x);
+
+void from_json(const json & j, CdiDeviceRequest & x);
+void to_json(json & j, const CdiDeviceRequest & x);
 
 void from_json(const json & j, CliContainer & x);
 void to_json(json & j, const CliContainer & x);
@@ -301,7 +307,21 @@ void to_json(json & j, const State & x);
 
 void from_json(const json & j, Version & x);
 void to_json(json & j, const Version & x);
-
+}
+}
+}
+}
+namespace nlohmann {
+template <>
+struct adl_serializer<std::variant<linglong::api::types::v1::CdiDeviceRequest, std::string>> {
+static void from_json(const json & j, std::variant<linglong::api::types::v1::CdiDeviceRequest, std::string> & x);
+static void to_json(json & j, const std::variant<linglong::api::types::v1::CdiDeviceRequest, std::string> & x);
+};
+}
+namespace linglong {
+namespace api {
+namespace types {
+namespace v1 {
 inline void from_json(const json & j, ApplicationConfigurationPermissionsBind& x) {
 x.destination = j.at("destination").get<std::string>();
 x.source = j.at("source").get<std::string>();
@@ -655,6 +675,17 @@ x.spec = j.at("spec").get<CdiSpec>();
 inline void to_json(json & j, const CdiDeviceEntry & x) {
 j = json::object();
 j["kind"] = x.kind;
+j["name"] = x.name;
+j["spec"] = x.spec;
+}
+
+inline void from_json(const json & j, CdiDeviceRequest& x) {
+x.name = j.at("name").get<std::string>();
+x.spec = j.at("spec").get<std::string>();
+}
+
+inline void to_json(json & j, const CdiDeviceRequest & x) {
+j = json::object();
 j["name"] = x.name;
 j["spec"] = x.spec;
 }
@@ -1393,7 +1424,7 @@ j["version"] = x.version;
 
 inline void from_json(const json & j, RuntimeConfigure& x) {
 x.deviceMode = get_stack_optional<std::vector<DeviceOption>>(j, "device_mode");
-x.devices = get_stack_optional<std::vector<std::string>>(j, "devices");
+x.devices = get_stack_optional<std::vector<Device>>(j, "devices");
 x.disableXdp = get_stack_optional<bool>(j, "disable_xdp");
 x.enableAtspi = get_stack_optional<bool>(j, "enable_atspi");
 x.enablePipewire = get_stack_optional<bool>(j, "enable_pipewire");
@@ -1518,6 +1549,7 @@ x.builderProjectSource = get_stack_optional<BuilderProjectSource>(j, "BuilderPro
 x.builderSourceLockEntry = get_stack_optional<BuilderSourceLockEntry>(j, "BuilderSourceLockEntry");
 x.builderSourceLockResolved = get_stack_optional<BuilderSourceLockResolved>(j, "BuilderSourceLockResolved");
 x.cdiDeviceEntry = get_stack_optional<CdiDeviceEntry>(j, "CDIDeviceEntry");
+x.cdiDeviceRequest = get_stack_optional<CdiDeviceRequest>(j, "CdiDeviceRequest");
 x.cliContainer = get_stack_optional<CliContainer>(j, "CLIContainer");
 x.commonOptions = get_stack_optional<CommonOptions>(j, "CommonOptions");
 x.commonResult = get_stack_optional<CommonResult>(j, "CommonResult");
@@ -1602,6 +1634,9 @@ j["BuilderSourceLockResolved"] = x.builderSourceLockResolved;
 }
 if (x.cdiDeviceEntry) {
 j["CDIDeviceEntry"] = x.cdiDeviceEntry;
+}
+if (x.cdiDeviceRequest) {
+j["CdiDeviceRequest"] = x.cdiDeviceRequest;
 }
 if (x.cliContainer) {
 j["CLIContainer"] = x.cliContainer;
@@ -1808,6 +1843,27 @@ default: throw std::runtime_error("Unexpected value in enumeration \"Version\": 
 }
 }
 }
+}
+}
+}
+namespace nlohmann {
+inline void adl_serializer<std::variant<linglong::api::types::v1::CdiDeviceRequest, std::string>>::from_json(const json & j, std::variant<linglong::api::types::v1::CdiDeviceRequest, std::string> & x) {
+if (j.is_string())
+x = j.get<std::string>();
+else if (j.is_object())
+x = j.get<linglong::api::types::v1::CdiDeviceRequest>();
+else throw std::runtime_error("Could not deserialise!");
+}
+
+inline void adl_serializer<std::variant<linglong::api::types::v1::CdiDeviceRequest, std::string>>::to_json(json & j, const std::variant<linglong::api::types::v1::CdiDeviceRequest, std::string> & x) {
+switch (x.index()) {
+case 0:
+j = std::get<linglong::api::types::v1::CdiDeviceRequest>(x);
+break;
+case 1:
+j = std::get<std::string>(x);
+break;
+default: throw std::runtime_error("Input JSON does not conform to schema!");
 }
 }
 }

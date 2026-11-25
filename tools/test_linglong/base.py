@@ -889,7 +889,10 @@ class SmokeTestBase:
         text = buf.decode("utf-8", "replace")
         # libgcov 在标准错误上打的 "profiling:...:Cannot open" 与业务无关，
         # 留着会让断言里的子串匹配误判。
-        text = "\n".join(l for l in text.splitlines() if "profiling:" not in l)
+        # 只剥掉这一小段，不能按行丢弃：容器输出不以换行结尾时（例如 cat
+        # 一个没有尾换行的文件），它会和下一条 profiling 行粘成同一行，
+        # 按行过滤会把业务输出整行删掉 —— 冒烟 #38 就是这么假失败的。
+        text = re.sub(r"profiling:[^\r\n]*", "", text)
         return code, text
 
     def _run_driver_detect(self, bus_address: str, cfg_home: Path):

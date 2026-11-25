@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+ * SPDX-FileCopyrightText: 2025 - 2026 UnionTech Software Technology Co., Ltd.
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
@@ -31,9 +31,15 @@ void Logger::setLogLevel(LogLevel level)
 
 void Logger::setLogBackend(LogBackend backend)
 {
+#if !HAVE_SYSTEMD
+    if ((backend & LogBackend::Journal) != LogBackend::None) {
+        backend = (backend & ~LogBackend::Journal) | LogBackend::Console;
+    }
+#endif
     logBackend = backend;
 }
 
+#if HAVE_SYSTEMD
 int Logger::logLevelToSDPriority(LogLevel level) noexcept
 {
     switch (level) {
@@ -51,5 +57,6 @@ int Logger::logLevelToSDPriority(LogLevel level) noexcept
         return LOG_INFO;
     }
 }
+#endif
 
 } // namespace linglong::utils::log

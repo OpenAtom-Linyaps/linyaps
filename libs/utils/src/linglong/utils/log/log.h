@@ -6,10 +6,14 @@
 
 #pragma once
 
+#include "configure.h"
 #include "linglong/utils/log/formatter.h"
 
 #include <fmt/format.h>
-#include <systemd/sd-journal.h>
+
+#if HAVE_SYSTEMD
+#  include <systemd/sd-journal.h>
+#endif
 
 /*
 log to journal can view by journalctl:
@@ -47,6 +51,11 @@ inline LogBackend operator&(LogBackend a, LogBackend b)
                                    & std::underlying_type_t<LogBackend>(b));
 }
 
+inline LogBackend operator~(LogBackend backend)
+{
+    return static_cast<LogBackend>(~std::underlying_type_t<LogBackend>(backend));
+}
+
 enum class LogLevel : uint8_t {
     Fatal,
     Error,
@@ -80,7 +89,7 @@ public:
     void setLogBackend(LogBackend backend);
 
     template <typename... Args>
-    void log(const LoggerContext &context,
+    void log([[maybe_unused]] const LoggerContext &context,
              LogLevel level,
 #if FMT_VERSION >= 80000
              fmt::format_string<Args...> fmt,
@@ -104,16 +113,17 @@ public:
             fmt::print(stderr, "{}\n", message);
         }
 
+#if HAVE_SYSTEMD
         if ((logBackend & LogBackend::Journal) != LogBackend::None) {
             fmt::memory_buffer fileBuf;
             fmt::memory_buffer lineBuf;
-#if FMT_VERSION >= 80000
+#  if FMT_VERSION >= 80000
             fmt::format_to(fmt::appender(fileBuf), "CODE_FILE={}", context.file);
             fmt::format_to(fmt::appender(lineBuf), "CODE_LINE={}", context.line);
-#else
+#  else
             fmt::format_to(fileBuf, "CODE_FILE={}", context.file);
             fmt::format_to(lineBuf, "CODE_LINE={}", context.line);
-#endif
+#  endif
             sd_journal_send_with_location(fmt::to_string(fileBuf).c_str(),
                                           fmt::to_string(lineBuf).c_str(),
                                           context.function,
@@ -123,10 +133,13 @@ public:
                                           logLevelToSDPriority(level),
                                           nullptr);
         }
+#endif
     }
 
 private:
+#if HAVE_SYSTEMD
     static int logLevelToSDPriority(LogLevel level) noexcept;
+#endif
 
     LogLevel logLevel;
     LogBackend logBackend;

@@ -561,8 +561,10 @@ class RuntimeSteps:
         outer = workdir / "outer"
         inner = outer / "inner"
         inner.mkdir(parents=True)
-        (outer / "outer.txt").write_text("OUTER_OK")
-        (inner / "inner.txt").write_text("INNER_OK")
+        # 尾换行不能省：_pty_ll_cli 返回的是 PTY 原始流，没有换行的话
+        # 这两段会和 ll-cli 退出时 libgcov 打的 profiling 行粘在一起。
+        (outer / "outer.txt").write_text("OUTER_OK\n")
+        (inner / "inner.txt").write_text("INNER_OK\n")
 
         r = self._ll_cli("list", check=False)
         if app_id not in (r.stdout or ""):

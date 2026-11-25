@@ -10,7 +10,6 @@
 #include "linglong/common/strings.h"
 
 #include <qobjectdefs.h>
-#include <systemd/sd-journal.h>
 
 #include <QCoreApplication>
 

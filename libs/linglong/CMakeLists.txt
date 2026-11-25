@@ -142,7 +142,6 @@ pfl_add_library(
   linglong::api
   PkgConfig::glib2
   PkgConfig::ostree1
-  PkgConfig::systemd
   PkgConfig::ELF
   Qt${QT_VERSION_MAJOR}::Core
   Qt${QT_VERSION_MAJOR}::DBus

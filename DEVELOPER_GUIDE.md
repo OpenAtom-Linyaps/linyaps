@@ -23,7 +23,7 @@ Before building Linglong, ensure the following dependencies are installed:
 - libpcre2-dev
 - libselinux1-dev
 - libssl-dev
-- libsystemd-dev
+- libsystemd-dev (required unless `ENABLE_SYSTEMD=OFF`)
 - libyaml-cpp-dev (>= 0.6.2)
 - libzstd-dev
 - nlohmann-json3-dev (>= 3.5.0)
@@ -64,6 +64,17 @@ ctest --preset debug
 ```
 
 [cmake presets]: https://cmake.org/cmake/help/latest/manual/cmake-presets.7.html
+
+`ENABLE_SYSTEMD` defaults to `ON` and requires libsystemd development files; configuration fails if they are unavailable. To build without libsystemd integration:
+
+```bash
+cmake --preset debug -DENABLE_SYSTEMD=OFF
+```
+
+Setting `ENABLE_SYSTEMD=OFF` skips libsystemd detection and linking. The generated
+`HAVE_SYSTEMD` macro controls libsystemd integration in the code. In this mode,
+journal log requests use stderr, including in non-TTY environments and when
+`LINYAPS_LOG_BACKEND=journal` is set.
 
 ## Packaging
 

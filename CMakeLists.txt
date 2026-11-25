@@ -402,12 +402,19 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include(GNUInstallDirs)
+option(ENABLE_SYSTEMD "Enable libsystemd integration" ON)
+set(HAVE_SYSTEMD OFF)
+if(ENABLE_SYSTEMD)
+  pkg_search_module(systemd REQUIRED IMPORTED_TARGET libsystemd)
+  set(HAVE_SYSTEMD ON)
+endif()
+message(STATUS "libsystemd support: ${HAVE_SYSTEMD}")
+
 # depends on GNUInstallDirs
 configure_file(configure.h.in ${CMAKE_CURRENT_BINARY_DIR}/configure.h @ONLY)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 pkg_search_module(cap REQUIRED IMPORTED_TARGET libcap)
-pkg_search_module(systemd REQUIRED IMPORTED_TARGET libsystemd)
 
 # build ll-build-utils only
 if(BUILD_LINGLONG_BUILDER_UTILS_IN_BOX)

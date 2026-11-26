@@ -735,6 +735,45 @@ TEST_F(ContainerBuilderCreateTest, CreateRunContainerBuildsBundleAndRunsRuntime)
     EXPECT_TRUE(std::filesystem::is_regular_file(bundle / "entrypoint.sh"));
 }
 
+TEST_F(ContainerBuilderCreateTest, CreateRunContainerExposesSshAndGnupgUnderHomeBind)
+{
+    const auto baseRef = addBaseLayer("29.0.0");
+    runtime::RunContext context(*repo);
+    resolveBase(context, baseRef);
+
+    runtime::RunContainerOptions options;
+    options.disableXdp = true;
+    options.common.containerCachePath = tempDir->path() / "cache";
+    std::filesystem::create_directories(*options.common.containerCachePath);
+
+    auto container = builder->createRunContainer(context, options);
+    ASSERT_TRUE(container) << container.error().message();
+
+    const auto bundle = (*container)->bundle();
+    ocppi::runtime::config::types::Process process;
+    process.args = std::vector<std::string>{ "echo", "hello" };
+    auto run = (*container)->run(process, {});
+    EXPECT_FALSE(run) << "the /bin/false runtime should report a failure";
+
+    const auto configPath = bundle / "config.json";
+    ASSERT_TRUE(std::filesystem::is_regular_file(configPath));
+    std::ifstream input(configPath);
+    ASSERT_TRUE(input.is_open());
+    const auto config = nlohmann::json::parse(input);
+
+    const auto sshDestination = (tempDir->path() / ".ssh").string();
+    const auto gnupgDestination = (tempDir->path() / ".gnupg").string();
+    bool hasSshMount = false;
+    bool hasGnupgMount = false;
+    for (const auto &mount : config.at("mounts")) {
+        const auto destination = mount.at("destination").get<std::string>();
+        hasSshMount = hasSshMount || destination == sshDestination;
+        hasGnupgMount = hasGnupgMount || destination == gnupgDestination;
+    }
+    EXPECT_FALSE(hasSshMount) << "~/.ssh must be visible through the home bind";
+    EXPECT_FALSE(hasGnupgMount) << "~/.gnupg must be visible through the home bind";
+}
+
 TEST_F(ContainerBuilderCreateTest, CreateInitContainerBuildsBundle)
 {
     const auto baseRef = addBaseLayer("24.0.0");

@@ -708,9 +708,6 @@ auto ContainerBuilder::configureRunContainer(PreparedContainer &prepared,
       .bindRemovableStorageMounts()
       .bindHostRoot()
       .bindHome(homePath)
-      .enablePrivateDir()
-      .mapPrivate((homePath / ".ssh").string(), true)
-      .mapPrivate((homePath / ".gnupg").string(), true)
       .bindIPC()
       .forwardDefaultEnv();
 

@@ -64,6 +64,7 @@ pfl_add_library(
   cxx_std_17
   LINK_LIBRARIES
   PUBLIC
+  pthread
   PkgConfig::cap
   fmt::fmt-lib
   linglong::api

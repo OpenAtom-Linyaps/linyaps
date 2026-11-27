@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2023-2026 UnionTech Software Technology Co., Ltd.
+ * SPDX-FileCopyrightText: 2023 - 2026 UnionTech Software Technology Co., Ltd.
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
@@ -10,6 +10,8 @@
 #include "linglong/common/error.h"
 #include "linglong/common/strings.h"
 #include "linglong/utils/finally/finally.h"
+#include "linglong/utils/io/event_loop.h"
+#include "linglong/utils/io/pipe.h"
 #include "linglong/utils/log/log.h"
 
 #include <fmt/ranges.h>
@@ -17,15 +19,273 @@
 
 #include <algorithm>
 #include <array>
+#include <cerrno>
+#include <chrono>
 #include <cstdlib>
 #include <filesystem>
-#include <iostream>
+#include <limits>
+#include <optional>
+#include <string_view>
+#include <thread>
 
 #include <fcntl.h>
+#include <pthread.h>
+#include <signal.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
 namespace linglong::utils {
+namespace {
+
+using Deadline = std::optional<std::chrono::steady_clock::time_point>;
+
+int remainingMilliseconds(const Deadline &deadline) noexcept
+{
+    if (!deadline) {
+        return -1;
+    }
+    const auto remaining =
+      std::chrono::ceil<std::chrono::milliseconds>(*deadline - std::chrono::steady_clock::now())
+        .count();
+    return static_cast<int>(
+      std::clamp<std::chrono::milliseconds::rep>(remaining, 0, std::numeric_limits<int>::max()));
+}
+
+class ChildProcess
+{
+public:
+    ChildProcess(pid_t pid, bool processGroup) noexcept
+        : pid_(pid)
+        , processGroup_(processGroup)
+    {
+    }
+
+    ChildProcess(const ChildProcess &) = delete;
+    ChildProcess &operator=(const ChildProcess &) = delete;
+
+    ~ChildProcess()
+    {
+        if (pid_ <= 0) {
+            return;
+        }
+        if (processGroup_) {
+            ::kill(-pid_, SIGKILL);
+        }
+        // The child may not have created its process group yet.
+        ::kill(pid_, SIGKILL);
+        while (::waitpid(pid_, nullptr, 0) == -1 && errno == EINTR) { }
+    }
+
+    utils::error::Result<int> wait(const Deadline &deadline) noexcept
+    {
+        LINGLONG_TRACE("wait for command exit");
+        int status = 0;
+        for (;;) {
+            const auto waited = ::waitpid(pid_, &status, deadline ? WNOHANG : 0);
+            if (waited == pid_) {
+                pid_ = -1;
+                return status;
+            }
+            if (waited == -1) {
+                if (errno == EINTR) {
+                    continue;
+                }
+                if (errno == ECHILD) {
+                    pid_ = -1;
+                }
+                return LINGLONG_ERR(
+                  fmt::format("waitpid error: {}", common::error::errorString(errno)));
+            }
+            const auto remaining = remainingMilliseconds(deadline);
+            if (remaining == 0) {
+                return LINGLONG_ERR("waiting for command exit timed out", ETIMEDOUT);
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(std::min(remaining, 10)));
+        }
+    }
+
+private:
+    pid_t pid_;
+    bool processGroup_;
+};
+
+std::vector<std::string> commandEnvironment(const std::map<std::string, std::string> &overrides)
+{
+    std::vector<std::string> environment;
+    for (char *const *env = environ; *env != nullptr; ++env) {
+        environment.emplace_back(*env);
+    }
+    for (const auto &[name, value] : overrides) {
+        const auto prefix = name + '=';
+        const auto matches = [&prefix](const auto &entry) {
+            return entry.compare(0, prefix.size(), prefix) == 0;
+        };
+        if (value.empty()) {
+            environment.erase(std::remove_if(environment.begin(), environment.end(), matches),
+                              environment.end());
+        } else {
+            const auto found = std::find_if(environment.begin(), environment.end(), matches);
+            if (found == environment.end()) {
+                environment.push_back(prefix + value);
+            } else {
+                *found = prefix + value;
+            }
+        }
+    }
+    return environment;
+}
+
+std::vector<char *> stringPointers(std::vector<std::string> &strings)
+{
+    std::vector<char *> pointers;
+    pointers.reserve(strings.size() + 1);
+    for (auto &entry : strings) {
+        pointers.push_back(entry.data());
+    }
+    pointers.push_back(nullptr);
+    return pointers;
+}
+
+utils::error::Result<pid_t> startCommand(const std::filesystem::path &path,
+                                         char *const *argv,
+                                         char *const *envp,
+                                         io::PipeSet &pipes,
+                                         bool processGroup) noexcept
+{
+    LINGLONG_TRACE("start command");
+    const auto *command = path.c_str();
+    const auto pid = ::fork();
+    if (pid == -1) {
+        return LINGLONG_ERR(fmt::format("fork error: {}", common::error::errorString(errno)));
+    }
+    if (pid == 0) {
+        if (processGroup && ::setpgid(0, 0) == -1) {
+            ::_exit(EXIT_FAILURE);
+        }
+        if (!pipes.setupChildStdio()) {
+            ::_exit(EXIT_FAILURE);
+        }
+        ::execve(command, argv, envp);
+        constexpr char message[] = "execve failed\n";
+        ::write(STDERR_FILENO, message, sizeof(message) - 1);
+        ::_exit(EXIT_FAILURE);
+    }
+    return pid;
+}
+
+utils::error::Result<void> communicate(io::Pipe &input,
+                                       io::Pipe &output,
+                                       const std::string &content,
+                                       const Deadline &deadline,
+                                       std::string &result) noexcept
+{
+    LINGLONG_TRACE("exchange command input and output");
+    for (const auto fd : { input.writeEnd(), output.readEnd() }) {
+        const auto flags = ::fcntl(fd, F_GETFL, 0);
+        if (flags == -1 || ::fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {
+            return LINGLONG_ERR(
+              fmt::format("set non block error: {}", common::error::errorString(errno)));
+        }
+    }
+    auto loop = io::EventLoop::create(2);
+    if (!loop) {
+        return LINGLONG_ERR(loop);
+    }
+    auto added = loop->add(output.readEnd(), EPOLLIN);
+    if (!added) {
+        return LINGLONG_ERR(added);
+    }
+    if (!*added) {
+        return LINGLONG_ERR("stdout pipe cannot be monitored");
+    }
+    if (content.empty()) {
+        input.closeWriteEnd();
+    } else {
+        added = loop->add(input.writeEnd(), EPOLLOUT);
+        if (!added) {
+            return LINGLONG_ERR(added);
+        }
+        if (!*added) {
+            return LINGLONG_ERR("stdin pipe cannot be monitored");
+        }
+    }
+
+    std::size_t written = 0;
+    std::array<char, 8192> buffer{};
+    while (input || output) {
+        const auto remaining = remainingMilliseconds(deadline);
+        if (remaining == 0) {
+            return LINGLONG_ERR("command input/output timed out", ETIMEDOUT);
+        }
+        auto ready = loop->wait(remaining);
+        if (!ready) {
+            return LINGLONG_ERR(ready);
+        }
+        for (int i = 0; i < ready->count; ++i) {
+            const auto fd = ready->events[i].data.fd;
+            if (fd == output.readEnd()) {
+                const auto size = ::read(fd, buffer.data(), buffer.size());
+                if (size > 0) {
+                    result.append(buffer.data(), static_cast<std::size_t>(size));
+                } else if (size == 0 || (errno != EINTR && errno != EAGAIN)) {
+                    loop->remove(fd);
+                    output.closeReadEnd();
+                }
+            } else if (fd == input.writeEnd()) {
+                const auto size = ::write(fd, content.data() + written, content.size() - written);
+                if (size < 0) {
+                    const auto error = errno;
+                    if (error == EINTR || error == EAGAIN) {
+                        continue;
+                    }
+                    if (error != EPIPE) {
+                        return LINGLONG_ERR("failed to write command input", error);
+                    }
+                } else if (size > 0) {
+                    written += static_cast<std::size_t>(size);
+                }
+                if (size <= 0 || written == content.size()) {
+                    loop->remove(fd);
+                    input.closeWriteEnd();
+                }
+            }
+        }
+    }
+    return LINGLONG_OK;
+}
+
+std::string timeoutMessage(std::chrono::milliseconds timeout,
+                           const std::filesystem::path &path,
+                           const std::string &output)
+{
+    auto message = fmt::format("command timed out after {} ms: {}", timeout.count(), path);
+    if (!output.empty()) {
+        constexpr std::size_t limit = 4096;
+        message += fmt::format("\npartial stdout: {}{}",
+                               std::string_view(output).substr(0, limit),
+                               output.size() > limit ? " [truncated]" : "");
+    }
+    return message;
+}
+
+utils::error::Result<std::string> commandResult(int status, std::string output)
+{
+    LINGLONG_TRACE("check command result");
+    if (WIFEXITED(status)) {
+        const auto exitCode = WEXITSTATUS(status);
+        if (exitCode == 0) {
+            return output;
+        }
+        return LINGLONG_ERR(
+          fmt::format("command execute failed with exit code {}: {}", exitCode, output));
+    }
+    if (WIFSIGNALED(status)) {
+        return LINGLONG_ERR(fmt::format("command killed by signal: {}", WTERMSIG(status)));
+    }
+    return LINGLONG_ERR("command exited abnormally");
+}
+
+} // namespace
 
 Cmd::Cmd(std::string command) noexcept
     : m_command(std::move(command))
@@ -71,257 +331,84 @@ std::filesystem::path Cmd::getCommandPath()
 
 utils::error::Result<std::string> Cmd::exec(const std::vector<std::string> &args) noexcept
 {
-    LINGLONG_TRACE(fmt::format("exec cmd: {} args: {}", m_command, fmt::join(args, " ")));
+    LINGLONG_TRACE(fmt::format("exec cmd: {} args: {}", m_command, fmt::join(args, ", ")));
 
     auto commandPath = getCommandPath();
     if (commandPath.empty()) {
         return LINGLONG_ERR(fmt::format("command not found: {}", m_command));
     }
 
-    std::array<int, 2> stdoutPipe{ -1, -1 };
-    if (pipe2(stdoutPipe.data(), O_CLOEXEC) == -1) {
+    auto pipes = io::PipeSet::create(O_CLOEXEC, io::PipeSet::Stdin | io::PipeSet::Stdout);
+    if (!pipes) {
         return LINGLONG_ERR(fmt::format("pipe error: {}", common::error::errorString(errno)));
     }
-    auto stdoutPipeCloser = utils::finally::finally([&stdoutPipe]() {
-        for (auto fd : stdoutPipe) {
-            if (fd >= 0) {
-                close(fd);
-            }
-        }
-    });
 
-    std::array<int, 2> stdinPipe{ -1, -1 };
-    if (pipe2(stdinPipe.data(), O_CLOEXEC) == -1) {
-        return LINGLONG_ERR(fmt::format("pipe error: {}", common::error::errorString(errno)));
-    }
-    auto stdinPipeCloser = utils::finally::finally([&stdinPipe]() {
-        for (auto fd : stdinPipe) {
-            if (fd >= 0) {
-                close(fd);
-            }
-        }
-    });
+    auto environment = commandEnvironment(m_envs);
+    auto envp = stringPointers(environment);
 
-    // Pre-allocate environment variables before fork to avoid memory allocation issues
-    std::vector<std::string> envStrings;
-    std::vector<char *> envp;
-
-    // Copy current environment
-    for (char *const *env = environ; *env != nullptr; ++env) {
-        envStrings.emplace_back(*env);
-    }
-
-    // Add or override environment variables
-    for (auto it = m_envs.cbegin(); it != m_envs.cend(); ++it) {
-        const auto &name = it->first;
-        const auto &value = it->second;
-        if (value.empty()) {
-            // Remove the environment variable if value is empty
-            envStrings.erase(std::remove_if(envStrings.begin(),
-                                            envStrings.end(),
-                                            [&name](const std::string &env) {
-                                                return env.size() > name.size()
-                                                  && env.compare(0, name.size(), name) == 0
-                                                  && env[name.size()] == '=';
-                                            }),
-                             envStrings.end());
-        } else {
-            // Add or update environment variable
-            const auto envVar = (name + "=").append(value);
-            bool found = false;
-            for (auto &env : envStrings) {
-                if (env.size() > name.size() && env.compare(0, name.size(), name) == 0
-                    && env[name.size()] == '=') {
-                    env = envVar;
-                    found = true;
-                    break;
-                }
-            }
-            if (!found) {
-                envStrings.push_back(envVar);
-            }
-        }
-    }
-
-    // Build envp array for execvpe
-    envp.reserve(envStrings.size() + 1);
-    for (auto &env : envStrings) {
-        envp.push_back(const_cast<char *>(env.c_str()));
-    }
-    envp.push_back(nullptr);
+    std::vector<std::string> arguments{ commandPath.filename().string() };
+    arguments.insert(arguments.end(), args.begin(), args.end());
+    auto argv = stringPointers(arguments);
 
     LogD("execute {} with args [{}]", commandPath, fmt::join(args, ", "));
 
-    const pid_t pid = fork();
-    if (pid == -1) {
-        return LINGLONG_ERR(fmt::format("fork error: {}", common::error::errorString(errno)));
+    const bool createProcessGroup = m_timeout > std::chrono::milliseconds::zero();
+    Deadline deadline;
+    if (m_timeout > std::chrono::milliseconds::zero()) {
+        const auto now = std::chrono::steady_clock::now();
+        const auto maximum = std::chrono::duration_cast<std::chrono::milliseconds>(
+          std::chrono::steady_clock::time_point::max() - now);
+        deadline = now + std::min(m_timeout, maximum);
     }
+    auto started = startCommand(commandPath, argv.data(), envp.data(), *pipes, createProcessGroup);
+    if (!started) {
+        return LINGLONG_ERR(started);
+    }
+    ChildProcess child(*started, createProcessGroup);
+    pipes->closeChildEnds();
 
-    // child process
-    if (pid == 0) {
-        // Redirect stdout and stdin
-        close(stdoutPipe[0]);
-        close(stdinPipe[1]);
-        if (dup2(stdoutPipe[1], STDOUT_FILENO) == -1 || dup2(stdinPipe[0], STDIN_FILENO) == -1) {
-            _exit(EXIT_FAILURE);
+    // Block only in the parent so the executed command keeps the caller's signal mask.
+    sigset_t blocked;
+    ::sigemptyset(&blocked);
+    ::sigaddset(&blocked, SIGPIPE);
+    sigset_t original;
+    const auto maskError = ::pthread_sigmask(SIG_BLOCK, &blocked, &original);
+    if (maskError != 0) {
+        return LINGLONG_ERR("failed to block SIGPIPE", maskError);
+    }
+    sigset_t pending;
+    if (::sigpending(&pending) == -1) {
+        const auto error = errno;
+        ::pthread_sigmask(SIG_SETMASK, &original, nullptr);
+        return LINGLONG_ERR("failed to inspect pending signals", error);
+    }
+    const bool alreadyPending = ::sigismember(&pending, SIGPIPE) == 1;
+    const auto restoreSigpipe = finally::finally([&] {
+        if (!alreadyPending) {
+            // Drain a newly pending SIGPIPE before restoring the caller's signal mask.
+            const timespec timeout{};
+            while (::sigtimedwait(&blocked, nullptr, &timeout) == -1 && errno == EINTR) { }
         }
-        close(stdoutPipe[1]);
-        close(stdinPipe[0]);
-
-        std::vector<char *> argv;
-        auto filename = commandPath.filename();
-        argv.push_back(const_cast<char *>(filename.c_str()));
-        for (const auto &arg : args) {
-            argv.push_back(const_cast<char *>(arg.c_str()));
-        }
-        argv.push_back(nullptr);
-
-        execvpe(commandPath.c_str(), argv.data(), envp.data());
-
-        std::cout << "execvpe failed: " << common::error::errorString(errno) << std::endl;
-
-        _exit(EXIT_FAILURE);
-    }
-
-    // parent process
-    close(stdoutPipe[1]);
-    stdoutPipe[1] = -1;
-    close(stdinPipe[0]);
-    stdinPipe[0] = -1;
-
-    auto setNonBlock = [](int fd) {
-        int flags = fcntl(fd, F_GETFL, 0);
-        if (flags != -1) {
-            return fcntl(fd, F_SETFL, flags | O_NONBLOCK) != -1;
-        }
-        return false;
-    };
-    if (!setNonBlock(stdoutPipe[0]) || !setNonBlock(stdinPipe[1])) {
-        return LINGLONG_ERR(
-          fmt::format("set non block error: {}", common::error::errorString(errno)));
-    }
-
-    int epfd = epoll_create1(O_CLOEXEC);
-    if (epfd == -1) {
-        return LINGLONG_ERR(
-          fmt::format("epoll_create error: {}", common::error::errorString(errno)));
-    }
-    auto epfdCloser = utils::finally::finally([epfd]() {
-        close(epfd);
+        ::pthread_sigmask(SIG_SETMASK, &original, nullptr);
     });
 
-    struct epoll_event ev;
-    int activeFds = 0;
-
-    ev.events = EPOLLIN;
-    ev.data.fd = stdoutPipe[0];
-    if (epoll_ctl(epfd, EPOLL_CTL_ADD, stdoutPipe[0], &ev) == -1) {
-        return LINGLONG_ERR(
-          fmt::format("epoll_ctl stdout error: {}", common::error::errorString(errno)));
-    }
-    activeFds++;
-
-    size_t writtenBytes = 0;
-    if (!m_stdinContent.empty()) {
-        ev.events = EPOLLOUT;
-        ev.data.fd = stdinPipe[1];
-        if (epoll_ctl(epfd, EPOLL_CTL_ADD, stdinPipe[1], &ev) == -1) {
-            return LINGLONG_ERR(
-              fmt::format("epoll_ctl stdin error: {}", common::error::errorString(errno)));
-        }
-        activeFds++;
-    } else {
-        // If no input, close write end immediately to send EOF to child
-        close(stdinPipe[1]);
-        stdinPipe[1] = -1;
-    }
-
     std::string output;
-    std::vector<char> buffer(4096);
-    const int MAX_EVENTS = 2;
-    struct epoll_event events[MAX_EVENTS];
-
-    while (activeFds > 0) {
-        int nfds = epoll_wait(epfd, events, MAX_EVENTS, -1);
-        if (nfds == -1) {
-            if (errno == EINTR)
-                continue;
-            return LINGLONG_ERR(
-              fmt::format("epoll_wait error: {}", common::error::errorString(errno)));
+    auto result =
+      communicate(*pipes->stdinPipe, *pipes->stdoutPipe, m_stdinContent, deadline, output);
+    if (!result) {
+        if (result.error().code() == ETIMEDOUT) {
+            return LINGLONG_ERR(timeoutMessage(m_timeout, commandPath, output), ETIMEDOUT);
         }
-
-        for (int i = 0; i < nfds; ++i) {
-            int fd = events[i].data.fd;
-            if (fd == stdoutPipe[0]) {
-                while (true) {
-                    ssize_t n = read(fd, buffer.data(), buffer.size());
-                    if (n > 0) {
-                        output.append(buffer.data(), static_cast<size_t>(n));
-                        continue;
-                    }
-
-                    if (n == -1 && errno == EINTR) {
-                        continue;
-                    }
-
-                    if ((n == -1 && errno != EAGAIN && errno != EWOULDBLOCK) || n == 0) {
-                        // error or EOF, stop monitoring this FD
-                        epoll_ctl(epfd, EPOLL_CTL_DEL, fd, nullptr);
-                        activeFds--;
-                    }
-                    break;
-                }
-            } else if (fd == stdinPipe[1]) {
-                if (writtenBytes < m_stdinContent.size()) {
-                    ssize_t n = write(fd,
-                                      m_stdinContent.data() + writtenBytes,
-                                      m_stdinContent.size() - writtenBytes);
-                    if (n > 0) {
-                        writtenBytes += n;
-                    } else if (n == -1) {
-                        if (errno == EINTR) {
-                            continue;
-                        }
-
-                        if (errno != EAGAIN && errno != EWOULDBLOCK) {
-                            epoll_ctl(epfd, EPOLL_CTL_DEL, fd, nullptr);
-                            activeFds--;
-                        }
-                    }
-                }
-
-                if (writtenBytes >= m_stdinContent.size()) {
-                    epoll_ctl(epfd, EPOLL_CTL_DEL, fd, nullptr);
-                    close(fd);
-                    stdinPipe[1] = -1;
-                    activeFds--;
-                }
-            }
+        return LINGLONG_ERR(result);
+    }
+    auto status = child.wait(deadline);
+    if (!status) {
+        if (status.error().code() == ETIMEDOUT) {
+            return LINGLONG_ERR(timeoutMessage(m_timeout, commandPath, output), ETIMEDOUT);
         }
+        return LINGLONG_ERR(status);
     }
-
-    int status;
-    while (waitpid(pid, &status, 0) == -1) {
-        if (errno == EINTR)
-            continue;
-        return LINGLONG_ERR(fmt::format("waitpid error: {}", common::error::errorString(errno)));
-    }
-
-    if (WIFEXITED(status)) {
-        int exitCode = WEXITSTATUS(status);
-        if (exitCode == 0) {
-            return output;
-        }
-
-        return LINGLONG_ERR(
-          fmt::format("command execute failed with exit code {}: {}", exitCode, output));
-    }
-
-    if (WIFSIGNALED(status)) {
-        return LINGLONG_ERR(fmt::format("command killed by signal: {}", WTERMSIG(status)));
-    }
-
-    return LINGLONG_ERR("command exited abnormally");
+    return commandResult(*status, std::move(output));
 }
 
 Cmd &Cmd::setEnv(const std::string &name, const std::string &value) noexcept
@@ -334,6 +421,12 @@ Cmd &Cmd::setEnv(const std::string &name, const std::string &value) noexcept
 Cmd &Cmd::toStdin(std::string content) noexcept
 {
     m_stdinContent = std::move(content);
+    return *this;
+}
+
+Cmd &Cmd::setTimeout(std::chrono::milliseconds timeout) noexcept
+{
+    m_timeout = timeout;
     return *this;
 }
 

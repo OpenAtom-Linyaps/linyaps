@@ -26,10 +26,23 @@
 #include <filesystem>
 #include <memory>
 #include <optional>
+#include <string>
+#include <vector>
 
 namespace linglong::service {
 
 class Action;
+
+struct UninstallCandidate
+{
+    package::Reference ref;
+    std::string kind;
+    std::string module;
+};
+
+std::vector<UninstallCandidate>
+selectUninstallCandidates(const std::vector<api::types::v1::RepositoryCacheLayersItem> &layers,
+                          const std::optional<std::string> &requestedModule) noexcept;
 
 class PackageManager : public QObject, protected QDBusContext
 {

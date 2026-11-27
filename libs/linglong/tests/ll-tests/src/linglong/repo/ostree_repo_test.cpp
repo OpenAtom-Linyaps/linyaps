@@ -142,6 +142,44 @@ TEST_F(RepoTest, createPersistsConfigAndBootstrapsRepoArtifacts)
     EXPECT_TRUE(loaded.has_value()) << loaded.error().message();
 }
 
+TEST_F(RepoTest, fixExportAllEntriesPreservesEmptyDesktopDirectories)
+{
+    TempDir tempDir;
+    const auto repoRoot = tempDir.path() / "repo-root";
+    ASSERT_TRUE(fs::create_directories(repoRoot));
+
+    ScopedUmask scopedUmask{ 0022 };
+    auto repo = OSTreeRepo::create(repoRoot, createRepoConfig());
+    ASSERT_TRUE(repo.has_value()) << repo.error().message();
+
+    const auto entries = repoRoot / "entries";
+    // Simulate the directories created by tmpfiles before the first service start.
+    ASSERT_TRUE(fs::create_directories(entries / "share/applications"));
+    ASSERT_TRUE(fs::create_directories(entries / "share/icons/hicolor"));
+    ASSERT_FALSE(fs::exists(entries / ".version"));
+
+    for (int rebuild = 0; rebuild < 2; ++rebuild) {
+        SCOPED_TRACE(rebuild);
+        if (rebuild != 0) {
+            // Force the same replacement path used when the export version changes.
+            ASSERT_TRUE(fs::remove(entries / ".version"));
+        }
+
+        auto result = repo->get()->fixExportAllEntries();
+        ASSERT_TRUE(result.has_value()) << result.error().message();
+        EXPECT_TRUE(fs::is_regular_file(entries / ".version"));
+
+        for (const auto *directory :
+             { "share", "share/applications", "share/icons", "share/icons/hicolor" }) {
+            const auto path = entries / directory;
+            ASSERT_TRUE(fs::is_directory(path)) << path;
+            EXPECT_EQ(fs::status(path).permissions() & fs::perms::mask,
+                      common::shared_directory_permissions)
+              << path;
+        }
+    }
+}
+
 TEST_F(RepoTest, exportLayerSignDataExportsWhitelistedPathForEveryLayerKindAndModule)
 {
     TempDir tempDir;

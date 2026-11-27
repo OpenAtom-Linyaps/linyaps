@@ -2452,9 +2452,8 @@ OSTreeRepo::exportAppBinaries(const std::filesystem::path &rootEntriesDir,
     // Actual scripts live under entries/bin/apps/APPID/bin/
     auto appBinDir = binDir / "apps" / item.info.id / "bin";
 
-    // The entries/bin and entries/share dirs are not pre-created by tmpfiles
-    // anymore; the wrapper script path below creates entries/bin/apps/<APPID>/bin,
-    // while entries/share (referenced by the environment injection) is ensured here.
+    // Per-app wrapper paths create entries/bin/apps/<APPID>/bin. Ensure
+    // entries/share here as well for repositories not initialized by tmpfiles.
     std::error_code dirEc;
     std::filesystem::create_directories(rootEntriesDir / "share", dirEc);
     if (dirEc) {
@@ -2619,6 +2618,14 @@ utils::error::Result<void> OSTreeRepo::exportAllEntries() noexcept
     std::filesystem::create_directory(entriesDir, ec);
     if (ec) {
         return LINGLONG_ERR("create temp share directory", ec);
+    }
+    // Desktop processes can cache missing icon search paths. Keep these roots
+    // when replacing entries, even before any application has been installed.
+    for (const auto *directory : { "share/applications", "share/icons/hicolor" }) {
+        std::filesystem::create_directories(entriesDir / directory, ec);
+        if (ec) {
+            return LINGLONG_ERR("create desktop export directory", ec);
+        }
     }
     // 导出所有layer到新entries目录
     auto items = this->cache->queryExistingLayerItem();

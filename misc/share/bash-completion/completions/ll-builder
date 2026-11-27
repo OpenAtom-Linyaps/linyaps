@@ -41,7 +41,7 @@ _ll_builder_complete() {
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD - 1]}"
 
-    local subcommands="create build run export push import extract clean repo list remove"
+    local subcommands="create build generate-lockfile update-lockfile run export push import extract clean repo list remove"
     local version_options="--version"
     local common_options="-h --help --help-all"
 
@@ -57,10 +57,13 @@ _ll_builder_complete() {
         output_options="${common_options}"
         ;;
     build)
-        local build_options="-f --file --offline --isolate-network"
+        local build_options="-f --file --offline --locked --isolate-network"
         build_options+=" --skip-fetch-source --skip-pull-depend"
         build_options+=" --skip-run-container --skip-commit-output --skip-output-check --skip-strip-symbols"
         output_options="${common_options} ${build_options}"
+        ;;
+    generate-lockfile | update-lockfile)
+        output_options="-f --file ${common_options}"
         ;;
     run)
         local run_options="-f --file --modules --workdir --debug --extensions"

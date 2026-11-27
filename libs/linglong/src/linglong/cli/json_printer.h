@@ -10,14 +10,21 @@
 #include "linglong/cli/cli.h"
 #include "linglong/cli/printer.h"
 
+#include <iostream>
+#include <ostream>
+
 namespace linglong::cli {
 
 class JSONPrinter : public Printer
 {
 private:
+    std::ostream &out;
+
     void printPackages(const std::vector<api::types::v1::PackageInfoV2> &);
 
 public:
+    explicit JSONPrinter(std::ostream &out = std::cout);
+
     void printErr(const utils::error::Error &) override;
     void printPackage(const api::types::v1::PackageInfoV2 &) override;
     void printPackages(const std::vector<api::types::v1::PackageInfoDisplay> &) override;

@@ -24,12 +24,14 @@ pfl_add_executable(
   src/linglong/builder/pull_dependency_test.cpp
   src/linglong/builder/builder_commands_test.cpp
   src/linglong/builder/source_fetcher_test.cpp
+  src/linglong/builder/source_cache_test.cpp
   src/linglong/builder/project_lock_test.cpp
   src/linglong/builder/project_validation_test.cpp
   src/linglong/cli/cli_printer_test.cpp
   src/linglong/cli/cli_command_test.cpp
   src/linglong/cli/cli_test.cpp
   src/linglong/cli/dbus_notifier_test.cpp
+  src/linglong/cli/json_printer_test.cpp
   src/linglong/cli/notifier_test.cpp
   src/linglong/common/gkeyfile_wrapper_test.cpp
   src/linglong/common/global/initialize_test.cpp
@@ -38,6 +40,7 @@ pfl_add_executable(
   src/linglong/common/strings_test.cpp
   src/linglong/common/display_test.cpp
   src/linglong/common/socket_test.cpp
+  src/linglong/common/serialize/json_test.cpp
   src/linglong/common/xdg_test.cpp
   src/linglong/mocks/layer_packager_mock.h
   src/linglong/mocks/linglong_builder_mock.h
@@ -48,6 +51,7 @@ pfl_add_executable(
   src/linglong/package/architecture_test.cpp
   src/linglong/package/elf_handler_test.cpp
   src/linglong/package/fallback_version_test.cpp
+  src/linglong/package/fuzzy_reference_test.cpp
   src/linglong/package/layer_dir_test.cpp
   src/linglong/package/layer_file_test.cpp
   src/linglong/package/layer_packager_test.cpp

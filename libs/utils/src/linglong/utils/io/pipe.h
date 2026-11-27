@@ -56,47 +56,62 @@ private:
 
 struct PipeSet
 {
+    enum Stream : unsigned int {
+        Stdin = 1U << STDIN_FILENO,
+        Stdout = 1U << STDOUT_FILENO,
+        Stderr = 1U << STDERR_FILENO,
+        All = Stdin | Stdout | Stderr,
+    };
+
     std::optional<Pipe> stdinPipe;
     std::optional<Pipe> stdoutPipe;
     std::optional<Pipe> stderrPipe;
 
-    static std::optional<PipeSet> create(int flags = O_CLOEXEC) noexcept
+    static std::optional<PipeSet> create(int flags = O_CLOEXEC, unsigned int streams = All) noexcept
     {
-        auto stdinPipe = Pipe::create(flags);
-        if (!stdinPipe) {
-            return std::nullopt;
+        std::optional<Pipe> stdinPipe;
+        if (streams & Stdin) {
+            stdinPipe = Pipe::create(flags);
+            if (!stdinPipe) {
+                return std::nullopt;
+            }
         }
 
-        auto stdoutPipe = Pipe::create(flags);
-        if (!stdoutPipe) {
-            return std::nullopt;
+        std::optional<Pipe> stdoutPipe;
+        if (streams & Stdout) {
+            stdoutPipe = Pipe::create(flags);
+            if (!stdoutPipe) {
+                return std::nullopt;
+            }
         }
 
-        auto stderrPipe = Pipe::create(flags);
-        if (!stderrPipe) {
-            return std::nullopt;
+        std::optional<Pipe> stderrPipe;
+        if (streams & Stderr) {
+            stderrPipe = Pipe::create(flags);
+            if (!stderrPipe) {
+                return std::nullopt;
+            }
         }
 
         return PipeSet{ std::move(stdinPipe), std::move(stdoutPipe), std::move(stderrPipe) };
     }
 
-    void setupChildStdio() noexcept
+    [[nodiscard]] bool setupChildStdio() noexcept
     {
-        if (stdinPipe) {
-            ::dup2(stdinPipe->readEnd(), STDIN_FILENO);
-            stdinPipe->closeReadEnd();
-            stdinPipe->closeWriteEnd();
-        }
-        if (stdoutPipe) {
-            ::dup2(stdoutPipe->writeEnd(), STDOUT_FILENO);
-            stdoutPipe->closeWriteEnd();
-            stdoutPipe->closeReadEnd();
-        }
-        if (stderrPipe) {
-            ::dup2(stderrPipe->writeEnd(), STDERR_FILENO);
-            stderrPipe->closeWriteEnd();
-            stderrPipe->closeReadEnd();
-        }
+        // Close unused ends before they can alias a redirected standard descriptor.
+        closeParentEnds();
+        const auto redirect = [](int source, int target) noexcept {
+            if (source == target) {
+                // dup2(fd, fd) would leave FD_CLOEXEC set. Keep this descriptor open.
+                return ::fcntl(target, F_SETFD, 0) != -1;
+            }
+            const auto result = ::dup2(source, target);
+            ::close(source);
+            return result != -1;
+        };
+        return (!stdinPipe || redirect(stdinPipe->releaseReadEnd(), STDIN_FILENO))
+          && (!stdoutPipe || redirect(stdoutPipe->releaseWriteEnd(), STDOUT_FILENO))
+          && (!stderrPipe || redirect(stderrPipe->releaseWriteEnd(), STDERR_FILENO));
     }
 
     void closeChildEnds() noexcept

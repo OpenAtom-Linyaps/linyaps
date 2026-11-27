@@ -1212,7 +1212,9 @@ utils::error::Result<int> Cli::reuseContainer(const std::string &id,
         if (ioSetup->option.tty) {
             ioSetup->listenFd.reset();
         } else if (ioSetup->pipes) {
-            ioSetup->pipes->setupChildStdio();
+            if (!ioSetup->pipes->setupChildStdio()) {
+                _exit(EXIT_FAILURE);
+            }
         }
 
         auto reuseCommand = utils::BashCommandHelper::generateBashCommandBase();

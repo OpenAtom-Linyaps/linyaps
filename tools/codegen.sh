@@ -135,7 +135,7 @@ generate \
         "/libs/api/src/" \
         "linglong/api/types/v1"
 
-rm -f "$repoRoot/libs/cdi/src/linglong/cdi/types/*"
+rm -f "$repoRoot"/libs/cdi/src/linglong/cdi/types/*.hpp
 generate \
         "$repoRoot/libs/cdi/schema.json" \
         CDI \

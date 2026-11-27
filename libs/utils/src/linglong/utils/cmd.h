@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
+ * SPDX-FileCopyrightText: 2023 - 2026 UnionTech Software Technology Co., Ltd.
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
@@ -8,6 +8,7 @@
 
 #include "linglong/utils/error/error.h"
 
+#include <chrono>
 #include <filesystem>
 #include <map>
 #include <string>
@@ -28,6 +29,9 @@ public:
     exec(const std::vector<std::string> &args = {}) noexcept;
     virtual Cmd &setEnv(const std::string &name, const std::string &value) noexcept;
     virtual Cmd &toStdin(std::string content) noexcept;
+    // A positive timeout terminates the command's process group on expiration.
+    // Nonpositive values disable the timeout (the default is zero).
+    virtual Cmd &setTimeout(std::chrono::milliseconds timeout) noexcept;
 
 private:
     std::filesystem::path getCommandPath();
@@ -35,6 +39,7 @@ private:
     std::string m_command;
     std::map<std::string, std::string> m_envs;
     std::string m_stdinContent;
+    std::chrono::milliseconds m_timeout{ 0 };
 };
 
 } // namespace linglong::utils

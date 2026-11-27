@@ -509,10 +509,9 @@ TEST(IOForwarder, PushFailureMarksDstFailedAndClearsBuffer)
     forwarder.pull();
     ASSERT_FALSE(forwarder.bufferEmpty());
 
-    auto previous = ::signal(SIGPIPE, SIG_IGN);
+    // Closing the write descriptor exercises EBADF, not a broken pipe.
     dst->closeWriteEnd();
     forwarder.push();
-    ::signal(SIGPIPE, previous);
 
     EXPECT_TRUE(forwarder.bufferEmpty());
     EXPECT_TRUE(forwarder.isFinished());

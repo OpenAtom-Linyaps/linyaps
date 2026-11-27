@@ -16,25 +16,30 @@
 
 namespace linglong::cli {
 
+JSONPrinter::JSONPrinter(std::ostream &out)
+    : out(out)
+{
+}
+
 void JSONPrinter::printErr(const utils::error::Error &err)
 {
-    std::cout << nlohmann::json{ { "code", err.code() }, { "message", err.message() } }.dump()
-              << std::endl;
+    out << nlohmann::json{ { "code", err.code() }, { "message", err.message() } }.dump()
+        << std::endl;
 }
 
 void JSONPrinter::printPackage(const api::types::v1::PackageInfoV2 &info)
 {
-    std::cout << nlohmann::json(info).dump() << std::endl;
+    out << nlohmann::json(info).dump() << std::endl;
 }
 
 void JSONPrinter::printPackages(const std::vector<api::types::v1::PackageInfoDisplay> &list)
 {
-    std::cout << nlohmann::json(list).dump() << std::endl;
+    out << nlohmann::json(list).dump() << std::endl;
 }
 
 void JSONPrinter::printPackages(const std::vector<api::types::v1::PackageInfoV2> &list)
 {
-    std::cout << nlohmann::json(list).dump() << std::endl;
+    out << nlohmann::json(list).dump() << std::endl;
 }
 
 void JSONPrinter::printSearchResult(
@@ -63,7 +68,7 @@ void JSONPrinter::printSearchResult(
         });
     }
 
-    std::cout << nlohmann::json(list).dump() << std::endl;
+    out << nlohmann::json(list).dump() << std::endl;
 }
 
 void JSONPrinter::printPruneResult(const std::vector<api::types::v1::PackageInfoV2> &list)
@@ -73,24 +78,24 @@ void JSONPrinter::printPruneResult(const std::vector<api::types::v1::PackageInfo
 
 void JSONPrinter::printContainers(const std::vector<api::types::v1::CliContainer> &list)
 {
-    std::cout << nlohmann::json(list).dump() << std::endl;
+    out << nlohmann::json(list).dump() << std::endl;
 }
 
 void JSONPrinter::printRepoConfig(const api::types::v1::RepoConfigV2 &config)
 {
-    std::cout << nlohmann::json(config).dump() << std::endl;
+    out << nlohmann::json(config).dump() << std::endl;
 }
 
 void JSONPrinter::printLayerInfo(const api::types::v1::LayerInfo &info)
 {
-    std::cout << nlohmann::json(info).dump() << std::endl;
+    out << nlohmann::json(info).dump() << std::endl;
 }
 
 void JSONPrinter::printContent(const QStringList &filePaths)
 {
     QJsonObject obj{ { "content", QJsonArray::fromStringList(filePaths) } };
 
-    std::cout << QString::fromUtf8(QJsonDocument(obj).toJson()).toStdString() << std::endl;
+    out << QString::fromUtf8(QJsonDocument(obj).toJson()).toStdString() << std::endl;
 }
 
 void JSONPrinter::printProgress(const double percentage, const std::string &message)
@@ -99,17 +104,17 @@ void JSONPrinter::printProgress(const double percentage, const std::string &mess
     json["percentage"] = percentage;
     json["message"] = message;
 
-    std::cout << json.dump() << std::endl;
+    out << json.dump() << std::endl;
 }
 
 void JSONPrinter::printUpgradeList(std::vector<api::types::v1::UpgradeListResult> &list)
 {
-    std::cout << nlohmann::json(list).dump(4) << std::endl;
+    out << nlohmann::json(list).dump(4) << std::endl;
 }
 
 void JSONPrinter::printInspect(const api::types::v1::InspectResult &result)
 {
-    std::cout << nlohmann::json(result).dump(4) << std::endl;
+    out << nlohmann::json(result).dump(4) << std::endl;
 }
 
 void JSONPrinter::printModuleSizes(const std::vector<ModuleSizeInfo> &list,
@@ -138,7 +143,7 @@ void JSONPrinter::printModuleSizes(const std::vector<ModuleSizeInfo> &list,
         });
     }
 
-    std::cout << nlohmann::json{
+    out << nlohmann::json{
       { "modules", modules },
       { "calculatedLogicalSize",
         { { "exclusiveSize", totalExclusiveSize },
@@ -170,7 +175,7 @@ void JSONPrinter::printDepends(const std::vector<DependsNode> &trees)
         result.push_back(toJson(tree, toJson));
     }
 
-    std::cout << result.dump(4) << std::endl;
+    out << result.dump(4) << std::endl;
 }
 
 void JSONPrinter::printMessage(const std::string &message)

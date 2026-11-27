@@ -110,6 +110,84 @@ utils::error::Result<void> UabInstallationAction::checkUABLayersConstrain(
     return LINGLONG_OK;
 }
 
+namespace {
+
+// Both the layer id and the module are appended to the layers directory, so each must be exactly
+// one ordinary path component. An embedded NUL would truncate the value when it is later handed
+// to a C API, so it is rejected as well.
+bool isSinglePathComponent(std::string_view value)
+{
+    return !value.empty() && value != "." && value != ".."
+      && value.find_first_of("/\\") == std::string_view::npos
+      && value.find('\0') == std::string_view::npos;
+}
+
+} // namespace
+
+utils::error::Result<void> UabInstallationAction::validateUABLayerModule(std::string_view module)
+{
+    LINGLONG_TRACE("validate uab layer module");
+
+    if (module.empty()) {
+        return LINGLONG_ERR("UAB layer module is empty");
+    }
+
+    // The module is used as one path component when locating an unpacked UAB layer.
+    if (!isSinglePathComponent(module)) {
+        return LINGLONG_ERR("UAB layer module is not a safe path component");
+    }
+
+    return LINGLONG_OK;
+}
+
+utils::error::Result<void> UabInstallationAction::validateUABLayerId(std::string_view id)
+{
+    LINGLONG_TRACE("validate uab layer id");
+
+    if (id.empty()) {
+        return LINGLONG_ERR("UAB layer id is empty");
+    }
+
+    // The id is used as one path component below the layers directory.
+    if (!isSinglePathComponent(id)) {
+        return LINGLONG_ERR("UAB layer id is not a safe path component");
+    }
+
+    return LINGLONG_OK;
+}
+
+utils::error::Result<void> UabInstallationAction::validateUABLayerPath(
+  const std::filesystem::path &layersRoot, const std::filesystem::path &layerDir)
+{
+    LINGLONG_TRACE("validate uab layer path");
+
+    std::error_code ec;
+    const auto resolvedRoot = std::filesystem::weakly_canonical(layersRoot, ec);
+    if (ec) {
+        return LINGLONG_ERR(
+          fmt::format("failed to resolve {}: {}", layersRoot.string(), ec.message()));
+    }
+
+    const auto resolvedLayer = std::filesystem::weakly_canonical(layerDir, ec);
+    if (ec) {
+        return LINGLONG_ERR(
+          fmt::format("failed to resolve {}: {}", layerDir.string(), ec.message()));
+    }
+
+    // Resolving first means "." / ".." and symlinks are already expanded, so a component-wise
+    // prefix check is enough to keep the layer inside the layers directory.
+    auto rootIt = resolvedRoot.begin();
+    auto layerIt = resolvedLayer.begin();
+    for (; rootIt != resolvedRoot.end(); ++rootIt, ++layerIt) {
+        if (layerIt == resolvedLayer.end() || *layerIt != *rootIt) {
+            return LINGLONG_ERR(
+              fmt::format("UAB layer path {} escapes {}", layerDir.string(), layersRoot.string()));
+        }
+    }
+
+    return LINGLONG_OK;
+}
+
 bool UabInstallationAction::extraModuleOnly(const std::vector<api::types::v1::UabLayer> &layers)
 {
     for (const auto &layer : layers) {
@@ -360,8 +438,20 @@ UabInstallationAction::installUabLayer(const std::vector<api::types::v1::UabLaye
 
     for (const auto &layer : layers) {
         std::error_code ec;
-        auto layerDirPath =
-          uabMountPoint / "layers" / layer.info.id / layer.info.packageInfoV2Module;
+        if (auto idValid = validateUABLayerId(layer.info.id); !idValid) {
+            return LINGLONG_ERR(idValid);
+        }
+        if (auto moduleValid = validateUABLayerModule(layer.info.packageInfoV2Module);
+            !moduleValid) {
+            return LINGLONG_ERR(moduleValid);
+        }
+
+        const auto layersRoot = uabMountPoint / "layers";
+        auto layerDirPath = layersRoot / layer.info.id / layer.info.packageInfoV2Module;
+        if (auto pathValid = validateUABLayerPath(layersRoot, layerDirPath); !pathValid) {
+            return LINGLONG_ERR(pathValid);
+        }
+
         if (!std::filesystem::exists(layerDirPath, ec)) {
             if (ec) {
                 auto msg = fmt::format("get status of {} failed: {}", layerDirPath, ec.message());

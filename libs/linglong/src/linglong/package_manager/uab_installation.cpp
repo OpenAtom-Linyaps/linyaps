@@ -190,18 +190,18 @@ utils::error::Result<void> UabInstallationAction::prepareUAB()
     if (!stagedFileRet) {
         return LINGLONG_ERR(stagedFileRet);
     }
-    auto stagedFile = std::move(stagedFileRet).value();
+    stagedFilePath = std::move(stagedFileRet).value();
 
-    auto ret = pm.executeInstallHooks(stagedFile);
+    auto ret = pm.executeInstallHooks(stagedFilePath);
     if (!ret) {
         return LINGLONG_ERR(ret);
     }
 
-    uabMountPoint = stagedFile;
+    uabMountPoint = stagedFilePath;
     uabMountPoint += ".unpack";
     uabMountPoint /= "unpack";
 
-    return loadUABFile(stagedFile);
+    return loadUABFile(stagedFilePath);
 }
 
 utils::error::Result<void> UabInstallationAction::doAction(PackageTask &task)
@@ -209,11 +209,11 @@ utils::error::Result<void> UabInstallationAction::doAction(PackageTask &task)
     LINGLONG_TRACE("uab installation action");
 
     auto cleanupStaging = utils::finally::finally([this] {
-        // Unmount the bundle before removing its staging directory.
+        // Unmount the bundle before removing this install's staged files.
         uabFile.reset();
-        auto ret = pm.cleanStaging();
+        auto ret = pm.cleanStaging(stagedFilePath);
         if (!ret) {
-            LogW("failed to clean staging directory: {}", ret.error());
+            LogW("failed to clean staged UAB artifact: {}", ret.error());
         }
     });
 

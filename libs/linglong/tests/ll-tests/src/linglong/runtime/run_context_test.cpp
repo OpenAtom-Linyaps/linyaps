@@ -7,12 +7,15 @@
 
 #include "../../common/tempdir.h"
 #include "linglong/api/types/v1/Generators.hpp"
+#include "linglong/cdi/cdi.h"
 #include "linglong/cli/cli.h"
 #include "linglong/oci-cfg-generators/container_cfg_builder.h"
 #include "linglong/package/fuzzy_reference.h"
 #include "linglong/repo/ostree_repo.h"
+#include "linglong/runtime/cdi_config.h"
 #include "linglong/runtime/run_context.h"
 #include "linglong/utils/env.h"
+#include "linglong/utils/finally/finally.h"
 #include "linglong/utils/temporary_directory.h"
 
 #include <QCryptographicHash>
@@ -1299,7 +1302,7 @@ TEST(ResolveOptionsTest, ApplyRuntimeConfigSetsMounts)
     EXPECT_EQ(opts.mounts->at(0).source, "/host/tmp");
 }
 
-TEST(ResolveOptionsTest, ApplyOptionsSetsEmptyRuntimeConfigCdiDevices)
+TEST(CdiConfigTest, AcceptsEmptyDeviceConfig)
 {
     TempDir tempDir;
     const auto specPath = tempDir.path() / "nvidia.yaml";
@@ -1314,33 +1317,29 @@ devices:
 )";
     spec.close();
 
-    ResolveOptions opts;
-
     api::types::v1::RuntimeConfigure runtimeConfig;
-    runtimeConfig.devices = std::vector<std::string>{};
+    runtimeConfig.devices = std::vector<api::types::v1::Device>{};
     cli::RunOptions runOptions;
     runOptions.cdiSpecDir = { tempDir.path().string() };
 
-    auto result = opts.applyOptions(runtimeConfig, runOptions);
+    auto result = runtime::resolveCdiDevices({}, runtimeConfig, runOptions);
     ASSERT_TRUE(result);
-    ASSERT_TRUE(opts.cdiDevices.has_value());
-    EXPECT_TRUE(opts.cdiDevices->empty());
+    ASSERT_TRUE(result->has_value());
+    EXPECT_TRUE((*result)->empty());
 }
 
-TEST(ResolveOptionsTest, ApplyOptionsRejectsInvalidRuntimeConfigCdiDeviceFormat)
+TEST(CdiConfigTest, RejectsInvalidDeviceConfig)
 {
-    ResolveOptions opts;
-
     api::types::v1::RuntimeConfigure runtimeConfig;
-    runtimeConfig.devices = std::vector<std::string>{ "invalid-device" };
+    runtimeConfig.devices = std::vector<api::types::v1::Device>{ "invalid-device" };
     cli::RunOptions runOptions;
 
-    auto result = opts.applyOptions(runtimeConfig, runOptions);
+    auto result = runtime::resolveCdiDevices({}, runtimeConfig, runOptions);
     ASSERT_FALSE(result);
     EXPECT_THAT(result.error().message(), ::testing::HasSubstr("invalid device format"));
 }
 
-TEST(ResolveOptionsTest, ApplyOptionsUsesCliCdiSpecDirsForRuntimeConfigCdiDevices)
+TEST(CdiConfigTest, UsesCliSpecDirectories)
 {
     TempDir tempDir;
     const auto specPath = tempDir.path() / "vendor.yaml";
@@ -1359,22 +1358,56 @@ devices:
 )";
     spec.close();
 
-    ResolveOptions opts;
-
     api::types::v1::RuntimeConfigure runtimeConfig;
-    runtimeConfig.devices = std::vector<std::string>{ "vendor.com/device=gpu0" };
+    runtimeConfig.devices = std::vector<api::types::v1::Device>{ "vendor.com/device=gpu0" };
 
     cli::RunOptions runOptions;
     runOptions.cdiSpecDir = { tempDir.path().string() };
 
-    auto result = opts.applyOptions(runtimeConfig, runOptions);
+    auto result = runtime::resolveCdiDevices({}, runtimeConfig, runOptions);
     ASSERT_TRUE(result);
-    ASSERT_TRUE(opts.cdiDevices.has_value());
-    ASSERT_EQ(opts.cdiDevices->size(), 1);
-    EXPECT_EQ(opts.cdiDevices->at(0).name, "gpu0");
+    ASSERT_TRUE(result->has_value());
+    ASSERT_EQ((*result)->size(), 1);
+    EXPECT_EQ((*result)->at(0).name, "gpu0");
 }
 
-TEST(ResolveOptionsTest, ApplyOptionsCliCdiDevicesOverrideRuntimeConfigCdiDevices)
+TEST(CdiConfigTest, RelativeSpecDirectorySurvivesRunContextRestoreInAnotherDirectory)
+{
+    namespace fs = std::filesystem;
+    TempDir directory;
+    ASSERT_TRUE(fs::create_directory(directory.path() / "specs"));
+    ASSERT_TRUE(fs::create_directory(directory.path() / "other"));
+    const auto spec = directory.path() / "specs/gpu.json";
+    std::ofstream(spec) << R"({
+        "cdiVersion":"0.6.0","kind":"vendor.com/device",
+        "devices":[{"name":"gpu","containerEdits":{"env":["TEST=1"]}}]
+    })";
+    const auto previous = fs::current_path();
+    const auto restoreDirectory = utils::finally::finally([&previous] {
+        fs::current_path(previous);
+    });
+    fs::current_path(directory.path());
+    cli::RunOptions options;
+    options.cdiSpecDir = { "specs" };
+    options.cdiDevices = { "vendor.com/device=gpu" };
+    auto devices = runtime::resolveCdiDevices({}, std::nullopt, options);
+    ASSERT_TRUE(devices) << devices.error().message();
+    ASSERT_TRUE(*devices);
+    ASSERT_EQ((**devices).size(), 1);
+    EXPECT_TRUE(fs::path((**devices).front().spec.path).is_absolute());
+
+    api::types::v1::RunContextConfig context;
+    context.version = "1";
+    context.cdiDevices = **devices;
+    const auto restored = nlohmann::json(context).get<api::types::v1::RunContextConfig>();
+    fs::current_path(directory.path() / "other");
+    auto edits = cdi::getCDIDeviceEdits(restored.cdiDevices->front());
+    ASSERT_TRUE(edits) << edits.error().message();
+    ASSERT_TRUE(edits->env);
+    EXPECT_EQ(*edits->env, (std::vector<std::string>{ "TEST=1" }));
+}
+
+TEST(CdiConfigTest, CliDevicesOverrideConfig)
 {
     TempDir tempDir;
     const auto specPath = tempDir.path() / "vendor.yaml";
@@ -1393,23 +1426,315 @@ devices:
 )";
     spec.close();
 
-    ResolveOptions opts;
-
     api::types::v1::RuntimeConfigure runtimeConfig;
-    runtimeConfig.devices = std::vector<std::string>{ "vendor.com/device=gpu0" };
+    runtimeConfig.devices = std::vector<api::types::v1::Device>{ "vendor.com/device=gpu0" };
 
     cli::RunOptions runOptions;
     runOptions.cdiSpecDir = { tempDir.path().string() };
     runOptions.cdiDevices = { "vendor.com/device=gpu1" };
 
-    auto result = opts.applyOptions(runtimeConfig, runOptions);
+    auto result = runtime::resolveCdiDevices({}, runtimeConfig, runOptions);
     ASSERT_TRUE(result);
-    ASSERT_TRUE(opts.cdiDevices.has_value());
-    ASSERT_EQ(opts.cdiDevices->size(), 1);
-    EXPECT_EQ(opts.cdiDevices->at(0).name, "gpu1");
+    ASSERT_TRUE(result->has_value());
+    ASSERT_EQ((*result)->size(), 1);
+    EXPECT_EQ((*result)->at(0).name, "gpu1");
 }
 
-TEST(ResolveOptionsTest, ApplyOptionsAutoDetectsNvidiaCdiDevice)
+TEST(ResolveOptionsTest, AppliesRuntimeLayersWithResolvedCdiDevices)
+{
+    TempDir temporary;
+    const auto spec = temporary.path() / "gpu.json";
+    std::ofstream(spec) << R"({
+        "cdiVersion":"0.6.0","kind":"vendor.com/device",
+        "devices":[
+            {"name":"default","containerEdits":{"env":["TEST=default"]}},
+            {"name":"configured","containerEdits":{"env":["TEST=config"]}},
+            {"name":"cli","containerEdits":{"env":["TEST=cli"]}}
+        ]
+    })";
+
+    runtime::CdiDriverGeneration defaults;
+    defaults.specDir = temporary.path();
+    defaults.devices = {
+        api::types::v1::CdiDeviceRequest{ "vendor.com/device=default", spec.string() },
+        api::types::v1::CdiDeviceRequest{ "vendor.com/device=configured",
+                                          (temporary.path() / "missing.json").string() }
+    };
+    api::types::v1::RuntimeConfigure configured;
+    configured.devices = std::vector<api::types::v1::Device>{
+        api::types::v1::CdiDeviceRequest{ "vendor.com/device=configured", spec.string() }
+    };
+    configured.env = std::map<std::string, std::string>{ { "ORDER", "config" } };
+    configured.disableXdp = false;
+
+    cli::RunOptions runOptions;
+    runOptions.cdiSpecDir.clear();
+    runOptions.envs = { "ORDER=cli" };
+    runOptions.disableXdp = true;
+    ResolveOptions resolve;
+    ASSERT_TRUE(resolve.applyOptions(configured, runOptions));
+    EXPECT_FALSE(resolve.cdiDevices);
+
+    auto devices = runtime::resolveCdiDevices(defaults, configured, runOptions);
+    ASSERT_TRUE(devices) << devices.error().message();
+    ASSERT_TRUE(*devices);
+    ASSERT_EQ((*devices)->size(), 2);
+    EXPECT_EQ((*devices)->at(0).name, "default");
+    EXPECT_EQ((*devices)->at(1).name, "configured");
+
+    runtime::RunContainerOptions container;
+    ASSERT_TRUE(container.applyRuntimeConfig(configured));
+    ASSERT_TRUE(container.applyCliRunOptions(runOptions));
+    EXPECT_EQ(container.getEnv().at("ORDER"), "cli");
+    EXPECT_TRUE(container.isXdpDisabled());
+
+    configured.devices->clear();
+    auto disabled = runtime::resolveCdiDevices(defaults, configured, runOptions);
+    ASSERT_TRUE(disabled) << disabled.error().message();
+    ASSERT_TRUE(*disabled);
+    EXPECT_TRUE((*disabled)->empty());
+
+    runOptions.cdiDevices = { "vendor.com/device=cli" };
+    auto explicitDevices = runtime::resolveCdiDevices(defaults, configured, runOptions);
+    ASSERT_TRUE(explicitDevices) << explicitDevices.error().message();
+    ASSERT_TRUE(*explicitDevices);
+    ASSERT_EQ((*explicitDevices)->size(), 1);
+    EXPECT_EQ((*explicitDevices)->front().name, "cli");
+}
+
+TEST(CdiConfigTest, UsesCdiSpecActiveWhenEachDeviceIsParsed)
+{
+    TempDir temp;
+    const auto searchDir = temp.path() / "search";
+    ASSERT_TRUE(std::filesystem::create_directory(searchDir));
+    const auto legacy = searchDir / "legacy.json";
+    const auto first = temp.path() / "a.json";
+    const auto second = temp.path() / "b.json";
+    const auto secondTarget = temp.path() / "spec-data";
+    const auto spec = R"({
+        "cdiVersion":"0.6.0","kind":"vendor.com/device",
+        "devices":[
+            {"name":"legacy","containerEdits":{"env":["TEST=legacy"]}},
+            {"name":"gpu0","containerEdits":{"env":["TEST=0"]}},
+            {"name":"gpu1","containerEdits":{"env":["TEST=1"]}},
+            {"name":"gpu2","containerEdits":{"env":["TEST=2"]}}
+        ]
+    })";
+    for (const auto &path : { legacy, first, secondTarget }) {
+        std::ofstream(path) << spec;
+    }
+    std::filesystem::create_symlink(secondTarget.filename(), second);
+    const auto relativeFirst = std::filesystem::relative(first);
+
+    cli::RunOptions runOptions;
+    CLI::App parser;
+    runOptions.addCdiOptions(parser);
+    std::vector<std::string> args{
+        "--cdi-spec-dir", searchDir.string(),
+        "--device",       "vendor.com/device=legacy",
+        "--cdi-spec",     relativeFirst.string(),
+        "--device",       "vendor.com/device=gpu0,vendor.com/device=gpu1",
+        "--cdi-spec",     second.string(),
+        "--device",       "vendor.com/device=gpu2"
+    };
+    std::reverse(args.begin(), args.end());
+    ASSERT_NO_THROW(parser.parse(args));
+
+    auto result = runtime::resolveCdiDevices({}, std::nullopt, runOptions);
+    ASSERT_TRUE(result) << result.error().message();
+    ASSERT_TRUE(*result);
+    ASSERT_EQ((*result)->size(), 4);
+    EXPECT_EQ((*result)->at(0).spec.path, legacy.string());
+    EXPECT_EQ((*result)->at(1).spec.path, std::filesystem::absolute(relativeFirst).string());
+    EXPECT_EQ((*result)->at(2).spec.path, (*result)->at(1).spec.path);
+    EXPECT_EQ((*result)->at(3).spec.path, second.string());
+}
+
+TEST(CdiConfigTest, TracksDeviceSourcesInRuntimeConfig)
+{
+    TempDir temp;
+    const auto first = temp.path() / "a.json";
+    const auto second = temp.path() / "b.json";
+    const auto missingDevice = temp.path() / "other.json";
+    const auto spec = R"({
+        "cdiVersion":"0.6.0","kind":"vendor.com/device",
+        "devices":[{"name":"gpu","containerEdits":{"env":["TEST=1"]}}]
+    })";
+    std::ofstream(second) << spec;
+    std::ofstream(first) << spec;
+    std::ofstream(missingDevice) << R"({
+        "cdiVersion":"0.6.0","kind":"vendor.com/device",
+        "devices":[{"name":"other","containerEdits":{"env":["TEST=2"]}}]
+    })";
+
+    cli::RunOptions runOptions;
+    runOptions.cdiSpecDir = { temp.path().string() };
+    api::types::v1::RuntimeConfigure config;
+    config.devices = std::vector<api::types::v1::Device>{ "vendor.com/device=gpu" };
+    auto firstMatch = runtime::resolveCdiDevices({}, config, runOptions);
+    ASSERT_TRUE(firstMatch) << firstMatch.error().message();
+    ASSERT_TRUE(*firstMatch);
+    ASSERT_EQ((*firstMatch)->size(), 1);
+    EXPECT_EQ((*firstMatch)->front().spec.path, first.string());
+
+    runtime::CdiDriverGeneration defaults;
+    defaults.devices = {
+        api::types::v1::CdiDeviceRequest{ "vendor.com/device=gpu", second.string() },
+        api::types::v1::CdiDeviceRequest{ "vendor.com/device=gpu", first.string() }
+    };
+    auto autoSelected = runtime::resolveCdiDevices(defaults, std::nullopt, runOptions);
+    ASSERT_TRUE(autoSelected) << autoSelected.error().message();
+    ASSERT_TRUE(*autoSelected);
+    ASSERT_EQ((*autoSelected)->size(), 1);
+    EXPECT_EQ((*autoSelected)->front().spec.path, second.string());
+
+    config.devices = std::vector<api::types::v1::Device>{
+        api::types::v1::CdiDeviceRequest{ "vendor.com/device=gpu", second.string() }
+    };
+    auto selected = runtime::resolveCdiDevices({}, config, runOptions);
+    ASSERT_TRUE(selected) << selected.error().message();
+    ASSERT_TRUE(*selected);
+    ASSERT_EQ((*selected)->size(), 1);
+    EXPECT_EQ((*selected)->front().spec.path, second.string());
+
+    config.devices->push_back(config.devices->front());
+    auto repeated = runtime::resolveCdiDevices({}, config, runOptions);
+    ASSERT_TRUE(repeated) << repeated.error().message();
+    ASSERT_TRUE(*repeated);
+    EXPECT_EQ((*repeated)->size(), 1);
+
+    config.devices->emplace_back(
+      api::types::v1::CdiDeviceRequest{ "vendor.com/device=gpu", first.string() });
+    auto duplicate = runtime::resolveCdiDevices({}, config, runOptions);
+    ASSERT_TRUE(duplicate) << duplicate.error().message();
+    ASSERT_TRUE(*duplicate);
+    ASSERT_EQ((*duplicate)->size(), 1);
+    EXPECT_EQ((*duplicate)->at(0).spec.path, second.string());
+
+    config.devices->emplace_back(
+      api::types::v1::CdiDeviceRequest{ "vendor.com/device=gpu",
+                                        (temp.path() / "missing.json").string() });
+    auto ignored = runtime::resolveCdiDevices({}, config, runOptions);
+    ASSERT_TRUE(ignored) << ignored.error().message();
+    ASSERT_TRUE(*ignored);
+    ASSERT_EQ((*ignored)->size(), 1);
+    EXPECT_EQ((*ignored)->front().spec.path, second.string());
+
+    config.devices = std::vector<api::types::v1::Device>{
+        api::types::v1::CdiDeviceRequest{ "vendor.com/device=gpu", missingDevice.string() }
+    };
+    auto missing = runtime::resolveCdiDevices({}, config, runOptions);
+    ASSERT_FALSE(missing);
+    EXPECT_THAT(missing.error().message(), ::testing::HasSubstr(missingDevice.string()));
+}
+
+TEST(CdiConfigTest, BareReferencesUseDirectoryPriorityThenFilenameOrder)
+{
+    TempDir temp;
+    const auto first = temp.path() / "first";
+    const auto second = temp.path() / "second";
+    ASSERT_TRUE(std::filesystem::create_directory(first));
+    ASSERT_TRUE(std::filesystem::create_directory(second));
+    auto spec = nlohmann::json::parse(R"({
+        "cdiVersion":"0.6.0","kind":"vendor.com/device",
+        "devices":[{"name":"gpu","containerEdits":{"env":["TEST=1"]}}]
+    })");
+    std::ofstream(first / "z.json") << spec.dump();
+    std::ofstream(first / "a.json") << spec.dump();
+    std::ofstream(second / "0.json") << spec.dump();
+    spec["devices"][0]["name"] = "other";
+    std::ofstream(first / "01-other.json") << spec.dump();
+    std::ofstream(first / "00-invalid.json") << "invalid JSON";
+    cli::RunOptions options;
+    options.cdiDevices = { "vendor.com/device=gpu" };
+    options.cdiSpecDir = { first.string(), second.string() };
+    auto devices = runtime::resolveCdiDevices({}, std::nullopt, options);
+    ASSERT_TRUE(devices) << devices.error().message();
+    ASSERT_TRUE(*devices);
+    ASSERT_EQ((**devices).size(), 1);
+    EXPECT_EQ((**devices).front().spec.path, (first / "a.json").string());
+
+    options.cdiSpecDir = { second.string(), first.string() };
+    devices = runtime::resolveCdiDevices({}, std::nullopt, options);
+    ASSERT_TRUE(devices) << devices.error().message();
+    ASSERT_TRUE(*devices);
+    ASSERT_EQ((**devices).size(), 1);
+    EXPECT_EQ((**devices).front().spec.path, (second / "0.json").string());
+}
+
+TEST(CdiConfigTest, KeepsFirstBindingWhenNameRepeatsThroughAliases)
+{
+    TempDir temp;
+    const auto spec = temp.path() / "gpu.json";
+    const auto symbolic = temp.path() / "symbolic.json";
+    const auto hard = temp.path() / "hard.json";
+    std::ofstream(spec) << R"({
+        "cdiVersion":"0.6.0","kind":"vendor.com/device",
+        "devices":[{"name":"gpu","containerEdits":{"env":["TEST=1"]}}]
+    })";
+    std::filesystem::create_symlink(spec.filename(), symbolic);
+    std::filesystem::create_hard_link(spec, hard);
+    cli::RunOptions options;
+    options.cdiSpecDir.clear();
+    for (const auto &path : { spec, symbolic, hard }) {
+        options.cdiDevices.emplace_back(
+          api::types::v1::CdiDeviceRequest{ "vendor.com/device=gpu", path.string() });
+    }
+    auto devices = runtime::resolveCdiDevices({}, std::nullopt, options);
+    ASSERT_TRUE(devices) << devices.error().message();
+    ASSERT_TRUE(*devices);
+    ASSERT_EQ((**devices).size(), 1);
+    EXPECT_EQ((**devices).front().spec.path, spec.string());
+}
+
+TEST(CdiConfigTest, OrdinaryConfigOverridesGeneratedNameAndKeepsFirstConfiguredSource)
+{
+    TempDir temp;
+    const auto first = temp.path() / "a.json";
+    const auto second = temp.path() / "b.json";
+    const auto alias = temp.path() / "z-link.json";
+    const auto spec = R"({
+        "cdiVersion":"0.6.0","kind":"vendor.com/device",
+        "devices":[
+            {"name":"gpu","containerEdits":{"env":["TEST=1"]}},
+            {"name":"extra","containerEdits":{"env":["TEST=2"]}}
+        ]
+    })";
+    std::ofstream(first) << spec;
+    std::ofstream(second) << spec;
+    std::filesystem::create_symlink(first.filename(), alias);
+    runtime::CdiDriverGeneration defaults;
+    defaults.devices = {
+        api::types::v1::CdiDeviceRequest{ "vendor.com/device=gpu", first.string() },
+        api::types::v1::CdiDeviceRequest{ "vendor.com/device=gpu", second.string() },
+        api::types::v1::CdiDeviceRequest{ "vendor.com/device=extra", first.string() }
+    };
+    api::types::v1::RuntimeConfigure configured;
+    configured.devices = std::vector<api::types::v1::Device>{
+        api::types::v1::CdiDeviceRequest{ "vendor.com/device=gpu", alias.string() },
+        api::types::v1::CdiDeviceRequest{ "vendor.com/device=gpu", second.string() }
+    };
+    cli::RunOptions options;
+    options.cdiSpecDir = { temp.path().string() };
+    auto devices = runtime::resolveCdiDevices(defaults, configured, options);
+    ASSERT_TRUE(devices) << devices.error().message();
+    ASSERT_TRUE(*devices);
+    ASSERT_EQ((**devices).size(), 2);
+    EXPECT_EQ((**devices)[0].name, "extra");
+    EXPECT_EQ((**devices)[0].spec.path, first.string());
+    EXPECT_EQ((**devices)[1].spec.path, alias.string());
+
+    configured.devices = std::vector<api::types::v1::Device>{ "vendor.com/device=gpu" };
+    devices = runtime::resolveCdiDevices(defaults, configured, options);
+    ASSERT_TRUE(devices) << devices.error().message();
+    ASSERT_TRUE(*devices);
+    ASSERT_EQ((**devices).size(), 2);
+    EXPECT_EQ((**devices)[0].name, "extra");
+    EXPECT_EQ((**devices)[0].spec.path, first.string());
+    EXPECT_EQ((**devices)[1].spec.path, first.string());
+}
+
+TEST(CdiConfigTest, AutoDetectsNvidiaCdiDevice)
 {
     TempDir tempDir;
     const auto specPath = tempDir.path() / "nvidia.yaml";
@@ -1424,17 +1749,15 @@ devices:
 )";
     spec.close();
 
-    ResolveOptions opts;
-
     cli::RunOptions runOptions;
     runOptions.cdiSpecDir = { tempDir.path().string() };
 
-    auto result = opts.applyOptions(std::nullopt, runOptions);
+    auto result = runtime::resolveCdiDevices({}, std::nullopt, runOptions);
     ASSERT_TRUE(result);
-    ASSERT_TRUE(opts.cdiDevices.has_value());
-    ASSERT_EQ(opts.cdiDevices->size(), 1);
-    EXPECT_EQ(opts.cdiDevices->at(0).kind, "nvidia.com/gpu");
-    EXPECT_EQ(opts.cdiDevices->at(0).name, "all");
+    ASSERT_TRUE(result->has_value());
+    ASSERT_EQ((*result)->size(), 1);
+    EXPECT_EQ((*result)->at(0).kind, "nvidia.com/gpu");
+    EXPECT_EQ((*result)->at(0).name, "all");
 }
 
 TEST(ResolveOptionsTest, ApplyCliRunOptionsSetsFields)
@@ -1446,12 +1769,10 @@ TEST(ResolveOptionsTest, ApplyCliRunOptionsSetsFields)
     runOptions.runtime = "org.deepin.runtime/23.0.0";
     runOptions.extensions = { "org.deepin.extension1", "org.deepin.extension2" };
     runOptions.instance = "test-instance";
-    runOptions.cdiSpecDir = { "/tmp/cdi" };
 
     auto result = opts.applyCliRunOptions(runOptions);
     ASSERT_TRUE(result);
     EXPECT_EQ(opts.baseRef.value(), "org.deepin.base/23.0.0");
-    EXPECT_EQ(opts.cdiSpecDirs, std::vector<std::string>{ "/tmp/cdi" });
     EXPECT_EQ(opts.runtimeRef.value(), "org.deepin.runtime/23.0.0");
     ASSERT_TRUE(opts.extensionRefs.has_value());
     EXPECT_EQ(opts.extensionRefs->size(), 2);
@@ -1905,46 +2226,43 @@ TEST_F(RunContextTest, resolveConfigRejectsNonExtensionLayer)
     EXPECT_THAT(result.error().message(), ::testing::HasSubstr("invalid extension kind"));
 }
 
-TEST_F(RunContextTest, applyOptionsRejectsMalformedCdiDevice)
+TEST_F(RunContextTest, resolveRejectsMalformedCdiDevice)
 {
     cli::RunOptions runOptions;
     runOptions.cdiDevices = { "no-equals-sign" };
 
-    ResolveOptions opts;
-    opts.cdiSpecDirs.clear();
+    runOptions.cdiSpecDir.clear();
 
-    auto result = opts.applyOptions(std::nullopt, runOptions);
+    auto result = runtime::resolveCdiDevices({}, std::nullopt, runOptions);
     ASSERT_FALSE(result.has_value());
     EXPECT_THAT(result.error().message(), ::testing::HasSubstr("invalid device format"));
 }
 
-TEST_F(RunContextTest, applyOptionsRejectsUnknownCdiDevice)
+TEST_F(RunContextTest, resolveRejectsUnknownCdiDevice)
 {
     cli::RunOptions runOptions;
     runOptions.cdiDevices = { "nvidia.com/gpu=missing" };
 
-    ResolveOptions opts;
-    opts.cdiSpecDirs.clear();
+    runOptions.cdiSpecDir.clear();
 
-    auto result = opts.applyOptions(std::nullopt, runOptions);
+    auto result = runtime::resolveCdiDevices({}, std::nullopt, runOptions);
     ASSERT_FALSE(result.has_value());
     EXPECT_THAT(result.error().message(), ::testing::HasSubstr("device not found"));
 }
 
-TEST_F(RunContextTest, applyOptionsAcceptsExplicitEmptyCdiDeviceList)
+TEST_F(RunContextTest, resolveAcceptsExplicitEmptyCdiDeviceList)
 {
     cli::RunOptions runOptions;
     runOptions.cdiDevices.clear();
 
     api::types::v1::RuntimeConfigure runtimeConfig;
-    runtimeConfig.devices = std::vector<std::string>{};
+    runtimeConfig.devices = std::vector<api::types::v1::Device>{};
 
-    ResolveOptions opts;
-    opts.cdiSpecDirs.clear();
+    runOptions.cdiSpecDir.clear();
 
-    auto result = opts.applyOptions(runtimeConfig, runOptions);
+    auto result = runtime::resolveCdiDevices({}, runtimeConfig, runOptions);
     ASSERT_TRUE(result.has_value()) << result.error().message();
-    ASSERT_TRUE(opts.cdiDevices.has_value());
-    EXPECT_TRUE(opts.cdiDevices->empty());
+    ASSERT_TRUE(result->has_value());
+    EXPECT_TRUE((*result)->empty());
 }
 } // namespace

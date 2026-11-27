@@ -20,6 +20,58 @@ using namespace linglong::utils;
 
 using linglong::utils::EnvironmentVariableGuard;
 
+TEST(RuntimeConfigTest, CdiDropInsReadOnlyDevices)
+{
+    TempDir temporary;
+    std::ofstream(temporary.path() / "10.json") << R"({
+        "devices": [{"name":"vendor.com/device=bound","spec":"vendor.yaml"}],
+        "env": "ignored",
+        "disable_xdp": true,
+        "instances": {"dev": {"devices": ["vendor.com/device=ignored"]}}
+    })";
+    std::ofstream(temporary.path() / "20.json") << R"({
+        "devices": ["vendor.com/device=plain"],
+        "env": {"EXTRA": "ignored"}
+    })";
+
+    auto loaded = loadCdiDeviceDropIns(temporary.path());
+    ASSERT_TRUE(loaded) << loaded.error().message();
+    ASSERT_EQ(loaded->size(), 2);
+    EXPECT_EQ(std::get<CdiDeviceRequest>(loaded->at(0)).spec,
+              (temporary.path() / "vendor.yaml").string());
+    EXPECT_EQ(std::get<std::string>(loaded->at(1)), "vendor.com/device=plain");
+}
+
+TEST(RuntimeConfigTest, ResolvesRelativeCdiSpecPathsBeforeMerging)
+{
+    TempDir temporary;
+    const auto configDir = temporary.path();
+    const auto dropInDir = configDir / "config.d";
+    ASSERT_TRUE(fs::create_directory(dropInDir));
+    std::ofstream(configDir / "config.json") << R"({
+        "devices": ["vendor.com/device=plain", {"name":"vendor.com/device=base","spec":"a.yaml"}],
+        "instances": {"dev": {"devices": [{"name":"vendor.com/device=dev","spec":"dev.yaml"}]}}
+    })";
+    std::ofstream(dropInDir / "10.json") << R"({
+        "devices": [{"name":"vendor.com/device=dropin","spec":"b.yaml"}]
+    })";
+    fs::create_symlink("missing", dropInDir / "20.json");
+
+    auto loaded = loadRuntimeConfig(std::vector<fs::path>{ configDir }, "app", "dev");
+    ASSERT_TRUE(loaded) << loaded.error().message();
+    ASSERT_TRUE(*loaded);
+    const auto &config = **loaded;
+    ASSERT_TRUE(config.devices);
+    ASSERT_EQ(config.devices->size(), 4);
+    EXPECT_EQ(std::get<std::string>(config.devices->at(0)), "vendor.com/device=plain");
+    EXPECT_EQ(std::get<CdiDeviceRequest>(config.devices->at(1)).spec,
+              (configDir / "a.yaml").string());
+    EXPECT_EQ(std::get<CdiDeviceRequest>(config.devices->at(2)).spec,
+              (dropInDir / "b.yaml").string());
+    EXPECT_EQ(std::get<CdiDeviceRequest>(config.devices->at(3)).spec,
+              (configDir / "dev.yaml").string());
+}
+
 TEST(RuntimeConfigTest, LoadFromPath)
 {
     TempDir tempDir;
@@ -88,7 +140,7 @@ TEST(RuntimeConfigTest, MergeConfigs)
     config1.deviceMode = std::vector<DeviceOption>{ DeviceOption::Passthru };
     config1.enablePipewire = false;
     config1.enableAtspi = false;
-    config1.devices = std::vector<std::string>{ "vendor.com/device=gpu0" };
+    config1.devices = std::vector<Device>{ "vendor.com/device=gpu0" };
     config1.env =
       std::map<std::string, std::string>{ { "PATH", "/usr/bin" }, { "HOME", "/home/user1" } };
 
@@ -104,7 +156,7 @@ TEST(RuntimeConfigTest, MergeConfigs)
     config2.deviceMode = std::vector<DeviceOption>{ DeviceOption::Passthru };
     config2.enablePipewire = true;
     config2.enableAtspi = true;
-    config2.devices = std::vector<std::string>{ "vendor.com/device=gpu1" };
+    config2.devices = std::vector<Device>{ "vendor.com/device=gpu1" };
     config2.env =
       std::map<std::string, std::string>{ { "PATH", "/usr/local/bin" }, { "USER", "testuser" } };
 
@@ -135,8 +187,8 @@ TEST(RuntimeConfigTest, MergeConfigs)
 
     ASSERT_TRUE(merged.devices);
     EXPECT_EQ(merged.devices->size(), 2);
-    EXPECT_EQ(merged.devices->at(0), "vendor.com/device=gpu0");
-    EXPECT_EQ(merged.devices->at(1), "vendor.com/device=gpu1");
+    EXPECT_EQ(std::get<std::string>(merged.devices->at(0)), "vendor.com/device=gpu0");
+    EXPECT_EQ(std::get<std::string>(merged.devices->at(1)), "vendor.com/device=gpu1");
 
     // Check environment variables
     ASSERT_TRUE(merged.env);
@@ -391,15 +443,15 @@ TEST(RuntimeConfigTest, LoadRuntimeConfigWithConfigD)
 
     RuntimeConfigure config;
     config.env = std::map<std::string, std::string>{ { "ORDER", "base" } };
-    config.devices = std::vector<std::string>{ "vendor.com/device=base" };
+    config.devices = std::vector<Device>{ "vendor.com/device=base" };
 
     RuntimeConfigure config10;
     config10.env = std::map<std::string, std::string>{ { "ORDER", "10" } };
-    config10.devices = std::vector<std::string>{ "vendor.com/device=10" };
+    config10.devices = std::vector<Device>{ "vendor.com/device=10" };
 
     RuntimeConfigure config20;
     config20.env = std::map<std::string, std::string>{ { "ORDER", "20" }, { "EXTRA", "enabled" } };
-    config20.devices = std::vector<std::string>{ "vendor.com/device=20" };
+    config20.devices = std::vector<Device>{ "vendor.com/device=20" };
 
     fs::path configDir = tempDir.path() / "linglong" / "apps" / "test-config-d";
     fs::create_directories(configDir / "config.d");
@@ -439,7 +491,7 @@ TEST(RuntimeConfigTest, LoadRuntimeConfigWithConfigD)
 
     ASSERT_TRUE(loadedConfig.devices.has_value());
     ASSERT_EQ(loadedConfig.devices->size(), 3);
-    EXPECT_EQ(loadedConfig.devices->at(0), "vendor.com/device=base");
-    EXPECT_EQ(loadedConfig.devices->at(1), "vendor.com/device=10");
-    EXPECT_EQ(loadedConfig.devices->at(2), "vendor.com/device=20");
+    EXPECT_EQ(std::get<std::string>(loadedConfig.devices->at(0)), "vendor.com/device=base");
+    EXPECT_EQ(std::get<std::string>(loadedConfig.devices->at(1)), "vendor.com/device=10");
+    EXPECT_EQ(std::get<std::string>(loadedConfig.devices->at(2)), "vendor.com/device=20");
 }

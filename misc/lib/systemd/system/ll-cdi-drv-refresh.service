@@ -1,0 +1,13 @@
+# SPDX-FileCopyrightText: 2026 UnionTech Software Technology Co., Ltd.
+#
+# SPDX-License-Identifier: LGPL-3.0-or-later
+
+[Unit]
+Description=Generate and publish pending CDI driver configurations
+After=systemd-tmpfiles-setup.service
+
+[Service]
+Type=oneshot
+# Claim requests before synchronizing watches so concurrent requests remain queued.
+# Keep consuming requests until the queue has been idle for five seconds.
+ExecStart=@CMAKE_INSTALL_FULL_LIBEXECDIR@/linglong/ll-cdi-drv refresh-pending

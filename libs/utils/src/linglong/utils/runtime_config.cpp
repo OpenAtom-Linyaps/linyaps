@@ -13,14 +13,87 @@
 #include <algorithm>
 #include <filesystem>
 #include <fstream>
+#include <iterator>
 
 using RuntimeConfigure = linglong::api::types::v1::RuntimeConfigure;
+using linglong::api::types::v1::CdiDeviceRequest;
+using linglong::api::types::v1::Device;
 
 namespace {
 
 bool isRuntimeConfigDropIn(const std::filesystem::path &path)
 {
     return path.extension() == ".json";
+}
+
+using linglong::utils::error::Result;
+
+Result<std::vector<std::filesystem::path>> dropInPaths(const std::filesystem::path &directory)
+{
+    LINGLONG_TRACE("list runtime config drop-ins in " + directory.string());
+    std::error_code ec;
+    std::filesystem::directory_iterator entry(
+      directory,
+      std::filesystem::directory_options::skip_permission_denied,
+      ec);
+    if (ec == std::errc::no_such_file_or_directory || ec == std::errc::not_a_directory) {
+        return LINGLONG_OK;
+    }
+    std::vector<std::filesystem::path> paths;
+    for (const std::filesystem::directory_iterator end; !ec && entry != end; entry.increment(ec)) {
+        std::error_code statusError;
+        if (entry->is_regular_file(statusError) && isRuntimeConfigDropIn(entry->path())) {
+            paths.emplace_back(entry->path());
+        }
+    }
+    if (ec) {
+        return LINGLONG_ERR("scan runtime config drop-ins", ec);
+    }
+
+    std::sort(paths.begin(), paths.end());
+    return paths;
+}
+
+Result<std::vector<RuntimeConfigure>> readDropIns(const std::filesystem::path &directory)
+{
+    LINGLONG_TRACE("load runtime config drop-ins from " + directory.string());
+    auto paths = dropInPaths(directory);
+    if (!paths) {
+        return LINGLONG_ERR(paths);
+    }
+    std::vector<RuntimeConfigure> configs;
+    for (const auto &path : *paths) {
+        auto config = linglong::utils::loadRuntimeConfig(path);
+        if (!config) {
+            return LINGLONG_ERR(config);
+        }
+        configs.emplace_back(std::move(*config));
+    }
+    return configs;
+}
+
+void resolveCdiSpecPaths(std::vector<Device> &devices, const std::filesystem::path &directory)
+{
+    for (auto &device : devices) {
+        auto *request = std::get_if<CdiDeviceRequest>(&device);
+        if (request && !request->spec.empty()
+            && std::filesystem::path(request->spec).is_relative()) {
+            request->spec = (directory / request->spec).string();
+        }
+    }
+}
+
+void resolveCdiSpecPaths(RuntimeConfigure &config, const std::filesystem::path &directory)
+{
+    if (config.devices) {
+        resolveCdiSpecPaths(*config.devices, directory);
+    }
+
+    if (config.instances) {
+        for (auto &[name, instance] : *config.instances) {
+            resolveCdiSpecPaths(instance, directory);
+        }
+    }
 }
 
 linglong::utils::error::Result<std::optional<RuntimeConfigure>>
@@ -46,27 +119,13 @@ loadRuntimeConfigFromDir(const std::filesystem::path &configDir, const std::stri
         configs.emplace_back(std::move(*config));
     }
 
-    auto configDPath = configBaseDir / "config.d";
-    if (std::filesystem::is_directory(configDPath, ec)) {
-        std::vector<std::filesystem::path> paths;
-        for (const auto &entry : std::filesystem::directory_iterator(
-               configDPath,
-               std::filesystem::directory_options::skip_permission_denied,
-               ec)) {
-            if (entry.is_regular_file(ec) && isRuntimeConfigDropIn(entry.path())) {
-                paths.emplace_back(entry.path());
-            }
-        }
-
-        std::sort(paths.begin(), paths.end());
-        for (const auto &path : paths) {
-            auto config = linglong::utils::loadRuntimeConfig(path);
-            if (!config) {
-                return LINGLONG_ERR(config);
-            }
-            configs.emplace_back(std::move(*config));
-        }
+    auto dropIns = readDropIns(configBaseDir / "config.d");
+    if (!dropIns) {
+        return LINGLONG_ERR(dropIns);
     }
+    configs.insert(configs.end(),
+                   std::make_move_iterator(dropIns->begin()),
+                   std::make_move_iterator(dropIns->end()));
 
     if (configs.empty()) {
         return std::nullopt;
@@ -183,7 +242,52 @@ loadRuntimeConfig(const std::filesystem::path &path)
         return LINGLONG_ERR("failed to load runtime config", result);
     }
 
+    std::error_code ec;
+    const auto directory = std::filesystem::absolute(path, ec).parent_path();
+    if (ec) {
+        return LINGLONG_ERR("locate runtime config directory", ec);
+    }
+    resolveCdiSpecPaths(*result, directory);
     return result;
+}
+
+utils::error::Result<std::vector<Device>>
+loadCdiDeviceDropIns(const std::filesystem::path &directory)
+{
+    LINGLONG_TRACE("load generated CDI devices");
+    auto paths = dropInPaths(directory);
+    if (!paths) {
+        return LINGLONG_ERR(paths);
+    }
+    if (paths->empty()) {
+        return LINGLONG_OK;
+    }
+
+    std::error_code ec;
+    const auto configDir = std::filesystem::absolute(directory, ec);
+    if (ec) {
+        return LINGLONG_ERR("locate CDI config directory", ec);
+    }
+    std::vector<Device> devices;
+    for (const auto &path : *paths) {
+        auto config = serialize::LoadJSONFile<nlohmann::json>(path);
+        if (!config) {
+            return LINGLONG_ERR("load CDI config " + path.string(), config);
+        }
+        const auto list = config->find("devices");
+        if (list == config->end() || list->is_null()) {
+            continue;
+        }
+        auto parsed = serialize::LoadJSON<std::vector<Device>>(*list);
+        if (!parsed) {
+            return LINGLONG_ERR("load CDI devices in " + path.string(), parsed);
+        }
+        resolveCdiSpecPaths(*parsed, configDir);
+        devices.insert(devices.end(),
+                       std::make_move_iterator(parsed->begin()),
+                       std::make_move_iterator(parsed->end()));
+    }
+    return devices;
 }
 
 utils::error::Result<std::optional<RuntimeConfigure>> loadRuntimeConfig(const std::string &appId,
@@ -243,7 +347,6 @@ loadRuntimeConfig(const std::vector<std::filesystem::path> &configDirs,
     }
 
     auto merged = MergeRuntimeConfig(configs);
-
     if (!instance.empty() && merged.instances
         && merged.instances->find(instance) != merged.instances->end()) {
         auto instanceConfig = std::move((*merged.instances)[instance]);
@@ -252,9 +355,7 @@ loadRuntimeConfig(const std::vector<std::filesystem::path> &configDirs,
         toMerge.emplace_back(std::move(instanceConfig));
         merged = MergeRuntimeConfig(toMerge);
     }
-
-    merged.instances = std::nullopt;
-
+    merged.instances.reset();
     return merged;
 }
 

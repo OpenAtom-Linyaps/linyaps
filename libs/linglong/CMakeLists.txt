@@ -116,6 +116,8 @@ pfl_add_library(
   src/linglong/repo/remote_packages.h
   src/linglong/repo/repo_cache.cpp
   src/linglong/repo/repo_cache.h
+  src/linglong/runtime/cdi_config.cpp
+  src/linglong/runtime/cdi_config.h
   src/linglong/runtime/container_builder.cpp
   src/linglong/runtime/container_builder.h
   src/linglong/runtime/container.cpp

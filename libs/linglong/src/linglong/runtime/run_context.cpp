@@ -15,11 +15,10 @@
 #include "linglong/runtime/overlayfs_driver.h"
 #include "linglong/utils/log/log.h"
 
-#include <fmt/ranges.h>
-
 #include <algorithm>
 #include <array>
 #include <cstdlib>
+#include <map>
 #include <utility>
 
 namespace linglong::runtime {
@@ -60,34 +59,6 @@ std::optional<std::string> timezoneFromPath(const std::filesystem::path &path,
     return relative.string();
 }
 
-utils::error::Result<std::vector<api::types::v1::CdiDeviceEntry>>
-filterCDIDevices(const std::vector<api::types::v1::CdiDeviceEntry> &allDevices,
-                 const std::vector<std::string> &requestedDevices)
-{
-    LINGLONG_TRACE(fmt::format("filter CDI devices {}", fmt::join(requestedDevices, ", ")));
-
-    std::vector<api::types::v1::CdiDeviceEntry> result;
-    for (const auto &deviceStr : requestedDevices) {
-        auto device = common::strings::split(deviceStr, '=');
-        if (device.size() != 2) {
-            return LINGLONG_ERR(fmt::format("invalid device format: {}", deviceStr));
-        }
-
-        auto entry = std::find_if(allDevices.begin(),
-                                  allDevices.end(),
-                                  [&device](const api::types::v1::CdiDeviceEntry &entry) {
-                                      return entry.kind == device[0] && entry.name == device[1];
-                                  });
-        if (entry == allDevices.end()) {
-            return LINGLONG_ERR(fmt::format("device not found: {}", deviceStr));
-        }
-
-        result.emplace_back(*entry);
-    }
-
-    return result;
-}
-
 } // namespace
 
 RunContext::~RunContext() = default;
@@ -112,7 +83,6 @@ auto ResolveOptions::applyCliRunOptions(const cli::RunOptions &options)
     LINGLONG_TRACE("apply cli run options to resolve options");
 
     this->baseRef = options.base;
-    this->cdiSpecDirs = options.cdiSpecDir;
     this->runtimeRef = options.runtime;
     if (!options.extensions.empty()) {
         this->extensionRefs = options.extensions;
@@ -125,59 +95,15 @@ auto ResolveOptions::applyOptions(
   const std::optional<api::types::v1::RuntimeConfigure> &runtimeConfig,
   const cli::RunOptions &options) -> utils::error::Result<void>
 {
-    LINGLONG_TRACE("apply runtime config and cli run options to resolve options");
+    LINGLONG_TRACE("apply runtime config and CLI options");
 
     if (runtimeConfig) {
-        auto result = this->applyRuntimeConfig(*runtimeConfig);
-        if (!result) {
-            return LINGLONG_ERR(result);
+        auto applied = this->applyRuntimeConfig(*runtimeConfig);
+        if (!applied) {
+            return LINGLONG_ERR(applied);
         }
     }
-
-    auto result = this->applyCliRunOptions(options);
-    if (!result) {
-        return LINGLONG_ERR(result);
-    }
-
-    this->cdiDevices.reset();
-    std::optional<std::vector<std::string>> requestedCDIDevices;
-    if (!options.cdiDevices.empty()) {
-        requestedCDIDevices = options.cdiDevices;
-    } else if (runtimeConfig && runtimeConfig->devices) {
-        requestedCDIDevices = runtimeConfig->devices;
-    }
-
-    if (requestedCDIDevices && requestedCDIDevices->empty()) {
-        this->cdiDevices = std::vector<api::types::v1::CdiDeviceEntry>{};
-        return LINGLONG_OK;
-    }
-
-    auto allCDIDevices = cdi::getCDIDevices(this->cdiSpecDirs, std::nullopt);
-    if (!allCDIDevices) {
-        return LINGLONG_ERR(allCDIDevices);
-    }
-
-    if (requestedCDIDevices) {
-        auto devices = filterCDIDevices(*allCDIDevices, *requestedCDIDevices);
-        if (!devices) {
-            return LINGLONG_ERR(devices);
-        }
-        this->cdiDevices = std::move(*devices);
-        return LINGLONG_OK;
-    }
-
-    auto nvidiaAllDevice =
-      std::find_if(allCDIDevices->begin(),
-                   allCDIDevices->end(),
-                   [](const api::types::v1::CdiDeviceEntry &device) {
-                       return device.kind == "nvidia.com/gpu" && device.name == "all";
-                   });
-    if (nvidiaAllDevice != allCDIDevices->end()) {
-        LogD("{}={} detected", nvidiaAllDevice->kind, nvidiaAllDevice->name);
-        this->cdiDevices = std::vector<api::types::v1::CdiDeviceEntry>{ *nvidiaAllDevice };
-    }
-
-    return LINGLONG_OK;
+    return this->applyCliRunOptions(options);
 }
 
 utils::error::Result<void> RunContext::resolve(const linglong::package::Reference &runnable,

@@ -6,237 +6,382 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 # Linyaps Graphics Driver CDI Adaptation Guide
 
-The runtime container of a Linyaps application is isolated from the host system, so graphics cards and other hardware devices must be injected into the container in a controlled manner. Besides the extension approach described in [Drivers](./driver.md), graphics driver vendors can adopt the CDI (Container Device Interface) approach: devices and their injection details are declared in standardized specification files, and Linyaps adds the devices to the container on demand when an application runs.
+This guide introduces CDI concepts, the device integration workflow in Linyaps, and how driver adaptors can write configurations, generate specifications, and verify device access in applications.
 
-The overall workflow for CDI adaptation:
+## Background
 
-1. The driver package provides a CDI spec generator that produces the specification file and the Linyaps configuration according to the current device state.
-2. The driver package installs a systemd service that generates the baseline configuration at boot, and regenerates it on demand when driver files are updated, the spec generator tool is updated, or devices are hot-plugged.
-3. When devices are removed or replaced, or the driver is uninstalled, the related configuration is removed or rebuilt accordingly, preventing stale references from breaking application startup.
+An application using a graphics card typically needs three kinds of host resources:
 
-## Introduction to the CDI Standard
+- **Device nodes**, such as `/dev/dri/renderD128`, through which it communicates with the kernel driver.
+- **User-space driver files**, such as graphics interface libraries and vendor configuration files.
+- **Environment variables** that select a driver implementation or library search path.
 
-CDI (Container Device Interface) is a community-developed standard for attaching devices to containers, widely supported by mainstream container runtimes. See [container-device-interface](https://github.com/cncf-tags/container-device-interface) for the specification.
+A Linyaps application runs in a container with a filesystem isolated from the host. Installing a driver on the host does not by itself provide those resources to the application container.
 
-The core ideas of CDI:
+CDI (Container Device Interface) describes devices and the container configuration they require in JSON or YAML files. A container runtime reads the description and adds device nodes, mounts, and environment variables to the container. A CDI specification does not install a driver; access permissions still depend on host permissions and the identity of the process inside the container. See the [CDI specification](https://github.com/cncf-tags/container-device-interface/blob/main/SPEC.md) for the standard.
 
-- Driver vendors describe a class of devices in a JSON or YAML file, including injection details such as device nodes, mounts, and environment variables.
-- Specification files are stored in the `/etc/cdi` and `/var/run/cdi` directories (`/var/run` is usually tmpfs and its contents are lost on reboot, so persistent files should be written to `/etc/cdi`), and file names end with `.json`, `.yaml`, or `.yml`.
-- Each specification file declares a device class through `kind` in the format `<vendor>/<class>`, for example `nvidia.com/gpu`, where `vendor` must be a valid DNS domain name.
-- Devices in a specification are referenced by their fully qualified name in the format `<kind>=<device name>`, for example `nvidia.com/gpu=gpu0`.
-- The container runtime injects devices according to the specification, without needing to understand the node rules of each type of hardware.
+In Linyaps, `ll-cdi-drv` generates CDI specifications and default device selections from driver adaptation configurations. `ll-cli` reads these files and injects devices when starting an application. Drivers can also integrate through [extensions](./driver.md).
 
-Benefits of the CDI approach for graphics drivers:
+## Principles
 
-- The driver package only needs to maintain the specification files; neither applications nor Linyaps itself needs to be modified.
-- After a device is hot-plugged or replaced, only the specification file needs to be updated; Linyaps picks it up automatically the next time an application runs.
-- Linyaps containers run as unprivileged users, and the visibility of and access to device nodes are uniformly controlled through specification files and host udev rules.
+### Describing and Referencing Devices
 
-## Rules for the devices Field in the Linyaps Configuration
+A CDI specification identifies a device class with `kind`, such as `nvidia.com/gpu`. Its `devices` list assigns a `name` to each selectable device set. Applications refer to devices by their fully qualified name:
 
-The `devices` field in the `ll-cli` runtime configuration selects the devices added to the container through CDI. See [`ll-cli` runtime configuration](../extra/runtime_config.md) for the complete configuration reference. When adapting a driver, pay attention to the following rules:
+```text
+<kind>=<name>
 
-| Rule | Description |
-| --- | --- |
-| Configuration format | An array of strings, each in the format `<vendor>/<class>=<device name>`, for example `vendor.example/gpu=gpu0` |
-| Configuration location | System level `/etc/linglong/`, user level `$XDG_CONFIG_HOME/linglong/`; it is recommended to write the driver's own `config.d/*.json` into the system-level configuration directory |
-| Device validation | The device must exist in a CDI specification discoverable by `ll-cli`, otherwise running the application fails |
+nvidia.com/gpu=all
+vendor.example/gpu=render
+```
 
-Note in particular: a configuration that explicitly references a nonexistent device causes the application run to fail. If a device reference is written into the system-wide global configuration (such as `/etc/linglong/config.d/`), removing the device affects the startup of all applications. Driver adaptors must therefore keep the configuration in sync with the device state; the generator described below removes the related configuration when no device is detected.
+A device here is a selectable resource set. It can contain multiple device nodes, mounts, and environment variables, and does not have to correspond to one physical graphics card.
 
-## Generation Examples: CDI Specification and Linyaps Configuration
+### From Driver Configuration to Application Container
 
-### Manual Example
+```text
+Driver adaptor supplies a generation source configuration
+/etc/linglong/cdi-drv/<name>.json
+                │
+                ▼
+          ll-cdi-drv
+           ├── CDI specification: describes device resources
+           │   /run/linglong-cdi-drv/spec/<name>.json or .yaml
+           └── Device defaults: selects a device and binds its specification
+               /run/linglong-cdi-drv/cfg/<name>.json
+                │
+                ▼
+            ll-cli run
+                │
+                ▼
+       Device nodes, mounts, and environment variables in the container
+```
 
-Assume the vendor's PCI Vendor ID is `0x1234` and the device class is `vendor.example/gpu`. The CDI specification file `/etc/cdi/vendor-gpu.yaml`:
+Each kind of configuration has a specific role:
+
+| File | Contents | Maintained by |
+| --- | --- | --- |
+| Generation source configuration | Generator, device matching rules, driver paths, and file dependencies | Driver adaptor or administrator |
+| CDI specification | Device class, device names, and container edits | `ll-cdi-drv` or the tool it invokes |
+| Device defaults | Default device references and their specification paths | `ll-cdi-drv` |
+
+`version: "1"` in the generation source identifies the Linyaps configuration format version. `cdiVersion` in a CDI file identifies the CDI specification version. The builtin generator emits `cdiVersion: "0.6.0"`.
+
+`ll-cdi-drv` provides two generators:
+
+- `command`: invokes a vendor tool and reads the CDI specification from its standard output.
+- `linglong`: builds the specification from DRM matching rules, device paths, mounts, and environment variables.
+
+Administrators maintain the generation sources and runtime directory. The standard runtime directory is writable by root and readable by ordinary users. Artifacts under `/run` are regenerated at boot.
+
+## Examples
+
+### A Device in a CDI Specification
+
+This specification illustrates the CDI structure. Its device-node path must match the actual device on the host:
 
 ```yaml
 cdiVersion: 0.6.0
 kind: vendor.example/gpu
 devices:
-  - name: gpu0
+  - name: render
     containerEdits:
       deviceNodes:
-        - path: /dev/dri/card0
         - path: /dev/dri/renderD128
-        - path: /dev/vendor/control
-containerEdits:
-  env:
-    - VENDOR_GPU_RUNTIME=1
-  mounts:
-    - hostPath: /usr/lib/vendor-gpu
-      containerPath: /usr/lib/vendor-gpu
-      type: bind
-      options: [ro]
+      env:
+        - VENDOR_GPU_RUNTIME=1
 ```
 
-Key fields:
+`vendor.example/gpu=render` selects the `render` device in this file. Its `containerEdits` describes the device node and environment variable added to the container. Driver libraries and configuration files can also be described through CDI `mounts`.
 
-| Field | Description |
-| --- | --- |
-| `cdiVersion` | CDI specification version; `0.6.0` is currently recommended |
-| `kind` | The device class in the format `<vendor>/<class>`, which must match the device reference in the Linyaps configuration |
-| `devices[].name` | The device name, which forms the fully qualified reference with `kind`, such as `vendor.example/gpu=gpu0` |
-| `devices[].containerEdits.deviceNodes` | The device nodes injected into the container for this device; `path` is the node path on the host |
-| `containerEdits` | Spec-level edits that apply to all devices in the file; can declare `env`, `deviceNodes`, `mounts`, and so on |
+### Generating a Specification with the NVIDIA Tool
 
-The corresponding Linyaps configuration is written to `/etc/linglong/config.d/30-vendor-gpu.json` (system-wide, applies to all applications):
+Save the following as `/etc/linglong/cdi-drv/nvidia.json`. The host must provide `/usr/bin/nvidia-ctk` and the corresponding driver:
 
 ```json
 {
-  "devices": [
-    "vendor.example/gpu=gpu0"
+  "version": "1",
+  "generator": "command",
+  "autoEnable": true,
+  "defaultDevice": "all",
+  "argv": ["/usr/bin/nvidia-ctk", "cdi", "generate"],
+  "watchPathChanged": [
+    "/usr/bin/nvidia-ctk",
+    "/lib/modules/%v/modules.dep",
+    "/lib/modules/%v/modules.dep.bin"
   ]
 }
 ```
 
-### Automatic Generation
+This configuration runs `nvidia-ctk cdi generate` and selects the tool's `all` device as the default. `watchPathChanged` declares that updates to the generator tool and module dependency files trigger a refresh of this configuration.
 
-Hand-written files cannot track device changes. It is recommended that the driver package provide a configuration generator (such as `/usr/bin/vendor-gpu-cdi-generate`) that fully rebuilds or removes the two files according to the current device state each time it is triggered. Key points:
+### Describing Driver Resources with the Builtin Generator
 
-- Filter DRM device nodes of **this vendor or those supported by the current driver** through `/sys/class/drm/*/device/vendor`.
-- When no device of this vendor is detected, **remove the CDI specification and the Linyaps configuration to avoid stale references**.
-- Keep the Linyaps configuration and the CDI specification consistent with the current device and driver state.
+The following `/etc/linglong/cdi-drv/vendor.json` example uses fictional driver names and paths. Replace them with actual values for the driver being integrated:
 
-Pseudocode of the generator:
-
-```text
-main:
-    # 1. Enumerate devices: scan the hardware supported by this driver (for example,
-    #    filter this vendor's DRM device nodes via /sys/class/drm/*/device/vendor),
-    #    producing a list of device nodes
-    nodes = enumerate_supported_device_nodes()
-
-    # 2. Clean up when no device is present: remove the CDI spec and the Linyaps
-    #    configuration, then exit, avoiding stale references to nonexistent devices
-    if nodes is empty:
-        remove spec file and Linyaps configuration file
-        return
-
-    # 3. Generate the CDI spec: build devices and containerEdits from the node list,
-    #    including device nodes, environment variables, driver library mounts, etc.
-    spec = build_cdi_spec(kind, nodes, env, mounts)
-
-    # 4. Generate the Linyaps configuration: each entry of devices is <kind>=<device name>,
-    #    and device names match the spec's devices[].name
-    linyaps_config = build_devices_list(device names from spec)
+```json
+{
+  "version": "1",
+  "generator": "linglong",
+  "kind": "vendor.example/gpu",
+  "profile": {
+    "drm": {
+      "kernelDriver": "vendor_driver"
+    },
+    "deviceNodes": [
+      { "path": "/dev/vendor-control" }
+    ],
+    "mountFiles": [
+      "/usr/share/glvnd/egl_vendor.d/10_vendor.json",
+      "${LIB_DIR}/libEGL_vendor.so.0"
+    ],
+    "env": ["VENDOR_GPU_RUNTIME=1"]
+  }
+}
 ```
 
-The generator is installed with `0755` permissions and must be idempotent: no matter which event triggers it, it fully rebuilds or removes the files according to the current device and driver state. For complex topologies such as multiple cards or multiple nodes, generate precisely according to the PCI correspondence in the vendor's tooling; the pseudocode only demonstrates the general flow.
+This example selects DRM nodes for `vendor_driver` and adds a device node, driver files, and environment variables. Omitting `drm.nodes` selects both `primary` and `render` nodes by default. Without `deviceProfile` or `defaultDevice`, the configuration filename determines the device name, giving the qualified reference `vendor.example/gpu=vendor-linglong`. Setting `defaultDevice` instead names that single device. Automatic enablement needs no explicit `autoEnable`. Paths are required by default, so `required` is omitted. A missing required path excludes the device from publication.
 
-### On-Demand Triggering
+### Generated Device Defaults
 
-The generator is run by a systemd service (Type=oneshot), which generates the baseline configuration at boot and is re-run on demand on various changes:
+When the NVIDIA tool outputs kind `nvidia.com/gpu` with an `all` device, the corresponding `/run/linglong-cdi-drv/cfg/nvidia.json` contains:
 
-```ini
-# /usr/lib/systemd/system/vendor-gpu-cdi.service
-[Unit]
-Description=Generate and maintain the vendor GPU CDI spec and Linyaps configuration
-After=systemd-modules-load.service local-fs.target
-
-[Service]
-Type=oneshot
-ExecStart=/usr/bin/vendor-gpu-cdi-generate
-
-[Install]
-WantedBy=multi-user.target
+```json
+{
+  "devices": [
+    {
+      "name": "nvidia.com/gpu=all",
+      "spec": "../spec/nvidia.yaml"
+    }
+  ]
+}
 ```
 
-#### Automatic Triggering
+`name` is a fully qualified device reference, and `spec` points to the CDI file published with these defaults. `autoEnable: true` includes the device in default application selection. `autoEnable: false` generates an empty `devices` list; the device remains available through an explicit reference.
 
-When driver files change, the spec generator tool is updated, or devices change, the generator needs to run again. A systemd path unit can watch the corresponding paths and automatically re-run the service, keeping the CDI specification and the Linyaps configuration consistent with the current device and driver state. Paths commonly watched include:
+Different specifications may define the same qualified device name `<kind>=<name>`; all specifications and generated device-default files are retained. At runtime, only the first reference for each qualified name and its bound specification are selected. Edits from other same-named devices are not combined. Skipping a repeated reference emits a warning identifying the retained and skipped specification sources. Auto-enabled references follow the filename order of generated `cfg` files, so resources from same-named devices in different specifications are not applied together.
 
-- **Device directory** (such as `/dev/dri`): any change to the directory contents (creation or deletion of device nodes) triggers, covering device hot-plugging, replacement, and count changes.
-- **Driver files and the generator tool** (such as `/usr/lib/vendor-gpu` and `/usr/bin/vendor-gpu-cdi-generate`): covers driver libraries or the tool itself being upgraded or replaced.
+## Usage
 
-```ini
-# /usr/lib/systemd/system/vendor-gpu-cdi.path
-[Unit]
-Description=Watch device and driver file changes and refresh the CDI spec
+### 1. Prepare the Driver and Source Configuration
 
-[Path]
-PathChanged=/dev/dri
-PathChanged=/usr/lib/vendor-gpu
-PathChanged=/usr/bin/vendor-gpu-cdi-generate
-Unit=vendor-gpu-cdi.service
+Ensure the host has the required kernel driver, user-space libraries, and device nodes. A `command` generator also requires the tool named in `argv`.
 
-[Install]
-WantedBy=multi-user.target
-```
-
-#### Triggering on Driver Package Installation
-
-Updates to driver files and the configuration generator usually happen when the driver package is upgraded. Within a single driver package, enabling and refreshing the units is handled uniformly by the installation hook, without waiting for path monitoring to notice file changes:
+Install the source configuration in the configuration directory, for example:
 
 ```bash
-# postinst of deb / %post of rpm
-systemctl daemon-reload
-systemctl enable --now vendor-gpu-cdi.path vendor-gpu-cdi.service
+sudo install -d -m 0755 /etc/linglong/cdi-drv
+sudo install -m 0644 nvidia.json /etc/linglong/cdi-drv/nvidia.json
 ```
 
-## Removing Configuration on Device Changes and Uninstallation
+Paths in this guide assume a standard system installation. Build and packaging settings determine the configuration directory. `ll-cdi-drv` is installed under the installation prefix's `libexec/linglong/` directory. When executing the commands below, use its actual executable path or ensure it is in the executing user's `PATH`.
 
-### Device Hot-Plugging and Replacement
-
-When devices are unplugged, replaced, or reduced in number, the path unit triggers the service and the generator:
-
-- When all devices disappear: removes `/etc/cdi/vendor-gpu.yaml` and `/etc/linglong/config.d/30-vendor-gpu.json`, so applications no longer reference nonexistent devices.
-- When devices are replaced or the count changes: fully rebuilds the specification and the configuration, keeping references such as `gpu0` and `gpu1` always consistent with the actual devices.
-
-Configuration changes only affect applications started afterwards; exit existing application instances before verifying.
-
-### Driver Package Uninstallation
-
-The uninstallation hooks of the driver package (`prerm`/`postrm` of deb, `%preun`/`%postun` of rpm) should stop and disable the on-demand monitoring unit and service, remove the generated files, and reload the unit definitions:
+### 2. Refresh Manually and Submit Requests
 
 ```bash
-systemctl disable --now vendor-gpu-cdi.path vendor-gpu-cdi.service
-rm -f /etc/cdi/vendor-gpu.yaml /etc/linglong/config.d/30-vendor-gpu.json
-systemctl daemon-reload
+jq empty /etc/linglong/cdi-drv/nvidia.json
+sudo ll-cdi-drv refresh nvidia
+
+cat /run/linglong-cdi-drv/spec/nvidia.yaml
+cat /run/linglong-cdi-drv/cfg/nvidia.json
 ```
 
-If specification files are written to temporary directories such as `/var/run/cdi`, they disappear after a reboot; files written to `/etc/cdi` must be explicitly removed during uninstallation.
+The refresh name is the source filename without `.json`. Diagnostics from manual commands are printed to the terminal. Inspect both the diagnostics and artifacts to determine whether the required devices were generated. The builtin generator writes `<name>.json`. The command generator preserves the tool's output and uses `<name>.json` or `<name>.yaml` according to its content. Directory scans only read `.json`, `.yaml`, and `.yml` files, ignoring backup and temporary files with other suffixes. Explicitly selected files have no suffix restriction. Readers try JSON first, then YAML if JSON parsing fails.
 
-## Verification and Troubleshooting
+| Command | Behavior |
+| --- | --- |
+| `ll-cdi-drv refresh` | Immediately refresh all configurations |
+| `ll-cdi-drv refresh nvidia` | Immediately refresh the watches and artifacts for `nvidia.json` |
+| `ll-cdi-drv refresh --request-all` | Submit a full request |
+| `ll-cdi-drv refresh --request nvidia` | Submit a request for one configuration |
+| `ll-cdi-drv refresh-pending` | Keep consuming requests and refreshing until the idle timeout, which defaults to 5 seconds |
 
-General troubleshooting approach: first confirm that the generator produces correct files consistent with the current device and driver state, then verify that Linyaps can discover and inject the devices, and finally rule out interference from stale configuration.
+These administrative commands normally run as root. Submitting a request records what needs refreshing without immediately generating artifacts. Run `refresh-pending` manually to process requests, or use the automatic refresh service described below.
 
-### Preliminary Checks
+The same process handles requests arriving during consumption and resets the idle interval after each refresh. It releases the refresh lock while waiting for new requests, allowing manual refreshes to proceed. Consumption failures return an error without requeuing claimed requests.
+
+`refresh-pending` accepts `--idle-timeout` as a nonnegative integer number of seconds, defaulting to `5`. Setting it to `0` drains requests and exits as soon as the queue is empty. For example, `ll-cdi-drv refresh-pending --idle-timeout 10` exits after the queue has been idle for 10 consecutive seconds.
+
+Immediate refresh and consumption commands accept these options:
+
+| Option | Purpose |
+| --- | --- |
+| `--config-dir` | Select the source configuration directory |
+| `--runtime-dir` | Select the artifact and request queue directory |
+| `--unit-dir` | Select the systemd runtime unit directory |
+| `--systemctl` | Select the systemctl executable |
+
+Request submission does not accept `--config-dir`. Configuration names must be nonempty, contain only ASCII letters, digits, and `._-`, and must not start with a dot.
+
+### 3. Verify Device Access in an Application
+
+With the default device enabled, start an installed application to use device selection:
 
 ```bash
-# View generator logs to confirm the last trigger time and result
-journalctl -u vendor-gpu-cdi.service
-
-# View path unit logs to confirm monitoring works and events fire
-journalctl -u vendor-gpu-cdi.path
-
-# Check the JSON syntax of the Linyaps configuration
-jq empty /etc/linglong/config.d/30-vendor-gpu.json
-
-# Confirm the CDI spec exists and device references match the Linyaps configuration
-cat /etc/cdi/vendor-gpu.yaml
-cat /etc/linglong/config.d/30-vendor-gpu.json
+ll-cli run org.example.demo
 ```
 
-### Verifying Device Injection
+A specification file and device can also be selected explicitly:
 
 ```bash
-# Specify the device once on the command line to verify the spec works; success means the CDI side is fine
-ll-cli run --device vendor.example/gpu=gpu0 org.example.demo
-
-# Confirm the device nodes are injected in the container environment
+ll-cli run --cdi-spec /run/linglong-cdi-drv/spec/nvidia.yaml \
+  --device nvidia.com/gpu=all org.example.demo
 ll-cli run org.example.demo -- ls /dev/dri
-
-# Confirm the driver library mounts and environment variables are present in the container environment
-ll-cli run org.example.demo -- env | grep VENDOR_GPU_RUNTIME
-
-# Enter the container environment for troubleshooting
-ll-cli run org.example.demo -- bash
 ```
 
-### Common Issues
+Replace `org.example.demo` with the application ID being tested. Configuration updates apply to subsequently created containers; exit existing instances before verifying changes.
 
-- CDI configuration format or path errors
-- Files/devices described in the CDI specification do not exist or have changed
-- Linyaps configuration format or path errors
-- Stale (residual) configuration
+### 4. Automatic Refresh Rules and Setup
+
+Systemd manages automatic refresh with these trigger rules:
+
+| Trigger | Refresh scope |
+| --- | --- |
+| System boot | All source configurations |
+| A source configuration is added, modified, or removed in `/etc/linglong/cdi-drv/` | All source configurations |
+| A dependency in a configuration's `watchPathChanged` changes | Only that configuration |
+| A refresh request is submitted | All configurations or the individual configuration requested |
+
+Enable refresh at boot, configuration-directory monitoring, and automatic request processing:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now ll-cdi-drv-config.path ll-cdi-drv-refresh.path ll-cdi-drv-config.service
+```
+
+Configuration refresh synchronizes and starts the watches declared by `watchPathChanged`; individual watches do not need manual enablement. After adding, removing, or replacing hardware, an administrator must refresh manually or an external event source must submit a request.
+
+The project's `91-linglong.preset` declares default enablement policy for these three entry points. Installation scripts can apply that policy, or administrators can enable them explicitly with the commands above. Installing a preset file alone does not immediately enable or start units.
+
+### 5. Update, Remove, and Diagnose
+
+When removing a driver, remove its source configuration. A refresh cleans up the corresponding watches and artifacts. To clean up immediately, run this after deleting the source configuration:
+
+```bash
+sudo ll-cdi-drv refresh nvidia
+```
+
+The maintainer must also update any manually declared device references in ordinary runtime configuration.
+
+To inspect refreshes executed through systemd:
+
+```bash
+journalctl -u ll-cdi-drv-config.service -u ll-cdi-drv-refresh.service
+systemctl status ll-cdi-drv-config.path ll-cdi-drv-refresh.path
+systemctl status ll-cdi-drv-watch@nvidia.path
+journalctl -u ll-cdi-drv-request@nvidia.service
+```
+
+For missing artifacts, inspect generator output, required paths, and DRM matching conditions. After resolving an error, refresh again or submit another request; failed requests are not retried automatically. If manual refresh works but file changes do not trigger it, check the fixed entry points and the watched paths in the dynamic `.path` units.
+
+## Specification
+
+Source fields are defined in `libs/cdi_drv/schema.json` in the source tree. This section describes configuration semantics and runtime device selection rules.
+
+### Source Configuration Fields
+
+Hidden files and files with invalid configuration names are excluded from configuration enumeration. Each valid `.json` filename identifies an independent configuration. Source loading handles regular files and skips directories and symbolic links.
+
+| Field | Type and meaning |
+| --- | --- |
+| `version` | Required string with value `"1"` |
+| `generator` | Required; `command` or `linglong` |
+| `autoEnable` | Boolean, defaults to `true`; controls whether this configuration emits its default device reference |
+| `defaultDevice` | Final device name to enable by default; names the single builtin device when device profiles are absent. See below for omission behavior |
+| `watchPathChanged` | Absolute dependency paths such as driver files, libraries, and generator tools |
+| `argv` | Program and argument array for `command`; the first entry is a nonempty executable name |
+| `timeout` | Execution timeout for the `command` generator in integer seconds, default `30`; nonpositive values disable the timeout |
+| `kind` | Device class for `linglong`, in `<vendor>/<class>` format |
+| `profile` | Shared resources for the `linglong` generator |
+| `deviceProfile` | Device configuration array for `linglong`, each containing `device` and `profile` |
+
+### Command Input and Output
+
+`argv` executes the program directly, without a shell. Its executable can be an absolute path or a command found by executable lookup. Standard output provides one valid CDI specification, which determines the kind and device names. Standard error carries diagnostics.
+
+`timeout` limits the total time spent running a command and reading its output, defaulting to 30 seconds. For example, `"timeout": 60` sets a 60-second limit, while zero or a negative value disables the timeout. On timeout, the generator process group is terminated and the direct child is reaped. That source is treated as a generation failure, other sources continue, and claimed requests are not requeued. This timeout is independent of the queue idle interval configured by `refresh-pending --idle-timeout`.
+
+The output can be YAML or JSON. YAML loading uses the first document. `defaultDevice: "all"` selects the device named `all`; the generator's output defines which resources it contains.
+
+### Builtin Resource Rules
+
+The builtin generator requires `kind` and either `profile` or a nonempty `deviceProfile`. If `profile` is absent and `deviceProfile` is absent or empty, it reports the missing resource configuration and skips that configuration.
+
+- The top-level `profile` provides shared resources to each device.
+- Each `deviceProfile` entry generates one CDI device, with `device` as its final name.
+- When device profiles are absent or empty, the shared profile generates one device named by `defaultDevice`. If omitted, its name is `<configuration name>-linglong`, such as `vendor-linglong`. The name must satisfy CDI device name rules.
+- `deviceNodes`, `mountFiles`, and `env` append shared entries before device-specific entries.
+- A device-level `drm` replaces the entire shared selector. Omitting it inherits the shared value.
+- With a nonempty device profile array, `defaultDevice` must identify a device declared in that array; it does not create an additional default device. If omitted, the first device actually generated is selected. If the selected device fails generation, no default reference for it is emitted.
+
+`drm` is an object describing matching rules:
+
+| Field | Rule |
+| --- | --- |
+| `kernelDriver` | Optional; filters by kernel driver name when present |
+| `pciIds` | Optional or empty for unrestricted IDs. Supports `1234:5678` and `1234:*`; entries are alternative matches |
+| `nodes` | An array containing `render` and/or `primary`. Omission selects both; an empty array skips DRM node selection |
+
+When both driver and PCI filters are provided, both must match. Multiple matching nodes can belong to one CDI device.
+
+Device and mount paths follow these rules:
+
+| Entry | Host path | Container path |
+| --- | --- | --- |
+| `deviceNodes` object | `hostPath`, or `path` when omitted | `path` |
+| `mountFiles` string | The string after variable expansion | Same as the host path |
+| `mountFiles` object | `hostPath` after variable expansion | `path`, or the host path when omitted |
+
+Mount options are `ro,nosuid,nodev,rbind,rprivate`. Sources can be existing files, directories, or other supported paths. `required` defaults to `true`. A missing required path skips the corresponding device; `required: false` skips only the missing entry. String entries in `mountFiles` are required paths.
+
+A device with no nodes, mounts, or environment variables produces no artifact. A device can still be generated without matching DRM nodes when it has other resources. A configuration with no valid devices emits neither CDI nor device-default artifacts.
+
+`${LIB_DIR}` expands only in host source paths in `mountFiles`, identifying the target system's default library directory. The build variable `LINGLONG_CDI_DRV_LIB_DIR` provides the default, and a nonempty runtime environment variable of the same name overrides it. `$$` denotes a literal `$`, so `$${LIB_DIR}` produces the literal text `${LIB_DIR}`.
+
+### File Dependency Watch Rules
+
+Entries in `watchPathChanged` map to systemd `PathChanged=`. Any declared dependency change submits a request for that configuration. Directory watches are not recursive; appropriate file or subdirectory entries must cover changes within subdirectories. See [systemd.path](https://www.freedesktop.org/software/systemd/man/latest/systemd.path.html) for the semantics.
+
+Paths support systemd specifiers: `%v` is the running kernel release, and `%%` is a literal `%`. Newlines, carriage returns, trailing spaces or tabs, and trailing backslashes are unsupported. The examples watch driver-file and tool dependencies; external event sources or manual refresh handle hardware changes.
+
+inotify does not reliably report content changes to virtual files such as `/sys/module/nvidia/version`. These files cannot substitute for device or kernel module event sources. See [inotify(7)](https://man7.org/linux/man-pages/man7/inotify.7.html).
+
+### Runtime Device Selection Rules
+
+`devices` accepts strings and objects naming a specification file:
+
+```json
+{
+  "devices": [
+    "vendor.example/gpu=render",
+    {
+      "name": "other.example/gpu=gpu0",
+      "spec": "/etc/cdi/other-gpu.yaml"
+    }
+  ]
+}
+```
+
+Strings use `<kind>=<name>`. An object's `name` is the qualified reference, and `spec` binds the specification. See [`ll-cli` runtime configuration](../extra/runtime_config.md) for ordinary configuration locations and application-specific rules. Generated `cfg` files provide device selection; only `devices` is read from them.
+
+In these rules, ordinary configuration means the result of merging system, user, application, and instance configurations in loading order. Their `devices` lists append to each other; an empty array does not clear devices from earlier configurations.
+
+Device selection follows these rules:
+
+1. When `--device` is present, its command-line devices are used. Repeated `--device` options append to each other; only the first command-line reference for each qualified name is selected.
+2. Without command-line devices, a nonempty ordinary `devices` list merges with generated defaults. Ordinary entries override all generated references with the same qualified name, and the first reference in the merged ordinary configuration list is selected. Defaults with other qualified names are preserved.
+3. An explicit `"devices": []` in the merged ordinary configuration selects no devices, including generated defaults. If an earlier configuration added devices, an empty array in a later configuration cannot make the merged list empty.
+4. When ordinary configuration has no `devices`, generated defaults are used. With no device selection, `ll-cli` searches ordinary specification directories for `nvidia.com/gpu=all`. An explicit empty list does not enter this probe.
+
+String references search the active generation's `spec` directory, then `/etc/linglong/cdi`, `/etc/cdi`, and `/var/run/cdi`. `--cdi-spec-dir` selects the ordinary specification directories in priority order. Files within each directory are sorted by filename; the first valid specification matching both `kind` and `name` wins. Adding a higher-priority matching device may change the result of an unbound reference. An object's `spec` and the command-line `--cdi-spec` bind a file directly without directory searching. `--cdi-spec` applies to subsequent `--device` options:
+
+```bash
+ll-cli run \
+  --cdi-spec /etc/cdi/vendor-a.yaml --device vendor.example/gpu=gpu0 \
+  --cdi-spec /etc/cdi/vendor-b.yaml --device vendor.example/gpu=gpu1 \
+  org.example.demo
+```
+
+Relative `--cdi-spec-dir` paths are interpreted against the invocation's working directory. Specification paths are converted to absolute paths before being stored in the run context, so restoring a context does not depend on the original working directory.
+
+Directory scans skip unreadable or invalid specifications with warnings. Explicit specification read failures and missing selected devices produce errors. Device edits from different specifications apply in the final device-list order.

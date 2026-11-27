@@ -30,6 +30,11 @@ configure_files(
   lib/linglong/generate-xdg-data-dirs.sh
   lib/systemd/system-environment-generators/61-linglong
   lib/systemd/system/org.deepin.linglong.PackageManager.service
+  lib/systemd/system/ll-cdi-drv-config.path
+  lib/systemd/system/ll-cdi-drv-config.service
+  lib/systemd/system/ll-cdi-drv-refresh.path
+  lib/systemd/system/ll-cdi-drv-refresh.service
+  lib/systemd/system/ll-cdi-drv-request@.service
   lib/systemd/system-preset/91-linglong.preset
   lib/systemd/user-generators/linglong-user-systemd-generator
   lib/sysusers.d/linglong.conf
@@ -113,6 +118,7 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/lib/linglong/container/README.md
         DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/linglong/container)
 
 # linglong default configuration
+install(DIRECTORY DESTINATION ${CMAKE_INSTALL_FULL_SYSCONFDIR}/linglong/cdi-drv)
 install(FILES ${CMAKE_CURRENT_LIST_DIR}/share/linglong/config.yaml
         DESTINATION ${CMAKE_INSTALL_PREFIX}/share/linglong)
 

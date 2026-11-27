@@ -14,6 +14,7 @@
 #pragma once
 
 #include <optional>
+#include <variant>
 #include <nlohmann/json.hpp>
 
 #include <sstream>

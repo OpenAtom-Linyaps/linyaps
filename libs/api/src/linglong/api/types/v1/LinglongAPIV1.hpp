@@ -14,6 +14,7 @@
 #pragma once
 
 #include <optional>
+#include <variant>
 #include <nlohmann/json.hpp>
 #include "linglong/api/types/v1/helper.hpp"
 
@@ -29,6 +30,7 @@
 #include "linglong/api/types/v1/BuilderSourceLockEntry.hpp"
 #include "linglong/api/types/v1/BuilderSourceLockResolved.hpp"
 #include "linglong/api/types/v1/CdiDeviceEntry.hpp"
+#include "linglong/api/types/v1/CdiDeviceRequest.hpp"
 #include "linglong/api/types/v1/CliContainer.hpp"
 #include "linglong/api/types/v1/CommonOptions.hpp"
 #include "linglong/api/types/v1/CommonResult.hpp"
@@ -110,6 +112,7 @@ std::optional<BuilderProjectSource> builderProjectSource;
 std::optional<BuilderSourceLockEntry> builderSourceLockEntry;
 std::optional<BuilderSourceLockResolved> builderSourceLockResolved;
 std::optional<CdiDeviceEntry> cdiDeviceEntry;
+std::optional<CdiDeviceRequest> cdiDeviceRequest;
 std::optional<CliContainer> cliContainer;
 std::optional<CommonOptions> commonOptions;
 std::optional<CommonResult> commonResult;

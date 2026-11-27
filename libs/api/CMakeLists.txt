@@ -25,10 +25,12 @@ pfl_add_library(
   src/linglong/api/types/v1/BuilderProjectLockDependency.hpp
   src/linglong/api/types/v1/BuilderSourceLockEntry.hpp
   src/linglong/api/types/v1/BuilderSourceLockResolved.hpp
+  src/linglong/api/types/v1/CdiDeviceRequest.hpp
   src/linglong/api/types/v1/CliContainer.hpp
   src/linglong/api/types/v1/CommonOptions.hpp
   src/linglong/api/types/v1/CommonResult.hpp
   src/linglong/api/types/v1/ContainerProcessStateInfo.hpp
+  src/linglong/api/types/v1/Device.hpp
   src/linglong/api/types/v1/DialogHandShakePayload.hpp
   src/linglong/api/types/v1/DialogMessage.hpp
   src/linglong/api/types/v1/Generators.hpp

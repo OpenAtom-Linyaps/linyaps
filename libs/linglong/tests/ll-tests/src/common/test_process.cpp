@@ -12,7 +12,9 @@
 #include <iostream>
 #include <iterator>
 #include <stdexcept>
+#include <string_view>
 #include <thread>
+#include <utility>
 
 #include <fcntl.h>
 #include <signal.h>
@@ -27,11 +29,42 @@ namespace linglong::test {
 TestProcess::TestProcess(std::vector<std::string> arguments)
 {
     arguments.insert(arguments.begin(), { "/proc/self/exe", "--test-helper" });
+    start(std::move(arguments), {});
+}
+
+TestProcess::TestProcess(const std::string &executable,
+                         std::vector<std::string> arguments,
+                         const std::map<std::string, std::string> &environment)
+{
+    arguments.insert(arguments.begin(), executable);
+    start(std::move(arguments), environment);
+}
+
+void TestProcess::start(std::vector<std::string> arguments,
+                        const std::map<std::string, std::string> &environment)
+{
     std::vector<char *> argv;
     for (auto &argument : arguments) {
         argv.push_back(argument.data());
     }
     argv.push_back(nullptr);
+
+    std::vector<std::string> environmentValues;
+    for (char **current = environ; *current != nullptr; ++current) {
+        const std::string_view entry(*current);
+        const auto name = entry.substr(0, entry.find('='));
+        if (environment.count(std::string(name)) == 0) {
+            environmentValues.emplace_back(entry);
+        }
+    }
+    for (const auto &[name, value] : environment) {
+        environmentValues.push_back(name + "=" + value);
+    }
+    std::vector<char *> envp;
+    for (auto &entry : environmentValues) {
+        envp.push_back(entry.data());
+    }
+    envp.push_back(nullptr);
 
     posix_spawn_file_actions_t actions;
     auto result = ::posix_spawn_file_actions_init(&actions);
@@ -48,6 +81,14 @@ TestProcess::TestProcess(std::vector<std::string> arguments)
                                                 output.c_str(),
                                                 O_WRONLY | O_CREAT | O_TRUNC,
                                                 0600);
+    if (result == 0) {
+        const auto stdoutPath = outputDirectory.path() / "stdout";
+        result = ::posix_spawn_file_actions_addopen(&actions,
+                                                    STDOUT_FILENO,
+                                                    stdoutPath.c_str(),
+                                                    O_WRONLY | O_CREAT | O_TRUNC,
+                                                    0600);
+    }
     if (result != 0) {
         throw std::runtime_error(std::strerror(result));
     }
@@ -66,10 +107,10 @@ TestProcess::TestProcess(std::vector<std::string> arguments)
         result = ::posix_spawnattr_setflags(&attributes, POSIX_SPAWN_SETPGROUP);
     }
     if (result == 0) {
-        result = ::posix_spawn(&pid, argv.front(), &actions, &attributes, argv.data(), environ);
+        result = ::posix_spawn(&pid, argv.front(), &actions, &attributes, argv.data(), envp.data());
     }
     if (result != 0) {
-        throw std::runtime_error("failed to spawn test helper: "
+        throw std::runtime_error("failed to spawn test process: "
                                  + std::string(std::strerror(result)));
     }
 }
@@ -94,7 +135,7 @@ int TestProcess::wait(std::chrono::milliseconds timeout)
             return exitCode;
         }
         if (waited < 0 && errno != EINTR) {
-            throw std::runtime_error("failed to wait for test helper: "
+            throw std::runtime_error("failed to wait for test process: "
                                      + std::string(std::strerror(errno)));
         }
         if (std::chrono::steady_clock::now() >= deadline) {
@@ -110,6 +151,12 @@ int TestProcess::wait(std::chrono::milliseconds timeout)
 std::string TestProcess::stderrOutput() const
 {
     std::ifstream output(outputDirectory.path() / "stderr");
+    return { std::istreambuf_iterator<char>(output), std::istreambuf_iterator<char>() };
+}
+
+std::string TestProcess::stdoutOutput() const
+{
+    std::ifstream output(outputDirectory.path() / "stdout");
     return { std::istreambuf_iterator<char>(output), std::istreambuf_iterator<char>() };
 }
 

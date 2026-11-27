@@ -509,10 +509,12 @@ pfl_add_libraries(
   linglong
   oci-cfg-generators
   cdi
+  cdi_drv
   APPS
   ll-init
   ll-builder
   ll-cli
+  ll-cdi-drv
   ll-package-manager
   llpkg
   ll-driver-detect)

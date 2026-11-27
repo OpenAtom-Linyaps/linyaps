@@ -7,6 +7,7 @@
 #include "common/tempdir.h"
 
 #include <chrono>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -14,21 +15,28 @@
 
 namespace linglong::test {
 
-// Launch the same binary in helper mode. Each child has its own process group,
-// so an early assertion failure also terminates commands started by the helper.
+// Each child has its own process group so an early assertion failure also
+// terminates commands started by the child.
 class TestProcess
 {
 public:
     explicit TestProcess(std::vector<std::string> arguments);
+    TestProcess(const std::string &executable,
+                std::vector<std::string> arguments,
+                const std::map<std::string, std::string> &environment = {});
     ~TestProcess();
 
     TestProcess(const TestProcess &) = delete;
     TestProcess &operator=(const TestProcess &) = delete;
 
     int wait(std::chrono::milliseconds timeout = std::chrono::seconds(10));
+    std::string stdoutOutput() const;
     std::string stderrOutput() const;
 
 private:
+    void start(std::vector<std::string> arguments,
+               const std::map<std::string, std::string> &environment);
+
     TempDir outputDirectory;
     pid_t pid{ -1 };
     int exitCode{ -1 };

@@ -149,7 +149,17 @@ utils::error::Result<std::filesystem::path> makeBundleDir(const std::string &con
 
 std::string genContainerID(const api::types::v1::RunContextConfig &config) noexcept
 {
-    auto jsonStr = nlohmann::json(config).dump();
+    auto identity = nlohmann::json(config);
+    if (auto devices = identity.find("cdiDevices"); devices != identity.end()) {
+        for (auto &device : *devices) {
+            auto &spec = device["spec"];
+            // A checksummed spec's path only locates the snapshot, not its identity.
+            if (!spec["checksum"].get_ref<const std::string &>().empty()) {
+                spec.erase("path");
+            }
+        }
+    }
+    auto jsonStr = identity.dump();
     return QCryptographicHash::hash(QByteArray::fromStdString(jsonStr), QCryptographicHash::Sha256)
       .toHex()
       .toStdString();

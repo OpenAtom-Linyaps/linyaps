@@ -6,7 +6,6 @@
 
 #include "cdi.h"
 
-#include "linglong/cdi/types/Cdi.hpp"
 #include "linglong/cdi/types/Generators.hpp"
 #include "linglong/common/strings.h"
 #include "linglong/utils/log/log.h"
@@ -17,16 +16,99 @@
 #include <nlohmann/json.hpp>
 #include <yaml-cpp/yaml.h>
 
+#include <algorithm>
 #include <array>
 #include <filesystem>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <set>
 #include <sstream>
 
 namespace linglong::cdi {
 
 namespace {
+
+bool isAsciiAlphanumeric(char ch)
+{
+    return (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9');
+}
+
+bool validYamlKeys(const YAML::Node &node, unsigned int depth)
+{
+    if (depth == 0) {
+        return false;
+    }
+    if (node.IsMap()) {
+        std::set<std::string> keys;
+        for (const auto &entry : node) {
+            if (!entry.first.IsScalar()) {
+                return false;
+            }
+            const auto key = ytj::to_json(entry.first);
+            const auto *name = key.get_ptr<const std::string *>();
+            if (name == nullptr || !keys.insert(*name).second
+                || !validYamlKeys(entry.second, depth - 1)) {
+                return false;
+            }
+        }
+    } else if (node.IsSequence()) {
+        for (const auto &entry : node) {
+            if (!validYamlKeys(entry, depth - 1)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+utils::error::Result<types::Cdi> decodeYamlSpec(std::istream &input)
+{
+    LINGLONG_TRACE("parse CDI YAML");
+    try {
+        const auto yaml = YAML::Load(input);
+        if (!yaml.IsMap()) {
+            return LINGLONG_ERR("expected a CDI YAML mapping");
+        }
+        if (!validYamlKeys(yaml, 64)) {
+            return LINGLONG_ERR("CDI YAML contains invalid keys or excessive nesting");
+        }
+        return ytj::to_json(yaml).get<types::Cdi>();
+    } catch (const std::exception &error) {
+        return LINGLONG_ERR(error);
+    }
+}
+
+utils::error::Result<types::Cdi> decodeSpecDocument(std::istream &input)
+{
+    LINGLONG_TRACE("parse CDI specification");
+    try {
+        const auto document = nlohmann::json::parse(input, nullptr, false);
+        if (!document.is_discarded()) {
+            return document.get<types::Cdi>();
+        }
+
+        input.clear();
+        input.seekg(0);
+        return decodeYamlSpec(input);
+    } catch (const std::exception &error) {
+        return LINGLONG_ERR(error);
+    }
+}
+
+utils::error::Result<types::Cdi> decodeCDISpec(std::istream &input)
+{
+    LINGLONG_TRACE("decode and validate CDI specification");
+    auto spec = decodeSpecDocument(input);
+    if (!spec) {
+        return LINGLONG_ERR(spec);
+    }
+    auto validated = validateCDISpec(*spec);
+    if (!validated) {
+        return LINGLONG_ERR(validated);
+    }
+    return spec;
+}
 
 template <typename T>
 void mergeVector(std::optional<std::vector<T>> &target, const std::optional<std::vector<T>> &source)
@@ -78,31 +160,22 @@ types::ContainerEdits mergeEdits(const types::ContainerEdits &global,
     return result;
 }
 
-utils::error::Result<types::Cdi> parseCDISpecFile(std::filesystem::path specPath)
+utils::error::Result<types::Cdi> parseCDISpecFile(const std::filesystem::path &specPath)
 {
     LINGLONG_TRACE(fmt::format("parse CDI spec: {}", specPath.string()));
 
-    try {
-        std::ifstream i(specPath);
-        if (!i.is_open()) {
-            return LINGLONG_ERR(fmt::format("failed to open file: {}", specPath.string()));
-        }
-
-        nlohmann::json j;
-        if (specPath.extension() == ".yaml" || specPath.extension() == ".yml") {
-            YAML::Node node = YAML::Load(i);
-            j = ytj::to_json(node);
-        } else if (specPath.extension() == ".json") {
-            i >> j;
-        } else {
-            return LINGLONG_ERR(fmt::format("invalid file extension: {}", specPath.string()));
-        }
-
-        return j.get<types::Cdi>();
-    } catch (const std::exception &e) {
-        return LINGLONG_ERR(
-          fmt::format("failed to parse CDI spec {}: {}", specPath.string(), e.what()));
+    std::ifstream input(specPath);
+    if (!input.is_open()) {
+        return LINGLONG_ERR(fmt::format("failed to open file: {}", specPath.string()));
     }
+
+    auto spec = decodeCDISpec(input);
+    if (!spec) {
+        return LINGLONG_ERR(
+          fmt::format("failed to parse CDI spec {}: {}", specPath.string(), spec.error().message()),
+          spec);
+    }
+    return spec;
 }
 
 utils::error::Result<std::string> calculateSpecChecksum(const std::filesystem::path &specPath)
@@ -145,6 +218,48 @@ utils::error::Result<std::string> calculateSpecChecksum(const std::filesystem::p
     }
 }
 
+struct ParsedSpec
+{
+    std::filesystem::path path;
+    std::string checksum;
+    types::Cdi spec;
+};
+
+utils::error::Result<ParsedSpec> readSpec(const std::filesystem::path &path)
+{
+    LINGLONG_TRACE(fmt::format("read CDI spec {}", path.string()));
+
+    std::error_code ec;
+    const auto absolutePath = std::filesystem::absolute(path, ec);
+    if (ec) {
+        return LINGLONG_ERR("resolve CDI spec path", ec);
+    }
+    auto spec = parseCDISpecFile(absolutePath);
+    if (!spec) {
+        return LINGLONG_ERR(spec);
+    }
+
+    auto checksum = calculateSpecChecksum(absolutePath);
+    if (!checksum) {
+        return LINGLONG_ERR(checksum);
+    }
+
+    return ParsedSpec{ absolutePath, std::move(*checksum), std::move(*spec) };
+}
+
+api::types::v1::CdiDeviceEntry deviceEntry(const ParsedSpec &spec, const std::string &name)
+{
+    return { spec.spec.kind, name, { spec.checksum, spec.path.string() } };
+}
+
+void collectSpecDevices(std::vector<api::types::v1::CdiDeviceEntry> &entries,
+                        const ParsedSpec &spec)
+{
+    for (const auto &device : spec.spec.devices) {
+        entries.emplace_back(deviceEntry(spec, device.name));
+    }
+}
+
 utils::error::Result<types::ContainerEdits> getCDIDeviceEdits(const types::Cdi &spec,
                                                               std::string_view deviceName)
 {
@@ -167,6 +282,55 @@ utils::error::Result<types::ContainerEdits> getCDIDeviceEdits(const types::Cdi &
 
 } // namespace
 
+bool validDeviceName(std::string_view name)
+{
+    if (name.empty() || !isAsciiAlphanumeric(name.front()) || !isAsciiAlphanumeric(name.back())) {
+        return false;
+    }
+    return std::all_of(name.begin(), name.end(), [](char ch) {
+        return isAsciiAlphanumeric(ch) || ch == '-' || ch == '_' || ch == '.' || ch == ':';
+    });
+}
+
+bool validKind(std::string_view kind)
+{
+    const auto validSegment = [](std::string_view segment) {
+        if (segment.empty() || !isAsciiAlphanumeric(segment.front())) {
+            return false;
+        }
+        return std::all_of(segment.begin(), segment.end(), [](char ch) {
+            return isAsciiAlphanumeric(ch) || ch == '-' || ch == '_' || ch == '.';
+        });
+    };
+    const auto slash = kind.find('/');
+    return slash != std::string_view::npos && validSegment(kind.substr(0, slash))
+      && validSegment(kind.substr(slash + 1));
+}
+
+utils::error::Result<void> validateCDISpec(const types::Cdi &spec)
+{
+    LINGLONG_TRACE("validate CDI specification");
+    if (!validKind(spec.kind)) {
+        return LINGLONG_ERR("invalid CDI kind: " + spec.kind);
+    }
+    if (spec.cdiVersion.empty() || spec.devices.empty()) {
+        return LINGLONG_ERR("CDI specification needs a version and at least one device");
+    }
+    std::set<std::string> names;
+    for (const auto &device : spec.devices) {
+        if (!validDeviceName(device.name) || !names.insert(device.name).second) {
+            return LINGLONG_ERR("invalid or duplicate CDI device name: " + device.name);
+        }
+    }
+    return LINGLONG_OK;
+}
+
+utils::error::Result<types::Cdi> parseCDISpec(const std::string &content)
+{
+    std::istringstream input(content);
+    return decodeCDISpec(input);
+}
+
 utils::error::Result<std::vector<api::types::v1::CdiDeviceEntry>> getCDIDevices(
   const std::vector<std::string> &specDirs, const std::optional<std::vector<std::string>> &devices)
 {
@@ -179,40 +343,32 @@ utils::error::Result<std::vector<api::types::v1::CdiDeviceEntry>> getCDIDevices(
     LINGLONG_TRACE(
       fmt::format("get CDI devices {} from {}", devicesStr, fmt::join(specDirs, ", ")));
 
-    struct ParsedSpec
-    {
-        std::filesystem::path path;
-        std::string checksum;
-        types::Cdi spec;
-    };
-
     std::vector<ParsedSpec> specs;
     for (const auto &dir : specDirs) {
         std::error_code ec;
         if (!std::filesystem::is_directory(dir, ec)) {
             continue;
         }
+        std::vector<std::filesystem::path> paths;
         for (const auto &entry : std::filesystem::directory_iterator(
                dir,
                std::filesystem::directory_options::skip_permission_denied,
                ec)) {
-            auto res = parseCDISpecFile(entry.path());
-            if (!res) {
-                LogW("skip error parsed CDI spec: {}", res.error());
+            const auto extension = entry.path().extension();
+            if (extension != ".json" && extension != ".yaml" && extension != ".yml") {
                 continue;
             }
-
-            auto checksum = calculateSpecChecksum(entry.path());
-            if (!checksum) {
-                LogW("skip CDI spec with invalid checksum: {}", checksum.error());
+            paths.emplace_back(entry.path());
+        }
+        // Preserve directory priority and make the order within each directory deterministic.
+        std::sort(paths.begin(), paths.end());
+        for (const auto &path : paths) {
+            auto spec = readSpec(path);
+            if (!spec) {
+                LogW("skip unreadable CDI spec: {}", spec.error());
                 continue;
             }
-
-            specs.emplace_back(ParsedSpec{
-              .path = entry.path(),
-              .checksum = std::move(*checksum),
-              .spec = std::move(*res),
-            });
+            specs.emplace_back(std::move(*spec));
         }
     }
 
@@ -220,17 +376,7 @@ utils::error::Result<std::vector<api::types::v1::CdiDeviceEntry>> getCDIDevices(
 
     if (!devices) {
         for (const auto &spec : specs) {
-            for (const auto &dev : spec.spec.devices) {
-                result.emplace_back(api::types::v1::CdiDeviceEntry{
-                  .kind = spec.spec.kind,
-                  .name = dev.name,
-                  .spec =
-                    api::types::v1::CdiSpec{
-                      .checksum = spec.checksum,
-                      .path = spec.path.string(),
-                    },
-                });
-            }
+            collectSpecDevices(result, spec);
         }
         return result;
     }
@@ -248,15 +394,7 @@ utils::error::Result<std::vector<api::types::v1::CdiDeviceEntry>> getCDIDevices(
             if (spec.spec.kind == kind) {
                 for (const auto &dev : spec.spec.devices) {
                     if (dev.name == name) {
-                        result.emplace_back(api::types::v1::CdiDeviceEntry{
-                          .kind = kind,
-                          .name = name,
-                          .spec =
-                            api::types::v1::CdiSpec{
-                              .checksum = spec.checksum,
-                              .path = spec.path.string(),
-                            },
-                        });
+                        result.emplace_back(deviceEntry(spec, name));
                         found = true;
                         break;
                     }
@@ -270,6 +408,19 @@ utils::error::Result<std::vector<api::types::v1::CdiDeviceEntry>> getCDIDevices(
             return LINGLONG_ERR(fmt::format("device not found: {}", deviceStr));
         }
     }
+    return result;
+}
+
+utils::error::Result<std::vector<api::types::v1::CdiDeviceEntry>>
+getCDIDevicesFromSpec(const std::filesystem::path &path)
+{
+    LINGLONG_TRACE(fmt::format("read CDI devices from {}", path.string()));
+    auto spec = readSpec(path);
+    if (!spec) {
+        return LINGLONG_ERR(spec);
+    }
+    std::vector<api::types::v1::CdiDeviceEntry> result;
+    collectSpecDevices(result, *spec);
     return result;
 }
 

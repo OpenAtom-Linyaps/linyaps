@@ -142,3 +142,11 @@ generate \
         "linglong::cdi::types" \
         "/libs/cdi/src/" \
         "linglong/cdi/types"
+
+rm -f "$repoRoot/libs/cdi_drv/src/linglong/cdi_drv/types/"*.hpp
+generate \
+        "$repoRoot/libs/cdi_drv/schema.json" \
+        CdiDrvConfig \
+        "linglong::cdi_drv::types" \
+        "/libs/cdi_drv/src/" \
+        "linglong/cdi_drv/types"

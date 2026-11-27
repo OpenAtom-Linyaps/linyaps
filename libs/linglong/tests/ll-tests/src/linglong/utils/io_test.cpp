@@ -15,6 +15,7 @@
 #include "linglong/utils/unique_fd.h"
 
 #include <array>
+#include <cstdlib>
 #include <cstring>
 #include <string>
 
@@ -175,6 +176,96 @@ TEST(PipeSet, CreateProducesThreePipes)
     EXPECT_TRUE(set->stdinPipe.has_value());
     EXPECT_TRUE(set->stdoutPipe.has_value());
     EXPECT_TRUE(set->stderrPipe.has_value());
+}
+
+TEST(PipeSet, CanSelectStreams)
+{
+    for (unsigned int streams = 0; streams <= PipeSet::All; ++streams) {
+        SCOPED_TRACE(streams);
+        auto pipes = PipeSet::create(O_CLOEXEC, streams);
+        ASSERT_TRUE(pipes);
+        EXPECT_EQ(pipes->stdinPipe.has_value(), (streams & PipeSet::Stdin) != 0);
+        EXPECT_EQ(pipes->stdoutPipe.has_value(), (streams & PipeSet::Stdout) != 0);
+        EXPECT_EQ(pipes->stderrPipe.has_value(), (streams & PipeSet::Stderr) != 0);
+    }
+}
+
+bool checkRedirectedStdio(int closedDescriptors, int redirectedDescriptors, int flags)
+{
+    for (int descriptor = STDIN_FILENO; descriptor <= STDERR_FILENO; ++descriptor) {
+        if (closedDescriptors & (1 << descriptor)) {
+            ::close(descriptor);
+        }
+    }
+
+    auto pipes = PipeSet::create(flags, redirectedDescriptors);
+    if (!pipes) {
+        return false;
+    }
+    std::array<std::optional<Pipe> *, 3> channels{ &pipes->stdinPipe,
+                                                   &pipes->stdoutPipe,
+                                                   &pipes->stderrPipe };
+    std::array<UniqueFd, 3> peers;
+    for (int descriptor = STDIN_FILENO; descriptor <= STDERR_FILENO; ++descriptor) {
+        if (redirectedDescriptors & (1 << descriptor)) {
+            auto &pipe = *channels[descriptor];
+            const auto peer = descriptor == STDIN_FILENO ? pipe->writeEnd() : pipe->readEnd();
+            peers[descriptor].reset(::fcntl(peer, F_DUPFD_CLOEXEC, STDERR_FILENO + 1));
+            if (!peers[descriptor]) {
+                return false;
+            }
+        }
+    }
+    if (!pipes->setupChildStdio()) {
+        return false;
+    }
+    // Destroying PipeSet must leave the redirected descriptors usable.
+    pipes.reset();
+    for (int descriptor = STDIN_FILENO; descriptor <= STDERR_FILENO; ++descriptor) {
+        if (!(redirectedDescriptors & (1 << descriptor))) {
+            continue;
+        }
+        const auto descriptorFlags = ::fcntl(descriptor, F_GETFD);
+        if (descriptorFlags == -1 || (descriptorFlags & FD_CLOEXEC)
+            || ::fcntl(descriptor, F_SETFL, O_NONBLOCK) == -1
+            || ::fcntl(peers[descriptor].get(), F_SETFL, O_NONBLOCK) == -1) {
+            return false;
+        }
+        const auto reader = descriptor == STDIN_FILENO ? descriptor : peers[descriptor].get();
+        const auto writer = descriptor == STDIN_FILENO ? peers[descriptor].get() : descriptor;
+        char byte = 0;
+        if (::write(writer, "x", 1) != 1 || ::read(reader, &byte, 1) != 1 || byte != 'x') {
+            return false;
+        }
+    }
+    return true;
+}
+
+TEST(PipeSet, RedirectsClosedStandardDescriptors)
+{
+    for (int closedDescriptors = 0; closedDescriptors < 8; ++closedDescriptors) {
+        for (int redirectedDescriptors = 1; redirectedDescriptors < 8; ++redirectedDescriptors) {
+            for (const auto flags : { 0, O_CLOEXEC }) {
+                SCOPED_TRACE(closedDescriptors);
+                SCOPED_TRACE(redirectedDescriptors);
+                SCOPED_TRACE(flags);
+                ASSERT_EXIT(
+                  ::_exit(checkRedirectedStdio(closedDescriptors, redirectedDescriptors, flags)
+                            ? EXIT_SUCCESS
+                            : EXIT_FAILURE),
+                  ::testing::ExitedWithCode(EXIT_SUCCESS),
+                  "");
+            }
+        }
+    }
+}
+
+TEST(PipeSet, RejectsInvalidChildDescriptor)
+{
+    auto pipes = PipeSet::create();
+    ASSERT_TRUE(pipes);
+    pipes->stdinPipe->closeReadEnd();
+    EXPECT_FALSE(pipes->setupChildStdio());
 }
 
 TEST(PipeSet, CloseParentEndsKeepsChildEndsOpen)

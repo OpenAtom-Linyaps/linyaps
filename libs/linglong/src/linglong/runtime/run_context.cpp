@@ -4,6 +4,7 @@
 
 #include "linglong/runtime/run_context.h"
 
+#include "configure.h"
 #include "linglong/builder/project_lock.h"
 #include "linglong/cdi/cdi.h"
 #include "linglong/cli/cli.h"
@@ -761,7 +762,8 @@ utils::error::Result<void> RunContext::resolveOverlayMode(std::optional<std::str
 auto RunContext::selectOverlayMode(utils::OverlayMode requestedMode) const
   -> utils::error::Result<utils::OverlayMode>
 {
-    return OverlayFSDriver::resolveOverlayMode(requestedMode);
+    return OverlayFSDriver::resolveOverlayMode(requestedMode,
+                                               std::filesystem::path(LINGLONG_ROOT) / "cache");
 }
 
 utils::error::Result<void> RunContext::resolveNetworkConf()

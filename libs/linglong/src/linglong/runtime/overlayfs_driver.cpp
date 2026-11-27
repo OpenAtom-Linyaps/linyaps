@@ -9,13 +9,43 @@
 #include "linglong/utils/cmd.h"
 #include "linglong/utils/file.h"
 
+#include <linux/magic.h>
+#include <sys/vfs.h>
+
 #include <array>
+#include <cerrno>
 #include <fstream>
 
 #include <sys/utsname.h>
 
 namespace linglong::runtime {
 namespace {
+
+auto hasOverlayBacking(const std::filesystem::path &path) noexcept -> utils::error::Result<bool>
+{
+    LINGLONG_TRACE("inspect overlay upper directory filesystem");
+    std::error_code ec;
+    auto existing = std::filesystem::absolute(path, ec);
+    if (ec) {
+        return LINGLONG_ERR("resolve overlay upper directory", ec);
+    }
+
+    // The cache may not exist until the first application is started. Inspect
+    // its closest existing parent, including any administrator-provided mount.
+    for (;;) {
+        struct statfs info{};
+        if (statfs(existing.c_str(), &info) == 0) {
+            return info.f_type == OVERLAYFS_SUPER_MAGIC;
+        }
+        const auto error = errno;
+        const auto parent = existing.parent_path();
+        if (error != ENOENT || parent == existing) {
+            ec = std::error_code(error, std::generic_category());
+            return LINGLONG_ERR("inspect overlay upper directory", ec);
+        }
+        existing = parent;
+    }
+}
 
 auto filesystemHasOverlay() noexcept -> bool
 {
@@ -141,10 +171,29 @@ auto OverlayFSDriver::canUseFUSEOverlay() noexcept -> bool
     return utils::Cmd("fuse-overlayfs").exists();
 }
 
-auto OverlayFSDriver::resolveOverlayMode(utils::OverlayMode mode) noexcept
+auto OverlayFSDriver::resolveOverlayMode(utils::OverlayMode mode,
+                                         const std::filesystem::path &upperRoot) noexcept
   -> utils::error::Result<utils::OverlayMode>
 {
     LINGLONG_TRACE("resolve overlayfs mode");
+
+    if ((mode == utils::OverlayMode::Auto || mode == utils::OverlayMode::Kernel)
+        && !upperRoot.empty()) {
+        auto backing = hasOverlayBacking(upperRoot);
+        if (!backing) {
+            return LINGLONG_ERR("inspect overlay backing filesystem", backing);
+        }
+        if (*backing) {
+            if (mode == utils::OverlayMode::Kernel) {
+                return LINGLONG_ERR("kernel overlayfs cannot use an OverlayFS upper directory");
+            }
+            if (canUseFUSEOverlay()) {
+                return utils::OverlayMode::FUSE;
+            }
+            return LINGLONG_ERR(
+              "cache is on OverlayFS; install fuse-overlayfs to run applications");
+        }
+    }
 
     switch (mode) {
     case utils::OverlayMode::Kernel:

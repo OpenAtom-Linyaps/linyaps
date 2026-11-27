@@ -167,6 +167,19 @@ TEST_F(LayerFileTest, MetaInfoRejectsTruncatedPayload)
     ASSERT_FALSE(info.has_value());
 }
 
+TEST_F(LayerFileTest, MetaInfoRejectsTruncatedJson)
+{
+    auto layerPath = tempDir.path() / "truncated_json.layer";
+    const auto metaJson = QByteArray(VALID_META_JSON);
+    writeLayerArchive(layerPath, metaJson.left(metaJson.size() / 2));
+
+    auto layer = LayerFile::New(QString::fromStdString(layerPath.string()));
+    ASSERT_TRUE(layer.has_value());
+
+    auto info = (*layer)->metaInfo();
+    ASSERT_FALSE(info.has_value());
+}
+
 TEST_F(LayerFileTest, MetaInfoLengthFailsOnTruncatedHeader)
 {
     auto layerPath = tempDir.path() / "short_header.layer";
